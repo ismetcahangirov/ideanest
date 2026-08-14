@@ -8,6 +8,7 @@ import az.ideanest.auth.infrastructure.ProviderIdentityRepository;
 import az.ideanest.auth.infrastructure.UserCredentialRepository;
 import az.ideanest.shared.EmailAddress;
 import az.ideanest.support.AbstractIntegrationTest;
+import az.ideanest.auth.domain.Totp;
 import az.ideanest.support.OidcProviderStub;
 import az.ideanest.support.RecordingVerificationNotifier;
 import az.ideanest.user.application.UserAccount;
@@ -64,6 +65,12 @@ class SocialSignInApiTests extends AbstractIntegrationTest {
     @Autowired
     private JwtDecoder jwtDecoder;
 
+    @Autowired
+    private javax.sql.DataSource dataSource;
+
+    @Autowired
+    private java.time.Clock clock;
+
     // ------------------------------------------------------------------
     // Fixtures
     // ------------------------------------------------------------------
@@ -93,6 +100,12 @@ class SocialSignInApiTests extends AbstractIntegrationTest {
                 HttpMethod.POST,
                 new HttpEntity<>(body, headers),
                 new ParameterizedTypeReference<Map<String, Object>>() {});
+    }
+
+    private static HttpHeaders jsonHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        return headers;
     }
 
     private ResponseEntity<Map<String, Object>> signInWithGoogle(String idToken) {
@@ -568,5 +581,81 @@ class SocialSignInApiTests extends AbstractIntegrationTest {
     @DisplayName("something that is not a token at all is refused, not a server error")
     void gibberishIsRefused() {
         assertThat(signInWithGoogle("not-a-jwt").getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    // ------------------------------------------------------------------
+    // The second factor
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("a provider sign-in still demands the second factor")
+    void twoFactorAppliesToProviderSignInToo() {
+        // An account that has proven its address here and turned two-factor on.
+        EmailAddress email = uniqueEmail();
+        UserAccount account = verifiedLocalAccount(email);
+
+        ResponseEntity<Map<String, Object>> signedIn = rest.exchange(
+                "/v1/auth/login",
+                HttpMethod.POST,
+                new HttpEntity<>(
+                        Map.of("email", email.value(), "password", PASSWORD, "tokenDelivery", "body"),
+                        jsonHeaders()),
+                new ParameterizedTypeReference<Map<String, Object>>() {});
+        String accessToken = (String) signedIn.getBody().get("accessToken");
+
+        HttpHeaders bearer = jsonHeaders();
+        bearer.setBearerAuth(accessToken);
+        rest.exchange(
+                "/v1/auth/2fa/enable",
+                HttpMethod.POST,
+                new HttpEntity<>(Map.of("password", PASSWORD), bearer),
+                new ParameterizedTypeReference<Map<String, Object>>() {});
+        byte[] secret = new org.springframework.jdbc.core.JdbcTemplate(dataSource)
+                .queryForObject("SELECT secret FROM user_two_factor WHERE user_id = ?", byte[].class, account.id());
+        rest.exchange(
+                "/v1/auth/2fa/confirm",
+                HttpMethod.POST,
+                new HttpEntity<>(Map.of("code", Totp.codeAt(secret, Totp.stepAt(clock.instant()))), bearer),
+                new ParameterizedTypeReference<Map<String, Object>>() {});
+
+        // Now sign in with Google, as the same person, with the address the
+        // provider has verified.
+        ResponseEntity<Map<String, Object>> provider = signInWithGoogle(
+                OidcProviderStub.googleToken(uniqueSubject())
+                        .email(email.value())
+                        .emailVerified(true)
+                        .nonce(NONCE)
+                        .sign());
+
+        // A provider proves which Google account is calling. It says nothing
+        // about the second factor this user enrolled, and letting the button
+        // skip it would make two-factor advisory — which is the same as not
+        // having it, since somebody who reached the Google account is exactly
+        // who it was turned on for.
+        assertThat(provider.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(provider.getBody()).containsEntry("twoFactorRequired", true);
+        assertThat(provider.getBody()).doesNotContainKey("accessToken");
+
+        // And the challenge completes the same way a password one does.
+        ResponseEntity<Map<String, Object>> completed = rest.exchange(
+                "/v1/auth/2fa/verify",
+                HttpMethod.POST,
+                new HttpEntity<>(
+                        Map.of(
+                                "challenge", (String) provider.getBody().get("challenge"),
+                                // The next step's code, not this one's: the code
+                                // that confirmed the enrolment a moment ago has
+                                // been spent, and offering it again is the replay
+                                // the implementation refuses. One step ahead is
+                                // within the accepted skew and is what an
+                                // authenticator would show thirty seconds later.
+                                "code", Totp.codeAt(secret, Totp.stepAt(clock.instant()) + 1),
+                                "tokenDelivery", "body"),
+                        jsonHeaders()),
+                new ParameterizedTypeReference<Map<String, Object>>() {});
+
+        assertThat(completed.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(accessTokenOf(completed)).isNotBlank();
+        assertThat(userIdOf(completed)).isEqualTo(account.id());
     }
 }

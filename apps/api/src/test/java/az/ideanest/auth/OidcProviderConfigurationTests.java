@@ -34,7 +34,11 @@ class OidcProviderConfigurationTests {
 
     private static JwksOidcIdentityVerifier verifierFor(Map<IdentityProvider, Provider> providers) {
         OAuth oauth = new OAuth(Duration.ofSeconds(60), Duration.ofMinutes(5), providers);
-        AuthProperties properties = new AuthProperties(null, 0, 0, null, null, null, oauth, null, false);
+        // Only the OAuth block matters here; everything else is unread by the
+        // verifier and left null so that this test does not silently start
+        // depending on an unrelated setting.
+        AuthProperties properties =
+                new AuthProperties(null, 0, 0, null, null, null, null, oauth, null, false);
         return new JwksOidcIdentityVerifier(properties, Clock.systemUTC());
     }
 
