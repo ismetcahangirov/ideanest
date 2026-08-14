@@ -96,6 +96,25 @@ worse than one that names it.
 - Delete the branch after merge
 - If CI fails, fix the cause. Do not disable the check or mark the test skipped
 
+**Branch protection on `main`** currently requires: both CI checks passing, the
+branch up to date with `main`, conversations resolved, and no force pushes or
+deletions. It requires **zero** approving reviews.
+
+That last setting is deliberate but temporary. GitHub does not permit anyone to
+approve their own pull request, so on a single-maintainer repository a review
+requirement makes every maintainer pull request unmergeable except by
+administrator override. A rule that has to be bypassed every time is worse than
+no rule, because the override becomes habit and stops being noticed.
+
+> **Restore `required_approving_review_count` to 1 as soon as a second person
+> can review.** At that point the rule protects something real.
+>
+> ```
+> gh api --method PATCH \
+>   repos/<owner>/<repo>/branches/main/protection/required_pull_request_reviews \
+>   -F required_approving_review_count=1
+> ```
+
 ---
 
 ## 2. Design constraints
