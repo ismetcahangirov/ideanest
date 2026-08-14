@@ -33,6 +33,10 @@ dependencies {
     implementation("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
 
+    // UUID v7: time-ordered, so primary keys are generated in the application
+    // without giving up index locality the way v4 does. Java has no built-in.
+    implementation("com.github.f4b6a3:uuid-creator:6.1.1")
+
     // `bootRun` starts and stops the local compose stack. Development only, so
     // it never reaches the deployed jar.
     developmentOnly("org.springframework.boot:spring-boot-docker-compose")
@@ -44,6 +48,9 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:postgresql")
+    // Module boundaries that are only written down are module boundaries that
+    // erode. These are the same rules as az/ideanest/package-info.java, checked.
+    testImplementation("com.tngtech.archunit:archunit-junit5:1.5.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

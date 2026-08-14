@@ -146,6 +146,18 @@ Within a module:
 Reaching into another module's `domain` or `infrastructure` couples the two to
 each other's internals, which is exactly what the boundary exists to prevent —
 and what would make extracting a module into its own service expensive later.
+`shared` is the exception: it is cross-cutting by definition, which is also why
+nothing belonging to one feature may be put there.
+
+`ModuleBoundaryTests` enforces all of it — the boundary, the rule that `domain`
+knows nothing of `infrastructure` or `api`, and the absence of cycles between
+modules. A rule that lives only in a comment survives until the first afternoon
+somebody is in a hurry.
+
+An entity in one module therefore refers to another module's aggregate by its
+identifier, not by a JPA association: `Session` holds a `userId`, not a `User`.
+The foreign key still exists in the database, because referential integrity is
+the database's job and not a convention.
 
 Most modules are still an empty package and a description. That is deliberate:
 the package exists so that code lands where the architecture says it belongs,
