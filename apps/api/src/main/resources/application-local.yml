@@ -22,6 +22,12 @@ spring:
       hibernate:
         format_sql: true
 
+ideanest:
+  auth:
+    # There is no mail transport yet (#86), so the verification link is written
+    # to the console. Local only — see LoggingVerificationNotifier.
+    log-verification-links: true
+
 management:
   endpoint:
     health:

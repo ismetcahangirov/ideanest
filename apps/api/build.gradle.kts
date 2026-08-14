@@ -25,6 +25,13 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.springframework.boot:spring-boot-starter-security")
+
+    // Argon2id. Spring Security's Argon2PasswordEncoder delegates to
+    // BouncyCastle, which is pure Java — unlike argon2-jvm, which binds a
+    // native library through JNA and turns "does the container have libargon2"
+    // into a start-up question.
+    implementation("org.bouncycastle:bcprov-jdk18on:1.85.2")
 
     implementation("org.flywaydb:flyway-core")
     // Flyway 10 split its database support out of the core artifact. Without

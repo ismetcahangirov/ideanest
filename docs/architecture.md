@@ -1650,6 +1650,14 @@ become a service.
 | Web storage | Refresh in an httpOnly, secure, same-site cookie; access in memory, never local storage |
 | Mobile storage | Platform secure storage |
 | Two-factor | Time-based one-time password, **mandatory for payout actions** |
+| Password policy | Length only: at least 12 characters, at most 256, and it may not contain the address it protects. Composition rules produce `Password1!` and a note on a monitor |
+| Verification and reset tokens | 256 bits, single use, stored as SHA-256, spent by a conditional update so two simultaneous redemptions cannot both succeed |
+
+> **The rate limiter is currently in-process.** It is correct for one instance
+> and wrong for two: each replica enforces the limit separately, so the
+> effective limit multiplies by the number of instances. The shared counter is
+> #142. Until then the deployment is single-instance and the limiter is honest
+> protection against a script rather than against a botnet.
 
 ### 17.2 Payments
 
@@ -1671,7 +1679,8 @@ become a service.
 | Cross-site request forgery | Same-site cookies plus a required custom header |
 | Insecure direct object reference | Ownership checked in a security layer, not in controllers |
 | Mass assignment | Explicit request DTOs; entities are never bound to input |
-| Rate limiting | Sign-in 5/15min per address; pledge 10/min per user; search 60/min |
+| Rate limiting | Sign-in 5/15min per address; registration 5/15min per address and 3/15min per email; pledge 10/min per user; search 60/min |
+| **Account enumeration** | Registration answers identically whether or not the address is known. The address itself is told which of the two happened |
 | Bot traffic | Challenge on registration and comment |
 | File upload | Magic-byte validation, size caps, served from a separate origin |
 | Server-side request forgery | Allowlist for outbound fetches; internal ranges blocked |

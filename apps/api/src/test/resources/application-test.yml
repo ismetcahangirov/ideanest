@@ -16,6 +16,19 @@ spring:
     username: replaced-by-testcontainers
     password: replaced-by-testcontainers
 
+ideanest:
+  auth:
+    rate-limit:
+      # The suite shares one process and one limiter, and every test calls from
+      # 127.0.0.1. A realistic per-address limit would therefore make the tests
+      # fail each other rather than fail themselves, so the per-address ceiling
+      # is effectively off here and the per-email one is left at its real value:
+      # each test uses its own address, so the limit is exercised in isolation.
+      # The per-address path is covered by InMemoryRateLimiterTests instead.
+      registrations-per-address: 100000
+      verifications-per-address: 100000
+      registrations-per-email: 3
+
 management:
   endpoint:
     health:

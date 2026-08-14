@@ -49,11 +49,25 @@ class HealthEndpointTests extends AbstractIntegrationTest {
     void otherEndpointsStayClosed() {
         // env and configprops print configuration, which includes the database
         // password. beans and mappings describe the attack surface.
+        //
+        // 401 rather than 404 since #23 added deny-by-default security: the
+        // endpoint is refused before anything works out that it is also not
+        // exposed. Either way an anonymous caller reads nothing, which is the
+        // property being asserted.
         assertThat(rest.getForEntity("/actuator/env", String.class).getStatusCode())
-                .isEqualTo(HttpStatus.NOT_FOUND);
+                .isIn(HttpStatus.NOT_FOUND, HttpStatus.UNAUTHORIZED);
         assertThat(rest.getForEntity("/actuator/beans", String.class).getStatusCode())
-                .isEqualTo(HttpStatus.NOT_FOUND);
+                .isIn(HttpStatus.NOT_FOUND, HttpStatus.UNAUTHORIZED);
         assertThat(rest.getForEntity("/actuator/flyway", String.class).getStatusCode())
-                .isEqualTo(HttpStatus.NOT_FOUND);
+                .isIn(HttpStatus.NOT_FOUND, HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    @DisplayName("an endpoint nobody granted access to is refused")
+    void unknownEndpointsAreDeniedByDefault() {
+        // Deny by default is what makes forgetting to protect a new endpoint a
+        // 401 in a test rather than an open door in production.
+        assertThat(rest.getForEntity("/v1/me", String.class).getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 }
