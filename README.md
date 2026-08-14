@@ -92,7 +92,7 @@ need appears.
 ```
 ideanest/
 ├── apps/
-│   ├── api/                  Spring Boot service            (not yet created)
+│   ├── api/                  Spring Boot service
 │   ├── web/                  Next.js application            (not yet created)
 │   ├── mobile/               Expo application               (not yet created)
 │   └── admin/                Internal tooling               (not yet created)
@@ -117,13 +117,15 @@ builds and is never edited by hand.
 
 ## Getting started
 
-**Requirements:** Node 22 or newer, pnpm 11 or newer, JDK 21 (for the backend,
-once it exists).
+**Requirements:** Node 22 or newer, pnpm 11 or newer, and JDK 21 or newer for
+the backend. Gradle itself is not a requirement — the wrapper fetches it.
 
 ```bash
 git clone https://github.com/ismetcahangirov/ideanest.git
 cd ideanest
 pnpm install
+
+cd apps/api && ./gradlew build      # backend: compile and test
 ```
 
 ### Scripts
@@ -134,6 +136,9 @@ pnpm install
 | `pnpm typecheck` | Type checking across every package |
 | `pnpm test` | Behaviour, accessibility, and colour-discipline tests |
 | `pnpm build:storybook` | Static Storybook build, as CI runs it |
+
+The backend is a Gradle project and is not driven through pnpm. Its commands and
+conventions are in [`apps/api/README.md`](apps/api/README.md).
 
 Start with Storybook. It is the fastest way to understand the visual system,
 and `Patterns/Discovery Rail` shows every primitive working together.

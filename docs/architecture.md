@@ -1346,8 +1346,8 @@ notifies the API, which enqueues processing.
 | Concern | Choice | Reason |
 |---|---|---|
 | Language | **Java 21 (LTS)** | Virtual threads, records, pattern matching, sealed types |
-| Framework | **Spring Boot 3.4** | Mature transaction management, deep ecosystem |
-| Build | **Gradle (Kotlin DSL)** | Fast incremental builds, good multi-module support |
+| Framework | **Spring Boot 3.5** | Mature transaction management, deep ecosystem. 3.4 left open-source support before the service was written; 3.5 is the maintained line of the same major version |
+| Build | **Gradle 8.14 (Kotlin DSL)** | Fast incremental builds, good multi-module support |
 | Persistence | **Spring Data JPA** plus **jOOQ** for complex reads | JPA for aggregates; jOOQ where the query is the point |
 | Migrations | **Flyway** | Versioned, reversible, applied automatically |
 | Validation | **Jakarta Bean Validation** | Declarative, standard |

@@ -1,0 +1,5 @@
+# CI runs `./gradlew` on Linux. A CRLF in the shebang line makes the kernel look
+# for an interpreter named "sh\r", and the error it prints does not say so.
+gradlew        text eol=lf
+gradlew.bat    text eol=crlf
+*.jar          binary

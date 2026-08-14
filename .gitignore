@@ -23,6 +23,9 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 
+# gradle
+.gradle/
+
 # tooling artifacts
 .playwright-mcp/
 coverage/

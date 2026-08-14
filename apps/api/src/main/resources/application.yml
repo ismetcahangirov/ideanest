@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: ideanest-api
+  profiles:
+    default: local
+  mvc:
+    problemdetails:
+      # RFC 9457 responses for framework-raised errors, so the shape of an error
+      # does not depend on where it was raised.
+      enabled: true
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: ${SERVER_PORT:8080}
+  # In-flight requests finish before the process exits. During a rolling deploy
+  # the alternative is a truncated response to a real user.
+  shutdown: graceful
+  error:
+    # An error page is not a debugging channel. Detail belongs in the logs.
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Only what the platform needs. Every other endpoint stays closed until
+        # there is a reason and an access control story for it.
+        include: health
+  endpoint:
+    health:
+      # Kubernetes reads /actuator/health/liveness and /readiness separately: a
+      # service that is alive but not ready must not be restarted, only removed
+      # from the load balancer.
+      probes:
+        enabled: true
+      show-details: never
+      show-components: never
+
+logging:
+  level:
+    root: INFO
+    az.ideanest: INFO
