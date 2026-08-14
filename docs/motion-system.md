@@ -376,6 +376,27 @@ of an outbound arrow, and it costs nothing.
 Backdrop fades only; content fades and rises. The same timing, different
 distance, produces depth without shadow.
 
+#### 4.11.1 Overlay durations
+
+Overlays are the surface of checkout — the reward sheet, the pledge
+confirmation, the address drawer — and the budget there is near zero (§5).
+
+| Overlay | Entry | From |
+|---|---|---|
+| Modal | 200ms | `opacity 0`, `translateY 24px` |
+| Drawer | 200ms | `translateX/Y 100%` — the panel's own size |
+| Popover, tooltip | 200ms | `opacity 0`, `translateY 4px` |
+| Toast | 200ms | `opacity 0`, `translateY 12px` |
+
+A drawer slides with `translate`. Animating `right` or `width` relayouts a
+fixed full-height panel on every frame, and the list inside it reflows with it.
+
+**There is no exit animation.** A dialog that lingers after it was dismissed
+reads as an unresponsive interface, and holding a backdrop on screen for
+another 200ms puts a dead zone over the page the user has just returned to.
+Under `prefers-reduced-motion` the entry collapses too: the overlay mounts in
+its final state, which is an instant state change rather than a fast one.
+
 ### 4.12 Self-dismissing tooltip
 
 ```css

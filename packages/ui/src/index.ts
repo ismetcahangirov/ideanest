@@ -55,4 +55,28 @@ export {
 export { Switch, type SwitchProps } from './components/form/Switch';
 export { FileDropZone, type FileDropZoneProps } from './components/form/FileDropZone';
 
+/* Overlay */
+export { Modal, type ModalProps } from './components/overlay/Modal';
+export { Drawer, type DrawerProps, type DrawerSide } from './components/overlay/Drawer';
+export { Popover, type PopoverProps } from './components/overlay/Popover';
+export { Tooltip, type TooltipProps } from './components/overlay/Tooltip';
+export {
+  ToastProvider,
+  useToast,
+  type ToastOptions,
+  type ToastVariant,
+  type ToastProviderProps,
+  type ToastContextValue,
+} from './components/overlay/Toast';
+export { useFocusTrap, tabbableElements } from './components/overlay/useFocusTrap';
+export { useDismiss, useScrollLock, useBackdropDismiss } from './components/overlay/useDismiss';
+export {
+  resolvePlacement,
+  rectOf,
+  type Placement,
+  type Position,
+  type Rect,
+} from './components/overlay/placement';
+export { OVERLAY_ENTRY_MS } from './components/overlay/overlayMotion';
+
 export { cn } from './lib/cn';

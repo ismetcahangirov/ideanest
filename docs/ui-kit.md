@@ -653,6 +653,98 @@ else. Forms live on checkout ("near zero") and the campaign editor ("none") —
 see [`motion-system.md`](./motion-system.md) §5. An animating field reads as
 hesitation exactly where confidence is worth the most.
 
+### 7.14 Overlay primitives
+
+`Modal`, `Drawer`, `Popover`, `Tooltip`, `Toast`. All controlled — `open` plus
+`onOpenChange`, no uncontrolled mode. Whether a payment dialog is open is
+application state, and a component that owns it privately makes the one case
+that matters, reopening after a failed charge, impossible.
+
+#### The modal is white. Everything else is dark
+
+```css
+.modal   { background: var(--white-surface); color: var(--text-on-white);
+           box-shadow: var(--shadow-float); border-radius: var(--radius-xl); }
+.drawer  { background: var(--surface-2); border: 1px solid var(--border); }
+.popover { background: var(--surface-3); border: 1px solid var(--border); }
+.tooltip { background: var(--surface-4); border: 1px solid var(--border); }
+```
+
+There are no shadows in this system except under a white floating panel (§3),
+and a modal is the only overlay genuinely above the plane — it stops the page.
+A drawer, a popover and a tooltip are extensions of the page: filters, a fee
+breakdown, a label. They stay on the dark stack, one layer up from whatever
+they sit over.
+
+Inside a modal `--text-secondary` does not apply. Use `--text-on-white` at
+reduced opacity, exactly as in §7.9. Lime keeps its meaning: an urgent action
+in a modal is a lime fill with near-black text, never lime text on white
+(1.3:1 — §9.1).
+
+#### The focus contract
+
+| Overlay | Focus moves in | Tab is trapped | Page scroll locked | Focus returns |
+|---|---|---|---|---|
+| `Modal` | yes | yes | yes | yes |
+| `Drawer` | yes | yes | yes | yes |
+| `Popover` | yes | **no** | no | yes |
+| `Tooltip` | no | no | no | n/a |
+| `Toast` | **never** | no | no | n/a |
+
+Focus lands on the first tabbable element, or on the panel itself when there is
+none, and returns to the control that opened the overlay on close. Without the
+return a keyboard user who dismisses a dialog is dropped at the top of the
+document and has to navigate back to the button they just pressed.
+
+The popover is deliberately not trapped. It is non-modal — the page behind it
+is live, scrollable, and reachable by Tab — so trapping would be a lie about
+what the user can still do.
+
+A toast never takes focus. It is announced through a live region instead:
+`role="status"` / `aria-live="polite"` for ordinary messages, `role="alert"` /
+`aria-live="assertive"` for errors. Stealing focus for a message the user did
+not ask for interrupts typing and loses the caret, which on a payment form
+means losing a field.
+
+#### Escape, and stacking
+
+Escape closes the **topmost** overlay only. Open overlays register in a stack
+and the last entry handles the key; everything below it is untouched. One
+keystroke tearing down a popover, the drawer it sits in, and the modal behind
+that is data loss with a keyboard shortcut.
+
+Backdrop click closes too, and can be opted out of when the user must make a
+choice. A press that *starts* inside the panel and *ends* on the backdrop —
+selecting text and releasing outside — is not a dismissal.
+
+Scroll lock restores the body's original `overflow` value verbatim, not `''`.
+Blanking it would quietly delete an application's own scroll handling the first
+time anybody opened a dialog.
+
+#### Tooltip
+
+Opens on hover **and** on focus. Hover alone is not a shortcut, it is a defect:
+a keyboard user never produces a hover, so the content exists for mouse users
+and for nobody else. It is wired with `aria-describedby`, never `aria-label` —
+`aria-label` replaces the trigger's name, `describedby` is announced after it.
+
+Never put a control inside one. It closes on pointer-leave and on blur, so
+nothing inside is reachable, and assistive technology flattens the description
+to a string and drops the control entirely. If it needs a button, it is a
+`Popover`.
+
+#### Toast
+
+Variants pair a token with an icon, because colour alone never carries meaning
+(§9.2): `--info`, `--success`, `--warning`, `--danger`. Success is `--success`,
+not lime — lime says "act now", never "done" (§8.1).
+
+**A toast does not auto-dismiss what carries an action.** "Undo" that vanishes
+after five seconds is a promise the interface does not keep. The timer is also
+disabled under `prefers-reduced-motion`, and pauses on hover and on
+focus-within: somebody reading the message, or tabbing towards its action, is
+not somebody who is finished with it.
+
 ---
 
 ## 8. Applying the system to product screens
