@@ -9,6 +9,13 @@ updates:
     labels:
       - 'type: chore'
       - 'area: infra'
+    ignore:
+      # @types/node must track the runtime major, not lead it. Types ahead of
+      # the runtime let code typecheck against APIs that do not exist at run
+      # time, so the failure surfaces in production rather than in CI.
+      # Raise this deliberately when the Node version in ci.yml changes.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
     groups:
       # One pull request per ecosystem keeps the review load sane. Major
       # versions stay separate because they need a real read.
