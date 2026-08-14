@@ -56,6 +56,115 @@ jobs:
           path: packages/ui/storybook-static
           retention-days: 7
 
+  # Reviewers get a browsable build instead of a description of one. It reuses
+  # the artifact the frontend job already produced rather than building twice.
+  storybook-preview:
+    name: Storybook preview
+    runs-on: ubuntu-latest
+    needs: frontend
+    # A pull request from a fork is handed a read-only token, and handing an
+    # untrusted branch a write token in exchange for a preview URL is not a
+    # trade worth making. Such pull requests simply get no preview.
+    if: >-
+      github.event_name == 'push' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Work out where this build belongs
+        id: target
+        run: |
+          if [ "${{ github.event_name }}" = 'pull_request' ]; then
+            echo "dir=pr-${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=main" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: storybook-static
+          path: build
+
+      - uses: actions/checkout@v7
+        with:
+          ref: gh-pages
+          path: pages
+
+      - name: Publish to the preview branch
+        working-directory: pages
+        env:
+          DIR: ${{ steps.target.outputs.dir }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          # Several runs can finish at once. The loser of a push race rebuilds
+          # its commit on top of the winner instead of force-pushing over it,
+          # which would delete a sibling pull request's preview.
+          for attempt in 1 2 3 4 5; do
+            git fetch --depth=1 origin gh-pages
+            git reset --hard origin/gh-pages
+
+            rm -rf "$DIR"
+            mkdir -p "$DIR"
+            cp -R ../build/. "$DIR/"
+            # Storybook emits directories beginning with an underscore, which
+            # Jekyll would strip before serving them.
+            touch .nojekyll
+
+            git add -A
+            if git diff --cached --quiet; then
+              echo "::notice::Preview is already current; nothing to publish."
+              exit 0
+            fi
+
+            git commit -q -m "chore(ci): publish storybook to ${DIR}" \
+                          -m "Built from ${SOURCE_SHA}."
+
+            if git push origin gh-pages; then
+              exit 0
+            fi
+            echo "Push rejected — another run got there first. Retry ${attempt}."
+            sleep $(( attempt * 5 ))
+          done
+
+          echo "::error::Could not publish the Storybook preview after 5 attempts."
+          exit 1
+
+      - name: Leave the URL on the pull request
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          # Derived, not hard-coded, so a rename or a transfer does not leave
+          # every pull request pointing at a URL that no longer resolves.
+          URL: >-
+            https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ steps.target.outputs.dir }}/
+        run: |
+          set -euo pipefail
+          MARKER='<!-- storybook-preview -->'
+          BODY=$(printf '%s\n📖 **Storybook preview:** %s\n\nBuilt from `%s`. Republished on every push; the directory is removed when this pull request closes.' \
+            "$MARKER" "$URL" "${GITHUB_SHA:0:7}")
+
+          # One comment, edited in place. A fresh comment per push would bury
+          # the review conversation under a changelog of itself.
+          existing=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments?per_page=100" \
+            --jq "[.[] | select(.body | startswith(\"${MARKER}\")) | .id] | first // empty")
+
+          if [ -n "$existing" ]; then
+            gh api --method PATCH \
+              "repos/${GITHUB_REPOSITORY}/issues/comments/${existing}" \
+              -f body="$BODY" > /dev/null
+          else
+            gh api --method POST \
+              "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" \
+              -f body="$BODY" > /dev/null
+          fi
+
   backend:
     name: Backend (Java)
     runs-on: ubuntu-latest

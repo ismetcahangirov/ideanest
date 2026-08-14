@@ -1,0 +1,58 @@
+name: Storybook preview cleanup
+
+# Previews are cheap to publish and easy to forget. Without this the branch
+# accumulates one full Storybook build per pull request, for ever.
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+jobs:
+  remove:
+    name: Remove the preview directory
+    runs-on: ubuntu-latest
+    # A fork never published one, so there is nothing to remove — and its token
+    # could not remove it anyway.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: gh-pages
+
+      - name: Remove
+        env:
+          DIR: pr-${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          # Same retry as the publish step: a concurrent publish must not be
+          # force-pushed away by a cleanup that started from a stale ref.
+          for attempt in 1 2 3 4 5; do
+            git fetch --depth=1 origin gh-pages
+            git reset --hard origin/gh-pages
+
+            if [ ! -d "$DIR" ]; then
+              echo "::notice::No preview was published for ${DIR}."
+              exit 0
+            fi
+
+            rm -rf "$DIR"
+            git add -A
+            git commit -q -m "chore(ci): remove the storybook preview for ${DIR}"
+
+            if git push origin gh-pages; then
+              exit 0
+            fi
+            echo "Push rejected — another run got there first. Retry ${attempt}."
+            sleep $(( attempt * 5 ))
+          done
+
+          echo "::error::Could not remove the Storybook preview after 5 attempts."
+          exit 1
