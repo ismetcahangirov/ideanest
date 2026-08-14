@@ -131,6 +131,14 @@ ideanest:
       # §17.3: five sign-in attempts per address per fifteen minutes.
       sign-ins-per-address: 5
       sign-ins-per-email: 5
+      # The control that makes a six-digit code safe. Three codes are valid at
+      # any moment once a step of clock skew either side is allowed, so five
+      # attempts is fifteen chances in a million per challenge -- and a new
+      # challenge costs the password again.
+      two-factor-codes-per-challenge: 5
+      # Enabling, confirming, or disabling. Each costs an Argon2 verification,
+      # so this bounds what a stolen access token can spend as well as guess.
+      two-factor-changes-per-user: 10
       window: PT15M
 
     token:
@@ -148,6 +156,14 @@ ideanest:
       # would differ per replica and change on every restart.
       private-key-pem: ${TOKEN_PRIVATE_KEY_PEM:}
       public-key-pem: ${TOKEN_PUBLIC_KEY_PEM:}
+
+    two-factor:
+      # What the authenticator app shows above the six digits.
+      issuer: IdeaNest
+      # The proof of a correct password, waiting for a code. Long enough to find
+      # the phone, short enough that one captured from a log is dead by the time
+      # anybody reads it.
+      challenge-ttl: PT5M
 
     refresh-cookie:
       name: ideanest_refresh

@@ -652,10 +652,18 @@ erDiagram
 > why; and a hash stored beside the profile is read into memory by every query
 > that only wanted a display name.
 >
-> `location_id`, `kyc_status`, `two_factor_enabled`, and `banned_at` are not in
-> the schema yet. Each arrives with the feature that owns it — locations with
-> discovery, `kyc_status` with #105, `two_factor_enabled` with #26, `banned_at`
-> with #104 — rather than as a column nothing writes to.
+> `location_id`, `kyc_status`, and `banned_at` are not in the schema yet. Each
+> arrives with the feature that owns it — locations with discovery,
+> `kyc_status` with #105, `banned_at` with #104 — rather than as a column
+> nothing writes to.
+>
+> **`two_factor_enabled` was planned here and is deliberately not a column.**
+> Whether two-factor is on is `user_two_factor.confirmed_at IS NOT NULL`, and a
+> boolean beside it would be a second answer to the same question — one that
+> can disagree with the first after a failed transaction, and that says nothing
+> about *when* it was switched on. What a payout action actually asks is
+> narrower still: not "does this account have two-factor" but "did this session
+> prove it", which is `sessions.two_factor_at`.
 
 #### `user_credentials`
 `user_id` (uuid, primary key), `password_hash` (Argon2id, encoded with its
@@ -667,7 +675,8 @@ timestamp that moves only when the password does.
 
 #### `sessions`
 `id` (uuid), `user_id`, `device_label`, `user_agent`, `ip_address` (inet),
-`created_at`, `last_seen_at`, `expires_at`, `revoked_at`, `revoked_reason`.
+`created_at`, `last_seen_at`, `expires_at`, `two_factor_at`, `revoked_at`,
+`revoked_reason`.
 
 **A session is the refresh token family.** Rotation issues a new refresh token
 into the same session; presenting a token that was already rotated means a copy
@@ -679,6 +688,12 @@ one signed in, and which of the two that is cannot be known.
 `PASSWORD_CHANGED`, `ADMIN_ACTION`, and a revoked session must carry one. A
 session that died without a recorded reason is what makes a theft incident
 unreconstructable a week later.
+
+`two_factor_at` records that *this sign-in* proved a second factor, and is null
+for a session started with a password alone. It is a property of the session
+rather than of the account on purpose: an account can switch two-factor on and
+still hold sessions that predate it, and blessing those retroactively would let
+a token minted before the change satisfy a payout check made after it.
 
 #### `refresh_tokens`
 `id` (uuid), `session_id`, `token_hash` (bytea, SHA-256), `issued_at`,
@@ -701,6 +716,46 @@ Single use, spent by setting `consumed_at` rather than by deleting the row, so
 that a second attempt with the same link can be told apart from a token that
 never existed. The purpose is checked on redemption: without it, a token issued
 to prove an address would also reset the password on that account.
+
+#### `user_two_factor`
+`user_id` (uuid, primary key), `secret` (bytea, 20 bytes), `algorithm`
+(`TOTP_SHA1`), `confirmed_at`, `last_used_step`, timestamps.
+
+**Enrolment and enablement are two states of one row.** A row with
+`confirmed_at` null is a secret that was generated and never proved, and it
+changes nothing about signing in. Anything else locks out the user whose phone
+dies between scanning the code and entering one, and on a funding platform a
+lockout means somebody cannot reach their money.
+
+The secret cannot be hashed the way a token is — verifying a code means
+recomputing the HMAC, so the server needs the value back. Encryption at rest
+with a managed key is the control that belongs here, and there is no key
+management in the platform yet; until there is, the secret is protected exactly
+as well as the database is.
+
+`last_used_step` is the replay defence: a code is accepted only if its time step
+is strictly greater than the last accepted one, so a code works once rather than
+for the ninety seconds the skew window covers.
+
+#### `two_factor_recovery_codes`
+`id`, `user_id`, `code_hash` (bytea, SHA-256), `created_at`, `used_at`.
+
+Ten codes of a hundred bits each, generated at confirmation and shown once.
+Stored as an unsalted SHA-256 with no work factor, for the same reason a refresh
+token is: the input is not something a person chose, so there is no dictionary
+to attack. Argon2 would be actively wrong here — the codes are checked on an
+endpoint reachable with a stolen challenge, and a memory-hard hash there lets an
+attacker spend 19 MiB of ours per guess.
+
+#### `two_factor_challenges`
+`id`, `user_id`, `challenge_hash` (bytea, SHA-256), `device_label`,
+`user_agent`, `ip_address` (inet), `created_at`, `expires_at`, `consumed_at`.
+
+The state between the two halves of a sign-in. A correct password with
+two-factor on produces one of these and **no session**; the second call spends
+it together with a code. A row rather than a signed token because it has to be
+single-use and revocable, and nothing that is merely signed can promise either.
+Five minutes, and retired when a new one is issued for the same user.
 
 #### `projects`
 `id`, `creator_id`, `slug`, `title` (varchar 60), `blurb` (varchar 135),
@@ -1134,8 +1189,10 @@ POST   /v1/auth/logout
 POST   /v1/auth/verify-email
 POST   /v1/auth/forgot-password
 POST   /v1/auth/reset-password
-POST   /v1/auth/2fa/enable
-POST   /v1/auth/2fa/verify
+POST   /v1/auth/2fa/enable      # starts an enrolment; does not switch it on
+POST   /v1/auth/2fa/confirm     # a current code switches it on, returns recovery codes
+POST   /v1/auth/2fa/verify      # second half of a sign-in: challenge + code
+POST   /v1/auth/2fa/disable     # password AND a code, or a recovery code
 GET    /v1/auth/sessions
 DELETE /v1/auth/sessions/{id}
 POST   /v1/auth/oauth/{provider}
@@ -1250,6 +1307,19 @@ POST   /v1/admin/finance/payouts/{id}/approve
 POST   /v1/admin/finance/refunds
 GET    /v1/admin/audit-logs
 ```
+
+> **Two-factor is four endpoints rather than two.** `2fa/verify` is the second
+> half of a sign-in, so it has to be reachable without a session; confirming an
+> enrolment and switching two-factor off must both require one. One endpoint
+> serving both authentication models, with a branch deciding which applies, is
+> exactly the shape a bypass hides in — so enrolment confirmation is
+> `2fa/confirm` and removal is `2fa/disable`.
+>
+> `POST /v1/auth/login` therefore has two response shapes. With two-factor off
+> it returns tokens. With two-factor on it returns `200` with
+> `{"twoFactorRequired": true, "challenge": "…", "expiresInSeconds": …}` and no
+> tokens at all — not a `401`, because nothing was refused: the password was
+> accepted and the flow is halfway through.
 
 ### 10.3 Conventions
 
@@ -1510,7 +1580,7 @@ dependencies {
     // Security
     implementation("org.springframework.security:spring-security-oauth2-jose")
     implementation("de.mkammerer:argon2-jvm")             // password hashing
-    implementation("dev.samstevens.totp:totp")            // two-factor
+    // dev.samstevens.totp:totp is NOT used — see §15.2
 
     // Resilience — the provider will be unavailable at some point
     implementation("io.github.resilience4j:resilience4j-spring-boot3")
@@ -1567,6 +1637,7 @@ dependencies {
 | **Resilience4j** | The payment provider *will* be unavailable during a campaign close |
 | **jOOQ alongside JPA** | JPA is right for aggregates and wrong for faceted discovery queries. Use both, deliberately |
 | **Never call a provider SDK directly** | Always behind `PaymentProvider`. A provider change must touch one file |
+| **RFC 6238 is written out rather than depended on** | `dev.samstevens.totp` was the plan and is not maintained: last commit November 2020, no release since 1.7.1, 28 open issues — sitting on the authentication path and pulling a QR-code generator in with it for a picture the client renders anyway. The specification is an HMAC, a counter, and a truncation; `az.ideanest.auth.domain.Totp` is that, over `javax.crypto`, checked against the RFC's own test vectors. The same argument would not justify writing our own Argon2, because that one is a primitive and this one is forty lines of arithmetic on top of one |
 
 ### 15.3 Frontend
 
@@ -1651,7 +1722,12 @@ become a service.
 | Client requirement | Refresh must be **single-flight**. Two concurrent refreshes present the same token, which is indistinguishable from theft and signs the user out |
 | Web storage | Refresh in an httpOnly, secure, same-site cookie; access in memory, never local storage |
 | Mobile storage | Platform secure storage |
-| Two-factor | Time-based one-time password, **mandatory for payout actions** |
+| Two-factor | Time-based one-time password: RFC 6238, HMAC-SHA1, six digits, thirty-second steps, one step of skew either side. Enrolment does not enable it — a current code must be entered first, or a phone that dies mid-flow is a lockout |
+| Two-factor sign-in | A correct password returns a **single-use challenge and no session**. The second call spends the challenge with a code. A code cannot be replayed inside its own window: the accepted time step is recorded and only a strictly greater one is taken |
+| Two-factor guessing | Five code attempts per challenge; a new challenge costs the password again. This is *the* control on a six-digit secret — three codes are valid at any moment once skew is allowed |
+| Recovery codes | Ten, a hundred bits each, shown once, stored as SHA-256, single use |
+| Removing two-factor | The current password **and** a code or a recovery code. Either alone would make the whole control worth one password |
+| Payout actions | Require two-factor **for the session**, not for the account: `sessions.two_factor_at` and the `amr` claim on the access token. Enforcement lands with payouts (#69) — this release exposes the capability |
 | Password policy | Length only: at least 12 characters, at most 256, and it may not contain the address it protects. Composition rules produce `Password1!` and a note on a monitor |
 | Verification and reset tokens | 256 bits, single use, stored as SHA-256, spent by a conditional update so two simultaneous redemptions cannot both succeed |
 
@@ -1681,7 +1757,7 @@ become a service.
 | Cross-site request forgery | Same-site cookies plus a required custom header |
 | Insecure direct object reference | Ownership checked in a security layer, not in controllers |
 | Mass assignment | Explicit request DTOs; entities are never bound to input |
-| Rate limiting | Sign-in 5/15min per address; registration 5/15min per address and 3/15min per email; pledge 10/min per user; search 60/min |
+| Rate limiting | Sign-in 5/15min per address; registration 5/15min per address and 3/15min per email; two-factor codes 5 per challenge and enrolment changes 10/15min per user; pledge 10/min per user; search 60/min |
 | **Account enumeration** | Registration answers identically whether or not the address is known. The address itself is told which of the two happened |
 | Bot traffic | Challenge on registration and comment |
 | File upload | Magic-byte validation, size caps, served from a separate origin |

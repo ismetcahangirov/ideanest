@@ -4,6 +4,7 @@ import az.ideanest.auth.AuthProperties;
 import az.ideanest.auth.application.AuthenticationFailedException;
 import az.ideanest.auth.application.IssuedTokens;
 import az.ideanest.auth.application.RefreshService;
+import az.ideanest.auth.application.SignInOutcome;
 import az.ideanest.auth.application.SignInService;
 import az.ideanest.auth.application.SignInService.SignInCommand;
 import az.ideanest.shared.EmailAddress;
@@ -41,6 +42,7 @@ public class TokenController {
     private final SignInService signIns;
     private final RefreshService refreshes;
     private final RefreshCookies cookies;
+    private final TokenResponses responses;
     private final RateLimiter rateLimiter;
     private final AuthProperties properties;
 
@@ -48,18 +50,34 @@ public class TokenController {
             SignInService signIns,
             RefreshService refreshes,
             RefreshCookies cookies,
+            TokenResponses responses,
             RateLimiter rateLimiter,
             AuthProperties properties) {
         this.signIns = signIns;
         this.refreshes = refreshes;
         this.cookies = cookies;
+        this.responses = responses;
         this.rateLimiter = rateLimiter;
         this.properties = properties;
     }
 
+    /**
+     * Signs in, or asks for the second factor.
+     *
+     * <p>Two shapes come back from this one endpoint, which is why the type is
+     * open. With two-factor off it is a {@link TokenResponse}. With two-factor
+     * on it is a {@link TwoFactorChallengeResponse} — {@code twoFactorRequired}
+     * true, a challenge, and no tokens at all — and the client sends the
+     * challenge and a code to {@code /v1/auth/2fa/verify}.
+     *
+     * <p>200 rather than 401 for the second case: nothing was refused. The
+     * password was accepted and the flow is halfway through, and a client that
+     * treats it as a failure would be reacting to the wrong thing. A client
+     * that ignores the field gets no access token, which fails at its next
+     * request rather than quietly signing anybody in.
+     */
     @PostMapping("/login")
-    public ResponseEntity<TokenResponse> signIn(
-            @Valid @RequestBody SignInRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> signIn(@Valid @RequestBody SignInRequest request, HttpServletRequest httpRequest) {
 
         AuthProperties.RateLimit limits = properties.rateLimit();
         // §17.3: five attempts per address per fifteen minutes. Per email as
@@ -71,14 +89,26 @@ public class TokenController {
         enforce(rateLimiter.recordAttempt(
                 "login:email:" + email.value(), limits.signInsPerEmail(), limits.window()));
 
-        IssuedTokens tokens = signIns.signIn(new SignInCommand(
+        SignInOutcome outcome = signIns.signIn(new SignInCommand(
                 email,
                 request.password(),
                 request.deviceLabel(),
                 httpRequest.getHeader(HttpHeaders.USER_AGENT),
                 clientAddressOf(httpRequest)));
 
-        return respondWith(tokens, request.wantsTokenInBody());
+        // A switch over a sealed type rather than an if: a third outcome — an
+        // SMS factor, a forced password change — then fails to compile here
+        // instead of falling through to "signed in".
+        return switch (outcome) {
+            case SignInOutcome.TwoFactorRequired challenge -> ResponseEntity.ok()
+                    // A challenge is a credential for the next five minutes.
+                    .cacheControl(CacheControl.noStore())
+                    .body(TwoFactorChallengeResponse.of(
+                            challenge.challenge(),
+                            Duration.between(Instant.now(), challenge.expiresAt()).toSeconds()));
+            case SignInOutcome.Authenticated authenticated -> responses.of(
+                    authenticated.tokens(), request.wantsTokenInBody());
+        };
     }
 
     @PostMapping("/refresh")
@@ -98,7 +128,7 @@ public class TokenController {
             throw new AuthenticationFailedWithHeaders(e.getMessage(), headers);
         }
 
-        return respondWith(tokens, presented.fromBody());
+        return responses.of(tokens, presented.fromBody());
     }
 
     @PostMapping("/logout")
@@ -133,24 +163,6 @@ public class TokenController {
             }
             return new PresentedToken(value, false);
         });
-    }
-
-    private ResponseEntity<TokenResponse> respondWith(IssuedTokens tokens, boolean tokenInBody) {
-        HttpHeaders headers = new HttpHeaders();
-        // The cookie is set either way. A native client that asked for the body
-        // simply has no cookie jar to put it in, and a browser that did not ask
-        // gets the token only in a place its own scripts cannot read.
-        cookies.set(headers, tokens.refreshToken(), Duration.between(Instant.now(), tokens.refreshTokenExpiresAt()));
-
-        long expiresIn = Duration.between(Instant.now(), tokens.accessTokenExpiresAt()).toSeconds();
-        TokenResponse body =
-                TokenResponse.of(tokens.accessToken(), expiresIn, tokenInBody ? tokens.refreshToken() : null);
-
-        return ResponseEntity.ok()
-                .headers(headers)
-                // Tokens must not be cached anywhere, by anything.
-                .cacheControl(CacheControl.noStore())
-                .body(body);
     }
 
     private static void enforce(RateLimitDecision decision) {

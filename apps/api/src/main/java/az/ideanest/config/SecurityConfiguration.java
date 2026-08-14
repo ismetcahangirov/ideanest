@@ -38,7 +38,18 @@ public class SecurityConfiguration {
                                 "/v1/auth/verify-email",
                                 "/v1/auth/login",
                                 "/v1/auth/refresh",
-                                "/v1/auth/logout")
+                                "/v1/auth/logout",
+                                // The second half of a sign-in. The caller has
+                                // no session yet — that is what it is for — and
+                                // what stands in for one is a single-use
+                                // challenge that expires in minutes and was
+                                // only issued for a correct password.
+                                //
+                                // The other three two-factor endpoints are
+                                // deliberately absent: enrolling, confirming,
+                                // and disabling all require a bearer token, and
+                                // fall through to the rule below.
+                                "/v1/auth/2fa/verify")
                         .permitAll()
                         .anyRequest()
                         .authenticated())

@@ -1,13 +1,8 @@
 package az.ideanest.auth.application;
 
-import az.ideanest.auth.AuthProperties;
-import az.ideanest.auth.application.AccessTokenIssuer.IssuedAccessToken;
-import az.ideanest.auth.domain.RefreshToken;
 import az.ideanest.auth.domain.SecureTokens;
-import az.ideanest.auth.domain.Session;
 import az.ideanest.auth.domain.UserCredential;
-import az.ideanest.auth.infrastructure.RefreshTokenRepository;
-import az.ideanest.auth.infrastructure.SessionRepository;
+import az.ideanest.auth.infrastructure.TwoFactorSecretRepository;
 import az.ideanest.auth.infrastructure.UserCredentialRepository;
 import az.ideanest.shared.EmailAddress;
 import az.ideanest.user.application.UserAccount;
@@ -18,7 +13,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Exchanging an email address and a password for a session. */
+/** Exchanging an email address and a password for a session, or for a demand for the second factor. */
 @Service
 public class SignInService {
 
@@ -31,11 +26,10 @@ public class SignInService {
 
     private final UserAccounts users;
     private final UserCredentialRepository credentials;
-    private final SessionRepository sessions;
-    private final RefreshTokenRepository refreshTokens;
+    private final TwoFactorSecretRepository twoFactorSecrets;
+    private final TwoFactorChallenges challenges;
+    private final SessionStarter sessionStarter;
     private final PasswordHasher passwordHasher;
-    private final AccessTokenIssuer accessTokens;
-    private final AuthProperties properties;
     private final Clock clock;
 
     /**
@@ -52,19 +46,17 @@ public class SignInService {
     public SignInService(
             UserAccounts users,
             UserCredentialRepository credentials,
-            SessionRepository sessions,
-            RefreshTokenRepository refreshTokens,
+            TwoFactorSecretRepository twoFactorSecrets,
+            TwoFactorChallenges challenges,
+            SessionStarter sessionStarter,
             PasswordHasher passwordHasher,
-            AccessTokenIssuer accessTokens,
-            AuthProperties properties,
             Clock clock) {
         this.users = users;
         this.credentials = credentials;
-        this.sessions = sessions;
-        this.refreshTokens = refreshTokens;
+        this.twoFactorSecrets = twoFactorSecrets;
+        this.challenges = challenges;
+        this.sessionStarter = sessionStarter;
         this.passwordHasher = passwordHasher;
-        this.accessTokens = accessTokens;
-        this.properties = properties;
         this.clock = clock;
         this.decoyHash = passwordHasher.hash(SecureTokens.generate());
     }
@@ -79,7 +71,7 @@ public class SignInService {
     }
 
     @Transactional
-    public IssuedTokens signIn(SignInCommand command) {
+    public SignInOutcome signIn(SignInCommand command) {
         Instant now = clock.instant();
 
         Optional<UserAccount> account = users.findByEmail(command.email());
@@ -104,26 +96,28 @@ public class SignInService {
             credentials.save(stored);
         }
 
+        UserAccount user = account.orElseThrow();
+
+        // A confirmed enrolment, not merely a row: somebody who scanned a code
+        // and never entered one has not proved they can, and demanding a code
+        // from them would be a lockout rather than a control.
+        if (twoFactorSecrets.findByUserIdAndConfirmedAtIsNotNull(user.id()).isPresent()) {
+            // No session, no tokens, and nothing the caller can do with what
+            // comes back except present a code. That this reveals two-factor is
+            // on for the account is unavoidable — and costs the correct
+            // password to learn, which is not an oracle anyone needs.
+            return challenges.issue(user.id(), command, now);
+        }
+
         // Sign-in is deliberately allowed before the address is verified. The
         // account can be used to browse and to be reminded; what verification
         // gates is money and messaging, and those checks read the claim.
-        return startSession(account.orElseThrow(), command, now);
-    }
-
-    private IssuedTokens startSession(UserAccount account, SignInCommand command, Instant now) {
-        Instant expiresAt = now.plus(properties.token().refreshTokenTtl());
-
-        Session session = sessions.save(Session.start(account.id(), now, expiresAt)
-                .describedAs(command.deviceLabel(), command.userAgent(), command.ipAddress()));
-
-        String refreshToken = SecureTokens.generate();
-        refreshTokens.save(
-                RefreshToken.issue(session.getId(), SecureTokens.hash(refreshToken), now, expiresAt));
-
-        IssuedAccessToken accessToken =
-                accessTokens.issue(account.id(), session.getId(), account.emailVerified(), now);
-
-        return new IssuedTokens(
-                accessToken.value(), accessToken.expiresAt(), refreshToken, expiresAt, session.getId());
+        return new SignInOutcome.Authenticated(sessionStarter.start(new SessionStarter.NewSession(
+                user.id(),
+                user.emailVerified(),
+                command.deviceLabel(),
+                command.userAgent(),
+                command.ipAddress(),
+                false)));
     }
 }

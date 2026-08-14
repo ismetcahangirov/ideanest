@@ -1,6 +1,7 @@
 package az.ideanest.auth.api;
 
 import az.ideanest.auth.application.AuthenticationFailedException;
+import az.ideanest.auth.application.TwoFactorRejectedException;
 import az.ideanest.auth.application.VerificationRejectedException;
 import az.ideanest.auth.application.WeakPasswordException;
 import java.net.URI;
@@ -20,7 +21,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * whole service would turn a genuine bug somewhere else into a cheerful "bad
  * request" and hide it.
  */
-@RestControllerAdvice(assignableTypes = {AuthController.class, TokenController.class})
+@RestControllerAdvice(
+        assignableTypes = {AuthController.class, TokenController.class, TwoFactorController.class})
 public class AuthExceptionHandler {
 
     /**
@@ -70,6 +72,27 @@ public class AuthExceptionHandler {
         // told the requirement for.
         problem.setDetail(exception.getMessage());
         return problem;
+    }
+
+    /**
+     * A two-factor change that was refused.
+     *
+     * <p>400 rather than 401: the caller is authenticated and their token is
+     * fine. What failed is the password or the code they offered with it, and
+     * the message does not say which — somebody using a stolen access token to
+     * switch two-factor off should not be told how close they got.
+     */
+    @ExceptionHandler(TwoFactorRejectedException.class)
+    public ResponseEntity<ProblemDetail> handleTwoFactorRejected(TwoFactorRejectedException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("https://ideanest.az/problems/two-factor-rejected"));
+        problem.setTitle("Two-factor change refused");
+        problem.setDetail(exception.getMessage());
+
+        return ResponseEntity.badRequest()
+                // These responses are about credentials. Nothing caches them.
+                .cacheControl(CacheControl.noStore())
+                .body(problem);
     }
 
     @ExceptionHandler(VerificationRejectedException.class)

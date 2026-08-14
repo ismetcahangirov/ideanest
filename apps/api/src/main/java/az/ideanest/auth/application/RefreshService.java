@@ -104,8 +104,16 @@ public class RefreshService {
                 .map(UserAccount::emailVerified)
                 .orElseThrow(() -> new AuthenticationFailedException(REFUSAL));
 
-        IssuedAccessToken accessToken =
-                accessTokens.issue(session.getUserId(), session.getId(), emailVerified, now);
+        // Carried across the rotation from the session rather than re-derived:
+        // a refresh proves possession of a token, not a second factor, and it
+        // must neither add the claim nor lose it. Losing it would sign a
+        // creator out of a payout every fifteen minutes.
+        IssuedAccessToken accessToken = accessTokens.issue(
+                session.getUserId(),
+                session.getId(),
+                emailVerified,
+                session.isTwoFactorAuthenticated(),
+                now);
 
         return new IssuedTokens(
                 accessToken.value(),

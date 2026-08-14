@@ -64,6 +64,17 @@ public class Session {
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
+    /**
+     * When this session proved a second factor, or null for a password alone.
+     *
+     * <p>A property of the session and not of the user. An account with
+     * two-factor switched on can still have sessions that were started before
+     * it was, and a payout action asks what this sign-in proved rather than what
+     * the account is capable of proving.
+     */
+    @Column(name = "two_factor_at")
+    private Instant twoFactorAt;
+
     @Column(name = "revoked_at")
     private Instant revokedAt;
 
@@ -99,6 +110,25 @@ public class Session {
         this.userAgent = userAgent;
         this.ipAddress = ipAddress;
         return this;
+    }
+
+    /**
+     * Records that a second factor was proved for this session.
+     *
+     * <p>Set when the session is created from a completed challenge, and when
+     * an existing session is the one that confirmed an enrolment — in both cases
+     * a code was entered a moment ago, which is the whole claim being made.
+     */
+    public Session withSecondFactor(Instant at) {
+        this.twoFactorAt = at;
+        return this;
+    }
+
+    /**
+     * Whether this sign-in proved a second factor. What a payout action asks.
+     */
+    public boolean isTwoFactorAuthenticated() {
+        return twoFactorAt != null;
     }
 
     /**
@@ -161,6 +191,10 @@ public class Session {
 
     public Instant getExpiresAt() {
         return expiresAt;
+    }
+
+    public Instant getTwoFactorAt() {
+        return twoFactorAt;
     }
 
     public Instant getRevokedAt() {
