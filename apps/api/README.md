@@ -174,6 +174,8 @@ rather than wherever the first commit happened to put it.
 | `POST /v1/auth/login` | Starts a session. Returns an access token; the refresh token goes in a cookie, or in the body if the client asks |
 | `POST /v1/auth/refresh` | Rotates the refresh token and returns a new access token |
 | `POST /v1/auth/logout` | Revokes the session. `204` even with no token |
+| `GET /v1/auth/sessions` | The user's live devices, with the current one marked |
+| `DELETE /v1/auth/sessions/{id}` | Revokes one device. `404` if it is not theirs |
 | `GET /v1/me` | The signed-in account. The first endpoint behind a bearer token |
 
 Everything else is denied by default. Forgetting to state who may call a new
