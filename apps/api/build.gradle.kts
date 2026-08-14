@@ -24,8 +24,26 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+
+    implementation("org.flywaydb:flyway-core")
+    // Flyway 10 split its database support out of the core artifact. Without
+    // this the service starts and then fails on the first migration with a
+    // message about an unsupported database.
+    implementation("org.flywaydb:flyway-database-postgresql")
+    runtimeOnly("org.postgresql:postgresql")
+
+    // `bootRun` starts and stops the local compose stack. Development only, so
+    // it never reaches the deployed jar.
+    developmentOnly("org.springframework.boot:spring-boot-docker-compose")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    // A real PostgreSQL, not an in-memory substitute. An in-memory database
+    // does not reproduce PostgreSQL locking, constraints, or numeric
+    // semantics -- precisely the behaviour this platform depends on.
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("org.testcontainers:junit-jupiter")
+    testImplementation("org.testcontainers:postgresql")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

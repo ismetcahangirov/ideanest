@@ -1715,6 +1715,17 @@ staged rollout, with over-the-air updates reserved for JavaScript-only changes.
 | Lock timeout | Set explicitly — a long lock takes production down |
 | Rollback | Every migration has a documented reversal |
 
+Three of those rules are enforced rather than trusted. `MigrationConventionTests`
+fails the build when a migration is misnamed, reuses a version, carries no
+`-- Reverse:` block, or drops something without a `-- Contract:` block saying
+which release stopped using it. The reversal is a comment because Flyway's
+community edition has no `undo`; what matters is that it is written and reviewed
+alongside the forward change rather than invented during an incident.
+
+Concurrent index creation and explicit lock timeouts are not yet enforced by
+anything. They become checkable once there is a table large enough for either to
+matter.
+
 ### 19.4 Recovery
 
 | Objective | Target |

@@ -117,8 +117,10 @@ builds and is never edited by hand.
 
 ## Getting started
 
-**Requirements:** Node 22 or newer, pnpm 11 or newer, and JDK 21 or newer for
-the backend. Gradle itself is not a requirement — the wrapper fetches it.
+**Requirements:** Node 22 or newer, pnpm 11 or newer, and — for the backend —
+JDK 21 or newer and Docker. Gradle itself is not a requirement; the wrapper
+fetches it. Docker is: the backend runs against a real PostgreSQL locally and
+in its tests, never an in-memory substitute.
 
 ```bash
 git clone https://github.com/ismetcahangirov/ideanest.git

@@ -2,10 +2,10 @@ package az.ideanest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import az.ideanest.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,8 +15,7 @@ import org.springframework.http.ResponseEntity;
  * decide whether this instance receives traffic. It is part of the contract with
  * the platform, so it is tested like one.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class HealthEndpointTests {
+class HealthEndpointTests extends AbstractIntegrationTest {
 
     @Autowired
     private TestRestTemplate rest;
@@ -48,10 +47,13 @@ class HealthEndpointTests {
     @Test
     @DisplayName("no endpoint beyond health is exposed")
     void otherEndpointsStayClosed() {
-        // env and configprops print configuration, which includes secrets.
+        // env and configprops print configuration, which includes the database
+        // password. beans and mappings describe the attack surface.
         assertThat(rest.getForEntity("/actuator/env", String.class).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(rest.getForEntity("/actuator/beans", String.class).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(rest.getForEntity("/actuator/flyway", String.class).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
     }
 }
