@@ -78,6 +78,14 @@ annotation set lets Spring cache a single context, so one container serves the
 whole suite instead of one per class. A test of a pure function should not
 extend it.
 
+**Google and Apple are never called from a test.** `OidcProviderStub` runs
+WireMock in the test JVM, serves a JWKS, and signs ID tokens with a key pair it
+generates — which is the only way to produce the cases that matter: a wrong
+audience, an expired token, a token signed by a key the provider does not
+publish. It is wired in from `AbstractIntegrationTest` rather than from the test
+class that uses it, because a class with a property source of its own gets a
+context of its own and a second PostgreSQL container with it.
+
 Integration tests run under the `test` profile, which mirrors deployed
 configuration rather than the developer's — a health endpoint that hides detail
 in production and shows it locally has to be asserted against the production
@@ -172,6 +180,7 @@ rather than wherever the first commit happened to put it.
 | `POST /v1/auth/register` | Creates an unverified account and sends a verification link. Always `202` |
 | `POST /v1/auth/verify-email` | Redeems the link. `204` once, `400` thereafter |
 | `POST /v1/auth/login` | Starts a session. Returns an access token; the refresh token goes in a cookie, or in the body if the client asks |
+| `POST /v1/auth/oauth/{provider}` | Signs in with a Google or Apple ID token. Same session, same tokens, same cookie as `/login` |
 | `POST /v1/auth/refresh` | Rotates the refresh token and returns a new access token |
 | `POST /v1/auth/logout` | Revokes the session. `204` even with no token |
 | `POST /v1/auth/2fa/enable` | Starts a TOTP enrolment. Costs the password. Does **not** switch two-factor on |
@@ -213,6 +222,56 @@ Transactional email is #86.
 
 **Rate limiting is in-process**, which is correct for one instance and wrong for
 two — each replica enforces the limit separately. The shared counter is #142.
+
+### Signing in with Google and Apple
+
+The client gets an ID token from the provider and posts it. Nothing else in the
+request says who the person is — no subject, no address, no "email verified".
+Those are read out of the token, and only after it has been verified:
+
+- **signature** against the provider's JWKS, from configuration, never from the
+  token's own `jku` header
+- **RS256**, pinned. A decoder that reads the algorithm out of the token accepts
+  `alg: none`, and accepts an HMAC token signed with the RSA public key
+- **`iss`**, **`aud`**, **`exp`**. `aud` is the one that matters most: Google
+  signs valid tokens for every developer who asks, and the client identifier is
+  what makes one ours
+- **age**, from `iat`, capped at five minutes. Google's tokens live an hour; one
+  produced by the sign-in happening now is seconds old
+- **`nonce`**, which must match what the client bound its authorisation request
+  to. Apple's native flow hashes it before it reaches the token, so what the
+  client sends us is whatever it sent the provider — we compare, we do not
+  interpret
+
+**The account is the `(provider, subject)` pair, never the address.** Both
+providers let a person change their email, and matching on it means whoever
+holds that address next inherits the account.
+
+**Linking to an existing account requires both sides to have proven the
+address.** A verified provider address matching a *verified* account links
+automatically. A verified provider address matching an *unverified* account is
+refused with a 409 — anyone can register an address they do not own and choose
+the password, so linking would hand them an account that has since become
+somebody else's. An *unverified* provider address creates nothing and links to
+nothing, and is refused with the ordinary message.
+
+A user created this way has no password: `user_credentials` simply has no row.
+
+**Configuration** is `ideanest.auth.oauth.providers.*`. Issuers and key set
+addresses are checked in — they are facts about Google and Apple. Client
+identifiers come from the environment, and a provider without them is not
+enabled here: its endpoint answers `501`, rather than the service refusing to
+start over a feature nobody has called. A provider configured *in part* —
+identifiers with no issuer — does stop start-up, because that is a mistake and
+its other failure mode is a 401 nobody can explain.
+
+**What is not done yet.** The nonce is the client's, so it binds a token to a
+request without proving freshness; server-issued nonces need storage shared
+across replicas (#134). There is no endpoint to link or unlink a provider from
+account settings (#25 follow-up), so the only linking is the automatic one
+above. Apple's client secret — a signed ES256 JWT rather than a static string —
+is not needed for ID token verification and is not implemented; it becomes
+necessary for token revocation on account deletion (#28).
 
 ### Tokens
 

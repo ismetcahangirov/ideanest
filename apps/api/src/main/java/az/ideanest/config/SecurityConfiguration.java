@@ -29,14 +29,16 @@ public class SecurityConfiguration {
                         .requestMatchers("/actuator/health", "/actuator/health/**")
                         .permitAll()
                         // How someone with no credentials gets one, and how a
-                        // client whose access token expired gets another. All
-                        // four authenticate by their own means — a password, a
-                        // verification token, a refresh token — so requiring an
-                        // access token here would be circular.
+                        // client whose access token expired gets another. Each
+                        // authenticates by its own means — a password, a
+                        // verification token, a refresh token, a provider ID
+                        // token — so requiring an access token here would be
+                        // circular.
                         .requestMatchers(
                                 "/v1/auth/register",
                                 "/v1/auth/verify-email",
                                 "/v1/auth/login",
+                                "/v1/auth/oauth/*",
                                 "/v1/auth/refresh",
                                 "/v1/auth/logout",
                                 // The second half of a sign-in. The caller has

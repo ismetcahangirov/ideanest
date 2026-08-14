@@ -139,6 +139,11 @@ ideanest:
       # Enabling, confirming, or disabling. Each costs an Argon2 verification,
       # so this bounds what a stolen access token can spend as well as guess.
       two-factor-changes-per-user: 10
+      # Higher than password sign-in because a failure here is usually a stale
+      # token rather than a guess, and a retry loop on a mobile client should not
+      # lock the user out of a button they pressed once. An ID token cannot be
+      # guessed; what this bounds is the verification work one caller can demand.
+      social-sign-ins-per-address: 20
       window: PT15M
 
     token:
@@ -164,6 +169,34 @@ ideanest:
       # the phone, short enough that one captured from a log is dead by the time
       # anybody reads it.
       challenge-ttl: PT5M
+    oauth:
+      # Tolerance for the provider's clock, and nothing more. Every second here
+      # is a second an expired token still works.
+      clock-skew: PT60S
+      # Ours, not the provider's. Google's ID tokens live for an hour; a token
+      # that is genuinely the result of the sign-in happening now is seconds old,
+      # and anything older has been sitting somewhere it could be read.
+      max-token-age: PT5M
+      providers:
+        google:
+          issuer: https://accounts.google.com
+          jwks-uri: https://www.googleapis.com/oauth2/v3/certs
+          # One client identifier per platform, comma separated. Not a secret —
+          # a client id is public by design — but environment-specific, so it
+          # comes from the environment. Absent means Google sign-in is not
+          # enabled here, and the endpoint answers 501 rather than the service
+          # refusing to start over a feature nobody has called.
+          audiences: ${GOOGLE_CLIENT_IDS:}
+          # Every client we ship sends one. A flow that cannot is not one we
+          # accept: without it a token is not bound to the request that asked
+          # for it.
+          require-nonce: true
+        apple:
+          issuer: https://appleid.apple.com
+          jwks-uri: https://appleid.apple.com/auth/keys
+          # The bundle identifier on iOS, the Services ID on the web.
+          audiences: ${APPLE_CLIENT_IDS:}
+          require-nonce: true
 
     refresh-cookie:
       name: ideanest_refresh

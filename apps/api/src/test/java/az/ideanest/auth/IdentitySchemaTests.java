@@ -72,6 +72,15 @@ class IdentitySchemaTests extends AbstractIntegrationTest {
         return id;
     }
 
+    private void insertProviderIdentity(UUID userId, String provider, String subject) {
+        jdbc().update(
+                        "INSERT INTO provider_identities (id, user_id, provider, subject) VALUES (?, ?, ?, ?)",
+                        Identifiers.newIdentifier(),
+                        userId,
+                        provider,
+                        subject);
+    }
+
     private static byte[] hashOfLength(int length, int seed) {
         byte[] hash = new byte[length];
         for (int i = 0; i < length; i++) {
@@ -299,6 +308,62 @@ class IdentitySchemaTests extends AbstractIntegrationTest {
     }
 
     // -----------------------------------------------------------------------
+    // provider_identities
+    // -----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("one provider account belongs to one person")
+    void providerSubjectIsUniquePerProvider() {
+        UUID first = insertUser("first@example.com", "first-person");
+        UUID second = insertUser("second@example.com", "second-person");
+        insertProviderIdentity(first, "GOOGLE", "the-same-subject");
+
+        // Two rows claiming one Google account would make a sign-in resolve to
+        // either of two people, and which one would depend on the plan.
+        assertThatThrownBy(() -> insertProviderIdentity(second, "GOOGLE", "the-same-subject"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+        // The same subject at a different provider is a different account: `sub`
+        // is unique within an issuer and nowhere else.
+        assertThatCode(() -> insertProviderIdentity(second, "APPLE", "the-same-subject"))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("one person has at most one account per provider")
+    void oneIdentityPerPersonPerProvider() {
+        UUID userId = insertUser("person@example.com", "person");
+        insertProviderIdentity(userId, "GOOGLE", "first-subject");
+
+        assertThatThrownBy(() -> insertProviderIdentity(userId, "GOOGLE", "second-subject"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("an invented provider is refused")
+    void providerIsFromTheKnownSet() {
+        UUID userId = insertUser("person@example.com", "person");
+
+        assertThatThrownBy(() -> insertProviderIdentity(userId, "FACEBOOK", "a-subject"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("an address cannot be recorded as verified without being recorded")
+    void verifiedAddressExists() {
+        UUID userId = insertUser("person@example.com", "person");
+
+        // A row saying "the provider verified an address" and not saying which
+        // one is a row that cannot be reviewed after an incident.
+        assertThatThrownBy(() -> jdbc().update(
+                        "INSERT INTO provider_identities (id, user_id, provider, subject, email_verified)"
+                                + " VALUES (?, ?, 'GOOGLE', 'a-subject', true)",
+                        Identifiers.newIdentifier(),
+                        userId))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    // -----------------------------------------------------------------------
     // cascades
     // -----------------------------------------------------------------------
 
@@ -323,6 +388,7 @@ class IdentitySchemaTests extends AbstractIntegrationTest {
                         Identifiers.newIdentifier(),
                         userId,
                         hashOfLength(32, 21));
+        insertProviderIdentity(userId, "GOOGLE", "a-google-subject");
 
         jdbc().update("DELETE FROM users WHERE id = ?", userId);
 
@@ -333,6 +399,9 @@ class IdentitySchemaTests extends AbstractIntegrationTest {
         assertThat(count("sessions")).isZero();
         assertThat(count("refresh_tokens")).isZero();
         assertThat(count("verification_tokens")).isZero();
+        // A link left behind would let the next sign-in with that Google account
+        // resolve to a user who no longer exists.
+        assertThat(count("provider_identities")).isZero();
     }
 
     @Test

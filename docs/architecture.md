@@ -156,8 +156,8 @@ Marked `[W]` web, `[M]` mobile, `[A]` admin.
 | A-01 | Email and password registration | W, M | Verification required |
 | A-02 | Email verification link or code | W, M | 24-hour token |
 | A-03 | Sign in | W, M | Rate limited: 5 attempts / 15 min |
-| A-04 | Google sign-in | W, M | OAuth 2.0 / OIDC |
-| A-05 | Apple sign-in | W, M | Required by the iOS store once social sign-in exists |
+| A-04 | Google sign-in | W, M | Client obtains an ID token; the server verifies it against Google's JWKS |
+| A-05 | Apple sign-in | W, M | Required by the iOS store once social sign-in exists. Same path, Apple's issuer and keys |
 | A-06 | Password reset | W, M | Single-use token, 1 hour |
 | A-07 | Two-factor via authenticator app | W, M | Mandatory for payout actions |
 | A-08 | Two-factor via SMS | W, M | Fallback |
@@ -756,6 +756,26 @@ two-factor on produces one of these and **no session**; the second call spends
 it together with a code. A row rather than a signed token because it has to be
 single-use and revocable, and nothing that is merely signed can promise either.
 Five minutes, and retired when a new one is issued for the same user.
+#### `provider_identities`
+`id` (uuid), `user_id`, `provider` (`GOOGLE`, `APPLE`), `subject`, `email`
+(citext), `email_verified`, `is_private_email`, `linked_at`,
+`last_authenticated_at`, timestamps.
+
+**Unique:** `(provider, subject)`, and `(user_id, provider)`.
+
+**The link is the provider's `subject`, never the address.** Both providers let
+a person change the email on their account, and Apple's relay address can be
+switched off entirely. An identity matched on the address means whoever holds
+that address next inherits the account it used to point at — an account takeover
+performed with nothing but legitimate credentials. `sub` is issuer-scoped,
+immutable, and never reassigned. The address is recorded beside it as a fact
+about the account, and nothing authenticates against it.
+
+`(user_id, provider)` is unique because one person has one Google account here.
+A second would make "which Google account is this" a question with two answers.
+
+A user who only ever signs in this way has no row in `user_credentials`, which
+is what that table was separated for.
 
 #### `projects`
 `id`, `creator_id`, `slug`, `title` (varchar 60), `blurb` (varchar 135),
@@ -1730,6 +1750,61 @@ become a service.
 | Payout actions | Require two-factor **for the session**, not for the account: `sessions.two_factor_at` and the `amr` claim on the access token. Enforcement lands with payouts (#69) — this release exposes the capability |
 | Password policy | Length only: at least 12 characters, at most 256, and it may not contain the address it protects. Composition rules produce `Password1!` and a note on a monitor |
 | Verification and reset tokens | 256 bits, single use, stored as SHA-256, spent by a conditional update so two simultaneous redemptions cannot both succeed |
+
+#### Signing in with Google and Apple
+
+`POST /v1/auth/oauth/{provider}` takes an ID token the client obtained from the
+provider — through a native SDK or the web flow — and returns exactly the session
+a password sign-in returns.
+
+| Control | Detail |
+|---|---|
+| Signature | Verified against the provider's JWKS, fetched from configuration. Never from the token's own `jku` |
+| Algorithm | Pinned to RS256. A decoder that trusts the token's `alg` accepts `alg: none`, and accepts an HMAC token signed with the public key as its secret |
+| `iss` | Must be the configured issuer |
+| `aud` | Must be one of our client identifiers. **The check most often left out**: Google issues valid tokens to every developer who asks, and this is what makes one ours rather than theirs |
+| `exp` | Checked, with a small clock skew |
+| Age | `iat` must be within `ideanest.auth.oauth.max-token-age` (5 minutes). Expiry is the provider's hour; a token from the sign-in happening now is seconds old |
+| `nonce` | Must equal the nonce the client bound its authorisation request to. Client-supplied for now, which binds the token to the request but does not prove freshness — server-issued nonces need shared storage (#134) |
+| Client assertions | None. The request carries a token and a nonce. Subject, address, and verification status are read out of the token after verification |
+| Configuration | `ideanest.auth.oauth.providers.*`. Client identifiers come from the environment; a provider without them is not enabled and its endpoint answers 501. A provider configured **in part** stops start-up |
+
+**Account linking.** The rule, in order:
+
+| Situation | Result |
+|---|---|
+| `(provider, subject)` already linked | Sign in as that user. The address is not consulted |
+| Provider address absent or unverified | Refused, with the ordinary authentication message. It creates nothing and links to nothing |
+| Verified address, no account here | Account created through `UserAccounts`, address already verified, no password |
+| Verified address, account here that has **verified** the same address | Linked automatically and signed in |
+| Verified address, account here that has **not** verified it | Refused, 409, with instructions |
+
+The last row is the one that looks over-cautious and is not. Registration
+creates an account before the address is proven, so anyone can register
+`victim@example.com`, choose the password, and wait; auto-linking the victim's
+later Google sign-in would leave the attacker holding a password to an account
+that is now somebody else's. This is the pre-registration attack, and the
+condition that defeats it is that **both sides must have proven the address**.
+The user's way out is the verification email already sitting in the inbox they
+have just proven they control.
+
+Refusing that case says more than "those credentials are not valid", which the
+rest of auth refuses to do. It can afford to: the caller has proven ownership of
+the address to Google or Apple, so they learn nothing they could not learn by
+asking for a password reset. The unverified-address case gets the generic
+refusal precisely because the caller has proven nothing.
+
+**Apple specifics.** Apple sends the user's name **once**, in the body of the
+first authorisation response — never in the ID token and never on a later
+sign-in. The client forwards it, and it is used only when an account is created;
+it never modifies an existing one. Apple's address may be a Hide My Email relay
+that forwards until the user revokes it, recorded as `is_private_email` because
+a shipping survey to a revoked relay bounces silently. Apple sends
+`email_verified` as the string `"true"`, so both spellings are read. Apple's
+*client secret* is a signed ES256 JWT rather than a static string — that belongs
+to the authorisation-code exchange and the token-revocation endpoint, neither of
+which this flow uses; it becomes necessary for account deletion (#28), which
+Apple requires to revoke the token.
 
 > **The rate limiter is currently in-process.** It is correct for one instance
 > and wrong for two: each replica enforces the limit separately, so the
