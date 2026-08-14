@@ -104,8 +104,14 @@ ideanest/
 │   ├── ui-kit.md             Colour, surface, typography, components
 │   └── motion-system.md      Motion tokens, patterns, budgets
 ├── CLAUDE.md                 Contribution and workflow rules
-└── .github/workflows/ci.yml  Typecheck, tests, Storybook build
+└── .github/workflows/
+    ├── ci.yml                Typecheck, tests, Storybook build and preview
+    └── storybook-preview-cleanup.yml
+                              Deletes a preview when its pull request closes
 ```
+
+The `gh-pages` branch is written by CI only. It holds the published Storybook
+builds and is never edited by hand.
 
 ---
 
@@ -131,6 +137,21 @@ pnpm install
 
 Start with Storybook. It is the fastest way to understand the visual system,
 and `Patterns/Discovery Rail` shows every primitive working together.
+
+### Storybook previews
+
+CI publishes a browsable build for every pull request and comments the link on
+it, so a reviewer can look at a component instead of reading a description of
+one.
+
+| Build | URL |
+|---|---|
+| `main` | <https://ismetcahangirov.github.io/ideanest/main/> |
+| Pull request | `https://ismetcahangirov.github.io/ideanest/pr-<number>/` |
+
+The directory is removed when the pull request closes. Pull requests from forks
+get no preview: their token is read-only by design, and granting an untrusted
+branch write access in exchange for a URL is not a worthwhile trade.
 
 ---
 
