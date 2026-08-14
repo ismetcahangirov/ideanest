@@ -1647,6 +1647,8 @@ become a service.
 | Access token | JWT, 15 minutes, asymmetric signature |
 | Refresh token | Opaque, stored hashed, 30 days, rotating |
 | **Token theft detection** | Reuse of a rotated refresh token invalidates the whole family |
+| Access token revocation | Not possible before expiry. Verification reads no state, so revoking a session takes effect within the access token's lifetime and not sooner. That window is the reason the lifetime is fifteen minutes |
+| Client requirement | Refresh must be **single-flight**. Two concurrent refreshes present the same token, which is indistinguishable from theft and signs the user out |
 | Web storage | Refresh in an httpOnly, secure, same-site cookie; access in memory, never local storage |
 | Mobile storage | Platform secure storage |
 | Two-factor | Time-based one-time password, **mandatory for payout actions** |

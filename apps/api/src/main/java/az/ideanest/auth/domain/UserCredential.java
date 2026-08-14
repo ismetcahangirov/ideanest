@@ -77,6 +77,19 @@ public class UserCredential {
         this.passwordChangedAt = changedAt;
     }
 
+    /**
+     * Replaces the hash without touching {@code passwordChangedAt}.
+     *
+     * <p>Used when the parameters were raised and the password is in hand at
+     * sign-in — the only moment it ever is. The password did <em>not</em>
+     * change, so recording that it did would revoke every session the user has
+     * and sign them out for the crime of having an old hash.
+     */
+    public void rehash(String newHash, PasswordAlgorithm newAlgorithm) {
+        this.passwordHash = newHash;
+        this.algorithm = newAlgorithm;
+    }
+
     public UUID getUserId() {
         return userId;
     }

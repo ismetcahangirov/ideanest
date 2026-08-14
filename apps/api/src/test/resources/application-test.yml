@@ -28,6 +28,14 @@ ideanest:
       registrations-per-address: 100000
       verifications-per-address: 100000
       registrations-per-email: 3
+      sign-ins-per-address: 100000
+      sign-ins-per-email: 5
+    token:
+      issuer: https://api.ideanest.test
+    refresh-cookie:
+      # TestRestTemplate speaks plain HTTP, and a Secure cookie would never come
+      # back — the cookie tests would then pass for the wrong reason.
+      secure: false
 
 management:
   endpoint:

@@ -1,10 +1,14 @@
 package az.ideanest.auth.api;
 
+import az.ideanest.auth.application.AuthenticationFailedException;
 import az.ideanest.auth.application.VerificationRejectedException;
 import az.ideanest.auth.application.WeakPasswordException;
 import java.net.URI;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -16,8 +20,46 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * whole service would turn a genuine bug somewhere else into a cheerful "bad
  * request" and hide it.
  */
-@RestControllerAdvice(assignableTypes = AuthController.class)
+@RestControllerAdvice(assignableTypes = {AuthController.class, TokenController.class})
 public class AuthExceptionHandler {
+
+    /**
+     * Every way of failing to authenticate, with one status and one message.
+     *
+     * <p>401 rather than 403: the caller has not proved who they are, and a
+     * client is expected to react by signing in rather than by giving up.
+     */
+    @ExceptionHandler(AuthenticationFailedException.class)
+    public ResponseEntity<ProblemDetail> handleAuthenticationFailed(AuthenticationFailedException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.UNAUTHORIZED);
+        problem.setType(URI.create("https://ideanest.az/problems/authentication-failed"));
+        problem.setTitle("Not authenticated");
+        problem.setDetail(exception.getMessage());
+
+        HttpHeaders headers = exception instanceof TokenController.AuthenticationFailedWithHeaders withHeaders
+                ? withHeaders.headers()
+                : new HttpHeaders();
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .headers(headers)
+                .cacheControl(CacheControl.noStore())
+                .body(problem);
+    }
+
+    /**
+     * A cookie-authenticated request that did not carry the client header.
+     *
+     * <p>403 rather than 401: the credential was there and was refused on a
+     * different ground, and retrying the same request will not help.
+     */
+    @ExceptionHandler(TokenController.CookieClientHeaderMissingException.class)
+    public ProblemDetail handleMissingClientHeader(TokenController.CookieClientHeaderMissingException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+        problem.setType(URI.create("https://ideanest.az/problems/missing-client-header"));
+        problem.setTitle("Request refused");
+        problem.setDetail(exception.getMessage());
+        return problem;
+    }
 
     @ExceptionHandler(WeakPasswordException.class)
     public ProblemDetail handleWeakPassword(WeakPasswordException exception) {

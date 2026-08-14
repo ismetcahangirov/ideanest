@@ -128,7 +128,35 @@ ideanest:
       # Not about guessing a 256-bit token. About not letting one client spend
       # the database on the attempt.
       verifications-per-address: 20
+      # §17.3: five sign-in attempts per address per fifteen minutes.
+      sign-ins-per-address: 5
+      sign-ins-per-email: 5
       window: PT15M
+
+    token:
+      issuer: ${TOKEN_ISSUER:https://api.ideanest.az}
+      audience: ${TOKEN_AUDIENCE:ideanest}
+      # Short, because an access token is stateless: revoking a session cannot
+      # reach one already issued, so this value is exactly the window in which a
+      # revoked session still works.
+      access-token-ttl: PT15M
+      # Absolute, and not extended by use. A session is thirty days and then the
+      # user signs in again.
+      refresh-token-ttl: P30D
+      # RS256. From the secret store, never from this file. Absent outside local
+      # and test, the service refuses to start rather than inventing a key that
+      # would differ per replica and change on every restart.
+      private-key-pem: ${TOKEN_PRIVATE_KEY_PEM:}
+      public-key-pem: ${TOKEN_PUBLIC_KEY_PEM:}
+
+    refresh-cookie:
+      name: ideanest_refresh
+      secure: true
+      # Not sent with every API call — only to the endpoints that spend it.
+      path: /v1/auth
+      # The browser does not attach it to any cross-site request, which is what
+      # stops another origin from making it spend the token.
+      same-site: Strict
 
 logging:
   level:
