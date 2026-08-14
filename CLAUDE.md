@@ -190,6 +190,9 @@ platform that is somebody's pledge. Use `decimal.js` on the frontend and
 - Money arithmetic, state transitions, idempotency, and stock reservation are
   **not optional** to test — they fail silently and expensively
 - A test that is skipped is a bug report nobody filed
+- A visual change arrives with its updated snapshots, in the same pull request.
+  Accepting a snapshot without reading what changed is the same failure as
+  deleting the test
 
 ---
 

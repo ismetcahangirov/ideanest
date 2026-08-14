@@ -1019,6 +1019,14 @@ user-interface style declared in the app configuration.
 Storybook is not optional. Nineteen components with several variants each will
 drift without a place to see them side by side.
 
+### 10.5 Visual regression
+
+Every story is rendered under Vitest and its markup is snapshotted, so a variant
+that quietly loses `bg-lime-500` fails the build the same way a colour literal
+does. Because every visual property here is carried by a class name, the markup
+is the reliable signal; a change confined to `styles.css` or the token file
+still needs a human in Storybook. See `packages/ui/README.md`.
+
 ---
 
 ## Appendix — one sentence

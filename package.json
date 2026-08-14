@@ -11,7 +11,8 @@
     "build:storybook": "pnpm --filter @ideanest/ui build-storybook",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "test:update": "pnpm --filter @ideanest/ui test:update"
   },
   "devDependencies": {
     "typescript": "^7.0.2"
