@@ -37,6 +37,23 @@ pnpm build-storybook    # static build; CI uses it to prove every story renders
 | `FloatingPanel` | white elevated surface |
 | `RailHeader` + `CardRail` | horizontally scrolling section |
 
+### Form
+
+| Component | Purpose |
+|---|---|
+| `Field` | Label, hint, error, required marker — and the ids that wire them to the control |
+| `TextInput` | sm · md · lg, leading and trailing adornments |
+| `Textarea` | Same skin, optional `autoGrow` |
+| `Select` | Native `<select>`, styled — accessible and mobile-correct by default |
+| `Checkbox` | Real `<input type="checkbox">`, supports `indeterminate` |
+| `Radio` + `RadioGroup` | `role="radiogroup"`, arrow keys from native radios |
+| `Switch` | `role="switch"`, thumb moves with `transform` |
+| `FileDropZone` | Drag-and-drop plus a keyboard-reachable picker button |
+
+Two rules specific to forms: an error is **text plus an icon**, never a colour,
+and checked/on is `--lime-500` with a `--text-on-lime` mark — "active choice"
+per `docs/ui-kit.md` §8.1, still not `--success`.
+
 ### Layout
 
 | Component | Purpose |
