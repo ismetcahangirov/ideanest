@@ -165,6 +165,47 @@ rather than wherever the first commit happened to put it.
 
 ---
 
+## Authentication
+
+| Endpoint | Effect |
+|---|---|
+| `POST /v1/auth/register` | Creates an unverified account and sends a verification link. Always `202` |
+| `POST /v1/auth/verify-email` | Redeems the link. `204` once, `400` thereafter |
+
+Everything else is denied by default. Forgetting to state who may call a new
+endpoint produces a `401` in a test rather than an open door in production.
+
+**Registration does not say whether an address is already registered.** An
+endpoint that answers "that email is taken" is an account enumeration oracle:
+feed it a breach list and it returns the subset of those people who are backers
+here. Both paths return the same status and the same body; what differs is the
+message the address receives, and that goes to its owner rather than to whoever
+typed it. The cost is that the sign-up form cannot say "you already have an
+account" — the email says it instead.
+
+**Passwords** must be 12–256 characters and may not contain the address they
+protect. There are no composition rules: they reliably produce `Password1!` and
+a note on a monitor, and NIST dropped them for that reason. Hashing is Argon2id
+at OWASP's parameters, configurable under `ideanest.auth.argon2` — raising them
+later rehashes on next sign-in rather than locking anyone out, because Argon2's
+encoded output carries the parameters it was made with.
+
+**Tokens** — verification links today, refresh tokens next — are 256 bits from
+`SecureRandom`, stored only as SHA-256, and spent by a conditional update so
+that two simultaneous redemptions cannot both succeed. The hash is unsalted with
+no work factor, which would be indefensible for a password and is correct here:
+there is no dictionary against 256 random bits, and the hash is computed on
+every refresh.
+
+**Verification email** is not really sent. `LoggingVerificationNotifier` writes
+a line instead, and writes the link itself only under the `local` profile.
+Transactional email is #86.
+
+**Rate limiting is in-process**, which is correct for one instance and wrong for
+two — each replica enforces the limit separately. The shared counter is #142.
+
+---
+
 ## Build conventions
 
 | Convention | Reason |

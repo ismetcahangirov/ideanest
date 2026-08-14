@@ -18,6 +18,6 @@ import org.springframework.test.context.ActiveProfiles;
 // context cache and start a second PostgreSQL container to no purpose.
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@Import(ContainersConfiguration.class)
+@Import({ContainersConfiguration.class, TestDoublesConfiguration.class})
 public abstract class AbstractIntegrationTest {
 }

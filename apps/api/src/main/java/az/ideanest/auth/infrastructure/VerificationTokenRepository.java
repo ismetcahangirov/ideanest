@@ -20,6 +20,23 @@ public interface VerificationTokenRepository extends JpaRepository<VerificationT
     Optional<VerificationToken> findByTokenHash(byte[] tokenHash);
 
     /**
+     * Spends one token, if it is still unspent.
+     *
+     * <p>A conditional update rather than a read followed by a write. Two
+     * requests arriving together would both read an unspent token and both
+     * proceed; putting the condition in the statement makes the database decide
+     * which one wins, and it returns zero to the one that lost.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE VerificationToken t
+               SET t.consumedAt = :at
+             WHERE t.id = :id
+               AND t.consumedAt IS NULL
+            """)
+    int claim(@Param("id") UUID id, @Param("at") Instant at);
+
+    /**
      * Invalidates outstanding tokens of one purpose for one user.
      *
      * <p>Issuing a second reset link must retire the first: two live links

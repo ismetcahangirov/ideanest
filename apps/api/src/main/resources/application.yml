@@ -92,6 +92,44 @@ management:
       show-details: never
       show-components: never
 
+ideanest:
+  auth:
+    # Long enough to survive a mail queue and a night's sleep, short enough that
+    # a forwarded message is not a standing key to the account.
+    verification-token-ttl: PT24H
+
+    # Length, and almost nothing else. Composition rules produce Password1! and
+    # a note on a monitor; NIST dropped them for that reason.
+    password-min-length: 12
+    # Not a strength rule: Argon2 is deliberately expensive, so an unbounded
+    # input is a way to spend our memory on demand.
+    password-max-length: 256
+
+    # A verification link in a log is an account takeover for anyone who can
+    # read logs, and that set is always larger than it looks. On in local only.
+    log-verification-links: false
+
+    argon2:
+      # OWASP's recommendation: 19 MiB, two iterations, one lane. Memory is the
+      # parameter that makes a GPU no better at this than a CPU. Raising these
+      # later rehashes on next sign-in rather than locking anyone out, because
+      # Argon2's encoded output carries the parameters it was made with.
+      memory-kib: 19456
+      iterations: 2
+      parallelism: 1
+      salt-length: 16
+      hash-length: 32
+
+    rate-limit:
+      registrations-per-address: 5
+      # Counted separately from the address limit, so that an attacker with many
+      # source addresses is still bounded when probing one account.
+      registrations-per-email: 3
+      # Not about guessing a 256-bit token. About not letting one client spend
+      # the database on the attempt.
+      verifications-per-address: 20
+      window: PT15M
+
 logging:
   level:
     root: INFO

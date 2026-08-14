@@ -2,6 +2,7 @@ package az.ideanest;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 /**
  * Entry point for the IdeaNest API.
@@ -11,6 +12,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * {@code package-info.java}.
  */
 @SpringBootApplication
+// Typed configuration, bound and validated at start-up. A setting that is
+// misspelled or missing then fails the process rather than surfacing as a null
+// on the first request that reads it.
+@ConfigurationPropertiesScan
 public class IdeaNestApplication {
 
     public static void main(String[] args) {
