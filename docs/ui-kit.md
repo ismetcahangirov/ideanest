@@ -745,6 +745,57 @@ disabled under `prefers-reduced-motion`, and pauses on hover and on
 focus-within: somebody reading the message, or tabbing towards its action, is
 not somebody who is finished with it.
 
+### 7.15 Data display
+
+Table, pagination, empty state, skeleton, inline alert. These are the surfaces
+a creator spends hours on, so they are quiet by construction.
+
+**No zebra striping.** In this system surface colour encodes *state*, not
+rhythm (§3, §8.1): `--surface-2` is "ordinary", `--surface-3` is "hover or
+nested", lime is "urgent". Alternating row fills would spend the only signal
+the system has on decoration, and a row that genuinely is highlighted would
+then be indistinguishable from every other odd row. Separate rows with
+`--divider`, hover with `--surface-3`, and nothing else.
+
+```css
+.table-row        { border-bottom: 1px solid var(--divider); }
+.table-row:hover  { background: var(--surface-3); }
+```
+
+**Money is a pre-formatted string.** A cell renders `"£12,480.00"`, never a
+number. Floating point is forbidden for money (CLAUDE.md §3), so formatting
+happens where the `decimal.js` value lives; a table that formats is a table
+that rounds. Numeric columns take `align="right"` and `tabular-nums` so digits
+line up by place value; text stays left.
+
+**The table scrolls inside a named, focusable region.** `overflow-x: auto`
+alone is a pointer-only affordance — the right-hand columns become unreachable
+by keyboard. The container carries `tabindex="0"` and an accessible name, and
+the name is what stops the extra tab stop from being unexplained.
+
+**The active page is white, not lime.** Same rule as the filter chip (§7.3):
+lime means *urgent*. Page 3 of 12 is where you are, not something to hurry
+about. Previous and next are **disabled at the boundaries, never hidden** — a
+control that vanishes moves the next target under the pointer already aimed at
+it. The ellipsis is `aria-hidden`: it is decoration, not a page.
+
+**Skeletons are `aria-hidden` inside an `aria-busy` container.** A grey
+rectangle has no accessible name worth announcing; the caller supplies the real
+message ("Loading projects") and the placeholders stay out of the accessibility
+tree entirely. The shimmer animates a **translating overlay** — `transform`
+only, never `background-position`, which repaints every frame — and it is the
+one animation Discovery's motion budget sanctions
+([`motion-system.md`](./motion-system.md) §5). Under
+`prefers-reduced-motion: reduce` the overlay is removed, not merely slowed.
+
+**Status colour always arrives with an icon.** `info` · `success` · `warning` ·
+`danger` each pair their hue with a `lucide-react` glyph, because colour alone
+must never carry meaning (§9.2). **Success is `--success`, never lime** — a
+backer who reads lime as "done" has been told the opposite of the truth. The
+alert is `--surface-2` with a left rule in the status colour, the same form
+§8.1 gives "payment failed". Only `warning` and `danger` take `role="alert"`;
+interrupting a screen reader to say "saved" is a cost with no payoff.
+
 ---
 
 ## 8. Applying the system to product screens

@@ -82,4 +82,33 @@
   .fade-edge-r {
     mask-image: linear-gradient(90deg, black 88%, transparent 100%);
   }
+
+  /* Loading shimmer (docs/ui-kit.md §7.15).
+
+     The overlay TRANSLATES. Animating `background-position` would repaint the
+     element every frame and cannot be composited; a screen of placeholders
+     would then cost more than the content it stands in for. Only `transform`
+     and `opacity` are animated anywhere in this system. */
+  .skeleton-shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, var(--surface-4), transparent);
+    animation: skeleton-shimmer 1.4s var(--ease-standard) infinite;
+  }
+
+  /* The global reduced-motion rule only collapses the duration, which leaves
+     the gradient frozen mid-travel. Remove the overlay instead. */
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton-shimmer::after {
+      display: none;
+    }
+  }
+}
+
+@keyframes skeleton-shimmer {
+  to {
+    transform: translateX(100%);
+  }
 }
