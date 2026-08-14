@@ -575,6 +575,84 @@ Section title  (7 projects)      [search] [sort]   [All][Hot][...]
 The count is `--text-tertiary` at 12px — present, never competing with the
 title.
 
+### 7.13 Form primitives
+
+Forms are where the platform takes money and where creators spend hours. Both
+argue for the same thing: nothing here is decorative.
+
+**The field wrapper owns the wiring.** `Field` generates the ids and hands the
+control its `id`, its `aria-describedby` (hint **and** error, in that order),
+its `aria-invalid`, and its `required`. A hint the assistive layer never reaches
+is decoration, and remembering to wire it by hand is a thing people forget under
+deadline. A field whose control is a *set* — radios, a drop zone — takes
+`grouped`, and the label names the group through `aria-labelledby` instead of
+pointing `htmlFor` at nothing.
+
+**An error is text plus an icon, never a colour.** `--danger` with `CircleAlert`
+and a sentence saying what to do. A red border alone says nothing to a screen
+reader and nothing to a user with a colour-vision deficiency (§9.2). Lime never
+marks an error: it means *urgent*, and an urgent-looking mistake reads as a call
+to action.
+
+**The input skin:**
+
+```css
+.input {
+  height: 44px; padding: 0 14px;
+  background: var(--surface-3);          /* §3: nested block, input */
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  transition:
+    background-color 0.15s ease-in-out,
+    border-color 0.15s ease-in-out;
+}
+.input::placeholder  { color: var(--text-tertiary); }   /* never --text-disabled */
+.input:hover         { border-color: var(--border-strong); }
+.input[aria-invalid] { border-color: var(--danger); }
+.input:disabled      { opacity: 0.4; }
+```
+
+No component declares its own focus ring. The global `:focus-visible` rule
+(§9.3) already draws it; a second one drifts and eventually contradicts the
+first.
+
+| State | Fill | Border | Notes |
+|---|---|---|---|
+| Rest | `--surface-3` | `--border` | |
+| Hover | `--surface-3` | `--border-strong` | |
+| Focus | `--surface-3` | `--border-strong` + global lime ring | Ring is never removed |
+| Invalid | `--surface-3` | `--danger` | Always with the error text and icon |
+| Disabled | `--surface-3` at 40% | — | Not a readable state; not tab-reachable |
+| Checked / on | `--lime-500` | none | Mark in `--text-on-lime`, `data-on-lime` set |
+
+**Checked is lime, and that is not a contradiction.** §8.1 already reads
+`--lime-500` as "active choice" for a selected reward tier. A ticked box is the
+same gesture. It is still not `--success`: nothing has been achieved by ticking
+a box.
+
+**The native `<select>` is a decision, not a shortcut.** A hand-built listbox
+has to re-implement type-ahead, Home/End, PageUp/PageDown, the announcement
+contract, and the platform wheel picker on iOS and Android — and it always gets
+one of them wrong. `color-scheme: dark` makes the browser render the option list
+to match (§9.4). The rich listbox — multi-select, async search — is overlay
+work, not a form primitive.
+
+**A switch is not a checkbox.** A checkbox selects something for later; a switch
+takes effect now. `role="switch"` is what makes a screen reader say "on" rather
+than "checked", and a live setting that announces itself as "checked" is a small
+lie. The thumb moves with `transform`, never `left`.
+
+**The drop zone's button is not optional.** Drag-and-drop is unreachable by
+keyboard, by switch control, and on every touch device. Dragging is the
+shortcut; the button is the control. Drag-over changes the instruction text as
+well as the border, because colour alone carries nothing.
+
+**Motion budget: 150ms colour and opacity, plus the switch thumb.** Nothing
+else. Forms live on checkout ("near zero") and the campaign editor ("none") —
+see [`motion-system.md`](./motion-system.md) §5. An animating field reads as
+hesitation exactly where confidence is worth the most.
+
 ---
 
 ## 8. Applying the system to product screens
