@@ -79,4 +79,32 @@ export {
 } from './components/overlay/placement';
 export { OVERLAY_ENTRY_MS } from './components/overlay/overlayMotion';
 
+/* Data display */
+export {
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableHeaderCell,
+  TableCell,
+  type TableProps,
+  type TableRowProps,
+  type TableHeaderCellProps,
+  type TableCellProps,
+  type TableSort,
+} from './components/data/Table';
+export { Pagination, type PaginationProps } from './components/data/Pagination';
+export { EmptyState, type EmptyStateProps } from './components/data/EmptyState';
+export {
+  Skeleton,
+  SkeletonGroup,
+  SkeletonText,
+  SkeletonCard,
+  type SkeletonProps,
+  type SkeletonGroupProps,
+  type SkeletonTextProps,
+  type SkeletonCardProps,
+} from './components/data/Skeleton';
+export { InlineAlert, type InlineAlertProps } from './components/data/InlineAlert';
+
 export { cn } from './lib/cn';

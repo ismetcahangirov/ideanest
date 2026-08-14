@@ -68,6 +68,16 @@ All controlled (`open` + `onOpenChange`). Focus moves in on open and returns to
 the trigger on close; `Escape` closes the topmost overlay only. See
 [`docs/ui-kit.md`](../../docs/ui-kit.md) §7.14.
 
+### Data display
+
+| Component | Purpose |
+|---|---|
+| `Table` + `TableHead` / `TableBody` / `TableRow` / `TableHeaderCell` / `TableCell` | semantic table, controlled sort, no zebra striping |
+| `Pagination` | named landmark, white active page, disabled boundaries |
+| `EmptyState` | empty · filtered — the recovery differs |
+| `Skeleton` + `SkeletonGroup` / `SkeletonText` / `SkeletonCard` | `aria-hidden` placeholders in an `aria-busy` container |
+| `InlineAlert` | info · success · warning · danger, each with an icon |
+
 ### Layout
 
 | Component | Purpose |
