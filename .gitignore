@@ -30,3 +30,6 @@ Thumbs.db
 .playwright-mcp/
 coverage/
 *.tsbuildinfo
+
+# agent worktrees, created by the tooling and never part of the repository
+.claude/worktrees/
