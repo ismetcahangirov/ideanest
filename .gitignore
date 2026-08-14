@@ -1,0 +1,29 @@
+node_modules/
+dist/
+build/
+storybook-static/
+.turbo/
+.next/
+out/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# editor / os
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# tooling artifacts
+.playwright-mcp/
+coverage/
+*.tsbuildinfo

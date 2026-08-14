@@ -1,0 +1,19 @@
+{
+  "name": "ideanest",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.11.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "storybook": "pnpm --filter @ideanest/ui storybook",
+    "build:storybook": "pnpm --filter @ideanest/ui build-storybook",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

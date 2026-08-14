@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# A new push to a PR cancels the previous run for that PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  frontend:
+    name: Frontend (typecheck, test, storybook)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm -r typecheck
+
+      - name: Test
+        run: pnpm -r test
+
+      # Building every story is the cheapest proof that no component throws
+      # at render time. It has already caught more than one regression.
+      - name: Build Storybook
+        run: pnpm --filter @ideanest/ui build-storybook
+
+      - name: Upload Storybook artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: storybook-static
+          path: packages/ui/storybook-static
+          retention-days: 7
+
+  backend:
+    name: Backend (Java)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      # The service does not exist yet. Detecting it in a step rather than a
+      # job-level condition keeps the check name stable as a required check,
+      # and `hashFiles` is not available before checkout anyway.
+      - name: Detect backend
+        id: detect
+        run: |
+          if [ -f apps/api/gradlew ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::apps/api not present yet; skipping the backend build."
+          fi
+
+      - uses: actions/setup-java@v4
+        if: steps.detect.outputs.present == 'true'
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Build and test
+        if: steps.detect.outputs.present == 'true'
+        working-directory: apps/api
+        run: ./gradlew --no-daemon build

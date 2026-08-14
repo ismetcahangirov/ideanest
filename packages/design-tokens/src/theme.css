@@ -1,0 +1,101 @@
+/**
+ * IdeaNest — dark surface + lime accent theme.
+ * Specification: docs/ui-kit.md §2–4, §10
+ *
+ * This file is the single source of truth for colour. If you find a literal
+ * hex value inside a component, that is a bug — `pnpm test` enforces it.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* ── Neutral surfaces ────────────────────────────────────
+     Depth comes from surface colour, not shadow.            */
+  --black: #000000;
+  --surface-1: #0d0d0d; /* page background; not pure black, which smears on OLED */
+  --surface-2: #161616; /* standard card, panel */
+  --surface-3: #1f1f1f; /* nested block, input */
+  --surface-4: #2a2a2a; /* hover, selected */
+
+  --border: rgb(255 255 255 / 0.08);
+  --border-strong: rgb(255 255 255 / 0.16);
+  --divider: rgb(255 255 255 / 0.06);
+
+  /* ── Text ────────────────────────────────────────────────
+     Contrast ratios measured against --surface-1.           */
+  --text-primary: #ffffff; /* 20.4:1  AAA */
+  --text-secondary: rgb(255 255 255 / 0.64); /*  9.2:1  AAA */
+  --text-tertiary: rgb(255 255 255 / 0.4); /*  4.9:1  AA at 16px+ */
+  --text-disabled: rgb(255 255 255 / 0.24); /*  2.6:1  non-text only */
+  --text-on-lime: #0a0a0a; /* 15.8:1  AAA */
+  --text-on-white: #0a0a0a; /* 19.3:1  AAA */
+
+  /* Long-form reading. Slightly under pure white to reduce halation. */
+  --text-reading: rgb(255 255 255 / 0.92);
+
+  /* ── Lime — brand accent ─────────────────────────────────
+     RULE: lime is always a SURFACE, never text on light.
+     Lime text on white measures 1.3:1 and is unreadable.    */
+  --lime-300: #dcfb7a;
+  --lime-400: #d2f95c;
+  --lime-500: #c6f432; /* primary */
+  --lime-600: #b0de1e;
+  --lime-700: #94bc15;
+  --lime-glow: rgb(198 244 50 / 0.24);
+
+  /* ── Status ──────────────────────────────────────────────
+     NOTE: lime means "urgent", success means "achieved".
+     Conflating them tells backers the opposite of the truth. */
+  --success: #34d058;
+  --warning: #ffb020;
+  --danger: #ff4438;
+  --info: #4a9eff;
+  --hot: #ff6b35;
+
+  /* ── White used as an accent, not a base ─────────────────*/
+  --white-surface: #ffffff;
+  --white-muted: #f4f4f4;
+
+  /* ── Radius ──────────────────────────────────────────────*/
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+
+  /* ── Shadow — floating white panels only ─────────────────
+     A dark shadow under a dark card is invisible cost.      */
+  --shadow-panel: 0 8px 32px -8px rgb(0 0 0 / 0.5);
+  --shadow-float: 0 24px 64px -12px rgb(0 0 0 / 0.7);
+
+  /* ── Motion (docs/motion-system.md §3) ───────────────────*/
+  --transition-fast: 0.15s ease-in-out;
+  --transition-base: 0.3s ease-in-out;
+  --transition-slow: 0.5s ease-in-out;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --stagger-step: 50ms;
+}
+
+/* Focus rings have to survive a dark theme. */
+:focus-visible {
+  outline: 2px solid var(--lime-500);
+  outline-offset: 2px;
+}
+
+/* A lime ring on a lime surface is invisible — switch to near-black. */
+[data-on-lime] :focus-visible,
+[data-on-lime]:focus-visible {
+  outline-color: var(--text-on-lime);
+}
+
+/* docs/motion-system.md §9.2 — required, not optional. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

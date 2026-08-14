@@ -1,0 +1,85 @@
+@import 'tailwindcss';
+@import '@ideanest/design-tokens/theme.css';
+
+/* Loaded by Storybook and by every application. */
+@source "./";
+
+/**
+ * Tailwind 4 theme bridge — binds CSS custom properties to utility classes so
+ * `bg-surface-2` and `text-lime-500` work and always resolve back to the token
+ * file. Nothing here introduces a new value.
+ */
+@theme inline {
+  --color-black: var(--black);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-surface-4: var(--surface-4);
+
+  --color-lime-300: var(--lime-300);
+  --color-lime-400: var(--lime-400);
+  --color-lime-500: var(--lime-500);
+  --color-lime-600: var(--lime-600);
+  --color-lime-700: var(--lime-700);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+  --color-hot: var(--hot);
+
+  --color-on-lime: var(--text-on-lime);
+  --color-on-white: var(--text-on-white);
+  --color-reading: var(--text-reading);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  --shadow-panel: var(--shadow-panel);
+  --shadow-float: var(--shadow-float);
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'General Sans', 'Inter', system-ui, sans-serif;
+
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--surface-1);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    letter-spacing: -0.01em;
+  }
+
+  /* Thin scrollbars suit a dark surface. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface-4) transparent;
+  }
+}
+
+@layer utilities {
+  /* Horizontal rails hide their scrollbar (docs/ui-kit.md §7.3). */
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Signals "there is more" without a hard cut.
+     Only the alpha channel of a mask matters, so the keyword avoids
+     introducing a literal that looks like a palette colour. */
+  .fade-edge-r {
+    mask-image: linear-gradient(90deg, black 88%, transparent 100%);
+  }
+}
