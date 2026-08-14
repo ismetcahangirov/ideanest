@@ -60,18 +60,30 @@ jobs:
     name: Backend (Java)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # The service does not exist yet. The job stays declared so the required
-    # check is stable, and activates the moment apps/api lands.
-    if: ${{ hashFiles('apps/api/**') != '' }}
     steps:
       - uses: actions/checkout@v5
 
+      # The service does not exist yet. Detecting it in a step rather than a
+      # job-level condition keeps the check name stable as a required check,
+      # and `hashFiles` is not available before checkout anyway.
+      - name: Detect backend
+        id: detect
+        run: |
+          if [ -f apps/api/gradlew ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::apps/api not present yet; skipping the backend build."
+          fi
+
       - uses: actions/setup-java@v4
+        if: steps.detect.outputs.present == 'true'
         with:
           distribution: temurin
           java-version: '21'
           cache: gradle
 
       - name: Build and test
+        if: steps.detect.outputs.present == 'true'
         working-directory: apps/api
         run: ./gradlew --no-daemon build
