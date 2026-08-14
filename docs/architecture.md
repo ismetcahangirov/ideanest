@@ -642,10 +642,65 @@ erDiagram
 ### 7.2 Principal tables
 
 #### `users`
-`id` (uuid), `email` (citext, unique), `email_verified_at`, `password_hash`
-(Argon2id), `name`, `slug`, `avatar_url`, `bio`, `location_id`, `locale`,
-`currency`, `kyc_status`, `two_factor_enabled`, `banned_at`, `deleted_at`,
-timestamps.
+`id` (uuid), `email` (citext, unique), `email_verified_at`, `name`, `slug`,
+`avatar_url`, `bio`, `location_id`, `locale`, `currency`, `kyc_status`,
+`two_factor_enabled`, `banned_at`, `deleted_at`, timestamps.
+
+> **The password hash is not here.** It lives in `user_credentials`, keyed by
+> `user_id`. A user who signs in through a provider has no password at all, so
+> the column would be null for a growing share of rows and say nothing about
+> why; and a hash stored beside the profile is read into memory by every query
+> that only wanted a display name.
+>
+> `location_id`, `kyc_status`, `two_factor_enabled`, and `banned_at` are not in
+> the schema yet. Each arrives with the feature that owns it — locations with
+> discovery, `kyc_status` with #105, `two_factor_enabled` with #26, `banned_at`
+> with #104 — rather than as a column nothing writes to.
+
+#### `user_credentials`
+`user_id` (uuid, primary key), `password_hash` (Argon2id, encoded with its
+parameters), `algorithm`, `password_changed_at`, timestamps.
+
+`password_changed_at` exists separately from `updated_at` because sessions
+issued before a password change are revoked, and that comparison needs a
+timestamp that moves only when the password does.
+
+#### `sessions`
+`id` (uuid), `user_id`, `device_label`, `user_agent`, `ip_address` (inet),
+`created_at`, `last_seen_at`, `expires_at`, `revoked_at`, `revoked_reason`.
+
+**A session is the refresh token family.** Rotation issues a new refresh token
+into the same session; presenting a token that was already rotated means a copy
+is in circulation, and the response is to revoke the session rather than the
+single token — revoking the token alone leaves whichever party holds the newest
+one signed in, and which of the two that is cannot be known.
+
+`revoked_reason` is constrained to `SIGNED_OUT`, `USER_REVOKED`, `TOKEN_REUSE`,
+`PASSWORD_CHANGED`, `ADMIN_ACTION`, and a revoked session must carry one. A
+session that died without a recorded reason is what makes a theft incident
+unreconstructable a week later.
+
+#### `refresh_tokens`
+`id` (uuid), `session_id`, `token_hash` (bytea, SHA-256), `issued_at`,
+`expires_at`, `used_at`, `replaced_by`.
+
+Stored hashed, never in the clear, so a backup or a log contains nothing anyone
+can sign in with. No salt and no work factor: the input is 256 bits we
+generated, so there is no dictionary to attack, and the hash is computed on
+every refresh.
+
+**A used token is kept, not deleted.** Deleting it would make a replayed token
+indistinguishable from one that never existed, and that difference is the entire
+theft signal.
+
+#### `verification_tokens`
+`id` (uuid), `user_id`, `purpose` (`EMAIL_VERIFICATION`, `PASSWORD_RESET`),
+`token_hash` (bytea, SHA-256), `created_at`, `expires_at`, `consumed_at`.
+
+Single use, spent by setting `consumed_at` rather than by deleting the row, so
+that a second attempt with the same link can be told apart from a token that
+never existed. The purpose is checked on redemption: without it, a token issued
+to prove an address would also reset the password on that account.
 
 #### `projects`
 `id`, `creator_id`, `slug`, `title` (varchar 60), `blurb` (varchar 135),
