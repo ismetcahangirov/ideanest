@@ -1,0 +1,35 @@
+# Local development only. These credentials match compose.yaml, are reachable
+# from nowhere but this machine, and are not secrets in any sense that matters.
+# Every deployed environment supplies DB_URL, DB_USERNAME, and DB_PASSWORD from
+# the secret store and never reads this file.
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/ideanest}
+    username: ${DB_USERNAME:ideanest}
+    password: ${DB_PASSWORD:ideanest}
+
+  docker:
+    compose:
+      enabled: true
+      file: compose.yaml
+      lifecycle-management: start_and_stop
+
+  jpa:
+    # Useful locally and nowhere else: it is how an N+1 is noticed before it
+    # reaches a dashboard.
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+management:
+  endpoint:
+    health:
+      # Locally the point of health is to say which dependency is down.
+      show-details: always
+      show-components: always
+
+logging:
+  level:
+    org.flywaydb: INFO
+    org.hibernate.SQL: INFO

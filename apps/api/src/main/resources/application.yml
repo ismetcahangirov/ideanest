@@ -11,6 +11,59 @@ spring:
   jackson:
     default-property-inclusion: non_null
 
+  datasource:
+    # No defaults. A missing database URL should stop the process with a clear
+    # message, not silently connect somewhere plausible. Local values are in
+    # application-local.yml; tests get theirs from Testcontainers.
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      pool-name: ideanest-pool
+      maximum-pool-size: ${DB_POOL_MAX:10}
+      minimum-idle: ${DB_POOL_MIN:2}
+      # Fail fast. A request queued for thirty seconds behind an exhausted pool
+      # has already lost the user; holding the thread only spreads the outage.
+      connection-timeout: 3000
+      # Below the typical infrastructure idle timeout, so the pool retires a
+      # connection before something between us and PostgreSQL does it silently.
+      max-lifetime: 1200000
+
+  jpa:
+    hibernate:
+      # Flyway owns the schema. Hibernate checks that the mapping matches it and
+      # refuses to start when it does not. It must never be permitted to alter a
+      # table: a schema that drifts per environment is unreproducible, and
+      # `update` has been known to drop data it did not recognise.
+      ddl-auto: validate
+    # Off. With it on, a lazy association can be loaded from a template or a
+    # serialiser, long after the service layer thought it was finished, which
+    # hides N+1 queries and holds a connection for the whole request.
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+        query:
+          fail_on_pagination_over_collection_fetch: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # Applied at start-up in every environment, so an instance never serves
+    # traffic against a schema it was not built for.
+    validate-on-migrate: true
+    out-of-order: false
+    # A migration that arrived after this one did must not be skipped over.
+    baseline-on-migrate: false
+    # `clean` drops every object in the schema. There is no environment in which
+    # we want that available, and production is one command line flag away from
+    # any other environment.
+    clean-disabled: true
+
 server:
   port: ${SERVER_PORT:8080}
   # In-flight requests finish before the process exits. During a rolling deploy

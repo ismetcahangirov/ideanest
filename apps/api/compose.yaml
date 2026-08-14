@@ -1,0 +1,28 @@
+# Local development stack. `./gradlew bootRun` starts it and stops it again;
+# `docker compose up -d` from this directory does the same by hand.
+#
+# Nothing here is a production topology. Credentials are fixed and weak on
+# purpose, so that nobody is tempted to reuse a file that looks deployable.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ideanest-postgres
+    environment:
+      POSTGRES_DB: ideanest
+      POSTGRES_USER: ideanest
+      POSTGRES_PASSWORD: ideanest
+      # Deterministic collation. Sort order differing between a developer
+      # machine and the server turns into pagination that skips rows.
+      POSTGRES_INITDB_ARGS: '--locale-provider=icu --icu-locale=en-US --encoding=UTF8'
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ideanest -d ideanest']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  postgres-data:

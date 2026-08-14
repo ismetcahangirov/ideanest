@@ -1,0 +1,23 @@
+# Integration tests run against configuration that matches a deployed
+# environment, not the developer's. A health endpoint that hides component
+# detail in production and shows it locally must be asserted against the
+# production shape, or the assertion proves nothing.
+spring:
+  docker:
+    compose:
+      # Tests bring their own database. Starting the local stack underneath them
+      # would race with it and leave a container running afterwards.
+      enabled: false
+  datasource:
+    # Placeholders. Testcontainers replaces all three before the context starts;
+    # they exist so that resolving application.yml does not fail on a missing
+    # environment variable if a test ever runs without a container.
+    url: jdbc:postgresql://localhost:1/replaced-by-testcontainers
+    username: replaced-by-testcontainers
+    password: replaced-by-testcontainers
+
+management:
+  endpoint:
+    health:
+      show-details: never
+      show-components: never

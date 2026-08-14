@@ -20,9 +20,68 @@ the distribution it is pinned to and verifies its checksum before running it.
 A JDK 21 or newer must be on the path; the build compiles against a Java 21
 toolchain regardless of which JDK launches it.
 
-The service currently starts with no database, no cache, and no external
-dependency of any kind. That changes with
-[#132](https://github.com/ismetcahangirov/ideanest/issues/132).
+**Docker is required.** `bootRun` starts the PostgreSQL in `compose.yaml` and
+stops it again on exit, and the tests start their own container. Running the
+stack by hand instead:
+
+```bash
+docker compose up -d      # from apps/api
+docker compose down       # add -v to discard the data
+```
+
+---
+
+## Database
+
+PostgreSQL 16. Local credentials are in `compose.yaml` and `application-local.yml`
+and are deliberately weak — nothing in either file is a secret, and neither is
+read by a deployed environment. Deployed environments supply `DB_URL`,
+`DB_USERNAME`, and `DB_PASSWORD`, and the service refuses to start without them
+rather than falling back to something plausible.
+
+### Migrations
+
+Flyway, in `src/main/resources/db/migration`, applied at start-up in every
+environment. Hibernate's `ddl-auto` is `validate` and will never be anything
+else: Flyway owns the schema, and Hibernate's job is to refuse to start when the
+mapping and the schema disagree.
+
+| Rule | Enforced by |
+|---|---|
+| `V<version>__<snake_case_description>.sql` | `MigrationConventionTests` |
+| One version number used once | `MigrationConventionTests` |
+| Every migration carries a `-- Reverse:` block | `MigrationConventionTests` |
+| A `DROP` or `TRUNCATE` carries a `-- Contract:` block | `MigrationConventionTests` |
+| Applied checksums match the files | `DatabaseMigrationTests` |
+
+**Why the reverse is a comment.** Flyway's community edition has no `undo`. The
+reverse therefore has to be written down and reviewed alongside the forward
+change; writing it during an incident, against a schema nobody can see, is how
+a bad hour becomes a bad week. Where a change genuinely cannot be reversed —
+data has been destroyed — the block says so and says why.
+
+**Expand, then contract.** Under a rolling deployment two versions of the code
+serve traffic at once. A migration that drops a column the previous version
+still selects breaks live requests. So the release that stops using something
+and the release that removes it are different releases, and the removal says
+which release preceded it.
+
+### Tests
+
+Integration tests run against a real PostgreSQL through Testcontainers. There is
+no in-memory substitute here on purpose: H2 does not reproduce PostgreSQL
+locking, constraints, or `numeric` semantics, which is precisely the behaviour
+a funding platform depends on.
+
+Extend `AbstractIntegrationTest` for anything needing the database. Sharing one
+annotation set lets Spring cache a single context, so one container serves the
+whole suite instead of one per class. A test of a pure function should not
+extend it.
+
+Integration tests run under the `test` profile, which mirrors deployed
+configuration rather than the developer's — a health endpoint that hides detail
+in production and shows it locally has to be asserted against the production
+shape or the assertion proves nothing.
 
 ---
 
@@ -109,7 +168,8 @@ rather than wherever the first commit happened to put it.
 
 | Missing | Tracked by |
 |---|---|
-| Database, Flyway migrations, Testcontainers | [#132](https://github.com/ismetcahangirov/ideanest/issues/132) |
+| Redis, object storage, and a mail catcher in the local stack | [#134](https://github.com/ismetcahangirov/ideanest/issues/134), [#139](https://github.com/ismetcahangirov/ideanest/issues/139) |
+| PostGIS, needed for proximity search | [#47](https://github.com/ismetcahangirov/ideanest/issues/47) |
 | Money type and arithmetic rules | [#133](https://github.com/ismetcahangirov/ideanest/issues/133) |
 | Job queue and scheduler | [#134](https://github.com/ismetcahangirov/ideanest/issues/134) |
 | Transactional outbox | [#135](https://github.com/ismetcahangirov/ideanest/issues/135) |
