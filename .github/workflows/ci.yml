@@ -76,7 +76,7 @@ jobs:
             echo "::notice::apps/api not present yet; skipping the backend build."
           fi
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         if: steps.detect.outputs.present == 'true'
         with:
           distribution: temurin
