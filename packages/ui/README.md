@@ -54,6 +54,20 @@ Two rules specific to forms: an error is **text plus an icon**, never a colour,
 and checked/on is `--lime-500` with a `--text-on-lime` mark — "active choice"
 per `docs/ui-kit.md` §8.1, still not `--success`.
 
+### Overlays
+
+| Component | Purpose |
+|---|---|
+| `Modal` | centre-stage dialog — the one white overlay |
+| `Drawer` | edge-anchored dialog, right · left · bottom |
+| `Popover` | anchored and non-modal, with placement flipping |
+| `Tooltip` | describes its trigger, on hover **and** on focus |
+| `ToastProvider` + `useToast` | live-region messages that never take focus |
+
+All controlled (`open` + `onOpenChange`). Focus moves in on open and returns to
+the trigger on close; `Escape` closes the topmost overlay only. See
+[`docs/ui-kit.md`](../../docs/ui-kit.md) §7.14.
+
 ### Layout
 
 | Component | Purpose |
