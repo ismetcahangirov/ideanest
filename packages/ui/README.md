@@ -15,6 +15,7 @@ pnpm storybook          # http://localhost:6006
 ```bash
 pnpm typecheck          # tsc --noEmit
 pnpm test               # vitest: behaviour, accessibility, colour discipline
+pnpm test:update        # accept intended visual changes (rewrites snapshots)
 pnpm build-storybook    # static build; CI uses it to prove every story renders
 ```
 
@@ -117,7 +118,64 @@ can be trusted as such.
   composes every primitive and is the reference for visual regression.
 - **Vitest** — behaviour and accessibility: ARIA wiring, keyboard reachability,
   boundary values, and the colour-discipline guard.
+- **Snapshots** — the rendered markup of every story, so an unintended visual
+  change fails the build.
 
 Storybook runs the accessibility addon with `test: 'error'`. Contrast problems
 fail rather than warn, because the lime-on-white pairing measures 1.3:1 and is
 easy to miss by eye.
+
+## Visual regression
+
+`src/visual-regression.test.tsx` discovers every `*.stories.tsx` file, composes
+each story with Storybook's portable-story API — the same project annotations
+you see in Storybook — and snapshots the rendered markup. A component is covered
+the moment somebody writes its story; there is no list to keep up to date.
+
+It snapshots markup rather than pixels on purpose. This library is developed on
+Windows and built on Linux; font rasterisation and subpixel rounding differ, so
+pixel baselines taken on one never match the other. Every visual property here
+is carried by a Tailwind class name, and class names are identical on both.
+
+Each story is snapshotted twice: once with `prefers-reduced-motion:
+no-preference` and once with `reduce`, because the reduced fallback is
+production markup and is mandatory in this system.
+
+### What it catches
+
+- A variant losing or changing a class — `bg-lime-500` becoming something else
+- A padding, radius, or type scale changing
+- An element appearing, disappearing, or moving in the tree
+- ARIA wiring coming undone — `aria-describedby` no longer pointing at the hint
+- A component no longer honouring reduced motion
+
+### What it does not catch
+
+- A change confined to `styles.css` or `theme.css` with no markup change —
+  retuning `--lime-500`, or redefining what `bg-surface-2` resolves to. Nothing
+  in the DOM moves, so nothing fails. Review those in Storybook
+- Anything that needs layout: overflow, wrapping, stacking, real focus rings.
+  jsdom has no layout engine, so `getBoundingClientRect` is all zeros
+- Overlay content. Every overlay story starts closed, so what is captured is the
+  trigger, not the modal, drawer, popover, tooltip, or toast. Portalled content
+  *is* captured when a story renders it, so an open-by-default story would be
+  covered — none exists today. Overlay behaviour is covered instead by
+  `src/components/overlay.test.tsx`
+- Post-entry animation state. `IntersectionObserver` never reports an
+  intersection under jsdom, so `FadeUp` and `CountUp` are pinned to their
+  pre-entry markup. They animate `transform` and `opacity` only, which are
+  inline styles rather than classes, so nothing class-carried is lost
+
+Pixel diffing remains available as a later, separate addition. It would need a
+containerised runner to be stable across the two platforms, which is why it is
+not here.
+
+### Accepting an intended change
+
+```bash
+pnpm test:update        # or: pnpm test:update from the repo root
+```
+
+Then **read the diff**. A snapshot accepted without looking at what changed is a
+deleted test with extra steps. Commit the updated `.snap` file alongside the
+change that caused it.
