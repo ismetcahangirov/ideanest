@@ -178,6 +178,8 @@ rather than wherever the first commit happened to put it.
 | `POST /v1/auth/2fa/confirm` | A current code switches it on and returns the recovery codes, once |
 | `POST /v1/auth/2fa/verify` | The second half of a sign-in: a challenge and a code, for tokens |
 | `POST /v1/auth/2fa/disable` | Switches it off. Costs the password **and** a code |
+| `GET /v1/auth/sessions` | The user's live devices, with the current one marked |
+| `DELETE /v1/auth/sessions/{id}` | Revokes one device. `404` if it is not theirs |
 | `GET /v1/me` | The signed-in account. The first endpoint behind a bearer token |
 
 Everything else is denied by default. Forgetting to state who may call a new
