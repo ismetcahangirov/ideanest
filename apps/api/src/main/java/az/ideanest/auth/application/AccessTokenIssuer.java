@@ -18,8 +18,12 @@ public interface AccessTokenIssuer {
      *     session is revoked and somebody asks which requests it made
      * @param emailVerified becomes a claim, so that an endpoint requiring a
      *     verified address does not need a database read to find out
+     * @param twoFactorAuthenticated whether the session behind this token proved
+     *     a second factor. Becomes {@code amr}, which is what a payout action
+     *     will read
      */
-    IssuedAccessToken issue(UUID userId, UUID sessionId, boolean emailVerified, Instant now);
+    IssuedAccessToken issue(
+            UUID userId, UUID sessionId, boolean emailVerified, boolean twoFactorAuthenticated, Instant now);
 
     record IssuedAccessToken(String value, Instant expiresAt) {
     }

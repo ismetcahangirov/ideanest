@@ -20,4 +20,18 @@ public class TestDoublesConfiguration {
     RecordingVerificationNotifier recordingVerificationNotifier() {
         return new RecordingVerificationNotifier();
     }
+
+    /**
+     * The application clock, with a handle on it.
+     *
+     * <p>Free-running unless a test freezes it, so this changes nothing for the
+     * tests that do not care. The ones that do — one-time passwords, challenge
+     * expiry — would otherwise have to sleep, and a sleeping test is flaky
+     * precisely when the machine is busy.
+     */
+    @Bean
+    @Primary
+    AdjustableClock adjustableClock() {
+        return new AdjustableClock();
+    }
 }

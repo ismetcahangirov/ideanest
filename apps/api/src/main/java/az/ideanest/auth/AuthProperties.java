@@ -18,6 +18,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param argon2 hashing parameters.
  * @param rateLimit how many attempts, and over what window.
  * @param token access and refresh token lifetimes and signing keys.
+ * @param twoFactor time-based one-time passwords.
  * @param refreshCookie how the refresh token is delivered to a browser.
  * @param logVerificationLinks whether to write verification links to the log.
  *     Local development only — see {@code application-local.yml}.
@@ -30,6 +31,7 @@ public record AuthProperties(
         Argon2 argon2,
         RateLimit rateLimit,
         Token token,
+        TwoFactor twoFactor,
         RefreshCookie refreshCookie,
         boolean logVerificationLinks) {
 
@@ -64,7 +66,16 @@ public record AuthProperties(
      * @param verificationsPerAddress verification attempts from one IP address.
      *     A verification token is 256 bits, so this is not about guessing it; it
      *     is about not letting one client spend our database on the attempt
-     * @param window the period all three are measured over
+     * @param twoFactorCodesPerChallenge how many codes may be offered against
+     *     one sign-in challenge. This is <em>the</em> control on a six-digit
+     *     secret: with one step of skew either side, three codes are valid at
+     *     any moment, so each attempt is three chances in a million and only
+     *     the count of attempts keeps that a small number
+     * @param twoFactorChangesPerUser how many times a user may try to switch
+     *     two-factor on or off in a window. Each attempt costs an Argon2
+     *     verification, so this bounds what a stolen access token can spend as
+     *     much as what it can guess
+     * @param window the period all of them are measured over
      */
     public record RateLimit(
             int registrationsPerAddress,
@@ -72,6 +83,8 @@ public record AuthProperties(
             int verificationsPerAddress,
             int signInsPerAddress,
             int signInsPerEmail,
+            int twoFactorCodesPerChallenge,
+            int twoFactorChangesPerUser,
             Duration window) {
     }
 
@@ -101,6 +114,21 @@ public record AuthProperties(
             Duration refreshTokenTtl,
             String privateKeyPem,
             String publicKeyPem) {
+    }
+
+    /**
+     * Time-based one-time passwords.
+     *
+     * @param issuer what an authenticator app shows above the six digits. It is
+     *     part of the {@code otpauth://} label, so changing it after people have
+     *     enrolled renames their existing entry only when they re-enrol —
+     *     harmless, but not retroactive.
+     * @param challengeTtl how long the proof of a correct password is good for
+     *     before a code has to be entered. Minutes: it exists to carry one
+     *     person across one form, and every second beyond that is a window in
+     *     which a challenge captured from a proxy log is still spendable.
+     */
+    public record TwoFactor(String issuer, Duration challengeTtl) {
     }
 
     /**

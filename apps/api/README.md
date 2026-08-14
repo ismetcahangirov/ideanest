@@ -174,6 +174,10 @@ rather than wherever the first commit happened to put it.
 | `POST /v1/auth/login` | Starts a session. Returns an access token; the refresh token goes in a cookie, or in the body if the client asks |
 | `POST /v1/auth/refresh` | Rotates the refresh token and returns a new access token |
 | `POST /v1/auth/logout` | Revokes the session. `204` even with no token |
+| `POST /v1/auth/2fa/enable` | Starts a TOTP enrolment. Costs the password. Does **not** switch two-factor on |
+| `POST /v1/auth/2fa/confirm` | A current code switches it on and returns the recovery codes, once |
+| `POST /v1/auth/2fa/verify` | The second half of a sign-in: a challenge and a code, for tokens |
+| `POST /v1/auth/2fa/disable` | Switches it off. Costs the password **and** a code |
 | `GET /v1/auth/sessions` | The user's live devices, with the current one marked |
 | `DELETE /v1/auth/sessions/{id}` | Revokes one device. `404` if it is not theirs |
 | `GET /v1/me` | The signed-in account. The first endpoint behind a bearer token |
@@ -223,6 +227,11 @@ RS256 rather than a shared secret: with HMAC, everything that can verify a token
 can also mint one, so the first service that needs to check a token has to be
 given the ability to impersonate anybody.
 
+The access token carries `amr`: `["pwd"]`, or `["pwd", "otp", "mfa"]` when the
+session proved a second factor. A refresh carries it across unchanged — a
+refresh proves possession of a token, not a factor, so it must neither add the
+claim nor lose it.
+
 **A session is the refresh token family, and rotation is enforced.** Every
 refresh spends the presented token and issues a new one. A spent token should
 never appear again, so when one does, two parties hold the same credential and
@@ -250,6 +259,79 @@ nobody could diagnose.
 
 ---
 
+## Two-factor authentication
+
+Time-based one-time passwords, RFC 6238: HMAC-SHA1, six digits, thirty-second
+steps. Written out in `auth.domain.Totp` rather than taken from
+`dev.samstevens.totp` — that library's last commit is from November 2020 with no
+release since 1.7.1, and an unmaintained dependency on the authentication path
+buys us nothing that forty lines of `javax.crypto` does not. `TotpTests` checks
+it against the RFC's own test vectors, which is the assertion that matters: if
+our arithmetic disagrees with an authenticator app, every enrolment is a
+lockout.
+
+**One step of skew either side.** Phone clocks drift and people start typing at
+the end of a window. The cost is that three codes are valid at any moment, so a
+guess is three in a million — which is only a small number because of the rate
+limit, and that is why the limit is not optional.
+
+**Enrolling is not enabling.** `2fa/enable` generates a secret and returns it
+once, as base32 and as an `otpauth://` URI the client renders as a QR code.
+Two-factor is off until `2fa/confirm` accepts a current code. A user whose phone
+dies between the two calls signs in exactly as before.
+
+**A password alone stops producing a session.** With two-factor on, `login`
+returns `{"twoFactorRequired": true, "challenge": …}` and nothing usable. The
+challenge is 256 bits, stored as SHA-256, single use, five minutes, and retired
+when a new one is issued — so collecting challenges does not buy more guesses.
+It carries the device description from the first call, so the session the second
+call creates describes the device that actually signed in.
+
+**A code cannot be replayed.** The accepted time step is recorded and only a
+strictly greater one is taken afterwards, so a code works once rather than for
+the ninety seconds the skew window spans. The code that confirms an enrolment is
+spent the same way.
+
+**Recovery codes** are ten values of a hundred bits, shown once at confirmation
+and stored as SHA-256 — unsalted and with no work factor, for the same reason a
+refresh token is. Argon2 would be wrong twice over here: there is no dictionary
+against a hundred random bits, and the codes are checked on an endpoint an
+attacker can reach with a stolen challenge, which would let them spend 19 MiB of
+our memory per guess.
+
+**Switching it off costs the password and a code**, or the password and a
+recovery code for somebody whose phone is the reason they are asking. Either
+half alone would make the whole control worth one password.
+
+**Rate limits.** Five code attempts per challenge; ten enrolment changes per user
+per fifteen minutes; `2fa/verify` also counts against the per-address sign-in
+allowance, because it is half of a sign-in.
+
+### Requiring it for a payout
+
+Two things are exposed, and neither is enforcement:
+
+| Where | What |
+|---|---|
+| `sessions.two_factor_at` | When this session proved a second factor, or null |
+| `amr` in the access token | `["pwd"]`, or `["pwd", "otp", "mfa"]` |
+| `auth.application.TwoFactorPolicy` | `isEnabledFor(userId)`, `isProvedBy(sessionId)` — the front door for another module |
+
+The question a payout must ask is `isProvedBy`, not `isEnabledFor`: an account
+can switch two-factor on and still hold sessions that predate it, and a token
+minted from one of those proves only a password. **Nothing calls this yet** —
+payouts arrive with [#69](https://github.com/ismetcahangirov/ideanest/issues/69),
+and that is where the check belongs.
+
+**The TOTP secret is not encrypted at rest.** It cannot be hashed — verifying a
+code means recomputing the HMAC — so the control that belongs here is encryption
+with a managed key, and there is no key management in the platform yet. Until
+there is, the secret is protected exactly as well as the database is, which is
+worth knowing before treating two-factor as a defence against a database
+compromise.
+
+---
+
 ## Build conventions
 
 | Convention | Reason |
@@ -265,6 +347,9 @@ nobody could diagnose.
 
 | Missing | Tracked by |
 |---|---|
+| Encryption at rest for the TOTP secret, and the key management it needs | no issue yet |
+| A payout action that actually requires two-factor | [#69](https://github.com/ismetcahangirov/ideanest/issues/69) |
+| Two-factor over SMS, as a fallback (A-08) | no issue yet |
 | Redis, object storage, and a mail catcher in the local stack | [#134](https://github.com/ismetcahangirov/ideanest/issues/134), [#139](https://github.com/ismetcahangirov/ideanest/issues/139) |
 | PostGIS, needed for proximity search | [#47](https://github.com/ismetcahangirov/ideanest/issues/47) |
 | Money type and arithmetic rules | [#133](https://github.com/ismetcahangirov/ideanest/issues/133) |
