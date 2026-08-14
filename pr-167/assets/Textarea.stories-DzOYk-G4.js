@@ -1,0 +1,14 @@
+import{n as e}from"./rolldown-runtime-DkW27tQK.js";import{f as t,n}from"./iframe-B6bhTfLA.js";import{n as r,t as i}from"./cn-Dm4OyE3Q.js";import{n as a,r as o,t as s}from"./Field-CrvAlS8j.js";import{n as c,t as l}from"./inputSkin-0g8z56Iq.js";function u({size:e,invalid:t,autoGrow:n=!1,rows:r=4,className:a,...s}){let l=(0,d.useRef)(null),u=o({id:s.id,"aria-describedby":s[`aria-describedby`],invalid:t,required:s.required}),p=s.value;return(0,d.useLayoutEffect)(()=>{let e=l.current;!n||!e||(e.style.height=`auto`,e.style.height=`${e.scrollHeight}px`)},[n,p]),(0,f.jsx)(`textarea`,{ref:l,rows:r,...s,onInput:e=>{if(n){let t=e.currentTarget;t.style.height=`auto`,t.style.height=`${t.scrollHeight}px`}s.onInput?.(e)},id:u.id,"aria-describedby":u[`aria-describedby`],"aria-invalid":u[`aria-invalid`],required:u.required,className:i(c({size:e,invalid:u.invalid}),`h-auto min-h-24 py-2.5`,n?`resize-none overflow-hidden`:`resize-y`,a)})}var d,f;function p(){return(p=e((()=>{d=t(),r(),a(),l(),f=n(),u.__docgenInfo={description:``,methods:[],displayName:`Textarea`,props:{autoGrow:{required:!1,tsType:{name:`boolean`},description:`Grow to fit the content instead of scrolling.`,defaultValue:{value:`false`,computed:!1}},rows:{defaultValue:{value:`4`,computed:!1},required:!1}},composes:[`Omit`,`VariantProps`]}})))()}var m,h,g,_,v,y,b;function x(){return(x=e((()=>{a(),p(),m=n(),h={title:`Form/Textarea`,component:u,parameters:{layout:`padded`,docs:{description:{component:"`autoGrow` writes the height directly. Height is never transitioned — it forces layout on every frame, and an easing field under a cursor is noise."}}},args:{placeholder:`What are you building, and why now?`},decorators:[e=>(0,m.jsx)(`div`,{className:`w-[420px]`,children:(0,m.jsx)(e,{})})]},g={},_={args:{autoGrow:!0,rows:2}},v={args:{invalid:!0}},y={render:()=>(0,m.jsx)(s,{label:`Short description`,hint:`The first thing a backer reads.`,error:`Say what the money is for.`,required:!0,children:(0,m.jsx)(u,{autoGrow:!0,rows:3})})},g.parameters={...g.parameters,docs:{...g.parameters?.docs,source:{originalSource:`{}`,...g.parameters?.docs?.source}}},_.parameters={..._.parameters,docs:{..._.parameters?.docs,source:{originalSource:`{
+  args: {
+    autoGrow: true,
+    rows: 2
+  }
+}`,..._.parameters?.docs?.source}}},v.parameters={...v.parameters,docs:{...v.parameters?.docs,source:{originalSource:`{
+  args: {
+    invalid: true
+  }
+}`,...v.parameters?.docs?.source}}},y.parameters={...y.parameters,docs:{...y.parameters?.docs,source:{originalSource:`{
+  render: () => <Field label="Short description" hint="The first thing a backer reads." error="Say what the money is for." required>
+      <Textarea autoGrow rows={3} />
+    </Field>
+}`,...y.parameters?.docs?.source}}},b=[`Default`,`AutoGrow`,`Invalid`,`InAField`]})))()}x();export{_ as AutoGrow,g as Default,y as InAField,v as Invalid,b as __namedExportsOrder,h as default};
