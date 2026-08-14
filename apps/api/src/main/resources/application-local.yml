@@ -27,6 +27,11 @@ ideanest:
     # There is no mail transport yet (#86), so the verification link is written
     # to the console. Local only — see LoggingVerificationNotifier.
     log-verification-links: true
+    token:
+      issuer: http://localhost:8080
+    refresh-cookie:
+      # localhost is plain HTTP, and a Secure cookie there is simply never sent.
+      secure: false
 
 management:
   endpoint:

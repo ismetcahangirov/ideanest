@@ -28,20 +28,40 @@ public class SecurityConfiguration {
                         // component detail; see application.yml.
                         .requestMatchers("/actuator/health", "/actuator/health/**")
                         .permitAll()
-                        // Registration and verification are how someone who has
-                        // no credentials gets one.
-                        .requestMatchers("/v1/auth/register", "/v1/auth/verify-email")
+                        // How someone with no credentials gets one, and how a
+                        // client whose access token expired gets another. All
+                        // four authenticate by their own means — a password, a
+                        // verification token, a refresh token — so requiring an
+                        // access token here would be circular.
+                        .requestMatchers(
+                                "/v1/auth/register",
+                                "/v1/auth/verify-email",
+                                "/v1/auth/login",
+                                "/v1/auth/refresh",
+                                "/v1/auth/logout")
                         .permitAll()
                         .anyRequest()
                         .authenticated())
+                // Every other request authenticates with a bearer JWT we signed.
+                // Stateless by construction: no lookup, which is also why
+                // revoking a session cannot reach an access token already
+                // issued. That window is the token's lifetime, and it is why
+                // the lifetime is fifteen minutes.
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
                 // Stateless. No server-side session means nothing to fixate, and
                 // nothing that has to be shared between instances.
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // Nothing here is authenticated by a cookie yet, and a token in
-                // an Authorization header is not sent automatically by a
-                // browser, so there is no cross-site request to forge. This has
-                // to be revisited in #24, which introduces a refresh cookie:
-                // that is precisely when CSRF starts to matter.
+                // An access token in an Authorization header is not sent
+                // automatically by a browser, so for almost every endpoint here
+                // there is no cross-site request to forge and Spring's token
+                // repository would only add a round trip.
+                //
+                // The refresh cookie is the exception, and it is defended in
+                // two ways rather than by this filter: SameSite=Strict, so the
+                // browser does not attach it to a cross-site request at all,
+                // and a required custom header on the endpoints that read it,
+                // which a form post or an image tag cannot set. That is what
+                // §17.3 asks for.
                 .csrf(csrf -> csrf.disable())
                 // No login form and no browser prompt. This is an API; an
                 // unauthenticated call gets 401 and a client decides what to do.

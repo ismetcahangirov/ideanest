@@ -171,6 +171,10 @@ rather than wherever the first commit happened to put it.
 |---|---|
 | `POST /v1/auth/register` | Creates an unverified account and sends a verification link. Always `202` |
 | `POST /v1/auth/verify-email` | Redeems the link. `204` once, `400` thereafter |
+| `POST /v1/auth/login` | Starts a session. Returns an access token; the refresh token goes in a cookie, or in the body if the client asks |
+| `POST /v1/auth/refresh` | Rotates the refresh token and returns a new access token |
+| `POST /v1/auth/logout` | Revokes the session. `204` even with no token |
+| `GET /v1/me` | The signed-in account. The first endpoint behind a bearer token |
 
 Everything else is denied by default. Forgetting to state who may call a new
 endpoint produces a `401` in a test rather than an open door in production.
@@ -203,6 +207,44 @@ Transactional email is #86.
 
 **Rate limiting is in-process**, which is correct for one instance and wrong for
 two — each replica enforces the limit separately. The shared counter is #142.
+
+### Tokens
+
+| | Access token | Refresh token |
+|---|---|---|
+| Form | JWT, RS256 | Opaque, 256 bits |
+| Lifetime | 15 minutes | 30 days, absolute |
+| Stored | Nowhere | As SHA-256, in `refresh_tokens` |
+| Sent as | `Authorization: Bearer` | httpOnly cookie, or the body for native clients |
+
+RS256 rather than a shared secret: with HMAC, everything that can verify a token
+can also mint one, so the first service that needs to check a token has to be
+given the ability to impersonate anybody.
+
+**A session is the refresh token family, and rotation is enforced.** Every
+refresh spends the presented token and issues a new one. A spent token should
+never appear again, so when one does, two parties hold the same credential and
+there is no way to tell which is the user — the whole session is revoked with
+`TOKEN_REUSE`. Revoking only the presented token would leave whoever holds the
+newest one signed in, and that might be the thief.
+
+The claim is atomic: `UPDATE ... WHERE used_at IS NULL`. Two refreshes arriving
+together cannot both succeed, and the loser is treated as reuse.
+
+> **Clients must refresh single-flight.** Two concurrent refreshes with the same
+> token look exactly like theft and will sign the user out. Concurrent requests
+> wait on one in-flight refresh; they do not each start their own.
+
+**Revoking a session does not reach an access token already issued.** Nothing is
+looked up when one is verified — that is what stateless means, and it is why the
+lifetime is fifteen minutes. `TokenApiTests` asserts this rather than leaving it
+to be discovered.
+
+**Signing keys** come from `ideanest.auth.token.private-key-pem` and
+`public-key-pem`. Outside `local` and `test` the service refuses to start
+without them; generating one would sign tokens with a key that differs per
+replica and changes on every restart, signing people out at random in a way
+nobody could diagnose.
 
 ---
 

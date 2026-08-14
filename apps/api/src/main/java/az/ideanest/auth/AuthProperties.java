@@ -17,6 +17,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     expensive and an unbounded input is a denial of service against ourselves.
  * @param argon2 hashing parameters.
  * @param rateLimit how many attempts, and over what window.
+ * @param token access and refresh token lifetimes and signing keys.
+ * @param refreshCookie how the refresh token is delivered to a browser.
  * @param logVerificationLinks whether to write verification links to the log.
  *     Local development only — see {@code application-local.yml}.
  */
@@ -27,6 +29,8 @@ public record AuthProperties(
         int passwordMaxLength,
         Argon2 argon2,
         RateLimit rateLimit,
+        Token token,
+        RefreshCookie refreshCookie,
         boolean logVerificationLinks) {
 
     /**
@@ -63,6 +67,58 @@ public record AuthProperties(
      * @param window the period all three are measured over
      */
     public record RateLimit(
-            int registrationsPerAddress, int registrationsPerEmail, int verificationsPerAddress, Duration window) {
+            int registrationsPerAddress,
+            int registrationsPerEmail,
+            int verificationsPerAddress,
+            int signInsPerAddress,
+            int signInsPerEmail,
+            Duration window) {
+    }
+
+    /**
+     * Access and refresh tokens.
+     *
+     * @param issuer the {@code iss} claim, and what the decoder requires. A
+     *     token minted for staging must not be accepted in production, and this
+     *     is the field that says so.
+     * @param audience the {@code aud} claim. Same argument, from the other side.
+     * @param accessTokenTtl how long an access token is good for. Short, because
+     *     it is stateless: revoking a session cannot reach a token already
+     *     issued, so the window in which a revoked session still works is
+     *     exactly this value. Fifteen minutes is the documented trade between
+     *     that window and the cost of refreshing.
+     * @param refreshTokenTtl how long a refresh token — and with it a session —
+     *     survives without use.
+     * @param privateKeyPem RSA private key, PKCS#8 PEM, for signing. Supplied by
+     *     the secret store. Absent outside local and test, the service refuses
+     *     to start rather than inventing one.
+     * @param publicKeyPem the matching public key, X.509 PEM, for verifying.
+     */
+    public record Token(
+            String issuer,
+            String audience,
+            Duration accessTokenTtl,
+            Duration refreshTokenTtl,
+            String privateKeyPem,
+            String publicKeyPem) {
+    }
+
+    /**
+     * The cookie a browser stores the refresh token in.
+     *
+     * <p>A refresh token in {@code localStorage} is readable by any script that
+     * gets onto the page, which is what makes one cross-site scripting bug into
+     * a permanent account takeover. An httpOnly cookie is not.
+     *
+     * @param name the cookie name
+     * @param secure whether to mark it Secure. Always true except on plain-HTTP
+     *     localhost, where a Secure cookie is simply never sent
+     * @param path scoped to the auth endpoints, so it is not attached to every
+     *     request to the API
+     * @param sameSite {@code Strict}: the cookie is not sent on any cross-site
+     *     request at all, which is what stops another origin from spending the
+     *     victim's refresh token
+     */
+    public record RefreshCookie(String name, boolean secure, String path, String sameSite) {
     }
 }

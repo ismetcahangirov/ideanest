@@ -26,6 +26,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-security")
+    // Validates the access token on every request, and signs it. Nimbus
+    // underneath, which is the reference JOSE implementation for the JVM.
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
 
     // Argon2id. Spring Security's Argon2PasswordEncoder delegates to
     // BouncyCastle, which is pure Java — unlike argon2-jvm, which binds a
