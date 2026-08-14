@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Contribution rules
+    url: https://github.com/ismetcahangirov/ideanest/blob/main/CLAUDE.md
+    about: Branch naming, commits, pull requests, and the design constraints.
+  - name: Architecture specification
+    url: https://github.com/ismetcahangirov/ideanest/blob/main/docs/architecture.md
+    about: Read before proposing changes to the platform design.
