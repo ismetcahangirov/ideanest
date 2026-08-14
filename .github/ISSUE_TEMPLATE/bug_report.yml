@@ -1,0 +1,66 @@
+name: Bug report
+description: Something behaves incorrectly
+labels: ['type: bug']
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: The actual behaviour, not the expected behaviour.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should have happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Design system
+        - Web
+        - Mobile
+        - Backend
+        - Payments
+        - Infrastructure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Blocks other work or loses money
+        - Breaks a user-facing flow
+        - Degraded but usable
+        - Cosmetic
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: Browser or device, operating system, commit or deployment.
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs, errors, screenshots

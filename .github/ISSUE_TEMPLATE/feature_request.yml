@@ -1,0 +1,59 @@
+name: Feature
+description: A new capability or an improvement to an existing one
+labels: ['type: feature']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is difficult or impossible today. Describe the problem, not the solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+    validations:
+      required: true
+
+  - type: textarea
+    id: done
+    attributes:
+      label: Definition of done
+      description: Observable conditions a reviewer can check.
+      placeholder: |
+        - A creator can ...
+        - The system rejects ...
+        - The ledger records ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Design system
+        - Web
+        - Mobile
+        - Backend
+        - Payments
+        - SEO
+        - Performance
+        - Accessibility
+        - Infrastructure
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and open questions
+      description: Anything that must be decided or built first.
+
+  - type: textarea
+    id: design
+    attributes:
+      label: Design notes
+      description: For UI work, note which existing tokens and components apply. New colours require a separate design decision.
