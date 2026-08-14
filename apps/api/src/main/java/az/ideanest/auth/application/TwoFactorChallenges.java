@@ -156,7 +156,7 @@ public class TwoFactorChallenges {
 
         return sessionStarter.start(new SessionStarter.NewSession(
                 account.id(),
-                account.emailVerified(),
+                new AccessTokenIssuer.AccountStanding(account.emailVerified(), account.deletionPending()),
                 // From the challenge, not from this request: the device that
                 // signed in is the one that sent the password.
                 challenge.getDeviceLabel(),

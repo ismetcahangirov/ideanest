@@ -644,7 +644,15 @@ erDiagram
 #### `users`
 `id` (uuid), `email` (citext, unique), `email_verified_at`, `name`, `slug`,
 `avatar_url`, `bio`, `location_id`, `locale`, `currency`, `kyc_status`,
-`two_factor_enabled`, `banned_at`, `deleted_at`, timestamps.
+`two_factor_enabled`, `banned_at`, `deleted_at`, `deletion_requested_at`,
+`deletion_scheduled_at`, `anonymised_at`, timestamps.
+
+The three deletion columns are the whole state machine. `deletion_requested_at`
+and `deletion_scheduled_at` are set together and cleared together — a
+constraint enforces it — and `deleted_at` stays null while they are set, because
+every finder excludes soft-deleted rows and the account has to stay findable to
+be recovered. `anonymised_at` is set once, by the job, and is what makes it
+idempotent: the work is claimed under `WHERE anonymised_at IS NULL`.
 
 > **The password hash is not here.** It lives in `user_credentials`, keyed by
 > `user_id`. A user who signs in through a provider has no password at all, so
@@ -999,6 +1007,7 @@ load profile).
 | `ledger-reconciliation` | Daily | Verify the balance invariant, compare to settlement |
 | `token-cleaner` | Daily | Purge tokens from unsuccessful campaigns |
 | `denormalization-sync` | Hourly | Correct cached counters |
+| `account-anonymiser` | Hourly | Anonymise accounts whose deletion grace period has elapsed |
 
 ---
 
@@ -1225,6 +1234,9 @@ GET    /v1/me/created
 GET    /v1/me/saved
 GET    /v1/me/notifications
 PATCH  /v1/me/notification-preferences
+GET    /v1/me/export
+POST   /v1/me/deletion
+DELETE /v1/me/deletion
 GET    /v1/users/{slug}
 
 # Discovery
@@ -1850,6 +1862,64 @@ Apple requires to revoke the token.
 | Personal data in logs | Redacted: email, phone, address, card, token, password |
 | Backups | Encrypted, cross-region, restore rehearsed quarterly |
 | Retention | On deletion: 30-day delay, then anonymisation. Financial records retained for the statutory period |
+
+#### Deletion, in detail
+
+Closing an account takes the password as well as the access token. A deletion
+that needed only a bearer credential would be a vandalism tool: an access token
+is fifteen minutes of trust that a cross-site scripting bug, a shared machine,
+or a proxy log can leak, and the password is the thing only the owner knows.
+
+The request starts a **30-day grace period** and revokes every session. During
+it the account may sign in — that is the only route back — read itself, export
+its data, and cancel. It may do nothing else, and the rule is enforced in the
+filter chain rather than per endpoint: the access token carries the account's
+standing, and everything outside those three paths requires the authority a
+closing account does not get.
+
+Cancelling inside the window restores the account completely. Nothing has been
+overwritten yet. The sessions stay revoked.
+
+**After the window, anonymisation — not deletion.**
+
+| Overwritten | Retained |
+|---|---|
+| `email` → `deleted-<id>@anonymised.invalid` | `id`, `created_at`, `deleted_at`, `anonymised_at` |
+| `name` → `Deleted account` | `locale`, `currency` |
+| `slug` → `deleted-<id>` | `sessions` rows: start, end, and revocation reason |
+| `avatar_url`, `bio`, `email_verified_at` → null | `refresh_tokens` rows (a SHA-256 of 256 bits we generated) |
+| `user_credentials` row deleted | every financial row referring to `users.id` |
+| `verification_tokens` rows deleted | |
+| `sessions.device_label`, `user_agent`, `ip_address` → null | |
+
+The row survives because the alternative breaks the ledger. A pledge is a
+financial record and "pledge #123 was made by user X" has to stay true after X
+leaves; every one of those rows is a foreign key to `users.id`. Severing the
+identity and keeping the reference is exactly what anonymisation is for.
+
+The password hash goes rather than being kept, because it is a credential and
+not a record: people reuse passwords, so retaining it is a liability to the
+person's other accounts and an asset to nobody here.
+
+**The address is released.** It is held for the whole grace period — the row
+still contains it, so it cannot be registered again while the account can still
+come back — and it is gone once the account is anonymised. Reserving it
+permanently would mean keeping the address, or a hash of it (and the space of
+email addresses is small enough to enumerate), forever: retaining personal data
+in order to prove we no longer hold it. The hazard that reservation would guard
+against is a new owner inheriting the old account's mail, and anonymisation
+closes it directly instead — the stored address is overwritten and every
+outstanding verification and reset link is deleted, so nothing maps that address
+to the old account. What remains is that mail already sent has already been
+sent, which no database change reaches.
+
+> **Open, and legal rather than technical.** How long financial records must be
+> retained, and whether the counterparty's identity must be retained with them,
+> is question "Personal data" in §22.1 and is unanswered. Until it is answered
+> the financial rows are kept indefinitely rather than to a guessed period, and
+> the identity link is severed at anonymisation. If the answer is that identity
+> must survive on financial records, anonymisation has to become selective and
+> this section changes.
 
 ---
 

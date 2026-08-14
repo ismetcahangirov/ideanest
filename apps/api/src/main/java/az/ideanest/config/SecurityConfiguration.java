@@ -1,11 +1,16 @@
 package az.ideanest.config;
 
+import az.ideanest.auth.application.AccessTokenIssuer;
+import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 
@@ -19,6 +24,18 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint;
  */
 @Configuration(proxyBeanMethods = false)
 public class SecurityConfiguration {
+
+    /**
+     * Held by an account that is not being deleted.
+     *
+     * <p>Stated as something an active account <em>has</em> rather than as
+     * something a closing one lacks, because the two fail in opposite
+     * directions. A missing authority denies; a missing "is closing" flag
+     * allows — so a token from an older release, a claim that failed to
+     * serialise, or a converter that was not applied would all quietly let a
+     * closed account carry on.
+     */
+    private static final String ACCOUNT_ACTIVE = "ACCOUNT_ACTIVE";
 
     @Bean
     public SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {
@@ -53,14 +70,22 @@ public class SecurityConfiguration {
                                 // fall through to the rule below.
                                 "/v1/auth/2fa/verify")
                         .permitAll()
+                        // What an account inside its deletion grace period may
+                        // still do: look at itself, take its data with it, and
+                        // change its mind. Listed rather than derived, so that
+                        // adding an endpoint never quietly adds a permission.
+                        .requestMatchers("/v1/me", "/v1/me/export", "/v1/me/deletion")
+                        .authenticated()
+                        // Everything else additionally requires that the account
+                        // is not closing.
                         .anyRequest()
-                        .authenticated())
+                        .hasAuthority(ACCOUNT_ACTIVE))
                 // Every other request authenticates with a bearer JWT we signed.
                 // Stateless by construction: no lookup, which is also why
                 // revoking a session cannot reach an access token already
                 // issued. That window is the token's lifetime, and it is why
                 // the lifetime is fifteen minutes.
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(accountStanding())))
                 // Stateless. No server-side session means nothing to fixate, and
                 // nothing that has to be shared between instances.
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -84,5 +109,33 @@ public class SecurityConfiguration {
                 .exceptionHandling(handling ->
                         handling.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .build();
+    }
+
+    /**
+     * Turns the account's standing, as the token records it, into an authority.
+     *
+     * <p>An account inside its deletion grace period has said it is leaving.
+     * Letting it pledge, launch a campaign, or post a comment in the meantime
+     * creates obligations it has already announced it will not be around to
+     * meet — and every one of those rows then outlives the account by law
+     * rather than by choice. So it keeps exactly the three permissions listed
+     * above and loses the rest, without any endpoint having to remember.
+     *
+     * <p>Read from the token rather than from the database, because the
+     * alternative is a query on every authenticated request and the point of
+     * this filter chain is that there is not one. The cost is that a token
+     * minted before the deletion keeps working until it expires — the same
+     * fifteen-minute window that already applies to revoking a session, bounded
+     * by the same value, for the same reason.
+     */
+    private static JwtAuthenticationConverter accountStanding() {
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(token -> {
+            boolean closing = Boolean.TRUE.equals(token.getClaim(AccessTokenIssuer.DELETION_PENDING_CLAIM));
+            List<GrantedAuthority> authorities =
+                    closing ? List.of() : List.of(new SimpleGrantedAuthority(ACCOUNT_ACTIVE));
+            return authorities;
+        });
+        return converter;
     }
 }

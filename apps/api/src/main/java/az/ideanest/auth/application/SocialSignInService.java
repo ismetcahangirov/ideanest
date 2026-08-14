@@ -168,7 +168,11 @@ public class SocialSignInService {
                 // there is nobody to sign in as.
                 .orElseThrow(() -> new AuthenticationFailedException(REFUSAL));
 
-        return startOrChallenge(account.id(), account.emailVerified(), command, now);
+        return startOrChallenge(
+                account.id(),
+                new AccessTokenIssuer.AccountStanding(account.emailVerified(), account.deletionPending()),
+                command,
+                now);
     }
 
     private SignInOutcome linkToExistingAccount(
@@ -185,7 +189,13 @@ public class SocialSignInService {
         }
 
         link(account, identity, now);
-        return startOrChallenge(account.id(), true, command, now);
+        return startOrChallenge(
+                account.id(),
+                // The address is proven either way by this point; the deletion
+                // state is the account's own and is read rather than assumed.
+                new AccessTokenIssuer.AccountStanding(true, account.deletionPending()),
+                command,
+                now);
     }
 
     private SignInOutcome createAccount(VerifiedIdentity identity, SocialSignInCommand command, Instant now) {
@@ -200,9 +210,11 @@ public class SocialSignInService {
 
         link(account, identity, now);
 
-        // A brand new account cannot have a second factor, but it goes through
-        // the same door so that there is one place where that is decided.
-        return startOrChallenge(account.id(), true, command, now);
+        // A brand new account cannot have a second factor or a pending
+        // deletion, but it goes through the same door so that there is one
+        // place where that is decided.
+        return startOrChallenge(
+                account.id(), new AccessTokenIssuer.AccountStanding(true, false), command, now);
     }
 
     private void link(UserAccount account, VerifiedIdentity identity, Instant now) {
@@ -269,7 +281,10 @@ public class SocialSignInService {
      * demanding one from them would be a lockout.
      */
     private SignInOutcome startOrChallenge(
-            java.util.UUID userId, boolean emailVerified, SocialSignInCommand command, Instant now) {
+            java.util.UUID userId,
+            AccessTokenIssuer.AccountStanding standing,
+            SocialSignInCommand command,
+            Instant now) {
 
         if (twoFactorSecrets.findByUserIdAndConfirmedAtIsNotNull(userId).isPresent()) {
             return challenges.issue(
@@ -278,7 +293,7 @@ public class SocialSignInService {
 
         return new SignInOutcome.Authenticated(sessionStarter.start(new SessionStarter.NewSession(
                 userId,
-                emailVerified,
+                standing,
                 command.deviceLabel(),
                 command.userAgent(),
                 command.ipAddress(),

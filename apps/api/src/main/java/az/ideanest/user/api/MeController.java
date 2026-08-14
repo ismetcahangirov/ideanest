@@ -2,6 +2,7 @@ package az.ideanest.user.api;
 
 import az.ideanest.user.application.UserAccount;
 import az.ideanest.user.application.UserAccounts;
+import java.time.Instant;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -28,8 +29,19 @@ public class MeController {
      * @param id the account
      * @param email returned in full, because the person reading it is the
      *     person it belongs to
+     * @param deletionScheduledAt when this account will be anonymised, or absent
+     *     when nobody has asked for that. The client needs it to show the state
+     *     the account is actually in — an account that has been closed and can
+     *     still sign in has to say so, or the user assumes the deletion failed
+     *     and asks support
      */
-    public record MeResponse(UUID id, String email, String name, String slug, boolean emailVerified) {
+    public record MeResponse(
+            UUID id,
+            String email,
+            String name,
+            String slug,
+            boolean emailVerified,
+            Instant deletionScheduledAt) {
     }
 
     @GetMapping("/v1/me")
@@ -49,6 +61,11 @@ public class MeController {
 
     private static MeResponse toResponse(UserAccount account) {
         return new MeResponse(
-                account.id(), account.email().value(), account.name(), account.slug(), account.emailVerified());
+                account.id(),
+                account.email().value(),
+                account.name(),
+                account.slug(),
+                account.emailVerified(),
+                account.deletionScheduledAt());
     }
 }
