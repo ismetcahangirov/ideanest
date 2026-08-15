@@ -1,5 +1,6 @@
 package az.ideanest.project;
 
+import java.time.Duration;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -7,9 +8,19 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * Campaign settings.
  *
  * @param moderation who is allowed to decide a submitted campaign's fate
+ * @param story how much of a story's editing history is kept
  */
 @ConfigurationProperties(prefix = "ideanest.project")
-public record ProjectProperties(Moderation moderation) {
+public record ProjectProperties(Moderation moderation, Story story) {
+
+    public ProjectProperties {
+        // A deployment that configures neither section still starts. Nested
+        // records bind to null when the whole block is absent, and a null here
+        // would be a NullPointerException at the first autosave rather than a
+        // configuration error at start-up — which is the wrong end of the day to
+        // find it.
+        story = story == null ? Story.defaults() : story;
+    }
 
     /**
      * @param moderatorEmails the accounts that may approve, reject, or send a
@@ -30,5 +41,54 @@ public record ProjectProperties(Moderation moderation) {
      *     third party in this comparison.
      */
     public record Moderation(List<String> moderatorEmails) {
+    }
+
+    /**
+     * The story's version history.
+     *
+     * @param versionInterval how long after the newest version another one may be
+     *     written. <strong>This is the number that decides whether the feature is
+     *     usable or ruinous.</strong> The editor autosaves every few seconds while
+     *     somebody types, so a version per save is thousands of {@code jsonb}
+     *     documents for one afternoon's work — a history nobody can read and a
+     *     table dominated by rows that differ by one word. Configuration rather
+     *     than a literal because it is a judgement about how much work a creator
+     *     may lose, and the answer for a staging environment being exercised by a
+     *     test is not the answer for production
+     * @param versionsKept how many versions survive per project, oldest pruned
+     *     first. Fifty at the configured interval is a working day and a half of
+     *     recoverable history, which is longer than anybody remembers what they
+     *     changed
+     */
+    public record Story(Duration versionInterval, int versionsKept) {
+
+        /** Contract §5: five minutes, and the last fifty. */
+        private static final Duration DEFAULT_INTERVAL = Duration.ofMinutes(5);
+
+        private static final int DEFAULT_VERSIONS_KEPT = 50;
+
+        static Story defaults() {
+            return new Story(DEFAULT_INTERVAL, DEFAULT_VERSIONS_KEPT);
+        }
+
+        public Story {
+            // Binding leaves an omitted property at its zero value, so an
+            // operator who configures the interval and not the count gets the
+            // documented default rather than a history of nothing.
+            versionInterval = versionInterval == null ? DEFAULT_INTERVAL : versionInterval;
+            versionsKept = versionsKept == 0 ? DEFAULT_VERSIONS_KEPT : versionsKept;
+
+            if (versionInterval.isNegative()) {
+                throw new IllegalArgumentException("The story version interval cannot be negative");
+            }
+            if (versionsKept < 1) {
+                // A negative count is a typo, and "keep no history" is not a
+                // configuration of this feature — it is the feature being off, and
+                // a version written and pruned in the same transaction is worse
+                // than one never written. Refused at start-up, where an operator
+                // sees it, rather than at the first autosave.
+                throw new IllegalArgumentException("At least one story version has to be kept");
+            }
+        }
     }
 }

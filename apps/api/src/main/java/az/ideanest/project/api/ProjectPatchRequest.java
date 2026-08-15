@@ -1,6 +1,5 @@
 package az.ideanest.project.api;
 
-import az.ideanest.project.application.ProjectFieldRejectedException;
 import az.ideanest.project.application.ProjectPatch;
 import az.ideanest.shared.Money;
 import az.ideanest.shared.Patched;
@@ -23,9 +22,10 @@ import java.util.UUID;
  * service's version being the one that also holds for every other caller. The
  * lengths and ranges of §5.3 are checked there, and in the database beneath it.
  *
- * @param story the rich-text document, opaque here and validated by #35. Kept as a
- *     tree rather than a typed model so that adding that validation is a change to
- *     one class instead of to this record's shape
+ * @param story the rich-text document, as a tree. Validated against contract §5 by
+ *     {@code StoryDocuments} on the editing service's path rather than here, so
+ *     that the rule holds for every caller of that service and not only for
+ *     requests that arrive through this controller
  */
 public record ProjectPatchRequest(
         Patched<String> title,
@@ -60,11 +60,16 @@ public record ProjectPatchRequest(
     /**
      * The same edit, in the shape the application layer works in.
      *
-     * <p>Two conversions happen here and nowhere else: the cover image becomes the
-     * value object that keeps its three columns together, and the story document
-     * becomes the text stored in a {@code jsonb} column. Both preserve the
-     * difference between "absent" and "cleared", which is what
-     * {@link Patched#map} exists for.
+     * <p>One conversion happens here: the cover image becomes the value object that
+     * keeps its three columns together. It preserves the difference between
+     * "absent" and "cleared", which is what {@link Patched#map} exists for.
+     *
+     * <p>The story crosses unchanged, as a tree. It used to be flattened to text
+     * here, with a check that it was at least a JSON object; both moved to
+     * {@code StoryDocuments}, which validates the whole document on the editing
+     * service's path. Validating in this record would have put the rule in the HTTP
+     * layer, where it holds for requests that arrive through this controller and for
+     * nothing else.
      */
     public ProjectPatch toPatch() {
         return new ProjectPatch(
@@ -75,24 +80,9 @@ public record ProjectPatchRequest(
                 goal,
                 durationDays,
                 scheduledLaunchAt,
-                story.map(ProjectPatchRequest::asDocument),
+                story,
                 risks,
                 coverImage.map(CoverImageBody::toDomain),
                 latePledgeEnabled);
-    }
-
-    /**
-     * The document as the text that goes into the column.
-     *
-     * <p>Required to be a JSON object rather than any JSON value. {@code jsonb}
-     * would happily store {@code 5} or {@code "text"}, and a client reading the
-     * story back expects the document of #35 — a scalar there would fail in the
-     * editor rather than at the request that stored it.
-     */
-    private static String asDocument(JsonNode story) {
-        if (!story.isObject()) {
-            throw new ProjectFieldRejectedException("story", "A story is a document, not a single value.");
-        }
-        return story.toString();
     }
 }

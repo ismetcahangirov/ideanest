@@ -25,6 +25,19 @@ ideanest:
       # this address.
       moderator-emails: moderator@ideanest.test
 
+    story:
+      # The production value. The window itself is what the tests are checking, so
+      # shortening it here would mean asserting a rule against a configuration
+      # nothing runs on — and there is no need: the suite moves the application's
+      # Clock (AdjustableClock) rather than waiting, which is both deterministic
+      # and instant.
+      version-interval: 5m
+      # Deliberately small. The retention rule is only observable once more
+      # versions exist than are kept, and reaching fifty would mean fifty
+      # documents written five minutes of simulated time apart for one assertion.
+      # Three exercises exactly the same arithmetic.
+      versions-kept: 3
+
   user:
     # Disabled. `-` is Spring's own value for "do not schedule this". The suite
     # drives AccountAnonymisationJob directly with the instant it wants to test,
