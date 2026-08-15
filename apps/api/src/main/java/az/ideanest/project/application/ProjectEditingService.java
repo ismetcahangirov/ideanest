@@ -1,13 +1,17 @@
 package az.ideanest.project.application;
 
+import az.ideanest.project.domain.Capability;
 import az.ideanest.project.domain.CoverImage;
 import az.ideanest.project.domain.Project;
 import az.ideanest.project.infrastructure.CategoryRepository;
 import az.ideanest.project.infrastructure.ProjectRepository;
 import az.ideanest.project.infrastructure.SubcategoryRepository;
 import az.ideanest.shared.Money;
+import az.ideanest.shared.Patched;
 import az.ideanest.shared.Slugs;
 import java.math.BigDecimal;
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -128,7 +132,7 @@ public class ProjectEditingService {
      */
     @Transactional
     public Project edit(UUID projectId, UUID accountId, ProjectPatch patch) {
-        Project project = access.requireEditable(projectId, accountId);
+        Project project = access.requireEditableForAll(projectId, accountId, capabilitiesFor(patch));
 
         patch.title().ifPresent(title -> project.setTitle(requireTitle(title)));
         patch.blurb().ifPresent(blurb -> project.setBlurb(withinLength("blurb", blurb, BLURB_MAX)));
@@ -146,6 +150,43 @@ public class ProjectEditingService {
         }
 
         return project;
+    }
+
+    /**
+     * What a patch has to be authorised for, read off the fields it mentions.
+     *
+     * <p>One endpoint carries the basics, the story, and the risks section, so the
+     * body is the only thing that says which grant a request needs. Without this
+     * the three editing capabilities would be one capability with three names: a
+     * collaborator invited to write the story could move the funding goal, and the
+     * checkboxes an inviter ticked would not mean what they say.
+     *
+     * <p>The risks section counts as the story rather than as the basics. It is
+     * prose, it sits in the story tab, and §5.3 pairs the two as the writing a
+     * submission needs.
+     *
+     * <p>Derived from {@link Patched#isPresent()}, which is "the client mentioned
+     * this field" — including mentioning it as null to clear it. Clearing a blurb
+     * is editing the basics.
+     */
+    private static Set<Capability> capabilitiesFor(ProjectPatch patch) {
+        Set<Capability> needed = EnumSet.noneOf(Capability.class);
+
+        if (patch.story().isPresent() || patch.risks().isPresent()) {
+            needed.add(Capability.EDIT_STORY);
+        }
+        if (patch.title().isPresent()
+                || patch.blurb().isPresent()
+                || patch.categoryId().isPresent()
+                || patch.subcategoryId().isPresent()
+                || patch.goal().isPresent()
+                || patch.durationDays().isPresent()
+                || patch.scheduledLaunchAt().isPresent()
+                || patch.coverImage().isPresent()
+                || patch.latePledgeEnabled().isPresent()) {
+            needed.add(Capability.EDIT_BASICS);
+        }
+        return needed;
     }
 
     /**

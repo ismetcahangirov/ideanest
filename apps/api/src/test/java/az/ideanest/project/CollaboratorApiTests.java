@@ -346,6 +346,44 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("an editing grant reaches only the fields it names")
+    void theThreeEditingGrantsAreNotOneGrant() {
+        Account creator = account("creator");
+        UUID projectId = fundableDraft(creator);
+        Account writer = collaborator(projectId, creator, "EDIT_STORY");
+
+        // What they were invited for.
+        assertThat(patch("/v1/projects/" + projectId, writer.accessToken(), Map.of("risks", "Tooling."))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+
+        /*
+         * And nothing else. One endpoint carries the basics, the story and the risks
+         * section, so if the write path accepted any editing capability the three
+         * grants would be one grant with three names -- somebody invited to write the
+         * story could move the funding goal, and the boxes the creator ticked would
+         * not mean what they say.
+         */
+        ResponseEntity<Map<String, Object>> refused = patch(
+                "/v1/projects/" + projectId,
+                writer.accessToken(),
+                Map.of("goal", Map.of("amount", "9000.00", "currency", "AZN")));
+        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(refused.getBody()).containsEntry("code", "CAPABILITY_NOT_GRANTED");
+
+        // A body that mixes the two is refused whole, so half of it cannot land.
+        assertThat(patch(
+                                "/v1/projects/" + projectId,
+                                writer.accessToken(),
+                                Map.of("risks", "Shipping.", "title", "A renamed campaign"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(get("/v1/projects/" + projectId + "/edit", creator.accessToken()).getBody())
+                .containsEntry("title", "A campaign")
+                .containsEntry("risks", "Tooling.");
+    }
+
+    @Test
     @DisplayName("a stranger cannot see or manage a campaign's team")
     void theTeamIsPrivateToTheCampaign() {
         Account creator = account("creator");

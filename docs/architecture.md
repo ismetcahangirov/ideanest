@@ -857,6 +857,17 @@ granted capability, from `EDIT_BASICS`, `EDIT_REWARDS`, `EDIT_STORY`,
 > Nobody may grant more than they hold, and only the creator may grant
 > `MANAGE_COLLABORATORS`. Launching and cancelling are deliberately **not**
 > capabilities: both are irreversible money decisions and stay with the creator.
+>
+> **`PATCH /v1/projects/{id}` is authorised field by field.** One endpoint carries
+> the basics, the story, and the risks section, so the body is the only thing that
+> says which grant a request needs: `story` and `risks` need `EDIT_STORY`,
+> everything else needs `EDIT_BASICS`, and a body mentioning both needs both.
+> Accepting any editing capability on the write path would make the three grants
+> one grant with three names — a collaborator invited to write the story could move
+> the funding goal. A mixed body is refused whole, with `403
+> CAPABILITY_NOT_GRANTED` naming only what was missing, so half of a patch can
+> never land. Opening the editor is the looser check: any editing capability, since
+> somebody granted one has to be able to reach the field they were granted.
 
 #### `items`
 Atomic units: `id`, `project_id`, `name`, `description`, `image_id`,

@@ -11,6 +11,8 @@ import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 /**
@@ -61,14 +63,14 @@ public class ProjectAccess {
      * exercise it. A collaborator granted only {@code VIEW_FINANCES} or
      * {@code RESPOND_TO_COMMENTS} is not an editor and is refused.
      *
-     * <p><strong>Known gap.</strong> {@code PATCH /v1/projects/{id}} carries
-     * basics, the story, and the risks section in one body, so this coarse check
-     * cannot yet tell a story editor writing a title from one writing a story.
-     * Separating them is a per-field decision that belongs with the field-locking
-     * work of #36 and the story editor of #35, each of which routes its own fields
-     * through the capability-taking form below. Until then an editing collaborator
-     * can write any editable field, and that is stated in the pull request rather
-     * than pretended away.
+     * <p><strong>This is the check for opening the editor, not for writing to
+     * it.</strong> {@code PATCH /v1/projects/{id}} carries basics, the story, and
+     * the risks section in one body, so accepting any editing capability on the
+     * write path would make the grants indistinguishable in practice — a
+     * collaborator invited to write the story could reprice the campaign. The
+     * write path therefore asks {@link #requireEditableForAll} for exactly the
+     * capabilities the fields in the body call for, which is what makes the
+     * granularity real rather than nominal.
      */
     private static final Set<Capability> EDITING =
             EnumSet.of(Capability.EDIT_BASICS, Capability.EDIT_REWARDS, Capability.EDIT_STORY);
@@ -109,6 +111,56 @@ public class ProjectAccess {
      */
     public Project requireEditable(UUID projectId, UUID accountId, Capability capability) {
         return require(projects.findById(projectId), projectId, accountId, EnumSet.of(capability));
+    }
+
+    /**
+     * The campaign, for a request that needs <em>every</em> capability in a set.
+     *
+     * <p>The write path for a partial edit, which is the one request whose body
+     * decides what authority it needs: a patch touching the title and the story
+     * needs both {@link Capability#EDIT_BASICS} and {@link Capability#EDIT_STORY},
+     * and holding one of them is not holding the other. The "any of" form above
+     * would let a collaborator invited to write the story reprice the campaign,
+     * which is the difference between granular permissions and the appearance of
+     * them.
+     *
+     * <p>An empty set falls back to "any editing capability" rather than to "the
+     * creator alone": it means the body asked for nothing, and refusing a caller
+     * who may edit the campaign because their patch was empty would be a refusal
+     * about nothing. Nothing is written either way.
+     *
+     * @throws CapabilityNotGrantedException naming only what was missing, so the
+     *     client can say which part of the change was refused rather than
+     *     reporting the whole save as forbidden
+     */
+    public Project requireEditableForAll(UUID projectId, UUID accountId, Set<Capability> allOf) {
+        if (allOf.isEmpty()) {
+            return requireEditable(projectId, accountId);
+        }
+
+        Project project =
+                projects.findById(projectId).orElseThrow(() -> new ProjectNotFoundException(projectId));
+        Grants grants = grantsOf(project, accountId);
+
+        if (grants.isEmpty()) {
+            // Not party to the campaign at all, including a revoked grant and a
+            // pending invitation. Neither is told the campaign exists.
+            throw new ProjectNotFoundException(projectId);
+        }
+        if (grants.isCreator()) {
+            return project;
+        }
+
+        Set<Capability> missing =
+                allOf.stream().filter(capability -> !grants.holds(capability)).collect(toCapabilities());
+        if (!missing.isEmpty()) {
+            throw new CapabilityNotGrantedException(projectId, missing, grants.capabilities());
+        }
+        return project;
+    }
+
+    private static Collector<Capability, ?, Set<Capability>> toCapabilities() {
+        return Collectors.toCollection(() -> EnumSet.noneOf(Capability.class));
     }
 
     /**
