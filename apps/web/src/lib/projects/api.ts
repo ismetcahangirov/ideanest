@@ -1,6 +1,7 @@
 import { authorizedFetch } from '../api/client';
 import { errorFrom } from '../api/problem';
 import type { Money } from '../money';
+import type { StoryDocument } from './story';
 
 /**
  * The typed client for the creator's project endpoints.
@@ -73,16 +74,17 @@ export interface CoverImage {
 /**
  * The story document, as `PATCH /v1/projects/{id}` carries it.
  *
- * #35 owns the block union — heading, paragraph, list, quote, rule, image,
- * embed, validated server-side against contract §5. Until it lands the blocks
- * travel opaquely, because the basics editor has exactly one obligation towards
- * them: never to touch them. A partially-typed union here would invite the
- * basics form to "tidy" a document it does not understand.
+ * The block union lives in `./story` alongside the operations the editor performs
+ * on it, and is re-exported here so that a client reading a `ProjectEdit` does not
+ * have to know there are two modules. #35 owns it; the server validates the same
+ * schema (`StoryDocuments`).
+ *
+ * A response is narrowed with `readStoryDocument` rather than cast. The story may
+ * have been written by a newer deployment of the editor, and casting would put a
+ * block this build does not recognise into the editor's state — where the next
+ * autosave would send it back mangled.
  */
-export interface StoryDocument {
-  version: number;
-  blocks: readonly unknown[];
-}
+export type { StoryBlock, StoryDocument, StorySpan, StorySpans } from './story';
 
 /**
  * A project as the editor sees it — the creator's projection, contract §5.
@@ -271,11 +273,93 @@ export async function listCategories(signal?: AbortSignal): Promise<readonly Cat
 }
 
 /* -------------------------------------------------------------------------
+ * Story versions — contract §5 (#35)
+ *
+ * There is no function here that WRITES a version, and that is the contract
+ * rather than an omission: the story is saved through `patchProject` with
+ * everything else, and a version is a consequence of that save. The server
+ * decides when one is due — the document changed and the newest version is older
+ * than five minutes — so a client that could ask for one would be a second,
+ * disagreeing answer to the same question.
+ * ---------------------------------------------------------------------- */
+
+/** One row of the history. Without the document; see `getStoryVersion`. */
+export interface StoryVersionSummary {
+  number: number;
+  /** ISO 8601, UTC. */
+  createdAt: string;
+  authorId: string;
+  /**
+   * Characters of prose, counted as §5.3 counts them.
+   *
+   * The one number that makes a list of timestamps usable: "3 minutes ago, 1,240
+   * characters" tells a creator which version came before they deleted a section,
+   * and a timestamp alone does not.
+   */
+  characters: number;
+}
+
+export interface StoryVersionDetail extends StoryVersionSummary {
+  /**
+   * Unnarrowed on purpose. Callers pass it through `readStoryDocument`, which
+   * refuses a document written against a schema this build does not know rather
+   * than letting it into the editor's state.
+   */
+  document: unknown;
+}
+
+/**
+ * The kept versions of a story, newest first.
+ *
+ * Unpaged, because retention caps the list at fifty rows server-side. A `Pagination`
+ * control for a second page that cannot exist would be an interface built for a
+ * case the service has ruled out.
+ */
+export async function listStoryVersions(
+  projectId: string,
+  signal?: AbortSignal,
+): Promise<readonly StoryVersionSummary[]> {
+  const path = `/v1/projects/${encodeURIComponent(projectId)}/story/versions`;
+  const response = await authorizedFetch(path, { signal });
+  if (!response.ok) throw await errorFrom(response);
+  return (await response.json()) as readonly StoryVersionSummary[];
+}
+
+/** One version and its document, so it can be read before anything is replaced. */
+export async function getStoryVersion(
+  projectId: string,
+  number: number,
+  signal?: AbortSignal,
+): Promise<StoryVersionDetail> {
+  const path = `/v1/projects/${encodeURIComponent(projectId)}/story/versions/${number}`;
+  const response = await authorizedFetch(path, { signal });
+  if (!response.ok) throw await errorFrom(response);
+  return (await response.json()) as StoryVersionDetail;
+}
+
+/**
+ * Makes an older version the current story, and answers the whole project.
+ *
+ * A write, and a destructive one — it replaces whatever is in the editor. The
+ * server preserves the replaced document as a version first, which is what makes
+ * offering the action defensible; the interface still asks before doing it, because
+ * "the story you have been writing for an hour is gone" is not a thing to discover
+ * from a page that has already changed.
+ */
+export async function restoreStoryVersion(
+  projectId: string,
+  number: number,
+  signal?: AbortSignal,
+): Promise<ProjectEdit> {
+  const path = `/v1/projects/${encodeURIComponent(projectId)}/story/versions/${number}/restore`;
+  return readProject(await authorizedFetch(path, { method: 'POST', signal }));
+}
+
+/* -------------------------------------------------------------------------
  * Still to come. Each of these is a function in THIS module, not a new client.
  *
  *   #32 items and reward tiers   POST/PATCH/DELETE /v1/items, /v1/rewards,
  *                                reorder, duplicate, shipping rules
- *   #35 story versions           GET/POST /v1/projects/{id}/story/versions
  *   #37 checklist                GET /v1/projects/{id}/checklist
  *   #39 pre-launch and follows   POST/DELETE /v1/projects/{id}/prelaunch
  *   #31 submit, launch, cancel   POST /v1/projects/{id}/submit | launch | cancel

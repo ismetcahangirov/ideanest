@@ -113,6 +113,27 @@ ideanest:
       # is always larger than it looks.
       log-invitation-links: false
 
+    story:
+      # How long after the newest story version another one may be written.
+      #
+      # The editor autosaves a few hundred milliseconds after a creator stops
+      # typing, so a version per save would be one row per sentence -- thousands
+      # of jsonb documents for an afternoon's work, and a history whose entries
+      # differ by one word each. Five minutes turns continuous typing into a list
+      # a person can actually read, at a cost of at most five minutes of writing
+      # if something goes wrong.
+      #
+      # Configuration rather than a constant because it is a judgement about how
+      # much work a creator may lose, and the answer for a test suite exercising
+      # the rule is not the answer for production.
+      version-interval: ${STORY_VERSION_INTERVAL:5m}
+      # How many versions survive per project, oldest pruned first. Fifty at the
+      # interval above is a working day and a half of recoverable history, which
+      # is longer than anybody remembers what they changed. Unlike
+      # project_state_transitions this is a convenience rather than an audit
+      # trail, so it is pruned; see V8.
+      versions-kept: ${STORY_VERSIONS_KEPT:50}
+
   user:
     # §17.4: thirty days between asking and anything being destroyed. Long
     # enough that a deletion made in anger can be undone the next morning, and
