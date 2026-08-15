@@ -33,6 +33,19 @@ export interface SaveFailure {
   status: number | null;
   /** The machine-readable reason, e.g. `PROJECT_TRANSITION_NOT_ALLOWED`. */
   code: string | null;
+  /**
+   * Reason-specific context, keyed by `code` (docs/architecture.md §10.4).
+   *
+   * Carried through rather than dropped because some refusals cannot be placed
+   * without it. `STORY_DOCUMENT_INVALID` puts `blocks[7].alt` in `meta.path`, and a
+   * story is hundreds of blocks long — a banner saying the document is invalid,
+   * without saying which block, is a message a creator cannot act on.
+   *
+   * `Record<string, unknown>` rather than a union of every shape: each caller knows
+   * which `code` it is handling and narrows what it reads, and a union here would
+   * have to be extended by every issue that adds a refusal.
+   */
+  meta: Record<string, unknown> | null;
 }
 
 export interface Autosave<P> {
@@ -84,7 +97,7 @@ export function describeFailure(cause: unknown): SaveFailure {
                 ? 'The service rejected the change. Check the fields marked below.'
                 : 'The change could not be saved. Try again.');
 
-    return { message, fieldErrors, status: cause.status, code };
+    return { message, fieldErrors, status: cause.status, code, meta: cause.problem?.meta ?? null };
   }
 
   return {
@@ -92,6 +105,7 @@ export function describeFailure(cause: unknown): SaveFailure {
     fieldErrors: {},
     status: null,
     code: null,
+    meta: null,
   };
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EditorShell } from './EditorShell';
 import { EDITOR_TABS } from './tabs';
@@ -54,9 +54,11 @@ describe('EditorShell', () => {
   });
 
   /*
-   * The rewards, story, pre-launch and review routes belong to #34, #35, #39 and
-   * #37. A disabled tab says "not finished yet"; a stub page would leave the
-   * creator unable to tell that from "broken".
+   * The rewards, pre-launch and review routes belong to #34, #39 and #37. A
+   * disabled tab says "not finished yet"; a stub page would leave the creator
+   * unable to tell that from "broken". Rewards is the example because it is the
+   * next one to be built, so this assertion moves along the list as the epic
+   * lands — the loop below is what covers all five without being rewritten.
    */
   it('renders a section whose route does not exist as unavailable, not as a link', () => {
     renderShell();
@@ -76,14 +78,36 @@ describe('EditorShell', () => {
     const user = userEvent.setup();
     renderShell();
 
-    const expected = ['Basics', 'Rewards', 'Story', 'Pre-launch', 'Review'];
-
-    for (const label of expected) {
+    /*
+     * Derived from EDITOR_TABS rather than written out, because which sections
+     * are built changes with every sibling issue in the epic. Hard-coding
+     * "everything but Basics is unavailable" made this test fail the moment #35
+     * shipped the story route — a failure about the list, not about the
+     * behaviour the test is named for.
+     */
+    for (const tab of EDITOR_TABS) {
       await user.tab();
       expect(document.activeElement).toHaveAccessibleName(
-        label === 'Basics' ? 'Basics' : `${label}, not available yet`,
+        tab.available ? tab.label : `${tab.label}, not available yet`,
       );
     }
+  });
+
+  it('puts one control in the navigation per section, and no more', () => {
+    renderShell();
+
+    /*
+     * The count matters because the loop above walks EDITOR_TABS. A tab dropped
+     * from the navigation markup would leave that loop tabbing onto whatever came
+     * next and asserting a name that happened to match, so the list and the
+     * markup are checked against each other rather than each against itself.
+     */
+    const nav = screen.getByRole('navigation', { name: 'Campaign sections' });
+    const controls = [
+      ...within(nav).getAllByRole('link'),
+      ...within(nav).queryAllByRole('button'),
+    ];
+    expect(controls).toHaveLength(EDITOR_TABS.length);
   });
 
   it('says which state the campaign is in, in words', () => {
