@@ -2,11 +2,13 @@ package az.ideanest.project.application;
 
 import az.ideanest.project.domain.CoverImage;
 import az.ideanest.project.domain.Project;
+import az.ideanest.project.domain.StoryDocuments;
 import az.ideanest.project.infrastructure.CategoryRepository;
 import az.ideanest.project.infrastructure.ProjectRepository;
 import az.ideanest.project.infrastructure.SubcategoryRepository;
 import az.ideanest.shared.Money;
 import az.ideanest.shared.Slugs;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.math.BigDecimal;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -76,18 +78,21 @@ public class ProjectEditingService {
     private final SubcategoryRepository subcategories;
     private final ProjectAccess access;
     private final ProjectTransitionService transitions;
+    private final StoryVersionService storyVersions;
 
     public ProjectEditingService(
             ProjectRepository projects,
             CategoryRepository categories,
             SubcategoryRepository subcategories,
             ProjectAccess access,
-            ProjectTransitionService transitions) {
+            ProjectTransitionService transitions,
+            StoryVersionService storyVersions) {
         this.projects = projects;
         this.categories = categories;
         this.subcategories = subcategories;
         this.access = access;
         this.transitions = transitions;
+        this.storyVersions = storyVersions;
     }
 
     /**
@@ -133,7 +138,7 @@ public class ProjectEditingService {
         patch.title().ifPresent(title -> project.setTitle(requireTitle(title)));
         patch.blurb().ifPresent(blurb -> project.setBlurb(withinLength("blurb", blurb, BLURB_MAX)));
         patch.risks().ifPresent(risks -> project.setRisks(blankAsNull(risks)));
-        patch.story().ifPresent(project::setStory);
+        patch.story().ifPresent(story -> applyStory(project, accountId, story));
         patch.scheduledLaunchAt().ifPresent(project::setScheduledLaunchAt);
         patch.coverImage().ifPresent(project::setCoverImage);
         patch.latePledgeEnabled()
@@ -146,6 +151,33 @@ public class ProjectEditingService {
         }
 
         return project;
+    }
+
+    /**
+     * The story: validated, preserved, then stored.
+     *
+     * <p><strong>In that order, and all three on the autosave path.</strong> The
+     * story arrives through {@code PATCH /v1/projects/{id}} like every other field
+     * (contract §5), so this is the only place a story is written and therefore the
+     * only place the three have to be arranged correctly.
+     *
+     * <p>Validation first, because a document the service will not store is not
+     * worth a version. Preservation second, while {@link Project#getStory()} still
+     * holds the previous document, since {@code recordIfDue} decides by comparing
+     * what is arriving against what was last kept. Storage last.
+     *
+     * <p>{@code StoryDocuments} is a pure type in {@code domain} rather than a check
+     * written inline here: the schema is a table of rules, and a table of rules is
+     * worth testing without a Spring context, a database, and an HTTP request in
+     * front of it.
+     */
+    private void applyStory(Project project, UUID accountId, JsonNode story) {
+        StoryDocuments.validate(story);
+        storyVersions.recordIfDue(project, story, accountId);
+        // Text into a jsonb column, exactly as it arrived. Serialising the tree
+        // rather than the raw request body means what is stored is what was
+        // validated, with nothing between the two.
+        project.setStory(story == null ? null : story.toString());
     }
 
     /**

@@ -3,6 +3,7 @@ package az.ideanest.project.application;
 import az.ideanest.project.domain.CoverImage;
 import az.ideanest.shared.Money;
 import az.ideanest.shared.Patched;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -14,10 +15,12 @@ import java.util.UUID;
  * {@code "blurb": null} must clear it. See {@link Patched} for why
  * {@link java.util.Optional} cannot express that.
  *
- * <p>The story is text rather than a parsed document. #35 owns the story schema
- * and validates it; keeping it opaque here means autosave can store a draft
- * document before that validator exists, and that adding the validator is a change
- * to one class rather than to this record's type.
+ * <p>The story is a JSON tree rather than the text that reaches the column.
+ * {@code StoryDocuments} validates it and {@code StoryVersionService} compares it
+ * against the newest stored version, and both of those are questions about a
+ * document rather than about a string — key order and whitespace are not edits.
+ * The conversion to text happens once, in {@link ProjectEditingService}, at the
+ * point the validated document is stored.
  *
  * <p>Fields that belong to other issues are deliberately absent: the pre-launch
  * page (#39) and collaborators (#38) are transitions and grants rather than
@@ -31,7 +34,7 @@ public record ProjectPatch(
         Patched<Money> goal,
         Patched<Integer> durationDays,
         Patched<Instant> scheduledLaunchAt,
-        Patched<String> story,
+        Patched<JsonNode> story,
         Patched<String> risks,
         Patched<CoverImage> coverImage,
         Patched<Boolean> latePledgeEnabled) {
