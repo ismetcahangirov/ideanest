@@ -21,9 +21,13 @@ import org.springframework.transaction.annotation.Transactional;
  * reaches the client as a 500 and tells them nothing they can act on.
  *
  * <p><strong>What is not here.</strong> Nothing about which state the campaign is in.
- * #36 owns the post-launch restrictions of §5.3 and the {@code lockedFields} the
- * client reads them from; enforcing a partial version of them here would be the
- * second implementation of a rule that has to have exactly one.
+ * §5.3 freezes a campaign's goal and deadline and a reward's price after launch, and
+ * {@code ProjectEditLocks} is the one table that says so; an item is none of those.
+ * An item is a thing the campaign produces rather than a promise made to a backer —
+ * what a backer chose is a tier, at a price, containing a quantity of items — so
+ * correcting an item's name or its weight after launch is bookkeeping, not a change
+ * to the offer. The tier's composition is where that offer is defined, and it is
+ * {@code RewardService} that guards it.
  */
 @Service
 public class ItemService {

@@ -2,7 +2,10 @@ package az.ideanest.project.application;
 
 import az.ideanest.project.domain.Capability;
 import az.ideanest.project.domain.CoverImage;
+import az.ideanest.project.domain.LockedField;
 import az.ideanest.project.domain.Project;
+import az.ideanest.project.domain.ProjectEditLocks;
+import az.ideanest.project.domain.ProjectState;
 import az.ideanest.project.domain.StoryDocuments;
 import az.ideanest.project.infrastructure.CategoryRepository;
 import az.ideanest.project.infrastructure.ProjectRepository;
@@ -32,13 +35,13 @@ import org.springframework.transaction.annotation.Transactional;
  * same rule into a 400 naming the field, because a constraint violation reaches
  * the client as a 500 and tells them nothing they can act on.
  *
- * <p><strong>What is not here.</strong> Which fields are editable in which state
- * is #36 — §5.3 freezes the goal and the deadline after launch, and the response's
- * {@code lockedFields} is where that arrives. This service enforces one narrow
- * part of it, the part the database also refuses: a launched campaign cannot have
- * its goal or duration removed, because §5.1 could then not resolve it. Everything
- * else about locking is deliberately absent rather than half-implemented in two
- * places.
+ * <p><strong>Which fields are editable in which state is not decided here.</strong>
+ * {@link ProjectEditLocks} is the table, in {@code domain}, and this service asks
+ * it — the same table {@code RewardService} asks about a tier's price, and the same
+ * one {@code ProjectEditResponses} turns into the {@code lockedFields} a client
+ * reads. A launched campaign's goal, duration, and scheduled launch are refused
+ * here with a 409 before a single field is applied; see
+ * {@link #requireNothingLocked}.
  */
 @Service
 public class ProjectEditingService {
@@ -134,10 +137,15 @@ public class ProjectEditingService {
      * deliberately <em>not</em> recomputed when the title changes: it is in the
      * campaign's public URL, and a URL that changes when a typo is fixed breaks
      * every link anybody has already shared.
+     *
+     * <p>The locked fields are checked before anything is applied, so a body that
+     * moves the title and the goal of a live campaign changes neither. A patch is
+     * one save in the creator's mind; half of one is worse than none.
      */
     @Transactional
     public Project edit(UUID projectId, UUID accountId, ProjectPatch patch) {
         Project project = access.requireEditableForAll(projectId, accountId, capabilitiesFor(patch));
+        requireNothingLocked(project, patch);
 
         patch.title().ifPresent(title -> project.setTitle(requireTitle(title)));
         patch.blurb().ifPresent(blurb -> project.setBlurb(withinLength("blurb", blurb, BLURB_MAX)));
@@ -147,7 +155,7 @@ public class ProjectEditingService {
         patch.coverImage().ifPresent(project::setCoverImage);
         patch.latePledgeEnabled()
                 .ifPresent(enabled -> project.setLatePledgeEnabled(requireBoolean(enabled)));
-        patch.durationDays().ifPresent(days -> project.setDurationDays(validDuration(project, days)));
+        patch.durationDays().ifPresent(days -> project.setDurationDays(validDuration(days)));
         patch.goal().ifPresent(goal -> applyGoal(project, goal));
 
         if (patch.refilesTheProject()) {
@@ -230,7 +238,8 @@ public class ProjectEditingService {
      */
     private void applyGoal(Project project, Money goal) {
         if (goal == null) {
-            requireNotLaunched(project, "goal", "A launched campaign cannot have its goal removed.");
+            // Clearing it is a change to it, and a launched campaign was refused
+            // before any of this ran. What reaches here is a draft being emptied.
             project.setGoalAmount(null);
             return;
         }
@@ -249,9 +258,9 @@ public class ProjectEditingService {
         project.setCurrency(goal.currency());
     }
 
-    private Integer validDuration(Project project, Integer days) {
+    private static Integer validDuration(Integer days) {
         if (days == null) {
-            requireNotLaunched(project, "durationDays", "A launched campaign cannot have its duration removed.");
+            // As with the goal: a launched campaign never reaches here.
             return null;
         }
         if (days < DURATION_MIN || days > DURATION_MAX) {
@@ -301,18 +310,36 @@ public class ProjectEditingService {
     }
 
     /**
-     * The narrow slice of #36 that the database also refuses.
+     * §5.3, for a whole patch, before any of it is applied.
      *
-     * <p>§5.1 decides a campaign by comparing its total against its goal at its
-     * deadline. A live campaign missing either cannot be decided, and
-     * {@code projects_public_states_are_fully_specified} refuses the row — so
-     * without this the client would get a 500 for a rule that has a perfectly good
-     * 400. The full immutability rules, including the response's
-     * {@code lockedFields}, are #36.
+     * <p><strong>Mentioning a locked field is enough.</strong> A body carrying
+     * {@code "goal": {"amount": "5000.00", ...}} on a live campaign is refused even
+     * when that is the goal it already has. Merge-patch says a key that is present
+     * is a write, and the alternative — comparing the value against the stored one —
+     * would make the rule depend on how a number was serialised, so that
+     * {@code "5000"} and {@code "5000.00"} were different edits. The editor sends one
+     * field at a time and never sends a field it has been told is locked, so this
+     * costs a well-behaved client nothing.
+     *
+     * <p>This subsumes the older check that a launched campaign could not have its
+     * goal or duration <em>removed</em> — the case
+     * {@code projects_public_states_are_fully_specified} refuses outright, which
+     * would otherwise have reached the client as a 500. Clearing a field is a change
+     * to it, so the general rule covers the narrow one, and the two are not left to
+     * drift apart.
      */
-    private static void requireNotLaunched(Project project, String field, String message) {
-        if (project.getLaunchedAt() != null) {
-            throw new ProjectFieldRejectedException(field, message);
+    private static void requireNothingLocked(Project project, ProjectPatch patch) {
+        ProjectState state = project.getState();
+
+        if (patch.goal().isPresent() && ProjectEditLocks.locks(state, LockedField.GOAL)) {
+            throw new ProjectFieldLockedException(LockedField.GOAL, state);
+        }
+        if (patch.durationDays().isPresent() && ProjectEditLocks.locks(state, LockedField.DURATION_DAYS)) {
+            throw new ProjectFieldLockedException(LockedField.DURATION_DAYS, state);
+        }
+        if (patch.scheduledLaunchAt().isPresent()
+                && ProjectEditLocks.locks(state, LockedField.SCHEDULED_LAUNCH_AT)) {
+            throw new ProjectFieldLockedException(LockedField.SCHEDULED_LAUNCH_AT, state);
         }
     }
 

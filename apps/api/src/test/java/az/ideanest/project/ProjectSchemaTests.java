@@ -317,7 +317,8 @@ class ProjectSchemaTests extends AbstractIntegrationTest {
                 .doesNotThrowAnyException();
 
         // And it stays true afterwards: the goal cannot be removed from under a live
-        // campaign. #36 is what refuses that with a 400 before it gets here.
+        // campaign. ProjectEditLocks refuses that with a 409 before it gets here, and
+        // this is the constraint that holds against everything that is not a request.
         assertThatThrownBy(() -> jdbc().update("UPDATE projects SET goal_amount = NULL WHERE id = ?", projectId))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }

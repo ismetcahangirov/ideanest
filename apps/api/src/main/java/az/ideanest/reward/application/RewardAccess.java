@@ -1,5 +1,6 @@
 package az.ideanest.reward.application;
 
+import az.ideanest.project.application.EditLocks;
 import az.ideanest.project.application.ProjectAccess;
 import az.ideanest.project.application.ProjectNotFoundException;
 import az.ideanest.reward.domain.Item;
@@ -24,10 +25,13 @@ import org.springframework.stereotype.Service;
  * each method returns the row, so there is no way to obtain one without having been
  * authorised for it.
  *
- * <p>The project's return value from {@code requireEditable} is deliberately
- * discarded. {@code Project} lives in another module's domain package, which this
- * module may not name — {@code ModuleBoundaryTests} enforces it — and nothing here
- * needs the campaign itself. What it needs is the refusal.
+ * <p><strong>The campaign itself never crosses.</strong> {@code Project} lives in
+ * another module's domain package, which this module may not name —
+ * {@code ModuleBoundaryTests} enforces it. What this module needs from a campaign
+ * is the refusal, and the two rules of §5.3 that a campaign's state imposes on its
+ * reward tiers; both arrive through {@link ProjectAccess} as
+ * {@link EditLocks}, which is the project module's answer rather than a copy of its
+ * table.
  */
 @Service
 public class RewardAccess {
@@ -42,9 +46,17 @@ public class RewardAccess {
         this.rewards = rewards;
     }
 
-    /** Refuses unless this account may edit the campaign. Throws {@code ProjectNotFoundException} if not. */
-    public void requireEditableProject(UUID projectId, UUID accountId) {
-        projects.requireEditable(projectId, accountId);
+    /**
+     * Refuses unless this account may edit the campaign. Throws
+     * {@code ProjectNotFoundException} if not.
+     *
+     * @return what §5.3 has frozen on that campaign. Returned rather than discarded
+     *     because a caller that has just been authorised for a campaign is the only
+     *     one that knows the campaign, and asking a second time would be a second
+     *     load that could answer differently
+     */
+    public EditLocks requireEditableProject(UUID projectId, UUID accountId) {
+        return projects.requireEditableLocks(projectId, accountId);
     }
 
     /**
@@ -66,14 +78,25 @@ public class RewardAccess {
         return item;
     }
 
-    /** The tier, if this account may edit the campaign that owns it. Same reasoning as above. */
-    public RewardTier requireEditableReward(UUID rewardId, UUID accountId) {
+    /**
+     * The tier, and what §5.3 has frozen on the campaign that owns it, if this
+     * account may edit that campaign. Same reasoning as above.
+     *
+     * <p>Both together for the reason the class comment gives about loading and
+     * checking: a tier's price is frozen by the campaign's state, so a caller
+     * holding one without the other would have to go and find the campaign — and a
+     * future caller would forget to.
+     */
+    public AuthorisedReward requireEditableReward(UUID rewardId, UUID accountId) {
         RewardTier reward = rewards.findById(rewardId).orElseThrow(() -> new RewardNotFoundException(rewardId));
         try {
-            projects.requireEditable(reward.getProjectId(), accountId);
+            return new AuthorisedReward(reward, projects.requireEditableLocks(reward.getProjectId(), accountId));
         } catch (ProjectNotFoundException e) {
             throw new RewardNotFoundException(rewardId);
         }
-        return reward;
+    }
+
+    /** A tier the caller has been authorised for, with its campaign's locks. */
+    public record AuthorisedReward(RewardTier tier, EditLocks locks) {
     }
 }
