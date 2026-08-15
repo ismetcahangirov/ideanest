@@ -112,9 +112,13 @@ public class SignInService {
         // Sign-in is deliberately allowed before the address is verified. The
         // account can be used to browse and to be reminded; what verification
         // gates is money and messaging, and those checks read the claim.
+        // An account inside its deletion grace period may sign in. That is the
+        // only way back from a deletion it may have requested by mistake, or
+        // that somebody else requested for it. The token says so, and every
+        // endpoint but a handful refuses it.
         return new SignInOutcome.Authenticated(sessionStarter.start(new SessionStarter.NewSession(
                 user.id(),
-                user.emailVerified(),
+                new AccessTokenIssuer.AccountStanding(user.emailVerified(), user.deletionPending()),
                 command.deviceLabel(),
                 command.userAgent(),
                 command.ipAddress(),

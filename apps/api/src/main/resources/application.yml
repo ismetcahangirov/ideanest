@@ -93,6 +93,26 @@ management:
       show-components: never
 
 ideanest:
+  user:
+    # §17.4: thirty days between asking and anything being destroyed. Long
+    # enough that a deletion made in anger can be undone the next morning, and
+    # that an account closed by somebody who stole a session can be recovered.
+    deletion-grace-period: P30D
+    # A bound on one run, not a target. Without it a backlog built up during an
+    # outage is attempted in one pass that overlaps its own next tick.
+    anonymisation-batch-size: 100
+    # Hourly, on the hour. The deadline is a date, so the minute it runs at does
+    # not matter; what matters is that a missed hour costs an hour.
+    anonymisation-schedule: "0 0 * * * *"
+    rate-limit:
+      # An export is a copy of everything we hold about a person. One stolen
+      # access token should be worth one copy, not a tap.
+      exports-per-account: 3
+      # The deletion endpoint verifies a password, which makes it a password
+      # oracle for whoever holds a token. Bounded like any other.
+      deletion-attempts-per-account: 5
+      window: PT1H
+
   auth:
     # Long enough to survive a mail queue and a night's sleep, short enough that
     # a forwarded message is not a standing key to the account.

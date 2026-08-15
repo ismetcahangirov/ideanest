@@ -112,7 +112,13 @@ public class UserAccounts {
         return value.substring(0, end);
     }
 
-    private static UserAccount toAccount(User user) {
-        return new UserAccount(user.getId(), user.getEmail(), user.getName(), user.getSlug(), user.isEmailVerified());
+    static UserAccount toAccount(User user) {
+        return new UserAccount(
+                user.getId(),
+                user.getEmail(),
+                user.getName(),
+                user.getSlug(),
+                user.isEmailVerified(),
+                user.getDeletionScheduledAt());
     }
 }

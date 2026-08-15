@@ -37,7 +37,7 @@ public class JwtAccessTokenIssuer implements AccessTokenIssuer {
 
     @Override
     public IssuedAccessToken issue(
-            UUID userId, UUID sessionId, boolean emailVerified, boolean twoFactorAuthenticated, Instant now) {
+            UUID userId, UUID sessionId, AccountStanding account, boolean twoFactorAuthenticated, Instant now) {
         Instant expiresAt = now.plus(settings.accessTokenTtl());
 
         JwtClaimsSet claims = JwtClaimsSet.builder()
@@ -51,13 +51,19 @@ public class JwtAccessTokenIssuer implements AccessTokenIssuer {
                 // a migration, and what lets two log lines be tied together.
                 .id(UUID.randomUUID().toString())
                 .claim("sid", sessionId.toString())
-                .claim("email_verified", emailVerified)
+                .claim("email_verified", account.emailVerified())
                 // Which methods this session was authenticated with. A payout
                 // action requires "otp" to be here, and it has to come from the
                 // session rather than from the account: switching two-factor on
                 // does not retroactively make yesterday's sign-in a
                 // two-factor one.
                 .claim("amr", twoFactorAuthenticated ? PASSWORD_AND_OTP : PASSWORD_ONLY)
+                // Present on every token so that its absence is never mistaken
+                // for false by something reading an older one. It says nothing
+                // the holder does not already know about their own account, and
+                // the enforcement is a rule in SecurityConfiguration rather than
+                // a promise that the client will behave.
+                .claim(DELETION_PENDING_CLAIM, account.deletionPending())
                 .build();
 
         // No email, no name, no anything a person could be identified by. A JWT

@@ -17,6 +17,19 @@ spring:
     password: replaced-by-testcontainers
 
 ideanest:
+  user:
+    # Disabled. `-` is Spring's own value for "do not schedule this". The suite
+    # drives AccountAnonymisationJob directly with the instant it wants to test,
+    # which is both deterministic and instant; a timer firing in the background
+    # of a test run is a source of failures that reproduce once a fortnight.
+    anonymisation-schedule: "-"
+    rate-limit:
+      # Each test uses its own account, so these are exercised in isolation and
+      # the real values would only make tests fail each other. Left low enough
+      # that the limit itself can still be asserted.
+      exports-per-account: 5
+      deletion-attempts-per-account: 5
+
   auth:
     rate-limit:
       # The suite shares one process and one limiter, and every test calls from

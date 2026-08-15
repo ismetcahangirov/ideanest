@@ -100,18 +100,19 @@ public class RefreshService {
         session.touch(now);
         sessions.save(session);
 
-        boolean emailVerified = users.findById(session.getUserId())
-                .map(UserAccount::emailVerified)
+        UserAccount account = users.findById(session.getUserId())
                 .orElseThrow(() -> new AuthenticationFailedException(REFUSAL));
 
-        // Carried across the rotation from the session rather than re-derived:
-        // a refresh proves possession of a token, not a second factor, and it
-        // must neither add the claim nor lose it. Losing it would sign a
-        // creator out of a payout every fifteen minutes.
+        // The standing is re-read, so a deletion requested — or cancelled —
+        // since the last refresh reaches the next token rather than the one
+        // after that. The second factor is not: a refresh proves possession of
+        // a token, not a factor, so it is carried across the rotation from the
+        // session. Re-deriving it would sign a creator out of a payout every
+        // fifteen minutes; inventing it would be worse.
         IssuedAccessToken accessToken = accessTokens.issue(
                 session.getUserId(),
                 session.getId(),
-                emailVerified,
+                new AccessTokenIssuer.AccountStanding(account.emailVerified(), account.deletionPending()),
                 session.isTwoFactorAuthenticated(),
                 now);
 

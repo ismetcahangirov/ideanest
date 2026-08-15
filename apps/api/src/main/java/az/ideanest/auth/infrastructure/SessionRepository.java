@@ -47,4 +47,24 @@ public interface SessionRepository extends JpaRepository<Session, UUID> {
             @Param("userId") UUID userId,
             @Param("reason") SessionRevocationReason reason,
             @Param("at") Instant at);
+
+    /** Every session a user has had, newest first. Read by the data export. */
+    List<Session> findByUserIdOrderByCreatedAtDesc(UUID userId);
+
+    /**
+     * Strips the personal data from a user's sessions, keeping the rows.
+     *
+     * <p>Run at anonymisation. An IP address identifies a person and a user
+     * agent very nearly does, so neither may survive them; that a session
+     * existed, when it ended, and why it ended is a security record with no
+     * person in it, and deleting those rows would erase the history of a
+     * theft along with the victim's account.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE Session s
+               SET s.deviceLabel = NULL, s.userAgent = NULL, s.ipAddress = NULL
+             WHERE s.userId = :userId
+            """)
+    int stripPersonalDetails(@Param("userId") UUID userId);
 }

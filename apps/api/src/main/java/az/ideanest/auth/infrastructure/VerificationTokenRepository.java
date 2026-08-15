@@ -3,6 +3,7 @@ package az.ideanest.auth.infrastructure;
 import az.ideanest.auth.domain.VerificationPurpose;
 import az.ideanest.auth.domain.VerificationToken;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -55,4 +56,21 @@ public interface VerificationTokenRepository extends JpaRepository<VerificationT
             @Param("userId") UUID userId,
             @Param("purpose") VerificationPurpose purpose,
             @Param("at") Instant at);
+
+    /** Every link ever issued to a user, oldest first. Read by the data export. */
+    List<VerificationToken> findByUserIdOrderByCreatedAt(UUID userId);
+
+    /**
+     * Removes a user's tokens outright.
+     *
+     * <p>The only place in this module where a row is deleted rather than
+     * marked. These are not records of anything worth keeping: each one is a
+     * capability against the account, and an unspent {@code PASSWORD_RESET}
+     * belonging to an account that has just been anonymised is a key to a door
+     * that should no longer exist. One statement rather than a derived delete,
+     * which would load every row to delete it individually.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM VerificationToken t WHERE t.userId = :userId")
+    int deleteAllForUser(@Param("userId") UUID userId);
 }

@@ -190,6 +190,9 @@ rather than wherever the first commit happened to put it.
 | `GET /v1/auth/sessions` | The user's live devices, with the current one marked |
 | `DELETE /v1/auth/sessions/{id}` | Revokes one device. `404` if it is not theirs |
 | `GET /v1/me` | The signed-in account. The first endpoint behind a bearer token |
+| `GET /v1/me/export` | A JSON copy of everything held about the account. Rate limited |
+| `POST /v1/me/deletion` | Closes the account after a 30-day delay. Requires the password |
+| `DELETE /v1/me/deletion` | Withdraws a pending deletion. `204` either way |
 
 Everything else is denied by default. Forgetting to state who may call a new
 endpoint produces a `401` in a test rather than an open door in production.
@@ -388,6 +391,60 @@ with a managed key, and there is no key management in the platform yet. Until
 there is, the secret is protected exactly as well as the database is, which is
 worth knowing before treating two-factor as a defence against a database
 compromise.
+## Account deletion and export
+
+The full policy, field by field, is in [`docs/architecture.md`](../../docs/architecture.md)
+§17.4. What matters when reading the code:
+
+**Deletion needs the password, not just the token.** An access token is fifteen
+minutes of trust that a script or a proxy log can leak; a deletion that needed
+only that is a vandalism tool. `POST /v1/me/deletion` verifies the password,
+which also makes it a password oracle — hence the per-account rate limit.
+
+**The grace period is thirty days, and the account stays usable in exactly three
+ways:** sign in, read itself, export itself, cancel. `deleted_at` is *not* set
+when the deletion is requested, because every finder excludes soft-deleted rows
+and the account has to remain findable to be recovered. The restriction is
+enforced in `SecurityConfiguration`: the access token carries a
+`deletion_pending` claim, a closing account is not granted `ACCOUNT_ACTIVE`, and
+`anyRequest()` requires it. Stated as an authority the account *has* rather than
+a flag it lacks, so that a missing claim denies rather than allows.
+
+Sessions are revoked when deletion is requested and stay revoked after a
+cancellation. The user has just proved they can sign in; the other devices have
+not.
+
+**After the grace period the account is anonymised, not deleted.** The row
+survives with its identifier and its foreign keys intact, because "pledge #123
+was made by user X" has to stay true after X leaves. The email, name, slug,
+avatar, and biography are overwritten; the password credential and every
+verification token are deleted; the sessions keep their timings and lose their
+IP addresses and user agents.
+
+**The address is released by anonymisation** and not before. Holding it in
+reserve permanently would mean retaining the address — or a hash of it, which
+for an enumerable space is the same thing — in order to prove we no longer have
+it.
+
+**The job is `@Scheduled`, hourly, and belongs on the durable scheduler**
+(#134). It is safe on more than one instance: the row is locked before the
+decision, so one caller does the work and the rest find it done. Each account is
+its own transaction, so a failure stalls one account rather than the batch. Under
+the `test` profile the cron is `-`, and the tests call
+`AccountAnonymisationJob.anonymiseDueAccounts(Instant)` with the moment they
+want to test instead of waiting thirty days.
+
+**The export contains no credentials.** Not the password hash, not the hash of
+any refresh or verification token. An export is a copy of what we know about
+somebody, not a copy of their keys, and a password hash is the one field here
+worth cracking because people reuse passwords. The rest of the security history
+*is* included, because it is the part that answers "was somebody else in my
+account".
+
+`AccountSecurity` is an interface in `user` implemented in `auth`. Closing an
+account needs a password check, session revocation, and credential destruction,
+all of which live in `auth` — but `auth` already depends on `user`, so a call the
+other way would be a cycle. The dependency is inverted instead.
 
 ---
 

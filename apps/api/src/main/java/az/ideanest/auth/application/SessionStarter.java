@@ -54,12 +54,16 @@ public class SessionStarter {
      * @param deviceLabel what the user will see in their device list
      * @param userAgent recorded for the same reason
      * @param ipAddress recorded so that an unexpected session can be recognised
+     * @param standing what the token will say about the account: whether the
+     *     address is proven, and whether a deletion is pending. A record rather
+     *     than two booleans in a row, which are eventually passed in the wrong
+     *     order with nothing to say so
      * @param twoFactorProved whether a second factor was entered for this
      *     sign-in, minutes ago at most
      */
     public record NewSession(
             UUID userId,
-            boolean emailVerified,
+            AccessTokenIssuer.AccountStanding standing,
             String deviceLabel,
             String userAgent,
             String ipAddress,
@@ -82,11 +86,7 @@ public class SessionStarter {
         refreshTokens.save(RefreshToken.issue(session.getId(), SecureTokens.hash(refreshToken), now, expiresAt));
 
         IssuedAccessToken accessToken = accessTokens.issue(
-                request.userId(),
-                session.getId(),
-                request.emailVerified(),
-                request.twoFactorProved(),
-                now);
+                request.userId(), session.getId(), request.standing(), request.twoFactorProved(), now);
 
         return new IssuedTokens(
                 accessToken.value(), accessToken.expiresAt(), refreshToken, expiresAt, session.getId());

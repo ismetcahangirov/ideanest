@@ -20,6 +20,13 @@ import java.util.UUID;
 @Table(name = "users")
 public class User {
 
+    /**
+     * What an anonymised account is called. Fixed rather than blank: {@code name}
+     * is {@code NOT NULL} and is rendered next to retained records, and "" there
+     * reads as a bug rather than as a person who left.
+     */
+    public static final String ANONYMOUS_NAME = "Deleted account";
+
     @Id
     @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
@@ -55,6 +62,15 @@ public class User {
 
     @Column(name = "deleted_at")
     private Instant deletedAt;
+
+    @Column(name = "deletion_requested_at")
+    private Instant deletionRequestedAt;
+
+    @Column(name = "deletion_scheduled_at")
+    private Instant deletionScheduledAt;
+
+    @Column(name = "anonymised_at")
+    private Instant anonymisedAt;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
@@ -99,6 +115,80 @@ public class User {
 
     public boolean isDeleted() {
         return deletedAt != null;
+    }
+
+    /**
+     * Starts the grace period.
+     *
+     * <p>Deliberately does <em>not</em> set {@code deletedAt}. The account stays
+     * findable, because the way back is to sign in and cancel, and every finder
+     * in this module excludes soft-deleted rows — soft-deleting here would make
+     * the recovery the grace period exists for impossible.
+     *
+     * <p>Asking twice keeps the first date. A client that retries would
+     * otherwise push the deletion further away every time it did, and the date
+     * the user was told would quietly stop being true.
+     */
+    public void requestDeletion(Instant requestedAt, Instant scheduledFor) {
+        if (this.deletionRequestedAt == null) {
+            this.deletionRequestedAt = requestedAt;
+            this.deletionScheduledAt = scheduledFor;
+        }
+    }
+
+    /** Withdraws the request. Nothing has been overwritten yet, so this is a complete recovery. */
+    public void cancelDeletion() {
+        this.deletionRequestedAt = null;
+        this.deletionScheduledAt = null;
+    }
+
+    public boolean isDeletionPending() {
+        return deletionRequestedAt != null && anonymisedAt == null;
+    }
+
+    public boolean isAnonymised() {
+        return anonymisedAt != null;
+    }
+
+    public boolean isAnonymisationDue(Instant now) {
+        return isDeletionPending() && !now.isBefore(deletionScheduledAt);
+    }
+
+    /**
+     * Overwrites everything that identifies the person, in place.
+     *
+     * <p>Not a delete. A pledge is a financial record, and "pledge #123 was made
+     * by user X" has to stay true after X leaves or the ledger stops
+     * reconciling; every one of those rows is a foreign key to this one. So the
+     * row survives and its contents do not.
+     *
+     * <p>The address becomes a {@code .invalid} one — RFC 2606 reserves that
+     * suffix and it can never resolve, so no queue, retry, or report can deliver
+     * to it by accident. The slug is replaced rather than blanked because it is
+     * {@code NOT NULL} and unique, and because a public profile URL that still
+     * reads the person's name is not anonymised.
+     *
+     * <p>Doing this twice is a no-op, which is what makes the job that calls it
+     * safe to run again after a crash.
+     */
+    public void anonymise(Instant at) {
+        if (this.anonymisedAt != null) {
+            return;
+        }
+        String marker = id.toString().replace("-", "");
+        this.email = EmailAddress.of("deleted-" + marker + "@anonymised.invalid");
+        this.name = ANONYMOUS_NAME;
+        this.slug = "deleted-" + marker;
+        this.avatarUrl = null;
+        this.bio = null;
+        // Cleared with the address it referred to. Kept, it would say that some
+        // address we no longer hold was once proven, which is a fact about a
+        // person we have just finished forgetting.
+        this.emailVerifiedAt = null;
+        // locale and currency stay. Neither identifies anybody, and currency is
+        // the unit the retained financial rows are denominated in.
+        this.anonymisedAt = at;
+        this.deletedAt = at;
     }
 
     public UUID getId() {
@@ -159,6 +249,18 @@ public class User {
 
     public Instant getDeletedAt() {
         return deletedAt;
+    }
+
+    public Instant getDeletionRequestedAt() {
+        return deletionRequestedAt;
+    }
+
+    public Instant getDeletionScheduledAt() {
+        return deletionScheduledAt;
+    }
+
+    public Instant getAnonymisedAt() {
+        return anonymisedAt;
     }
 
     public Instant getCreatedAt() {
