@@ -54,19 +54,34 @@ describe('EditorShell', () => {
   });
 
   /*
-   * The rewards, pre-launch and review routes belong to #34, #39 and #37. A
-   * disabled tab says "not finished yet"; a stub page would leave the creator
-   * unable to tell that from "broken". Rewards is the example because it is the
-   * next one to be built, so this assertion moves along the list as the epic
-   * lands — the loop below is what covers all five without being rewritten.
+   * The pre-launch and review routes belong to #39 and #37. A disabled tab says
+   * "not finished yet"; a stub page would leave the creator unable to tell that
+   * from "broken". Pre-launch is the example because it is the next one to be
+   * built — the example moves along the list as the epic lands, which is why
+   * the loop below derives everything from EDITOR_TABS instead. (#34 moved it
+   * here from Rewards when the rewards route shipped.)
    */
   it('renders a section whose route does not exist as unavailable, not as a link', () => {
     renderShell();
 
-    const rewards = screen.getByRole('button', { name: /Rewards/ });
-    expect(rewards).toHaveAttribute('aria-disabled', 'true');
-    expect(rewards).toHaveAccessibleName('Rewards, not available yet');
-    expect(screen.queryByRole('link', { name: /Rewards/ })).not.toBeInTheDocument();
+    const prelaunch = screen.getByRole('button', { name: /Pre-launch/ });
+    expect(prelaunch).toHaveAttribute('aria-disabled', 'true');
+    expect(prelaunch).toHaveAccessibleName('Pre-launch, not available yet');
+    expect(screen.queryByRole('link', { name: /Pre-launch/ })).not.toBeInTheDocument();
+  });
+
+  /*
+   * The counterpart, so the two halves of `available` are both pinned: a
+   * section whose route exists is a real link, with an address that can be
+   * bookmarked and opened in a new tab.
+   */
+  it('renders a section whose route exists as a link to it', () => {
+    renderShell();
+
+    expect(screen.getByRole('link', { name: 'Rewards' })).toHaveAttribute(
+      'href',
+      '/projects/project-1/edit/rewards',
+    );
   });
 
   /*
