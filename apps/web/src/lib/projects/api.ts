@@ -1,4 +1,4 @@
-import { authorizedFetch } from '../api/client';
+import { authorizedFetch, publicFetch } from '../api/client';
 import { errorFrom } from '../api/problem';
 import type { Money } from '../money';
 import type { StoryDocument } from './story';
@@ -356,12 +356,123 @@ export async function restoreStoryVersion(
 }
 
 /* -------------------------------------------------------------------------
+ * Pre-launch and launch reminders — #39
+ *
+ * THREE OF THESE FOUR NEED NO SESSION, which is the whole point of the feature:
+ * a pre-launch page collects followers from people who have not registered, and
+ * asking them to sign in first is how the list stays empty. They go through
+ * `publicFetch` rather than `authorizedFetch` for that reason — see the comment
+ * on it for what changes when the visitor happens to be signed in anyway.
+ *
+ * `openPrelaunch` is the exception and is the creator's: it publishes the
+ * campaign, and there is no way back (docs/architecture.md §6.1 has no
+ * PRELAUNCH -> DRAFT edge).
+ * ---------------------------------------------------------------------- */
+
+/**
+ * A campaign as its public pre-launch page shows it.
+ *
+ * DELIBERATELY NARROW, and the server draws the same line. There is no creator,
+ * no goal, no story, and no category here: `GET /v1/projects/{creatorSlug}/
+ * {projectSlug}` is the public project page and it belongs to another epic, so
+ * nothing in this issue may decide its shape by accident. What is left is the
+ * promise a pre-launch page makes — read from the same columns the campaign page
+ * will use, so the page somebody followed and the campaign it becomes cannot
+ * disagree.
+ */
+export interface PrelaunchPage {
+  id: string;
+  slug: string;
+  /** `PRELAUNCH` or `SCHEDULED`; the endpoint 404s for every other state. */
+  state: ProjectState;
+  title: string;
+  blurb?: string | null;
+  coverImage?: CoverImage | null;
+  /** ISO 8601, UTC. */
+  scheduledLaunchAt?: string | null;
+  /**
+   * How many people have asked to be told. The one number that makes a
+   * pre-launch page work: a campaign with no pledges yet has nothing else to
+   * show that anybody else cares about it.
+   */
+  followerCount: number;
+}
+
+/** The answer to "tell me when this opens". */
+export interface RemindResult {
+  /** Always true after a successful call. */
+  following: boolean;
+  followerCount: number;
+}
+
+/**
+ * Opens the pre-launch page: `DRAFT` → `PRELAUNCH`.
+ *
+ * An action with consequences and no undo, so the interface asks first. It is a
+ * transition like `submit` and `launch`, so it answers with the whole
+ * `ProjectEdit` and the caller takes that as the new truth.
+ */
+export async function openPrelaunch(id: string, signal?: AbortSignal): Promise<ProjectEdit> {
+  return readProject(
+    await authorizedFetch(`/v1/projects/${encodeURIComponent(id)}/prelaunch`, {
+      method: 'POST',
+      signal,
+    }),
+  );
+}
+
+/** The public pre-launch page. 404 for a campaign that has not opened one. */
+export async function getPrelaunchPage(id: string, signal?: AbortSignal): Promise<PrelaunchPage> {
+  const response = await publicFetch(`/v1/projects/${encodeURIComponent(id)}/prelaunch`, { signal });
+  if (!response.ok) throw await errorFrom(response);
+  return (await response.json()) as PrelaunchPage;
+}
+
+/**
+ * Asks to be told when the campaign opens.
+ *
+ * The address is omitted when the visitor is signed in: the service uses their
+ * account's verified address, and sending one from here would be sending an
+ * address the client chose over one registration proved.
+ */
+export async function remindMe(
+  id: string,
+  input: { email?: string } = {},
+  signal?: AbortSignal,
+): Promise<RemindResult> {
+  const response = await publicFetch(`/v1/projects/${encodeURIComponent(id)}/remind`, {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify(input),
+    signal,
+  });
+  if (!response.ok) throw await errorFrom(response);
+  return (await response.json()) as RemindResult;
+}
+
+/**
+ * Takes the caller off the list.
+ *
+ * `token` is the credential from an unsubscribe link, for somebody with no
+ * account; a signed-in visitor needs neither it nor anything else. Answers 204
+ * whether or not there was anything to remove — a response that said would let
+ * anybody ask whether a given person follows a given campaign.
+ */
+export async function forgetMe(id: string, token?: string, signal?: AbortSignal): Promise<void> {
+  const query = token === undefined ? '' : `?token=${encodeURIComponent(token)}`;
+  const response = await publicFetch(`/v1/projects/${encodeURIComponent(id)}/remind${query}`, {
+    method: 'DELETE',
+    signal,
+  });
+  if (!response.ok) throw await errorFrom(response);
+}
+
+/* -------------------------------------------------------------------------
  * Still to come. Each of these is a function in THIS module, not a new client.
  *
  *   #32 items and reward tiers   POST/PATCH/DELETE /v1/items, /v1/rewards,
  *                                reorder, duplicate, shipping rules
  *   #37 checklist                GET /v1/projects/{id}/checklist
- *   #39 pre-launch and follows   POST/DELETE /v1/projects/{id}/prelaunch
  *   #31 submit, launch, cancel   POST /v1/projects/{id}/submit | launch | cancel
  *
  * The story, risks, and cover fields of `ProjectPatch` are already here because

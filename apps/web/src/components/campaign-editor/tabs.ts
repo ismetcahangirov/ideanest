@@ -39,7 +39,7 @@ export const EDITOR_TABS: readonly EditorTab[] = [
   { key: 'basics', label: 'Basics', segment: 'basics', available: true, issue: 33 },
   { key: 'rewards', label: 'Rewards', segment: 'rewards', available: false, issue: 34 },
   { key: 'story', label: 'Story', segment: 'story', available: true, issue: 35 },
-  { key: 'prelaunch', label: 'Pre-launch', segment: 'prelaunch', available: false, issue: 39 },
+  { key: 'prelaunch', label: 'Pre-launch', segment: 'prelaunch', available: true, issue: 39 },
   { key: 'review', label: 'Review', segment: 'review', available: false, issue: 37 },
 ];
 
