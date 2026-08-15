@@ -315,8 +315,22 @@ duration (1–60 days), scheduled launch, late-pledge toggle, pre-launch page.
 **Rewards** — atomic **items** first, then **tiers** composed from them:
 title, description, price, included items with quantities, images, estimated
 delivery, quantity limit, shipping scope, per-country rates, early-bird windows,
-featured and secret flags, drag-to-reorder, duplication. **Add-ons** are items
+featured and secret flags, reordering, duplication. **Add-ons** are items
 sold alongside a tier.
+
+> **Two notes on how the editor delivers this** (#34).
+>
+> **Reordering is a pair of move controls per tier, not dragging.** Dragging is
+> unreachable by keyboard, by switch control, and on every touch device, and an
+> accessibility failure is a build error rather than a nicety (CLAUDE.md §2).
+> Each control names the tier it moves and the move is announced with its new
+> position. Pointer dragging remains a layer that can be added on top of that;
+> it is not a substitute for it.
+>
+> **A tier's images are its items' images.** `reward_tiers` has no image column
+> and neither does its response — §7.2 puts `image_url` on `items` — so the
+> pictures a backer sees for a tier are the pictures of what is in it. Both
+> become references into the media pipeline (§13) when there is one.
 
 **Story** — rich text editor (headings, emphasis, lists, quotes, rules), inline
 media, third-party embeds, section headings that generate anchor navigation, a
@@ -581,9 +595,54 @@ individual agreement can differ without a deployment.
 > constraint — a count across rows cannot be one, and a trigger or a denormalised
 > counter costs more than a limit on the length of a reward list is worth.
 >
-> **Immutability after launch is not yet enforced** (#36 owns it, together with the
-> `lockedFields` a client reads it from). A tier's price and a campaign's goal can be
-> edited in any state today, except where the database refuses the row outright.
+> **Immutability after launch is one table, in the domain.** `ProjectEditLocks` maps
+> every state of §6.1 to the fields §5.3 has frozen in it, and the two services that
+> write — `ProjectEditingService` for a campaign, `RewardService` for a tier — ask it
+> rather than each deciding for themselves. Written twice, the rule becomes two rules,
+> and the first time one of them is extended a campaign's goal and its reward prices
+> disagree about when a campaign counts as launched.
+>
+> **Launched is a state, not a timestamp.** The lock applies from `LIVE` onwards —
+> the same nine states `projects_public_states_are_fully_specified` calls the ones
+> the public has seen. `launched_at` would answer almost the same question; the state
+> was chosen because it is what the client already reads beside `lockedFields`, what
+> the audit trail records, and what keeps the rule a function of one enum and its test
+> a unit test with no database in it. An **ended** campaign therefore locks exactly
+> what a live one locks and keeps it locked: a cancelled or unsuccessful campaign is
+> not editable as though it were a draft, because its goal, its deadline, and its
+> prices are the record of what backers were asked for. It deliberately locks no
+> *more* — the title, the story, and the risks section stay editable, because §5.5
+> obliges a creator to keep backers informed of delays and the campaign page is where
+> they do it. `REJECTED` is the one terminal state that locks nothing: it was never
+> public, nobody pledged to it, and nothing follows it.
+>
+> **The deadline is frozen through the two fields it is made of.** `deadline` is
+> computed once, at launch, from `launched_at` and `duration_days`; freezing it means
+> refusing `durationDays` and `scheduledLaunchAt` after launch.
+>
+> **A refused edit is `409`, not `400`.** `PROJECT_FIELD_LOCKED` and
+> `REWARD_FIELD_LOCKED`, each with the field and the campaign's state in `meta`. A
+> 400 says "fix the value" and the value is fine — 6000 is a perfectly good goal, and
+> it would have been accepted an hour earlier. What refuses it is the state the
+> campaign is in, frequently the state a scheduled launch put it in while the editor
+> was open, which is the same reasoning that makes a forbidden transition a 409. A
+> present key is a write under merge-patch, so mentioning a locked field is refused
+> even when the value is unchanged; comparing values instead would make the rule
+> depend on whether a client sent `5000` or `5000.00`.
+>
+> **`lockedFields` is the same table, read forwards.** Every editor response carries
+> the names — `goal`, `durationDays`, `scheduledLaunchAt` — as the keys of the `PATCH`
+> body, so a client disables its own inputs without a rule of its own. A tier's
+> `price` is frozen by the same table and is deliberately absent from that list: it is
+> not a field of that body, and a client told to disable an input it does not have
+> would eventually show one.
+>
+> **The quantity lock is directional.** Raising a limit after launch is permitted;
+> lowering it is `409`. Unlimited counts as the largest limit there is, so clearing a
+> limit on a live tier is a raise and adding one where there was none is a reduction.
+> The pre-launch floor — `claimed_quantity + reserved_quantity` — is a different rule
+> and still answers `400`, because a limit below what is taken is wrong in every
+> state.
 
 ### 5.4 Prohibited content
 

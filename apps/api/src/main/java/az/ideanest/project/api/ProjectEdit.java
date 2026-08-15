@@ -28,10 +28,14 @@ import java.util.UUID;
  * @param goal the funding target, as an amount and a currency. The amount is a
  *     string on the wire — §10.3, and {@link Money} for why
  * @param lockedFields which fields may no longer be changed, given the state the
- *     campaign is in. <strong>Always empty here.</strong> §5.3 freezes the goal
- *     and the deadline after launch, and #36 is what computes that; the field
- *     exists from the start so that the client which reads it does not have to be
- *     rewritten when it starts being populated
+ *     campaign is in. Empty until launch; from {@code LIVE} onwards it lists
+ *     {@code goal}, {@code durationDays}, and {@code scheduledLaunchAt}, which §5.3
+ *     freezes because §5.1 resolves a campaign against them. The names are the keys
+ *     of the {@code PATCH} body, so a client matches them directly against its own
+ *     inputs and disables them; a client that does not is answered
+ *     {@code 409 PROJECT_FIELD_LOCKED} when it tries. A reward's price is frozen by
+ *     the same rule and is deliberately not listed here — it is not a field of this
+ *     body. See {@code ProjectEditLocks}
  */
 @JsonInclude(JsonInclude.Include.ALWAYS)
 public record ProjectEdit(

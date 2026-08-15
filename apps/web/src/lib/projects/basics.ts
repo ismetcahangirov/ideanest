@@ -285,7 +285,7 @@ export function validateBasics(draft: BasicsDraft, context: ValidationContext = 
  * ONE FIELD AT A TIME, and never the whole draft. `PATCH /v1/projects/{id}` has
  * merge-patch semantics: every key present is written. A patch built from the
  * entire form would rewrite the goal every time the title changed, which turns
- * a locked field (#36) into a 409 for no reason and, worse, would let a stale
+ * a locked field (§5.3) into a 409 for no reason and, worse, would let a stale
  * value in an untouched control overwrite an edit made in another tab.
  *
  * `null` versus an absent key is the difference between clearing a field and

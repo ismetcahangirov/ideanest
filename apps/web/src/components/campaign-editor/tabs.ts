@@ -15,8 +15,10 @@
  *   — "this is not finished yet" — is exactly what a disabled tab says.
  *
  *   A stub page also has to exist as a file. `apps/web/src/app/projects/[id]/
- *   edit/rewards/page.tsx` belongs to #34, and creating it here to be deleted
- *   there is a merge conflict in a file this issue does not own.
+ *   edit/prelaunch/page.tsx` belongs to #39, and creating it here to be
+ *   deleted there is a merge conflict in a file this issue does not own.
+ *   (#34 flipped `rewards` to true and added its route the same way, which is
+ *   what the `available` flag is for.)
  *
  * The tab stays focusable while disabled: a keyboard user is told the section
  * exists and is not yet available, which is more useful than a control that
@@ -37,7 +39,7 @@ export interface EditorTab {
 
 export const EDITOR_TABS: readonly EditorTab[] = [
   { key: 'basics', label: 'Basics', segment: 'basics', available: true, issue: 33 },
-  { key: 'rewards', label: 'Rewards', segment: 'rewards', available: false, issue: 34 },
+  { key: 'rewards', label: 'Rewards', segment: 'rewards', available: true, issue: 34 },
   { key: 'story', label: 'Story', segment: 'story', available: true, issue: 35 },
   { key: 'prelaunch', label: 'Pre-launch', segment: 'prelaunch', available: false, issue: 39 },
   { key: 'review', label: 'Review', segment: 'review', available: true, issue: 37 },

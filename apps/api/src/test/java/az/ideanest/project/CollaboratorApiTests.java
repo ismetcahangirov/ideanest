@@ -11,7 +11,7 @@ import az.ideanest.shared.EmailAddress;
 import az.ideanest.shared.SecureTokens;
 import az.ideanest.support.AbstractIntegrationTest;
 import az.ideanest.support.AdjustableClock;
-import az.ideanest.support.CampaignFixtures;
+import az.ideanest.support.Campaigns;
 import az.ideanest.support.RecordingCollaboratorInvitationNotifier;
 import az.ideanest.user.infrastructure.UserRepository;
 import java.time.Duration;
@@ -197,7 +197,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
                 .getBody();
         UUID id = UUID.fromString((String) project.get("id"));
 
-        patch("/v1/projects/" + id, creator.accessToken(), CampaignFixtures.completeBasics(categories));
+        patch("/v1/projects/" + id, creator.accessToken(), Campaigns.completeBasics(categories));
         return id;
     }
 

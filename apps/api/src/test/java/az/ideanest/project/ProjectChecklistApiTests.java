@@ -9,7 +9,7 @@ import az.ideanest.project.infrastructure.ProjectStateTransitionRepository;
 import az.ideanest.project.infrastructure.SubcategoryRepository;
 import az.ideanest.shared.EmailAddress;
 import az.ideanest.support.AbstractIntegrationTest;
-import az.ideanest.support.CampaignFixtures;
+import az.ideanest.support.Campaigns;
 import az.ideanest.user.infrastructure.UserRepository;
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
@@ -416,7 +416,7 @@ class ProjectChecklistApiTests extends AbstractIntegrationTest {
 
     private Map<String, Object> submittableDraft(Account creator) {
         Map<String, Object> project = draft(creator);
-        return patch(idOf(project), creator, CampaignFixtures.completeBasics(categories)).getBody();
+        return patch(idOf(project), creator, Campaigns.completeBasics(categories)).getBody();
     }
 
     /** A story that satisfies the length rule and holds a picture, so the advisory passes too. */
