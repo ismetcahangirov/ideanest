@@ -1,0 +1,588 @@
+package az.ideanest.reward.application;
+
+import az.ideanest.reward.domain.RewardTier;
+import az.ideanest.reward.domain.RewardTierItem;
+import az.ideanest.reward.domain.ShippingRule;
+import az.ideanest.reward.domain.ShippingType;
+import az.ideanest.reward.infrastructure.ItemRepository;
+import az.ideanest.reward.infrastructure.RewardTierItemRepository;
+import az.ideanest.reward.infrastructure.RewardTierRepository;
+import az.ideanest.reward.infrastructure.ShippingRuleRepository;
+import az.ideanest.shared.Money;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Reward tiers: writing them, composing them from items, ordering them, pricing
+ * their shipping, and copying them.
+ *
+ * <p><strong>Validation is here as well as in the database.</strong> Every rule below
+ * is also a check constraint in {@code V7}, for the reason {@code ItemService} gives.
+ * The cross-field rules are checked once against the finished tier rather than field
+ * by field, because a single patch may legitimately fix two at the same time — a body
+ * that clears {@code isSecret} and sets {@code isFeatured} is a valid edit, and a
+ * per-field check would accept or refuse it depending on which field it happened to
+ * read first.
+ *
+ * <p><strong>What is not here.</strong>
+ *
+ * <ul>
+ *   <li><strong>Reservation.</strong> #51 owns it. Nothing in this class writes
+ *       {@code claimed_quantity} or {@code reserved_quantity}; the entity does not
+ *       expose them for writing and the columns are not insertable. What this
+ *       migration and this service provide is the constraint that work will rely on.
+ *   <li><strong>Which fields are frozen after launch.</strong> §5.3 makes a reward's
+ *       price immutable once a campaign is live and permits a quantity to be raised
+ *       but not lowered below what is claimed. The second half is enforced here,
+ *       because the database refuses the row either way and a creator deserves a 400
+ *       rather than a 500. The first half is #36, along with the {@code lockedFields}
+ *       a client reads it from — and this service deliberately does not pre-empt it:
+ *       a tier's price can be edited in any state today.
+ * </ul>
+ */
+@Service
+public class RewardService {
+
+    /** §5.3: a campaign has between zero and a hundred tiers. */
+    private static final int TIER_LIMIT = 100;
+
+    /** Also {@code reward_tiers_title_length}. A tier title is a label, not a paragraph. */
+    private static final int TITLE_MAX = 80;
+
+    /**
+     * The only currency the platform settles in.
+     *
+     * <p>Duplicated from {@code ProjectEditingService}, and deliberately not shared.
+     * The real answer is the campaign's own {@code currency} column, which this
+     * module cannot read — {@code projects} belongs to another module and
+     * {@code ProjectAccess} returns a type this package may not name. When a second
+     * currency exists, both constants are replaced by that comparison, and until then
+     * refusing anything else is what stops a tier being priced in a currency the
+     * campaign cannot collect.
+     */
+    private static final String SUPPORTED_CURRENCY = "AZN";
+
+    /** Where a tier with no explicit position goes: after the last one. */
+    private static final int FIRST_SORT_ORDER = 0;
+
+    private final RewardTierRepository rewards;
+    private final RewardTierItemRepository compositions;
+    private final ShippingRuleRepository shippingRules;
+    private final ItemRepository items;
+    private final RewardAccess access;
+
+    public RewardService(
+            RewardTierRepository rewards,
+            RewardTierItemRepository compositions,
+            ShippingRuleRepository shippingRules,
+            ItemRepository items,
+            RewardAccess access) {
+        this.rewards = rewards;
+        this.compositions = compositions;
+        this.shippingRules = shippingRules;
+        this.items = items;
+        this.access = access;
+    }
+
+    /**
+     * The campaign's whole reward list, as its creator sees it.
+     *
+     * <p><strong>Secret tiers included.</strong> This is the creator's projection: a
+     * tier they cannot see in their own editor is a tier they cannot edit or withdraw,
+     * and the reason it is secret is that the <em>public</em> list omits it. That
+     * public list is a different response, owned by the campaign page.
+     */
+    @Transactional(readOnly = true)
+    public List<RewardDetail> list(UUID projectId, UUID accountId) {
+        access.requireEditableProject(projectId, accountId);
+        return detailsOf(rewards.findByProjectIdOrderBySortOrderAscCreatedAtAsc(projectId));
+    }
+
+    @Transactional
+    public RewardDetail create(UUID projectId, UUID accountId, NewReward draft) {
+        access.requireEditableProject(projectId, accountId);
+        requireRoomForAnotherTier(projectId);
+
+        Money price = requirePrice(draft.price());
+        RewardTier tier = RewardTier.of(
+                projectId, requireTitle(draft.title()), price.amount(), price.currency(), nextSortOrder(projectId));
+
+        tier.setDescription(blankAsNull(draft.description()));
+        tier.setEstimatedDelivery(draft.estimatedDelivery());
+        tier.setLimitQuantity(withinLimit(tier, draft.limitQuantity()));
+        tier.setShippingType(draft.shippingType() == null ? ShippingType.NONE : draft.shippingType());
+        tier.setEarlyBird(draft.earlyBird());
+        tier.setFeatured(draft.featured());
+        tier.setAddon(draft.addon());
+        applyAvailability(tier, draft.availableFrom(), draft.availableUntil());
+        if (draft.secret()) {
+            tier.makeSecret();
+        }
+
+        requireConsistent(tier);
+        RewardTier saved = rewards.save(tier);
+        replaceComposition(saved, draft.items());
+
+        return detailOf(saved);
+    }
+
+    /**
+     * Applies a partial edit.
+     *
+     * <p>{@code items} is the one field that is a collection: present means "this is
+     * the composition now", so it is replaced wholesale rather than merged. Absent
+     * leaves it alone, which is what makes autosaving the title safe.
+     */
+    @Transactional
+    public RewardDetail edit(UUID rewardId, UUID accountId, RewardPatch patch) {
+        RewardTier tier = access.requireEditableReward(rewardId, accountId);
+
+        patch.title().ifPresent(title -> tier.setTitle(requireTitle(title)));
+        patch.description().ifPresent(description -> tier.setDescription(blankAsNull(description)));
+        patch.price().ifPresent(price -> {
+            Money accepted = requirePrice(price);
+            tier.setPrice(accepted.amount(), accepted.currency());
+        });
+        patch.estimatedDelivery().ifPresent(tier::setEstimatedDelivery);
+        patch.limitQuantity().ifPresent(limit -> tier.setLimitQuantity(withinLimit(tier, limit)));
+        patch.shippingType()
+                .ifPresent(type -> tier.setShippingType(type == null ? ShippingType.NONE : type));
+        patch.earlyBird().ifPresent(early -> tier.setEarlyBird(requireBoolean("isEarlyBird", early)));
+        patch.featured().ifPresent(featured -> tier.setFeatured(requireBoolean("isFeatured", featured)));
+        patch.addon().ifPresent(addon -> tier.setAddon(requireBoolean("isAddon", addon)));
+        patch.secret().ifPresent(secret -> {
+            if (requireBoolean("isSecret", secret)) {
+                tier.makeSecret();
+            } else {
+                tier.makePublic();
+            }
+        });
+
+        if (patch.changesAvailability()) {
+            Instant from = patch.availableFrom().isPresent()
+                    ? patch.availableFrom().value()
+                    : tier.getAvailableFrom();
+            Instant until = patch.availableUntil().isPresent()
+                    ? patch.availableUntil().value()
+                    : tier.getAvailableUntil();
+            applyAvailability(tier, from, until);
+        }
+
+        requireConsistent(tier);
+
+        if (patch.items().isPresent()) {
+            List<RewardContent> contents =
+                    patch.items().value() == null ? List.of() : patch.items().value();
+            replaceComposition(tier, contents);
+        }
+
+        return detailOf(tier);
+    }
+
+    /**
+     * Removes a tier, unless somebody has claimed it. §5.3, without exception.
+     *
+     * <p>The composition and the shipping rates go with it, by cascade in the
+     * database rather than by two more statements here: neither has any meaning
+     * without the tier, and a cascade cannot be forgotten by a future caller.
+     */
+    @Transactional
+    public void delete(UUID rewardId, UUID accountId) {
+        RewardTier tier = access.requireEditableReward(rewardId, accountId);
+        if (tier.hasBackers()) {
+            throw new RewardHasBackersException(rewardId, tier.getClaimedQuantity());
+        }
+        rewards.delete(tier);
+    }
+
+    /**
+     * Copies a tier, appended to the end of the list.
+     *
+     * <p>What is copied is what the creator wrote: the wording, the price, the
+     * composition, and the shipping rates — the rates especially, because re-entering
+     * a table of thirty countries is the reason a creator reaches for duplicate in the
+     * first place.
+     *
+     * <p>What is not copied is what backers did. The claimed and reserved counts are
+     * not insertable columns, so the copy takes the database's zeroes; that is
+     * structural rather than a rule this method remembers to apply. See
+     * {@link RewardTier#duplicateAt(int)} for why a secret tier gets a new token.
+     */
+    @Transactional
+    public RewardDetail duplicate(UUID rewardId, UUID accountId) {
+        RewardTier original = access.requireEditableReward(rewardId, accountId);
+        requireRoomForAnotherTier(original.getProjectId());
+
+        RewardTier copy = rewards.save(original.duplicateAt(nextSortOrder(original.getProjectId())));
+
+        List<RewardTierItem> copiedContents = compositions.findByRewardTier(rewardId).stream()
+                .map(content -> RewardTierItem.of(
+                        copy.getProjectId(), copy.getId(), content.getItemId(), content.getQuantity()))
+                .toList();
+        compositions.saveAll(copiedContents);
+
+        List<ShippingRule> copiedRules = shippingRules.findByRewardTier(rewardId).stream()
+                .map(rule -> ShippingRule.of(
+                        copy.getId(), rule.getCountryCode(), rule.getAmount(), rule.getAdditionalItemAmount()))
+                .toList();
+        shippingRules.saveAll(copiedRules);
+
+        return new RewardDetail(copy, copiedContents, copiedRules);
+    }
+
+    /**
+     * Puts the campaign's tiers in the order given.
+     *
+     * <p><strong>Every tier, exactly once, or nothing.</strong> See
+     * {@link RewardOrderIncompleteException}: a partial list leaves the tiers it omits
+     * at the positions they already had, so they interleave with the ones that moved
+     * and the creator gets an order nobody asked for.
+     *
+     * <p>Positions are rewritten from zero rather than adjusted. Renumbering the whole
+     * list makes the stored order exactly the list the client sent, so two clients
+     * that reorder concurrently produce one of the two orders rather than a blend of
+     * both.
+     */
+    @Transactional
+    public List<RewardDetail> reorder(UUID projectId, UUID accountId, List<UUID> rewardIds) {
+        access.requireEditableProject(projectId, accountId);
+
+        List<RewardTier> tiers = rewards.findByProjectIdOrderBySortOrderAscCreatedAtAsc(projectId);
+        Map<UUID, RewardTier> byId = tiers.stream().collect(Collectors.toMap(RewardTier::getId, Function.identity()));
+
+        List<UUID> requested = rewardIds == null ? List.of() : rewardIds;
+        List<UUID> unexpected = new ArrayList<>();
+        Set<UUID> seen = new LinkedHashSet<>();
+        for (UUID rewardId : requested) {
+            // A repeat is as wrong as a stranger: it would give one tier two
+            // positions and leave another with none.
+            if (rewardId == null || !byId.containsKey(rewardId) || !seen.add(rewardId)) {
+                unexpected.add(rewardId);
+            }
+        }
+        List<UUID> missing =
+                tiers.stream().map(RewardTier::getId).filter(id -> !seen.contains(id)).toList();
+
+        if (!missing.isEmpty() || !unexpected.isEmpty()) {
+            throw new RewardOrderIncompleteException(missing, unexpected);
+        }
+
+        List<RewardTier> reordered = new ArrayList<>();
+        int position = FIRST_SORT_ORDER;
+        for (UUID rewardId : requested) {
+            RewardTier tier = byId.get(rewardId);
+            tier.setSortOrder(position++);
+            reordered.add(tier);
+        }
+
+        return detailsOf(reordered);
+    }
+
+    /**
+     * Replaces a tier's shipping rates with the set given.
+     *
+     * <p>Wholesale, because a rate table is read as a whole by whatever quotes from
+     * it: a country left out of the body is a country the creator has removed, and
+     * merging instead would leave them shipping somewhere they believe they no longer
+     * do. An empty set is therefore a legitimate request and clears the table.
+     *
+     * <p>A destination present in both the old and the new table keeps its row and is
+     * repriced. Deleting and reinserting it would be the same result in one more
+     * statement, and would have to be flushed between the halves — Hibernate orders
+     * inserts before deletes.
+     */
+    @Transactional
+    public RewardDetail replaceShippingRules(UUID rewardId, UUID accountId, List<ShippingRate> rates) {
+        RewardTier tier = access.requireEditableReward(rewardId, accountId);
+
+        if (!tier.getShippingType().isShipped()) {
+            // Rates for a tier that is not shipped are rates nothing will ever read,
+            // and a creator who entered them believes shipping is priced. §7.2 puts
+            // the scope on the tier; this is what keeps the two consistent.
+            throw new RewardFieldRejectedException(
+                    "shippingType",
+                    "Only a tier shipped domestically or internationally has per-country rates."
+                            + " Change the shipping scope first.");
+        }
+
+        Map<String, ShippingRule> existing = shippingRules.findByRewardTier(rewardId).stream()
+                .collect(Collectors.toMap(ShippingRule::getCountryCode, Function.identity()));
+
+        List<ShippingRule> result = new ArrayList<>();
+        Set<String> requested = new LinkedHashSet<>();
+        for (ShippingRate rate : rates == null ? List.<ShippingRate>of() : rates) {
+            ShippingRule candidate = rule(rewardId, rate);
+            if (!requested.add(candidate.getCountryCode())) {
+                throw new RewardFieldRejectedException(
+                        "rules", "Each destination appears once: " + candidate.getCountryCode() + " is listed twice.");
+            }
+
+            ShippingRule stored = existing.get(candidate.getCountryCode());
+            if (stored == null) {
+                result.add(shippingRules.save(candidate));
+            } else {
+                stored.reprice(candidate.getAmount(), candidate.getAdditionalItemAmount());
+                result.add(stored);
+            }
+        }
+
+        existing.forEach((country, stored) -> {
+            if (!requested.contains(country)) {
+                shippingRules.delete(stored);
+            }
+        });
+
+        return new RewardDetail(tier, compositions.findByRewardTier(rewardId), List.copyOf(result));
+    }
+
+    // ------------------------------------------------------------------
+    // Composition
+    // ------------------------------------------------------------------
+
+    /**
+     * Makes the tier contain exactly these items, in these quantities.
+     *
+     * <p>A diff rather than a delete-and-reinsert. An item that stays keeps its row
+     * and has its quantity changed, which leaves the composition's creation
+     * timestamps meaning what they say and avoids the ordering problem that
+     * delete-then-insert has inside one Hibernate flush.
+     *
+     * <p>Every identifier is checked against the campaign, so an item belonging to
+     * somebody else's campaign is a 400 naming it. The composite foreign key refuses
+     * the same row — that is what actually makes it impossible — and this is what
+     * makes the refusal answerable.
+     */
+    private void replaceComposition(RewardTier tier, List<RewardContent> contents) {
+        Map<UUID, Integer> desired = new LinkedHashMap<>();
+        for (RewardContent content : contents) {
+            if (content == null || content.itemId() == null) {
+                throw new RewardFieldRejectedException("items", "Each line of a reward names an item.");
+            }
+            if (content.quantity() < 1) {
+                throw new RewardFieldRejectedException(
+                        "items", "A reward contains at least one of every item it lists.");
+            }
+            if (desired.put(content.itemId(), content.quantity()) != null) {
+                // Two lines for one item would have to be summed to be read, and one
+                // of the two would eventually be edited alone.
+                throw new RewardFieldRejectedException(
+                        "items", "Each item appears once, with the quantity as its count.");
+            }
+        }
+
+        if (!desired.isEmpty()) {
+            Set<UUID> belonging = items.findByProjectIdAndIdIn(tier.getProjectId(), desired.keySet()).stream()
+                    .map(item -> item.getId())
+                    .collect(Collectors.toCollection(HashSet::new));
+            List<UUID> foreign =
+                    desired.keySet().stream().filter(id -> !belonging.contains(id)).toList();
+            if (!foreign.isEmpty()) {
+                throw new RewardFieldRejectedException(
+                        "items", "Those items are not part of this campaign: " + foreign + ".");
+            }
+        }
+
+        Map<UUID, RewardTierItem> existing = compositions.findByRewardTier(tier.getId()).stream()
+                .collect(Collectors.toMap(RewardTierItem::getItemId, Function.identity()));
+
+        desired.forEach((itemId, quantity) -> {
+            RewardTierItem stored = existing.get(itemId);
+            if (stored == null) {
+                compositions.save(RewardTierItem.of(tier.getProjectId(), tier.getId(), itemId, quantity));
+            } else {
+                stored.changeQuantityTo(quantity);
+            }
+        });
+
+        existing.forEach((itemId, stored) -> {
+            if (!desired.containsKey(itemId)) {
+                compositions.delete(stored);
+            }
+        });
+    }
+
+    // ------------------------------------------------------------------
+    // Assembling the response
+    // ------------------------------------------------------------------
+
+    private RewardDetail detailOf(RewardTier tier) {
+        return new RewardDetail(
+                tier, compositions.findByRewardTier(tier.getId()), shippingRules.findByRewardTier(tier.getId()));
+    }
+
+    /**
+     * A whole reward list with its compositions and rates, in three queries.
+     *
+     * <p>Not one query per tier. A campaign with forty tiers is eighty extra round
+     * trips on every load of the rewards tab, and an N+1 over a list this central is
+     * only noticed once there are enough sessions for it to matter.
+     */
+    private List<RewardDetail> detailsOf(List<RewardTier> tiers) {
+        if (tiers.isEmpty()) {
+            return List.of();
+        }
+
+        List<UUID> ids = tiers.stream().map(RewardTier::getId).toList();
+        Map<UUID, List<RewardTierItem>> contents = compositions.findByRewardTiers(ids).stream()
+                .collect(Collectors.groupingBy(RewardTierItem::getRewardTierId));
+        Map<UUID, List<ShippingRule>> rules = shippingRules.findByRewardTiers(ids).stream()
+                .collect(Collectors.groupingBy(ShippingRule::getRewardTierId));
+
+        return tiers.stream()
+                .map(tier -> new RewardDetail(
+                        tier,
+                        contents.getOrDefault(tier.getId(), List.of()),
+                        rules.getOrDefault(tier.getId(), List.of())))
+                .toList();
+    }
+
+    // ------------------------------------------------------------------
+    // Validation
+    // ------------------------------------------------------------------
+
+    /**
+     * The rules that involve more than one field, checked against the finished tier.
+     *
+     * <p>Each of these is also a check constraint. Reaching the database with one of
+     * them violated would be a 500 for a mistake with a perfectly good 400.
+     */
+    private static void requireConsistent(RewardTier tier) {
+        if (tier.isSecret() && tier.isFeatured()) {
+            // Featured means shown first; secret means not shown at all. A tier
+            // claiming both leaves the campaign page to guess.
+            throw new RewardFieldRejectedException(
+                    "isFeatured", "A secret reward is not shown on the page, so it cannot also be featured.");
+        }
+        if (tier.isEarlyBird() && tier.getAvailableUntil() == null && tier.getLimitQuantity() == null) {
+            // An early bird is early because it runs out. Without an end or a cap it
+            // is an ordinary tier with a label that hurries a backer for no reason.
+            throw new RewardFieldRejectedException(
+                    "isEarlyBird", "An early-bird reward needs either a closing date or a limited quantity.");
+        }
+    }
+
+    private static String requireTitle(String title) {
+        String trimmed = title == null ? "" : title.trim();
+        if (trimmed.isEmpty()) {
+            throw new RewardFieldRejectedException("title", "A reward needs a title.");
+        }
+        if (trimmed.length() > TITLE_MAX) {
+            throw new RewardFieldRejectedException("title", "That is longer than " + TITLE_MAX + " characters.");
+        }
+        return trimmed;
+    }
+
+    /**
+     * The price, which is an amount and a currency together.
+     *
+     * <p>Not clearable: a tier without a price is not something a backer can select.
+     * {@link Money} has already refused a third decimal place by the time this runs —
+     * silently rounding a creator's 19.995 is how a ledger stops reconciling.
+     */
+    private static Money requirePrice(Money price) {
+        if (price == null) {
+            throw new RewardFieldRejectedException("price", "A reward needs a price.");
+        }
+        if (price.amount().compareTo(BigDecimal.ZERO) <= 0) {
+            // §5.3 puts the real floor at the smallest chargeable amount, which is
+            // the payment provider's and belongs to configuration. Zero and below are
+            // not prices at all, and that much can be said here.
+            throw new RewardFieldRejectedException("price", "A reward price is more than zero.");
+        }
+        if (!SUPPORTED_CURRENCY.equals(price.currency())) {
+            throw new RewardFieldRejectedException(
+                    "price", "Campaigns are funded in " + SUPPORTED_CURRENCY + " for now.");
+        }
+        return price;
+    }
+
+    /**
+     * The quantity limit, if it is not below what has already been taken.
+     *
+     * <p>§5.3: a quantity may be raised freely and lowered only above the number
+     * already claimed. Reserved places count as taken — a reservation is somebody
+     * entering their card details — which is why the floor is both counts and not just
+     * the claimed one.
+     */
+    private static Integer withinLimit(RewardTier tier, Integer limit) {
+        if (limit == null) {
+            return null;
+        }
+        if (limit < 1) {
+            throw new RewardFieldRejectedException(
+                    "limitQuantity", "A limited reward offers at least one place. Clear the limit for unlimited.");
+        }
+        if (limit < tier.committedQuantity()) {
+            throw new RewardFieldRejectedException(
+                    "limitQuantity",
+                    "That is below the " + tier.committedQuantity() + " places already taken. §5.3 permits lowering"
+                            + " a quantity only above what is claimed.");
+        }
+        return limit;
+    }
+
+    private static void applyAvailability(RewardTier tier, Instant from, Instant until) {
+        if (from != null && until != null && !until.isAfter(from)) {
+            throw new RewardFieldRejectedException(
+                    "availableUntil", "A reward closes after it opens, not before.");
+        }
+        tier.available(from, until);
+    }
+
+    private static ShippingRule rule(UUID rewardId, ShippingRate rate) {
+        if (rate == null || rate.amount() == null) {
+            throw new RewardFieldRejectedException("rules", "Each rate names a destination and an amount.");
+        }
+        try {
+            // An omitted additional-item rate is free, not unspecified. See
+            // ShippingRate.
+            BigDecimal additional =
+                    rate.additionalItemAmount() == null ? BigDecimal.ZERO : rate.additionalItemAmount();
+            return ShippingRule.of(rewardId, rate.countryCode(), rate.amount(), additional);
+        } catch (IllegalArgumentException e) {
+            // The value object refuses a code that is not a country and a rate that is
+            // negative. Both are the client's mistake, and both should name the field
+            // the editor can highlight rather than arrive as a bare 400.
+            throw new RewardFieldRejectedException("rules", e.getMessage());
+        }
+    }
+
+    private void requireRoomForAnotherTier(UUID projectId) {
+        if (rewards.countByProjectId(projectId) >= TIER_LIMIT) {
+            throw new TooManyRewardsException(TIER_LIMIT);
+        }
+    }
+
+    /** After the last tier. See {@code RewardTierRepository#findHighestSortOrder}. */
+    private int nextSortOrder(UUID projectId) {
+        return rewards.findHighestSortOrder(projectId).map(highest -> highest + 1).orElse(FIRST_SORT_ORDER);
+    }
+
+    /** A creator who empties a textarea sends {@code ""}. The database refuses a blank description. */
+    private static String blankAsNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static boolean requireBoolean(String field, Boolean value) {
+        if (value == null) {
+            throw new RewardFieldRejectedException(field, "That setting is either on or off.");
+        }
+        return value;
+    }
+}

@@ -530,6 +530,25 @@ individual agreement can differ without a deployment.
 | Increase reward quantity | Permitted |
 | Decrease reward quantity | Only above the number already claimed |
 
+> **How the reward rules are enforced today.** Deleting a claimed tier is
+> `409 REWARD_HAS_BACKERS`, and "hidden" is expressed as `available_until` in the
+> past — that withdraws the tier from sale without deleting it, and it needs no
+> column §7.2 does not already list. Until pledges exist (epic #50)
+> `claimed_quantity` is the only signal available, so the check is written against it
+> and is always zero in practice; #52 is what makes it bite.
+>
+> Lowering a quantity is refused below `claimed_quantity + reserved_quantity` rather
+> than below `claimed_quantity` alone: a reservation is somebody entering their card
+> details, and it is as taken as a confirmed pledge.
+>
+> The 0–100 bound on tiers is checked on the one path that creates one, not as a
+> constraint — a count across rows cannot be one, and a trigger or a denormalised
+> counter costs more than a limit on the length of a reward list is worth.
+>
+> **Immutability after launch is not yet enforced** (#36 owns it, together with the
+> `lockedFields` a client reads it from). A tier's price and a campaign's goal can be
+> edited in any state today, except where the database refuses the row outright.
+
 ### 5.4 Prohibited content
 
 Products claiming to diagnose, treat, or cure illness; contests, lotteries, and
@@ -833,6 +852,16 @@ Indexes: `(state, deadline)`, `(category_id, state)`, `(creator_id)`, unique
 Atomic units: `id`, `project_id`, `name`, `description`, `image_id`,
 `weight_grams`, `is_digital`, `sku`.
 
+> **The image is an interim column**, `image_url`, and not `image_id`. There is no
+> `media` table and no uploader (§13), so the reference has nothing to point at; the
+> media pipeline replaces it with `image_id` under expand-then-contract, exactly as
+> planned for `projects.cover_image_url`. Nothing outside the reward module reads it,
+> so the contract half touches one module.
+>
+> `sku` is unique within a campaign and only where it is present, and a digital item
+> may not carry a `weight_grams` — a weight against a file would be summed into a
+> shipping quote for something that is not shipped.
+
 #### `reward_tiers`
 `id`, `project_id`, `title`, `description`, `amount` (numeric 14,2), `currency`,
 `estimated_delivery`, `limit_quantity`, `claimed_quantity`, `reserved_quantity`,
@@ -841,11 +870,47 @@ Atomic units: `id`, `project_id`, `name`, `description`, `image_id`,
 
 **Constraint:** `claimed_quantity + reserved_quantity <= limit_quantity`.
 
+> **In the database, not only in Java.** A limit enforced in application code is
+> oversold stock the first time two checkouts race, and the code that checked would
+> not be wrong — merely not serialised. Reservation (#51) increments
+> `reserved_quantity` under a row lock and relies on this constraint refusing the
+> transaction when it gets that wrong. A null `limit_quantity` is unlimited.
+>
+> `claimed_quantity` and `reserved_quantity` are written by the pledge module and by
+> reservation, never by the campaign editor: they are mapped read-only, which is also
+> why duplicating a tier cannot copy them.
+>
+> `secret_token` is stored **in the clear**, unlike `verification_tokens`. It is a
+> capability the creator distributes by hand rather than a credential we verify, so a
+> hash would mean the creator could never read back the link they are sending. It is
+> present exactly when `is_secret`, and a secret tier may not also be featured.
+>
+> An early-bird tier carries either an `available_until` or a `limit_quantity`:
+> without one of the two it is an ordinary tier with a label that hurries a backer.
+>
+> `estimated_delivery` is a `date`. A month is what a creator can honestly promise,
+> and a timestamp would render as an hour nobody committed to.
+
 #### `reward_tier_items`
 `reward_tier_id`, `item_id`, `quantity`.
 
+> Carries `project_id` as well, so that both foreign keys are composite —
+> `(reward_tier_id, project_id)` and `(item_id, project_id)`. Without it a tier from
+> one campaign could be composed out of another campaign's items, and no
+> single-column reference can refuse that. The reference to `items` is
+> `ON DELETE NO ACTION DEFERRABLE INITIALLY DEFERRED`: deleting an item a tier
+> contains is refused, because it would change what a backer was promised, while
+> deleting the whole campaign still cascades.
+
 #### `shipping_rules`
 `reward_tier_id`, `country_code`, `amount`, `additional_item_amount`.
+
+> No currency column: shipping is charged in the campaign's currency, which the tier
+> already carries. Both amounts are `numeric(14,2)` and cross the wire as strings, as
+> all money does. One row per destination per tier, and the whole table for a tier is
+> replaced by `PUT /v1/rewards/{id}/shipping-rules` — a rate table is read as a whole
+> by whatever quotes from it, and merging would leave a creator shipping to a country
+> they believe they removed.
 
 #### `pledges`
 `id`, `project_id`, `backer_id`, `reward_tier_id` (nullable), `state`,
@@ -1301,12 +1366,16 @@ POST   /v1/projects/{id}/submit
 POST   /v1/projects/{id}/launch
 POST   /v1/projects/{id}/cancel
 GET    /v1/projects/{id}/checklist
+GET    /v1/projects/{id}/items
 POST   /v1/projects/{id}/items
 PATCH  /v1/items/{id}
+DELETE /v1/items/{id}
 POST   /v1/projects/{id}/rewards
 PATCH  /v1/rewards/{id}
+DELETE /v1/rewards/{id}
 POST   /v1/rewards/{id}/duplicate
 PATCH  /v1/projects/{id}/rewards/reorder
+PUT    /v1/rewards/{id}/shipping-rules
 POST   /v1/projects/{id}/updates
 POST   /v1/projects/{id}/faqs
 POST   /v1/projects/{id}/collaborators
