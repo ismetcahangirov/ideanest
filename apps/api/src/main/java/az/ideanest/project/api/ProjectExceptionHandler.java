@@ -1,5 +1,6 @@
 package az.ideanest.project.api;
 
+import az.ideanest.project.application.CapabilityNotGrantedException;
 import az.ideanest.project.application.NotAModeratorException;
 import az.ideanest.project.application.ProjectFieldRejectedException;
 import az.ideanest.project.application.ProjectNotFoundException;
@@ -66,6 +67,22 @@ public class ProjectExceptionHandler {
         problem.setDetail("Moderation decisions are taken by platform staff.");
         problem.setProperty("code", "NOT_A_MODERATOR");
         return problem;
+    }
+
+    /**
+     * 403 for a collaborator who may work on this campaign and not in this way.
+     *
+     * <p>The second refusal in this module that is not a 404, and the reason
+     * {@link ProjectNotFoundException} draws the distinction it does: the caller was
+     * invited and can already read the campaign, so there is nothing left to hide
+     * from them. What they are missing is a capability, and the response says which.
+     *
+     * <p>The body is built in {@link ProjectProblems} because the collaborator
+     * endpoints raise the same failure, and one refusal should not have two bodies.
+     */
+    @ExceptionHandler(CapabilityNotGrantedException.class)
+    public ProblemDetail handleCapabilityNotGranted(CapabilityNotGrantedException exception) {
+        return ProjectProblems.capabilityNotGranted(exception);
     }
 
     /**

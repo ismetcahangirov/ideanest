@@ -22,6 +22,20 @@ public class TestDoublesConfiguration {
     }
 
     /**
+     * The collaborator invitation notifier, remembering rather than logging.
+     *
+     * <p>Here for the same reason as the one above: there is no mail transport, so a
+     * test that wanted to accept an invitation would otherwise have to read the
+     * token's hash out of the row and could never prove that the link sent to the
+     * invitee is the link that works.
+     */
+    @Bean
+    @Primary
+    RecordingCollaboratorInvitationNotifier recordingCollaboratorInvitationNotifier() {
+        return new RecordingCollaboratorInvitationNotifier();
+    }
+
+    /**
      * The application clock, with a handle on it.
      *
      * <p>Free-running unless a test freezes it, so this changes nothing for the

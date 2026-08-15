@@ -23,6 +23,13 @@ spring:
         format_sql: true
 
 ideanest:
+  project:
+    collaborators:
+      # Same reason, same scope: without a mail transport an invitation cannot be
+      # accepted locally unless the link is on the console. Local only — see
+      # LoggingCollaboratorInvitationNotifier.
+      log-invitation-links: true
+
   auth:
     # There is no mail transport yet (#86), so the verification link is written
     # to the console. Local only — see LoggingVerificationNotifier.
