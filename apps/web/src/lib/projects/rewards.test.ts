@@ -75,6 +75,7 @@ const REWARD: Reward = {
   items: [{ itemId: 'item-mug', quantity: 1 }],
   shippingRules: [{ countryCode: 'AZ', amount: '5.00', additionalItemAmount: '0.00' }],
   version: 3,
+  pricingLocked: false,
   createdAt: '2026-08-15T09:00:00.000Z',
   updatedAt: '2026-08-15T09:00:00.000Z',
 };

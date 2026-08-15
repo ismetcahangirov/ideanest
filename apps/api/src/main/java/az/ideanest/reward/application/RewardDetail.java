@@ -1,5 +1,6 @@
 package az.ideanest.reward.application;
 
+import az.ideanest.project.application.EditLocks;
 import az.ideanest.reward.domain.RewardTier;
 import az.ideanest.reward.domain.RewardTierItem;
 import az.ideanest.reward.domain.ShippingRule;
@@ -18,8 +19,16 @@ import java.util.List;
  * applies the same update to its state after a create, a patch, a duplicate, and a
  * shipping-rate replacement. An endpoint that answered with a thinner shape would
  * make a client's state depend on which request it happened to make last.
+ *
+ * @param locks what §5.3 has frozen on the campaign this tier belongs to, as
+ *     {@link RewardAccess} already had to establish in order to authorise the
+ *     request. It is carried through to the response rather than recomputed there,
+ *     because the answer that reaches the client must be the one the service used —
+ *     see {@code RewardResponse.pricingLocked} for what a client does with it, and
+ *     #183 for what happened when there was nothing to do it with
  */
-public record RewardDetail(RewardTier tier, List<RewardTierItem> contents, List<ShippingRule> shippingRules) {
+public record RewardDetail(
+        RewardTier tier, List<RewardTierItem> contents, List<ShippingRule> shippingRules, EditLocks locks) {
 
     public RewardDetail {
         contents = List.copyOf(contents);

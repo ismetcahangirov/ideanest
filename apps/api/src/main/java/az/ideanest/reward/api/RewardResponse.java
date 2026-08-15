@@ -44,6 +44,17 @@ import java.util.UUID;
  *     {@code RewardExceptionHandler} on {@code REWARD_MODIFIED} — and it is here so
  *     that a client which wants to send {@code If-Match} later does not need a second
  *     read to learn it
+ * @param pricingLocked whether §5.3 has frozen this tier's {@code price}, which it
+ *     does once the campaign is live. <strong>Here rather than in the campaign's
+ *     {@code lockedFields}</strong>, which is filtered to
+ *     {@code LockedField.Resource.PROJECT} and so can never name a field of this
+ *     body — #183 is what happened when an editor tried to read it from there and
+ *     silently never matched. A client uses it to stop offering an edit that is
+ *     known to be refused; the refusal itself is still {@code REWARD_FIELD_LOCKED},
+ *     because a client may be old, may be out of date, or may not be ours.
+ *     <p>There is deliberately no counterpart for {@code limitQuantity}. §5.3
+ *     permits raising it at any time, so no boolean describes it honestly: a lock
+ *     the client could read as "not editable" would disable a control that works
  */
 @JsonInclude(JsonInclude.Include.ALWAYS)
 public record RewardResponse(
@@ -69,6 +80,7 @@ public record RewardResponse(
         List<RewardItemBody> items,
         List<ShippingRuleBody> shippingRules,
         long version,
+        boolean pricingLocked,
         Instant createdAt,
         Instant updatedAt) {
 
@@ -98,6 +110,7 @@ public record RewardResponse(
                 detail.contents().stream().map(RewardItemBody::of).toList(),
                 detail.shippingRules().stream().map(ShippingRuleBody::of).toList(),
                 tier.getVersion(),
+                detail.locks().rewardPriceLocked(),
                 tier.getCreatedAt(),
                 tier.getUpdatedAt());
     }

@@ -16,7 +16,6 @@ import {
 import { DEFAULT_CURRENCY } from '../../lib/money';
 import {
   createReward,
-  isLocked,
   patchReward,
   replaceShippingRules,
   type Item,
@@ -188,15 +187,17 @@ export function RewardTierEditor({
   const invalid = Object.keys(errors).length > 0;
 
   /*
-   * `lockedFields` names the fields the service will refuse to change, and #36
-   * fills it in. The names are the patch keys — `ProjectEdit` documents "goal",
-   * "durationDays", which are `ProjectPatch`'s own — so a tier's price is read
-   * as "price". Nothing depends on the name being there: an unknown one simply
-   * never matches, the control stays enabled, and the service's refusal is
-   * still rendered. The client does not implement the rule; it only stops
-   * offering an edit that is known to be refused.
+   * The tier says whether its own price is frozen. This used to ask
+   * `isLocked(project, 'price')`, which was a guess at a name that is never
+   * there: `ProjectEdit.lockedFields` is filtered server-side to the campaign's
+   * own patch keys, so it lists `goal` and `durationDays` and could not list a
+   * field of a different body. The lookup silently never matched and the control
+   * stayed enabled on live campaigns — #183.
+   *
+   * The client still does not implement the rule. It only stops offering an edit
+   * the service has said it will refuse, and a refusal is rendered either way.
    */
-  const priceLocked = isLocked(project, 'price');
+  const priceLocked = target?.pricingLocked ?? false;
 
   const chosen = new Set(draft.items.map((line) => line.itemId));
   const available = items.filter((item) => !chosen.has(item.id));
