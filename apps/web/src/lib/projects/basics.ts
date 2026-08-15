@@ -106,6 +106,30 @@ export type BasicsField =
 
 export type BasicsErrors = Partial<Record<BasicsField, string>>;
 
+/**
+ * The same names at runtime, for reading a 422 back.
+ *
+ * A problem detail's `errors` map is whatever the server put in it, so a message
+ * is only attached to a field this form actually has — an unrecognised key would
+ * otherwise be silently dropped onto nothing and the creator would see a
+ * refusal with no reason next to any control.
+ */
+export const BASICS_FIELDS: readonly BasicsField[] = [
+  'title',
+  'blurb',
+  'categoryId',
+  'subcategoryId',
+  'goal',
+  'durationDays',
+  'scheduledLaunchAt',
+  'coverImage',
+  'latePledgeEnabled',
+];
+
+export function isBasicsField(value: string): value is BasicsField {
+  return (BASICS_FIELDS as readonly string[]).includes(value);
+}
+
 export function draftFromProject(project: ProjectEdit): BasicsDraft {
   return {
     title: project.title,

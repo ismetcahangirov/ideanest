@@ -42,9 +42,41 @@ the browser half of the auth flow work at all.
 | Route | Issue |
 |---|---|
 | `/settings/sessions` | Session management (#27) |
+| `/projects/new` | Name a campaign and create the draft (#33) |
+| `/projects/[id]/edit` | Redirects to the first tab (#33) |
+| `/projects/[id]/edit/basics` | Title, summary, category, goal, duration, cover (#33) |
 
 There is no route at `/` yet; server-rendered project and discovery pages are
 #119.
+
+## The campaign editor
+
+The editor is one shell (`src/components/campaign-editor/EditorShell.tsx`) and
+one tab per route. `src/components/campaign-editor/tabs.ts` is the only place a
+tab is declared: the shell renders that list, and a section whose route does not
+exist yet is a **disabled tab rather than a stub page**. A stub cannot be told
+apart from a broken page, and the file it would need belongs to the issue that
+builds it. Adding a section is a row in `tabs.ts` plus the route it points at.
+
+Rewards (#34), story (#35), pre-launch (#39), and review (#37) are the tabs still
+marked unavailable.
+
+### Autosave
+
+There is no save button below the basics tab. `useAutosave` debounces, keeps a
+single request in flight, and only clears its pending patch on a **successful**
+response — so a retry after a failure sends the same body rather than an empty
+one, and nothing typed is lost. `SaveStatus` reports saving, saved, or not saved,
+and announces only the outcomes.
+
+### What the basics tab cannot do yet
+
+| Missing | Why |
+|---|---|
+| Location | `projects` has no `location_id` and there is no geocoding service. `docs/architecture.md` §7.2 holds both for the discovery epic |
+| Uploading a cover image | There is no media table and no uploader. The cover is a URL plus the width and height read in the browser; the media pipeline (§13) replaces all three |
+| Video | Same media pipeline, and no client-side equivalent of reading an image's intrinsic size |
+| Changing the category | Needs `GET /v1/categories`, which no sub-issue of the editor epic owns. The field degrades to a notice and everything else still saves |
 
 ## How authentication works here
 
