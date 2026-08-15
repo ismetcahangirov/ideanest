@@ -3,7 +3,7 @@ package az.ideanest.auth.application;
 import az.ideanest.auth.AuthProperties;
 import az.ideanest.auth.application.AuthEvents.EmailVerificationRequested;
 import az.ideanest.auth.application.AuthEvents.RegistrationAttemptedOnExistingAccount;
-import az.ideanest.auth.domain.SecureTokens;
+import az.ideanest.shared.SecureTokens;
 import az.ideanest.auth.domain.UserCredential;
 import az.ideanest.auth.domain.VerificationPurpose;
 import az.ideanest.auth.domain.VerificationToken;

@@ -2,7 +2,7 @@ package az.ideanest.auth.application;
 
 import az.ideanest.auth.AuthProperties;
 import az.ideanest.auth.application.SignInService.SignInCommand;
-import az.ideanest.auth.domain.SecureTokens;
+import az.ideanest.shared.SecureTokens;
 import az.ideanest.auth.domain.TwoFactorChallenge;
 import az.ideanest.auth.domain.TwoFactorSecret;
 import az.ideanest.auth.infrastructure.TwoFactorChallengeRepository;

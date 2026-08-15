@@ -1,6 +1,6 @@
 package az.ideanest.auth.application;
 
-import az.ideanest.auth.domain.SecureTokens;
+import az.ideanest.shared.SecureTokens;
 import az.ideanest.auth.domain.VerificationPurpose;
 import az.ideanest.auth.domain.VerificationToken;
 import az.ideanest.auth.infrastructure.VerificationTokenRepository;

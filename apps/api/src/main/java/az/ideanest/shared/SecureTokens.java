@@ -1,4 +1,4 @@
-package az.ideanest.auth.domain;
+package az.ideanest.shared;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -7,7 +7,16 @@ import java.security.SecureRandom;
 import java.util.Base64;
 
 /**
- * Opaque tokens: verification links today, refresh tokens next.
+ * Opaque tokens: verification links, refresh tokens, two-factor challenges, and
+ * collaborator invitations.
+ *
+ * <p><strong>In {@code shared} because a second module needs it.</strong> It
+ * began in {@code auth.domain}, and #38 made the campaign editor issue an
+ * invitation link with the same properties. A module may not reach into another
+ * module's domain, so the choice was between moving this and writing a second
+ * copy of it inside {@code project} — and two implementations of "how we generate
+ * and store an opaque token" is exactly the duplication that ends with one of
+ * them being weakened by somebody who did not know the other existed.
  *
  * <p>256 bits from {@link SecureRandom}, encoded URL-safe so the value survives
  * being pasted into an address bar, and stored only as its SHA-256.
