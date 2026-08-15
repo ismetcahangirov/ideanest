@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import az.ideanest.shared.EmailAddress;
 import az.ideanest.support.AbstractIntegrationTest;
+import az.ideanest.support.Campaigns;
 import az.ideanest.user.infrastructure.UserRepository;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -183,6 +184,19 @@ class RewardApiTests extends AbstractIntegrationTest {
     private void claim(UUID rewardId, int places) {
         new JdbcTemplate(dataSource)
                 .update("UPDATE reward_tiers SET claimed_quantity = ? WHERE id = ?", places, rewardId);
+    }
+
+    /**
+     * Takes the campaign live, which is a precondition here rather than a subject.
+     *
+     * <p>{@link Campaigns} writes the row the launch endpoint would have written. The
+     * lifecycle itself — submission, moderation, the audit trail — is asserted in
+     * {@code ProjectLifecycleApiTests}, and driving every fixture in this file
+     * through it would make each of these tests depend on the moderation
+     * configuration for a state they only need to be in.
+     */
+    private void launch(UUID projectId) {
+        Campaigns.launch(dataSource, projectId);
     }
 
     // ------------------------------------------------------------------
@@ -597,6 +611,108 @@ class RewardApiTests extends AbstractIntegrationTest {
                                 Map.of("availableUntil", "2020-01-01T00:00:00Z"))
                         .getStatusCode())
                 .isEqualTo(HttpStatus.OK);
+    }
+
+    // ------------------------------------------------------------------
+    // What launching freezes (§5.3)
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("a live campaign's rewards cannot be repriced, and everything else still can")
+    void aLiveCampaignsRewardsKeepTheirPrice() {
+        Creator creator = creator();
+        UUID projectId = project(creator);
+        UUID rewardId = idOf(reward(creator, projectId, "A reward"));
+
+        // Before launch the price moves freely: nobody has chosen this tier, and the
+        // campaign is not on sale.
+        assertThat(patch(
+                                "/v1/rewards/" + rewardId,
+                                creator.accessToken(),
+                                Map.of("price", Map.of("amount", "24.99", "currency", "AZN")))
+                        .getBody()
+                        .get("price"))
+                .isEqualTo(Map.of("amount", "24.99", "currency", "AZN"));
+
+        launch(projectId);
+
+        ResponseEntity<Map<String, Object>> refused = patch(
+                "/v1/rewards/" + rewardId,
+                creator.accessToken(),
+                Map.of("price", Map.of("amount", "29.99", "currency", "AZN")));
+
+        // 409 rather than 400, for the reason the project module's locked fields give:
+        // 29.99 is a perfectly good price, and what refuses it is that the campaign is
+        // selling this tier at the one it shows.
+        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(refused.getBody()).containsEntry("code", "REWARD_FIELD_LOCKED");
+        // The campaign's state, because a tier does not have one and the campaign is
+        // what refused the edit.
+        assertThat(refused.getBody().get("meta")).isEqualTo(Map.of("field", "price", "state", "LIVE"));
+
+        // Sending the price it already has is refused too: merge-patch says a key that
+        // is present is a write, and comparing amounts instead would make the rule
+        // depend on how the number was serialised.
+        assertThat(patch(
+                                "/v1/rewards/" + rewardId,
+                                creator.accessToken(),
+                                Map.of("price", Map.of("amount", "24.99", "currency", "AZN")))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+
+        // §5.3 freezes the price and nothing else about a tier. A creator still has to
+        // be able to correct a description or withdraw the tier from sale, and the
+        // price is untouched by either.
+        Map<String, Object> described = patch(
+                        "/v1/rewards/" + rewardId,
+                        creator.accessToken(),
+                        Map.of("title", "A reward, still available", "description", "Now shipping in March."))
+                .getBody();
+        assertThat(described).containsEntry("description", "Now shipping in March.");
+        assertThat(described.get("price")).isEqualTo(Map.of("amount", "24.99", "currency", "AZN"));
+    }
+
+    @Test
+    @DisplayName("a live campaign's reward quantity may be raised but not lowered")
+    void aLiveCampaignsQuantityOnlyGoesUp() {
+        Creator creator = creator();
+        UUID projectId = project(creator);
+        UUID rewardId = idOf(reward(creator, projectId, "A reward"));
+        patch("/v1/rewards/" + rewardId, creator.accessToken(), Map.of("limitQuantity", 20));
+
+        launch(projectId);
+
+        // Raising is explicitly permitted by §5.3: a creator who found more stock
+        // should be able to sell it.
+        assertThat(patch("/v1/rewards/" + rewardId, creator.accessToken(), Map.of("limitQuantity", 40))
+                        .getBody())
+                .containsEntry("limitQuantity", 40);
+
+        // Lowering is not, and it is refused above what is claimed as well as below it
+        // — the floor after launch is the number the tier already advertises, not the
+        // number somebody has taken.
+        ResponseEntity<Map<String, Object>> lowered =
+                patch("/v1/rewards/" + rewardId, creator.accessToken(), Map.of("limitQuantity", 30));
+        assertThat(lowered.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(lowered.getBody()).containsEntry("code", "REWARD_FIELD_LOCKED");
+        assertThat(lowered.getBody().get("meta")).isEqualTo(Map.of("field", "limitQuantity", "state", "LIVE"));
+
+        // The same number is not a decrease, so an autosave that echoes what is stored
+        // is not refused for changing nothing.
+        assertThat(patch("/v1/rewards/" + rewardId, creator.accessToken(), Map.of("limitQuantity", 40))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+
+        // Clearing the limit only ever adds places, so unlimited is a raise.
+        assertThat(patchJson("/v1/rewards/" + rewardId, creator.accessToken(), "{\"limitQuantity\": null}")
+                        .getBody())
+                .containsEntry("limitQuantity", null);
+
+        // And putting one back takes places away from a tier that promised there were
+        // always more.
+        assertThat(patch("/v1/rewards/" + rewardId, creator.accessToken(), Map.of("limitQuantity", 100))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
     }
 
     @Test
