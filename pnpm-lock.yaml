@@ -20,6 +20,9 @@ importers:
       '@ideanest/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      decimal.js:
+        specifier: ^10.6.0
+        version: 10.6.0
       lucide-react:
         specifier: ^1.31.0
         version: 1.31.0(react@19.2.8)

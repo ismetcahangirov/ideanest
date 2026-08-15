@@ -12,6 +12,16 @@ export interface Problem {
   status?: number;
   /** Field name to message, on a validation failure. */
   errors?: Record<string, string>;
+  /**
+   * The stable machine-readable reason, e.g. `PROJECT_TRANSITION_NOT_ALLOWED`
+   * (docs/architecture.md §10.4).
+   *
+   * A client branches on this and never on `detail`, which is prose written for
+   * a human and may be reworded or localised at any time.
+   */
+  code?: string;
+  /** Reason-specific context, keyed by `code`. §10.4 carries it on a refusal. */
+  meta?: Record<string, unknown>;
   /** Mirrors the `Retry-After` header on a 429. */
   retryAfterSeconds?: number;
 }
