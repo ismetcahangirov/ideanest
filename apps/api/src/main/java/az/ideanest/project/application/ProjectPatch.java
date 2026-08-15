@@ -1,0 +1,66 @@
+package az.ideanest.project.application;
+
+import az.ideanest.project.domain.CoverImage;
+import az.ideanest.shared.Money;
+import az.ideanest.shared.Patched;
+import java.time.Instant;
+import java.util.UUID;
+
+/**
+ * A partial edit of a campaign's basics.
+ *
+ * <p>Every field is a {@link Patched} because the campaign editor autosaves: a
+ * body containing only the title must leave the summary alone, and one containing
+ * {@code "blurb": null} must clear it. See {@link Patched} for why
+ * {@link java.util.Optional} cannot express that.
+ *
+ * <p>The story is text rather than a parsed document. #35 owns the story schema
+ * and validates it; keeping it opaque here means autosave can store a draft
+ * document before that validator exists, and that adding the validator is a change
+ * to one class rather than to this record's type.
+ *
+ * <p>Fields that belong to other issues are deliberately absent: the pre-launch
+ * page (#39) and collaborators (#38) are transitions and grants rather than
+ * basics, and neither is edited through this record.
+ */
+public record ProjectPatch(
+        Patched<String> title,
+        Patched<String> blurb,
+        Patched<UUID> categoryId,
+        Patched<UUID> subcategoryId,
+        Patched<Money> goal,
+        Patched<Integer> durationDays,
+        Patched<Instant> scheduledLaunchAt,
+        Patched<String> story,
+        Patched<String> risks,
+        Patched<CoverImage> coverImage,
+        Patched<Boolean> latePledgeEnabled) {
+
+    public ProjectPatch {
+        // Absence, not null, is the neutral value. Normalised here so that no
+        // caller — including a Jackson version that stops consulting the absent
+        // hook — can produce a patch that reads as "clear everything".
+        title = Patched.orAbsent(title);
+        blurb = Patched.orAbsent(blurb);
+        categoryId = Patched.orAbsent(categoryId);
+        subcategoryId = Patched.orAbsent(subcategoryId);
+        goal = Patched.orAbsent(goal);
+        durationDays = Patched.orAbsent(durationDays);
+        scheduledLaunchAt = Patched.orAbsent(scheduledLaunchAt);
+        story = Patched.orAbsent(story);
+        risks = Patched.orAbsent(risks);
+        coverImage = Patched.orAbsent(coverImage);
+        latePledgeEnabled = Patched.orAbsent(latePledgeEnabled);
+    }
+
+    /**
+     * Whether the category and subcategory move together.
+     *
+     * <p>They have to: the database refuses a subcategory whose parent is not the
+     * campaign's category, so a body that changes one without mentioning the other
+     * is a body whose result depends on what was stored. The editor sends both.
+     */
+    public boolean refilesTheProject() {
+        return categoryId.isPresent() || subcategoryId.isPresent();
+    }
+}
