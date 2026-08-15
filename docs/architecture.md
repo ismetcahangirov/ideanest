@@ -848,6 +848,46 @@ Indexes: `(state, deadline)`, `(category_id, state)`, `(creator_id)`, unique
 > it. A creator's cancellation reason and a moderator's note live here for the
 > same reason: they are shown to people, so they are part of the record.
 
+#### `collaborators`
+`id`, `project_id`, `account_id` (null until accepted), `invited_email` (citext),
+`invitation_token_hash` (bytea, SHA-256), `invited_by`, `created_at`,
+`updated_at`, `expires_at`, `accepted_at`, `revoked_at`, `revoked_by`, plus
+`collaborator_capabilities` (`collaborator_id`, `capability`) — one row per
+granted capability, from `EDIT_BASICS`, `EDIT_REWARDS`, `EDIT_STORY`,
+`SUBMIT_FOR_REVIEW`, `PUBLISH_UPDATES`, `RESPOND_TO_COMMENTS`, `VIEW_FINANCES`,
+`MANAGE_COLLABORATORS`.
+
+> **One row is an invitation and the grant it becomes.** Two tables would mean
+> the second holding a copy of the first's capability set, and the copy is what
+> eventually disagrees.
+>
+> **The creator is not in here.** Their authority comes from
+> `projects.creator_id` and is implicit. A row for them could be revoked or
+> narrowed, which would be a way to lock somebody out of their own campaign.
+>
+> The invitation token is stored only as its SHA-256 and expires, exactly as
+> `verification_tokens` does, and acceptance is single use — spent by setting
+> `accepted_at`, never by deleting the row. An invitation to an address with no
+> account is legal, and is claimed when that address registers and follows the
+> link. Constraints keep the states coherent: `(accepted_at IS NULL) =
+> (account_id IS NULL)`, `(revoked_at IS NULL) = (revoked_by IS NULL)`, and one
+> live row per address and per account per campaign.
+>
+> Nobody may grant more than they hold, and only the creator may grant
+> `MANAGE_COLLABORATORS`. Launching and cancelling are deliberately **not**
+> capabilities: both are irreversible money decisions and stay with the creator.
+>
+> **`PATCH /v1/projects/{id}` is authorised field by field.** One endpoint carries
+> the basics, the story, and the risks section, so the body is the only thing that
+> says which grant a request needs: `story` and `risks` need `EDIT_STORY`,
+> everything else needs `EDIT_BASICS`, and a body mentioning both needs both.
+> Accepting any editing capability on the write path would make the three grants
+> one grant with three names — a collaborator invited to write the story could move
+> the funding goal. A mixed body is refused whole, with `403
+> CAPABILITY_NOT_GRANTED` naming only what was missing, so half of a patch can
+> never land. Opening the editor is the looser check: any editing capability, since
+> somebody granted one has to be able to reach the field they were granted.
+
 #### `items`
 Atomic units: `id`, `project_id`, `name`, `description`, `image_id`,
 `weight_grams`, `is_digital`, `sku`.
@@ -1378,7 +1418,11 @@ PATCH  /v1/projects/{id}/rewards/reorder
 PUT    /v1/rewards/{id}/shipping-rules
 POST   /v1/projects/{id}/updates
 POST   /v1/projects/{id}/faqs
+GET    /v1/projects/{id}/collaborators
 POST   /v1/projects/{id}/collaborators
+PATCH  /v1/collaborators/{id}
+DELETE /v1/collaborators/{id}
+POST   /v1/collaborators/invitations/{token}/accept
 
 # Pledge
 POST   /v1/pledges/draft

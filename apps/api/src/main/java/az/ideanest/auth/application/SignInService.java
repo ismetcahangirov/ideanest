@@ -1,6 +1,6 @@
 package az.ideanest.auth.application;
 
-import az.ideanest.auth.domain.SecureTokens;
+import az.ideanest.shared.SecureTokens;
 import az.ideanest.auth.domain.UserCredential;
 import az.ideanest.auth.infrastructure.TwoFactorSecretRepository;
 import az.ideanest.auth.infrastructure.UserCredentialRepository;

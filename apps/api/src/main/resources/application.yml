@@ -103,6 +103,15 @@ ideanest:
       # a one-variable fix; the opposite mistake has no symptom until a campaign
       # that should never have launched is live.
       moderator-emails: ${MODERATOR_EMAILS:}
+    collaborators:
+      # Seven days. An invitation nobody has accepted in a week is a typo or
+      # somebody who has left; a link that works forever is edit access to an
+      # unlaunched campaign sitting in an old mailbox.
+      invitation-ttl: P7D
+      # There is no mail transport yet (#86). On in local only -- an invitation
+      # link in a log is edit access for anyone who can read logs, and that set
+      # is always larger than it looks.
+      log-invitation-links: false
 
     story:
       # How long after the newest story version another one may be written.

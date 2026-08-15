@@ -2,7 +2,7 @@ package az.ideanest.auth.application;
 
 import az.ideanest.auth.application.AccessTokenIssuer.IssuedAccessToken;
 import az.ideanest.auth.domain.RefreshToken;
-import az.ideanest.auth.domain.SecureTokens;
+import az.ideanest.shared.SecureTokens;
 import az.ideanest.auth.domain.Session;
 import az.ideanest.auth.domain.SessionRevocationReason;
 import az.ideanest.auth.infrastructure.RefreshTokenRepository;

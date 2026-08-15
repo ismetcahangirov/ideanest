@@ -1,6 +1,7 @@
 package az.ideanest.project.application;
 
 import az.ideanest.project.domain.ActorRole;
+import az.ideanest.project.domain.Capability;
 import az.ideanest.project.domain.Project;
 import az.ideanest.project.domain.ProjectState;
 import az.ideanest.project.domain.ProjectStateMachine;
@@ -82,10 +83,18 @@ public class ProjectTransitionService {
      * <p>All three sources are the same edge as far as this method is concerned,
      * which is what the table is for: the difference between a first submission and
      * a resubmission is in the history, not in the code performing it.
+     *
+     * <p><strong>The one transition a collaborator can be granted.</strong> #38 gave
+     * {@link Capability#SUBMIT_FOR_REVIEW} its own capability, so this asks for it by
+     * name rather than using the coarse "may administer this campaign" check that
+     * {@link #launch} and {@link #cancel} use — those two are irreversible money
+     * decisions and stay with the creator. The audit row then says
+     * {@link ActorRole#COLLABORATOR} when somebody else submitted, which is exactly
+     * the fact {@code roleOf} exists to record.
      */
     @Transactional
     public Project submit(UUID projectId, UUID accountId) {
-        Project project = access.requireTransitionable(projectId, accountId);
+        Project project = access.requireTransitionable(projectId, accountId, Capability.SUBMIT_FOR_REVIEW);
         // #37: the completeness checklist is re-checked here, and refuses with
         // PROJECT_NOT_SUBMITTABLE. Until it exists a submission is accepted on
         // the creator's word, and moderation is the check.

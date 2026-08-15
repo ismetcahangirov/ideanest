@@ -15,7 +15,11 @@
  * it is an audit trail with holes in it.
  *
  * <p><strong>Exactly one thing decides authorisation:</strong>
- * {@code application.ProjectAccess}. Today it says "the creator". #38 widens it to
- * collaborators with granular capabilities, and that is a change to one file.
+ * {@code application.ProjectAccess}. It answers for two kinds of holder: the
+ * creator, whose authority comes from {@code projects.creator_id} and is never a
+ * row, and a collaborator, who holds a set of {@code domain.Capability} values
+ * granted by somebody who held them first. A caller that needs one particular
+ * capability asks for it by name; the coarse forms mean "may administer this
+ * campaign at all". Nothing outside that class decides who may act.
  */
 package az.ideanest.project;

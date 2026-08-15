@@ -1,5 +1,6 @@
 package az.ideanest.auth.domain;
 
+import az.ideanest.shared.SecureTokens;
 import java.security.SecureRandom;
 import java.util.Locale;
 
