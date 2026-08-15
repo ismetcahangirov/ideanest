@@ -46,8 +46,15 @@ class AccountDeletionApiTests extends AbstractIntegrationTest {
      * account may still use while it is closing. It resolves to nothing, which
      * is the point: an active account gets 404 from the dispatcher and a closing
      * one never reaches it.
+     *
+     * <p>It was {@code /v1/projects} until that path became a real endpoint (#31).
+     * A mapped path answers 405 rather than 404 for a method it does not support,
+     * which would have made the test below pass for the wrong reason. {@code
+     * /v1/me/backed} is chosen because it will always require a session — a list of
+     * what this account has backed cannot be anything but private — so it will not
+     * quietly become permitted when discovery arrives.
      */
-    private static final String SOME_OTHER_ENDPOINT = "/v1/projects";
+    private static final String SOME_OTHER_ENDPOINT = "/v1/me/backed";
 
     @Autowired
     private TestRestTemplate rest;

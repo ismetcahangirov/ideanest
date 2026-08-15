@@ -76,8 +76,34 @@ public class SecurityConfiguration {
                         // adding an endpoint never quietly adds a permission.
                         .requestMatchers("/v1/me", "/v1/me/export", "/v1/me/deletion")
                         .authenticated()
+                        // Moderation, and every administrative endpoint added
+                        // under this prefix later.
+                        //
+                        // Stated explicitly, and requiring no more than any other
+                        // authenticated endpoint, because that is the strongest
+                        // thing that can honestly be required today: there is no
+                        // role model anywhere in the service — not in the schema,
+                        // not in the access token — so nothing here can tell
+                        // platform staff from a creator. Any signed-in user can
+                        // therefore approve any campaign, which is a gap and is
+                        // named as one.
+                        //
+                        // **Epic #100 owns administrative roles and audit.** The
+                        // check belongs in one place when it arrives: this matcher
+                        // becomes hasAuthority("MODERATOR") or equivalent, and
+                        // ProjectAccess.requireModeratable stops being a load
+                        // with a comment on it. A stand-in invented now — a
+                        // configured list of addresses, a claim a client could
+                        // send — would look like authorisation without being it,
+                        // and would have to be found and removed rather than
+                        // filled in.
+                        .requestMatchers("/v1/admin/**")
+                        .hasAuthority(ACCOUNT_ACTIVE)
                         // Everything else additionally requires that the account
-                        // is not closing.
+                        // is not closing. The creator's project endpoints fall
+                        // through to here deliberately: launching a campaign or
+                        // taking a pledge is exactly what an account inside its
+                        // deletion grace period must not be able to do.
                         .anyRequest()
                         .hasAuthority(ACCOUNT_ACTIVE))
                 // Every other request authenticates with a bearer JWT we signed.
