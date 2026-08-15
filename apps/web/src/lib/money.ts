@@ -78,14 +78,29 @@ export type AmountParse =
   | { readonly ok: true; readonly value: Decimal }
   | { readonly ok: false; readonly reason: AmountRejection };
 
+export interface AmountOptions {
+  /**
+   * Whether zero is an amount rather than a mistake.
+   *
+   * Off by default, because the two amounts that existed before this option —
+   * a funding goal and a reward price — are both meaningless at zero.
+   *
+   * On for a shipping rate. "Free to Azerbaijan" is an offer a creator makes on
+   * purpose, and the server stores it as `0.00` rather than as an absent rule
+   * (see `ShippingRule.additionalItemAmount`). Refusing it here would leave the
+   * creator no way to say the thing the data model is built to express.
+   */
+  readonly allowZero?: boolean;
+}
+
 /**
  * Reads a typed amount without ever converting it to a number.
  *
  * The result carries a reason rather than a message: the wording belongs to the
  * field that renders it, and the same rejection reads differently on a goal
- * than it will on a reward price (#34).
+ * than it does on a reward price or a shipping rate.
  */
-export function parseAmount(input: string): AmountParse {
+export function parseAmount(input: string, options: AmountOptions = {}): AmountParse {
   // Ordinary spaces, non-breaking spaces, and the narrow no-break space that
   // `Intl.NumberFormat` itself emits as a group separator.
   const cleaned = input.replace(/[\s  ]/g, '');
@@ -106,7 +121,11 @@ export function parseAmount(input: string): AmountParse {
   }
 
   const value = new Decimal(cleaned);
-  if (value.lessThanOrEqualTo(0)) return { ok: false, reason: 'not-positive' };
+  // A negative cannot reach this line — the pattern above carries no sign — so
+  // with `allowZero` there is nothing left for this check to refuse.
+  if (options.allowZero !== true && value.lessThanOrEqualTo(0)) {
+    return { ok: false, reason: 'not-positive' };
+  }
 
   return { ok: true, value };
 }
@@ -136,4 +155,33 @@ export function toMoney(value: Decimal, currency: string): Money {
  */
 export function amountFieldValue(money: Money | null | undefined): string {
   return money?.amount ?? '';
+}
+
+/**
+ * An amount as a reader sees it: grouped, at the scale the column holds, with
+ * its currency after it.
+ *
+ * FORMATTED FROM THE DIGITS, NOT FROM A NUMBER. `Intl.NumberFormat` takes a
+ * `number`, and putting `999999999999.99` through one loses the last digit
+ * before any formatting happens — which is the entire reason this module
+ * refuses to parse with `Number()` in the first place. So the grouping is done
+ * on the integer digits as a string and the fraction is copied across
+ * untouched.
+ *
+ * Grouping in threes with a comma, and the code after the amount rather than a
+ * symbol before it. There is no agreed symbol for the manat in either of the
+ * two languages the product ships in (docs/architecture.md §21.1), and
+ * `Intl`'s own answer differs by locale — so the ISO code, which is the same
+ * string the API sent, is what is shown. Consumers that render this into a
+ * table cell get a pre-formatted string, which is what docs/ui-kit.md §7.15
+ * asks for: a table that formats is a table that rounds.
+ */
+export function formatMoney(money: Money | null | undefined): string {
+  if (money == null) return '';
+
+  const [whole = '', fraction] = money.amount.split('.');
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const scaled = (fraction ?? '').padEnd(MONEY_SCALE, '0').slice(0, MONEY_SCALE);
+
+  return `${grouped}.${scaled} ${money.currency}`.trim();
 }
