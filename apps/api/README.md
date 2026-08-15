@@ -470,6 +470,7 @@ other way would be a cycle. The dependency is inverted instead.
 | PostGIS, needed for proximity search | [#47](https://github.com/ismetcahangirov/ideanest/issues/47) |
 | Money type and arithmetic rules | [#133](https://github.com/ismetcahangirov/ideanest/issues/133) |
 | Job queue and scheduler | [#134](https://github.com/ismetcahangirov/ideanest/issues/134) |
+| Anything that actually sends a message. Verification links, collaborator invitations, and launch reminders all reach a port and a logging adapter | [#85](https://github.com/ismetcahangirov/ideanest/issues/85), [#86](https://github.com/ismetcahangirov/ideanest/issues/86) |
 | Transactional outbox | [#135](https://github.com/ismetcahangirov/ideanest/issues/135) |
 | OpenAPI contract and generated clients | [#136](https://github.com/ismetcahangirov/ideanest/issues/136) |
 | Structured logging with redaction | [#137](https://github.com/ismetcahangirov/ideanest/issues/137) |
