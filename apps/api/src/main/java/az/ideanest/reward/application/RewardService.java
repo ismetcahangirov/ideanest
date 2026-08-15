@@ -109,13 +109,13 @@ public class RewardService {
      */
     @Transactional(readOnly = true)
     public List<RewardDetail> list(UUID projectId, UUID accountId) {
-        access.requireEditableProject(projectId, accountId);
-        return detailsOf(rewards.findByProjectIdOrderBySortOrderAscCreatedAtAsc(projectId));
+        EditLocks locks = access.requireEditableProject(projectId, accountId);
+        return detailsOf(rewards.findByProjectIdOrderBySortOrderAscCreatedAtAsc(projectId), locks);
     }
 
     @Transactional
     public RewardDetail create(UUID projectId, UUID accountId, NewReward draft) {
-        access.requireEditableProject(projectId, accountId);
+        EditLocks locks = access.requireEditableProject(projectId, accountId);
         requireRoomForAnotherTier(projectId);
 
         Money price = requirePrice(draft.price());
@@ -138,7 +138,7 @@ public class RewardService {
         RewardTier saved = rewards.save(tier);
         replaceComposition(saved, draft.items());
 
-        return detailOf(saved);
+        return detailOf(saved, locks);
     }
 
     /**
@@ -197,7 +197,7 @@ public class RewardService {
             replaceComposition(tier, contents);
         }
 
-        return detailOf(tier);
+        return detailOf(tier, authorised.locks());
     }
 
     /**
@@ -231,7 +231,8 @@ public class RewardService {
      */
     @Transactional
     public RewardDetail duplicate(UUID rewardId, UUID accountId) {
-        RewardTier original = access.requireEditableReward(rewardId, accountId).tier();
+        RewardAccess.AuthorisedReward authorised = access.requireEditableReward(rewardId, accountId);
+        RewardTier original = authorised.tier();
         requireRoomForAnotherTier(original.getProjectId());
 
         RewardTier copy = rewards.save(original.duplicateAt(nextSortOrder(original.getProjectId())));
@@ -248,7 +249,7 @@ public class RewardService {
                 .toList();
         shippingRules.saveAll(copiedRules);
 
-        return new RewardDetail(copy, copiedContents, copiedRules);
+        return new RewardDetail(copy, copiedContents, copiedRules, authorised.locks());
     }
 
     /**
@@ -266,7 +267,7 @@ public class RewardService {
      */
     @Transactional
     public List<RewardDetail> reorder(UUID projectId, UUID accountId, List<UUID> rewardIds) {
-        access.requireEditableProject(projectId, accountId);
+        EditLocks locks = access.requireEditableProject(projectId, accountId);
 
         List<RewardTier> tiers = rewards.findByProjectIdOrderBySortOrderAscCreatedAtAsc(projectId);
         Map<UUID, RewardTier> byId = tiers.stream().collect(Collectors.toMap(RewardTier::getId, Function.identity()));
@@ -296,7 +297,7 @@ public class RewardService {
             reordered.add(tier);
         }
 
-        return detailsOf(reordered);
+        return detailsOf(reordered, locks);
     }
 
     /**
@@ -314,7 +315,8 @@ public class RewardService {
      */
     @Transactional
     public RewardDetail replaceShippingRules(UUID rewardId, UUID accountId, List<ShippingRate> rates) {
-        RewardTier tier = access.requireEditableReward(rewardId, accountId).tier();
+        RewardAccess.AuthorisedReward authorised = access.requireEditableReward(rewardId, accountId);
+        RewardTier tier = authorised.tier();
 
         if (!tier.getShippingType().isShipped()) {
             // Rates for a tier that is not shipped are rates nothing will ever read,
@@ -353,7 +355,7 @@ public class RewardService {
             }
         });
 
-        return new RewardDetail(tier, compositions.findByRewardTier(rewardId), List.copyOf(result));
+        return new RewardDetail(tier, compositions.findByRewardTier(rewardId), List.copyOf(result), authorised.locks());
     }
 
     // ------------------------------------------------------------------
@@ -426,9 +428,12 @@ public class RewardService {
     // Assembling the response
     // ------------------------------------------------------------------
 
-    private RewardDetail detailOf(RewardTier tier) {
+    private RewardDetail detailOf(RewardTier tier, EditLocks locks) {
         return new RewardDetail(
-                tier, compositions.findByRewardTier(tier.getId()), shippingRules.findByRewardTier(tier.getId()));
+                tier,
+                compositions.findByRewardTier(tier.getId()),
+                shippingRules.findByRewardTier(tier.getId()),
+                locks);
     }
 
     /**
@@ -438,7 +443,7 @@ public class RewardService {
      * trips on every load of the rewards tab, and an N+1 over a list this central is
      * only noticed once there are enough sessions for it to matter.
      */
-    private List<RewardDetail> detailsOf(List<RewardTier> tiers) {
+    private List<RewardDetail> detailsOf(List<RewardTier> tiers, EditLocks locks) {
         if (tiers.isEmpty()) {
             return List.of();
         }
@@ -453,7 +458,8 @@ public class RewardService {
                 .map(tier -> new RewardDetail(
                         tier,
                         contents.getOrDefault(tier.getId(), List.of()),
-                        rules.getOrDefault(tier.getId(), List.of())))
+                        rules.getOrDefault(tier.getId(), List.of()),
+                        locks))
                 .toList();
     }
 

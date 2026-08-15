@@ -618,6 +618,40 @@ class RewardApiTests extends AbstractIntegrationTest {
     // ------------------------------------------------------------------
 
     @Test
+    @DisplayName("every reward says whether its price is frozen, so the editor can stop offering the edit")
+    void aRewardCarriesItsOwnPriceLock() {
+        Creator creator = creator();
+        UUID projectId = project(creator);
+        UUID rewardId = idOf(reward(creator, projectId, "A reward"));
+
+        // Before launch, on both the created tier and the list. The two reads have to
+        // agree: an editor that opened its drawer from a list would otherwise disable
+        // a control the list had just said was fine.
+        assertThat(reward(creator, projectId, "Another")).containsEntry("pricingLocked", false);
+        assertThat(getList("/v1/projects/" + projectId + "/rewards", creator.accessToken())
+                        .getBody())
+                .allSatisfy(tier -> assertThat(tier).containsEntry("pricingLocked", false));
+
+        launch(projectId);
+
+        // §5.3 froze it, and the TIER is where a client reads that. Not the campaign's
+        // `lockedFields`: that list is filtered to the campaign's own patch keys, so it
+        // can never name `price`, and the editor that asked it anyway silently never
+        // matched and left the control enabled on every live campaign (#183).
+        assertThat(getList("/v1/projects/" + projectId + "/rewards", creator.accessToken())
+                        .getBody())
+                .allSatisfy(tier -> assertThat(tier).containsEntry("pricingLocked", true));
+
+        // The flag is advice; the refusal is the rule, and it still holds.
+        assertThat(patch(
+                                "/v1/rewards/" + rewardId,
+                                creator.accessToken(),
+                                Map.of("price", Map.of("amount", "29.99", "currency", "AZN")))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+    }
+
+    @Test
     @DisplayName("a live campaign's rewards cannot be repriced, and everything else still can")
     void aLiveCampaignsRewardsKeepTheirPrice() {
         Creator creator = creator();

@@ -110,6 +110,7 @@ function reward(overrides: Partial<Reward> = {}): Reward {
     items: [],
     shippingRules: [],
     version: 1,
+    pricingLocked: false,
     createdAt: '2026-08-15T09:00:00.000Z',
     updatedAt: '2026-08-15T09:00:00.000Z',
     ...overrides,
@@ -614,10 +615,16 @@ describe('RewardsPanel', () => {
     expect(screen.queryByText('Early bird')).not.toBeInTheDocument();
   });
 
-  it('disables a price the service says is locked', async () => {
+  /*
+   * The signal is on the TIER, not on the project. This test used to hand the
+   * project `lockedFields: ['price']` and pass — against a body the service
+   * cannot produce, because that array is filtered server-side to the campaign's
+   * own patch keys and could never name a field of a reward. The control was
+   * enabled on every live campaign and the test said otherwise (#183).
+   */
+  it('disables a price the tier says is locked', async () => {
     const user = await openRewards({
-      project: { lockedFields: ['price'] },
-      rewards: [FIRST],
+      rewards: [{ ...FIRST, pricingLocked: true }],
     });
 
     await user.click(screen.getByRole('button', { name: 'Edit Early bird' }));
@@ -626,6 +633,22 @@ describe('RewardsPanel', () => {
     expect(
       screen.getByText(/The price cannot change once the campaign has launched/),
     ).toBeInTheDocument();
+  });
+
+  /*
+   * The counterpart, and the regression that mattered: a project whose
+   * `lockedFields` names its own frozen fields must not be mistaken for one whose
+   * reward prices are frozen, and a tier that says nothing stays editable.
+   */
+  it('leaves the price editable when the tier does not say it is locked', async () => {
+    const user = await openRewards({
+      project: { lockedFields: ['goal', 'durationDays'] },
+      rewards: [FIRST],
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Edit Early bird' }));
+
+    expect(screen.getByRole('textbox', { name: 'Price' })).toBeEnabled();
   });
 
   describe('when the project cannot be loaded', () => {

@@ -776,6 +776,19 @@ export interface Reward {
    * second read.
    */
   version: number;
+  /**
+   * True once §5.3 has frozen this tier's price, which happens at launch.
+   *
+   * ON THE REWARD, NOT IN `ProjectEdit.lockedFields`. That array is filtered
+   * server-side to the campaign's own patch keys — `goal`, `durationDays`,
+   * `scheduledLaunchAt` — so it can never name a field of this body. The editor
+   * used to look for `'price'` in it and therefore never disabled anything (#183).
+   *
+   * There is no counterpart for `limitQuantity` because §5.3 permits raising it
+   * at any time. The client validates it against what is claimed and reserved and
+   * lets the service refuse a lowering it cannot know about.
+   */
+  pricingLocked: boolean;
   createdAt: string;
   updatedAt: string;
 }
