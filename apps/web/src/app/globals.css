@@ -1,0 +1,13 @@
+/**
+ * The whole stylesheet. Tailwind, the token file, and the theme bridge all
+ * arrive through `@ideanest/ui`, so this application defines no colour of its
+ * own — see docs/ui-kit.md §10.1.
+ */
+@import '@ideanest/ui/styles.css';
+
+/**
+ * Tailwind's automatic source detection skips `node_modules`, and pnpm links
+ * every workspace package in there. `@ideanest/ui` declares its own `@source`;
+ * this one covers this application's routes and components.
+ */
+@source "../";

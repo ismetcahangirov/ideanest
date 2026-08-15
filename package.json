@@ -9,6 +9,8 @@
   "scripts": {
     "storybook": "pnpm --filter @ideanest/ui storybook",
     "build:storybook": "pnpm --filter @ideanest/ui build-storybook",
+    "dev:web": "pnpm --filter @ideanest/web dev",
+    "build:web": "pnpm --filter @ideanest/web build",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",

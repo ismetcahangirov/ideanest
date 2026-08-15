@@ -93,7 +93,7 @@ need appears.
 ideanest/
 ├── apps/
 │   ├── api/                  Spring Boot service
-│   ├── web/                  Next.js application            (not yet created)
+│   ├── web/                  Next.js application
 │   ├── mobile/               Expo application               (not yet created)
 │   └── admin/                Internal tooling               (not yet created)
 ├── packages/
@@ -135,9 +135,11 @@ cd apps/api && ./gradlew build      # backend: compile and test
 | Command | Effect |
 |---|---|
 | `pnpm storybook` | Component workshop at `localhost:6006` |
+| `pnpm dev:web` | Web application at `localhost:3000`. Proxies `/v1` to the backend, so run that too |
 | `pnpm typecheck` | Type checking across every package |
 | `pnpm test` | Behaviour, accessibility, and colour-discipline tests |
 | `pnpm build:storybook` | Static Storybook build, as CI runs it |
+| `pnpm build:web` | Production build of the web application |
 
 The backend is a Gradle project and is not driven through pnpm. Its commands and
 conventions are in [`apps/api/README.md`](apps/api/README.md).

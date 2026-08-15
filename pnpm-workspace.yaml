@@ -3,3 +3,6 @@ packages:
   - 'packages/*'
 allowBuilds:
   esbuild: true
+  # Next's image optimiser. Arrives as an optional dependency of `next` and
+  # needs its native binding built.
+  sharp: true
