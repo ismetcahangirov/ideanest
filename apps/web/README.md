@@ -58,8 +58,28 @@ exist yet is a **disabled tab rather than a stub page**. A stub cannot be told
 apart from a broken page, and the file it would need belongs to the issue that
 builds it. Adding a section is a row in `tabs.ts` plus the route it points at.
 
-Rewards (#34), story (#35), pre-launch (#39), and review (#37) are the tabs still
-marked unavailable.
+Rewards (#34) and pre-launch (#39) are the tabs still marked unavailable.
+
+### The review tab
+
+`ReviewPanel` reads `GET /v1/projects/{id}/checklist` and renders three things:
+the itemised completeness checklist, the last moderation decision, and the submit
+control.
+
+**The server is the authority.** The checklist is read when the tab opens;
+`POST /submit` re-checks the same rules server-side with the same class. When it
+refuses with `PROJECT_NOT_SUBMITTABLE`, the requirements *it* named replace what
+the screen was showing — a field may have been emptied by a collaborator since, or
+the deployment may enforce a rule this build has never heard of. There is
+deliberately no client-side copy of §5.3 here; unlike the basics tab, nothing on
+this screen is being typed, so there is nothing an immediate local answer would
+buy that a second disagreeing implementation would not cost.
+
+**Blocking and advisory never share a presentation.** Two headed groups, two icon
+shapes, and every row states "Done", "Required, not done", or "Recommended, not
+done" in text. The score is a sentence with counts — `83% complete. 10 of 10
+required items done, 0 of 4 recommended.` — and the bar beside it is
+`aria-hidden`, because it is a picture of a number the sentence already carries.
 
 ### Autosave
 
