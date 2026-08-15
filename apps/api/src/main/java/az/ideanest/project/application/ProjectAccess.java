@@ -103,6 +103,21 @@ public class ProjectAccess {
     }
 
     /**
+     * What §5.3 has frozen on the campaign, for a caller that may not name one.
+     *
+     * <p>Authorises exactly as {@link #requireEditable(UUID, UUID)} — same load,
+     * same refusals — and answers with {@link EditLocks} instead of the entity. It
+     * exists for the reward module, which enforces two of the five rules and cannot
+     * see a {@code Project} to read the state off: {@code ModuleBoundaryTests} keeps
+     * this module's domain package to this module. Handing it the answer here rather
+     * than letting it ask a second time is what stops "has this campaign launched"
+     * from being computed twice from two different loads.
+     */
+    public EditLocks requireEditableLocks(UUID projectId, UUID accountId) {
+        return EditLocks.of(requireEditable(projectId, accountId));
+    }
+
+    /**
      * The campaign, for a request that needs one named capability.
      *
      * <p>The creator — implicitly, without a row — or a collaborator whose active

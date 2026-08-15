@@ -115,11 +115,12 @@ export interface ProjectEdit {
    * Field names the server will refuse to change, by name — `"goal"`,
    * `"durationDays"`.
    *
-   * #31 answers an empty list and #36 fills it in. It is read from the first
-   * day regardless, so that the editor disables a locked field the moment the
-   * rule exists rather than being rewritten around it. A client-side guess at
-   * the same rule is not the plan: immutability after launch (§5.3) is a
-   * business rule and it is enforced where the money is.
+   * Empty until the campaign launches; from `LIVE` onwards it lists `goal`,
+   * `durationDays`, and `scheduledLaunchAt`, which §5.3 freezes. A client-side
+   * guess at the same rule is not the plan: immutability after launch is a
+   * business rule and it is enforced where the money is, so this list is read
+   * rather than derived and an editor that ignores it is answered
+   * `409 PROJECT_FIELD_LOCKED`.
    */
   lockedFields: readonly string[];
   createdAt: string;

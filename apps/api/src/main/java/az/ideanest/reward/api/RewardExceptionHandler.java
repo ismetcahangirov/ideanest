@@ -3,6 +3,7 @@ package az.ideanest.reward.api;
 import az.ideanest.project.application.ProjectNotFoundException;
 import az.ideanest.reward.application.ItemInUseException;
 import az.ideanest.reward.application.ItemNotFoundException;
+import az.ideanest.reward.application.RewardFieldLockedException;
 import az.ideanest.reward.application.RewardFieldRejectedException;
 import az.ideanest.reward.application.RewardHasBackersException;
 import az.ideanest.reward.application.RewardNotFoundException;
@@ -153,6 +154,33 @@ public class RewardExceptionHandler {
         problem.setDetail("A campaign offers at most " + exception.limit() + " reward tiers.");
         problem.setProperty("code", "TOO_MANY_REWARDS");
         problem.setProperty("meta", Map.of("limit", exception.limit()));
+        return problem;
+    }
+
+    /**
+     * 409 for an edit to something §5.3 froze when the campaign launched.
+     *
+     * <p>The same status and the same {@code meta} shape as the project module's
+     * {@code PROJECT_FIELD_LOCKED}, with this module's code: a creator repricing a
+     * live tier and a creator moving a live campaign's goal are one rule, and a
+     * client should not have to handle them in two different ways because the
+     * request went to a different path. Not a 400 — the value is a perfectly good
+     * price, and the campaign's state is what refuses it.
+     */
+    @ExceptionHandler(RewardFieldLockedException.class)
+    public ProblemDetail handleFieldLocked(RewardFieldLockedException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/reward-field-locked"));
+        problem.setTitle("Field locked");
+        problem.setDetail(exception.getMessage());
+        problem.setProperty("code", "REWARD_FIELD_LOCKED");
+
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("field", exception.field());
+        // The campaign's state, not the tier's: a tier has none, and what refused
+        // the edit is the campaign having gone live.
+        meta.put("state", exception.state());
+        problem.setProperty("meta", meta);
         return problem;
     }
 
