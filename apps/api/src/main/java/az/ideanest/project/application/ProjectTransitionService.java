@@ -133,7 +133,7 @@ public class ProjectTransitionService {
     /** Moderation clears a campaign: {@code SUBMITTED} → {@code APPROVED}. */
     @Transactional
     public Project approve(UUID projectId, UUID moderatorId, String note) {
-        Project project = access.requireModeratable(projectId);
+        Project project = access.requireModeratable(projectId, moderatorId);
         return apply(project, ProjectState.APPROVED, ActorRole.MODERATOR, moderatorId, note);
     }
 
@@ -146,7 +146,7 @@ public class ProjectTransitionService {
      */
     @Transactional
     public Project reject(UUID projectId, UUID moderatorId, String note) {
-        Project project = access.requireModeratable(projectId);
+        Project project = access.requireModeratable(projectId, moderatorId);
         return apply(project, ProjectState.REJECTED, ActorRole.MODERATOR, moderatorId, requireNote(note));
     }
 
@@ -162,7 +162,7 @@ public class ProjectTransitionService {
      */
     @Transactional
     public Project requestChanges(UUID projectId, UUID moderatorId, String note) {
-        Project project = access.requireModeratable(projectId);
+        Project project = access.requireModeratable(projectId, moderatorId);
         return apply(
                 project, ProjectState.CHANGES_REQUESTED, ActorRole.MODERATOR, moderatorId, requireNote(note));
     }

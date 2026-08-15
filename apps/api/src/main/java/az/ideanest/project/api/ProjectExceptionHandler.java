@@ -1,5 +1,6 @@
 package az.ideanest.project.api;
 
+import az.ideanest.project.application.NotAModeratorException;
 import az.ideanest.project.application.ProjectFieldRejectedException;
 import az.ideanest.project.application.ProjectNotFoundException;
 import az.ideanest.project.application.ProjectNotLaunchableException;
@@ -45,6 +46,25 @@ public class ProjectExceptionHandler {
         problem.setTitle("No such project");
         problem.setDetail("That project does not exist.");
         problem.setProperty("code", "PROJECT_NOT_FOUND");
+        return problem;
+    }
+
+    /**
+     * 403 for a caller who is signed in and is not platform staff.
+     *
+     * <p>The one refusal in this module that is not a 404. See
+     * {@link NotAModeratorException}: the endpoint is documented, the check happens
+     * before any campaign is loaded, and an operator whose moderator list is
+     * unconfigured needs to be told that rather than shown a missing endpoint.
+     */
+    @ExceptionHandler(NotAModeratorException.class)
+    public ProblemDetail handleNotAModerator(NotAModeratorException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+        problem.setType(URI.create("https://ideanest.az/problems/not-a-moderator"));
+        problem.setTitle("Not a moderator");
+        // Deliberately not the exception's message, which names the account.
+        problem.setDetail("Moderation decisions are taken by platform staff.");
+        problem.setProperty("code", "NOT_A_MODERATOR");
         return problem;
     }
 

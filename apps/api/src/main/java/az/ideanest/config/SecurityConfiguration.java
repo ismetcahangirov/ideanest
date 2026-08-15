@@ -79,24 +79,23 @@ public class SecurityConfiguration {
                         // Moderation, and every administrative endpoint added
                         // under this prefix later.
                         //
-                        // Stated explicitly, and requiring no more than any other
-                        // authenticated endpoint, because that is the strongest
-                        // thing that can honestly be required today: there is no
-                        // role model anywhere in the service — not in the schema,
-                        // not in the access token — so nothing here can tell
-                        // platform staff from a creator. Any signed-in user can
-                        // therefore approve any campaign, which is a gap and is
-                        // named as one.
+                        // Authentication is all the filter chain can decide here.
+                        // There is no role model anywhere in the service — not in
+                        // the schema, not in the access token — so this matcher
+                        // cannot tell platform staff from a creator, and being
+                        // authenticated is emphatically not enough to approve a
+                        // campaign. Who may is decided one layer in, by
+                        // ProjectAccess.requireModeratable against the configured
+                        // moderator list, which is empty by default: an endpoint
+                        // added under this prefix without its own check therefore
+                        // reaches its handler, and it is the handler's job to
+                        // refuse.
                         //
-                        // **Epic #100 owns administrative roles and audit.** The
-                        // check belongs in one place when it arrives: this matcher
-                        // becomes hasAuthority("MODERATOR") or equivalent, and
-                        // ProjectAccess.requireModeratable stops being a load
-                        // with a comment on it. A stand-in invented now — a
-                        // configured list of addresses, a claim a client could
-                        // send — would look like authorisation without being it,
-                        // and would have to be found and removed rather than
-                        // filled in.
+                        // **Epic #100 owns administrative roles and audit.** When
+                        // it lands this matcher becomes hasAuthority("MODERATOR")
+                        // or equivalent, the configured list is deleted, and
+                        // requireModeratable keeps its signature — which is why
+                        // the interim control lives there rather than here.
                         .requestMatchers("/v1/admin/**")
                         .hasAuthority(ACCOUNT_ACTIVE)
                         // Everything else additionally requires that the account

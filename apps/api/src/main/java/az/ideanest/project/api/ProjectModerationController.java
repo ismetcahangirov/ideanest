@@ -21,19 +21,21 @@ import org.springframework.web.bind.annotation.RestController;
  * first would mean a module whose only content is a call into another module's
  * service.
  *
- * <p><strong>There is no role check, and that is a gap this pull request names
- * rather than papers over.</strong> The service has no role model: nothing in the
- * schema, the access token, or {@code SecurityConfiguration} distinguishes platform
- * staff from anybody else, so what these endpoints require is what the filter chain
- * can enforce today — an authenticated caller whose account is in good standing.
- * Which means, plainly, that any signed-in user can approve any campaign. Epic #100
- * owns administrative roles; the check goes in {@code ProjectAccess.requireModeratable},
- * which exists and is called by all three methods here for that reason.
+ * <p><strong>There is no role model yet, so staff is a configured list of
+ * addresses.</strong> Nothing in the schema, the access token, or
+ * {@code SecurityConfiguration} distinguishes platform staff from anybody else, and
+ * epic #100 owns that. Until it lands, {@code ideanest.project.moderation
+ * .moderator-emails} is what these three endpoints check, through
+ * {@code ProjectAccess.requireModeratable} — one method, called by all three, rather
+ * than an annotation somebody forgets on the fourth. The list is empty by default,
+ * which means no account can moderate anything until a deployment says who can.
  *
- * <p>Inventing a stand-in — a configured list of email addresses, a claim a client
- * could send, "the creator may not approve their own" — would be worse. Each looks
- * like authorisation, none of them is, and every one of them would have to be found
- * and removed rather than simply filled in.
+ * <p>The alternatives were worse. Requiring only a valid access token — which is all
+ * the filter chain can enforce on its own — lets a creator approve their own
+ * campaign, and moderation exists to prevent exactly that. So does "the creator may
+ * not approve their own", one free second account later. A claim carried in the
+ * request is not authorisation at all. Configuration is the one option that fails
+ * closed and that epic #100 can replace by deleting it.
  */
 @RestController
 @RequestMapping("/v1/admin/moderation")
@@ -93,10 +95,10 @@ public class ProjectModerationController {
     /**
      * Whoever is signed in.
      *
-     * <p>Recorded as the {@code MODERATOR} on the transition row. That the platform
-     * cannot yet verify they are one is the gap above; recording the account that
-     * acted is still worth doing, because it is what makes the decision reviewable
-     * once there is a way to tell.
+     * <p>Checked against the configured moderator list before anything happens, and
+     * recorded as the {@code MODERATOR} on the transition row either way — the audit
+     * trail's job is to say which account took the decision, and a refused attempt
+     * never reaches the transition.
      */
     private static UUID moderatorOf(Jwt accessToken) {
         return UUID.fromString(accessToken.getSubject());

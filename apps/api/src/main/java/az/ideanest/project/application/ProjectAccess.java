@@ -29,9 +29,11 @@ import org.springframework.stereotype.Service;
 public class ProjectAccess {
 
     private final ProjectRepository projects;
+    private final ModeratorDirectory moderators;
 
-    public ProjectAccess(ProjectRepository projects) {
+    public ProjectAccess(ProjectRepository projects, ModeratorDirectory moderators) {
         this.projects = projects;
+        this.moderators = moderators;
     }
 
     /**
@@ -64,25 +66,24 @@ public class ProjectAccess {
     }
 
     /**
-     * The campaign, locked, for a moderation decision.
+     * The campaign, locked, for a moderation decision by this account.
      *
-     * <p><strong>There is no authorisation check here, and that is a known
-     * gap.</strong> The service has no role model: nothing in the schema, the
-     * access token, or {@code SecurityConfiguration} distinguishes platform staff
-     * from a creator, so the strongest statement that can be made today is the one
-     * the filter chain already makes — the caller is authenticated and their
-     * account is in good standing. Epic #100 owns administrative roles and audit,
-     * and when it lands this method is where the check goes: one method, called by
-     * all three moderation endpoints, rather than an annotation somebody forgets
-     * on the fourth.
+     * <p>Staff is a configured list of addresses, and an empty list is nobody —
+     * see {@link ModeratorDirectory} for why that is the shape and why it fails
+     * closed. It is deployment configuration standing in for a role model, and it
+     * is the only thing that keeps "state transitions are enforced server-side and
+     * cannot be bypassed" true before epic #100 exists: without it these endpoints
+     * require a valid access token and nothing else, which is a creator approving
+     * their own campaign.
      *
-     * <p>Ownership is deliberately <em>not</em> checked instead, as a stand-in. A
-     * "creator can approve their own campaign" rule would be worse than no rule,
-     * because it looks like authorisation while permitting exactly the thing
-     * moderation exists to prevent, and it would have to be found and removed
-     * later rather than added.
+     * <p><strong>Checked before the campaign is loaded</strong>, so a caller who
+     * is not staff learns nothing about which identifiers exist. Epic #100
+     * replaces the directory and changes nothing here.
      */
-    public Project requireModeratable(UUID projectId) {
+    public Project requireModeratable(UUID projectId, UUID accountId) {
+        if (!moderators.isModerator(accountId)) {
+            throw new NotAModeratorException(accountId);
+        }
         return projects.findByIdForUpdate(projectId).orElseThrow(() -> new ProjectNotFoundException(projectId));
     }
 

@@ -1397,6 +1397,18 @@ GET    /v1/admin/audit-logs
 > them refuses a move §6.1 does not allow with `409` and
 > `code: PROJECT_TRANSITION_NOT_ALLOWED`, carrying the state the project is
 > actually in and what it can reach from there.
+>
+> **Who is a moderator is configuration, until there is a role model.** Nothing in
+> the schema or the access token distinguishes platform staff, and epic #100 owns
+> that. Until then the three endpoints check the caller's verified address against
+> `ideanest.project.moderation.moderator-emails` and answer `403` with
+> `code: NOT_A_MODERATOR` otherwise. **The list is empty by default**, so no
+> account can moderate anything until a deployment says who can — the opposite
+> default is a creator approving their own campaign, and it has no symptom until a
+> campaign that should never have launched is live. The check runs before the
+> project is loaded, so a caller who is not staff learns nothing about which
+> identifiers exist. This is the one refusal in the module that is not the `404`
+> a confidential draft gets.
 
 ### 10.3 Conventions
 

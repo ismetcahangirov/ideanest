@@ -47,6 +47,12 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     private static final AtomicInteger SEQUENCE = new AtomicInteger();
     private static final String PASSWORD = "a-long-enough-password";
 
+    /** The single address {@code application-test.yml} lists as a moderator. */
+    private static final String MODERATOR_EMAIL = "moderator@ideanest.test";
+
+    /** Shared across the class. See {@link #moderator()} for why it is cached. */
+    private static Creator MODERATOR;
+
     @Autowired
     private TestRestTemplate rest;
 
@@ -98,6 +104,38 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
 
         UUID id = users.findByEmailAndDeletedAtIsNull(email).orElseThrow().getId();
         return new Creator((String) signedIn.getBody().get("accessToken"), id);
+    }
+
+    /**
+     * The one account this suite's configuration treats as platform staff.
+     *
+     * <p>Registered and signed in once for the whole class rather than per test,
+     * because the address is fixed — {@code application-test.yml} names it — and
+     * the auth module's per-email sign-in limit is deliberately realistic. Every
+     * other account in the file is therefore a non-moderator, which is what makes
+     * {@link #moderationRefusesAnAccountThatIsNotStaff()} the default case rather
+     * than a special one.
+     */
+    private Creator moderator() {
+        if (MODERATOR != null) {
+            return MODERATOR;
+        }
+        EmailAddress email = EmailAddress.of(MODERATOR_EMAIL);
+        rest.postForEntity(
+                "/v1/auth/register",
+                Map.of("email", email.value(), "password", PASSWORD, "name", "Test Moderator"),
+                String.class);
+
+        ResponseEntity<Map<String, Object>> signedIn = rest.exchange(
+                "/v1/auth/login",
+                HttpMethod.POST,
+                new HttpEntity<>(
+                        Map.of("email", email.value(), "password", PASSWORD, "tokenDelivery", "body"), jsonHeaders()),
+                new ParameterizedTypeReference<Map<String, Object>>() {});
+
+        UUID id = users.findByEmailAndDeletedAtIsNull(email).orElseThrow().getId();
+        MODERATOR = new Creator((String) signedIn.getBody().get("accessToken"), id);
+        return MODERATOR;
     }
 
     private static HttpHeaders jsonHeaders() {
@@ -507,7 +545,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     @DisplayName("a campaign goes draft, submitted, approved, live")
     void theHappyPath() {
         Creator creator = creator();
-        Creator moderator = creator();
+        Creator moderator = moderator();
         UUID id = idOf(fundableDraft(creator, "A campaign"));
 
         assertThat(post("/v1/projects/" + id + "/submit", creator.accessToken(), null)
@@ -531,10 +569,46 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("moderation refuses an account that is not platform staff")
+    void moderationRefusesAnAccountThatIsNotStaff() {
+        Creator creator = creator();
+        Creator stranger = creator();
+        UUID id = idOf(fundableDraft(creator, "A campaign"));
+        post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
+
+        // The whole point of moderation: the person who wrote the campaign is not
+        // the person who clears it. Approving your own submission is the bypass
+        // this endpoint exists to prevent, and a valid access token is not enough.
+        ResponseEntity<Map<String, Object>> byCreator =
+                post("/v1/admin/moderation/" + id + "/approve", creator.accessToken(), null);
+        assertThat(byCreator.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(byCreator.getBody()).containsEntry("code", "NOT_A_MODERATOR");
+
+        // Nor does a second free account, which is why ownership alone would not
+        // have been a rule worth writing.
+        assertThat(post("/v1/admin/moderation/" + id + "/reject", stranger.accessToken(), Map.of("note", "No."))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(post(
+                                "/v1/admin/moderation/" + id + "/request-changes",
+                                stranger.accessToken(),
+                                Map.of("note", "Rewrite it."))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+
+        // Refused before anything moved, and no audit row claiming otherwise.
+        assertThat(get("/v1/projects/" + id + "/edit", creator.accessToken()).getBody())
+                .containsEntry("state", "SUBMITTED");
+        assertThat(transitions.findByProjectIdOrderByCreatedAtAsc(id))
+                .extracting(ProjectStateTransition::getToState)
+                .containsExactly(ProjectState.DRAFT, ProjectState.SUBMITTED);
+    }
+
+    @Test
     @DisplayName("moderation can send a campaign back, and it can be resubmitted")
     void changesRequestedIsNotTerminal() {
         Creator creator = creator();
-        Creator moderator = creator();
+        Creator moderator = moderator();
         UUID id = idOf(fundableDraft(creator, "A campaign"));
         post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
 
@@ -564,7 +638,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     @DisplayName("a moderation decision the creator has to act on needs a reason")
     void rejectionCarriesItsReason() {
         Creator creator = creator();
-        Creator moderator = creator();
+        Creator moderator = moderator();
         UUID id = idOf(fundableDraft(creator, "A campaign"));
         post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
 
@@ -588,7 +662,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     @DisplayName("cancelling a live campaign records the reason backers are shown")
     void cancellingALiveCampaign() {
         Creator creator = creator();
-        Creator moderator = creator();
+        Creator moderator = moderator();
         UUID id = idOf(fundableDraft(creator, "A campaign"));
         post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
         post("/v1/admin/moderation/" + id + "/approve", moderator.accessToken(), null);
@@ -643,7 +717,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     @DisplayName("a terminal campaign cannot be moved by any endpoint")
     void terminalIsTerminal() {
         Creator creator = creator();
-        Creator moderator = creator();
+        Creator moderator = moderator();
         UUID id = idOf(fundableDraft(creator, "A campaign"));
         post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
         post("/v1/admin/moderation/" + id + "/reject", moderator.accessToken(), Map.of("note", "§5.4."));
@@ -668,7 +742,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     @DisplayName("an approved campaign with no goal cannot launch, and says which field is missing")
     void launchingNeedsAGoalAndADuration() {
         Creator creator = creator();
-        Creator moderator = creator();
+        Creator moderator = moderator();
         UUID id = idOf(draft(creator, "A campaign"));
         post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
         post("/v1/admin/moderation/" + id + "/approve", moderator.accessToken(), null);
@@ -687,7 +761,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     @DisplayName("a launched campaign cannot have its goal removed")
     void aLiveCampaignKeepsItsGoal() {
         Creator creator = creator();
-        Creator moderator = creator();
+        Creator moderator = moderator();
         UUID id = idOf(fundableDraft(creator, "A campaign"));
         post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
         post("/v1/admin/moderation/" + id + "/approve", moderator.accessToken(), null);
@@ -709,7 +783,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     @DisplayName("every transition writes exactly one audit row, with the role that made it")
     void everyTransitionWritesExactlyOneAuditRow() {
         Creator creator = creator();
-        Creator moderator = creator();
+        Creator moderator = moderator();
         UUID id = idOf(fundableDraft(creator, "A campaign"));
 
         post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
