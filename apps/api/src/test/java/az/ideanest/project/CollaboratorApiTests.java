@@ -163,6 +163,19 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
                 new ParameterizedTypeReference<List<Map<String, Object>>>() {});
     }
 
+    /**
+     * A GET whose body is not read.
+     *
+     * <p>For asserting a refusal. {@link #getList} asks Jackson for a list, and a
+     * refusal answers a problem detail — an object — so the conversion fails before
+     * the status can be looked at, and the test reports a parse error instead of the
+     * 404 it was checking for. Reading the body as a string sidesteps that: this
+     * helper is about the status line and nothing else.
+     */
+    private ResponseEntity<String> getRaw(String path, String accessToken) {
+        return rest.exchange(path, HttpMethod.GET, new HttpEntity<>(bearer(accessToken)), String.class);
+    }
+
     private ResponseEntity<Map<String, Object>> delete(String path, String accessToken) {
         return rest.exchange(
                 path,
@@ -341,7 +354,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
 
         // 404 rather than 403: a draft is confidential, and answering "forbidden"
         // would confirm that the campaign exists.
-        assertThat(getList("/v1/projects/" + projectId + "/collaborators", stranger.accessToken())
+        assertThat(getRaw("/v1/projects/" + projectId + "/collaborators", stranger.accessToken())
                         .getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(invite(projectId, stranger, stranger.email(), "EDIT_BASICS")

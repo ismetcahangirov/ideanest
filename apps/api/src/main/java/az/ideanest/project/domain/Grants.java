@@ -58,13 +58,18 @@ public final class Grants {
      * that takes effect everywhere.
      */
     public static Grants of(Collaborator collaborator) {
-        if (!collaborator.isActive()) {
-            return NONE;
-        }
-        return new Grants(false, EnumSet.copyOf(collaborator.getCapabilities()));
+        return collaborator.isActive() ? of(collaborator.getCapabilities()) : NONE;
     }
 
-    /** A grant set held by a collaborator, for callers that have no row to hand. */
+    /**
+     * A grant set held by a collaborator, for callers that have no row to hand.
+     *
+     * <p>An empty set is "nothing", not an error. The service and the entity both
+     * refuse to write a grant that confers nothing, so this only arises if the
+     * capability rows were removed underneath one — and the safe reading of a grant
+     * with no capabilities is that it authorises none, rather than an exception from
+     * a class whose job is to answer a question about permissions.
+     */
     public static Grants of(Set<Capability> capabilities) {
         return capabilities.isEmpty() ? NONE : new Grants(false, EnumSet.copyOf(capabilities));
     }
