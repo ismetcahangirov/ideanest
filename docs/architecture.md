@@ -544,6 +544,42 @@ individual agreement can differ without a deployment.
 | Increase reward quantity | Permitted |
 | Decrease reward quantity | Only above the number already claimed |
 
+> **The first nine rules are the submission checklist.** They are evaluated by a
+> single class — `SubmissionChecklist`, a pure type in the project module's domain
+> package with no Spring and no database — and that class has exactly two callers:
+> `GET /v1/projects/{id}/checklist`, which advises the creator, and
+> `POST /v1/projects/{id}/submit`, which refuses with `409 PROJECT_NOT_SUBMITTABLE`
+> and names every unmet requirement. One implementation, two callers, so the screen
+> and the write cannot disagree about whether a campaign is ready. The endpoint is
+> advice; the refusal is the enforcement, and it holds for a client that skipped the
+> endpoint, cached its answer, or is not ours.
+>
+> Facts about reward tiers reach that class through a port the project module
+> declares (`RewardFacts`) and the reward module implements. The reverse call would
+> be a cycle: the reward module already depends on the project module for
+> authorisation.
+>
+> **Blocking and advisory are separate lists.** §5.3's nine rules refuse a
+> submission. Beside them the checklist reports four things that are permitted and
+> weaker — no subcategory, no scheduled launch, a story with no images or embeds, and
+> no reward tiers at all (§5.3 allows zero). They travel in a different array from
+> the blocking ones so that an interface cannot present a suggestion as a barrier.
+> The completeness score is a percentage over both, with a blocking requirement
+> weighing twice an advisory one: built from blockers alone it would be a boolean
+> wearing a percent sign, and every legal-but-bare campaign would read 100.
+>
+> **What the goal bounds and the reward floor are.** §5.3 calls them configurable and
+> they are: `ideanest.project.submission.{goal-minimum, goal-maximum,
+> reward-price-minimum}`. The goal bounds are a commercial position and the reward
+> floor belongs to the payment provider (§9.3); neither is ours to compile in.
+>
+> **What the checklist cannot check.** That a cover image really is 1024×576 — the
+> dimensions are measured in the creator's browser and sent alongside the URL,
+> because there is no media pipeline (§13) and nothing on the server has ever seen
+> the file, so a client could claim any size. It becomes a real check when ingestion
+> measures the file itself. §5.4's prohibited content and §5.5's obligations are not
+> properties of a row at all; they are what moderation is for.
+>
 > **How the reward rules are enforced today.** Deleting a claimed tier is
 > `409 REWARD_HAS_BACKERS`, and "hidden" is expressed as `available_until` in the
 > past — that withdraws the tier from sale without deleting it, and it needs no
@@ -661,6 +697,25 @@ stateDiagram-v2
     SUSPENDED --> [*]
     COMPLETED --> [*]
 ```
+
+> **`SUBMITTED → CHANGES_REQUESTED → SUBMITTED` needs the note to be readable.**
+> The moderator's reason is written on the `project_state_transitions` row, and the
+> creator reads it back on `GET /v1/projects/{id}/checklist` as `moderation`: the
+> outcome, the note, when it was decided, and whether the campaign is still in the
+> state that decision produced. It rides there rather than on `ProjectEdit` —
+> which answers every autosave, and would then query the transition table several
+> times a minute for a value one screen renders — and rather than on an endpoint of
+> its own, because the note and the state have to be read together or a client can
+> show a decision the campaign has already moved past. `current` is computed
+> server-side for exactly that reason: after a resubmission the newest note is
+> still the change request's, and a client comparing two enums to work that out is
+> a client that will eventually shout at somebody whose campaign is fine.
+>
+> **Submission is checked against §5.3 before the edge is taken**, so a campaign
+> with no goal or no deadline cannot reach `APPROVED` and therefore cannot be
+> launched from there. `PROJECT_NOT_LAUNCHABLE` is consequently unreachable through
+> the API and is kept: the scheduled launch of §8.4 moves `SCHEDULED → LIVE` on a
+> timer, from a row somebody may have edited since.
 
 ### 6.2 Pledge
 

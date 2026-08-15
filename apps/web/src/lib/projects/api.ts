@@ -213,6 +213,111 @@ export async function patchProject(
 }
 
 /* -------------------------------------------------------------------------
+ * Submission — the completeness checklist and the state change (#37)
+ *
+ * The checklist is ADVICE. `POST /submit` re-checks the same rules with the same
+ * server-side class, so a client that skipped this read, cached its answer, or is
+ * an older build gets the same verdict — as a 409 rather than as a list. The panel
+ * therefore treats a refusal as the authority and this read as a convenience,
+ * never the other way round.
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Which editor tab fixes a requirement — the route segment, not a label.
+ *
+ * `string` rather than a union of the three the service sends today, on purpose.
+ * A requirement pointing at a section this build does not know about is a
+ * deployment ahead of the client, and a union would make that a type error at the
+ * boundary and a silently wrong link at runtime. `isChecklistSection` in
+ * `./checklist` narrows it, and an item that does not narrow is rendered without
+ * a link rather than with one that goes nowhere.
+ */
+export type ChecklistSection = string;
+
+/**
+ * One requirement of docs/architecture.md §5.3, and how this campaign stands
+ * against it.
+ *
+ * `requirement` is the stable name to branch on — `COVER_IMAGE`, `RISKS`.
+ * `label` and `detail` are prose and may be reworded at any time (§10.4), so
+ * nothing keys off them.
+ */
+export interface ChecklistItem {
+  requirement: string;
+  label: string;
+  satisfied: boolean;
+  section: ChecklistSection;
+  /** Why it is not met, quoting the campaign's own numbers. Absent when it is met. */
+  detail?: string | null;
+}
+
+/**
+ * The last decision platform staff took, as the creator reads it.
+ *
+ * `current` is the server's answer to "is this something to act on now, or is it
+ * what happened last time" — a campaign resubmitted after a change request is in
+ * `SUBMITTED` while the newest note is still the change request's. The client
+ * does not work that out by comparing states; getting it wrong means shouting at
+ * somebody whose campaign is fine.
+ */
+export interface ModerationOutcome {
+  outcome: 'APPROVED' | 'CHANGES_REQUESTED' | 'REJECTED';
+  note?: string | null;
+  /** ISO 8601, UTC. */
+  decidedAt: string;
+  current: boolean;
+}
+
+/**
+ * `GET /v1/projects/{id}/checklist`.
+ *
+ * Blocking and advisory arrive as two arrays rather than one with a flag,
+ * because an interface that renders a suggestion in the same red as a
+ * requirement teaches creators that the checklist exaggerates — and the half they
+ * stop reading is the half that was true.
+ */
+export interface ProjectChecklist {
+  projectId: string;
+  state: ProjectState;
+  /** Whether §5.3 is satisfied. Not whether §6.1 allows the move from here. */
+  submittable: boolean;
+  /** 0–100 over every requirement, blocking weighted twice advisory. */
+  score: number;
+  blocking: readonly ChecklistItem[];
+  advisory: readonly ChecklistItem[];
+  moderation?: ModerationOutcome | null;
+}
+
+export async function getProjectChecklist(
+  id: string,
+  signal?: AbortSignal,
+): Promise<ProjectChecklist> {
+  const response = await authorizedFetch(`/v1/projects/${encodeURIComponent(id)}/checklist`, {
+    signal,
+  });
+  if (!response.ok) throw await errorFrom(response);
+  return (await response.json()) as ProjectChecklist;
+}
+
+/**
+ * Sends the campaign to moderation, and answers the campaign as it now stands.
+ *
+ * Refused with `PROJECT_NOT_SUBMITTABLE` (409) when §5.3 is not satisfied, and
+ * with `PROJECT_TRANSITION_NOT_ALLOWED` (409) when §6.1 does not allow the move
+ * from the state the campaign is in — a campaign somebody else already submitted,
+ * or one that was rejected. Both are conflicts because the request is well formed
+ * and it is the campaign that refuses it.
+ */
+export async function submitProject(id: string, signal?: AbortSignal): Promise<ProjectEdit> {
+  return readProject(
+    await authorizedFetch(`/v1/projects/${encodeURIComponent(id)}/submit`, {
+      method: 'POST',
+      signal,
+    }),
+  );
+}
+
+/* -------------------------------------------------------------------------
  * Taxonomy
  *
  * `GET /v1/categories` is in docs/architecture.md §10.2 under discovery, and
@@ -740,9 +845,8 @@ export async function replaceShippingRules(
 /* -------------------------------------------------------------------------
  * Still to come. Each of these is a function in THIS module, not a new client.
  *
- *   #37 checklist                GET /v1/projects/{id}/checklist
  *   #39 pre-launch and follows   POST/DELETE /v1/projects/{id}/prelaunch
- *   #31 submit, launch, cancel   POST /v1/projects/{id}/submit | launch | cancel
+ *   #31 launch and cancel        POST /v1/projects/{id}/launch | cancel
  *
  * The story, risks, and cover fields of `ProjectPatch` are already here because
  * they are written through the same autosave path; the tabs that own them add

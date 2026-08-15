@@ -42,7 +42,7 @@ export const EDITOR_TABS: readonly EditorTab[] = [
   { key: 'rewards', label: 'Rewards', segment: 'rewards', available: true, issue: 34 },
   { key: 'story', label: 'Story', segment: 'story', available: true, issue: 35 },
   { key: 'prelaunch', label: 'Pre-launch', segment: 'prelaunch', available: false, issue: 39 },
-  { key: 'review', label: 'Review', segment: 'review', available: false, issue: 37 },
+  { key: 'review', label: 'Review', segment: 'review', available: true, issue: 37 },
 ];
 
 export function editorTabHref(projectId: string, tab: EditorTab): string {
