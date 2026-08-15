@@ -2,6 +2,7 @@ package az.ideanest.project.api;
 
 import az.ideanest.project.application.CapabilityNotGrantedException;
 import az.ideanest.project.application.NotAModeratorException;
+import az.ideanest.project.application.ProjectFieldLockedException;
 import az.ideanest.project.application.ProjectFieldRejectedException;
 import az.ideanest.project.application.ProjectNotFoundException;
 import az.ideanest.project.application.ProjectNotLaunchableException;
@@ -127,6 +128,31 @@ public class ProjectExceptionHandler {
         problem.setDetail("A campaign cannot go live until its funding goal and duration are set.");
         problem.setProperty("code", "PROJECT_NOT_LAUNCHABLE");
         problem.setProperty("meta", Map.of("missing", exception.missing()));
+        return problem;
+    }
+
+    /**
+     * 409 for an edit to a field §5.3 froze at launch.
+     *
+     * <p>Not a 400, for the reason {@link ProjectFieldLockedException} gives and the
+     * one {@link #handleTransitionNotAllowed} already gives: the value is fine and
+     * the campaign's state is what refuses it. {@code meta} carries the field so the
+     * editor can highlight it, and the state so it can say why without asking again
+     * — and so that a client whose page is out of date learns, from the refusal, that
+     * the campaign has gone live.
+     */
+    @ExceptionHandler(ProjectFieldLockedException.class)
+    public ProblemDetail handleFieldLocked(ProjectFieldLockedException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/project-field-locked"));
+        problem.setTitle("Field locked");
+        problem.setDetail(exception.getMessage());
+        problem.setProperty("code", "PROJECT_FIELD_LOCKED");
+
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("field", exception.field());
+        meta.put("state", exception.state().name());
+        problem.setProperty("meta", meta);
         return problem;
     }
 

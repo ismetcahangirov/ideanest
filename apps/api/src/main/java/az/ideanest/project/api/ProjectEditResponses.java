@@ -1,11 +1,12 @@
 package az.ideanest.project.api;
 
+import az.ideanest.project.domain.LockedField;
 import az.ideanest.project.domain.Project;
+import az.ideanest.project.domain.ProjectEditLocks;
 import az.ideanest.shared.Money;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.List;
 import org.springframework.stereotype.Component;
 
 /**
@@ -16,8 +17,10 @@ import org.springframework.stereotype.Component;
  * in the ones somebody remembered — the failure that makes a client's state depend
  * on which request it happened to make last.
  *
- * <p>It is also where #36 fills in {@code lockedFields}: one method, one list, and
- * no endpoint to revisit.
+ * <p>It is also where {@code lockedFields} is filled in: one method, one list, and
+ * no endpoint to revisit. Every response that changes a campaign therefore carries
+ * the current answer, including the one to the request that launched it — which is
+ * the moment a client most needs to be told that the goal has just frozen.
  */
 @Component
 public class ProjectEditResponses {
@@ -46,9 +49,11 @@ public class ProjectEditResponses {
                 project.getRisks(),
                 CoverImageBody.of(project.getCoverImage()),
                 project.isLatePledgeEnabled(),
-                // Empty, and populated by #36. See ProjectEdit for why it is here
-                // before it is filled in.
-                List.of(),
+                // §5.3, read off the one table rather than recomputed here, and
+                // filtered to the fields this response's own PATCH body has: a
+                // reward's price is frozen by the same rule and is not on this
+                // screen. See ProjectEditLocks.
+                ProjectEditLocks.lockedFieldNamesIn(project.getState(), LockedField.Resource.PROJECT),
                 project.getCreatedAt(),
                 project.getUpdatedAt());
     }
