@@ -1,7 +1,9 @@
 package az.ideanest.auth.api;
 
+import az.ideanest.auth.application.AccountLinkRefusedException;
 import az.ideanest.auth.application.AuthenticationFailedException;
 import az.ideanest.auth.application.TwoFactorRejectedException;
+import az.ideanest.auth.application.ProviderNotConfiguredException;
 import az.ideanest.auth.application.VerificationRejectedException;
 import az.ideanest.auth.application.WeakPasswordException;
 import java.net.URI;
@@ -59,6 +61,52 @@ public class AuthExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
         problem.setType(URI.create("https://ideanest.az/problems/missing-client-header"));
         problem.setTitle("Request refused");
+        problem.setDetail(exception.getMessage());
+        return problem;
+    }
+
+    /**
+     * A provider sign-in that proved an address which already belongs to an
+     * account here, in a state where linking the two would not be safe.
+     *
+     * <p>409 rather than 401: the credentials were fine and the conflict is with
+     * the state of an account, which retrying identically will not change. The
+     * message says what to do about it, and it can afford to — the caller has
+     * just proven to the provider that this address is theirs, so it tells them
+     * nothing they could not learn by asking for a password reset.
+     */
+    @ExceptionHandler(AccountLinkRefusedException.class)
+    public ProblemDetail handleAccountLinkRefused(AccountLinkRefusedException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/account-link-refused"));
+        problem.setTitle("Sign-in refused");
+        problem.setDetail(exception.getMessage());
+        return problem;
+    }
+
+    /**
+     * A provider this build supports and this environment has no credentials for.
+     *
+     * <p>501 rather than 404: the endpoint exists, the provider is one we know,
+     * and what is missing is on our side. A client told this can say "not
+     * available here" instead of showing a button that fails as though the user
+     * did something wrong.
+     */
+    @ExceptionHandler(ProviderNotConfiguredException.class)
+    public ProblemDetail handleProviderNotConfigured(ProviderNotConfiguredException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_IMPLEMENTED);
+        problem.setType(URI.create("https://ideanest.az/problems/provider-not-configured"));
+        problem.setTitle("Provider not available");
+        problem.setDetail(exception.getMessage());
+        return problem;
+    }
+
+    /** A provider segment naming something this service has never heard of. */
+    @ExceptionHandler(TokenController.UnknownProviderException.class)
+    public ProblemDetail handleUnknownProvider(TokenController.UnknownProviderException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+        problem.setType(URI.create("https://ideanest.az/problems/unknown-provider"));
+        problem.setTitle("No such provider");
         problem.setDetail(exception.getMessage());
         return problem;
     }

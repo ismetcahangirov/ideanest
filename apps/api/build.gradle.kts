@@ -61,6 +61,12 @@ dependencies {
     // Module boundaries that are only written down are module boundaries that
     // erode. These are the same rules as az/ideanest/package-info.java, checked.
     testImplementation("com.tngtech.archunit:archunit-junit5:1.5.0")
+    // The provider stub. Google and Apple are not called from a test — a suite
+    // that depends on somebody else's uptime fails for reasons that are not
+    // ours, and neither of them will sign a token for a key we control. The
+    // standalone artefact shades its own Jetty and Jackson, so the stub cannot
+    // drag the application's versions around underneath it.
+    testImplementation("org.wiremock:wiremock-standalone:3.13.1")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

@@ -30,8 +30,20 @@ ideanest:
       registrations-per-email: 3
       sign-ins-per-address: 100000
       sign-ins-per-email: 5
+      social-sign-ins-per-address: 100000
     token:
       issuer: https://api.ideanest.test
+    oauth:
+      # The issuers and the key set addresses stay as they are in
+      # application.yml -- the real Google and Apple issuer strings, so the
+      # issuer check is exercised against the value production uses. Only the
+      # jwks-uri is replaced, by AbstractIntegrationTest, because the stub takes
+      # whichever port is free.
+      providers:
+        google:
+          audiences: ideanest-test.apps.googleusercontent.com
+        apple:
+          audiences: az.ideanest.test
     refresh-cookie:
       # TestRestTemplate speaks plain HTTP, and a Secure cookie would never come
       # back — the cookie tests would then pass for the wrong reason.

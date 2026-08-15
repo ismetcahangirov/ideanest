@@ -7,6 +7,9 @@ import az.ideanest.auth.application.RefreshService;
 import az.ideanest.auth.application.SignInOutcome;
 import az.ideanest.auth.application.SignInService;
 import az.ideanest.auth.application.SignInService.SignInCommand;
+import az.ideanest.auth.application.SocialSignInService;
+import az.ideanest.auth.application.SocialSignInService.SocialSignInCommand;
+import az.ideanest.auth.domain.IdentityProvider;
 import az.ideanest.shared.EmailAddress;
 import az.ideanest.shared.ratelimit.RateLimitExceededException;
 import az.ideanest.shared.ratelimit.RateLimiter;
@@ -19,6 +22,7 @@ import java.util.Optional;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -40,6 +44,7 @@ public class TokenController {
     private static final String CLIENT_HEADER = "X-IdeaNest-Client";
 
     private final SignInService signIns;
+    private final SocialSignInService socialSignIns;
     private final RefreshService refreshes;
     private final RefreshCookies cookies;
     private final TokenResponses responses;
@@ -48,12 +53,14 @@ public class TokenController {
 
     public TokenController(
             SignInService signIns,
+            SocialSignInService socialSignIns,
             RefreshService refreshes,
             RefreshCookies cookies,
             TokenResponses responses,
             RateLimiter rateLimiter,
             AuthProperties properties) {
         this.signIns = signIns;
+        this.socialSignIns = socialSignIns;
         this.refreshes = refreshes;
         this.cookies = cookies;
         this.responses = responses;
@@ -96,9 +103,18 @@ public class TokenController {
                 httpRequest.getHeader(HttpHeaders.USER_AGENT),
                 clientAddressOf(httpRequest)));
 
-        // A switch over a sealed type rather than an if: a third outcome — an
-        // SMS factor, a forced password change — then fails to compile here
-        // instead of falling through to "signed in".
+        return respondTo(outcome, request.wantsTokenInBody());
+    }
+
+    /**
+     * Turns a sign-in outcome into a response.
+     *
+     * <p>A switch over a sealed type rather than an if: a third outcome — an SMS
+     * factor, a forced password change — then fails to compile here instead of
+     * falling through to "signed in". Shared by the password and the provider
+     * paths so that neither can grow a different answer to the same question.
+     */
+    private ResponseEntity<?> respondTo(SignInOutcome outcome, boolean tokenInBody) {
         return switch (outcome) {
             case SignInOutcome.TwoFactorRequired challenge -> ResponseEntity.ok()
                     // A challenge is a credential for the next five minutes.
@@ -106,9 +122,47 @@ public class TokenController {
                     .body(TwoFactorChallengeResponse.of(
                             challenge.challenge(),
                             Duration.between(Instant.now(), challenge.expiresAt()).toSeconds()));
-            case SignInOutcome.Authenticated authenticated -> responses.of(
-                    authenticated.tokens(), request.wantsTokenInBody());
+            case SignInOutcome.Authenticated authenticated -> responses.of(authenticated.tokens(), tokenInBody);
         };
+    }
+
+    /**
+     * Signs in with a Google or Apple ID token.
+     *
+     * <p>Ends in the same place as a password sign-in — the same session, the
+     * same rotation, the same fifteen-minute access token — because the two
+     * differ only in how the person was identified. Including the second factor:
+     * an account with two-factor confirmed gets a challenge here as well.
+     * Letting a provider button skip it would make two-factor advisory, which is
+     * the same as not having it.
+     */
+    @PostMapping("/oauth/{provider}")
+    public ResponseEntity<?> signInWithProvider(
+            @PathVariable String provider,
+            @Valid @RequestBody OAuthSignInRequest request,
+            HttpServletRequest httpRequest) {
+
+        IdentityProvider identityProvider =
+                IdentityProvider.parse(provider).orElseThrow(UnknownProviderException::new);
+
+        AuthProperties.RateLimit limits = properties.rateLimit();
+        // Not a guessing defence — an ID token cannot be guessed. It bounds what
+        // one caller can make us spend on signature verification and on fetching
+        // a rotated key set from the provider.
+        enforce(rateLimiter.recordAttempt(
+                "oauth:ip:" + clientAddressOf(httpRequest), limits.socialSignInsPerAddress(), limits.window()));
+
+        SignInOutcome outcome = socialSignIns.signIn(new SocialSignInCommand(
+                identityProvider,
+                request.idToken(),
+                request.nonce(),
+                request.name(),
+                request.localeOrDefault(),
+                request.deviceLabel(),
+                httpRequest.getHeader(HttpHeaders.USER_AGENT),
+                clientAddressOf(httpRequest)));
+
+        return respondTo(outcome, request.wantsTokenInBody());
     }
 
     @PostMapping("/refresh")
@@ -200,6 +254,19 @@ public class TokenController {
 
         CookieClientHeaderMissingException() {
             super("This request must carry the " + CLIENT_HEADER + " header.");
+        }
+    }
+
+    /** A provider segment that names nothing this service knows about. */
+    static class UnknownProviderException extends RuntimeException {
+
+        private static final long serialVersionUID = 1L;
+
+        UnknownProviderException() {
+            // The segment the caller sent is not echoed back. Reflecting input
+            // into a response body is a habit worth not having, and the caller
+            // already knows what they asked for.
+            super("There is no sign-in provider at that address.");
         }
     }
 }

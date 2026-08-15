@@ -88,13 +88,25 @@ public class TwoFactorChallenges {
      */
     @Transactional
     public SignInOutcome.TwoFactorRequired issue(UUID userId, SignInCommand command, Instant now) {
+        return issue(userId, command.deviceLabel(), command.userAgent(), command.ipAddress(), now);
+    }
+
+    /**
+     * The same, for a sign-in that had no password to describe itself with.
+     *
+     * <p>A provider sign-in reaches a second factor by the same route: what
+     * proved the first factor differs, what the second factor demands does not.
+     */
+    @Transactional
+    public SignInOutcome.TwoFactorRequired issue(
+            UUID userId, String deviceLabel, String userAgent, String ipAddress, Instant now) {
         challenges.consumeOutstanding(userId, now);
 
         String value = SecureTokens.generate();
         Instant expiresAt = now.plus(properties.twoFactor().challengeTtl());
 
         challenges.save(TwoFactorChallenge.issue(userId, SecureTokens.hash(value), now, expiresAt)
-                .describedAs(command.deviceLabel(), command.userAgent(), command.ipAddress()));
+                .describedAs(deviceLabel, userAgent, ipAddress));
 
         return new SignInOutcome.TwoFactorRequired(value, expiresAt);
     }

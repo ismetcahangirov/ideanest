@@ -1,6 +1,9 @@
 package az.ideanest.auth;
 
+import az.ideanest.auth.domain.IdentityProvider;
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -19,6 +22,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param rateLimit how many attempts, and over what window.
  * @param token access and refresh token lifetimes and signing keys.
  * @param twoFactor time-based one-time passwords.
+ * @param oauth the identity providers a person may sign in with.
  * @param refreshCookie how the refresh token is delivered to a browser.
  * @param logVerificationLinks whether to write verification links to the log.
  *     Local development only — see {@code application-local.yml}.
@@ -32,6 +36,7 @@ public record AuthProperties(
         RateLimit rateLimit,
         Token token,
         TwoFactor twoFactor,
+        OAuth oauth,
         RefreshCookie refreshCookie,
         boolean logVerificationLinks) {
 
@@ -75,7 +80,11 @@ public record AuthProperties(
      *     two-factor on or off in a window. Each attempt costs an Argon2
      *     verification, so this bounds what a stolen access token can spend as
      *     much as what it can guess
-     * @param window the period all of them are measured over
+     * @param socialSignInsPerAddress provider sign-in attempts from one IP
+     *     address. Not about guessing an ID token — one cannot be guessed — but
+     *     about the work each attempt costs us: a signature verification and,
+     *     when the key set has rotated, a call to the provider
+     * @param window the period all three are measured over
      */
     public record RateLimit(
             int registrationsPerAddress,
@@ -85,6 +94,7 @@ public record AuthProperties(
             int signInsPerEmail,
             int twoFactorCodesPerChallenge,
             int twoFactorChangesPerUser,
+            int socialSignInsPerAddress,
             Duration window) {
     }
 
@@ -129,6 +139,85 @@ public record AuthProperties(
      *     which a challenge captured from a proxy log is still spendable.
      */
     public record TwoFactor(String issuer, Duration challengeTtl) {
+    }
+
+    /**
+     * Signing in with Google or Apple.
+     *
+     * <p>The client obtains an ID token from the provider — through a native SDK
+     * or the web flow — and sends it here. Nothing in that token is believed
+     * until its signature has been checked against the provider's published
+     * keys, so every value below is part of an authentication decision rather
+     * than a convenience.
+     *
+     * @param clockSkew how far the provider's clock may be from ours before a
+     *     token is called expired or not yet valid. Small: this is tolerance for
+     *     clock drift, and every second of it is a second a dead token still
+     *     works.
+     * @param maxTokenAge how old an ID token may be when it reaches us,
+     *     measured from {@code iat}. Google's ID tokens are valid for an hour,
+     *     which is an hour in which a token captured anywhere it was logged can
+     *     still be spent here. A sign-in that has just happened produces a token
+     *     seconds old, so the honest limit is minutes, not the provider's.
+     * @param providers configuration per provider. A provider absent from this
+     *     map is not enabled in this environment and its endpoint says so; see
+     *     {@code JwksOidcIdentityVerifier}.
+     */
+    public record OAuth(Duration clockSkew, Duration maxTokenAge, Map<IdentityProvider, Provider> providers) {
+
+        /**
+         * @param issuer the {@code iss} the token must carry —
+         *     {@code https://accounts.google.com} or
+         *     {@code https://appleid.apple.com}. A token from anywhere else is
+         *     somebody else's user.
+         * @param jwksUri where the provider publishes the keys it signs with.
+         *     Fetched by us, never taken from the token: a {@code jku} header is
+         *     a suggestion from whoever made the token.
+         * @param audiences the client identifiers we accept in {@code aud} —
+         *     one per platform, so the web, iOS, and Android clients are all
+         *     listed. <strong>This is the check that keeps somebody else's app
+         *     from signing people in here.</strong> Google will happily issue a
+         *     valid, correctly signed token to any developer; what makes it ours
+         *     is that it names our client. Empty means the provider is not
+         *     configured.
+         * @param requireNonce whether a token must be bound to the nonce the
+         *     client sent in its authorisation request. True for our own
+         *     clients, all of which send one.
+         */
+        public record Provider(String issuer, String jwksUri, List<String> audiences, boolean requireNonce) {
+
+            /**
+             * <strong>The audience list is what enables a provider.</strong> The
+             * issuer and the key set are facts about Google and Apple and are
+             * checked into the repository as such; the client identifiers are
+             * per environment and come from the environment. So a provider with
+             * no audience is one this environment was not given credentials for,
+             * which is a normal state and not an error.
+             */
+            public boolean isConfigured() {
+                return hasAudience() && hasText(issuer) && hasText(jwksUri);
+            }
+
+            /**
+             * Client identifiers, and nowhere to check them against.
+             *
+             * <p>Somebody enabled the provider and removed — or misspelled — the
+             * issuer or the key set. That is not a decision anybody made, and
+             * left alone it surfaces as a 401 during a demo rather than as a
+             * message at start-up.
+             */
+            public boolean isPartiallyConfigured() {
+                return hasAudience() && !isConfigured();
+            }
+
+            private boolean hasAudience() {
+                return audiences != null && audiences.stream().anyMatch(Provider::hasText);
+            }
+
+            private static boolean hasText(String value) {
+                return value != null && !value.isBlank();
+            }
+        }
     }
 
     /**
