@@ -50,6 +50,7 @@ pnpm build-storybook    # static build; CI uses it to prove every story renders
 | `Radio` + `RadioGroup` | `role="radiogroup"`, arrow keys from native radios |
 | `Switch` | `role="switch"`, thumb moves with `transform` |
 | `FileDropZone` | Drag-and-drop plus a keyboard-reachable picker button |
+| `CharacterCount` | Remaining length as a sentence, announced only once it is close |
 
 Two rules specific to forms: an error is **text plus an icon**, never a colour,
 and checked/on is `--lime-500` with a `--text-on-lime` mark — "active choice"

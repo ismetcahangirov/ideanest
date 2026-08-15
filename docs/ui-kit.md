@@ -648,6 +648,15 @@ keyboard, by switch control, and on every touch device. Dragging is the
 shortcut; the button is the control. Drag-over changes the instruction text as
 well as the border, because colour alone carries nothing.
 
+**A length limit is a sentence, not a fraction.** `CharacterCount` reads "48
+characters remaining", and past the limit "3 characters too many" — the wording
+changes before the colour does, because a counter that only turns red has said
+nothing to a colour-blind creator and nothing at all to a screen reader (§9.2).
+The visible number is `aria-hidden` and a separate polite live region carries
+it, announcing only once the remainder is close and only after the count has
+been still for a moment. Announcing every keystroke talks over the typing echo,
+which makes the field unusable long before anybody reaches the limit.
+
 **Motion budget: 150ms colour and opacity, plus the switch thumb.** Nothing
 else. Forms live on checkout ("near zero") and the campaign editor ("none") —
 see [`motion-system.md`](./motion-system.md) §5. An animating field reads as
