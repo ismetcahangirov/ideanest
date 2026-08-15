@@ -315,8 +315,22 @@ duration (1–60 days), scheduled launch, late-pledge toggle, pre-launch page.
 **Rewards** — atomic **items** first, then **tiers** composed from them:
 title, description, price, included items with quantities, images, estimated
 delivery, quantity limit, shipping scope, per-country rates, early-bird windows,
-featured and secret flags, drag-to-reorder, duplication. **Add-ons** are items
+featured and secret flags, reordering, duplication. **Add-ons** are items
 sold alongside a tier.
+
+> **Two notes on how the editor delivers this** (#34).
+>
+> **Reordering is a pair of move controls per tier, not dragging.** Dragging is
+> unreachable by keyboard, by switch control, and on every touch device, and an
+> accessibility failure is a build error rather than a nicety (CLAUDE.md §2).
+> Each control names the tier it moves and the move is announced with its new
+> position. Pointer dragging remains a layer that can be added on top of that;
+> it is not a substitute for it.
+>
+> **A tier's images are its items' images.** `reward_tiers` has no image column
+> and neither does its response — §7.2 puts `image_url` on `items` — so the
+> pictures a backer sees for a tier are the pictures of what is in it. Both
+> become references into the media pipeline (§13) when there is one.
 
 **Story** — rich text editor (headings, emphasis, lists, quotes, rules), inline
 media, third-party embeds, section headings that generate anchor navigation, a
