@@ -27,4 +27,25 @@ public final class ProjectEvents {
      */
     public record CollaboratorInvited(EmailAddress email, String token, UUID projectId, UUID invitedBy) {
     }
+
+    /**
+     * A campaign went live, and the people holding a reminder for it are owed the
+     * message they asked for (§4.10, "Reminder: project launched").
+     *
+     * <p><strong>This event is a latency optimisation, not the mechanism.</strong>
+     * What actually guarantees delivery is the scheduled sweep of §8.4's
+     * {@code reminder-sender}, which asks the database which live campaigns still
+     * owe notices — so a crash between the commit and this listener, or a launch
+     * performed by the future {@code campaign-launcher} job, costs at most a
+     * minute rather than the whole notification. The event exists so that a
+     * creator who presses "launch" does not watch their followers be told a minute
+     * later, and dropping it entirely would change nothing except that.
+     *
+     * @param projectId which campaign. Deliberately nothing else: everything the
+     *     sender needs is read inside its own transaction, because a payload
+     *     carrying addresses would be a copy of personal data travelling through
+     *     an in-process event bus for no reason
+     */
+    public record ProjectLaunched(UUID projectId) {
+    }
 }
