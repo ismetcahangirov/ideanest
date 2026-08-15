@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { Field } from './form/Field';
 import { TextInput } from './form/TextInput';
 import { Textarea } from './form/Textarea';
 import { Select } from './form/Select';
+import { CharacterCount } from './form/CharacterCount';
 import { Checkbox } from './form/Checkbox';
 import { Radio, RadioGroup } from './form/Radio';
 import { Switch } from './form/Switch';
@@ -269,5 +270,68 @@ describe('FileDropZone', () => {
 
     fireEvent.dragLeave(child, { dataTransfer: { files: [] } });
     expect(screen.getByText('Drag files here')).toBeInTheDocument();
+  });
+});
+
+describe('CharacterCount', () => {
+  it('keeps the visible number out of the accessibility tree', () => {
+    render(<CharacterCount count={10} limit={60} />);
+
+    // Sighted creators need it at all times; a screen reader needs it only once
+    // it starts to matter. The two are served by different elements.
+    expect(screen.getByText('50 characters remaining')).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('says nothing at all while the limit is far away', async () => {
+    vi.useFakeTimers();
+    try {
+      render(<CharacterCount count={10} limit={60} announceWithin={20} />);
+      await vi.advanceTimersByTimeAsync(5000);
+
+      expect(screen.getByRole('status')).toHaveTextContent('');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('announces the remainder politely once it is close, after a pause', async () => {
+    vi.useFakeTimers();
+    try {
+      render(<CharacterCount count={55} limit={60} announceWithin={20} announceDelayMs={1000} />);
+
+      // Announcing on the keystroke talks over the typing echo, so nothing is
+      // said until the count has settled.
+      expect(screen.getByRole('status')).toHaveTextContent('');
+
+      // Wrapped, because the announcement is a state update the timer causes
+      // rather than one an event causes.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000);
+      });
+
+      const live = screen.getByRole('status');
+      expect(live).toHaveTextContent('5 characters remaining');
+      expect(live).toHaveAttribute('aria-live', 'polite');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('changes the words, not only the colour, once the limit is passed', async () => {
+    vi.useFakeTimers();
+    try {
+      render(<CharacterCount count={63} limit={60} />);
+      // Wrapped, because the announcement is a state update the timer causes
+      // rather than one an event causes.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000);
+      });
+
+      // Both the visible line and the announcement say it, which is the point.
+      expect(screen.getAllByText('3 characters too many')).toHaveLength(2);
+      expect(screen.getByRole('status')).toHaveTextContent('3 characters too many');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

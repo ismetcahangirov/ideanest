@@ -1849,6 +1849,60 @@ exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/data/Ta
 </div>"
 `;
 
+exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/form/CharacterCount.stories.tsx — Default [reduced motion] 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="w-[420px]">
+<p class="text-[13px] tabular-nums transition-colors duration-150 ease-in-out text-white/40">
+<span aria-hidden="true">111 characters remaining</span>
+<span role="status" aria-live="polite" class="sr-only">
+</span>
+</p>
+</div>
+</div>"
+`;
+
+exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/form/CharacterCount.stories.tsx — InAField [reduced motion] 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="w-[420px]">
+<div class="flex flex-col gap-1.5">
+<label id="[id-0]-label" for="[id-0]-control" class="text-sm font-medium text-white">Summary<span aria-hidden="true" class="ml-0.5 text-white/40">*</span>
+</label>
+<textarea rows="3" id="[id-0]-control" aria-describedby="[id-0]-hint" required="" class="w-full rounded-md bg-surface-3 text-white border border-white/8 placeholder:text-white/40 transition-[background-color,border-color] duration-150 ease-in-out hover:border-white/16 focus:border-white/16 disabled:pointer-events-none disabled:opacity-40 px-3.5 text-sm h-auto min-h-24 py-2.5 resize-y">A pocket-sized field recorder for people who write music outdoors, built from parts that can be replaced with a screwdriver.</textarea>
+<p class="text-[13px] tabular-nums transition-colors duration-150 ease-in-out text-white/40">
+<span aria-hidden="true">11 characters remaining</span>
+<span role="status" aria-live="polite" class="sr-only">
+</span>
+</p>
+<p id="[id-0]-hint" class="text-[13px] text-white/64">Shown on the discovery grid and in search results. 135 characters or fewer.</p>
+</div>
+</div>
+</div>"
+`;
+
+exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/form/CharacterCount.stories.tsx — NearTheLimit [reduced motion] 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="w-[420px]">
+<p class="text-[13px] tabular-nums transition-colors duration-150 ease-in-out text-white/40">
+<span aria-hidden="true">6 characters remaining</span>
+<span role="status" aria-live="polite" class="sr-only">
+</span>
+</p>
+</div>
+</div>"
+`;
+
+exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/form/CharacterCount.stories.tsx — OverTheLimit [reduced motion] 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="w-[420px]">
+<p class="text-[13px] tabular-nums transition-colors duration-150 ease-in-out text-danger">
+<span aria-hidden="true">6 characters too many</span>
+<span role="status" aria-live="polite" class="sr-only">
+</span>
+</p>
+</div>
+</div>"
+`;
+
 exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/form/Field.stories.tsx — Default [reduced motion] 1`] = `
 "<div class="font-sans text-white antialiased">
 <div class="w-[360px]">
@@ -4727,6 +4781,60 @@ exports[`rendered markup > ./components/data/Table.stories.tsx — Sortable 1`] 
 </tr>
 </tbody>
 </table>
+</div>
+</div>"
+`;
+
+exports[`rendered markup > ./components/form/CharacterCount.stories.tsx — Default 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="w-[420px]">
+<p class="text-[13px] tabular-nums transition-colors duration-150 ease-in-out text-white/40">
+<span aria-hidden="true">111 characters remaining</span>
+<span role="status" aria-live="polite" class="sr-only">
+</span>
+</p>
+</div>
+</div>"
+`;
+
+exports[`rendered markup > ./components/form/CharacterCount.stories.tsx — InAField 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="w-[420px]">
+<div class="flex flex-col gap-1.5">
+<label id="[id-0]-label" for="[id-0]-control" class="text-sm font-medium text-white">Summary<span aria-hidden="true" class="ml-0.5 text-white/40">*</span>
+</label>
+<textarea rows="3" id="[id-0]-control" aria-describedby="[id-0]-hint" required="" class="w-full rounded-md bg-surface-3 text-white border border-white/8 placeholder:text-white/40 transition-[background-color,border-color] duration-150 ease-in-out hover:border-white/16 focus:border-white/16 disabled:pointer-events-none disabled:opacity-40 px-3.5 text-sm h-auto min-h-24 py-2.5 resize-y">A pocket-sized field recorder for people who write music outdoors, built from parts that can be replaced with a screwdriver.</textarea>
+<p class="text-[13px] tabular-nums transition-colors duration-150 ease-in-out text-white/40">
+<span aria-hidden="true">11 characters remaining</span>
+<span role="status" aria-live="polite" class="sr-only">
+</span>
+</p>
+<p id="[id-0]-hint" class="text-[13px] text-white/64">Shown on the discovery grid and in search results. 135 characters or fewer.</p>
+</div>
+</div>
+</div>"
+`;
+
+exports[`rendered markup > ./components/form/CharacterCount.stories.tsx — NearTheLimit 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="w-[420px]">
+<p class="text-[13px] tabular-nums transition-colors duration-150 ease-in-out text-white/40">
+<span aria-hidden="true">6 characters remaining</span>
+<span role="status" aria-live="polite" class="sr-only">
+</span>
+</p>
+</div>
+</div>"
+`;
+
+exports[`rendered markup > ./components/form/CharacterCount.stories.tsx — OverTheLimit 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="w-[420px]">
+<p class="text-[13px] tabular-nums transition-colors duration-150 ease-in-out text-danger">
+<span aria-hidden="true">6 characters too many</span>
+<span role="status" aria-live="polite" class="sr-only">
+</span>
+</p>
 </div>
 </div>"
 `;
