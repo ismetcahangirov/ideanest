@@ -1,5 +1,6 @@
 package az.ideanest.project;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -10,9 +11,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param moderation who is allowed to decide a submitted campaign's fate
  * @param story how much of a story's editing history is kept
  * @param collaborators how invitations to work on a campaign behave
+ * @param submission the bounds §5.3 leaves to configuration
  */
 @ConfigurationProperties(prefix = "ideanest.project")
-public record ProjectProperties(Moderation moderation, Story story, Collaborators collaborators) {
+public record ProjectProperties(
+        Moderation moderation, Story story, Collaborators collaborators, Submission submission) {
 
     public ProjectProperties {
         // A deployment that configures neither section still starts. Nested records
@@ -22,6 +25,7 @@ public record ProjectProperties(Moderation moderation, Story story, Collaborator
         // to find it.
         story = story == null ? Story.defaults() : story;
         collaborators = collaborators == null ? Collaborators.defaults() : collaborators;
+        submission = submission == null ? Submission.defaults() : submission;
     }
 
     /**
@@ -91,6 +95,59 @@ public record ProjectProperties(Moderation moderation, Story story, Collaborator
                 // sees it, rather than at the first autosave.
                 throw new IllegalArgumentException("At least one story version has to be kept");
             }
+        }
+    }
+
+    /**
+     * The three numbers §5.3 states as somebody else's decision.
+     *
+     * <p>Everything else in §5.3 is a literal — sixty characters, sixty days, five
+     * hundred characters — and lives in {@code SubmissionChecklist} as a constant.
+     * These three do not, and the difference is not stylistic: the goal bounds are
+     * a commercial position and the reward floor is a fact about the payment
+     * provider (§9.3). Compiling either into the service would mean a release to
+     * change a number that was never ours to begin with.
+     *
+     * <p>Bound here and turned into a {@code SubmissionLimits} by
+     * {@code ProjectChecklistService}, so the rules themselves stay a pure type
+     * with no Spring in sight.
+     *
+     * @param goalMinimum the smallest goal a campaign may be submitted with.
+     *     Below this the platform spends more on moderating the campaign than the
+     *     campaign is trying to raise, and a goal of a few manats is almost always
+     *     a test project somebody forgot about
+     * @param goalMaximum the largest. Not a technical bound — {@code numeric(14,2)}
+     *     holds far more — but a commercial one: above it the platform is
+     *     underwriting a collection it has no basis to expect, and the answer
+     *     belongs to whoever carries that risk rather than to this file
+     * @param rewardPriceMinimum the smallest amount that can be charged at all.
+     *     A tier below it is a tier no backer can ever pay for, and §5.3 puts the
+     *     floor under every one of them for that reason. One AZN by default,
+     *     which is the usual order of magnitude for a card network's minimum;
+     *     the real number comes from the provider when there is one
+     */
+    public record Submission(BigDecimal goalMinimum, BigDecimal goalMaximum, BigDecimal rewardPriceMinimum) {
+
+        /** What {@code application.yml} configures, so an absent block behaves the same. */
+        private static final BigDecimal DEFAULT_GOAL_MINIMUM = new BigDecimal("100.00");
+
+        private static final BigDecimal DEFAULT_GOAL_MAXIMUM = new BigDecimal("1000000.00");
+
+        private static final BigDecimal DEFAULT_REWARD_PRICE_MINIMUM = new BigDecimal("1.00");
+
+        static Submission defaults() {
+            return new Submission(DEFAULT_GOAL_MINIMUM, DEFAULT_GOAL_MAXIMUM, DEFAULT_REWARD_PRICE_MINIMUM);
+        }
+
+        public Submission {
+            // Binding leaves an omitted property null, so an operator who sets the
+            // maximum and not the minimum gets the documented default rather than a
+            // NullPointerException on the first checklist. The bounds themselves are
+            // validated by SubmissionLimits, which is where the rule lives.
+            goalMinimum = goalMinimum == null ? DEFAULT_GOAL_MINIMUM : goalMinimum;
+            goalMaximum = goalMaximum == null ? DEFAULT_GOAL_MAXIMUM : goalMaximum;
+            rewardPriceMinimum =
+                    rewardPriceMinimum == null ? DEFAULT_REWARD_PRICE_MINIMUM : rewardPriceMinimum;
         }
     }
 

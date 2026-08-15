@@ -1,5 +1,6 @@
 package az.ideanest.project.api;
 
+import az.ideanest.project.application.ProjectChecklistService;
 import az.ideanest.project.application.ProjectEditingService;
 import az.ideanest.project.application.ProjectTransitionService;
 import jakarta.validation.Valid;
@@ -19,8 +20,9 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * A creator's campaign: creating it, editing it, and moving it through its life.
  *
- * <p>Six endpoints, one response type. The three that change state do nothing
- * themselves — they name a transition and hand it to
+ * <p>Seven endpoints. Six answer {@link ProjectEdit}; the seventh is the
+ * completeness checklist, which is about the campaign rather than of it. The three
+ * that change state do nothing themselves — they name a transition and hand it to
  * {@link ProjectTransitionService}, which is the only thing in the service that
  * writes {@code projects.state} and the only thing that records having done so.
  *
@@ -39,12 +41,17 @@ public class ProjectController {
 
     private final ProjectEditingService editing;
     private final ProjectTransitionService transitions;
+    private final ProjectChecklistService checklist;
     private final ProjectEditResponses responses;
 
     public ProjectController(
-            ProjectEditingService editing, ProjectTransitionService transitions, ProjectEditResponses responses) {
+            ProjectEditingService editing,
+            ProjectTransitionService transitions,
+            ProjectChecklistService checklist,
+            ProjectEditResponses responses) {
         this.editing = editing;
         this.transitions = transitions;
+        this.checklist = checklist;
         this.responses = responses;
     }
 
@@ -86,7 +93,25 @@ public class ProjectController {
         return responses.of(editing.edit(id, callerOf(accessToken), request.toPatch()));
     }
 
-    /** Sends the campaign for review. */
+    /**
+     * What §5.3 still wants before this campaign can be submitted, and what
+     * moderation last said about it.
+     *
+     * <p>Authorised as the editor's other reads are: anybody who may work on the
+     * campaign may see how finished it is. It is a read, and it takes no lock — a
+     * checklist is a snapshot of a campaign somebody is still editing, and the
+     * answer that matters is the one {@code POST /submit} computes under one.
+     *
+     * <p><strong>Advice, not enforcement.</strong> A client may ignore this
+     * entirely; the submission is checked against the same rules by the same class
+     * either way.
+     */
+    @GetMapping("/{id}/checklist")
+    public ProjectChecklist checklist(@AuthenticationPrincipal Jwt accessToken, @PathVariable UUID id) {
+        return ProjectChecklist.of(checklist.reviewOf(id, callerOf(accessToken)));
+    }
+
+    /** Sends the campaign for review. Refused unless §5.3 is satisfied. */
     @PostMapping("/{id}/submit")
     public ProjectEdit submit(@AuthenticationPrincipal Jwt accessToken, @PathVariable UUID id) {
         return responses.of(transitions.submit(id, callerOf(accessToken)));

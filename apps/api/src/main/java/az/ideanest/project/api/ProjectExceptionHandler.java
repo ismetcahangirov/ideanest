@@ -5,6 +5,7 @@ import az.ideanest.project.application.NotAModeratorException;
 import az.ideanest.project.application.ProjectFieldRejectedException;
 import az.ideanest.project.application.ProjectNotFoundException;
 import az.ideanest.project.application.ProjectNotLaunchableException;
+import az.ideanest.project.application.ProjectNotSubmittableException;
 import az.ideanest.project.application.ProjectTransitionNotAllowedException;
 import az.ideanest.project.domain.ProjectState;
 import java.net.URI;
@@ -113,11 +114,51 @@ public class ProjectExceptionHandler {
     }
 
     /**
+     * 409 for a campaign §5.3 will not let out of the door.
+     *
+     * <p>The refusal names every unmet requirement rather than the first, and gives
+     * each one the editor section that fixes it — the same routing the checklist
+     * endpoint gives, so a client refused here points at the controls it would have
+     * pointed at anyway rather than showing a banner the creator has to interpret.
+     *
+     * <p>{@code detail} deliberately does not enumerate the requirements. It is
+     * prose, it would be a sentence of unbounded length on a campaign missing eight
+     * things, and §10.4 is explicit that a client branches on {@code code} and
+     * {@code meta} rather than on prose.
+     */
+    @ExceptionHandler(ProjectNotSubmittableException.class)
+    public ProblemDetail handleNotSubmittable(ProjectNotSubmittableException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/project-not-submittable"));
+        problem.setTitle("Campaign is not ready to submit");
+        problem.setDetail("Some of what a campaign needs before it can be reviewed is still missing.");
+        problem.setProperty("code", "PROJECT_NOT_SUBMITTABLE");
+        problem.setProperty("meta", Map.of("unmet", unmet(exception)));
+        return problem;
+    }
+
+    private static List<Map<String, Object>> unmet(ProjectNotSubmittableException exception) {
+        return exception.unmet().stream()
+                .map(item -> {
+                    Map<String, Object> entry = new LinkedHashMap<>();
+                    entry.put("requirement", item.requirement().name());
+                    entry.put("label", item.requirement().label());
+                    entry.put("section", item.requirement().section().key());
+                    entry.put("detail", item.detail());
+                    return entry;
+                })
+                .toList();
+    }
+
+    /**
      * 409 for an approved campaign with nothing to be live with.
      *
-     * <p>See {@link ProjectNotLaunchableException}: this becomes unreachable when
-     * #37 refuses the submission, and until then it is what stands between a
-     * moderator's approval and a constraint violation.
+     * <p>See {@link ProjectNotLaunchableException}. Unreachable through the API now
+     * that a submission is checked against §5.3 — a campaign with no goal cannot
+     * reach {@code APPROVED} to be launched from — and kept because it is the last
+     * thing between a campaign that got there another way and a constraint
+     * violation served as a 500. A guard whose whole value is that it never fires
+     * is not a guard to delete the moment it stops firing.
      */
     @ExceptionHandler(ProjectNotLaunchableException.class)
     public ProblemDetail handleNotLaunchable(ProjectNotLaunchableException exception) {

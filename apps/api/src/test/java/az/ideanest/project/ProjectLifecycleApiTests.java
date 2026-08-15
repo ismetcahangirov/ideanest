@@ -10,10 +10,10 @@ import az.ideanest.project.infrastructure.ProjectStateTransitionRepository;
 import az.ideanest.project.infrastructure.SubcategoryRepository;
 import az.ideanest.shared.EmailAddress;
 import az.ideanest.support.AbstractIntegrationTest;
+import az.ideanest.support.CampaignFixtures;
 import az.ideanest.user.infrastructure.UserRepository;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -201,19 +201,23 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
         return UUID.fromString((String) project.get("id"));
     }
 
-    /** A draft with everything a launch needs, in the state a submission starts from. */
-    private Map<String, Object> fundableDraft(Creator creator, String title) {
+    /**
+     * A draft §5.3 is satisfied with, in the state a submission starts from.
+     *
+     * <p>Everything the completeness checklist blocks on, and nothing it merely
+     * advises: no subcategory, no scheduled launch, no reward tiers, and a story
+     * with no pictures in it. So a campaign built by this fixture can be submitted
+     * and is deliberately not "finished" — which is what
+     * {@code ProjectChecklistApiTests} uses to tell advice apart from refusal.
+     */
+    private Map<String, Object> submittableDraft(Creator creator, String title) {
         Map<String, Object> project = draft(creator, title);
-        UUID category = categories.findBySlug("games").orElseThrow().getId();
 
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("blurb", "A summary that fits inside a hundred and thirty-five characters.");
-        body.put("categoryId", category.toString());
-        body.put("goal", Map.of("amount", "5000.00", "currency", "AZN"));
-        body.put("durationDays", 30);
-        body.put("risks", "The main risk is manufacturing capacity.");
-
-        return patch("/v1/projects/" + idOf(project), creator.accessToken(), body).getBody();
+        return patch(
+                        "/v1/projects/" + idOf(project),
+                        creator.accessToken(),
+                        CampaignFixtures.completeBasics(categories))
+                .getBody();
     }
 
     private List<ProjectStateTransition> historyOf(UUID projectId) {
@@ -310,7 +314,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     @DisplayName("autosaving one field leaves the rest alone")
     void autosavingOneFieldLeavesTheRestAlone() {
         Creator creator = creator();
-        Map<String, Object> project = fundableDraft(creator, "A campaign");
+        Map<String, Object> project = submittableDraft(creator, "A campaign");
         UUID id = idOf(project);
 
         // The editor autosaves one field at a time, so this body is the normal case.
@@ -334,7 +338,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     @DisplayName("an explicit null clears a field")
     void anExplicitNullClearsAField() {
         Creator creator = creator();
-        UUID id = idOf(fundableDraft(creator, "A campaign"));
+        UUID id = idOf(submittableDraft(creator, "A campaign"));
 
         // RFC 7396: null removes the member. Told apart from absence above, which is
         // the whole reason the request type does not use Optional.
@@ -546,7 +550,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     void theHappyPath() {
         Creator creator = creator();
         Creator moderator = moderator();
-        UUID id = idOf(fundableDraft(creator, "A campaign"));
+        UUID id = idOf(submittableDraft(creator, "A campaign"));
 
         assertThat(post("/v1/projects/" + id + "/submit", creator.accessToken(), null)
                         .getBody())
@@ -573,7 +577,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     void moderationRefusesAnAccountThatIsNotStaff() {
         Creator creator = creator();
         Creator stranger = creator();
-        UUID id = idOf(fundableDraft(creator, "A campaign"));
+        UUID id = idOf(submittableDraft(creator, "A campaign"));
         post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
 
         // The whole point of moderation: the person who wrote the campaign is not
@@ -609,7 +613,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     void changesRequestedIsNotTerminal() {
         Creator creator = creator();
         Creator moderator = moderator();
-        UUID id = idOf(fundableDraft(creator, "A campaign"));
+        UUID id = idOf(submittableDraft(creator, "A campaign"));
         post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
 
         Map<String, Object> returned = post(
@@ -639,7 +643,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     void rejectionCarriesItsReason() {
         Creator creator = creator();
         Creator moderator = moderator();
-        UUID id = idOf(fundableDraft(creator, "A campaign"));
+        UUID id = idOf(submittableDraft(creator, "A campaign"));
         post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
 
         // A rejection without a reason is a support ticket every time, and it is the
@@ -663,7 +667,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     void cancellingALiveCampaign() {
         Creator creator = creator();
         Creator moderator = moderator();
-        UUID id = idOf(fundableDraft(creator, "A campaign"));
+        UUID id = idOf(submittableDraft(creator, "A campaign"));
         post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
         post("/v1/admin/moderation/" + id + "/approve", moderator.accessToken(), null);
         post("/v1/projects/" + id + "/launch", creator.accessToken(), null);
@@ -687,7 +691,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     @DisplayName("a transition the state machine refuses is a 409 saying what is possible instead")
     void aForbiddenTransitionIsAConflict() {
         Creator creator = creator();
-        UUID id = idOf(fundableDraft(creator, "A campaign"));
+        UUID id = idOf(submittableDraft(creator, "A campaign"));
 
         ResponseEntity<Map<String, Object>> refused = post("/v1/projects/" + id + "/launch", creator.accessToken(), null);
 
@@ -718,7 +722,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     void terminalIsTerminal() {
         Creator creator = creator();
         Creator moderator = moderator();
-        UUID id = idOf(fundableDraft(creator, "A campaign"));
+        UUID id = idOf(submittableDraft(creator, "A campaign"));
         post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
         post("/v1/admin/moderation/" + id + "/reject", moderator.accessToken(), Map.of("note", "§5.4."));
 
@@ -739,22 +743,25 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("an approved campaign with no goal cannot launch, and says which field is missing")
-    void launchingNeedsAGoalAndADuration() {
+    @DisplayName("a campaign with no goal never reaches a moderator")
+    void anIncompleteCampaignCannotBeSubmitted() {
         Creator creator = creator();
-        Creator moderator = moderator();
         UUID id = idOf(draft(creator, "A campaign"));
-        post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
-        post("/v1/admin/moderation/" + id + "/approve", moderator.accessToken(), null);
 
-        ResponseEntity<Map<String, Object>> refused = post("/v1/projects/" + id + "/launch", creator.accessToken(), null);
+        ResponseEntity<Map<String, Object>> refused = post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
 
-        // Unreachable once #37 refuses the submission. Until then this is what stands
-        // between a moderator's approval and a constraint violation: §5.1 cannot
-        // resolve a campaign with no goal and no deadline.
+        // §5.3, enforced on the write rather than only reported by the checklist
+        // endpoint. This is also what makes PROJECT_NOT_LAUNCHABLE unreachable
+        // through the API: a campaign with no goal cannot reach APPROVED, so it can
+        // never be launched from there. That check stays as the guard for the
+        // scheduled launch of §8.4, which does not go through a submission.
         assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(refused.getBody()).containsEntry("code", "PROJECT_NOT_LAUNCHABLE");
-        assertThat(refused.getBody().get("meta")).isEqualTo(Map.of("missing", List.of("goal", "durationDays")));
+        assertThat(refused.getBody()).containsEntry("code", "PROJECT_NOT_SUBMITTABLE");
+
+        // Nothing moved, and no audit row claims otherwise.
+        assertThat(get("/v1/projects/" + id + "/edit", creator.accessToken()).getBody())
+                .containsEntry("state", "DRAFT");
+        assertThat(historyOf(id)).hasSize(1);
     }
 
     @Test
@@ -762,7 +769,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     void aLiveCampaignKeepsItsGoal() {
         Creator creator = creator();
         Creator moderator = moderator();
-        UUID id = idOf(fundableDraft(creator, "A campaign"));
+        UUID id = idOf(submittableDraft(creator, "A campaign"));
         post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
         post("/v1/admin/moderation/" + id + "/approve", moderator.accessToken(), null);
         post("/v1/projects/" + id + "/launch", creator.accessToken(), null);
@@ -784,7 +791,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     void everyTransitionWritesExactlyOneAuditRow() {
         Creator creator = creator();
         Creator moderator = moderator();
-        UUID id = idOf(fundableDraft(creator, "A campaign"));
+        UUID id = idOf(submittableDraft(creator, "A campaign"));
 
         post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
         post("/v1/admin/moderation/" + id + "/approve", moderator.accessToken(), null);
