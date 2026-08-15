@@ -139,6 +139,27 @@ ideanest:
       # exercise the unsubscribe path at all. On in local only.
       log-unsubscribe-links: false
 
+    submission:
+      # The three bounds §5.3 states as somebody else's decision rather than as a
+      # number. Everything else in §5.3 is a literal and lives in
+      # SubmissionChecklist; these do not, because they are not ours to fix.
+      #
+      # The goal bounds are a commercial position: below the minimum the platform
+      # spends more moderating a campaign than the campaign is trying to raise,
+      # and a goal of a few manats is almost always a test project somebody
+      # forgot about. The maximum is not technical -- numeric(14,2) holds far
+      # more -- but the point above which the platform is underwriting a
+      # collection it has no basis to expect. Both move without a deployment,
+      # which is the whole reason they are here.
+      goal-minimum: ${GOAL_MINIMUM:100.00}
+      goal-maximum: ${GOAL_MAXIMUM:1000000.00}
+      # The smallest amount that can be charged at all. It belongs to the payment
+      # provider (§9.3) and to the currency, and a reward priced below it is a
+      # reward no backer can ever pay for. One AZN is the usual order of
+      # magnitude for a card network's minimum; the real number arrives with the
+      # provider.
+      reward-price-minimum: ${REWARD_PRICE_MINIMUM:1.00}
+
     story:
       # How long after the newest story version another one may be written.
       #

@@ -11,10 +11,10 @@ import az.ideanest.shared.EmailAddress;
 import az.ideanest.shared.SecureTokens;
 import az.ideanest.support.AbstractIntegrationTest;
 import az.ideanest.support.AdjustableClock;
+import az.ideanest.support.Campaigns;
 import az.ideanest.support.RecordingCollaboratorInvitationNotifier;
 import az.ideanest.user.infrastructure.UserRepository;
 import java.time.Duration;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -184,18 +184,20 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
                 new ParameterizedTypeReference<Map<String, Object>>() {});
     }
 
-    /** A draft with everything a launch needs, in the state a submission starts from. */
-    private UUID fundableDraft(Account creator) {
+    /**
+     * A draft §5.3 is satisfied with, in the state a submission starts from.
+     *
+     * <p>Complete rather than merely fundable, because the submission endpoint now
+     * re-checks the completeness checklist: an incomplete fixture would make every
+     * test in this file that submits fail with {@code PROJECT_NOT_SUBMITTABLE},
+     * which says nothing about the capability each of them is really about.
+     */
+    private UUID submittableDraft(Account creator) {
         Map<String, Object> project = post("/v1/projects", creator.accessToken(), Map.of("title", "A campaign"))
                 .getBody();
         UUID id = UUID.fromString((String) project.get("id"));
 
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("blurb", "A summary that fits inside a hundred and thirty-five characters.");
-        body.put("categoryId", categories.findBySlug("games").orElseThrow().getId().toString());
-        body.put("goal", Map.of("amount", "5000.00", "currency", "AZN"));
-        body.put("durationDays", 30);
-        patch("/v1/projects/" + id, creator.accessToken(), body);
+        patch("/v1/projects/" + id, creator.accessToken(), Campaigns.completeBasics(categories));
         return id;
     }
 
@@ -235,7 +237,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("inviting an address creates a pending grant and sends the link to that address")
     void invitingAnAddress() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         EmailAddress invitee = EmailAddress.of("designer" + SEQUENCE.incrementAndGet() + "@example.com");
 
         ResponseEntity<Map<String, Object>> invited = invite(projectId, creator, invitee, "EDIT_STORY");
@@ -264,7 +266,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("the invitation token is never stored in the clear")
     void theInvitationTokenIsNeverStoredInTheClear() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         EmailAddress invitee = EmailAddress.of("designer" + SEQUENCE.incrementAndGet() + "@example.com");
 
         invite(projectId, creator, invitee, "EDIT_STORY");
@@ -296,7 +298,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("the creator cannot be invited onto their own campaign")
     void theCreatorIsNotACollaborator() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
 
         ResponseEntity<Map<String, Object>> refused = invite(projectId, creator, creator.email(), "EDIT_BASICS");
 
@@ -311,7 +313,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("inviting the same address twice is a conflict, and revoking clears the way")
     void oneLiveInvitationPerAddress() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         EmailAddress invitee = EmailAddress.of("designer" + SEQUENCE.incrementAndGet() + "@example.com");
 
         Map<String, Object> first = invite(projectId, creator, invitee, "EDIT_STORY").getBody();
@@ -333,7 +335,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("a capability list has to name at least one capability")
     void aGrantConfersSomething() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
 
         ResponseEntity<Map<String, Object>> refused = post(
                 "/v1/projects/" + projectId + "/collaborators",
@@ -349,7 +351,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("an editing grant reaches only the fields it names")
     void theThreeEditingGrantsAreNotOneGrant() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         Account writer = collaborator(projectId, creator, "EDIT_STORY");
 
         // What they were invited for.
@@ -388,7 +390,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     void theTeamIsPrivateToTheCampaign() {
         Account creator = account("creator");
         Account stranger = account("stranger");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
 
         // 404 rather than 403: a draft is confidential, and answering "forbidden"
         // would confirm that the campaign exists.
@@ -404,7 +406,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("the list shows pending, active, and revoked alike")
     void theListShowsEveryone() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         Account active = collaborator(projectId, creator, "EDIT_BASICS");
         EmailAddress pending = EmailAddress.of("pending" + SEQUENCE.incrementAndGet() + "@example.com");
         invite(projectId, creator, pending, "EDIT_STORY");
@@ -432,7 +434,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("accepting an invitation attaches the account and activates the grant")
     void acceptingAnInvitation() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         Account invitee = account("collaborator");
         invite(projectId, creator, invitee.email(), "EDIT_BASICS");
 
@@ -449,7 +451,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("an invitation to an address with no account waits for it to register")
     void anInvitationToAnUnregisteredAddress() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         // Nobody has this address. Which is the normal case: a creator invites the
         // colleague whose address they know, not one who has already registered.
         EmailAddress invitee = EmailAddress.of("newcomer" + SEQUENCE.incrementAndGet() + "@example.com");
@@ -479,7 +481,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("acceptance is single use")
     void acceptanceIsSingleUse() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         Account invitee = account("collaborator");
         invite(projectId, creator, invitee.email(), "EDIT_BASICS");
         String token = invitations.tokenSentTo(invitee.email()).orElseThrow();
@@ -499,7 +501,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("an expired invitation cannot be accepted")
     void anExpiredInvitationIsRefused() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         Account invitee = account("collaborator");
         invite(projectId, creator, invitee.email(), "EDIT_BASICS");
         String token = invitations.tokenSentTo(invitee.email()).orElseThrow();
@@ -518,7 +520,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("a revoked invitation cannot be accepted afterwards")
     void aRevokedInvitationIsRefused() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         Account invitee = account("collaborator");
         String collaboratorId = (String)
                 invite(projectId, creator, invitee.email(), "EDIT_BASICS").getBody().get("id");
@@ -537,7 +539,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("an invitation belongs to the address it was sent to, not to whoever holds the link")
     void aForwardedInvitationGrantsNothing() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         Account invitee = account("collaborator");
         Account somebodyElse = account("stranger");
         invite(projectId, creator, invitee.email(), "EDIT_BASICS");
@@ -572,7 +574,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("a collaborator can read and edit the campaign they were granted")
     void aCollaboratorActsUnderTheirGrant() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         Account editor = collaborator(projectId, creator, "EDIT_BASICS");
 
         assertThat(get("/v1/projects/" + projectId + "/edit", editor.accessToken())
@@ -595,7 +597,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("an action outside the grant is a 403 naming what would have authorised it")
     void anActionOutsideTheGrantIsForbidden() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         Account storyEditor = collaborator(projectId, creator, "EDIT_STORY");
 
         // 403 rather than 404. The reasoning that makes a draft answer 404 to a
@@ -616,7 +618,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("a collaborator who is not an editor cannot open the editor")
     void aFinanceViewerIsNotAnEditor() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         Account accountant = collaborator(projectId, creator, "VIEW_FINANCES");
 
         ResponseEntity<Map<String, Object>> refused = get("/v1/projects/" + projectId + "/edit", accountant.accessToken());
@@ -636,7 +638,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("launching and cancelling belong to the creator, whatever a collaborator holds")
     void theMoneyDecisionsStayWithTheCreator() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         Account trusted = collaborator(
                 projectId, creator, "EDIT_BASICS", "SUBMIT_FOR_REVIEW", "VIEW_FINANCES", "PUBLISH_UPDATES");
 
@@ -662,7 +664,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("a collaborator's submission is audited as a collaborator")
     void aCollaboratorsSubmissionIsAuditedAsACollaborator() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         Account submitter = collaborator(projectId, creator, "SUBMIT_FOR_REVIEW");
 
         assertThat(post("/v1/projects/" + projectId + "/submit", submitter.accessToken(), null)
@@ -689,7 +691,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("narrowing a grant takes effect immediately")
     void narrowingAGrant() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         Account editor = collaborator(projectId, creator, "EDIT_BASICS", "SUBMIT_FOR_REVIEW");
         String collaboratorId = (String) findByEmail(projectId, creator, editor.email()).get("id");
 
@@ -714,7 +716,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("revoking a grant ends access, and the revoked collaborator is a stranger again")
     void revokingEndsAccess() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         Account editor = collaborator(projectId, creator, "EDIT_BASICS");
         String collaboratorId = (String) findByEmail(projectId, creator, editor.email()).get("id");
 
@@ -750,7 +752,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("a withdrawn grant cannot be edited back into life")
     void aRevokedGrantCannotBeChanged() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         Account editor = collaborator(projectId, creator, "EDIT_BASICS");
         String collaboratorId = (String) findByEmail(projectId, creator, editor.email()).get("id");
         delete("/v1/collaborators/" + collaboratorId, creator.accessToken());
@@ -775,7 +777,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("a manager cannot grant more than they hold, and cannot pass on MANAGE_COLLABORATORS")
     void noEscalationOverHttp() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         Account manager = collaborator(projectId, creator, "MANAGE_COLLABORATORS", "EDIT_STORY");
         EmailAddress candidate = EmailAddress.of("candidate" + SEQUENCE.incrementAndGet() + "@example.com");
 
@@ -807,7 +809,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("a collaborator without MANAGE_COLLABORATORS cannot invite anybody")
     void managingIsItsOwnCapability() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         Account editor = collaborator(projectId, creator, "EDIT_BASICS");
 
         ResponseEntity<Map<String, Object>> refused =
@@ -822,7 +824,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("a manager narrowing their own grant cannot widen it")
     void aManagerCannotWidenAGrantBeyondTheirOwn() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
         Account manager = collaborator(projectId, creator, "MANAGE_COLLABORATORS", "EDIT_STORY");
         Account editor = collaborator(projectId, creator, "EDIT_STORY");
         String editorId = (String) findByEmail(projectId, creator, editor.email()).get("id");
@@ -848,7 +850,7 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     @DisplayName("collaborator endpoints are behind authentication")
     void everythingIsBehindAuthentication() {
         Account creator = account("creator");
-        UUID projectId = fundableDraft(creator);
+        UUID projectId = submittableDraft(creator);
 
         assertThat(rest.exchange(
                                 "/v1/projects/" + projectId + "/collaborators",

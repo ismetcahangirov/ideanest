@@ -35,15 +35,20 @@ import org.springframework.transaction.annotation.Transactional;
  * hole in it — discovered months later, by somebody trying to establish who
  * approved a campaign that should not have been approved.
  *
- * <p><strong>What is not here.</strong> Submission does not yet re-check the
- * completeness rules of §5.3: the checklist is #37, and it is one class used by
- * both the checklist endpoint and this service precisely so that the two cannot
- * disagree. Writing a second, partial version of those rules here would be the
- * bug that arrangement exists to prevent. Transitions driven by time rather than
- * by a person — a scheduled launch arriving, a deadline passing — are scheduled
- * work (§8.4) and belong to the epics that own them; they will call these same
- * methods with {@link ActorRole#SYSTEM}, which is why the actor is a parameter
- * and not the current user.
+ * <p><strong>Completeness is re-checked on submission, by the class the
+ * checklist endpoint uses.</strong> {@code ProjectChecklistService} evaluates
+ * §5.3 for both, which is why {@code GET /v1/projects/{id}/checklist} and this
+ * service cannot disagree about whether a campaign is ready. A second, partial
+ * version of those rules written inline here would be the bug that arrangement
+ * exists to prevent — and the endpoint is advice to a client that may be old or
+ * may not be ours, so this is where "state transitions are enforced server-side
+ * and cannot be bypassed" is actually true.
+ *
+ * <p><strong>What is not here.</strong> Transitions driven by time rather than by
+ * a person — a scheduled launch arriving, a deadline passing — are scheduled work
+ * (§8.4) and belong to the epics that own them; they will call these same methods
+ * with {@link ActorRole#SYSTEM}, which is why the actor is a parameter and not the
+ * current user.
  */
 @Service
 public class ProjectTransitionService {
@@ -52,16 +57,19 @@ public class ProjectTransitionService {
 
     private final ProjectAccess access;
     private final ProjectStateTransitionRepository transitions;
+    private final ProjectChecklistService checklist;
     private final ApplicationEventPublisher events;
     private final Clock clock;
 
     public ProjectTransitionService(
             ProjectAccess access,
             ProjectStateTransitionRepository transitions,
+            ProjectChecklistService checklist,
             ApplicationEventPublisher events,
             Clock clock) {
         this.access = access;
         this.transitions = transitions;
+        this.checklist = checklist;
         this.events = events;
         this.clock = clock;
     }
@@ -97,13 +105,26 @@ public class ProjectTransitionService {
      * decisions and stay with the creator. The audit row then says
      * {@link ActorRole#COLLABORATOR} when somebody else submitted, which is exactly
      * the fact {@code roleOf} exists to record.
+     *
+     * <p><strong>§5.3 is re-checked here.</strong> The same
+     * {@code ProjectChecklistService} the checklist endpoint reads, so a client
+     * that showed a complete checklist and a service that refuses the submission
+     * is not a state this service can reach. What the endpoint gives is advice;
+     * this is the rule, and it holds for a client that skipped the endpoint, cached
+     * its answer, or is not ours.
      */
     @Transactional
     public Project submit(UUID projectId, UUID accountId) {
         Project project = access.requireTransitionable(projectId, accountId, Capability.SUBMIT_FOR_REVIEW);
-        // #37: the completeness checklist is re-checked here, and refuses with
-        // PROJECT_NOT_SUBMITTABLE. Until it exists a submission is accepted on
-        // the creator's word, and moderation is the check.
+
+        // The edge first, then the contents — the same order as launch, and for the
+        // same reason. A rejected campaign is refused for being rejected, not for
+        // having no cover image: the state is the thing the creator cannot fix, and
+        // reporting the second failure would send them to upload a picture that
+        // would change nothing.
+        requireEdge(project.getState(), ProjectState.SUBMITTED);
+        checklist.requireSubmittable(project);
+
         return apply(project, ProjectState.SUBMITTED, access.roleOf(project, accountId), accountId, null);
     }
 

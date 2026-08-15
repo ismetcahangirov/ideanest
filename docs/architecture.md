@@ -315,8 +315,22 @@ duration (1–60 days), scheduled launch, late-pledge toggle, pre-launch page.
 **Rewards** — atomic **items** first, then **tiers** composed from them:
 title, description, price, included items with quantities, images, estimated
 delivery, quantity limit, shipping scope, per-country rates, early-bird windows,
-featured and secret flags, drag-to-reorder, duplication. **Add-ons** are items
+featured and secret flags, reordering, duplication. **Add-ons** are items
 sold alongside a tier.
+
+> **Two notes on how the editor delivers this** (#34).
+>
+> **Reordering is a pair of move controls per tier, not dragging.** Dragging is
+> unreachable by keyboard, by switch control, and on every touch device, and an
+> accessibility failure is a build error rather than a nicety (CLAUDE.md §2).
+> Each control names the tier it moves and the move is announced with its new
+> position. Pointer dragging remains a layer that can be added on top of that;
+> it is not a substitute for it.
+>
+> **A tier's images are its items' images.** `reward_tiers` has no image column
+> and neither does its response — §7.2 puts `image_url` on `items` — so the
+> pictures a backer sees for a tier are the pictures of what is in it. Both
+> become references into the media pipeline (§13) when there is one.
 
 **Story** — rich text editor (headings, emphasis, lists, quotes, rules), inline
 media, third-party embeds, section headings that generate anchor navigation, a
@@ -539,6 +553,42 @@ individual agreement can differ without a deployment.
 | Increase reward quantity | Permitted |
 | Decrease reward quantity | Only above the number already claimed |
 
+> **The first nine rules are the submission checklist.** They are evaluated by a
+> single class — `SubmissionChecklist`, a pure type in the project module's domain
+> package with no Spring and no database — and that class has exactly two callers:
+> `GET /v1/projects/{id}/checklist`, which advises the creator, and
+> `POST /v1/projects/{id}/submit`, which refuses with `409 PROJECT_NOT_SUBMITTABLE`
+> and names every unmet requirement. One implementation, two callers, so the screen
+> and the write cannot disagree about whether a campaign is ready. The endpoint is
+> advice; the refusal is the enforcement, and it holds for a client that skipped the
+> endpoint, cached its answer, or is not ours.
+>
+> Facts about reward tiers reach that class through a port the project module
+> declares (`RewardFacts`) and the reward module implements. The reverse call would
+> be a cycle: the reward module already depends on the project module for
+> authorisation.
+>
+> **Blocking and advisory are separate lists.** §5.3's nine rules refuse a
+> submission. Beside them the checklist reports four things that are permitted and
+> weaker — no subcategory, no scheduled launch, a story with no images or embeds, and
+> no reward tiers at all (§5.3 allows zero). They travel in a different array from
+> the blocking ones so that an interface cannot present a suggestion as a barrier.
+> The completeness score is a percentage over both, with a blocking requirement
+> weighing twice an advisory one: built from blockers alone it would be a boolean
+> wearing a percent sign, and every legal-but-bare campaign would read 100.
+>
+> **What the goal bounds and the reward floor are.** §5.3 calls them configurable and
+> they are: `ideanest.project.submission.{goal-minimum, goal-maximum,
+> reward-price-minimum}`. The goal bounds are a commercial position and the reward
+> floor belongs to the payment provider (§9.3); neither is ours to compile in.
+>
+> **What the checklist cannot check.** That a cover image really is 1024×576 — the
+> dimensions are measured in the creator's browser and sent alongside the URL,
+> because there is no media pipeline (§13) and nothing on the server has ever seen
+> the file, so a client could claim any size. It becomes a real check when ingestion
+> measures the file itself. §5.4's prohibited content and §5.5's obligations are not
+> properties of a row at all; they are what moderation is for.
+>
 > **How the reward rules are enforced today.** Deleting a claimed tier is
 > `409 REWARD_HAS_BACKERS`, and "hidden" is expressed as `available_until` in the
 > past — that withdraws the tier from sale without deleting it, and it needs no
@@ -554,9 +604,54 @@ individual agreement can differ without a deployment.
 > constraint — a count across rows cannot be one, and a trigger or a denormalised
 > counter costs more than a limit on the length of a reward list is worth.
 >
-> **Immutability after launch is not yet enforced** (#36 owns it, together with the
-> `lockedFields` a client reads it from). A tier's price and a campaign's goal can be
-> edited in any state today, except where the database refuses the row outright.
+> **Immutability after launch is one table, in the domain.** `ProjectEditLocks` maps
+> every state of §6.1 to the fields §5.3 has frozen in it, and the two services that
+> write — `ProjectEditingService` for a campaign, `RewardService` for a tier — ask it
+> rather than each deciding for themselves. Written twice, the rule becomes two rules,
+> and the first time one of them is extended a campaign's goal and its reward prices
+> disagree about when a campaign counts as launched.
+>
+> **Launched is a state, not a timestamp.** The lock applies from `LIVE` onwards —
+> the same nine states `projects_public_states_are_fully_specified` calls the ones
+> the public has seen. `launched_at` would answer almost the same question; the state
+> was chosen because it is what the client already reads beside `lockedFields`, what
+> the audit trail records, and what keeps the rule a function of one enum and its test
+> a unit test with no database in it. An **ended** campaign therefore locks exactly
+> what a live one locks and keeps it locked: a cancelled or unsuccessful campaign is
+> not editable as though it were a draft, because its goal, its deadline, and its
+> prices are the record of what backers were asked for. It deliberately locks no
+> *more* — the title, the story, and the risks section stay editable, because §5.5
+> obliges a creator to keep backers informed of delays and the campaign page is where
+> they do it. `REJECTED` is the one terminal state that locks nothing: it was never
+> public, nobody pledged to it, and nothing follows it.
+>
+> **The deadline is frozen through the two fields it is made of.** `deadline` is
+> computed once, at launch, from `launched_at` and `duration_days`; freezing it means
+> refusing `durationDays` and `scheduledLaunchAt` after launch.
+>
+> **A refused edit is `409`, not `400`.** `PROJECT_FIELD_LOCKED` and
+> `REWARD_FIELD_LOCKED`, each with the field and the campaign's state in `meta`. A
+> 400 says "fix the value" and the value is fine — 6000 is a perfectly good goal, and
+> it would have been accepted an hour earlier. What refuses it is the state the
+> campaign is in, frequently the state a scheduled launch put it in while the editor
+> was open, which is the same reasoning that makes a forbidden transition a 409. A
+> present key is a write under merge-patch, so mentioning a locked field is refused
+> even when the value is unchanged; comparing values instead would make the rule
+> depend on whether a client sent `5000` or `5000.00`.
+>
+> **`lockedFields` is the same table, read forwards.** Every editor response carries
+> the names — `goal`, `durationDays`, `scheduledLaunchAt` — as the keys of the `PATCH`
+> body, so a client disables its own inputs without a rule of its own. A tier's
+> `price` is frozen by the same table and is deliberately absent from that list: it is
+> not a field of that body, and a client told to disable an input it does not have
+> would eventually show one.
+>
+> **The quantity lock is directional.** Raising a limit after launch is permitted;
+> lowering it is `409`. Unlimited counts as the largest limit there is, so clearing a
+> limit on a live tier is a raise and adding one where there was none is a reduction.
+> The pre-launch floor — `claimed_quantity + reserved_quantity` — is a different rule
+> and still answers `400`, because a limit below what is taken is wrong in every
+> state.
 
 ### 5.4 Prohibited content
 
@@ -611,6 +706,25 @@ stateDiagram-v2
     SUSPENDED --> [*]
     COMPLETED --> [*]
 ```
+
+> **`SUBMITTED → CHANGES_REQUESTED → SUBMITTED` needs the note to be readable.**
+> The moderator's reason is written on the `project_state_transitions` row, and the
+> creator reads it back on `GET /v1/projects/{id}/checklist` as `moderation`: the
+> outcome, the note, when it was decided, and whether the campaign is still in the
+> state that decision produced. It rides there rather than on `ProjectEdit` —
+> which answers every autosave, and would then query the transition table several
+> times a minute for a value one screen renders — and rather than on an endpoint of
+> its own, because the note and the state have to be read together or a client can
+> show a decision the campaign has already moved past. `current` is computed
+> server-side for exactly that reason: after a resubmission the newest note is
+> still the change request's, and a client comparing two enums to work that out is
+> a client that will eventually shout at somebody whose campaign is fine.
+>
+> **Submission is checked against §5.3 before the edge is taken**, so a campaign
+> with no goal or no deadline cannot reach `APPROVED` and therefore cannot be
+> launched from there. `PROJECT_NOT_LAUNCHABLE` is consequently unreachable through
+> the API and is kept: the scheduled launch of §8.4 moves `SCHEDULED → LIVE` on a
+> timer, from a row somebody may have edited since.
 
 ### 6.2 Pledge
 

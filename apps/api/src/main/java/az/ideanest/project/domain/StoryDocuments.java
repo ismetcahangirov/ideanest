@@ -192,6 +192,42 @@ public final class StoryDocuments {
     }
 
     /**
+     * How many images and embeds the story holds.
+     *
+     * <p>The one thing the checklist asks about a story besides its length, and it
+     * is advice rather than a rule: §4.6 gives the story inline media and
+     * third-party embeds, a story of six unbroken paragraphs is read by almost
+     * nobody, and §5.3 requires none of it. See
+     * {@link ChecklistRequirement#STORY_MEDIA}.
+     *
+     * <p>Counted here rather than in the checklist for the reason
+     * {@link #characterCount} is: the block union is this file's, and a second
+     * place that knew what an {@code image} block looks like would be a second
+     * place to update when one is added.
+     *
+     * <p>Tolerant of a malformed document, exactly as {@link #characterCount} is,
+     * and for the same reason — it runs against documents that are already stored.
+     */
+    public static int mediaCount(JsonNode document) {
+        if (document == null || !document.isObject()) {
+            return 0;
+        }
+        JsonNode blocks = document.get("blocks");
+        if (blocks == null || !blocks.isArray()) {
+            return 0;
+        }
+
+        int total = 0;
+        for (JsonNode block : blocks) {
+            String type = textOrEmpty(block.get("type"));
+            if ("image".equals(type) || "embed".equals(type)) {
+                total++;
+            }
+        }
+        return total;
+    }
+
+    /**
      * Whether two documents say the same thing.
      *
      * <p>{@link JsonNode#equals} compares trees rather than text, so a client that

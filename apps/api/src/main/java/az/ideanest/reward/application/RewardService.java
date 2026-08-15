@@ -1,5 +1,6 @@
 package az.ideanest.reward.application;
 
+import az.ideanest.project.application.EditLocks;
 import az.ideanest.reward.domain.RewardTier;
 import az.ideanest.reward.domain.RewardTierItem;
 import az.ideanest.reward.domain.ShippingRule;
@@ -43,13 +44,15 @@ import org.springframework.transaction.annotation.Transactional;
  *       {@code claimed_quantity} or {@code reserved_quantity}; the entity does not
  *       expose them for writing and the columns are not insertable. What this
  *       migration and this service provide is the constraint that work will rely on.
- *   <li><strong>Which fields are frozen after launch.</strong> §5.3 makes a reward's
- *       price immutable once a campaign is live and permits a quantity to be raised
- *       but not lowered below what is claimed. The second half is enforced here,
- *       because the database refuses the row either way and a creator deserves a 400
- *       rather than a 500. The first half is #36, along with the {@code lockedFields}
- *       a client reads it from — and this service deliberately does not pre-empt it:
- *       a tier's price can be edited in any state today.
+ *   <li><strong>Which states freeze what.</strong> §5.3 makes a reward's price
+ *       immutable once a campaign is live and permits a quantity to be raised but
+ *       not lowered after that. <em>Whether</em> a campaign has reached that point is
+ *       not decided here: it is one table, {@code ProjectEditLocks}, in the module
+ *       that owns the campaign's state, and it arrives as {@code EditLocks} through
+ *       {@link RewardAccess}. This service decides only what to do about the answer,
+ *       which is a 409 naming the field. The floor a quantity may be lowered to
+ *       <em>before</em> launch — claimed plus reserved — is a different rule and is
+ *       still {@link #withinLimit}.
  * </ul>
  */
 @Service
@@ -144,10 +147,16 @@ public class RewardService {
      * <p>{@code items} is the one field that is a collection: present means "this is
      * the composition now", so it is replaced wholesale rather than merged. Absent
      * leaves it alone, which is what makes autosaving the title safe.
+     *
+     * <p>§5.3's post-launch rules are checked before anything is applied, so a body
+     * that renames a tier and reprices it changes neither. Half a save is worse than
+     * none: the creator would have to work out which half.
      */
     @Transactional
     public RewardDetail edit(UUID rewardId, UUID accountId, RewardPatch patch) {
-        RewardTier tier = access.requireEditableReward(rewardId, accountId);
+        RewardAccess.AuthorisedReward authorised = access.requireEditableReward(rewardId, accountId);
+        RewardTier tier = authorised.tier();
+        requireNothingLocked(tier, authorised.locks(), patch);
 
         patch.title().ifPresent(title -> tier.setTitle(requireTitle(title)));
         patch.description().ifPresent(description -> tier.setDescription(blankAsNull(description)));
@@ -200,7 +209,7 @@ public class RewardService {
      */
     @Transactional
     public void delete(UUID rewardId, UUID accountId) {
-        RewardTier tier = access.requireEditableReward(rewardId, accountId);
+        RewardTier tier = access.requireEditableReward(rewardId, accountId).tier();
         if (tier.hasBackers()) {
             throw new RewardHasBackersException(rewardId, tier.getClaimedQuantity());
         }
@@ -222,7 +231,7 @@ public class RewardService {
      */
     @Transactional
     public RewardDetail duplicate(UUID rewardId, UUID accountId) {
-        RewardTier original = access.requireEditableReward(rewardId, accountId);
+        RewardTier original = access.requireEditableReward(rewardId, accountId).tier();
         requireRoomForAnotherTier(original.getProjectId());
 
         RewardTier copy = rewards.save(original.duplicateAt(nextSortOrder(original.getProjectId())));
@@ -305,7 +314,7 @@ public class RewardService {
      */
     @Transactional
     public RewardDetail replaceShippingRules(UUID rewardId, UUID accountId, List<ShippingRate> rates) {
-        RewardTier tier = access.requireEditableReward(rewardId, accountId);
+        RewardTier tier = access.requireEditableReward(rewardId, accountId).tier();
 
         if (!tier.getShippingType().isShipped()) {
             // Rates for a tier that is not shipped are rates nothing will ever read,
@@ -451,6 +460,62 @@ public class RewardService {
     // ------------------------------------------------------------------
     // Validation
     // ------------------------------------------------------------------
+
+    /**
+     * §5.3 after launch, for a whole patch, before any of it is applied.
+     *
+     * <p><strong>The price: mentioning it is enough.</strong> A body carrying the
+     * price a live tier already has is still refused. Merge-patch says a key that is
+     * present is a write, and comparing the amounts instead would make the rule
+     * depend on how a number was serialised — {@code "19.99"} and {@code "19.990"}
+     * are the same money and different strings, and {@link BigDecimal#equals} says
+     * they are different values. A client is told which fields are locked before it
+     * sends anything, so this costs a well-behaved one nothing.
+     *
+     * <p><strong>The quantity: only the direction is refused.</strong> Raising a
+     * limit after launch is explicitly permitted — a creator who found more stock
+     * should be able to sell it — so what is checked is that the new limit is not
+     * <em>below</em> the one the tier already advertises. Two cases follow from
+     * reading "unlimited" as the largest limit there is:
+     *
+     * <ul>
+     *   <li>clearing the limit on a live tier is permitted, because it can only ever
+     *       add places;
+     *   <li>putting a limit on a live tier that had none is refused, because it takes
+     *       places away from a page that promised there were always more.
+     * </ul>
+     *
+     * <p>Equal is not a decrease and is allowed, which keeps an autosave that echoes
+     * the stored limit from being refused for changing nothing.
+     */
+    private static void requireNothingLocked(RewardTier tier, EditLocks locks, RewardPatch patch) {
+        if (patch.price().isPresent() && locks.rewardPriceLocked()) {
+            throw new RewardFieldLockedException(
+                    "price",
+                    locks.state(),
+                    "This campaign is live, so its rewards can no longer be repriced."
+                            + " Backers chose this tier at the price it shows.");
+        }
+        if (patch.limitQuantity().isPresent()
+                && locks.rewardQuantityLoweringLocked()
+                && lowersTheLimit(tier.getLimitQuantity(), patch.limitQuantity().value())) {
+            throw new RewardFieldLockedException(
+                    "limitQuantity",
+                    locks.state(),
+                    "A live campaign's reward quantity can be raised but not lowered. §5.3.");
+        }
+    }
+
+    /** Whether the new limit offers fewer places than the stored one. Null is unlimited. */
+    private static boolean lowersTheLimit(Integer stored, Integer requested) {
+        if (requested == null) {
+            // Unlimited is never fewer places than a limit.
+            return false;
+        }
+        // A limit where there was none takes places away from a tier that advertised
+        // an endless supply of them.
+        return stored == null || requested < stored;
+    }
 
     /**
      * The rules that involve more than one field, checked against the finished tier.

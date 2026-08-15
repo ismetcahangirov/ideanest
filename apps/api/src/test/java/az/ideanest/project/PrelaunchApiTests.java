@@ -10,6 +10,7 @@ import az.ideanest.project.infrastructure.CategoryRepository;
 import az.ideanest.project.infrastructure.ProjectStateTransitionRepository;
 import az.ideanest.shared.EmailAddress;
 import az.ideanest.support.AbstractIntegrationTest;
+import az.ideanest.support.Campaigns;
 import az.ideanest.support.RecordingLaunchReminderNotifier;
 import az.ideanest.user.infrastructure.UserRepository;
 import java.util.LinkedHashMap;
@@ -174,17 +175,24 @@ class PrelaunchApiTests extends AbstractIntegrationTest {
         return UUID.fromString((String) project.get("id"));
     }
 
-    /** A draft with everything a launch needs. */
+    /**
+     * A draft with everything a launch needs.
+     *
+     * <p>Which is everything §5.3 needs, because #37 made submission re-check the
+     * completeness checklist and the only route to {@code LIVE} runs through
+     * {@code SUBMITTED}. This used to set a goal and a duration and nothing else,
+     * and every test in this class that launched a campaign began failing with
+     * "a project in PRELAUNCH cannot move to LIVE" — the submission had been
+     * refused, the approval had nothing to approve, and the launch was the first
+     * step loud enough to notice. {@link Campaigns#completeBasics} is the shared
+     * fixture so that the next rule added to §5.3 is added in one place rather
+     * than in every suite that needs a launched campaign.
+     */
     private UUID fundableDraft(Creator creator, String title) {
         Map<String, Object> project =
                 post("/v1/projects", creator.accessToken(), Map.of("title", title)).getBody();
-        UUID category = categories.findBySlug("games").orElseThrow().getId();
 
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("blurb", "A summary that fits inside a hundred and thirty-five characters.");
-        body.put("categoryId", category.toString());
-        body.put("goal", Map.of("amount", "5000.00", "currency", "AZN"));
-        body.put("durationDays", 30);
+        Map<String, Object> body = new LinkedHashMap<>(Campaigns.completeBasics(categories));
 
         rest.exchange(
                 "/v1/projects/" + idOf(project),
@@ -204,9 +212,24 @@ class PrelaunchApiTests extends AbstractIntegrationTest {
         return id;
     }
 
+    /**
+     * The real route to {@code LIVE}: submit, approve, launch.
+     *
+     * <p><strong>Every step is asserted, not just the last one.</strong> This
+     * previously checked only the final state, so when #37 started refusing an
+     * incomplete submission the first two calls failed in silence and the failure
+     * arrived as "a project in PRELAUNCH cannot move to LIVE" — a message about the
+     * step that was fine, naming a state two transitions earlier than the mistake.
+     * A fixture that hides which of its steps broke costs more to read than it
+     * saves to write.
+     */
     private void launch(Creator creator, UUID id) {
-        post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
-        post("/v1/admin/moderation/" + id + "/approve", moderator().accessToken(), null);
+        assertThat(post("/v1/projects/" + id + "/submit", creator.accessToken(), null)
+                        .getBody())
+                .containsEntry("state", "SUBMITTED");
+        assertThat(post("/v1/admin/moderation/" + id + "/approve", moderator().accessToken(), null)
+                        .getBody())
+                .containsEntry("state", "APPROVED");
         assertThat(post("/v1/projects/" + id + "/launch", creator.accessToken(), null)
                         .getBody())
                 .containsEntry("state", "LIVE");

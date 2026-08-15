@@ -10,6 +10,7 @@ import az.ideanest.project.infrastructure.ProjectStateTransitionRepository;
 import az.ideanest.project.infrastructure.SubcategoryRepository;
 import az.ideanest.shared.EmailAddress;
 import az.ideanest.support.AbstractIntegrationTest;
+import az.ideanest.support.Campaigns;
 import az.ideanest.user.infrastructure.UserRepository;
 import java.time.Duration;
 import java.time.Instant;
@@ -201,19 +202,45 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
         return UUID.fromString((String) project.get("id"));
     }
 
-    /** A draft with everything a launch needs, in the state a submission starts from. */
-    private Map<String, Object> fundableDraft(Creator creator, String title) {
+    /**
+     * A draft §5.3 is satisfied with, in the state a submission starts from.
+     *
+     * <p>Everything the completeness checklist blocks on, and nothing it merely
+     * advises: no subcategory, no scheduled launch, no reward tiers, and a story
+     * with no pictures in it. So a campaign built by this fixture can be submitted
+     * and is deliberately not "finished" — which is what
+     * {@code ProjectChecklistApiTests} uses to tell advice apart from refusal.
+     */
+    private Map<String, Object> submittableDraft(Creator creator, String title) {
         Map<String, Object> project = draft(creator, title);
-        UUID category = categories.findBySlug("games").orElseThrow().getId();
 
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("blurb", "A summary that fits inside a hundred and thirty-five characters.");
-        body.put("categoryId", category.toString());
-        body.put("goal", Map.of("amount", "5000.00", "currency", "AZN"));
-        body.put("durationDays", 30);
-        body.put("risks", "The main risk is manufacturing capacity.");
+        return patch(
+                        "/v1/projects/" + idOf(project),
+                        creator.accessToken(),
+                        Campaigns.completeBasics(categories))
+                .getBody();
+    }
 
-        return patch("/v1/projects/" + idOf(project), creator.accessToken(), body).getBody();
+    /**
+     * A campaign that is taking money, reached the way a real one is.
+     *
+     * <p>Through the endpoints rather than by writing {@code state = 'LIVE'} into the
+     * row: the launch is what stamps {@code launched_at} and computes the deadline,
+     * and a fixture that set the state by hand would let a test pass against a
+     * campaign that could never exist. Moderation is part of the path, which is why
+     * this takes the moderator as well.
+     */
+    private UUID liveCampaign(Creator creator, Creator moderator, String title) {
+        UUID id = idOf(submittableDraft(creator, title));
+        post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
+        post("/v1/admin/moderation/" + id + "/approve", moderator.accessToken(), null);
+        post("/v1/projects/" + id + "/launch", creator.accessToken(), null);
+        return id;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<String> lockedFieldsOf(Map<String, Object> project) {
+        return (List<String>) project.get("lockedFields");
     }
 
     private List<ProjectStateTransition> historyOf(UUID projectId) {
@@ -248,8 +275,8 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
         // the campaign, so a draft that needed a goal would be a form behind a form.
         assertThat(project.get("goal")).isNull();
         assertThat(project.get("categoryId")).isNull();
-        // Present and empty from the start, so the client that reads it does not have
-        // to be rewritten when #36 starts populating it.
+        // Nothing is frozen in a draft: §5.3 freezes the goal and the deadline at
+        // launch, and this campaign has not been shown to anybody.
         assertThat(project).containsEntry("lockedFields", List.of());
     }
 
@@ -310,7 +337,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     @DisplayName("autosaving one field leaves the rest alone")
     void autosavingOneFieldLeavesTheRestAlone() {
         Creator creator = creator();
-        Map<String, Object> project = fundableDraft(creator, "A campaign");
+        Map<String, Object> project = submittableDraft(creator, "A campaign");
         UUID id = idOf(project);
 
         // The editor autosaves one field at a time, so this body is the normal case.
@@ -334,7 +361,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     @DisplayName("an explicit null clears a field")
     void anExplicitNullClearsAField() {
         Creator creator = creator();
-        UUID id = idOf(fundableDraft(creator, "A campaign"));
+        UUID id = idOf(submittableDraft(creator, "A campaign"));
 
         // RFC 7396: null removes the member. Told apart from absence above, which is
         // the whole reason the request type does not use Optional.
@@ -546,7 +573,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     void theHappyPath() {
         Creator creator = creator();
         Creator moderator = moderator();
-        UUID id = idOf(fundableDraft(creator, "A campaign"));
+        UUID id = idOf(submittableDraft(creator, "A campaign"));
 
         assertThat(post("/v1/projects/" + id + "/submit", creator.accessToken(), null)
                         .getBody())
@@ -573,7 +600,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     void moderationRefusesAnAccountThatIsNotStaff() {
         Creator creator = creator();
         Creator stranger = creator();
-        UUID id = idOf(fundableDraft(creator, "A campaign"));
+        UUID id = idOf(submittableDraft(creator, "A campaign"));
         post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
 
         // The whole point of moderation: the person who wrote the campaign is not
@@ -609,7 +636,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     void changesRequestedIsNotTerminal() {
         Creator creator = creator();
         Creator moderator = moderator();
-        UUID id = idOf(fundableDraft(creator, "A campaign"));
+        UUID id = idOf(submittableDraft(creator, "A campaign"));
         post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
 
         Map<String, Object> returned = post(
@@ -639,7 +666,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     void rejectionCarriesItsReason() {
         Creator creator = creator();
         Creator moderator = moderator();
-        UUID id = idOf(fundableDraft(creator, "A campaign"));
+        UUID id = idOf(submittableDraft(creator, "A campaign"));
         post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
 
         // A rejection without a reason is a support ticket every time, and it is the
@@ -663,7 +690,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     void cancellingALiveCampaign() {
         Creator creator = creator();
         Creator moderator = moderator();
-        UUID id = idOf(fundableDraft(creator, "A campaign"));
+        UUID id = idOf(submittableDraft(creator, "A campaign"));
         post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
         post("/v1/admin/moderation/" + id + "/approve", moderator.accessToken(), null);
         post("/v1/projects/" + id + "/launch", creator.accessToken(), null);
@@ -687,7 +714,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     @DisplayName("a transition the state machine refuses is a 409 saying what is possible instead")
     void aForbiddenTransitionIsAConflict() {
         Creator creator = creator();
-        UUID id = idOf(fundableDraft(creator, "A campaign"));
+        UUID id = idOf(submittableDraft(creator, "A campaign"));
 
         ResponseEntity<Map<String, Object>> refused = post("/v1/projects/" + id + "/launch", creator.accessToken(), null);
 
@@ -718,7 +745,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     void terminalIsTerminal() {
         Creator creator = creator();
         Creator moderator = moderator();
-        UUID id = idOf(fundableDraft(creator, "A campaign"));
+        UUID id = idOf(submittableDraft(creator, "A campaign"));
         post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
         post("/v1/admin/moderation/" + id + "/reject", moderator.accessToken(), Map.of("note", "§5.4."));
 
@@ -739,40 +766,210 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("an approved campaign with no goal cannot launch, and says which field is missing")
-    void launchingNeedsAGoalAndADuration() {
+    @DisplayName("a campaign with no goal never reaches a moderator")
+    void anIncompleteCampaignCannotBeSubmitted() {
         Creator creator = creator();
-        Creator moderator = moderator();
         UUID id = idOf(draft(creator, "A campaign"));
-        post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
-        post("/v1/admin/moderation/" + id + "/approve", moderator.accessToken(), null);
 
-        ResponseEntity<Map<String, Object>> refused = post("/v1/projects/" + id + "/launch", creator.accessToken(), null);
+        ResponseEntity<Map<String, Object>> refused = post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
 
-        // Unreachable once #37 refuses the submission. Until then this is what stands
-        // between a moderator's approval and a constraint violation: §5.1 cannot
-        // resolve a campaign with no goal and no deadline.
+        // §5.3, enforced on the write rather than only reported by the checklist
+        // endpoint. This is also what makes PROJECT_NOT_LAUNCHABLE unreachable
+        // through the API: a campaign with no goal cannot reach APPROVED, so it can
+        // never be launched from there. That check stays as the guard for the
+        // scheduled launch of §8.4, which does not go through a submission.
         assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(refused.getBody()).containsEntry("code", "PROJECT_NOT_LAUNCHABLE");
-        assertThat(refused.getBody().get("meta")).isEqualTo(Map.of("missing", List.of("goal", "durationDays")));
+        assertThat(refused.getBody()).containsEntry("code", "PROJECT_NOT_SUBMITTABLE");
+
+        // Nothing moved, and no audit row claims otherwise.
+        assertThat(get("/v1/projects/" + id + "/edit", creator.accessToken()).getBody())
+                .containsEntry("state", "DRAFT");
+        assertThat(historyOf(id)).hasSize(1);
     }
 
+    // ------------------------------------------------------------------
+    // What launching freezes (§5.3)
+    // ------------------------------------------------------------------
+
     @Test
-    @DisplayName("a launched campaign cannot have its goal removed")
+    @DisplayName("a live campaign's goal can be neither changed nor removed")
     void aLiveCampaignKeepsItsGoal() {
         Creator creator = creator();
         Creator moderator = moderator();
-        UUID id = idOf(fundableDraft(creator, "A campaign"));
-        post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
-        post("/v1/admin/moderation/" + id + "/approve", moderator.accessToken(), null);
-        post("/v1/projects/" + id + "/launch", creator.accessToken(), null);
+        UUID id = liveCampaign(creator, moderator, "A campaign");
 
-        // The narrow slice of #36 that the database also refuses. The full
-        // immutability rules of §5.3, and lockedFields, are that issue's.
-        ResponseEntity<Map<String, Object>> refused =
+        // 409 rather than 400: 5000 was accepted an hour ago and 6000 is a perfectly
+        // good number. What refuses it is the state the campaign is now in, which is
+        // frequently the state a scheduled launch put it in while the tab was open.
+        ResponseEntity<Map<String, Object>> raised = patch(
+                "/v1/projects/" + id,
+                creator.accessToken(),
+                Map.of("goal", Map.of("amount", "6000.00", "currency", "AZN")));
+        assertThat(raised.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(raised.getBody()).containsEntry("code", "PROJECT_FIELD_LOCKED");
+        // The field so the editor can highlight it, and the state so it can say why
+        // without asking a second time.
+        assertThat(raised.getBody().get("meta")).isEqualTo(Map.of("field", "goal", "state", "LIVE"));
+
+        // Clearing it is a change to it. This is also the case the database refuses
+        // outright — §5.1 cannot resolve a live campaign with no goal — and it used to
+        // be the only part of §5.3 that was enforced.
+        ResponseEntity<Map<String, Object>> cleared =
                 patchJson("/v1/projects/" + id, creator.accessToken(), "{\"goal\": null}");
-        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(refused.getBody().get("meta")).isEqualTo(Map.of("field", "goal"));
+        assertThat(cleared.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(cleared.getBody()).containsEntry("code", "PROJECT_FIELD_LOCKED");
+
+        // And nothing moved.
+        assertThat(get("/v1/projects/" + id + "/edit", creator.accessToken()).getBody().get("goal"))
+                .isEqualTo(Map.of("amount", "5000.00", "currency", "AZN"));
+    }
+
+    @Test
+    @DisplayName("a live campaign's deadline is frozen, in both the fields it is made of")
+    void aLiveCampaignKeepsItsDeadline() {
+        Creator creator = creator();
+        Creator moderator = moderator();
+        UUID id = liveCampaign(creator, moderator, "A campaign");
+        Instant deadline =
+                Instant.parse((String) get("/v1/projects/" + id + "/edit", creator.accessToken())
+                        .getBody()
+                        .get("deadline"));
+
+        // The deadline is not an editable field: it is computed at launch from the
+        // duration and the launch instant. Freezing it therefore means freezing both
+        // of the fields a creator can reach.
+        ResponseEntity<Map<String, Object>> lengthened =
+                patch("/v1/projects/" + id, creator.accessToken(), Map.of("durationDays", 45));
+        assertThat(lengthened.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(lengthened.getBody().get("meta")).isEqualTo(Map.of("field", "durationDays", "state", "LIVE"));
+
+        ResponseEntity<Map<String, Object>> rescheduled = patch(
+                "/v1/projects/" + id, creator.accessToken(), Map.of("scheduledLaunchAt", "2027-01-01T09:00:00Z"));
+        assertThat(rescheduled.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(rescheduled.getBody().get("meta"))
+                .isEqualTo(Map.of("field", "scheduledLaunchAt", "state", "LIVE"));
+
+        // A campaign whose deadline could move is a campaign whose backers were told
+        // one thing and charged on another.
+        Map<String, Object> unchanged =
+                get("/v1/projects/" + id + "/edit", creator.accessToken()).getBody();
+        assertThat(unchanged).containsEntry("durationDays", 30);
+        assertThat(Instant.parse((String) unchanged.get("deadline"))).isEqualTo(deadline);
+    }
+
+    @Test
+    @DisplayName("a locked field in a body refuses the whole patch, and applies none of it")
+    void aPatchIsAllOrNothing() {
+        Creator creator = creator();
+        Creator moderator = moderator();
+        UUID id = liveCampaign(creator, moderator, "A campaign");
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("title", "A better title");
+        body.put("goal", Map.of("amount", "9000.00", "currency", "AZN"));
+
+        assertThat(patch("/v1/projects/" + id, creator.accessToken(), body).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+
+        // Half a save is worse than none: the creator would have to work out which
+        // half, and the title they can see would tell them the goal went through.
+        assertThat(get("/v1/projects/" + id + "/edit", creator.accessToken()).getBody())
+                .containsEntry("title", "A campaign");
+    }
+
+    @Test
+    @DisplayName("everything §5.3 does not freeze is still editable once live")
+    void launchingFreezesOnlyWhatItHasTo() {
+        Creator creator = creator();
+        Creator moderator = moderator();
+        UUID id = liveCampaign(creator, moderator, "A campaign");
+
+        // §5.5 obliges a creator to keep backers informed of delays and to answer
+        // complaints, and the campaign page is where they do it. A launch that froze
+        // the story would freeze the only place that conversation happens.
+        Map<String, Object> saved = patch(
+                        "/v1/projects/" + id,
+                        creator.accessToken(),
+                        Map.of("title", "A campaign, still going", "risks", "The factory has quoted a longer lead time."))
+                .getBody();
+
+        assertThat(saved).containsEntry("title", "A campaign, still going");
+        assertThat(saved).containsEntry("risks", "The factory has quoted a longer lead time.");
+    }
+
+    @Test
+    @DisplayName("a draft freezes nothing, including the fields a launch will freeze")
+    void aDraftFreezesNothing() {
+        Creator creator = creator();
+        UUID id = idOf(submittableDraft(creator, "A campaign"));
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("goal", Map.of("amount", "7500.00", "currency", "AZN"));
+        body.put("durationDays", 45);
+        body.put("scheduledLaunchAt", "2027-01-01T09:00:00Z");
+
+        Map<String, Object> saved =
+                patch("/v1/projects/" + id, creator.accessToken(), body).getBody();
+
+        // Before launch nothing has been shown to anybody who could act on it, so all
+        // three move freely — including in one body, which is what the editor sends
+        // when a creator fills in the funding section.
+        assertThat(saved).containsEntry("goal", Map.of("amount", "7500.00", "currency", "AZN"));
+        assertThat(saved).containsEntry("durationDays", 45);
+        assertThat(Instant.parse((String) saved.get("scheduledLaunchAt")))
+                .isEqualTo(Instant.parse("2027-01-01T09:00:00Z"));
+        assertThat(lockedFieldsOf(saved)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("lockedFields is empty until launch and names the frozen fields afterwards")
+    void lockedFieldsFollowTheState() {
+        Creator creator = creator();
+        Creator moderator = moderator();
+        UUID id = idOf(submittableDraft(creator, "A campaign"));
+
+        assertThat(lockedFieldsOf(get("/v1/projects/" + id + "/edit", creator.accessToken())
+                        .getBody()))
+                .isEmpty();
+
+        // Still empty in front of a moderator: a submission is not a promise to a
+        // backer, and a creator answering CHANGES_REQUESTED usually has to move one of
+        // these.
+        assertThat(lockedFieldsOf(post("/v1/projects/" + id + "/submit", creator.accessToken(), null)
+                        .getBody()))
+                .isEmpty();
+        assertThat(lockedFieldsOf(
+                        post("/v1/admin/moderation/" + id + "/approve", moderator.accessToken(), null)
+                                .getBody()))
+                .isEmpty();
+
+        // The response to the launch itself already says what has just frozen, which
+        // is the moment a client most needs to be told.
+        Map<String, Object> live = post("/v1/projects/" + id + "/launch", creator.accessToken(), null)
+                .getBody();
+        // The names are the keys of the PATCH body, so the editor matches them against
+        // its own inputs rather than translating them. A reward's price is frozen by
+        // the same rule and is not a field of this body.
+        assertThat(lockedFieldsOf(live)).containsExactly("goal", "durationDays", "scheduledLaunchAt");
+
+        // Every response carries the same answer, so a client's state does not depend
+        // on which request it happened to make last.
+        assertThat(lockedFieldsOf(get("/v1/projects/" + id + "/edit", creator.accessToken())
+                        .getBody()))
+                .containsExactly("goal", "durationDays", "scheduledLaunchAt");
+
+        // A cancelled campaign is not a draft again. What backers were asked for stays
+        // exactly as it was.
+        Map<String, Object> cancelled = post(
+                        "/v1/projects/" + id + "/cancel",
+                        creator.accessToken(),
+                        Map.of("reason", "The manufacturer withdrew."))
+                .getBody();
+        assertThat(cancelled).containsEntry("state", "CANCELED");
+        assertThat(lockedFieldsOf(cancelled)).containsExactly("goal", "durationDays", "scheduledLaunchAt");
+        assertThat(patch("/v1/projects/" + id, creator.accessToken(), Map.of("durationDays", 10))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
     }
 
     // ------------------------------------------------------------------
@@ -784,7 +981,7 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
     void everyTransitionWritesExactlyOneAuditRow() {
         Creator creator = creator();
         Creator moderator = moderator();
-        UUID id = idOf(fundableDraft(creator, "A campaign"));
+        UUID id = idOf(submittableDraft(creator, "A campaign"));
 
         post("/v1/projects/" + id + "/submit", creator.accessToken(), null);
         post("/v1/admin/moderation/" + id + "/approve", moderator.accessToken(), null);

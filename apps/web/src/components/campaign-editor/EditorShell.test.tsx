@@ -54,19 +54,24 @@ describe('EditorShell', () => {
   });
 
   /*
-   * The rewards, pre-launch and review routes belong to #34, #39 and #37. A
-   * disabled tab says "not finished yet"; a stub page would leave the creator
-   * unable to tell that from "broken". Rewards is the example because it is the
-   * next one to be built, so this assertion moves along the list as the epic
-   * lands — the loop below is what covers all five without being rewritten.
+   * The disabled half of `available` moved to EditorShell.unavailable.test.tsx
+   * when this epic finished. It used to name whichever section was next to be
+   * built — Rewards, then Pre-launch — and was rewritten each time one shipped,
+   * every rewrite a failure about the list rather than about the behaviour. With
+   * every row in EDITOR_TABS now built there is nothing left to point at, so that
+   * file fabricates a list instead and this one keeps asserting against the real
+   * one. The loop below already covers both halves for whatever EDITOR_TABS says.
+   *
+   * A section whose route exists is a real link, with an address that can be
+   * bookmarked and opened in a new tab.
    */
-  it('renders a section whose route does not exist as unavailable, not as a link', () => {
+  it('renders a section whose route exists as a link to it', () => {
     renderShell();
 
-    const rewards = screen.getByRole('button', { name: /Rewards/ });
-    expect(rewards).toHaveAttribute('aria-disabled', 'true');
-    expect(rewards).toHaveAccessibleName('Rewards, not available yet');
-    expect(screen.queryByRole('link', { name: /Rewards/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Rewards' })).toHaveAttribute(
+      'href',
+      '/projects/project-1/edit/rewards',
+    );
   });
 
   /*
