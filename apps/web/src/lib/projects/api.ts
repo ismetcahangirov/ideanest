@@ -357,10 +357,389 @@ export async function restoreStoryVersion(
 }
 
 /* -------------------------------------------------------------------------
+ * Items — docs/architecture.md §10.2 (#32, #34)
+ *
+ * The atomic things a campaign produces. Items come BEFORE tiers, which is the
+ * order §4.6 puts them in: a tier is a selection of items with quantities, so
+ * there is nothing to compose until these exist.
+ * ---------------------------------------------------------------------- */
+
+/**
+ * An item as the creator's editor sees it — `ItemResponse`.
+ *
+ * `imageUrl` is an address the client declared, not an upload. There is no
+ * media pipeline (docs/architecture.md §13), and the field becomes a reference
+ * to a `media` row when there is one; the interface says so rather than
+ * pretending to have an uploader.
+ */
+export interface Item {
+  id: string;
+  projectId: string;
+  name: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  /** Absent for a digital item, which the service refuses to give a weight. */
+  weightGrams?: number | null;
+  isDigital: boolean;
+  sku?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** `CreateItemRequest`. Only the name is required. */
+export interface NewItem {
+  name: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  weightGrams?: number | null;
+  isDigital?: boolean;
+  sku?: string | null;
+}
+
+/**
+ * `ItemPatchRequest`, with JSON Merge Patch semantics.
+ *
+ * Same rule as `ProjectPatch`: an absent key leaves the field alone, an
+ * explicit `null` clears it. That is why every optional field is `T | null`
+ * rather than `T`.
+ */
+export interface ItemPatch {
+  name?: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  weightGrams?: number | null;
+  isDigital?: boolean;
+  sku?: string | null;
+}
+
+async function readItem(response: Response): Promise<Item> {
+  if (!response.ok) throw await errorFrom(response);
+  return (await response.json()) as Item;
+}
+
+/** Every item of the campaign, oldest first. */
+export async function listItems(projectId: string, signal?: AbortSignal): Promise<readonly Item[]> {
+  const path = `/v1/projects/${encodeURIComponent(projectId)}/items`;
+  const response = await authorizedFetch(path, { signal });
+  if (!response.ok) throw await errorFrom(response);
+  return (await response.json()) as readonly Item[];
+}
+
+export async function createItem(
+  projectId: string,
+  input: NewItem,
+  signal?: AbortSignal,
+): Promise<Item> {
+  return readItem(
+    await authorizedFetch(`/v1/projects/${encodeURIComponent(projectId)}/items`, {
+      method: 'POST',
+      headers: JSON_HEADERS,
+      body: JSON.stringify(input),
+      signal,
+    }),
+  );
+}
+
+export async function patchItem(id: string, patch: ItemPatch, signal?: AbortSignal): Promise<Item> {
+  return readItem(
+    await authorizedFetch(`/v1/items/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: JSON_HEADERS,
+      body: JSON.stringify(patch),
+      signal,
+    }),
+  );
+}
+
+/**
+ * Removes an item.
+ *
+ * `409 ITEM_IN_USE` when a reward tier contains it, carrying the tiers in
+ * `meta.rewardTierIds` so the editor can name them. Deleting it would change
+ * what a backer was promised, so the refusal is the correct answer and the
+ * creator takes it out of each tier first.
+ */
+export async function deleteItem(id: string, signal?: AbortSignal): Promise<void> {
+  const response = await authorizedFetch(`/v1/items/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    signal,
+  });
+  // 204, so there is nothing to read. Parsing it would fail on an empty body.
+  if (!response.ok) throw await errorFrom(response);
+}
+
+/* -------------------------------------------------------------------------
+ * Reward tiers — docs/architecture.md §10.2 (#32, #34)
+ * ---------------------------------------------------------------------- */
+
+/**
+ * How a tier reaches the person who backed it — `ShippingType`.
+ *
+ * A property of the tier, not of the campaign: one campaign routinely offers a
+ * digital thank-you, a poster shipped domestically, and a boxed set shipped
+ * anywhere, and each is a different question at checkout.
+ */
+export type ShippingType = 'NONE' | 'DIGITAL' | 'LOCAL_PICKUP' | 'DOMESTIC' | 'INTERNATIONAL';
+
+/** One line of a tier's composition — `RewardItemBody`. */
+export interface RewardItemLine {
+  itemId: string;
+  quantity: number;
+}
+
+/**
+ * One destination's shipping rate — `ShippingRuleBody`.
+ *
+ * BOTH AMOUNTS ARE STRINGS, for the reason every amount in this file is
+ * (§10.3): they are added to a pledge total and charged to a card. There is no
+ * currency on a rate — the whole table is denominated in the campaign's, which
+ * the tier already carries, so repeating it on thirty destinations would be
+ * thirty chances for one of them to disagree with the tier it belongs to.
+ *
+ * One type for the request and the response, matching the server's own single
+ * record: two would drift the first time a field was added to one of them.
+ */
+export interface ShippingRate {
+  /** ISO 3166-1 alpha-2, uppercase. The service normalises and re-checks it. */
+  countryCode: string;
+  amount: string;
+  /** What each unit after the first costs. `"0.00"` is a flat rate, deliberately. */
+  additionalItemAmount: string;
+}
+
+/**
+ * A reward tier as the creator's editor sees it — `RewardResponse`.
+ *
+ * The response of every endpoint that touches a tier, so the editor applies the
+ * same update whichever call it made. It is the CREATOR's projection and
+ * carries what no public response may: the reservation counts and the secret
+ * token.
+ */
+export interface Reward {
+  id: string;
+  projectId: string;
+  title: string;
+  description?: string | null;
+  price: Money;
+  /** An ISO date. A month is what a creator can honestly promise. */
+  estimatedDelivery?: string | null;
+  /** Null is unlimited, which is the common case. */
+  limitQuantity?: number | null;
+  /** Places taken by confirmed pledges. Read-only; epic #50 writes it. */
+  claimedQuantity: number;
+  /** Places held by a checkout in progress. Read-only; #51 writes it. */
+  reservedQuantity: number;
+  /** Derived from the three above, or null when unlimited. */
+  remainingQuantity?: number | null;
+  shippingType: ShippingType;
+  isEarlyBird: boolean;
+  isFeatured: boolean;
+  isSecret: boolean;
+  /** The link that reaches a secret tier. Present only for the creator. */
+  secretToken?: string | null;
+  isAddon: boolean;
+  sortOrder: number;
+  /** ISO 8601, UTC. */
+  availableFrom?: string | null;
+  /**
+   * ISO 8601, UTC. A moment in the PAST is how the service expresses "hidden"
+   * (docs/architecture.md §5.3): it withdraws a tier from sale without deleting
+   * it, which is the only thing permitted once somebody has backed it. The
+   * editor presents that as hiding rather than as a date — see `lib/projects/rewards`.
+   */
+  availableUntil?: string | null;
+  items: readonly RewardItemLine[];
+  shippingRules: readonly ShippingRate[];
+  /**
+   * The optimistic-locking counter.
+   *
+   * No endpoint takes it yet, so nothing here sends it. It is read because a
+   * concurrent write is answered `409 REWARD_MODIFIED`, and knowing the version
+   * a refusal was about is what lets a later `If-Match` be added without a
+   * second read.
+   */
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** `CreateRewardRequest`. A title and a price; the rest is edited afterwards. */
+export interface NewReward {
+  title: string;
+  description?: string | null;
+  price: Money;
+  estimatedDelivery?: string | null;
+  limitQuantity?: number | null;
+  shippingType?: ShippingType;
+  isEarlyBird?: boolean;
+  isFeatured?: boolean;
+  isSecret?: boolean;
+  isAddon?: boolean;
+  availableFrom?: string | null;
+  availableUntil?: string | null;
+  items?: readonly RewardItemLine[];
+}
+
+/**
+ * `RewardPatchRequest`, with JSON Merge Patch semantics.
+ *
+ * `items` replaces the WHOLE composition when present. There is no
+ * add-one-line patch, because a composition is what a backer is promised and
+ * the client always holds all of it — a per-line patch would let two tabs each
+ * remove a different item and leave a tier containing neither.
+ *
+ * The per-country rates are deliberately absent. They are replaced through
+ * `replaceShippingRules`, because a rate table is read as a whole by whatever
+ * quotes from it.
+ */
+export interface RewardPatch {
+  title?: string;
+  description?: string | null;
+  price?: Money;
+  estimatedDelivery?: string | null;
+  limitQuantity?: number | null;
+  shippingType?: ShippingType;
+  isEarlyBird?: boolean;
+  isFeatured?: boolean;
+  isSecret?: boolean;
+  isAddon?: boolean;
+  availableFrom?: string | null;
+  availableUntil?: string | null;
+  items?: readonly RewardItemLine[];
+}
+
+async function readReward(response: Response): Promise<Reward> {
+  if (!response.ok) throw await errorFrom(response);
+  return (await response.json()) as Reward;
+}
+
+async function readRewards(response: Response): Promise<readonly Reward[]> {
+  if (!response.ok) throw await errorFrom(response);
+  return (await response.json()) as readonly Reward[];
+}
+
+/**
+ * The campaign's reward list, in display order, INCLUDING secret tiers.
+ *
+ * A creator who cannot see a secret tier in their own editor cannot edit or
+ * withdraw it. What makes it secret is that the public list leaves it out, and
+ * that list is a different endpoint owned by the campaign page.
+ */
+export async function listRewards(
+  projectId: string,
+  signal?: AbortSignal,
+): Promise<readonly Reward[]> {
+  const path = `/v1/projects/${encodeURIComponent(projectId)}/rewards`;
+  return readRewards(await authorizedFetch(path, { signal }));
+}
+
+export async function createReward(
+  projectId: string,
+  input: NewReward,
+  signal?: AbortSignal,
+): Promise<Reward> {
+  return readReward(
+    await authorizedFetch(`/v1/projects/${encodeURIComponent(projectId)}/rewards`, {
+      method: 'POST',
+      headers: JSON_HEADERS,
+      body: JSON.stringify(input),
+      signal,
+    }),
+  );
+}
+
+export async function patchReward(
+  id: string,
+  patch: RewardPatch,
+  signal?: AbortSignal,
+): Promise<Reward> {
+  return readReward(
+    await authorizedFetch(`/v1/rewards/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: JSON_HEADERS,
+      body: JSON.stringify(patch),
+      signal,
+    }),
+  );
+}
+
+/**
+ * Removes a tier nobody has claimed.
+ *
+ * `409 REWARD_HAS_BACKERS` once somebody has, with the count in `meta`. §5.3
+ * permits no exception and gives the alternative: the tier is withdrawn from
+ * sale rather than deleted, so the people who chose it still have a description
+ * of what they are owed.
+ */
+export async function deleteReward(id: string, signal?: AbortSignal): Promise<void> {
+  const response = await authorizedFetch(`/v1/rewards/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    signal,
+  });
+  if (!response.ok) throw await errorFrom(response);
+}
+
+/** Copies a tier — wording, price, composition, rates — to the end of the list. */
+export async function duplicateReward(id: string, signal?: AbortSignal): Promise<Reward> {
+  const path = `/v1/rewards/${encodeURIComponent(id)}/duplicate`;
+  return readReward(await authorizedFetch(path, { method: 'POST', signal }));
+}
+
+/**
+ * Puts the tiers in the order given, and answers the list in that order.
+ *
+ * EVERY TIER, EXACTLY ONCE, or the service answers `400
+ * REWARD_ORDER_INCOMPLETE` naming what was missing and what was unexpected. A
+ * partial list would leave the tiers it omits where they were, interleaved with
+ * the ones that moved — so the caller sends the whole list, which is the whole
+ * list it is already holding.
+ */
+export async function reorderRewards(
+  projectId: string,
+  rewardIds: readonly string[],
+  signal?: AbortSignal,
+): Promise<readonly Reward[]> {
+  const path = `/v1/projects/${encodeURIComponent(projectId)}/rewards/reorder`;
+  return readRewards(
+    await authorizedFetch(path, {
+      method: 'PATCH',
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ rewardIds }),
+      signal,
+    }),
+  );
+}
+
+/**
+ * Replaces a tier's whole shipping rate table, and answers the whole tier.
+ *
+ * `PUT` because it is a replacement: a country the body leaves out is a country
+ * the creator has removed, and an empty list clears the table. Merging would
+ * leave a creator shipping somewhere they believe they no longer do, which is
+ * discovered by a backer selecting it.
+ *
+ * Refused with `REWARD_FIELD_INVALID` on `shippingType` when the tier is not
+ * shipped, because rates on a tier nothing quotes from are rates a creator
+ * believes are in force.
+ */
+export async function replaceShippingRules(
+  id: string,
+  rules: readonly ShippingRate[],
+  signal?: AbortSignal,
+): Promise<Reward> {
+  return readReward(
+    await authorizedFetch(`/v1/rewards/${encodeURIComponent(id)}/shipping-rules`, {
+      method: 'PUT',
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ rules }),
+      signal,
+    }),
+  );
+}
+
+/* -------------------------------------------------------------------------
  * Still to come. Each of these is a function in THIS module, not a new client.
  *
- *   #32 items and reward tiers   POST/PATCH/DELETE /v1/items, /v1/rewards,
- *                                reorder, duplicate, shipping rules
  *   #37 checklist                GET /v1/projects/{id}/checklist
  *   #39 pre-launch and follows   POST/DELETE /v1/projects/{id}/prelaunch
  *   #31 submit, launch, cancel   POST /v1/projects/{id}/submit | launch | cancel
