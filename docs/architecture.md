@@ -1533,8 +1533,8 @@ notifies the API, which enqueues processing.
 
 | Concern | Choice |
 |---|---|
-| Framework | **Next.js 15** (App Router) |
-| Language | **TypeScript 5.7**, strict |
+| Framework | **Next.js 16** (App Router). 15 cannot drive the TypeScript 7 compiler API and refuses to build against it |
+| Language | **TypeScript 7**, strict, `noUncheckedIndexedAccess` |
 | UI | **React 19** |
 | Styling | **Tailwind 4** on design tokens |
 | Components | `@ideanest/ui` |
