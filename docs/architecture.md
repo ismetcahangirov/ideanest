@@ -1409,6 +1409,16 @@ GET    /v1/admin/audit-logs
 > project is loaded, so a caller who is not staff learns nothing about which
 > identifiers exist. This is the one refusal in the module that is not the `404`
 > a confidential draft gets.
+>
+> **`GET /v1/categories` is filed under discovery and implemented in the project
+> module**, which is where the taxonomy tables and their seed live. It is public,
+> read-only, returns each category with its subcategories nested, and carries both
+> `nameAz` and `nameEn` — localising through `Accept-Language` is one decision for
+> the whole API and belongs to #123, not to a leaf endpoint. `ETag` and
+> `Cache-Control: public, max-age=3600` per §10.3, the tag being a digest of the
+> content rather than a hash that varies per instance. The faceted, counted version
+> discovery needs replaces this; the campaign editor cannot ask a creator to choose
+> from a list nothing will send them, so it does not wait for that.
 
 ### 10.3 Conventions
 

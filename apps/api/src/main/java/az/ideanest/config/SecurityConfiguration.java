@@ -4,6 +4,7 @@ import az.ideanest.auth.application.AccessTokenIssuer;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -44,6 +45,13 @@ public class SecurityConfiguration {
                         // instance takes traffic. They carry a status and no
                         // component detail; see application.yml.
                         .requestMatchers("/actuator/health", "/actuator/health/**")
+                        .permitAll()
+                        // The category tree. Public because it is the discovery
+                        // navigation: the same list, with nothing in it that
+                        // belongs to a person, and cached for an hour. Read only —
+                        // GET and nothing else, so that a write method added under
+                        // the same path later does not inherit this.
+                        .requestMatchers(HttpMethod.GET, "/v1/categories")
                         .permitAll()
                         // How someone with no credentials gets one, and how a
                         // client whose access token expired gets another. Each

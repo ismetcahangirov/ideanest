@@ -18,4 +18,14 @@ public interface SubcategoryRepository extends JpaRepository<Subcategory, UUID> 
     boolean existsByIdAndParentId(UUID id, UUID parentId);
 
     List<Subcategory> findByParentIdOrderBySortOrderAsc(UUID parentId);
+
+    /**
+     * Every subcategory, in display order.
+     *
+     * <p>For building the whole tree in two queries instead of one per category.
+     * The order is by {@code sort_order} alone rather than by parent as well,
+     * because the caller groups by parent anyway and the sort within a parent is
+     * the only order that reaches a reader.
+     */
+    List<Subcategory> findAllByOrderBySortOrderAsc();
 }
