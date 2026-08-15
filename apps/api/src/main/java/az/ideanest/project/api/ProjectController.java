@@ -20,11 +20,16 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * A creator's campaign: creating it, editing it, and moving it through its life.
  *
- * <p>Seven endpoints. Six answer {@link ProjectEdit}; the seventh is the
- * completeness checklist, which is about the campaign rather than of it. The three
+ * <p>Eight endpoints. Seven answer {@link ProjectEdit}; the eighth is the
+ * completeness checklist, which is about the campaign rather than of it. The four
  * that change state do nothing themselves — they name a transition and hand it to
  * {@link ProjectTransitionService}, which is the only thing in the service that
  * writes {@code projects.state} and the only thing that records having done so.
+ *
+ * <p>The public half of the pre-launch page is deliberately somewhere else:
+ * {@code PrelaunchController} serves the page and collects reminders, and it is a
+ * separate controller because everything here requires a bearer token and nothing
+ * there does.
  *
  * <p>Authorisation is not decided here either. Every method passes the caller's
  * identifier down, and {@code ProjectAccess} decides what that identifier is
@@ -91,6 +96,25 @@ public class ProjectController {
             @RequestBody ProjectPatchRequest request) {
 
         return responses.of(editing.edit(id, callerOf(accessToken), request.toPatch()));
+    }
+
+    /**
+     * Opens the campaign's pre-launch page, so it can start collecting followers.
+     *
+     * <p>{@code POST}, and the same path the public {@code GET} reads — the two
+     * live in different controllers because one requires a bearer token and the
+     * other must not. Spring routes on the method, and the filter chain permits
+     * only the {@code GET}: see {@code SecurityConfiguration}, which draws the same
+     * line for {@code /v1/categories}.
+     *
+     * <p>There is no endpoint that closes the page again. §6.1 has no
+     * {@code PRELAUNCH → DRAFT} edge, and adding one would mean a page people have
+     * already followed can disappear; a creator who wants to stop is one submission
+     * or one cancellation away, both of which are recorded.
+     */
+    @PostMapping("/{id}/prelaunch")
+    public ProjectEdit openPrelaunch(@AuthenticationPrincipal Jwt accessToken, @PathVariable UUID id) {
+        return responses.of(transitions.openPrelaunch(id, callerOf(accessToken)));
     }
 
     /**

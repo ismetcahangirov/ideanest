@@ -45,9 +45,20 @@ the browser half of the auth flow work at all.
 | `/projects/new` | Name a campaign and create the draft (#33) |
 | `/projects/[id]/edit` | Redirects to the first tab (#33) |
 | `/projects/[id]/edit/basics` | Title, summary, category, goal, duration, cover (#33) |
+| `/projects/[id]/edit/story` | Rich text story, risks, and version history (#35) |
+| `/projects/[id]/edit/prelaunch` | Open the pre-launch page, share the link, see who is waiting (#39) |
+| `/projects/[id]/prelaunch` | **Public.** The pre-launch page itself, and the reminder signup (#39) |
 
 There is no route at `/` yet; server-rendered project and discovery pages are
 #119.
+
+`/projects/[id]/prelaunch` is the only route in the application that works with
+no session at all — the followers a pre-launch page exists to collect have not
+registered, and a signup behind a sign-in wall collects nobody. It reads through
+`publicFetch`, which sends a bearer token only when one is already in memory and
+never fetches one; the form hides its address field in that case rather than
+offering one the service would ignore. Rich link previews for it need a
+server-rendered public projection, which is the discovery epic's (#119).
 
 ## The campaign editor
 
@@ -58,7 +69,22 @@ exist yet is a **disabled tab rather than a stub page**. A stub cannot be told
 apart from a broken page, and the file it would need belongs to the issue that
 builds it. Adding a section is a row in `tabs.ts` plus the route it points at.
 
-Rewards (#34) and pre-launch (#39) are the tabs still marked unavailable.
+Every section in `EDITOR_TABS` now has its route, so nothing is currently marked
+unavailable. The mechanism stays because `docs/architecture.md` §4.6 describes
+three sections that are still unbuilt — people, account, and promotion — and each
+of them will be a disabled tab before it is a page.
+
+### The pre-launch tab
+
+It edits the campaign's `title`, `blurb`, and `coverImage` through the same
+autosave path the basics tab uses, and not through fields of its own. A dedicated
+pre-launch headline would let a creator promise one thing on the page people
+follow and something else on the campaign it becomes, and the follower signed up
+for the first.
+
+Opening the page is behind a dialog rather than a switch: it publishes the
+campaign at a public link, and `docs/architecture.md` §6.1 has no
+`PRELAUNCH → DRAFT` edge, so there is no undo to offer afterwards.
 
 ### The review tab
 

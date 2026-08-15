@@ -12,10 +12,15 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param story how much of a story's editing history is kept
  * @param collaborators how invitations to work on a campaign behave
  * @param submission the bounds §5.3 leaves to configuration
+ * @param reminders how launch reminders are collected and sent
  */
 @ConfigurationProperties(prefix = "ideanest.project")
 public record ProjectProperties(
-        Moderation moderation, Story story, Collaborators collaborators, Submission submission) {
+        Moderation moderation,
+        Story story,
+        Collaborators collaborators,
+        Submission submission,
+        Reminders reminders) {
 
     public ProjectProperties {
         // A deployment that configures neither section still starts. Nested records
@@ -26,6 +31,7 @@ public record ProjectProperties(
         story = story == null ? Story.defaults() : story;
         collaborators = collaborators == null ? Collaborators.defaults() : collaborators;
         submission = submission == null ? Submission.defaults() : submission;
+        reminders = reminders == null ? Reminders.defaults() : reminders;
     }
 
     /**
@@ -187,6 +193,89 @@ public record ProjectProperties(
                 // reads to a creator as the feature being broken. An operator sees
                 // this at start-up instead.
                 throw new IllegalArgumentException("An invitation has to be valid for some length of time");
+            }
+        }
+    }
+
+    /**
+     * Launch reminders: how many a stranger may register, and how they are sent.
+     *
+     * @param signupsPerClient how many reminders one source address may register
+     *     per window. {@code POST /v1/projects/{id}/remind} is an unauthenticated
+     *     write that puts an arbitrary email address into our database and
+     *     promises to send mail to it, which is the shape of an open relay if it
+     *     is left unbounded — so the endpoint is limited exactly as registration
+     *     is, and for the same reason
+     * @param signupsPerAddress how many reminders may be registered <em>for</em>
+     *     one address per window, counted separately. The per-client limit alone
+     *     bounds a script and does not bound a botnet, and the harm being bounded
+     *     here is different: subscribing somebody else's address to every campaign
+     *     on the platform is mail-bombing them with our domain on it
+     * @param window the period both limits are measured over
+     * @param sendSchedule the cron expression §8.4's {@code reminder-sender} runs
+     *     on. A property rather than a literal so that the test profile can set it
+     *     to {@code -} and drive the sweep directly — a timer firing in the
+     *     background of a test suite is a source of failures that reproduce once a
+     *     fortnight. The same arrangement as {@code AccountAnonymisationJob}
+     * @param sendBatchSize how many reminders one pass of the sweep claims. A
+     *     bound on one run rather than a target: a campaign with fifty thousand
+     *     followers must not be one transaction, and the sweep runs again a minute
+     *     later
+     * @param logUnsubscribeLinks whether to write unsubscribe tokens to the log.
+     *     <strong>Local development only</strong>, and false by default. There is
+     *     no mail transport (#86), so without this a developer cannot exercise the
+     *     unsubscribe path at all
+     */
+    public record Reminders(
+            int signupsPerClient,
+            int signupsPerAddress,
+            Duration window,
+            String sendSchedule,
+            int sendBatchSize,
+            boolean logUnsubscribeLinks) {
+
+        private static final int DEFAULT_SIGNUPS_PER_CLIENT = 20;
+
+        private static final int DEFAULT_SIGNUPS_PER_ADDRESS = 5;
+
+        private static final Duration DEFAULT_WINDOW = Duration.ofMinutes(15);
+
+        /** Every minute, which is what §8.4 says {@code reminder-sender} runs at. */
+        private static final String DEFAULT_SCHEDULE = "0 * * * * *";
+
+        private static final int DEFAULT_BATCH_SIZE = 200;
+
+        static Reminders defaults() {
+            return new Reminders(
+                    DEFAULT_SIGNUPS_PER_CLIENT,
+                    DEFAULT_SIGNUPS_PER_ADDRESS,
+                    DEFAULT_WINDOW,
+                    DEFAULT_SCHEDULE,
+                    DEFAULT_BATCH_SIZE,
+                    false);
+        }
+
+        public Reminders {
+            // Binding leaves an omitted property at its zero value, so an operator
+            // who configures the window and not the counts gets the documented
+            // defaults rather than an endpoint that refuses everybody.
+            signupsPerClient = signupsPerClient == 0 ? DEFAULT_SIGNUPS_PER_CLIENT : signupsPerClient;
+            signupsPerAddress = signupsPerAddress == 0 ? DEFAULT_SIGNUPS_PER_ADDRESS : signupsPerAddress;
+            window = window == null ? DEFAULT_WINDOW : window;
+            sendSchedule = sendSchedule == null || sendSchedule.isBlank() ? DEFAULT_SCHEDULE : sendSchedule;
+            sendBatchSize = sendBatchSize == 0 ? DEFAULT_BATCH_SIZE : sendBatchSize;
+
+            if (signupsPerClient < 1 || signupsPerAddress < 1) {
+                // A limit of zero is the endpoint switched off, which is not a
+                // configuration of this feature. An operator sees this at start-up
+                // rather than as every follower being refused.
+                throw new IllegalArgumentException("A reminder rate limit has to allow at least one attempt");
+            }
+            if (!window.isPositive()) {
+                throw new IllegalArgumentException("A rate limit window has to be a length of time");
+            }
+            if (sendBatchSize < 1) {
+                throw new IllegalArgumentException("A sweep that claims no reminders never sends any");
             }
         }
     }

@@ -30,6 +30,12 @@ ideanest:
       # LoggingCollaboratorInvitationNotifier.
       log-invitation-links: true
 
+    reminders:
+      # Same reason, same scope: the unsubscribe token exists only in a message
+      # nothing sends yet, so locally the console is the message. Local only —
+      # see LoggingLaunchReminderNotifier.
+      log-unsubscribe-links: true
+
   auth:
     # There is no mail transport yet (#86), so the verification link is written
     # to the console. Local only — see LoggingVerificationNotifier.

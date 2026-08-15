@@ -36,6 +36,20 @@ public class TestDoublesConfiguration {
     }
 
     /**
+     * The launch reminder notifier, remembering rather than logging.
+     *
+     * <p>Here for the same reason as the two above. The questions this feature has
+     * to answer — was everybody told, was anybody told twice, does a failed send
+     * leave the row for the next pass — are all about what reached the port, and
+     * the logging adapter cannot be asked any of them.
+     */
+    @Bean
+    @Primary
+    RecordingLaunchReminderNotifier recordingLaunchReminderNotifier() {
+        return new RecordingLaunchReminderNotifier();
+    }
+
+    /**
      * The application clock, with a handle on it.
      *
      * <p>Free-running unless a test freezes it, so this changes nothing for the

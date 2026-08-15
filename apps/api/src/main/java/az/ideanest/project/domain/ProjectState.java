@@ -21,7 +21,15 @@ public enum ProjectState {
 
     /**
      * A public teaser page collecting followers before the campaign exists in
-     * any fundable form. Reversible: #39 takes a project back to {@link #DRAFT}.
+     * any fundable form.
+     *
+     * <p><strong>Not reversible</strong>, contrary to what this comment said
+     * before #39 built it. §6.1 has no {@code PRELAUNCH → DRAFT} edge and
+     * {@link ProjectStateMachine} never had one; adding it would be a change to
+     * the specification rather than an implementation detail, and it would mean a
+     * page people have already followed can be withdrawn out from under them. A
+     * creator who wants to stop is one submission or one cancellation away, and
+     * both of those are recorded.
      */
     PRELAUNCH,
 

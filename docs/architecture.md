@@ -451,6 +451,15 @@ The most valuable and most complex module. It begins when funding closes.
 
 Preferences are per category and per channel, with a digest option.
 
+> **"Reminder: project launched" is the first row of this table with anything
+> behind it, and only one of its three channels is expressible.** #39 built who
+> gets told and when it is decided, behind a port in the project module; there is
+> no device registry, no `notifications` table, and no preference model, so a port
+> with three methods would be two methods nobody could implement. The notification
+> service (#85) is what fans one event out to email, push, and the in-app inbox,
+> and transactional email itself is #86 — until then the adapter writes a log line
+> saying what would have been sent.
+
 ### 4.11 Administration `[A]`
 
 | # | Module | Capabilities |
@@ -1112,7 +1121,8 @@ by a database constraint and verified by a nightly reconciliation job.
 | `project_updates` | Numbered updates |
 | `comments` | Self-referencing threads |
 | `faqs` | Question and answer pairs |
-| `saves`, `follows`, `reminders` | Backer signals |
+| `saves`, `follows` | Backer signals |
+| `reminders` | Who asked to be told when a campaign opens, and whether they were |
 | `collaborators` | Scoped grants |
 | `surveys`, `survey_questions`, `survey_responses` | Pledge manager |
 | `shipping_addresses` | Encrypted at rest |
@@ -1140,6 +1150,13 @@ by a database constraint and verified by a nightly reconciliation job.
 | PostGIS | Proximity search |
 | Monthly partitioning | `transactions`, `ledger_entries`, `audit_logs` |
 | Read replica | Discovery and analytics |
+
+> **Soft delete has one documented exception: `reminders`.** A withdrawn reminder
+> is deleted outright rather than stamped, because soft delete exists for audit
+> and recovery and there is nothing to audit about "somebody asked not to be
+> emailed" beyond not emailing them. Keeping their address in order to remember
+> that they left is exactly the retention §17.4 refuses, and nothing references
+> the table, so there is no referential reason to keep the row either.
 
 ---
 
@@ -1259,6 +1276,25 @@ load profile).
 | `token-cleaner` | Daily | Purge tokens from unsuccessful campaigns |
 | `denormalization-sync` | Hourly | Correct cached counters |
 | `account-anonymiser` | Hourly | Anonymise accounts whose deletion grace period has elapsed |
+
+> **`reminder-sender` is half built.** #39 implemented the launch half: it sweeps
+> every campaign that is `LIVE` and still owes somebody the notice they asked for,
+> claiming each row with a conditional update inside the transaction that sends,
+> so a crash mid-launch neither drops the rest nor tells anybody twice. Deadline
+> reminders — the "48 hours remaining" and "24 hours remaining" rows of §4.10 —
+> are not here: they need a notification preference model that does not exist, and
+> half a job that looks finished is worse than a job that says what it does.
+>
+> A domain event published when a campaign goes live starts the same sweep
+> immediately, so a creator does not watch their followers be told a minute later.
+> **The event is latency, not the guarantee.** The sweep is what makes the
+> delivery correct, which is why a launch performed by `campaign-launcher` needs
+> no code of its own here.
+>
+> Both, like `account-anonymiser`, currently run on Spring's in-process
+> `@Scheduled` because the durable scheduler is #134. Every replica runs its own
+> timer; that is safe rather than merely tolerable, because the claim is a
+> conditional update and exactly one caller wins.
 
 ---
 
@@ -1507,15 +1543,18 @@ GET    /v1/projects/{id}/comments
 GET    /v1/projects/{id}/faqs
 GET    /v1/projects/{id}/community
 GET    /v1/projects/{id}/similar
+GET    /v1/projects/{id}/prelaunch
 POST   /v1/projects/{id}/save
 DELETE /v1/projects/{id}/save
 POST   /v1/projects/{id}/remind
+DELETE /v1/projects/{id}/remind
 POST   /v1/projects/{id}/report
 
 # Project — creator
 POST   /v1/projects
 GET    /v1/projects/{id}/edit
 PATCH  /v1/projects/{id}
+POST   /v1/projects/{id}/prelaunch
 POST   /v1/projects/{id}/submit
 POST   /v1/projects/{id}/launch
 POST   /v1/projects/{id}/cancel
@@ -1646,6 +1685,39 @@ GET    /v1/admin/audit-logs
 > content rather than a hash that varies per instance. The faceted, counted version
 > discovery needs replaces this; the campaign editor cannot ask a creator to choose
 > from a list nothing will send them, so it does not wait for that.
+>
+> **`/v1/projects/{id}/prelaunch` is two endpoints on one path**, and the method
+> is the whole difference. `POST` is the creator's `DRAFT → PRELAUNCH` transition
+> — not listed in this section before #39 built it, for the reason
+> `POST /v1/admin/moderation/{id}/request-changes` was not either: §6.1 has had
+> the edge since the state machine was written and no endpoint performed it. It
+> belongs to the campaign's creator alone, because opening the page publishes the
+> campaign and there is no edge back. `GET` is the page itself, public, and served
+> only for a campaign in `PRELAUNCH` or `SCHEDULED`; every other state answers
+> `404`, including a draft that exists, so the endpoint cannot be used to find out
+> what somebody is preparing. The filter chain permits the `GET` and only the
+> `GET`.
+>
+> **That projection is not the public project page.** It carries the title,
+> summary, cover image, scheduled launch, and follower count — what a pre-launch
+> page renders — and deliberately not the creator, the goal, the story, or the
+> category. Each of those is a field of
+> `GET /v1/projects/{creatorSlug}/{projectSlug}`, which belongs to the discovery
+> epic, and deciding its shape from a teaser page would be deciding it by
+> accident.
+>
+> **`POST /v1/projects/{id}/remind` is unauthenticated**, which is the feature
+> rather than an oversight: the followers a pre-launch page exists to collect have
+> not registered, and a signup behind a sign-in wall collects nobody. A signed-in
+> caller's reminder is registered against their account and an anonymous one
+> against the address they give — §17.4 for the shape and why. It is idempotent
+> through a unique index rather than a check in the service, bounded per source
+> address and per email address, and answers identically whether or not the caller
+> was already on the list: a response that distinguished the two would answer "does
+> this address follow this campaign" for anybody who asked. `DELETE` takes the
+> unsubscribe token from the launch notice, or the caller's own access token, and
+> is never refused for the campaign's state — a `409` on an unsubscribe is how a
+> platform ends up in a spam folder.
 
 ### 10.3 Conventions
 
@@ -2214,6 +2286,26 @@ sent, which no database change reaches.
 > the identity link is severed at anonymisation. If the answer is that identity
 > must survive on financial records, anonymisation has to become selective and
 > this section changes.
+
+#### An address belonging to somebody with no account
+
+`reminders` is the first table that holds the personal data of a person who has
+never registered — a launch reminder is asked for by whoever is looking at a
+pre-launch page, and requiring an account first is how a follower list stays
+empty. Four decisions follow from that, and they are the ones worth stating:
+
+| Question | Answer |
+|---|---|
+| **What is stored** | An account **reference** for a signed-in follower, so anonymisation reaches it without this table being swept; a bare **address** only for somebody with no account, because there is nowhere else it could go. Exactly one of the two per row, enforced by a check constraint |
+| **Consent** | The row *is* the consent. It exists because somebody asked for exactly one message, `created_at` is when they asked, and it buys one message and nothing else. There is no separate consent record because there is nothing a second row would say that this one does not |
+| **Deletion** | Withdrawal deletes the row rather than stamping it — see §7.3. A signed-in follower withdraws with their access token; everybody else with the token in the launch notice, which is minted with the message it travels in. **Gap, named rather than hidden:** somebody with no account who changes their mind *before* the campaign opens has no way to withdraw, because there is no message yet to carry the link. Closing it needs transactional email (#86) |
+| **When that person later registers** | Nothing happens automatically, and nothing should: the platform cannot know that an address it was given and an address somebody registers belong to one person until that person proves it. The one case where it *is* provable is a signed-in registration whose account address already has an anonymous row here, and that row is superseded — otherwise they would be told twice |
+
+> **Open.** How long a reminder that has already been sent may be kept is a
+> retention question with the same legal answer as the financial records above,
+> and it does not have one yet. Until it does the rows stay, rather than being
+> purged to a guessed period; a retention job belongs with the durable scheduler
+> (#134).
 
 ---
 

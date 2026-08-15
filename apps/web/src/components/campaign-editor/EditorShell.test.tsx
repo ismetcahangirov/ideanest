@@ -54,25 +54,15 @@ describe('EditorShell', () => {
   });
 
   /*
-   * The pre-launch and review routes belong to #39 and #37. A disabled tab says
-   * "not finished yet"; a stub page would leave the creator unable to tell that
-   * from "broken". Pre-launch is the example because it is the next one to be
-   * built — the example moves along the list as the epic lands, which is why
-   * the loop below derives everything from EDITOR_TABS instead. (#34 moved it
-   * here from Rewards when the rewards route shipped.)
-   */
-  it('renders a section whose route does not exist as unavailable, not as a link', () => {
-    renderShell();
-
-    const prelaunch = screen.getByRole('button', { name: /Pre-launch/ });
-    expect(prelaunch).toHaveAttribute('aria-disabled', 'true');
-    expect(prelaunch).toHaveAccessibleName('Pre-launch, not available yet');
-    expect(screen.queryByRole('link', { name: /Pre-launch/ })).not.toBeInTheDocument();
-  });
-
-  /*
-   * The counterpart, so the two halves of `available` are both pinned: a
-   * section whose route exists is a real link, with an address that can be
+   * The disabled half of `available` moved to EditorShell.unavailable.test.tsx
+   * when this epic finished. It used to name whichever section was next to be
+   * built — Rewards, then Pre-launch — and was rewritten each time one shipped,
+   * every rewrite a failure about the list rather than about the behaviour. With
+   * every row in EDITOR_TABS now built there is nothing left to point at, so that
+   * file fabricates a list instead and this one keeps asserting against the real
+   * one. The loop below already covers both halves for whatever EDITOR_TABS says.
+   *
+   * A section whose route exists is a real link, with an address that can be
    * bookmarked and opened in a new tab.
    */
   it('renders a section whose route exists as a link to it', () => {

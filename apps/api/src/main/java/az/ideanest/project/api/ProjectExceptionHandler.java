@@ -8,6 +8,7 @@ import az.ideanest.project.application.ProjectNotFoundException;
 import az.ideanest.project.application.ProjectNotLaunchableException;
 import az.ideanest.project.application.ProjectNotSubmittableException;
 import az.ideanest.project.application.ProjectTransitionNotAllowedException;
+import az.ideanest.project.application.RemindersClosedException;
 import az.ideanest.project.domain.ProjectState;
 import java.net.URI;
 import java.util.LinkedHashMap;
@@ -31,7 +32,18 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * what a client branches on. Two different 409s that cannot be told apart would
  * force clients to match on prose.
  */
-@RestControllerAdvice(assignableTypes = {ProjectController.class, ProjectModerationController.class})
+@RestControllerAdvice(
+        assignableTypes = {
+            ProjectController.class,
+            ProjectModerationController.class,
+            // The public pre-launch endpoints raise four of the five failures
+            // below unchanged — a campaign that does not exist, a field that is not
+            // an address, a value type that refused its input. Listing the
+            // controller here rather than writing a second advice is the same
+            // reasoning ProjectProblems gives: one refusal should not have two
+            // bodies, and the second one to be edited is the one nobody notices.
+            PrelaunchController.class
+        })
 public class ProjectExceptionHandler {
 
     /**
@@ -169,6 +181,34 @@ public class ProjectExceptionHandler {
         problem.setDetail("A campaign cannot go live until its funding goal and duration are set.");
         problem.setProperty("code", "PROJECT_NOT_LAUNCHABLE");
         problem.setProperty("meta", Map.of("missing", exception.missing()));
+        return problem;
+    }
+
+    /**
+     * 409 for a reminder asked of a campaign that is not collecting them.
+     *
+     * <p>Not a 404: the caller is looking at a page we served them, so there is
+     * nothing left to hide. Not a 400 either — the request was well formed and
+     * would have been accepted a moment earlier, and frequently was: the usual way
+     * to reach this is to leave a pre-launch page open until the campaign launches.
+     *
+     * <p>The body carries the state because the client's next move depends on it:
+     * a campaign that is {@code LIVE} should be offered to the visitor to back,
+     * and a campaign that was cancelled should not be offered at all. A client that
+     * could only see "409" would have to guess.
+     */
+    @ExceptionHandler(RemindersClosedException.class)
+    public ProblemDetail handleRemindersClosed(RemindersClosedException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/reminders-closed"));
+        problem.setTitle("Not collecting reminders");
+        problem.setDetail("This campaign has already opened, so there is nothing left to be reminded about.");
+        problem.setProperty("code", "REMINDERS_CLOSED");
+
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("state", exception.state().name());
+        meta.put("acceptedIn", names(RemindersClosedException.ACCEPTED_IN));
+        problem.setProperty("meta", meta);
         return problem;
     }
 

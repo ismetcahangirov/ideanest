@@ -38,6 +38,24 @@ ideanest:
       # Three exercises exactly the same arithmetic.
       versions-kept: 3
 
+    reminders:
+      # Disabled, exactly as the anonymisation schedule is: `-` is Spring's own
+      # value for "do not schedule this". The suite drives LaunchReminderJob
+      # directly, which is deterministic; a sweep firing every minute in the
+      # background of a test run would claim the very rows a test is about to
+      # assert on.
+      send-schedule: "-"
+      # The suite shares one process and one limiter, and every test calls from
+      # 127.0.0.1 — a realistic per-client limit would make the tests fail each
+      # other rather than fail themselves. The per-address limit is left at a
+      # value a test can actually reach, because each test uses its own address
+      # and the limit is therefore exercised in isolation.
+      signups-per-client: 100000
+      signups-per-address: 3
+      # Small enough that the sweep's batching is exercised rather than described:
+      # a campaign with four followers takes two passes.
+      send-batch-size: 3
+
   user:
     # Disabled. `-` is Spring's own value for "do not schedule this". The suite
     # drives AccountAnonymisationJob directly with the instant it wants to test,

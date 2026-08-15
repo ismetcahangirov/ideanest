@@ -53,6 +53,33 @@ public class SecurityConfiguration {
                         // the same path later does not inherit this.
                         .requestMatchers(HttpMethod.GET, "/v1/categories")
                         .permitAll()
+                        // A campaign's pre-launch page. Public because the people
+                        // it exists to collect have not registered — that is what
+                        // makes it a pre-launch page rather than a second editor
+                        // screen. What may be read is not decided here: the
+                        // handler serves it only for a campaign in PRELAUNCH or
+                        // SCHEDULED and answers 404 for everything else,
+                        // including a draft, so that this endpoint cannot be used
+                        // to enumerate what other people are preparing.
+                        //
+                        // GET and nothing else, deliberately, for the reason the
+                        // categories rule gives: POST on this exact path is the
+                        // creator's DRAFT -> PRELAUNCH transition, and it falls
+                        // through to the rule at the bottom.
+                        .requestMatchers(HttpMethod.GET, "/v1/projects/*/prelaunch")
+                        .permitAll()
+                        // "Tell me when this opens", and "stop reminding me".
+                        // Unauthenticated on purpose and bounded in the handler by
+                        // a rate limiter per source address and per email address:
+                        // an open write that promises to send mail is an open
+                        // relay if it is left unbounded. The DELETE is public
+                        // because the credential it accepts is the token in the
+                        // message itself — an unsubscribe that required signing in
+                        // would not be an unsubscribe.
+                        .requestMatchers(HttpMethod.POST, "/v1/projects/*/remind")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/v1/projects/*/remind")
+                        .permitAll()
                         // How someone with no credentials gets one, and how a
                         // client whose access token expired gets another. Each
                         // authenticates by its own means — a password, a

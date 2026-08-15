@@ -113,6 +113,32 @@ ideanest:
       # is always larger than it looks.
       log-invitation-links: false
 
+    reminders:
+      # POST /v1/projects/{id}/remind takes an arbitrary email address from a
+      # caller with no credentials and promises to send mail to it. Unbounded,
+      # that is an open relay with our domain on the envelope, so it is limited
+      # exactly as registration is and for the same reason.
+      #
+      # Per source address, which bounds a script filling a campaign's list.
+      signups-per-client: 20
+      # And per email address, counted separately: the limit above does not
+      # constrain somebody with many sources at all, and the harm being bounded
+      # here is different -- subscribing one person's address to every campaign
+      # on the platform is mail-bombing them.
+      signups-per-address: 5
+      window: PT15M
+      # §8.4: reminder-sender, every minute. The event published when a campaign
+      # goes live is what makes a launch feel instant; this is what makes it
+      # correct -- a launch performed by the future campaign-launcher job, or one
+      # whose after-commit callback was lost to a crash, is found here instead.
+      send-schedule: "0 * * * * *"
+      # A bound on one pass, not a target. A campaign with fifty thousand
+      # followers must not be one transaction; the sweep returns a minute later.
+      send-batch-size: 200
+      # There is no mail transport yet (#86), so without this a developer cannot
+      # exercise the unsubscribe path at all. On in local only.
+      log-unsubscribe-links: false
+
     submission:
       # The three bounds §5.3 states as somebody else's decision rather than as a
       # number. Everything else in §5.3 is a literal and lives in
