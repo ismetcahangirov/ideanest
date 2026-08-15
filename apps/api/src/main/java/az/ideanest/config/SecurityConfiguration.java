@@ -4,6 +4,7 @@ import az.ideanest.auth.application.AccessTokenIssuer;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -45,6 +46,13 @@ public class SecurityConfiguration {
                         // component detail; see application.yml.
                         .requestMatchers("/actuator/health", "/actuator/health/**")
                         .permitAll()
+                        // The category tree. Public because it is the discovery
+                        // navigation: the same list, with nothing in it that
+                        // belongs to a person, and cached for an hour. Read only —
+                        // GET and nothing else, so that a write method added under
+                        // the same path later does not inherit this.
+                        .requestMatchers(HttpMethod.GET, "/v1/categories")
+                        .permitAll()
                         // How someone with no credentials gets one, and how a
                         // client whose access token expired gets another. Each
                         // authenticates by its own means — a password, a
@@ -76,8 +84,33 @@ public class SecurityConfiguration {
                         // adding an endpoint never quietly adds a permission.
                         .requestMatchers("/v1/me", "/v1/me/export", "/v1/me/deletion")
                         .authenticated()
+                        // Moderation, and every administrative endpoint added
+                        // under this prefix later.
+                        //
+                        // Authentication is all the filter chain can decide here.
+                        // There is no role model anywhere in the service — not in
+                        // the schema, not in the access token — so this matcher
+                        // cannot tell platform staff from a creator, and being
+                        // authenticated is emphatically not enough to approve a
+                        // campaign. Who may is decided one layer in, by
+                        // ProjectAccess.requireModeratable against the configured
+                        // moderator list, which is empty by default: an endpoint
+                        // added under this prefix without its own check therefore
+                        // reaches its handler, and it is the handler's job to
+                        // refuse.
+                        //
+                        // **Epic #100 owns administrative roles and audit.** When
+                        // it lands this matcher becomes hasAuthority("MODERATOR")
+                        // or equivalent, the configured list is deleted, and
+                        // requireModeratable keeps its signature — which is why
+                        // the interim control lives there rather than here.
+                        .requestMatchers("/v1/admin/**")
+                        .hasAuthority(ACCOUNT_ACTIVE)
                         // Everything else additionally requires that the account
-                        // is not closing.
+                        // is not closing. The creator's project endpoints fall
+                        // through to here deliberately: launching a campaign or
+                        // taking a pledge is exactly what an account inside its
+                        // deletion grace period must not be able to do.
                         .anyRequest()
                         .hasAuthority(ACCOUNT_ACTIVE))
                 // Every other request authenticates with a bearer JWT we signed.

@@ -794,8 +794,40 @@ is what that table was separated for.
 `late_pledge_enabled`, `late_pledge_ends_at`, `pledge_manager_state`,
 `search_vector` (tsvector), `geo_point` (geography).
 
-Indexes: `(state, deadline)`, `(category_id, state)`, `(creator_id)`,
-GIN on `search_vector`, GIST on `geo_point`, `(is_featured, launched_at DESC)`.
+Indexes: `(state, deadline)`, `(category_id, state)`, `(creator_id)`, unique
+`(creator_id, slug)`, GIN on `search_vector`, GIST on `geo_point`,
+`(is_featured, launched_at DESC)`.
+
+> **Not all of these columns exist yet.** `location_id` and `geo_point` arrive
+> with proximity search, `search_vector` with #43, `is_featured` with curation,
+> and `pledge_manager_state` with the pledge manager — each with the feature that
+> owns it, rather than as a column nothing writes to.
+>
+> **The cover image is three interim columns**, `cover_image_url`,
+> `cover_image_width`, and `cover_image_height`, and not `main_image_id`. There is
+> no `media` table and no uploader, and §5.3 still makes an image of at least
+> 1024×576 a submission requirement — a completeness checklist cannot check a
+> column that does not exist. The media pipeline replaces them with
+> `main_image_id` under expand-then-contract, and until it does the dimensions are
+> the ones the client reported rather than ones we measured.
+>
+> `state` is `text` with a check constraint listing the sixteen states of §6.1,
+> not a native enum type. Adding a state is then an ordinary migration that runs
+> inside a transaction, and no query silently inherits the type's declaration
+> order as its sort order.
+
+#### `project_state_transitions` — append only
+`id`, `project_id`, `from_state` (null on creation), `to_state`, `actor_id`
+(null only for the scheduler), `actor_role` (`CREATOR`, `COLLABORATOR`,
+`MODERATOR`, `SYSTEM`), `note`, `created_at`.
+
+> **Never updated, never deleted.** `projects.state` says where a campaign is;
+> this says how it got there, and the two are written in one transaction by one
+> service. Approving a campaign lets it collect money from the public, so "who
+> decided this, in what capacity, and what were they told" has to be answerable by
+> somebody who was not in the room — and a single mutable column answers none of
+> it. A creator's cancellation reason and a moderator's note live here for the
+> same reason: they are shown to people, so they are part of the record.
 
 #### `items`
 Atomic units: `id`, `project_id`, `name`, `description`, `image_id`,
@@ -1331,6 +1363,7 @@ POST   /v1/webhooks/psp/{provider}
 GET    /v1/admin/moderation/queue
 POST   /v1/admin/moderation/{id}/approve
 POST   /v1/admin/moderation/{id}/reject
+POST   /v1/admin/moderation/{id}/request-changes
 POST   /v1/admin/projects/{id}/suspend
 GET    /v1/admin/users
 POST   /v1/admin/users/{id}/ban
@@ -1352,6 +1385,40 @@ GET    /v1/admin/audit-logs
 > `{"twoFactorRequired": true, "challenge": "…", "expiresInSeconds": …}` and no
 > tokens at all — not a `401`, because nothing was refused: the password was
 > accepted and the flow is halfway through.
+
+> **Moderation has three outcomes, not two.** `request-changes` was added to the
+> two above it because rejection is terminal (§6.1): a queue whose only outcomes
+> are approve and reject forces a moderator to end a campaign over a fixable
+> summary. It moves the project to `CHANGES_REQUESTED`, and the note is required —
+> it is the entire content of that state.
+>
+> The creator's lifecycle endpoints (`submit`, `launch`, `cancel`) and the three
+> moderation endpoints all return the same editor projection, and every one of
+> them refuses a move §6.1 does not allow with `409` and
+> `code: PROJECT_TRANSITION_NOT_ALLOWED`, carrying the state the project is
+> actually in and what it can reach from there.
+>
+> **Who is a moderator is configuration, until there is a role model.** Nothing in
+> the schema or the access token distinguishes platform staff, and epic #100 owns
+> that. Until then the three endpoints check the caller's verified address against
+> `ideanest.project.moderation.moderator-emails` and answer `403` with
+> `code: NOT_A_MODERATOR` otherwise. **The list is empty by default**, so no
+> account can moderate anything until a deployment says who can — the opposite
+> default is a creator approving their own campaign, and it has no symptom until a
+> campaign that should never have launched is live. The check runs before the
+> project is loaded, so a caller who is not staff learns nothing about which
+> identifiers exist. This is the one refusal in the module that is not the `404`
+> a confidential draft gets.
+>
+> **`GET /v1/categories` is filed under discovery and implemented in the project
+> module**, which is where the taxonomy tables and their seed live. It is public,
+> read-only, returns each category with its subcategories nested, and carries both
+> `nameAz` and `nameEn` — localising through `Accept-Language` is one decision for
+> the whole API and belongs to #123, not to a leaf endpoint. `ETag` and
+> `Cache-Control: public, max-age=3600` per §10.3, the tag being a digest of the
+> content rather than a hash that varies per instance. The faceted, counted version
+> discovery needs replaces this; the campaign editor cannot ask a creator to choose
+> from a list nothing will send them, so it does not wait for that.
 
 ### 10.3 Conventions
 

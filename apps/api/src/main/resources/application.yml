@@ -93,6 +93,17 @@ management:
       show-components: never
 
 ideanest:
+  project:
+    moderation:
+      # Who may approve, reject, or send a campaign back, by verified address,
+      # comma separated. Empty means nobody can, and that is deliberate: there is
+      # no role model until epic #100, and the alternative default -- any signed-in
+      # account -- is a creator approving their own campaign. A deployment that
+      # forgets this has a queue nobody can clear, which is a visible problem with
+      # a one-variable fix; the opposite mistake has no symptom until a campaign
+      # that should never have launched is live.
+      moderator-emails: ${MODERATOR_EMAILS:}
+
   user:
     # §17.4: thirty days between asking and anything being destroyed. Long
     # enough that a deletion made in anger can be undone the next morning, and

@@ -1,0 +1,57 @@
+package az.ideanest.project.api;
+
+import az.ideanest.shared.Money;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.JsonNode;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * A campaign as its creator's editor sees it.
+ *
+ * <p>The response of every endpoint in this module that changes something. One
+ * shape rather than one per action, so that a client applies the same update to
+ * its state after a save, a submission, and a moderation decision — and so that
+ * an endpoint cannot quietly start returning a field the others do not.
+ *
+ * <p>This is the <em>creator's</em> projection and not the public one. It carries
+ * the state, the scheduled launch, and the fields nobody outside the campaign may
+ * see; the public project page is a different response owned by a different issue.
+ *
+ * <p><strong>Nulls are written out.</strong> The service is configured with
+ * {@code default-property-inclusion: non_null}, which is right for most responses
+ * and wrong for this one: the editor binds a form to every field here, and an
+ * absent key cannot be told from a field that is genuinely unset. That is the same
+ * distinction the {@code PATCH} body depends on, in the other direction.
+ *
+ * @param goal the funding target, as an amount and a currency. The amount is a
+ *     string on the wire — §10.3, and {@link Money} for why
+ * @param lockedFields which fields may no longer be changed, given the state the
+ *     campaign is in. <strong>Always empty here.</strong> §5.3 freezes the goal
+ *     and the deadline after launch, and #36 is what computes that; the field
+ *     exists from the start so that the client which reads it does not have to be
+ *     rewritten when it starts being populated
+ */
+@JsonInclude(JsonInclude.Include.ALWAYS)
+public record ProjectEdit(
+        UUID id,
+        String slug,
+        String state,
+        String title,
+        String blurb,
+        UUID categoryId,
+        UUID subcategoryId,
+        Money goal,
+        Integer durationDays,
+        Instant scheduledLaunchAt,
+        Instant launchedAt,
+        Instant deadline,
+        JsonNode story,
+        String risks,
+        CoverImageBody coverImage,
+        boolean latePledgeEnabled,
+        List<String> lockedFields,
+        Instant createdAt,
+        Instant updatedAt) {
+}
