@@ -1,0 +1,449 @@
+'use client';
+
+import Decimal from 'decimal.js';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { parseAmount, toMoney, type AmountParse } from '../../lib/money';
+import { describeFailure, type CheckoutFailure } from '../../lib/pledges/failure';
+import { IdempotencyKeyring } from '../../lib/pledges/idempotency';
+import {
+  confirmPledge,
+  createPledgeDraft,
+  getPublicRewards,
+  type DraftPledgeRequest,
+  type PledgeResponse,
+  type PublicReward,
+  type PublicRewardList,
+} from '../../lib/pledges/api';
+import {
+  quoteSelection,
+  requiresDestination,
+  type QuoteResult,
+  type Selection,
+} from '../../lib/pledges/quote';
+
+/**
+ * The checkout, as one hook: what the backer chose, what it costs, and the two
+ * requests that turn it into a pledge.
+ *
+ * <h2>The state lives here and not in the URL</h2>
+ *
+ * `DiscoveryView` puts every filter in the query string, because a filtered feed
+ * is a thing to link to and to come back to. A checkout is the opposite on both
+ * counts. A half-made pledge is not shareable — the link would carry another
+ * person's selection to somebody who cannot pay for it — and the back button must
+ * not be able to re-enter a reservation that has since expired or been confirmed.
+ * So the selection is React state, the route has no query string, and the steps
+ * are steps rather than routes.
+ *
+ * <h2>Two amounts, and only one of them is true</h2>
+ *
+ * `quote` is the client's preview, recomputed on every keystroke so the total
+ * moves with the choice. `pledge.amounts` is the server's, and from the moment a
+ * draft comes back it is the only thing shown. See `lib/pledges/quote.ts` for why
+ * that is not politeness about layering: the client is pricing from a list it
+ * fetched some seconds ago, and the server prices the row it is reserving inside
+ * the transaction that reserves it.
+ *
+ * <h2>Idempotency</h2>
+ *
+ * One `IdempotencyKeyring` per checkout, held in a ref so it survives every
+ * re-render and none of the remounts that mean somebody started over. Keys are
+ * issued per request body, so pressing "Reserve" twice after a dropped connection
+ * sends the same key and gets the same pledge back. `lib/pledges/idempotency.ts`
+ * carries the full argument, including the one case where a key must be retired:
+ * a reservation that expired is a new intent, not a retry, and replaying its key
+ * would hand back the draft that just expired.
+ */
+
+/** The value the "no reward" radio carries. A tier id is a UUID and cannot collide. */
+export const NO_REWARD = 'none';
+
+export type CatalogueStatus = 'loading' | 'ready' | 'failed';
+
+/**
+ * Where the backer is.
+ *
+ * `selecting` covers "choosing" and "a reservation was refused", because they are
+ * the same screen with a message on it. `reserved` is the only state in which
+ * stock is held and the clock is running.
+ */
+export type CheckoutPhase = 'selecting' | 'reserving' | 'reserved' | 'confirming' | 'confirmed';
+
+export interface CheckoutState {
+  readonly catalogueStatus: CatalogueStatus;
+  readonly catalogue: PublicRewardList | null;
+  readonly catalogueFailure: CheckoutFailure | null;
+  readonly reloadCatalogue: () => void;
+
+  readonly phase: CheckoutPhase;
+  readonly pledge: PledgeResponse | null;
+  readonly failure: CheckoutFailure | null;
+
+  /** The chosen tier id, `NO_REWARD`, or null when nothing is chosen yet. */
+  readonly choice: string | null;
+  readonly reward: PublicReward | null;
+  readonly chooseReward: (value: string) => void;
+
+  readonly contributionText: string;
+  readonly setContributionText: (value: string) => void;
+  /** How `parseAmount` read the field. The wording is the field's own business. */
+  readonly contribution: AmountParse;
+  /** True once the field is worth complaining about — touched, or reserve pressed. */
+  readonly contributionShown: boolean;
+  /**
+   * True once "reserve" has been pressed at least once.
+   *
+   * What turns "you have not chosen yet" from silence into a sentence. A form
+   * that complains about an empty field before it has been asked to do anything
+   * is a form that is arguing with somebody who has only just arrived.
+   */
+  readonly attempted: boolean;
+
+  readonly addonQuantity: (rewardId: string) => number;
+  readonly setAddonQuantity: (rewardId: string, quantity: number) => void;
+
+  readonly needsDestination: boolean;
+  readonly destination: string | null;
+  readonly setDestination: (code: string | null) => void;
+
+  readonly isAnonymous: boolean;
+  readonly setAnonymous: (value: boolean) => void;
+
+  readonly selection: Selection | null;
+  /** The client's preview, or null before anything has been chosen. */
+  readonly quote: QuoteResult | null;
+
+  /** Reserve stock and quote. `fresh` retires the key first — see the file comment. */
+  readonly reserve: (options?: { readonly fresh?: boolean }) => void;
+  readonly confirm: () => void;
+  /** Back to the form with the reservation abandoned, so it can be made again. */
+  readonly startOver: () => void;
+}
+
+function wasAborted(cause: unknown): boolean {
+  return cause instanceof DOMException && cause.name === 'AbortError';
+}
+
+export function useCheckout(projectId: string, secretTokens: readonly string[] = []): CheckoutState {
+  const [catalogue, setCatalogue] = useState<PublicRewardList | null>(null);
+  const [catalogueStatus, setCatalogueStatus] = useState<CatalogueStatus>('loading');
+  const [catalogueFailure, setCatalogueFailure] = useState<CheckoutFailure | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  const [phase, setPhase] = useState<CheckoutPhase>('selecting');
+  const [pledge, setPledge] = useState<PledgeResponse | null>(null);
+  const [failure, setFailure] = useState<CheckoutFailure | null>(null);
+
+  const [choice, setChoice] = useState<string | null>(null);
+  const [contributionText, setContributionText] = useState('');
+  const [contributionTouched, setContributionTouched] = useState(false);
+  const [attempted, setAttempted] = useState(false);
+  const [quantities, setQuantities] = useState<Readonly<Record<string, number>>>({});
+  const [destination, setDestinationState] = useState<string | null>(null);
+  const [isAnonymous, setAnonymous] = useState(false);
+
+  /*
+   * One keyring for the life of this checkout. A `useRef` rather than state
+   * because reading it must never re-render, and because its contents are not
+   * something the interface displays — they are the client's memory of what it
+   * has already asked for.
+   */
+  const keyring = useRef(new IdempotencyKeyring());
+
+  /*
+   * The secret tokens, serialised, so the effect below depends on their VALUE
+   * rather than on the identity of the array. A route that rebuilds the array on
+   * every render — which is what reading a query string does — would otherwise
+   * refetch the reward list on every keystroke anywhere on the page. The same
+   * reasoning `useDiscoveryFeed` gives for keying on `filterKey`.
+   */
+  const tokenKey = JSON.stringify(secretTokens);
+  const latestTokens = useRef(secretTokens);
+  latestTokens.current = secretTokens;
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    setCatalogueStatus('loading');
+    setCatalogueFailure(null);
+
+    void (async () => {
+      try {
+        const list = await getPublicRewards(
+          projectId,
+          { tokens: latestTokens.current },
+          controller.signal,
+        );
+        if (controller.signal.aborted) return;
+
+        setCatalogue(list);
+        setCatalogueStatus('ready');
+      } catch (cause) {
+        if (controller.signal.aborted || wasAborted(cause)) return;
+
+        setCatalogueFailure(describeFailure(cause));
+        setCatalogueStatus('failed');
+      }
+    })();
+
+    return () => controller.abort();
+  }, [projectId, tokenKey, attempt]);
+
+  const currency = catalogue?.currency ?? '';
+  const rewards = catalogue?.rewards ?? [];
+  const addons = catalogue?.addons ?? [];
+
+  const reward = useMemo(
+    () => (choice === null || choice === NO_REWARD ? null : (rewards.find((r) => r.id === choice) ?? null)),
+    [choice, rewards],
+  );
+
+  const chooseReward = useCallback(
+    (value: string) => {
+      setChoice(value);
+      setFailure(null);
+
+      /*
+       * The contribution field starts at the tier's price (PL-03: a bonus is an
+       * amount ABOVE it) and is reset whenever the tier changes. Carrying the
+       * old figure across would either be below the new tier's price — which the
+       * service refuses — or would silently turn a deliberate 45.00 into a
+       * bonus on a 20.00 tier that the backer never agreed to.
+       */
+      const picked = value === NO_REWARD ? null : rewards.find((r) => r.id === value);
+      setContributionText(picked?.price.amount ?? '');
+      setContributionTouched(false);
+    },
+    [rewards],
+  );
+
+  const setContribution = useCallback((value: string) => {
+    setContributionText(value);
+    setContributionTouched(true);
+    setFailure(null);
+  }, []);
+
+  const addonQuantity = useCallback((rewardId: string) => quantities[rewardId] ?? 0, [quantities]);
+
+  const setAddonQuantity = useCallback((rewardId: string, quantity: number) => {
+    setQuantities((previous) => ({ ...previous, [rewardId]: Math.max(0, Math.trunc(quantity)) }));
+    setFailure(null);
+  }, []);
+
+  const setDestination = useCallback((code: string | null) => {
+    setDestinationState(code);
+    setFailure(null);
+  }, []);
+
+  const contribution = useMemo(() => parseAmount(contributionText), [contributionText]);
+
+  const selection = useMemo<Selection | null>(() => {
+    if (catalogue === null || choice === null) return null;
+    if (!contribution.ok) return null;
+
+    return {
+      currency,
+      reward,
+      addons: addons
+        .map((addon) => ({ reward: addon, quantity: quantities[addon.id] ?? 0 }))
+        .filter((entry) => entry.quantity > 0),
+      contribution: contribution.value,
+      destination,
+    };
+  }, [catalogue, choice, contribution, currency, reward, addons, quantities, destination]);
+
+  const quote = useMemo(() => (selection === null ? null : quoteSelection(selection)), [selection]);
+
+  /*
+   * Whether to ask where it is going, computed from the selection as it stands
+   * rather than from the reward alone — an add-on that is posted makes the
+   * question necessary even when the tier is a download (PL-05).
+   */
+  const needsDestination = useMemo(() => {
+    if (catalogue === null || choice === null) return false;
+    return requiresDestination({
+      currency,
+      reward,
+      addons: addons
+        .map((addon) => ({ reward: addon, quantity: quantities[addon.id] ?? 0 }))
+        .filter((entry) => entry.quantity > 0),
+      // Only the shipping types are read by `requiresDestination`; the amount
+      // and the destination do not enter into it, so a zero here is not a claim
+      // about what the backer is giving.
+      contribution: new Decimal(0),
+      destination,
+    });
+  }, [catalogue, choice, currency, reward, addons, quantities, destination]);
+
+  /**
+   * The body of `POST /v1/pledges/draft`, or null when the selection cannot make
+   * one.
+   *
+   * The add-ons are SORTED BY ID. The body is what the idempotency key is derived
+   * from, and two requests that would create the same pledge have to produce the
+   * same key — a list whose order followed the order the backer happened to tick
+   * boxes in would mint a second key for the same intent, which is the duplicate
+   * this whole mechanism exists to prevent.
+   */
+  const draftBody = useMemo<DraftPledgeRequest | null>(() => {
+    if (selection === null || quote === null || !quote.ok) return null;
+
+    return {
+      projectId,
+      rewardTierId: reward?.id ?? null,
+      addons: selection.addons
+        .map((addon) => ({ rewardTierId: addon.reward.id, quantity: addon.quantity }))
+        .sort((left, right) => (left.rewardTierId < right.rewardTierId ? -1 : 1)),
+      contribution: toMoney(selection.contribution, currency),
+      // Null rather than a country nobody asked for: sending a destination for a
+      // pledge that posts nothing would record an address the campaign has no
+      // reason to hold (§17.4).
+      shippingCountry: needsDestination ? destination : null,
+      isAnonymous,
+      // #62's attribution. Nothing on this route carries one yet, and null is
+      // the honest value rather than an empty string the service would store.
+      referrerCode: null,
+    };
+  }, [selection, quote, projectId, reward, currency, needsDestination, destination, isAnonymous]);
+
+  const reserve = useCallback(
+    (options?: { readonly fresh?: boolean }) => {
+      setAttempted(true);
+      const body = draftBody;
+      if (body === null) return;
+
+      if (options?.fresh === true) {
+        // A new reservation after an expiry is a NEW intent that happens to look
+        // exactly like the old one. Without this, the replayed key would answer
+        // with the very draft that expired and the screen would loop.
+        keyring.current.retire(body);
+      }
+
+      setPhase('reserving');
+      setFailure(null);
+
+      void (async () => {
+        try {
+          const created = await createPledgeDraft(body, keyring.current.keyFor(body));
+          setPledge(created);
+          setPhase('reserved');
+        } catch (cause) {
+          const described = describeFailure(cause);
+          if (described.retireKey) keyring.current.retire(body);
+
+          setFailure(described);
+          setPhase('selecting');
+        }
+      })();
+    },
+    [draftBody],
+  );
+
+  const confirm = useCallback(() => {
+    const current = pledge;
+    const body = draftBody;
+    if (current === null) return;
+
+    /*
+     * The confirm intent is the pledge AND the body. Keying it on the body alone
+     * would let two different pledges — the one that expired and the one made to
+     * replace it — share a key, and the second confirmation would be answered
+     * with the first one's result.
+     */
+    const intent = { pledgeId: current.id, paymentMethodId: null };
+
+    setPhase('confirming');
+    setFailure(null);
+
+    void (async () => {
+      try {
+        const confirmed = await confirmPledge(
+          current.id,
+          // Null, and honestly so: there is no provider to produce a payment
+          // method id. #55 owns the card and is blocked on #60 — see
+          // `PaymentStep`, which says the same thing to the backer.
+          { paymentMethodId: null },
+          keyring.current.keyFor(intent),
+        );
+        setPledge(confirmed);
+        setPhase('confirmed');
+      } catch (cause) {
+        const described = describeFailure(cause);
+        if (described.retireKey) keyring.current.retire(intent);
+
+        if (described.recovery === 'redraft') {
+          // The reservation is gone, so the draft it belonged to is gone with
+          // it. Both keys are retired: the confirm's above, and the draft's here,
+          // so that reserving again asks for a new pledge rather than replaying
+          // the expired one.
+          if (body !== null) keyring.current.retire(body);
+          setPledge(null);
+          setPhase('selecting');
+        } else {
+          setPhase('reserved');
+        }
+
+        setFailure(described);
+      }
+    })();
+  }, [pledge, draftBody]);
+
+  /**
+   * Back to the form, with the reservation left where it is.
+   *
+   * THE KEY IS NOT RETIRED HERE, and that is the difference between this and the
+   * expiry path. The reservation is still running: a backer who goes back, looks
+   * at the tiers, changes nothing and presses reserve again should get the SAME
+   * pledge with the SAME clock, which is exactly what replaying the key does. Had
+   * the key been retired they would get a second draft holding a second lot of
+   * stock, on a campaign whose unique index allows them one.
+   *
+   * A backer who does change something produces a different body and therefore a
+   * different key, which is the correct answer to a different question. The draft
+   * they abandoned holds its stock until its five minutes run out; releasing it
+   * sooner is `DELETE /v1/pledges/{id}`, which belongs to #56.
+   */
+  const startOver = useCallback(() => {
+    setPledge(null);
+    setFailure(null);
+    setPhase('selecting');
+  }, []);
+
+  return {
+    catalogueStatus,
+    catalogue,
+    catalogueFailure,
+    reloadCatalogue: useCallback(() => setAttempt((n) => n + 1), []),
+
+    phase,
+    pledge,
+    failure,
+
+    choice,
+    reward,
+    chooseReward,
+
+    contributionText,
+    setContributionText: setContribution,
+    contribution,
+    contributionShown: contributionTouched || attempted || contributionText !== '',
+    attempted,
+
+    addonQuantity,
+    setAddonQuantity,
+
+    needsDestination,
+    destination,
+    setDestination,
+
+    isAnonymous,
+    setAnonymous,
+
+    selection,
+    quote,
+
+    reserve,
+    confirm,
+    startOver,
+  };
+}
