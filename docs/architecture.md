@@ -249,11 +249,51 @@ and each entry needs a translation per supported locale.
 > the two amount orders open on the same handful of campaigns for everybody for
 > ever.
 >
-> **Relevance is served (#44); near-me is still declared and refused** until #47.
-> Asking for near-me is an RFC 9457 problem detail naming the issue, not a quiet
-> fall back to a different order — likewise *saved* (no saved-projects table
-> exists), *recommended* (D-07; see below), and country/city (no location column
-> exists; #47 brings the schema).
+> **Relevance is served (#44) and so is near-me (#47).** What is still refused is
+> an RFC 9457 problem detail naming the issue rather than a quiet fall back to a
+> different order: *saved* (no saved-projects table exists) and *recommended*
+> (D-07; see below). Nothing in the sort column above is refused any more.
+>
+> **Location is one dimension with three controls (#47).** `country` is ISO
+> 3166-1 alpha-2; `city` is a `locations.slug`, folded by §11.3 so `Bakı`,
+> `BAKI` and `baki` are one filter — and the localised exonym deliberately is
+> not, because a slug is a handle from an open vocabulary exactly as `category`
+> and `programme` are, and the facet panel is where a client gets it. `near=lat,lon`
+> with an optional `radiusKm` is the third. All three count as **one** facet
+> dimension, so the country counts are computed with the city filter and the
+> radius excluded too — the same rule that makes category and subcategory one
+> dimension.
+>
+> **The origin comes from the request and never from a profile, and it is
+> quantised to two decimal places — about a kilometre — before it reaches a query,
+> a cursor, a log, or an ETag.** Three reasons that agree. It is already finer
+> than the data: a campaign is located at a city centroid. Precise coordinates in
+> a query string end up in access logs, `Referer` headers and shared caches, and
+> §17.4's position is that data the platform does not need is data it does not
+> keep. And `/v1/discover` is public and cached for a minute; a key that varied at
+> ten centimetres would never be hit twice, whereas at a kilometre everybody in a
+> neighbourhood shares one entry. A profile-supplied origin was rejected for the
+> reason `showOnly=recommended` is: the endpoint is unauthenticated *because* that
+> is what makes §20's thousand requests a second reachable.
+>
+> **A radius is bounded at 500 km and refused above it**, not clamped — Azerbaijan
+> is about 500 km across, so a larger circle contains every campaign on the
+> platform and is "everywhere" with arithmetic attached; and clamping would
+> silently narrow somebody's search, which is the direction that hides results. The
+> boundary is **inclusive**.
+>
+> **A campaign with no location sorts last under near-me and is excluded by a
+> radius.** Near-me is a sort and proximity is a filter, and the two answer
+> differently on purpose: a sort that dropped rows would take a reader who changed
+> order and silently remove most of the platform from their feed, while a campaign
+> whose location is unknown genuinely cannot be shown to be within fifty kilometres
+> of anywhere. Nulls last, like `newest` and `ending_soon`, with the same null-tail
+> branch in the cursor.
+>
+> **`sort=near_me` with no origin is refused, not resolved to another order** —
+> unlike `sort=best_match` with no `q`, which falls back to `newest` because a text
+> score over no text is zero for every campaign. A distance from no origin is
+> undefined rather than zero.
 >
 > **Relevance is opt-in, not a default.** An unstated sort still resolves to
 > *newest* while browsing and *best match* while searching. Making the composite
@@ -1029,7 +1069,7 @@ is what that table was separated for.
 `search_vector` (tsvector), `geo_point` (geography).
 
 Indexes: `(state, deadline)`, `(category_id, state)`, `(creator_id)`, unique
-`(creator_id, slug)`, GIN on `search_vector`, GIST on `geo_point`,
+`(creator_id, slug)`, GIN on `search_vector`, `(location_id)` partial,
 `(is_featured, launched_at DESC)`.
 
 Plus five that discovery reads through (V12), each **partial over the nine publicly
@@ -1057,10 +1097,18 @@ every campaign's vector when an account is renamed — which §17.4's anonymisat
 is, so without it the index would go on serving the name of somebody who asked to
 be forgotten.
 
-> **Not all of these columns exist yet.** `location_id` and `geo_point` arrive
-> with proximity search, `is_featured` with curation, and
-> `pledge_manager_state` with the pledge manager — each with the feature that
-> owns it, rather than as a column nothing writes to.
+> **Not all of these columns exist yet.** `is_featured` and
+> `pledge_manager_state` arrive with curation and with the pledge manager — each
+> with the feature that owns it, rather than as a column nothing writes to.
+>
+> **`location_id` arrived with #47 (V16) and `geo_point` did not, deliberately.**
+> The column is nullable and no endpoint sets it: the location picker belongs to
+> the campaign editor, and §5.3 does not make a location a submission requirement,
+> so `NOT NULL` is the contract half and needs both of those first. There is no
+> `geo_point` and no `GIST on geo_point` because the point lives on `locations` —
+> a campaign points at a place rather than carrying its own coordinates, which is
+> what makes two campaigns in Baku the same Baku. The index that ships instead is
+> `(location_id)`, partial over the nine publicly visible states; see §7.3.
 >
 > **The cover image is three interim columns**, `cover_image_url`,
 > `cover_image_width`, and `cover_image_height`, and not `main_image_id`. There is
@@ -1235,6 +1283,7 @@ by a database constraint and verified by a nightly reconciliation job.
 | `categories`, `subcategories` | The two-level taxonomy: slug, display order, and — for one more release — the interim `name_az` / `name_en` columns V6 created |
 | `category_translations`, `subcategory_translations` | One name per taxon per locale, keyed by `(taxon_id, locale)`. Every taxon has an `az` row; §21.1's other three arrive as data rather than as a deployment |
 | `tags`, `project_tags` | Tag vocabulary. `tags.slug` is the folded, comparable form and `tags.label` is the word as it was written; `usage_count` is denormalised and maintained by discovery |
+| `locations`, `location_translations` | Where a campaign is (#47). Shared reference data with a closed vocabulary, so two campaigns in Baku are in the *same* Baku and the city facet counts one city rather than five spellings: a folded `slug`, an ISO 3166-1 alpha-2 `country_code`, and a centroid as `numeric(6,4)`/`numeric(7,4)` degrees. One name per place per locale keyed by `(location_id, locale)`, where the mandatory `az` row is the **endonym** and the others are exonyms; the fallback chain is requested locale → `az` → slug, so a language with no row falls back to what the place calls itself. **No write path creates a row**: the eighteen Azerbaijani cities V16 seeds are the whole of the vocabulary until the campaign editor gains a location picker, and adding one then is a privileged, audited action |
 | `collections`, `collection_translations`, `collection_projects` | Curation and open calls (#48). One row per list, one title and description per locale keyed by `(collection_id, locale)`, and membership carrying the curator's explicit `position` — a collection is an edited sequence, not a set |
 | `curation_events` | Append-only audit of every editorial decision: who added or removed what, from which collection, when, and why. Never updated, never deleted; neither foreign key cascades, so a curated campaign cannot be hard deleted and the record cannot be removed by removing what it was about |
 | `project_editorial_badges` *(view)* | The only definition of "editorially featured" (§3.2, §4.4, D-05). One row per campaign per badge-granting collection currently in force; read by `showOnly=featured`, by the card, and by §11.2's `w4` |
@@ -1267,9 +1316,39 @@ by a database constraint and verified by a nightly reconciliation job.
 | UUID v7 primary keys | Sortable, index-friendly, and they do not leak volume |
 | Soft delete | Audit and recovery |
 | Selective denormalisation | Read performance; the ledger remains the source of truth |
-| PostGIS | Proximity search |
+| **`cube` + `earthdistance`, not PostGIS** | Proximity search (#47). See below |
 | Monthly partitioning | `transactions`, `ledger_entries`, `audit_logs` |
 | Read replica | Discovery and analytics |
+
+> **This table used to say PostGIS, and #47 changed it after building the
+> feature.** V6 declined to enable an extension "for a feature nobody has built";
+> V16 is the migration that builds it, and it takes `cube` + `earthdistance`
+> instead. The deciding argument is the shape of the data rather than a
+> preference: **a location is shared reference data**, so the number of distinct
+> points the platform measures distance to is the size of a city gazetteer —
+> eighteen rows today — and not the number of campaigns. Every question §4.3 asks
+> resolves against that small table and reaches `projects` as a membership test on
+> `location_id`. PostGIS's real advantages — spheroid accuracy to the millimetre,
+> spatial joins over millions of geometries, polygon containment — are advantages
+> this query shape cannot spend, and its cost is a managed-database dependency
+> that has to be present at the same version on both sides of every `pg_upgrade`
+> and in every restore rehearsal (§17.4). `earthdistance` is contrib, like
+> `pg_trgm` and `pgcrypto` already are, and measures on a sphere: under half a
+> percent from a spheroid anywhere, against points that are city centroids.
+>
+> **The decision is reversible because the coordinates are stored as plain
+> `numeric` degrees rather than as an extension type.** Moving to PostGIS later is
+> one migration — add `geography`, backfill from `latitude`/`longitude`, swap one
+> expression — with no data conversion. What would trigger it: a second
+> geospatial consumer that needs polygons (shipping rules by administrative
+> region, "draw a region on a map"), or a per-campaign point rather than a
+> per-location one. V16's comment has the whole argument and the measurements.
+>
+> **`GIST on geo_point` is therefore not built either**, and `projects.geo_point`
+> does not exist: the point lives on `locations`, and a GiST index over eighteen
+> rows is one the planner declines to use — measured, with the plan, in V16. What
+> is indexed is `projects (location_id)`, partial over the nine publicly visible
+> states like every other discovery index, and that one the planner does use.
 
 > **Soft delete has one documented exception: `reminders`.** A withdrawn reminder
 > is deleted outright rather than stamped, because soft delete exists for audit
@@ -1941,6 +2020,16 @@ cannot represent it exactly.
 
 Start with tier 1 behind a `SearchService` interface so the migration is a
 substitution rather than a rewrite.
+
+**Proximity (#47) is tier 1's, not an exception to it.** §4.3's near-me sort and
+its radius filter are `cube` + `earthdistance` over `locations`, measured at 19.7 ms
+for an unfiltered first page against 20,000 publicly visible campaigns and 2.7 ms
+with a city filter — cheaper than `sort=popularity`, because distance is a property
+of a location rather than of a campaign and eighteen distances are computed once in
+a materialised CTE rather than once per row. A tier-2 implementation has geo
+primitives of its own; what has to survive the move is the wire vocabulary, the
+quantised origin, the cursor encoding, and the two capabilities — see
+`DiscoveryCapability`.
 
 `az.ideanest.discovery.application.SearchService` is that interface, and
 `infrastructure.PostgresSearchService` is tier 1. Nothing in the signatures is SQL,
