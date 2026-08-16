@@ -1,6 +1,12 @@
 package az.ideanest.support;
 
 import az.ideanest.project.infrastructure.CategoryRepository;
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -97,6 +103,236 @@ public final class Campaigns {
         // nothing about what could go wrong is the one that produces the refunds.
         body.put("risks", "The main risk is manufacturing capacity. ".repeat(6));
         return body;
+    }
+
+    /**
+     * Removes every campaign and every tag, so a suite starts from a known set.
+     *
+     * <p>Discovery is the one module whose assertions are about <em>which</em>
+     * campaigns come back and <em>how many</em>, so it cannot share a database with
+     * whatever another suite happened to leave behind. Every foreign key into
+     * {@code projects} cascades — rewards, items, story versions, collaborators,
+     * reminders, tag edges — so this one statement is the whole cleanup.
+     *
+     * <p>Safe because JUnit runs test classes one at a time here: nothing is
+     * configured for parallel execution, so no other suite is mid-run.
+     */
+    public static void clear(DataSource dataSource) {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        jdbc.update("DELETE FROM projects");
+        jdbc.update("DELETE FROM tags");
+    }
+
+    /**
+     * An account to file campaigns under.
+     *
+     * <p>The minimum {@code users} will accept. No credentials row and no verified
+     * email: discovery never authenticates anybody, and a fixture that signed in
+     * would make every one of its tests depend on the rate limiter.
+     *
+     * <p>Idempotent for one handle. {@link #clear} removes campaigns and not accounts
+     * — an account is referenced by sessions, credentials, and provider identities
+     * that belong to other suites — so a {@code @BeforeEach} that asks for the same
+     * creator twice gets the same row rather than a duplicate-key failure on the
+     * second test in the class.
+     *
+     * @param handle becomes the slug and the local part of the email, so one argument
+     *     keeps both unique
+     */
+    public static UUID creator(DataSource dataSource, String handle) {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        jdbc.update(
+                "INSERT INTO users (id, email, name, slug) VALUES (?, ?, ?, ?) ON CONFLICT (email) DO NOTHING",
+                UUID.randomUUID(),
+                handle + "@example.com",
+                "Creator " + handle,
+                handle);
+        return jdbc.queryForObject("SELECT id FROM users WHERE email = ?", UUID.class, handle + "@example.com");
+    }
+
+    /**
+     * A campaign written straight into the table, in whatever state a test needs.
+     *
+     * <p><strong>Why this exists beside {@link #launch}.</strong> Discovery is read
+     * only and has to be tested against campaigns in all sixteen states of §6.1,
+     * including the seven it must never return. Seven of those are unreachable through
+     * the API without a moderator, an approval, and a suspension — and
+     * {@code SUSPENDED} in particular is reachable only from {@code LIVE} through trust
+     * and safety. Driving each fixture through that path would make a suite about
+     * filtering depend on the whole moderation configuration.
+     *
+     * <p>Every check constraint on {@code projects} still applies, which is what keeps
+     * these rows ones the application could have produced —
+     * {@code projects_public_states_are_fully_specified} in particular, which is why
+     * {@link Seed#state} fills in a goal, a duration, a launch, and a deadline for the
+     * states that require all four.
+     *
+     * <p>As with {@link #launch}, no audit row is written. A test that reads
+     * {@code project_state_transitions} must not use this.
+     */
+    public static Seed seed(DataSource dataSource, UUID creatorId, String slug) {
+        return new Seed(dataSource, creatorId, slug);
+    }
+
+    /** @see #seed */
+    public static final class Seed {
+
+        /** Everything from LIVE onwards; §6.1 and projects_public_states_are_fully_specified. */
+        private static final List<String> LAUNCHED_STATES = List.of(
+                "LIVE", "SUSPENDED", "CANCELED", "SUCCESSFUL", "UNSUCCESSFUL",
+                "COLLECTING", "LATE_PLEDGE", "FULFILLING", "COMPLETED");
+
+        private final JdbcTemplate jdbc;
+        private final UUID creatorId;
+        private final String slug;
+        private final UUID id = UUID.randomUUID();
+
+        private String title;
+        private String state = "DRAFT";
+        private String categorySlug;
+        private String subcategorySlug;
+        private BigDecimal goal;
+        private BigDecimal pledged = BigDecimal.ZERO;
+        private int backers;
+        private Instant launchedAt;
+        private Instant deadline;
+        private boolean withCover = true;
+        private final List<String> tags = new ArrayList<>();
+
+        private Seed(DataSource dataSource, UUID creatorId, String slug) {
+            this.jdbc = new JdbcTemplate(dataSource);
+            this.creatorId = creatorId;
+            this.slug = slug;
+            this.title = slug;
+        }
+
+        public Seed title(String value) {
+            this.title = value;
+            return this;
+        }
+
+        /** One of the sixteen of §6.1. */
+        public Seed state(String value) {
+            this.state = value;
+            return this;
+        }
+
+        public Seed category(String value) {
+            this.categorySlug = value;
+            return this;
+        }
+
+        /** Also sets the category if none was given, because the pair has to agree. */
+        public Seed subcategory(String categorySlug, String value) {
+            this.categorySlug = categorySlug;
+            this.subcategorySlug = value;
+            return this;
+        }
+
+        /** Money as a string, never a double — the fixture is held to the same rule as the code. */
+        public Seed goal(String amount) {
+            this.goal = new BigDecimal(amount);
+            return this;
+        }
+
+        public Seed pledged(String amount) {
+            this.pledged = new BigDecimal(amount);
+            return this;
+        }
+
+        public Seed backers(int value) {
+            this.backers = value;
+            return this;
+        }
+
+        public Seed launchedAt(Instant value) {
+            this.launchedAt = value;
+            return this;
+        }
+
+        public Seed deadline(Instant value) {
+            this.deadline = value;
+            return this;
+        }
+
+        /** No cover image, for the card that has to render without one. */
+        public Seed withoutCover() {
+            this.withCover = false;
+            return this;
+        }
+
+        /** Tag slugs; the rows in {@code tags} are created on demand and shared. */
+        public Seed tags(String... slugs) {
+            this.tags.addAll(List.of(slugs));
+            return this;
+        }
+
+        public UUID insert() {
+            Instant now = Instant.now();
+            if (LAUNCHED_STATES.contains(state)) {
+                // The constraint requires all four together, so defaulting them
+                // individually would produce a row the application could not have
+                // written.
+                if (goal == null) {
+                    goal = new BigDecimal("5000.00");
+                }
+                if (launchedAt == null) {
+                    launchedAt = now.minus(Duration.ofDays(1));
+                }
+                if (deadline == null) {
+                    deadline = launchedAt.plus(Duration.ofDays(DEFAULT_DURATION_DAYS));
+                }
+            }
+            jdbc.update(
+                    """
+                    INSERT INTO projects (
+                        id, creator_id, slug, title, blurb, category_id, subcategory_id, state,
+                        goal_amount, pledged_amount, backers_count, duration_days,
+                        launched_at, deadline,
+                        cover_image_url, cover_image_width, cover_image_height)
+                    VALUES (
+                        ?, ?, ?, ?, ?,
+                        (SELECT id FROM categories WHERE slug = ?),
+                        (SELECT s.id FROM subcategories s JOIN categories c ON c.id = s.parent_id
+                          WHERE c.slug = ? AND s.slug = ?),
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    id,
+                    creatorId,
+                    slug,
+                    title,
+                    "A summary that fits inside a hundred and thirty-five characters.",
+                    categorySlug,
+                    categorySlug,
+                    subcategorySlug,
+                    state,
+                    goal,
+                    pledged,
+                    backers,
+                    launchedAt == null ? null : DEFAULT_DURATION_DAYS,
+                    launchedAt == null ? null : OffsetDateTime.ofInstant(launchedAt, ZoneOffset.UTC),
+                    deadline == null ? null : OffsetDateTime.ofInstant(deadline, ZoneOffset.UTC),
+                    withCover ? "https://cdn.example.com/" + slug + ".jpg" : null,
+                    withCover ? Integer.valueOf(1600) : null,
+                    withCover ? Integer.valueOf(900) : null);
+
+            for (String tag : tags) {
+                // ON CONFLICT because tags are a free vocabulary shared between
+                // campaigns; a fixture asking for a tag another fixture already made
+                // must attach to the same row, or the facet counts would split.
+                jdbc.update(
+                        "INSERT INTO tags (id, slug, label) VALUES (?, ?, ?) ON CONFLICT (slug) DO NOTHING",
+                        UUID.randomUUID(),
+                        tag,
+                        tag);
+                jdbc.update(
+                        "INSERT INTO project_tags (project_id, tag_id)"
+                                + " SELECT ?, id FROM tags WHERE slug = ? ON CONFLICT DO NOTHING",
+                        id,
+                        tag);
+            }
+            return id;
+        }
     }
 
     /** A valid story document holding one paragraph of the requested length. */
