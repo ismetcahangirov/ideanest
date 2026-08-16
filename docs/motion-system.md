@@ -455,6 +455,7 @@ line is drawn per element rather than per page:
 | Skeleton shimmer | **Translating overlay** | `transform` only, removed outright under `prefers-reduced-motion` |
 | Progress bar fill | **800ms `ease-out`** | §6. It is the card's one moving part and it is the number the reader came for |
 | Filter rail, chips, sort | **150ms colour only** | Ticking a box is work, not exploration. A panel that animates while somebody is using it is a panel that is slower to use |
+| Search box and its suggestion list | **None. The popup appears and disappears** | The row above, with less time to spare. This panel is read *between two keystrokes* — a 150ms entry is 150ms in which the list cannot be aimed at, and a list that fades while the reader is still typing is one they arrow into before it has settled. The active row takes the rail's 150ms colour change and nothing else moves |
 | Infinite-scroll sentinel | **None** | It is a measuring point, not a thing |
 
 The card entry animation is the one people reach for here and it is the one to
