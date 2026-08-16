@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   NO_FILTERS,
   activeFilters,
+  addSlugFilter,
+  withQuery,
   boundsAreOrdered,
   clearFilters,
   filterKey,
@@ -115,6 +117,109 @@ describe('toSearchParams', () => {
 
     expect(filterKey(a)).toBe(filterKey(b));
     expect(filterKey(a)).not.toBe(filterKey(c));
+  });
+});
+
+/**
+ * Free text, and the order it brings with it.
+ *
+ * The rule these pin is the service's own: an unstated sort resolves to
+ * `best_match` when there is a query and to `newest` when there is not
+ * (`DiscoveryQuery`, `DiscoverySort.DEFAULT_WITH_TEXT`). It is duplicated on
+ * the client for one reason — so the sort control can display the order that is
+ * actually in force. A control reading "Newest" over a feed the service ranked
+ * by match quality is a control that lies.
+ */
+describe('free text', () => {
+  it('carries the query under the service’s own parameter name', () => {
+    expect(parseFilters(params('q=ceramics')).query).toBe('ceramics');
+    expect(toHref(withQuery(NO_FILTERS, 'ceramics'))).toBe('/discover?q=ceramics');
+  });
+
+  it('trims what was typed, and treats blank as no search', () => {
+    expect(parseFilters(params('q=%20%20')).query).toBe('');
+    expect(parseFilters(params('q=%20ceramics%20')).query).toBe('ceramics');
+    expect(toHref(withQuery(NO_FILTERS, '   '))).toBe('/discover');
+  });
+
+  it('round trips a search alongside its filters', () => {
+    const original = parseFilters(params('q=ceramics&category=games&sort=ending_soon'));
+
+    expect(parseFilters(toSearchParams(original))).toEqual(original);
+  });
+
+  it('resolves an unstated sort to best match when there is a query', () => {
+    expect(parseFilters(params('q=ceramics')).sort).toBe('best_match');
+    expect(parseFilters(params('')).sort).toBe('newest');
+  });
+
+  it('resolves best match back to newest when there is nothing to rank', () => {
+    // The service does exactly this, so a URL that asked for it would be
+    // answered in a different order than the one it names.
+    expect(parseFilters(params('sort=best_match')).sort).toBe('newest');
+  });
+
+  it('omits whichever sort is the default for the feed it describes', () => {
+    // `?q=ceramics` alone means best match, and printing it would make the
+    // shortest, most-shared URL the noisiest one.
+    expect(toHref(withQuery(NO_FILTERS, 'ceramics'))).toBe('/discover?q=ceramics');
+    expect(toHref({ ...withQuery(NO_FILTERS, 'ceramics'), sort: 'newest' })).toBe(
+      '/discover?q=ceramics&sort=newest',
+    );
+  });
+
+  it('moves a default sort to the new default, and keeps a chosen one', () => {
+    // Nobody reordered this feed, so searching it ranks by match quality.
+    expect(withQuery(NO_FILTERS, 'ceramics').sort).toBe('best_match');
+    // And clearing the box puts it back, because best match has nothing to rank.
+    expect(withQuery(parseFilters(params('q=ceramics')), '').sort).toBe('newest');
+    // A chosen order survives both directions.
+    expect(withQuery(parseFilters(params('sort=ending_soon')), 'ceramics').sort).toBe(
+      'ending_soon',
+    );
+    expect(withQuery(parseFilters(params('q=ceramics&sort=ending_soon')), '').sort).toBe(
+      'ending_soon',
+    );
+  });
+
+  it('keys a searched feed apart from an unsearched one', () => {
+    // The query decides which campaigns come back, so it belongs in the key the
+    // feed hook refetches on — the same rule the server's fingerprint follows.
+    expect(filterKey(withQuery(NO_FILTERS, 'ceramics'))).not.toBe(filterKey(NO_FILTERS));
+  });
+
+  it('survives clearing the filters, because it is not one', () => {
+    // "Clear all filters" must not silently throw away what was typed: emptying
+    // the search box is what the search box is for.
+    const filters = parseFilters(params('q=ceramics&category=games&status=live'));
+
+    expect(clearFilters(filters).query).toBe('ceramics');
+    expect(clearFilters(filters).categories).toEqual([]);
+  });
+});
+
+describe('addSlugFilter', () => {
+  it('adds rather than toggles, so choosing what is already chosen is a no-op', () => {
+    // A reader who picks "Games" from the suggestion list is asking for Games.
+    // If Games is already ticked the honest answer is "you already have it",
+    // never "then I shall remove it" — which is what a toggle would do.
+    const once = addSlugFilter(NO_FILTERS, 'category', 'games');
+    const twice = addSlugFilter(once, 'category', 'games');
+
+    expect(twice.categories).toEqual(['games']);
+  });
+
+  it('folds the slug to lower case, as the service does', () => {
+    expect(addSlugFilter(NO_FILTERS, 'tag', 'Handmade').tags).toEqual(['handmade']);
+  });
+
+  it('leaves the parent category alone when a subcategory is applied', () => {
+    const filters = addSlugFilter(NO_FILTERS, 'subcategory', 'tabletop');
+
+    // The two are independent and AND'd server-side; adding both would narrow
+    // the feed twice for one choice.
+    expect(filters.subcategories).toEqual(['tabletop']);
+    expect(filters.categories).toEqual([]);
   });
 });
 

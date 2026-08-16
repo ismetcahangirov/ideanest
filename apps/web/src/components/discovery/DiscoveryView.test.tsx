@@ -86,6 +86,19 @@ vi.mock('../../lib/discovery/api', async (importOriginal) => ({
   getDiscoveryFacets: vi.fn(),
 }));
 
+/*
+ * The suggestion endpoint is stubbed to answer with nothing. Typing into the
+ * search box would otherwise reach `fetch` for a relative URL that no server is
+ * behind, and a failing request in the middle of an unrelated assertion is
+ * noise rather than a finding. What the autocomplete DOES is covered in
+ * `SearchBox.test.tsx`; what is covered here is that the query reaches the feed
+ * and the URL.
+ */
+vi.mock('../../lib/discovery/suggest', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/discovery/suggest')>()),
+  getSuggestions: vi.fn().mockResolvedValue([]),
+}));
+
 const feedMock = vi.mocked(getDiscoveryFeed);
 const facetsMock = vi.mocked(getDiscoveryFacets);
 
@@ -456,6 +469,75 @@ describe('the sort control', () => {
     // it.
     expect(options).not.toContain('relevance');
     expect(options).not.toContain('near_me');
+    // `best_match` has nothing to rank on an unsearched feed and the service
+    // resolves it straight back to `newest`, so offering it here would be a
+    // control that appears selectable and then does nothing.
+    expect(options).not.toContain('best_match');
+  });
+
+  it('offers best match, and shows it, once there is something to match', async () => {
+    await open('q=ceramics');
+
+    const control = screen.getByRole('combobox', { name: 'Sort by' }) as HTMLSelectElement;
+    const options = within(control)
+      .getAllByRole('option')
+      .map((option) => (option as HTMLOptionElement).value);
+
+    expect(options).toContain('best_match');
+    // AND IT IS SELECTED. An unstated sort resolves to `best_match` server-side
+    // whenever `q` is present, so a control reading "Newest" over this feed
+    // would be describing an order the service is not using.
+    expect(control.value).toBe('best_match');
+    expect(lastQuery().sort).toBe('best_match');
+  });
+
+  it('keeps an order the reader chose over a search', async () => {
+    await open('q=ceramics&sort=ending_soon');
+
+    expect((screen.getByRole('combobox', { name: 'Sort by' }) as HTMLSelectElement).value).toBe(
+      'ending_soon',
+    );
+    expect(lastQuery().sort).toBe('ending_soon');
+  });
+});
+
+/* -------------------------------------------------------------------------
+ * Free text
+ * ---------------------------------------------------------------------- */
+
+describe('searching the feed', () => {
+  it('sends the query with the filters and puts it in the URL', async () => {
+    const user = await open('category=games');
+
+    await user.type(
+      screen.getByRole('combobox', { name: 'Search campaigns' }),
+      'ceramics{Enter}',
+    );
+
+    await waitFor(() => expect(search().get('q')).toBe('ceramics'));
+    await waitFor(() => expect(lastQuery().query).toBe('ceramics'));
+    // `?q=` composes with every filter rather than replacing them.
+    expect(lastQuery().categories).toEqual(['games']);
+  });
+
+  it('opens holding what the URL is searching for', async () => {
+    await open('q=ceramics');
+
+    expect(screen.getByRole('combobox', { name: 'Search campaigns' })).toHaveValue('ceramics');
+    expect(lastQuery().query).toBe('ceramics');
+  });
+
+  it('names the search in the empty state rather than blaming the filters', async () => {
+    feedMock.mockResolvedValue({ items: [] });
+    await open('q=qwertyuiop');
+
+    // No facet counts the query — it narrows the set the facets are counted
+    // over rather than being a dimension of its own — so `blameFor` cannot see
+    // it and would blame the filters for an emptiness a misspelt word caused.
+    expect(
+      await screen.findByRole('heading', { name: 'No projects match “qwertyuiop”' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Clear the search' })).toBeInTheDocument();
   });
 });
 

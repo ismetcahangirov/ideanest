@@ -67,6 +67,11 @@ export { FileDropZone, type FileDropZoneProps } from './components/form/FileDrop
 export { Modal, type ModalProps } from './components/overlay/Modal';
 export { Drawer, type DrawerProps, type DrawerSide } from './components/overlay/Drawer';
 export { Popover, type PopoverProps } from './components/overlay/Popover';
+export {
+  Combobox,
+  type ComboboxProps,
+  type ComboboxOption,
+} from './components/overlay/Combobox';
 export { Tooltip, type TooltipProps } from './components/overlay/Tooltip';
 export {
   ToastProvider,

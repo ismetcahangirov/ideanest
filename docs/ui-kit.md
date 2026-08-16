@@ -680,7 +680,7 @@ hesitation exactly where confidence is worth the most.
 
 ### 7.14 Overlay primitives
 
-`Modal`, `Drawer`, `Popover`, `Tooltip`, `Toast`. All controlled — `open` plus
+`Modal`, `Drawer`, `Popover`, `Tooltip`, `Toast`, `Combobox`. All controlled — `open` plus
 `onOpenChange`, no uncontrolled mode. Whether a payment dialog is open is
 application state, and a component that owns it privately makes the one case
 that matters, reopening after a failed charge, impossible.
@@ -769,6 +769,64 @@ after five seconds is a promise the interface does not keep. The timer is also
 disabled under `prefers-reduced-motion`, and pauses on hover and on
 focus-within: somebody reading the message, or tabbing towards its action, is
 not somebody who is finished with it.
+
+#### Combobox — the rich listbox §7.13 deferred
+
+§7.13 sends "the rich listbox — multi-select, async search" to overlay work, and
+this is it. It is **not** a replacement for `Select`: five fixed options are
+still a native `<select>`, for every reason given there. `Combobox` is for the
+case that argument does not cover — options that arrive from a request, while
+the reader is typing.
+
+```css
+.combobox__popup { background: var(--surface-3); border: 1px solid var(--border);
+                   border-radius: var(--radius-md); }
+.combobox__option[data-active] { background: var(--surface-4); color: var(--text-primary); }
+```
+
+A popup, so it is dark and takes a border rather than a shadow (§3) — it is an
+extension of the page, not a thing above it. The active row is `--surface-4`,
+the same "hover, selected" fill every other list uses. **Not lime:** a row the
+cursor is resting on is where the reader is, not something urgent, exactly as
+the filter chip is white rather than lime (§7.3).
+
+**DOM focus never leaves the input.** The active option is named by
+`aria-activedescendant` and nothing else. Moving real focus into the list makes
+the control impossible to type in: every keystroke after the first arrow press
+goes to an `<li>`, and correcting a typo means finding the way back.
+
+**There is no inline completion** — `aria-autocomplete="list"`, never `"both"`.
+The typed text is what a plain Enter submits, so a control that quietly replaces
+it makes "search for what I actually typed" unreachable the moment the reader
+looks at the list. It is also wrong for a list whose rows are not all
+completions of the fragment: a suggestion list mixing a campaign title with a
+category name would write a category name into the box and then submit it as
+free text.
+
+**Escape closes the list and keeps what was typed.** It is not an undo. A search
+box that empties itself on Escape throws away work nobody asked it to.
+**Tab leaves without selecting** — Tab means "I am done here", and a control
+that commits the highlighted row on the way past changes the page for somebody
+who was only trying to reach the next control.
+
+**The active option wraps** at both ends. The list is bounded and short, so a
+wrap costs one keypress and a hard stop costs the reader the fact that the list
+ended. **Home and End move the caret until an option is active**, and only then
+jump to the ends of the list: somebody fixing the first letter of what they
+typed must not be thrown into a dropdown to do it.
+
+**A row says its kind as text.** A list whose rows lead to four different places
+— a campaign, a category, a subcategory, a tag — is carrying meaning, and §9.2
+forbids meaning carried by colour or by an icon alone. The word sits beside the
+label and is therefore part of the option's accessible name.
+
+**The count is announced, and so is its absence.** A polite live region carries
+"3 suggestions available" and, just as loudly, "No suggestions" — silence from a
+control that was just typed into reads as a control that has broken. It uses
+`aria-live` **without** `role="status"`: `status` is a page-level role and a
+page has one, so a widget claiming it too would mean "the status" no longer
+identifies anything. The caller debounces, which is what stops the region
+talking over the typing echo — the same reasoning as `CharacterCount` in §7.13.
 
 ### 7.15 Data display
 
