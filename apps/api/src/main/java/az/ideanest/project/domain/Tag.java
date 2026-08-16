@@ -1,11 +1,11 @@
 package az.ideanest.project.domain;
 
 import az.ideanest.shared.Identifiers;
+import az.ideanest.shared.Slugs;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -29,10 +29,13 @@ import java.util.UUID;
  * would spell a reader's own language wrong, and comparing labels would split
  * the tag.
  *
- * <p>The fold lives here rather than in the database because
- * {@code unaccent()} does not fold {@code ə} at all — it is a letter of the
- * Azerbaijani alphabet, not an accented {@code e} — and because a rule written
- * once in one method can be tested against exactly the pairs §11.3 lists.
+ * <p><strong>The fold is not defined here.</strong> It used to be, on the
+ * grounds that {@code unaccent()} does not fold {@code ə} at all — which is
+ * true, and is why V13 does not use {@code unaccent} either. But #43 needs the
+ * same fold in two more places, so it is now {@link Slugs#fold} and the
+ * database's {@code ideanest_fold}, and those two are pinned to each other by a
+ * test. A tag slug and a search term that disagreed about what {@code Seçənək}
+ * folds to would be two answers to one question.
  *
  * <p><strong>Nothing writes tags yet.</strong> Attaching one to a campaign is
  * the campaign editor's field, §10.2 lists no {@code /v1/tags} route, and the
@@ -111,21 +114,16 @@ public class Tag {
     }
 
     /**
-     * The comparable form of a word: §11.3's folding, then lower case, then
-     * everything that is not a letter or a digit collapsed to a single hyphen.
+     * The comparable form of a word: {@link Slugs#fold}, then everything that is
+     * not a letter or a digit collapsed to a single hyphen.
      *
-     * <p>The folding runs <strong>before</strong> the lower-casing and covers
-     * both cases of each letter, because {@code "İ".toLowerCase(Locale.ROOT)}
-     * produces {@code i} followed by a combining dot rather than a plain
-     * {@code i} — a difference invisible in a diff and fatal to a unique index.
+     * <p>Not {@link Slugs#slugify}, which is the other slug in the platform and
+     * additionally decomposes and strips combining marks. A tag label is a word
+     * a creator typed rather than a display name the platform assigns, and
+     * {@code tags_slug_shape} is the constraint this has to satisfy.
      */
     public static String slugOf(String text) {
-        StringBuilder folded = new StringBuilder(text.length());
-        for (int index = 0; index < text.length(); index++) {
-            folded.append(fold(text.charAt(index)));
-        }
-
-        String lowered = folded.toString().toLowerCase(Locale.ROOT);
+        String lowered = Slugs.fold(text);
 
         StringBuilder slug = new StringBuilder(lowered.length());
         for (int index = 0; index < lowered.length(); index++) {
@@ -143,20 +141,6 @@ public class Tag {
             slug.deleteCharAt(slug.length() - 1);
         }
         return slug.toString();
-    }
-
-    /** The seven pairs of §11.3, in both cases. */
-    private static char fold(char character) {
-        return switch (character) {
-            case 'ə', 'Ə' -> 'e';
-            case 'ı', 'İ' -> 'i';
-            case 'ö', 'Ö' -> 'o';
-            case 'ü', 'Ü' -> 'u';
-            case 'ğ', 'Ğ' -> 'g';
-            case 'ş', 'Ş' -> 's';
-            case 'ç', 'Ç' -> 'c';
-            default -> character;
-        };
     }
 
     public UUID getId() {
