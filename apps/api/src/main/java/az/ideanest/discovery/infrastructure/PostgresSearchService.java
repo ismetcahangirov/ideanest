@@ -4,6 +4,7 @@ import az.ideanest.discovery.application.DiscoveryPage;
 import az.ideanest.discovery.application.DiscoveryQuery;
 import az.ideanest.discovery.application.FacetCounts;
 import az.ideanest.discovery.application.SearchService;
+import az.ideanest.discovery.application.SuggestQuery;
 import az.ideanest.discovery.domain.AmountBand;
 import az.ideanest.discovery.domain.AmountRange;
 import az.ideanest.discovery.domain.CompletionBand;
@@ -13,8 +14,10 @@ import az.ideanest.discovery.domain.DiscoverySort;
 import az.ideanest.discovery.domain.DiscoveryStatus;
 import az.ideanest.discovery.domain.InvalidCursorException;
 import az.ideanest.discovery.domain.ProjectCard;
+import az.ideanest.discovery.domain.Suggestion;
 import az.ideanest.project.application.Taxonomy;
 import az.ideanest.shared.Money;
+import az.ideanest.shared.Slugs;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -46,13 +49,30 @@ import org.springframework.transaction.annotation.Transactional;
  * that uses fourteen columns. §20 asks for a thousand requests a second at p99 under
  * 300ms, and a read model with its own query is the only shape that gets there.
  *
- * <h2>What this cannot do</h2>
+ * <h2>What this can and cannot do</h2>
  *
- * <p>{@link #capabilities()} is empty. Every option §4.3 describes that needs
- * something absent — a {@code search_vector}, a {@code locations} table, a saved
- * table, an {@code is_featured} column, a ranking model — is refused by the caller
- * with a problem detail naming its issue, rather than accepted and dropped. See
- * {@link DiscoveryCapability}.
+ * <p>{@link #capabilities()} holds {@link DiscoveryCapability#FULL_TEXT} and nothing
+ * else. Every other option §4.3 describes that needs something absent — a
+ * {@code locations} table, a saved table, an {@code is_featured} column, a ranking
+ * model — is refused by the caller with a problem detail naming its issue, rather
+ * than accepted and dropped. See {@link DiscoveryCapability}.
+ *
+ * <h2>Free text, in two tiers</h2>
+ *
+ * <p>D-01 is a {@code tsvector} match against {@code projects.search_vector} (V13),
+ * over the title, blurb, creator name and story prose, all folded by §11.3 in the
+ * database so that the index and the query cannot disagree about what
+ * {@code seçənək} means. D-03 — misspelling tolerance — is a second tier over
+ * trigram similarity of the title, and it engages <strong>only when the first tier
+ * matches nothing at all</strong>: see {@link #exactTierMatches}. An exact match
+ * therefore always outranks a fuzzy one, because a fuzzy result set is only ever
+ * produced when there is no exact one.
+ *
+ * <p>Text composes with every filter, every sort, the keyset cursor, and the facet
+ * counts, because it is one more AND'd predicate over the same table and nothing
+ * else about the query changes. The one thing it adds is an order —
+ * {@link DiscoverySort#BEST_MATCH} — whose key is a {@code numeric} rounded to six
+ * places, for the reason {@link #POPULARITY_SCORE} is rounded.
  *
  * <h2>What tier 2 would have to satisfy</h2>
  *
@@ -143,6 +163,68 @@ public class PostgresSearchService implements SearchService {
             END
             """;
 
+    /**
+     * The reader's words, folded and parsed into a query. §11.3 and D-01.
+     *
+     * <p><strong>Folded here rather than in Java</strong> — {@code ideanest_fold} is
+     * the same function the index was built with, so the two cannot drift. Folding
+     * the query in the application and the document in the database is the failure
+     * that produces an empty result set and a 200, which looks exactly like "nothing
+     * matched".
+     *
+     * <p>{@code websearch_to_tsquery} rather than {@code plainto_} or
+     * {@code to_tsquery}: it is the only one that takes what a person types into a
+     * search box. Punctuation cannot make it throw, quoted phrases mean phrases,
+     * {@code or} means or, and a leading {@code -} excludes. {@code to_tsquery} would
+     * refuse "robot!" outright, and refusing a search because of an exclamation mark
+     * is not a thing to explain to anybody.
+     *
+     * <p><strong>No prefix expansion.</strong> "robo" does not match "robot" through
+     * this: {@code websearch_to_tsquery} produces whole lexemes. Partial words are
+     * what {@code /v1/search/suggest} is for (D-02), and near-misses are what the
+     * trigram tier below is for (D-03). Rewriting the last term as {@code lexeme:*}
+     * would mean building a tsquery string out of user input by concatenation, which
+     * is the one shape of this problem that has an injection in it.
+     */
+    private static final String TEXT_QUERY = "websearch_to_tsquery('simple', ideanest_fold(:text))";
+
+    /**
+     * How alike a title has to be to a misspelt query before it is offered. D-03.
+     *
+     * <p><strong>0.4, and it was measured rather than guessed.</strong>
+     * {@code word_similarity(query, title)} rather than {@code similarity} because
+     * the second compares whole strings: "robot" against "The Amazing Robot Factory
+     * Kit" scores 0.19 as a whole string and 1.00 as a word inside one, and a
+     * threshold set for the first would only ever match campaigns with one-word
+     * titles.
+     *
+     * <p>Measured on postgres:16-alpine against realistic Azerbaijani titles, folded:
+     *
+     * <table>
+     *   <caption>word_similarity of a query against a title</caption>
+     *   <tr><th>query</th><th>title</th><th>what it is</th><th>score</th></tr>
+     *   <tr><td>secenekk</td><td>Seçənək masa oyunu</td><td>one letter added</td><td>0.778</td></tr>
+     *   <tr><td>secenk</td><td>Seçənək masa oyunu</td><td>one letter dropped</td><td>0.714</td></tr>
+     *   <tr><td>bagce</td><td>Gözəl bağça</td><td>one letter substituted</td><td>0.667</td></tr>
+     *   <tr><td>robto</td><td>Robot dostum</td><td>two letters transposed</td><td>0.500</td></tr>
+     *   <tr><td>sesenek</td><td>Seçənək masa oyunu</td><td>one letter substituted</td><td>0.455</td></tr>
+     *   <tr><td>musiqi</td><td>İşıqlı şəhər</td><td><em>unrelated word</em></td><td>0.143</td></tr>
+     *   <tr><td>velosiped</td><td>Gözəl bağça</td><td><em>unrelated word</em></td><td>0.000</td></tr>
+     * </table>
+     *
+     * <p>Every single-character error measured lands at 0.455 or above and every
+     * unrelated word at 0.143 or below, so the honest threshold is anywhere in that
+     * gap. 0.4 is chosen inside it and nearer the typo end: it is three times the
+     * observed noise floor, so a query that resembles nothing returns nothing, which
+     * is the failure this tier must not have — a search box that answers gibberish
+     * with a page of unrelated campaigns is worse than one that answers it with
+     * nothing, because the reader cannot tell that it did not understand.
+     *
+     * <p>It is not {@code pg_trgm}'s own 0.6 default, which is set for deduplication
+     * rather than for typing, and which would reject four of the five errors above.
+     */
+    private static final String FUZZY_THRESHOLD = "0.4";
+
     private final NamedParameterJdbcTemplate jdbc;
     private final Taxonomy taxonomy;
     private final Clock clock;
@@ -154,32 +236,36 @@ public class PostgresSearchService implements SearchService {
     }
 
     /**
-     * Nothing optional. See the class comment and {@link DiscoveryCapability}.
+     * Free text, and nothing else yet. See the class comment and
+     * {@link DiscoveryCapability}.
      *
-     * <p>An empty set is the honest answer today and the thing four issues will each
-     * add one constant to. It is a claim the tests check: a capability announced here
-     * without an implementation behind it fails the suite that pins each refusal.
+     * <p>The set is the whole of this class's public promise, and it is a claim the
+     * tests hold it to: a capability announced here without an implementation behind
+     * it fails the suite that pins each refusal, and one implemented without being
+     * announced is refused by the controller and never reached.
      */
     @Override
     public Set<DiscoveryCapability> capabilities() {
-        return EnumSet.noneOf(DiscoveryCapability.class);
+        return EnumSet.of(DiscoveryCapability.FULL_TEXT);
     }
 
     @Override
     @Transactional(readOnly = true)
     public DiscoveryPage search(DiscoveryQuery query) {
         Instant asOf = asOf(query);
+        boolean exactTier = exactTierMatches(query.text());
         MapSqlParameterSource params = new MapSqlParameterSource();
         params.addValue("asOf", OffsetDateTime.ofInstant(asOf, ZoneOffset.UTC));
 
         List<String> where = new ArrayList<>();
         where.add(statePredicate("p", DiscoveryStatus.statesFor(query.statuses()), params));
+        add(where, textPredicate("p", query, exactTier, params));
         filters("p", query, where, params);
 
         DiscoveryCursor cursor = query.cursor();
         if (cursor != null) {
             cursor.requireMatches(query.fingerprint(), query.sort());
-            where.add(keyset(query.sort(), cursor, params));
+            where.add(keyset(query.sort(), cursor, exactTier, params));
         }
 
         // One more row than asked for. It is not returned; its existence is the only
@@ -188,7 +274,7 @@ public class PostgresSearchService implements SearchService {
         // would run on every page of every scroll.
         params.addValue("limit", query.limit() + 1);
 
-        String sql = "SELECT " + CARD_COLUMNS + ", " + scoreColumn(query.sort())
+        String sql = "SELECT " + CARD_COLUMNS + ", " + scoreColumn(query.sort(), exactTier)
                 + " FROM projects p JOIN users u ON u.id = p.creator_id"
                 + " WHERE " + String.join(" AND ", where)
                 + " ORDER BY " + orderBy(query.sort())
@@ -257,7 +343,15 @@ public class PostgresSearchService implements SearchService {
         // one: the status facet has to be able to count the statuses the caller did
         // not select, which is the whole point of excluding a dimension from its own
         // counts.
-        String publicStates = statePredicate("p", DiscoveryStatus.PUBLIC_STATES, params);
+        //
+        // Free text narrows the base set rather than being a dimension of its own,
+        // because there is no facet control for the search box. A panel counted over
+        // every campaign on the platform beside a list of the four that match the
+        // query would be describing a different result set from the one on screen —
+        // see SearchService.facets.
+        String publicStates = and(
+                statePredicate("p", DiscoveryStatus.PUBLIC_STATES, params),
+                textPredicate("p", query, exactTierMatches(query.text()), params));
 
         String matchesStatus = query.statuses().isEmpty()
                 ? "true"
@@ -307,6 +401,171 @@ public class PostgresSearchService implements SearchService {
     }
 
     // ---------------------------------------------------------------------------
+    // Suggestions (D-02)
+    // ---------------------------------------------------------------------------
+
+    /**
+     * What the reader might mean, from three sources at once.
+     *
+     * <h2>How a fragment matches</h2>
+     *
+     * <p>Substring of the folded form, with the prefix matches first. Substring
+     * rather than prefix alone because a two-word title is usually remembered by its
+     * second word — somebody typing "oyun" is looking for "Seçənək masa oyunu" — and
+     * prefix-first because a fragment that starts a name is far more likely to be
+     * what was meant than one that appears in the middle of it.
+     *
+     * <p>{@code LIKE} over {@code ideanest_fold(title)} rather than the
+     * {@code tsvector}: a tsvector holds whole lexemes, so "seç" matches nothing in
+     * it, and matching a partial word is the entire job here. The trigram index V13
+     * creates on that expression is what makes the wildcard-leading pattern an index
+     * scan rather than a table scan.
+     *
+     * <h2>How the three sources share the list</h2>
+     *
+     * <p>Round robin, in the order category, subcategory, tag, campaign, until the
+     * limit is reached. Not concatenation: a fragment matching six categories would
+     * otherwise fill a list of ten before a single campaign appeared, and the reader
+     * typing the name of a campaign would be shown everything except it. Round robin
+     * guarantees every kind that matched at all is represented, which is what makes
+     * {@link Suggestion.Kind} worth carrying.
+     *
+     * <p>The taxonomy is matched in memory rather than in SQL. It is fifteen
+     * categories and about a hundred subcategories, it is already loaded per request
+     * for the facet labels, and {@link Taxonomy} owns the requested-locale → az →
+     * slug fallback chain — reimplementing that chain in a {@code LIKE} over
+     * {@code category_translations} would be a second answer to "what is this
+     * category called".
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<Suggestion> suggest(SuggestQuery query) {
+        if (!query.isAnswerable()) {
+            // A blank or one-character box suggests nothing rather than everything.
+            // See SuggestQuery.isAnswerable.
+            return List.of();
+        }
+
+        String fragment = Slugs.fold(query.text());
+        List<Suggestion> categories = new ArrayList<>();
+        List<Suggestion> subcategories = new ArrayList<>();
+        for (Taxonomy.TaxonomyCategory category : taxonomy.all(query.locale())) {
+            if (matches(fragment, category.name(), category.slug())) {
+                categories.add(new Suggestion(
+                        Suggestion.Kind.CATEGORY, category.name(), category.slug(), null));
+            }
+            for (Taxonomy.TaxonomySubcategory subcategory : category.subcategories()) {
+                if (matches(fragment, subcategory.name(), subcategory.slug())) {
+                    subcategories.add(new Suggestion(
+                            Suggestion.Kind.SUBCATEGORY, subcategory.name(), subcategory.slug(), category.slug()));
+                }
+            }
+        }
+
+        return interleave(
+                query.limit(),
+                List.of(categories, subcategories, tagSuggestions(query), campaignSuggestions(query)));
+    }
+
+    /** A folded fragment inside a taxon's localised name or its slug. */
+    private static boolean matches(String fragment, String name, String slug) {
+        return Slugs.fold(name).contains(fragment) || slug.contains(fragment);
+    }
+
+    private List<Suggestion> tagSuggestions(SuggestQuery query) {
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("fragment", likePattern(query.text()));
+        params.addValue("limit", query.limit());
+        // Label and slug both, because they differ by exactly the fold: a reader
+        // typing "ceramics" has to find the tag whose label is "Seramika" through its
+        // slug, and one typing "Sər" has to find it through its label.
+        return jdbc.query(
+                """
+                SELECT t.slug, t.label,
+                       (ideanest_fold(t.label) LIKE ideanest_fold(:fragment) || '%' ESCAPE '\\'
+                        OR t.slug LIKE ideanest_fold(:fragment) || '%' ESCAPE '\\') AS is_prefix
+                  FROM tags t
+                 WHERE ideanest_fold(t.label) LIKE '%' || ideanest_fold(:fragment) || '%' ESCAPE '\\'
+                    OR t.slug LIKE '%' || ideanest_fold(:fragment) || '%' ESCAPE '\\'
+                 ORDER BY is_prefix DESC, t.usage_count DESC, t.slug ASC
+                 LIMIT :limit
+                """,
+                params,
+                (resultSet, index) -> new Suggestion(
+                        Suggestion.Kind.TAG, resultSet.getString("label"), resultSet.getString("slug"), null));
+    }
+
+    private List<Suggestion> campaignSuggestions(SuggestQuery query) {
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("fragment", likePattern(query.text()));
+        params.addValue("limit", query.limit());
+        params.addValue("states", List.copyOf(DiscoveryStatus.PUBLIC_STATES));
+        // The same visibility predicate as everything else in this class, and for the
+        // same reason: a suggestion is a campaign's title shown to whoever is typing,
+        // so a draft leaking here leaks exactly as much as one leaking into the feed.
+        //
+        // Ordered by money raised after the prefix rule, as the closest thing to
+        // prominence that exists today — a suggestion list is ten rows and something
+        // has to decide which ten. `id` last, so the order is total and two runs of
+        // the same keystroke do not reshuffle the dropdown under the reader's finger.
+        return jdbc.query(
+                """
+                SELECT p.slug, p.title, u.slug AS creator_slug,
+                       (ideanest_fold(p.title) LIKE ideanest_fold(:fragment) || '%' ESCAPE '\\') AS is_prefix
+                  FROM projects p
+                  JOIN users u ON u.id = p.creator_id
+                 WHERE p.state IN (:states)
+                   AND ideanest_fold(p.title) LIKE '%' || ideanest_fold(:fragment) || '%' ESCAPE '\\'
+                 ORDER BY is_prefix DESC, p.pledged_amount DESC, p.id ASC
+                 LIMIT :limit
+                """,
+                params,
+                (resultSet, index) -> new Suggestion(
+                        Suggestion.Kind.CAMPAIGN,
+                        resultSet.getString("title"),
+                        resultSet.getString("slug"),
+                        resultSet.getString("creator_slug")));
+    }
+
+    /**
+     * The reader's fragment as a {@code LIKE} operand.
+     *
+     * <p>{@code %}, {@code _} and {@code \} are wildcards to {@code LIKE} and
+     * ordinary characters to a person: without this, typing {@code %} into the search
+     * box would match every campaign on the platform, and typing {@code _} would match
+     * every one whose title is one character longer than the fragment. Escaped here
+     * rather than folded away because none of the three is touched by {@code ə→e}.
+     *
+     * <p>Escaped in Java and folded in SQL, so that the fold still has exactly one
+     * implementation.
+     */
+    private static String likePattern(String fragment) {
+        return fragment.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+    }
+
+    /**
+     * One suggestion from each source in turn, until there are enough.
+     *
+     * <p>See {@link #suggest}: the alternative is that the first source fills the
+     * list.
+     */
+    private static List<Suggestion> interleave(int limit, List<List<Suggestion>> sources) {
+        List<Suggestion> merged = new ArrayList<>();
+        int deepest = sources.stream().mapToInt(List::size).max().orElse(0);
+        for (int depth = 0; depth < deepest && merged.size() < limit; depth++) {
+            for (List<Suggestion> source : sources) {
+                if (merged.size() >= limit) {
+                    break;
+                }
+                if (depth < source.size()) {
+                    merged.add(source.get(depth));
+                }
+            }
+        }
+        return List.copyOf(merged);
+    }
+
+    // ---------------------------------------------------------------------------
     // Filters
     // ---------------------------------------------------------------------------
 
@@ -325,6 +584,106 @@ public class PostgresSearchService implements SearchService {
         add(where, completionPredicate(alias, query.completion(), params));
         add(where, amountPredicate(alias + ".goal_amount", "goal", query.goal(), params));
         add(where, amountPredicate(alias + ".pledged_amount", "raised", query.raised(), params));
+    }
+
+    /**
+     * D-01 and D-03: the free-text clause, in whichever tier is live.
+     *
+     * <p>One AND'd predicate over the same table as every other filter, which is what
+     * makes "text composes with everything" true rather than aspirational — there is
+     * no separate query, no second result set, and nothing to merge.
+     *
+     * <p>Only one of the two tiers is ever in the SQL. The alternative — emitting
+     * both, OR'd, and letting the fuzzy branch pick up what the exact one missed —
+     * was measured and rejected: wrapping the two in a {@code CASE} or an {@code OR}
+     * makes the whole predicate opaque to the planner, and the plan drops from a
+     * bitmap index scan on {@code projects_search_vector_idx} to a sequential scan of
+     * the table. The tier is therefore decided before the statement is built, by
+     * {@link #exactTierMatches}, and the hot path is left as the single indexable
+     * expression it needs to be.
+     *
+     * @param exactTier from {@link #exactTierMatches}; ignored when there is no text
+     */
+    private static String textPredicate(
+            String alias, DiscoveryQuery query, boolean exactTier, MapSqlParameterSource params) {
+        if (query.text() == null) {
+            return "true";
+        }
+        params.addValue("text", query.text());
+        if (exactTier) {
+            return alias + ".search_vector @@ " + TEXT_QUERY;
+        }
+        // D-03. The title only: a typo is something a person makes while typing the
+        // name of the thing they are looking for, and trigram-matching several
+        // thousand words of story would be both expensive and noisy.
+        return "word_similarity(ideanest_fold(:text), ideanest_fold(" + alias + ".title)) >= " + FUZZY_THRESHOLD;
+    }
+
+    /**
+     * The score {@link DiscoverySort#BEST_MATCH} orders by, as {@code numeric}.
+     *
+     * <p>{@code ts_rank} in the exact tier, with PostgreSQL's default weights
+     * {@code {D, C, B, A} = {0.1, 0.2, 0.4, 1.0}} — so a title match scores ten times
+     * a story match, which is the whole reason V13 sets weights at all. Trigram
+     * similarity in the fuzzy tier, which is the only thing there is to rank by when
+     * nothing matched exactly.
+     *
+     * <p><strong>Rounded to six places and cast to {@code numeric}.</strong> Both
+     * functions return {@code real}. The keyset predicate compares the cursor's key to
+     * this expression for exact equality, and two evaluations of a float expression
+     * that round differently would make a scroll skip a row — the same hazard, and
+     * the same fix, as {@link #POPULARITY_SCORE}.
+     */
+    private static String textScore(String alias, boolean exactTier) {
+        return exactTier
+                ? "round(ts_rank(" + alias + ".search_vector, " + TEXT_QUERY + ")::numeric, 6)"
+                : "round(word_similarity(ideanest_fold(:text), ideanest_fold(" + alias + ".title))::numeric, 6)";
+    }
+
+    /**
+     * Whether the exact tier finds anything at all, which is what decides D-03.
+     *
+     * <p><strong>When the fallback engages.</strong> Only here: if the folded query
+     * matches the search vector of any publicly visible campaign, the search is served
+     * from the {@code tsvector} index and nothing pays for trigrams. If it matches
+     * none, and only then, the whole query is re-expressed as a similarity filter. A
+     * search that works is therefore never slowed down by a feature that exists for
+     * searches that do not.
+     *
+     * <p>The cost of asking is one probe of {@code projects_search_vector_idx} with a
+     * {@code LIMIT 1} behind it, inside the same read-only transaction as the query
+     * that follows.
+     *
+     * <p><strong>It deliberately ignores the caller's filters.</strong> The question
+     * is "is this word spelled like something on the platform", not "does this
+     * combination of filters match anything" — so {@code ?q=robto&category=games}
+     * corrects the spelling and then honestly returns nothing if no games campaign
+     * matches. Asking the filtered question instead would turn every over-narrow
+     * filter set into a fuzzy search, and the reader who ticked four filters and got
+     * approximate matches back would have no way to tell which of the two happened.
+     *
+     * <p><strong>And it is asked again on every page.</strong> The tier is a function
+     * of the query and the data, not of the page, so page two agrees with page one
+     * unless a campaign matching the term exactly appeared or disappeared in between —
+     * in which case the result set changed anyway, which is the condition every keyset
+     * cursor on this platform already lives with.
+     *
+     * @param text null when the caller sent none, in which case there is no tier and
+     *     the answer is unused
+     */
+    private boolean exactTierMatches(String text) {
+        if (text == null) {
+            return true;
+        }
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("text", text);
+        params.addValue("states", List.copyOf(DiscoveryStatus.PUBLIC_STATES));
+        Boolean matched = jdbc.queryForObject(
+                "SELECT EXISTS (SELECT 1 FROM projects p WHERE p.state IN (:states)"
+                        + " AND p.search_vector @@ " + TEXT_QUERY + ")",
+                params,
+                Boolean.class);
+        return Boolean.TRUE.equals(matched);
     }
 
     /**
@@ -468,7 +827,9 @@ public class PostgresSearchService implements SearchService {
             case ENDING_SOON -> "p.deadline ASC NULLS LAST, p.id ASC";
             case MOST_FUNDED -> "p.pledged_amount DESC, p.id ASC";
             case MOST_BACKED -> "p.backers_count DESC, p.id ASC";
-            case POPULARITY -> "sort_score DESC, p.id ASC";
+            // Both orders whose key is an expression rather than a column read it
+            // from the projected alias, so the score is computed once per row.
+            case POPULARITY, BEST_MATCH -> "sort_score DESC, p.id ASC";
             case RELEVANCE, NEAR_ME -> throw new IllegalStateException(
                     // Unreachable: the controller refuses these before they get here,
                     // through the capability check. Throwing rather than falling back
@@ -480,10 +841,13 @@ public class PostgresSearchService implements SearchService {
     }
 
     /** {@code sort_score} exists on every query so the row mapper has one shape. */
-    private static String scoreColumn(DiscoverySort sort) {
-        return sort == DiscoverySort.POPULARITY
-                ? "(" + POPULARITY_SCORE + ") AS sort_score"
-                : "NULL::numeric AS sort_score";
+    private static String scoreColumn(DiscoverySort sort, boolean exactTier) {
+        return switch (sort) {
+            case POPULARITY -> "(" + POPULARITY_SCORE + ") AS sort_score";
+            case BEST_MATCH -> "(" + textScore("p", exactTier) + ") AS sort_score";
+            case NEWEST, ENDING_SOON, MOST_FUNDED, MOST_BACKED, RELEVANCE, NEAR_ME ->
+                "NULL::numeric AS sort_score";
+        };
     }
 
     /**
@@ -500,7 +864,8 @@ public class PostgresSearchService implements SearchService {
      * onwards, and dropping the {@code id} branch loses every row that shares a key
      * with the last row of the previous page.
      */
-    private static String keyset(DiscoverySort sort, DiscoveryCursor cursor, MapSqlParameterSource params) {
+    private static String keyset(
+            DiscoverySort sort, DiscoveryCursor cursor, boolean exactTier, MapSqlParameterSource params) {
         params.addValue("cursorId", cursor.id());
         String key = cursor.sortKey();
         return switch (sort) {
@@ -509,6 +874,10 @@ public class PostgresSearchService implements SearchService {
             case MOST_FUNDED -> presentKeyset("p.pledged_amount", decimal(key), params);
             case MOST_BACKED -> presentKeyset("p.backers_count", integer(key), params);
             case POPULARITY -> presentKeyset("(" + POPULARITY_SCORE + ")", decimal(key), params);
+            // The score is repeated here rather than referenced as `sort_score`: a
+            // SELECT alias is not visible in the WHERE clause, which is evaluated
+            // first. Both copies come from textScore, so they cannot disagree.
+            case BEST_MATCH -> presentKeyset("(" + textScore("p", exactTier) + ")", decimal(key), params);
             case RELEVANCE, NEAR_ME -> throw new IllegalStateException(
                     sort.wireValue() + " is refused before it reaches the query");
         };
@@ -580,7 +949,7 @@ public class PostgresSearchService implements SearchService {
             case ENDING_SOON -> card.deadline() == null ? null : card.deadline().toString();
             case MOST_FUNDED -> card.pledged().amount().toPlainString();
             case MOST_BACKED -> Integer.toString(card.backersCount());
-            case POPULARITY -> row.score().toPlainString();
+            case POPULARITY, BEST_MATCH -> row.score().toPlainString();
             case RELEVANCE, NEAR_ME -> throw new IllegalStateException(
                     sort.wireValue() + " is refused before it reaches the query");
         };
@@ -609,8 +978,9 @@ public class PostgresSearchService implements SearchService {
     /**
      * A card, and the sort key that produced it.
      *
-     * @param score null except under {@link DiscoverySort#POPULARITY}, where the key
-     *     is computed by the database and cannot be recovered from the card
+     * @param score null except under {@link DiscoverySort#POPULARITY} and
+     *     {@link DiscoverySort#BEST_MATCH}, the two orders whose key is computed by
+     *     the database and cannot be recovered from the card
      */
     private record Row(ProjectCard card, BigDecimal score) {
     }

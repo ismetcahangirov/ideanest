@@ -84,14 +84,57 @@ public enum DiscoverySort {
      */
     POPULARITY("popularity"),
 
+    /**
+     * How well the campaign's text matches the words that were typed (D-01).
+     * <strong>The default when {@code q} is present and no sort is named.</strong>
+     *
+     * <p><strong>This is not {@link #RELEVANCE}, and the difference is the whole
+     * reason it exists.</strong> §11.2's relevance is a composite of pledge
+     * velocity, backer velocity, completion, curation, personalisation and decay —
+     * seven terms, none of which is about what the reader typed — and it is #44's
+     * to build. Text relevance is {@code ts_rank} over the folded search vector: a
+     * title match outranks a blurb match outranks a story match, and that is all it
+     * claims. Serving one under the other's name would mean that when #44 lands,
+     * either {@code sort=relevance} changes meaning underneath every client or the
+     * composite has to be given a different word.
+     *
+     * <p><strong>Why a sort of its own rather than "the order used when q is
+     * present".</strong> They are the same thing here — {@code DiscoveryQuery}
+     * resolves an unstated sort to this one exactly when there is text to rank by —
+     * but the cursor carries the sort it was issued for and the fingerprint hashes
+     * it, so the order a page was produced in has to have a name. It is also what
+     * lets a client that filtered its way to text search and then chose
+     * {@code sort=newest} switch back.
+     *
+     * <p><strong>What #44 layers on top.</strong> {@code RELEVANCE} becomes a
+     * second scoring expression beside this one, not a replacement for it: the
+     * §11.2 composite has a text term, and this is the text term. Nothing about
+     * this constant, its cursor encoding, or its index has to change for that.
+     *
+     * <p>Requires {@link DiscoveryCapability#FULL_TEXT}, because a text score
+     * needs a search vector. A query that names it without a {@code q} has nothing
+     * to rank and is resolved back to {@link #DEFAULT} — see {@code DiscoveryQuery}.
+     */
+    BEST_MATCH("best_match"),
+
     /** §11.2's composite. <strong>#44</strong>; refused until then. */
     RELEVANCE("relevance"),
 
     /** Geographic distance. <strong>#47</strong>; refused until then. */
     NEAR_ME("near_me");
 
-    /** What a client sends when it sends nothing. See {@link #NEWEST}. */
+    /** What a client sends when it sends nothing and is browsing. See {@link #NEWEST}. */
     public static final DiscoverySort DEFAULT = NEWEST;
+
+    /**
+     * What a client sends when it sends nothing and is searching.
+     *
+     * <p>A feed with no query has no relevance to order by; a feed with one has
+     * nothing else worth opening on. Sorting search results by launch date puts the
+     * campaign that mentions the word once in its ninth paragraph above the one
+     * named after it, and every reader reads that as "the search does not work".
+     */
+    public static final DiscoverySort DEFAULT_WITH_TEXT = BEST_MATCH;
 
     private static final Map<String, DiscoverySort> BY_WIRE_VALUE = byWireValue();
 
@@ -108,6 +151,7 @@ public enum DiscoverySort {
     /** The capability this order needs, or empty when PostgreSQL can serve it today. */
     public Optional<DiscoveryCapability> requiredCapability() {
         return switch (this) {
+            case BEST_MATCH -> Optional.of(DiscoveryCapability.FULL_TEXT);
             case RELEVANCE -> Optional.of(DiscoveryCapability.SORT_RELEVANCE);
             case NEAR_ME -> Optional.of(DiscoveryCapability.SORT_NEAR_ME);
             case NEWEST, ENDING_SOON, MOST_FUNDED, MOST_BACKED, POPULARITY -> Optional.empty();
