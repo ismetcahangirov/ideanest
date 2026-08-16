@@ -131,6 +131,50 @@ public final class Campaigns {
         jdbc.update("DELETE FROM collections");
         jdbc.update("DELETE FROM projects");
         jdbc.update("DELETE FROM tags");
+        // V16 seeds eighteen Azerbaijani cities and nothing else, so every location
+        // outside Azerbaijan is a fixture some suite inserted — see
+        // {@link #location}. Removed here rather than by the suite that added it,
+        // because a leftover row is not inert: it is a value in the country and city
+        // facets, which the discovery suites count.
+        //
+        // After `projects`, and it has to be: V16 gives `projects.location_id` no ON
+        // DELETE clause on purpose, so a location that campaigns still point at cannot
+        // be deleted at all.
+        jdbc.update("DELETE FROM locations WHERE country_code <> 'AZ'");
+    }
+
+    /**
+     * A place outside V16's Azerbaijani seed, for a suite that needs a second country.
+     *
+     * <p>Idempotent per slug, like {@link #creator}, so a {@code @BeforeEach} that asks
+     * twice gets one row. Removed by {@link #clear}.
+     *
+     * @param slug the folded comparable form, which is what {@code ?city=} matches
+     * @param name the {@code az} row, which V16 makes mandatory and treats as the
+     *     endonym
+     */
+    public static void location(
+            DataSource dataSource, String slug, String countryCode, String latitude, String longitude, String name) {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        jdbc.update(
+                """
+                INSERT INTO locations (id, slug, country_code, latitude, longitude)
+                VALUES (?, ?, ?, CAST(? AS numeric), CAST(? AS numeric))
+                ON CONFLICT (slug) DO NOTHING
+                """,
+                UUID.randomUUID(),
+                slug,
+                countryCode,
+                latitude,
+                longitude);
+        jdbc.update(
+                """
+                INSERT INTO location_translations (location_id, locale, name)
+                SELECT id, 'az', ? FROM locations WHERE slug = ?
+                ON CONFLICT (location_id, locale) DO NOTHING
+                """,
+                name,
+                slug);
     }
 
     /**
@@ -220,6 +264,7 @@ public final class Campaigns {
         private String state = "DRAFT";
         private String categorySlug;
         private String subcategorySlug;
+        private String locationSlug;
         private BigDecimal goal;
         private BigDecimal pledged = BigDecimal.ZERO;
         private int backers;
@@ -275,6 +320,19 @@ public final class Campaigns {
         public Seed subcategory(String categorySlug, String value) {
             this.categorySlug = categorySlug;
             this.subcategorySlug = value;
+            return this;
+        }
+
+        /**
+         * Where the campaign is (#47), by {@code locations.slug}.
+         *
+         * <p>Left null by default, which is the state every campaign on the platform is
+         * actually in — no write path sets {@code location_id} yet — and which is what
+         * makes "a campaign with no location still appears under every other sort" a
+         * fact the whole discovery suite happens to assert rather than one test does.
+         */
+        public Seed location(String value) {
+            this.locationSlug = value;
             return this;
         }
 
@@ -335,7 +393,8 @@ public final class Campaigns {
             jdbc.update(
                     """
                     INSERT INTO projects (
-                        id, creator_id, slug, title, blurb, story, category_id, subcategory_id, state,
+                        id, creator_id, slug, title, blurb, story, category_id, subcategory_id,
+                        location_id, state,
                         goal_amount, pledged_amount, backers_count, duration_days,
                         launched_at, deadline,
                         cover_image_url, cover_image_width, cover_image_height)
@@ -344,6 +403,7 @@ public final class Campaigns {
                         (SELECT id FROM categories WHERE slug = ?),
                         (SELECT s.id FROM subcategories s JOIN categories c ON c.id = s.parent_id
                           WHERE c.slug = ? AND s.slug = ?),
+                        (SELECT id FROM locations WHERE slug = ?),
                         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     id,
@@ -355,6 +415,7 @@ public final class Campaigns {
                     categorySlug,
                     categorySlug,
                     subcategorySlug,
+                    locationSlug,
                     state,
                     goal,
                     pledged,

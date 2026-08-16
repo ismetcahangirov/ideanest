@@ -570,28 +570,33 @@ class SearchTextApiTests extends DiscoveryTestSupport {
     @DisplayName("a search that asks for an unimplemented option is refused by name")
     void searchRefusesWhatDiscoveryRefuses() {
         // The same advice, over the same capability set. An endpoint that answered
-        // sort=near_me because its handler forgot the check would be the one place #47
-        // was silently already shipped.
+        // showOnly=saved because its handler forgot the check would be the one place a
+        // per-caller filter was silently already shipped.
         //
-        // This used to be asserted with sort=relevance, and #44 landing is why it is
-        // not: relevance is served on both endpoints now, and it is asserted the other
-        // way round two lines below — because a capability declared once must reach
-        // /v1/search as well as /v1/discover, or a client would find that its search
-        // results could not be ranked.
+        // This used to be asserted with sort=relevance and then with sort=near_me, and
+        // #44 and #47 landing are why it is neither: both are served on both endpoints
+        // now, and both are asserted the other way round below — because a capability
+        // declared once must reach /v1/search as well as /v1/discover, or a client
+        // would find that its search results could not be ranked or ordered by
+        // distance.
         ResponseEntity<Map<String, Object>> response =
-                get("/v1/search?q={q}&sort=near_me", new HttpHeaders(), "robot");
+                get("/v1/search?q={q}&showOnly=saved", new HttpHeaders(), "robot");
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).containsEntry("code", "DISCOVERY_OPTION_UNSUPPORTED");
-        assertThat(response.getBody().get("meta").toString()).contains("#47");
+        assertThat(response.getBody().get("meta").toString()).contains("saved-projects table");
 
         assertThat(get("/v1/search?q={q}&sort=relevance", new HttpHeaders(), "robot")
                         .getStatusCode())
                 .isEqualTo(HttpStatus.OK);
 
-        assertThat(get("/v1/search?q={q}&showOnly=saved", new HttpHeaders(), "robot")
+        assertThat(get("/v1/search?q={q}&sort=near_me&near={near}", new HttpHeaders(), "robot", "40.41,49.87")
                         .getStatusCode())
-                .isEqualTo(HttpStatus.BAD_REQUEST);
+                .isEqualTo(HttpStatus.OK);
+
+        assertThat(get("/v1/search?q={q}&country=AZ", new HttpHeaders(), "robot")
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
     }
 
     @Test
