@@ -4,6 +4,7 @@ import az.ideanest.discovery.application.DiscoveryPage;
 import az.ideanest.discovery.application.FacetCounts;
 import az.ideanest.discovery.domain.DiscoveryStatus;
 import az.ideanest.discovery.domain.ProjectCard;
+import az.ideanest.discovery.domain.Suggestion;
 import az.ideanest.shared.Money;
 import java.time.Instant;
 import java.util.List;
@@ -81,6 +82,32 @@ public final class DiscoveryResponses {
             List<ValueCount> amountRaised) {
     }
 
+    /**
+     * D-02's autocomplete payload.
+     *
+     * <p>An object with one array rather than a bare array, for the reason every
+     * other response here is an object: a top-level JSON array cannot grow a field.
+     * When this needs to say how it matched, or to carry a request id, the clients
+     * that already parse it do not have to change.
+     *
+     * @param items at most the requested limit, possibly empty. <strong>Empty is a
+     *     result, not an error</strong> — it is what an unanswerable fragment gets
+     */
+    public record Suggestions(List<SuggestionItem> items) {
+    }
+
+    /**
+     * @param kind {@code campaign}, {@code category}, {@code subcategory}, or
+     *     {@code tag} — what to render this row as and where it leads
+     * @param label what to show, in the negotiated language and with its diacritics
+     * @param slug what to send back: a campaign's slug, a taxon's slug, a tag's slug
+     * @param parentSlug what qualifies the slug — a subcategory's category, a
+     *     campaign's creator (project URLs are {@code /{creatorSlug}/{projectSlug}}).
+     *     Absent for a category and a tag, which need no qualification
+     */
+    public record SuggestionItem(String kind, String label, String slug, String parentSlug) {
+    }
+
     public record ValueCount(String value, long count) {
     }
 
@@ -137,6 +164,16 @@ public final class DiscoveryResponses {
                 counts.completion().stream().map(DiscoveryResponses::valueCount).toList(),
                 counts.goalAmount().stream().map(DiscoveryResponses::valueCount).toList(),
                 counts.amountRaised().stream().map(DiscoveryResponses::valueCount).toList());
+    }
+
+    public static Suggestions suggestions(List<Suggestion> suggestions) {
+        return new Suggestions(suggestions.stream()
+                .map(suggestion -> new SuggestionItem(
+                        suggestion.kind().wireValue(),
+                        suggestion.label(),
+                        suggestion.slug(),
+                        suggestion.parentSlug()))
+                .toList());
     }
 
     private static ValueCount valueCount(FacetCounts.ValueCount count) {

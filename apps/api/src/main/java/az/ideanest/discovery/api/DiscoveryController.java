@@ -6,12 +6,6 @@ import az.ideanest.discovery.application.UnsupportedDiscoveryOptionException;
 import az.ideanest.discovery.domain.DiscoveryCapability;
 import az.ideanest.project.application.Taxonomy;
 import jakarta.servlet.http.HttpServletResponse;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.EnumSet;
-import java.util.HexFormat;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
@@ -67,13 +61,7 @@ import org.springframework.web.context.request.WebRequest;
 public class DiscoveryController {
 
     /** See the class comment. Deliberately the same window the popularity score is bucketed to. */
-    private static final long MAX_AGE_SECONDS = 60;
-
-    /** ASCII unit separator, for the digest. Cannot occur in a slug, a uuid, or a number. */
-    private static final char FIELD_SEPARATOR = (char) 0x1f;
-
-    /** ASCII record separator, so that a row boundary is not a field boundary. */
-    private static final char ROW_SEPARATOR = (char) 0x1e;
+    static final long MAX_AGE_SECONDS = 60;
 
     private final SearchService search;
 
@@ -103,7 +91,7 @@ public class DiscoveryController {
         // On the raw response, because the 304 below is written by checkNotModified
         // and never passes through a ResponseEntity.
         response.setHeader(HttpHeaders.VARY, HttpHeaders.ACCEPT_LANGUAGE);
-        String etag = etagOf(locale, canonical(feed));
+        String etag = PublicReads.etagOf(locale, PublicReads.canonical(feed));
         if (request.checkNotModified(etag)) {
             return null;
         }
@@ -133,7 +121,7 @@ public class DiscoveryController {
         DiscoveryResponses.Facets facets = DiscoveryResponses.facets(search.facets(query));
 
         response.setHeader(HttpHeaders.VARY, HttpHeaders.ACCEPT_LANGUAGE);
-        String etag = etagOf(locale, canonical(facets));
+        String etag = PublicReads.etagOf(locale, PublicReads.canonical(facets));
         if (request.checkNotModified(etag)) {
             return null;
         }
@@ -146,110 +134,14 @@ public class DiscoveryController {
     /**
      * Refuses a query that asks for something no implementation can do yet.
      *
-     * <p>Every missing capability at once rather than the first: a client that sent
-     * both a search term and {@code sort=relevance} should learn about both in one
-     * round trip. The alternative to refusing — accepting the parameter and dropping
-     * it — is what this whole mechanism exists to prevent. See
-     * {@link DiscoveryCapability}.
+     * <p>The comparison itself lives on
+     * {@link UnsupportedDiscoveryOptionException#requireSupported}, because
+     * {@link SearchController} has to make exactly the same one. The alternative to
+     * refusing — accepting the parameter and dropping it — is what this whole
+     * mechanism exists to prevent. See {@link DiscoveryCapability}.
      */
     private DiscoveryQuery requireSupported(DiscoveryQuery query) {
-        Set<DiscoveryCapability> missing = EnumSet.noneOf(DiscoveryCapability.class);
-        missing.addAll(query.requiredCapabilities());
-        missing.removeAll(search.capabilities());
-        if (!missing.isEmpty()) {
-            throw new UnsupportedDiscoveryOptionException(missing);
-        }
+        UnsupportedDiscoveryOptionException.requireSupported(query.requiredCapabilities(), search.capabilities());
         return query;
-    }
-
-    /**
-     * Everything in the feed that reaches the client, in a fixed order.
-     *
-     * <p>Every field, not a selection: a digest over a subset is a tag that fails to
-     * change when the part it does not cover does, which is a client rendering last
-     * minute's cards and never being told.
-     */
-    private static String canonical(DiscoveryResponses.Feed feed) {
-        StringBuilder canonical = new StringBuilder();
-        for (DiscoveryResponses.Card card : feed.items()) {
-            append(canonical, card.id(), card.slug(), card.creatorSlug(), card.title(), card.state(), card.badge());
-            append(
-                    canonical,
-                    card.creator().name(),
-                    card.creator().slug(),
-                    card.creator().avatarUrl());
-            append(
-                    canonical,
-                    card.image() == null ? null : card.image().url(),
-                    card.image() == null ? null : String.valueOf(card.image().width()),
-                    card.image() == null ? null : String.valueOf(card.image().height()));
-            append(
-                    canonical,
-                    card.goal() == null ? null : card.goal().amount().toPlainString(),
-                    card.goal() == null ? null : card.goal().currency(),
-                    card.pledged().amount().toPlainString(),
-                    card.pledged().currency(),
-                    card.completionPercent(),
-                    String.valueOf(card.backersCount()),
-                    String.valueOf(card.daysLeft()),
-                    String.valueOf(card.launchedAt()),
-                    String.valueOf(card.deadline()));
-        }
-        append(canonical, feed.nextCursor());
-        return canonical.toString();
-    }
-
-    private static String canonical(DiscoveryResponses.Facets facets) {
-        StringBuilder canonical = new StringBuilder();
-        appendCounts(canonical, facets.status());
-        for (DiscoveryResponses.CategoryCount category : facets.categories()) {
-            append(canonical, category.slug(), category.name(), String.valueOf(category.count()));
-            for (DiscoveryResponses.NamedCount subcategory : category.subcategories()) {
-                append(canonical, subcategory.slug(), subcategory.name(), String.valueOf(subcategory.count()));
-            }
-        }
-        for (DiscoveryResponses.NamedCount tag : facets.tags()) {
-            append(canonical, tag.slug(), tag.name(), String.valueOf(tag.count()));
-        }
-        appendCounts(canonical, facets.completion());
-        appendCounts(canonical, facets.goalAmount());
-        appendCounts(canonical, facets.amountRaised());
-        return canonical.toString();
-    }
-
-    private static void appendCounts(StringBuilder canonical, Iterable<DiscoveryResponses.ValueCount> counts) {
-        for (DiscoveryResponses.ValueCount count : counts) {
-            append(canonical, count.value(), String.valueOf(count.count()));
-        }
-    }
-
-    /**
-     * A tag derived from the content, deterministically.
-     *
-     * <p>Not {@code hashCode()}, for the reason {@code CategoryController} gives: a
-     * tag has to mean the same thing to every instance of the service and to the same
-     * instance after a restart, and nothing guarantees a record's hash is stable
-     * across either. A digest over what is serialised is.
-     *
-     * <p>The locale is hashed first. Two languages of one response must not share a
-     * tag, or a client that asked for one revalidates the other and is told 304.
-     */
-    private static String etagOf(String locale, String content) {
-        MessageDigest sha256;
-        try {
-            sha256 = MessageDigest.getInstance("SHA-256");
-        } catch (NoSuchAlgorithmException e) {
-            // Every JVM ships SHA-256. Reaching here is not a runtime condition.
-            throw new IllegalStateException("SHA-256 is unavailable", e);
-        }
-        byte[] digest = sha256.digest((locale + FIELD_SEPARATOR + content).getBytes(StandardCharsets.UTF_8));
-        return "\"" + HexFormat.of().formatHex(digest, 0, 8) + "\"";
-    }
-
-    private static void append(StringBuilder canonical, String... fields) {
-        for (String field : fields) {
-            canonical.append(field).append(FIELD_SEPARATOR);
-        }
-        canonical.append(ROW_SEPARATOR);
     }
 }
