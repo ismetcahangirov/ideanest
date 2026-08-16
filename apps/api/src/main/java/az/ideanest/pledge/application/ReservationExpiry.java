@@ -2,6 +2,7 @@ package az.ideanest.pledge.application;
 
 import az.ideanest.pledge.domain.Pledge;
 import az.ideanest.pledge.infrastructure.PledgeRepository;
+import az.ideanest.reward.application.RewardStock;
 import java.time.Instant;
 import java.util.UUID;
 import org.slf4j.Logger;

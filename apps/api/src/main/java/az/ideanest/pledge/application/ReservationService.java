@@ -4,6 +4,7 @@ import az.ideanest.pledge.PledgeProperties;
 import az.ideanest.pledge.domain.Pledge;
 import az.ideanest.pledge.domain.PledgeState;
 import az.ideanest.pledge.infrastructure.PledgeRepository;
+import az.ideanest.reward.application.RewardStock;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;

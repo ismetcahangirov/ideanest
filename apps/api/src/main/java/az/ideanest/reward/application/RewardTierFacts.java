@@ -1,6 +1,5 @@
 package az.ideanest.reward.application;
 
-import az.ideanest.pledge.application.RewardStock;
 import az.ideanest.project.application.RewardFacts;
 import az.ideanest.reward.domain.RewardTier;
 import az.ideanest.reward.infrastructure.RewardTierRepository;
@@ -14,12 +13,12 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * This module's answer to the questions other modules ask about reward tiers.
  *
- * <p>Two interfaces, both declared by the module that needs the answer — see
- * {@link RewardFacts} for why the dependency points this way and not the other.
- * {@link RewardFacts} is the project module's completeness checklist;
- * {@link RewardStock} is the pledge module's reservation (#51), which needs a
- * tier's price and one place on it and must not reach into
- * {@code reward.infrastructure} to get either.
+ * <p>Two interfaces, pointing opposite ways, and both for the same reason — the
+ * one that keeps the modules acyclic. {@link RewardFacts} is the project module's
+ * completeness checklist, declared there and implemented here because the
+ * alternative would be a cycle; see that interface. {@link RewardStock} is the
+ * pledge module's reservation (#51), declared <em>here</em> because that module
+ * already depends on this one and the alternative would again be a cycle.
  *
  * <p><strong>The stock methods are one statement each</strong>, and the statements
  * are in {@link RewardTierRepository} rather than here. That is deliberate: what

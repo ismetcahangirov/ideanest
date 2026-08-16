@@ -1,18 +1,27 @@
-package az.ideanest.pledge.application;
+package az.ideanest.reward.application;
 
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
 /**
- * What this module needs from a reward tier: its price, and one place on it.
+ * What the pledge module needs from a reward tier: its price, and one place on it.
  *
- * <p><strong>Declared here and implemented over there</strong>, like
- * {@code project.application.RewardFacts} before it. The module that needs the
- * answer owns the question, so the reward module can change how a tier is stored
- * without this module knowing, and this module cannot reach into
- * {@code reward.domain} or {@code reward.infrastructure} to find out — which
- * {@code ModuleBoundaryTests} enforces.
+ * <p>The seam reservation (#51) reserves through. It is here rather than in
+ * {@code reward.domain} or {@code reward.infrastructure} because those are this
+ * module's internals and {@code ModuleBoundaryTests} refuses another module a view
+ * of them — the application layer is the only part this module has agreed to keep
+ * stable.
+ *
+ * <p><strong>Declared by the provider, unlike
+ * {@code project.application.RewardFacts}</strong>, and the difference is not
+ * taste. That interface is declared by the module that needs the answer because
+ * the alternative would be a cycle. Here the alternative <em>is</em> the cycle:
+ * {@code pledge.domain.QuotedLine} already names {@code ShippingRate} from this
+ * package (#53), so the pledge module depends on this one, and an interface
+ * declared over there and implemented here would close the loop —
+ * {@code ModuleBoundaryTests} catches it in one line. One direction between two
+ * modules, and this is the direction that already exists.
  *
  * <p><strong>Why the increment is not done here.</strong> §7.2 puts the stock
  * columns on {@code reward_tiers} and says they are "written by the pledge module
