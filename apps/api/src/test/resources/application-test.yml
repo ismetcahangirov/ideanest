@@ -74,6 +74,29 @@ ideanest:
       # have lapsed than one pass will take, and reaching two hundred would mean
       # two hundred checkouts for one assertion. Two exercises the same arithmetic.
       cleanup-batch-size: 2
+    rate-limit:
+      # The production values. The limit is per account and every test uses its
+      # own backer, so it is exercised in isolation rather than by the tests
+      # failing each other -- which is why this one does not need the ceiling
+      # that the per-address auth limits below are given.
+      pledges-per-user: 10
+      window: PT1M
+
+  idempotency:
+    # Disabled, exactly as the two schedules below are: `-` is Spring's own value
+    # for "do not schedule this". The suite drives IdempotencyKeySweeper directly
+    # with the instant it wants to test, which is deterministic; a timer firing in
+    # the background would delete the very keys a replay test is about to retry.
+    sweep-schedule: "-"
+    # The production value, §17.2's. The retention is what the sweep test is
+    # about, so shortening it here would mean asserting the rule against a
+    # configuration nothing runs on -- and there is no need, because the suite
+    # moves the application's Clock rather than waiting a day.
+    retention: PT24H
+    # Deliberately small, like the reservation batch above and for the same
+    # reason: the bound is only observable once more keys have expired than one
+    # pass will take.
+    sweep-batch-size: 2
 
   user:
     # Disabled. `-` is Spring's own value for "do not schedule this". The suite

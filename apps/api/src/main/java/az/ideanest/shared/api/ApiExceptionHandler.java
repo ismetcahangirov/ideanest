@@ -1,5 +1,9 @@
 package az.ideanest.shared.api;
 
+import az.ideanest.shared.idempotency.IdempotencyKeyReusedException;
+import az.ideanest.shared.idempotency.IdempotentRequestInProgressException;
+import az.ideanest.shared.idempotency.MalformedIdempotencyKeyException;
+import az.ideanest.shared.idempotency.MissingIdempotencyKeyException;
 import az.ideanest.shared.ratelimit.RateLimitExceededException;
 import java.net.URI;
 import java.util.LinkedHashMap;
@@ -21,9 +25,103 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
  *
  * <p>One shape for every error, so a client parses failures the same way
  * wherever they came from.
+ *
+ * <p><strong>§10.3's idempotency refusals are here rather than with the endpoint
+ * that raised them</strong>, and that is the point of them being here. The header is
+ * required on every payment mutation — the draft and the confirmation today, #56's
+ * edit and cancellation and epic #59's charges tomorrow — and a client that learned
+ * to handle {@code IDEMPOTENCY_KEY_REUSED} from one of them must get the same body
+ * from all of them. A copy per module would be four chances for one of the four
+ * codes to drift.
  */
 @RestControllerAdvice
 public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
+
+    /**
+     * How long a client is told to wait before retrying a request whose first attempt
+     * is still running. One second: the work it is waiting on is a database
+     * transaction, and the honest expectation is milliseconds.
+     */
+    private static final long RETRY_IN_PROGRESS_SECONDS = 1;
+
+    /**
+     * 400 for a payment mutation with no {@code Idempotency-Key}.
+     *
+     * <p>§10.3 makes it required, and a refusal is the only safe reading: treating an
+     * absent header as "this client does not want replay protection" would make the
+     * guarantee opt-in for exactly the clients most likely to need it, and the
+     * symptom is a backer charged twice by a mobile app on a bad connection.
+     */
+    @ExceptionHandler(MissingIdempotencyKeyException.class)
+    public ProblemDetail handleMissingIdempotencyKey(MissingIdempotencyKeyException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("https://ideanest.az/problems/idempotency-key-required"));
+        problem.setTitle("Idempotency key required");
+        problem.setDetail("This request requires an Idempotency-Key header carrying a UUID.");
+        problem.setProperty("code", "IDEMPOTENCY_KEY_REQUIRED");
+        return problem;
+    }
+
+    /**
+     * 400 for a key that is not a UUID.
+     *
+     * <p>Told apart from the one above because they are different mistakes with
+     * different fixes: a header nobody added, against a header whose value came from
+     * the wrong generator.
+     */
+    @ExceptionHandler(MalformedIdempotencyKeyException.class)
+    public ProblemDetail handleMalformedIdempotencyKey(MalformedIdempotencyKeyException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("https://ideanest.az/problems/idempotency-key-invalid"));
+        problem.setTitle("Invalid idempotency key");
+        problem.setDetail("An Idempotency-Key is a UUID.");
+        problem.setProperty("code", "IDEMPOTENCY_KEY_INVALID");
+        return problem;
+    }
+
+    /**
+     * 409 for one key carrying two different requests.
+     *
+     * <p>Neither answer would be safe: replaying the first would tell the client the
+     * second request succeeded when nothing of the sort happened, and executing the
+     * second would make the key mean nothing. What the first request <em>was</em> is
+     * not reported — it may have been made from another device, and the response
+     * recorded against it is somebody's pledge — beyond the operation it was spent
+     * on, which is what a developer needs to find their bug.
+     */
+    @ExceptionHandler(IdempotencyKeyReusedException.class)
+    public ProblemDetail handleReusedIdempotencyKey(IdempotencyKeyReusedException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/idempotency-key-reused"));
+        problem.setTitle("Idempotency key already used");
+        problem.setDetail("This Idempotency-Key was already used for a different request.");
+        problem.setProperty("code", "IDEMPOTENCY_KEY_REUSED");
+        problem.setProperty("meta", Map.of("operation", exception.operation()));
+        return problem;
+    }
+
+    /**
+     * 409 for the loser of a race between two identical requests.
+     *
+     * <p>The client's work is being done, exactly once, by the request that got there
+     * first — see {@code IdempotentRequestInProgressException} for why the loser is
+     * told to retry rather than made to wait. {@code Retry-After} is set for
+     * {@link #handleRateLimit}'s reason: a client that is told to wait can wait, and
+     * one that is not retries immediately.
+     */
+    @ExceptionHandler(IdempotentRequestInProgressException.class)
+    public ResponseEntity<ProblemDetail> handleRequestInProgress(IdempotentRequestInProgressException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/idempotent-request-in-progress"));
+        problem.setTitle("Request already in progress");
+        problem.setDetail("An earlier request with this Idempotency-Key has not finished. Try again in a moment.");
+        problem.setProperty("code", "IDEMPOTENT_REQUEST_IN_PROGRESS");
+        problem.setProperty("retryAfterSeconds", RETRY_IN_PROGRESS_SECONDS);
+
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(RETRY_IN_PROGRESS_SECONDS))
+                .body(problem);
+    }
 
     @ExceptionHandler(RateLimitExceededException.class)
     public ResponseEntity<ProblemDetail> handleRateLimit(RateLimitExceededException exception) {
