@@ -145,7 +145,7 @@ is a design change, not an implementation detail.
 
 **Motion decreases as money gets closer.** Discovery may animate. Checkout must
 not — every animation there reads as hesitation. The budget per surface is in
-`docs/motion-system.md` §7.3.
+`docs/motion-system.md` §5.
 
 **Animate only `transform` and `opacity`.** Anything else forces layout on every
 frame.
