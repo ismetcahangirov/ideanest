@@ -17,16 +17,19 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 /**
  * Discovery's own failures, as RFC 9457 problem details (§10.4).
  *
- * <p>Scoped to this module's controller rather than applied globally, for the reason
+ * <p>Scoped to this module's controllers rather than applied globally, for the reason
  * {@code RewardExceptionHandler} gives: an advice that catches a broad type across the
- * whole service turns a bug somewhere else into a tidy 4xx and hides it.
+ * whole service turns a bug somewhere else into a tidy 4xx and hides it. Both of them
+ * are named, because {@code /v1/search} raises exactly the same three failures as
+ * {@code /v1/discover} — it binds the same parameters and issues the same query — and
+ * an advice that covered one would leave the other answering a bad cursor with a 500.
  *
  * <p>Every response carries a {@code code} as well as a status. All three failures
  * here are 400s and a client has to be able to tell them apart without matching on
  * prose — one means "start again from the first page", one means "stop sending this
  * parameter", and one means "fix the value".
  */
-@RestControllerAdvice(assignableTypes = DiscoveryController.class)
+@RestControllerAdvice(assignableTypes = {DiscoveryController.class, SearchController.class})
 public class DiscoveryExceptionHandler {
 
     /**

@@ -67,7 +67,18 @@ public class SecurityConfiguration {
                         //
                         // GET and nothing else, for the reason the categories
                         // rule gives.
-                        .requestMatchers(HttpMethod.GET, "/v1/discover", "/v1/discover/facets")
+                        //
+                        // /v1/search and /v1/search/suggest are the same feed and
+                        // the same reasoning with a query term attached (#43): a
+                        // visitor who has not registered searching before deciding
+                        // whether to is the audience, and a search box that demanded
+                        // a token would be a search box nobody uses.
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/v1/discover",
+                                "/v1/discover/facets",
+                                "/v1/search",
+                                "/v1/search/suggest")
                         .permitAll()
                         // A campaign's pre-launch page. Public because the people
                         // it exists to collect have not registered — that is what

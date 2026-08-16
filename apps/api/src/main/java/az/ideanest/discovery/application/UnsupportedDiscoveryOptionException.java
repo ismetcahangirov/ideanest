@@ -32,4 +32,29 @@ public class UnsupportedDiscoveryOptionException extends RuntimeException {
     public Set<DiscoveryCapability> missing() {
         return missing;
     }
+
+    /**
+     * Refuses a query that needs more than the implementation has.
+     *
+     * <p>Here rather than in a controller because there are two of them —
+     * {@code /v1/discover} and {@code /v1/search} — and a second copy of this check
+     * is a second place for somebody to leave a capability out of the comparison.
+     * The failure that would produce is the exact one {@link DiscoveryCapability}
+     * exists to prevent, arriving on whichever endpoint was forgotten.
+     *
+     * @param required from {@link DiscoveryQuery#requiredCapabilities()}
+     * @param available from {@link SearchService#capabilities()}
+     * @throws UnsupportedDiscoveryOptionException naming <em>every</em> missing
+     *     capability rather than the first, so a client that asked for two things
+     *     learns about both in one round trip
+     */
+    public static void requireSupported(
+            Set<DiscoveryCapability> required, Set<DiscoveryCapability> available) {
+        Set<DiscoveryCapability> missing = EnumSet.noneOf(DiscoveryCapability.class);
+        missing.addAll(required);
+        missing.removeAll(available);
+        if (!missing.isEmpty()) {
+            throw new UnsupportedDiscoveryOptionException(missing);
+        }
+    }
 }

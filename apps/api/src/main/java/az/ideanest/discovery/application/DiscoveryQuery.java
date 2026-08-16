@@ -55,9 +55,11 @@ import java.util.TreeSet;
  * {@link DiscoveryCapability}: a field that is representable and not yet servable is
  * refused loudly by {@link SearchService}, never ignored.
  *
- * @param text free-text query (D-01). <strong>#43.</strong> Present so that the whole
- *     filter and pagination machinery is reusable by {@code GET /v1/search} without
- *     a second query object; refused by any implementation that does not declare
+ * @param text free-text query (D-01), as the reader typed it — <strong>unfolded</strong>,
+ *     because §11.3's fold belongs to the index and the query has to be folded the
+ *     same way the index was, which is the database's job. Makes the whole filter
+ *     and pagination machinery reusable by {@code GET /v1/search} without a second
+ *     query object; refused by any implementation that does not declare
  *     {@link DiscoveryCapability#FULL_TEXT}
  * @param statuses §4.3's five words; empty means every publicly visible state
  * @param categorySlugs primary category slugs; empty means any
@@ -71,7 +73,11 @@ import java.util.TreeSet;
  * @param location country, city, proximity. <strong>#47</strong>; nothing to filter
  *     on yet, see {@link LocationFilter}
  * @param showOnly saved, recommended, featured. <strong>#44 / #48</strong>
- * @param sort one of §4.3's seven; {@link DiscoverySort#DEFAULT} when unstated
+ * @param sort one of §4.3's seven plus {@link DiscoverySort#BEST_MATCH}. When
+ *     unstated it is {@link DiscoverySort#DEFAULT} while browsing and
+ *     {@link DiscoverySort#DEFAULT_WITH_TEXT} while searching; the constructor
+ *     resolves it, so this component is never null and the fingerprint and the
+ *     cursor always name a real order
  * @param limit page size, already clamped into {@link #MIN_LIMIT}..{@link #MAX_LIMIT}
  * @param cursor where the previous page stopped, or null for the first page
  * @param locale the negotiated language, for facet labels. <strong>Deliberately not
@@ -130,7 +136,21 @@ public record DiscoveryQuery(
         goal = goal == null ? AmountRange.ANY : goal;
         raised = raised == null ? AmountRange.ANY : raised;
         location = location == null ? LocationFilter.ANYWHERE : location;
-        sort = sort == null ? DiscoverySort.DEFAULT : sort;
+        // An unstated sort means something different when there is a query to rank
+        // by. See DiscoverySort.DEFAULT_WITH_TEXT: ordering search results by launch
+        // date puts the campaign that mentions the word once in its ninth paragraph
+        // above the one named after it.
+        //
+        // And the reverse: `sort=best_match` with nothing to match resolves back to
+        // the browsing default, because a text score over no text is zero for every
+        // campaign and the order would collapse to the tiebreaker. This is not the
+        // "accepted and quietly ignored" failure DiscoveryCapability exists to
+        // prevent — nothing is dropped, the request is simply underspecified and has
+        // exactly one sensible reading.
+        sort = sort == null
+                ? (text == null ? DiscoverySort.DEFAULT : DiscoverySort.DEFAULT_WITH_TEXT)
+                : sort;
+        sort = sort == DiscoverySort.BEST_MATCH && text == null ? DiscoverySort.DEFAULT : sort;
         limit = Math.clamp(limit, MIN_LIMIT, MAX_LIMIT);
         locale = locale == null ? "az" : locale;
     }
@@ -279,7 +299,11 @@ public record DiscoveryQuery(
         private Set<CompletionBand> completion = Set.of();
         private LocationFilter location = LocationFilter.ANYWHERE;
         private Set<ShowOnly> showOnly = Set.of();
-        private DiscoverySort sort = DiscoverySort.DEFAULT;
+        // Null rather than DEFAULT, and it matters: the record resolves an unstated
+        // sort against whether there is text to rank by, and a builder that filled
+        // in NEWEST here would make that resolution unreachable for every caller
+        // that did not name a sort — which is every caller that is searching.
+        private DiscoverySort sort;
         private int limit = DEFAULT_LIMIT;
         private DiscoveryCursor cursor;
         private String locale = "az";

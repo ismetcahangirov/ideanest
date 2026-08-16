@@ -140,12 +140,29 @@ public final class Campaigns {
      *     keeps both unique
      */
     public static UUID creator(DataSource dataSource, String handle) {
+        return creator(dataSource, handle, "Creator " + handle);
+    }
+
+    /**
+     * The same, with a chosen display name.
+     *
+     * <p>#43 puts {@code users.name} in {@code projects.search_vector}, so a suite
+     * about searching has to be able to say what a creator is called — "Creator
+     * search-creator" is not a name anybody would type into a search box, and a test
+     * that searched for it would be testing the fixture's naming convention.
+     *
+     * <p>Idempotent per handle like the overload above, and for the same reason: the
+     * name is set on insert and a second call with a different one does not change
+     * it, because the conflict clause does nothing. A test that needs a rename does
+     * it explicitly — which is the point of that test.
+     */
+    public static UUID creator(DataSource dataSource, String handle, String name) {
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         jdbc.update(
                 "INSERT INTO users (id, email, name, slug) VALUES (?, ?, ?, ?) ON CONFLICT (email) DO NOTHING",
                 UUID.randomUUID(),
                 handle + "@example.com",
-                "Creator " + handle,
+                name,
                 handle);
         return jdbc.queryForObject("SELECT id FROM users WHERE email = ?", UUID.class, handle + "@example.com");
     }
@@ -188,6 +205,8 @@ public final class Campaigns {
         private final UUID id = UUID.randomUUID();
 
         private String title;
+        private String blurb = "A summary that fits inside a hundred and thirty-five characters.";
+        private String storyJson;
         private String state = "DRAFT";
         private String categorySlug;
         private String subcategorySlug;
@@ -208,6 +227,26 @@ public final class Campaigns {
 
         public Seed title(String value) {
             this.title = value;
+            return this;
+        }
+
+        /** §4.3's "summary", and weight B of the search vector. */
+        public Seed blurb(String value) {
+            this.blurb = value;
+            return this;
+        }
+
+        /**
+         * One paragraph of story prose, as a story document.
+         *
+         * <p>Takes the prose rather than the document so that a test reads about what
+         * the story says. The envelope is the one {@code StoryDocuments} validates,
+         * because {@code ideanest_story_text} walks exactly that shape and a fixture
+         * holding a different one would test nothing.
+         */
+        public Seed story(String prose) {
+            this.storyJson = "{\"version\":1,\"blocks\":[{\"type\":\"paragraph\",\"spans\":[{\"text\":"
+                    + quoted(prose) + ",\"marks\":[]}]}]}";
             return this;
         }
 
@@ -286,12 +325,12 @@ public final class Campaigns {
             jdbc.update(
                     """
                     INSERT INTO projects (
-                        id, creator_id, slug, title, blurb, category_id, subcategory_id, state,
+                        id, creator_id, slug, title, blurb, story, category_id, subcategory_id, state,
                         goal_amount, pledged_amount, backers_count, duration_days,
                         launched_at, deadline,
                         cover_image_url, cover_image_width, cover_image_height)
                     VALUES (
-                        ?, ?, ?, ?, ?,
+                        ?, ?, ?, ?, ?, CAST(? AS jsonb),
                         (SELECT id FROM categories WHERE slug = ?),
                         (SELECT s.id FROM subcategories s JOIN categories c ON c.id = s.parent_id
                           WHERE c.slug = ? AND s.slug = ?),
@@ -301,7 +340,8 @@ public final class Campaigns {
                     creatorId,
                     slug,
                     title,
-                    "A summary that fits inside a hundred and thirty-five characters.",
+                    blurb,
+                    storyJson,
                     categorySlug,
                     categorySlug,
                     subcategorySlug,
@@ -332,6 +372,11 @@ public final class Campaigns {
                         tag);
             }
             return id;
+        }
+
+        /** A JSON string literal. Enough for prose; the fixture writes no control characters. */
+        private static String quoted(String value) {
+            return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
         }
     }
 

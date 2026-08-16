@@ -1,6 +1,8 @@
 package az.ideanest.discovery.application;
 
 import az.ideanest.discovery.domain.DiscoveryCapability;
+import az.ideanest.discovery.domain.Suggestion;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -53,6 +55,12 @@ import java.util.Set;
  *       {@code AmountBand} are closed below and open above, and the boundary values
  *       are tested. An engine's own range aggregation must be configured to agree, or
  *       a campaign at exactly its goal moves between facets when the tier changes.
+ *   <li><strong>It folds §11.3's characters, in the index and in the query.</strong>
+ *       A query folded on one side only matches nothing, and the failure is silent:
+ *       the endpoint answers 200 with an empty list. Tier 1 folds in the database
+ *       so that the index and the query cannot disagree; an engine has to be
+ *       configured with an analyser that folds all seven pairs including
+ *       {@code ə}, which no stock ASCII-folding analyser does.
  *   <li><strong>It declares what it cannot do.</strong> See {@link #capabilities()}.
  * </ol>
  *
@@ -96,6 +104,31 @@ public interface SearchService {
      *
      * <p>{@code query.limit()} and {@code query.cursor()} are ignored: a facet count
      * is over everything the filter matches, not over one page of it.
+     *
+     * <p>Free text is <strong>not</strong> a facet dimension and is therefore not
+     * excluded from any of them: it narrows the base set every count is taken over,
+     * exactly as the visibility predicate does. A facet excludes its own dimension so
+     * that ticking one value does not zero the rest of that control; there is no
+     * control for the search box, and counts that ignored what was typed would
+     * describe a different result set from the one on screen.
      */
     FacetCounts facets(DiscoveryQuery query);
+
+    /**
+     * What the reader might mean, from what they have typed so far. D-02.
+     *
+     * <p>Not a search: it answers a prefix rather than a query, it ranks nothing, and
+     * it is called on every keystroke — so an implementation that served it by running
+     * {@link #search} and taking the titles would be issuing a ranked, faceted,
+     * paginated query per character typed.
+     *
+     * <p>Debouncing, keyboard navigation, and what happens when a suggestion is
+     * chosen belong to the client (#46). What this owes it is a bounded list whose
+     * rows say what kind of thing they are — see {@link Suggestion}.
+     *
+     * @param query see {@link SuggestQuery#isAnswerable()}: a blank or one-character
+     *     fragment is answered with an empty list rather than with everything
+     * @return at most {@link SuggestQuery#limit()} suggestions, never null
+     */
+    List<Suggestion> suggest(SuggestQuery query);
 }

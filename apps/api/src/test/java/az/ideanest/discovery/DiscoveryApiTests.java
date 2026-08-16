@@ -454,16 +454,18 @@ class DiscoveryApiTests extends DiscoveryTestSupport {
     }
 
     @Test
-    @DisplayName("free-text search is refused rather than quietly returning everything")
-    void searchTextIsRefused() {
-        // The alternative — accepting `q` and ignoring it — hands a backer who typed
-        // a search term every campaign on the platform and tells them the search
-        // works. #43 owns it; until then the answer is an error that says so.
-        ResponseEntity<Map<String, Object>> response = get("/v1/discover?q=robot", new HttpHeaders());
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).containsEntry("code", "DISCOVERY_OPTION_UNSUPPORTED");
-        assertThat(response.getBody().get("meta").toString()).contains("#43");
+    @DisplayName("free-text search is served rather than refused, and narrows the feed")
+    void searchTextIsServed() {
+        // This test used to assert the opposite, and the change is #43 landing: `q` was
+        // refused with a problem detail naming the issue, because accepting it and
+        // ignoring it would have handed a backer who typed a search term every
+        // campaign on the platform and told them the search works. It is now answered.
+        // What has not changed is that there is no third option.
+        assertThat(get("/v1/discover?q=alpha", new HttpHeaders()).getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(slugs(feed("?q=alpha&limit=100"))).containsExactly("alpha");
+        // And a term nothing matches is an empty feed rather than the whole platform,
+        // which is the failure that would look like success.
+        assertThat(items(feed("?q=qwertyuiop&limit=100"))).isEmpty();
     }
 
     @Test

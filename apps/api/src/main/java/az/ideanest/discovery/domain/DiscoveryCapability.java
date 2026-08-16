@@ -25,9 +25,15 @@ package az.ideanest.discovery.domain;
 public enum DiscoveryCapability {
 
     /**
-     * Free-text matching over title, blurb, story, and creator (D-01). <strong>#43.</strong>
+     * Free-text matching over title, blurb, story, and creator (D-01). <strong>#43,
+     * and the first of these to land.</strong>
      *
-     * <p>{@code projects.search_vector} does not exist yet; V6 says so and says why.
+     * <p>Needs {@code projects.search_vector} — V13 — and therefore also the fold of
+     * §11.3, the trigram tier for D-03, and the triggers that keep the vector true.
+     * An implementation that declares this must serve {@code q} on
+     * {@code /v1/discover}, the whole of {@code /v1/search}, and
+     * {@link DiscoverySort#BEST_MATCH}; the three are one feature and a client that
+     * got two of them would find that its search results could not be sorted.
      */
     FULL_TEXT("q", "#43 (full-text search)"),
 

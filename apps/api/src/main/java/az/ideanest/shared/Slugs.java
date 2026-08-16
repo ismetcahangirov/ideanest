@@ -20,6 +20,8 @@ import java.util.regex.Pattern;
  * <p>The folding matches {@code docs/architecture.md} §11.3, which asks the
  * search index to fold the same characters. A slug and a search term that
  * disagree about what "Sabina" folds to would be two answers to one question.
+ * {@link #fold} is that one answer: {@code Tag.slugOf} and the search index both
+ * go through it, and the database's {@code ideanest_fold} is its mirror.
  */
 public final class Slugs {
 
@@ -44,6 +46,45 @@ public final class Slugs {
     }
 
     /**
+     * §11.3's fold, and nothing else: the seven pairs in both cases, then lower
+     * case.
+     *
+     * <p><strong>This is the platform's one definition of the fold, and it has a
+     * mirror in the database.</strong> {@code ideanest_fold(text)} — V13 — does
+     * exactly this, because the search index is built from the folded text and a
+     * query folded only in Java would not match an index folded differently. The
+     * two are pinned to each other over a shared table of cases by
+     * {@code SearchFoldingTests}; if this method changes and that function does
+     * not, that suite fails rather than the search quietly returning nothing.
+     *
+     * <p>The fold runs <strong>before</strong> the lower-casing and covers both
+     * cases of each letter, because {@code "İ".toLowerCase(Locale.ROOT)} produces
+     * an {@code i} followed by a combining dot above rather than a plain
+     * {@code i} — a difference invisible in a diff and fatal to a unique index,
+     * and one PostgreSQL's {@code lower()} makes differently again depending on
+     * the database's ctype. Mapping {@code İ} straight to {@code i} makes the
+     * answer the same in both languages.
+     *
+     * <p>No transliteration beyond those seven pairs, and no normalisation: this
+     * is the comparison form of a word, not a slug. {@link #slugify} adds NFKD and
+     * the hyphenation on top.
+     *
+     * @param text any text; null folds to an empty string, because a caller
+     *     comparing "nothing" against a stored value wants no match rather than a
+     *     null check at every site
+     */
+    public static String fold(String text) {
+        if (text == null) {
+            return "";
+        }
+        String folded = text;
+        for (String[] folding : FOLDINGS) {
+            folded = folded.replace(folding[0], folding[1]);
+        }
+        return folded.toLowerCase(Locale.ROOT);
+    }
+
+    /**
      * The slug for a name, or an empty string if nothing survives folding —
      * a name written entirely in a script this does not transliterate, for
      * instance. Callers decide what to do with that; silently inventing a slug
@@ -53,13 +94,11 @@ public final class Slugs {
         if (raw == null || raw.isBlank()) {
             return "";
         }
-        String folded = raw;
-        for (String[] folding : FOLDINGS) {
-            folded = folded.replace(folding[0], folding[1]);
-        }
         // Decomposes the accented characters that do decompose — é to e plus a
-        // combining acute — so that stripping the marks leaves the letter.
-        folded = Normalizer.normalize(folded, Normalizer.Form.NFKD)
+        // combining acute — so that stripping the marks leaves the letter. The
+        // seven pairs of §11.3 have already gone through fold(), which is why the
+        // decomposition cannot reach them: ə has no decomposition at all.
+        String folded = Normalizer.normalize(fold(raw), Normalizer.Form.NFKD)
                 .replaceAll("\\p{M}+", "")
                 .toLowerCase(Locale.ROOT);
 

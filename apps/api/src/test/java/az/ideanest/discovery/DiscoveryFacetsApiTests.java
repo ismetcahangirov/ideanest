@@ -312,8 +312,12 @@ class DiscoveryFacetsApiTests extends DiscoveryTestSupport {
         // The two endpoints take one query object, so a filter that is unimplemented
         // has to be unimplemented on both — a panel that counted by a filter the feed
         // cannot apply would print numbers nothing can reproduce.
+        //
+        // The same holds in the other direction, which is what #43 changed: `q` is
+        // implemented on both now, and the panel counts the narrowed set rather than
+        // refusing it. SearchTextApiTests is what holds the counts to it.
         assertThat(get("/v1/discover/facets?q=robot", new HttpHeaders()).getStatusCode())
-                .isEqualTo(HttpStatus.BAD_REQUEST);
+                .isEqualTo(HttpStatus.OK);
         assertThat(get("/v1/discover/facets?showOnly=saved", new HttpHeaders()).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(get("/v1/discover/facets?status=finished", new HttpHeaders()).getStatusCode())
