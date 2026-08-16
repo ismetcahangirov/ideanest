@@ -1,6 +1,8 @@
 package az.ideanest.reward.infrastructure;
 
 import az.ideanest.reward.domain.RewardTier;
+import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -15,9 +17,10 @@ import org.springframework.data.repository.query.Param;
  * <p>There is deliberately no <em>derived</em> method that writes
  * {@code claimed_quantity} or {@code reserved_quantity}. Spring Data would generate
  * one from a name, and it would be a path into the stock columns that takes no lock
- * and checks no limit. The two written by hand below are #51's, and each is a single
- * conditional statement that cannot be called wrongly: the condition that keeps the
- * tier from overselling is inside the {@code UPDATE}, not in the caller.
+ * and checks no limit. The three written by hand below — two of #51's and one of
+ * #52's — are each a single conditional statement that cannot be called wrongly: the
+ * condition that keeps the tier from overselling is inside the {@code UPDATE}, not
+ * in the caller.
  */
 public interface RewardTierRepository extends JpaRepository<RewardTier, UUID> {
 
@@ -119,4 +122,113 @@ public interface RewardTierRepository extends JpaRepository<RewardTier, UUID> {
                     """,
             nativeQuery = true)
     int releaseOnePlace(@Param("id") UUID id);
+
+    /**
+     * Turns a held place into a claimed one, when a draft is confirmed. #52.
+     *
+     * <p><strong>One statement, and the reason is that the tier must never be
+     * momentarily short.</strong> The obvious alternative is the two statements that
+     * already exist here — release one, then claim one — and both orderings are
+     * wrong, differently.
+     *
+     * <ul>
+     *   <li><strong>Release first.</strong> Between the two statements
+     *       {@code claimed + reserved} is one below the limit, and that is not a
+     *       private detail: it is exactly the expression {@link #reserveOnePlace}
+     *       evaluates. A checkout arriving in that window takes the last place of a
+     *       tier that has already sold it, and the second person to find out is the
+     *       one who does not get a reward. The window is short, which makes it a bug
+     *       that reproduces under load and never in a test.
+     *   <li><strong>Claim first.</strong> Now {@code claimed + reserved} is one
+     *       <em>above</em> the limit for the same instant, and V7's
+     *       {@code reward_tiers_stock_is_within_the_limit} is a check constraint:
+     *       PostgreSQL evaluates it at the end of the statement, so it refuses the
+     *       first update outright. A perfectly legitimate confirmation of the last
+     *       place would fail on a full tier — always, not occasionally.
+     * </ul>
+     *
+     * <p>So the correct order is no order. Both columns move in one {@code UPDATE},
+     * the sum does not change, no other transaction sees an intermediate state
+     * because there is not one, and the constraint is evaluated against a row whose
+     * total is exactly what it was before.
+     *
+     * <p>{@code reserved_quantity > 0} is the same guard {@link #releaseOnePlace}
+     * carries and it is doing the same job: a confirmation that ran twice would move
+     * a second place out of a reservation that no longer exists, inventing a claim
+     * against nothing. Here it also serves as the honest answer to "was this pledge
+     * really holding a place" — a zero return is the caller's signal that it was
+     * not.
+     *
+     * <p>{@code version} is deliberately not incremented, for the reason
+     * {@link #reserveOnePlace} gives: the column is optimistic locking for the
+     * creator's own fields, and bumping it on every confirmation would invalidate
+     * whatever edit the creator had open.
+     *
+     * @return 1 when a held place became a claimed one, 0 when there was no held
+     *     place to convert
+     */
+    @Modifying(flushAutomatically = true)
+    @Query(
+            value =
+                    """
+                    UPDATE reward_tiers
+                       SET reserved_quantity = reserved_quantity - 1,
+                           claimed_quantity = claimed_quantity + 1
+                     WHERE id = :id AND reserved_quantity > 0
+                    """,
+            nativeQuery = true)
+    int commitOnePlace(@Param("id") UUID id);
+
+    /**
+     * The named tiers, but only the ones that really belong to this campaign.
+     *
+     * <p>The campaign is part of the query rather than a filter afterwards, for
+     * {@code RewardStock#priceOf}'s reason: a pledge naming another campaign's tier
+     * is a row V17's composite foreign key refuses, and answering the question this
+     * way is what lets the checkout say which selection was wrong instead of handing
+     * back a constraint violation.
+     *
+     * <p>In display order, so that a quote built from this reads in the order the
+     * backer saw.
+     */
+    @Query(
+            """
+            SELECT tier FROM RewardTier tier
+            WHERE tier.projectId = :projectId AND tier.id IN :ids
+            ORDER BY tier.sortOrder, tier.createdAt
+            """)
+    List<RewardTier> findSelected(@Param("projectId") UUID projectId, @Param("ids") Collection<UUID> ids);
+
+    /**
+     * What a backer could take instead of a tier that is full. §10.4's
+     * {@code meta.availableAlternatives}.
+     *
+     * <p>Four exclusions, and each of them is the difference between an alternative
+     * and a dead link. Add-ons are bought alongside a reward rather than instead of
+     * one. A secret tier is reachable only through its own link, and listing its
+     * identifier in an error body would be the disclosure the secret exists to
+     * prevent. A tier outside its availability window cannot be selected today. And
+     * a tier with no places left is the problem, not the answer to it.
+     *
+     * <p>The stock condition is the same expression {@link #reserveOnePlace}
+     * evaluates and the same one V7's constraint bounds, written once more here
+     * because this is a read: the answer may be stale by the time the backer acts on
+     * it, and the reservation statement — not this — is what decides whether they
+     * get a place.
+     */
+    @Query(
+            """
+            SELECT tier.id FROM RewardTier tier
+            WHERE tier.projectId = :projectId
+              AND tier.id <> :excluding
+              AND tier.addon = false
+              AND tier.secret = false
+              AND (tier.availableFrom IS NULL OR tier.availableFrom <= :at)
+              AND (tier.availableUntil IS NULL OR tier.availableUntil > :at)
+              AND (tier.limitQuantity IS NULL
+                   OR tier.claimedQuantity + tier.reservedQuantity < tier.limitQuantity)
+            ORDER BY tier.sortOrder, tier.createdAt
+            """)
+    List<UUID> findAvailableAlternatives(
+            @Param("projectId") UUID projectId, @Param("excluding") UUID excluding, @Param("at") Instant at);
 }
