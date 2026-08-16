@@ -1115,8 +1115,9 @@ by a database constraint and verified by a nightly reconciliation job.
 
 | Table | Purpose |
 |---|---|
-| `categories`, `subcategories` | Taxonomy with translations |
-| `tags`, `project_tags` | Tag vocabulary |
+| `categories`, `subcategories` | The two-level taxonomy: slug, display order, and — for one more release — the interim `name_az` / `name_en` columns V6 created |
+| `category_translations`, `subcategory_translations` | One name per taxon per locale, keyed by `(taxon_id, locale)`. Every taxon has an `az` row; §21.1's other three arrive as data rather than as a deployment |
+| `tags`, `project_tags` | Tag vocabulary. `tags.slug` is the folded, comparable form and `tags.label` is the word as it was written; `usage_count` is denormalised and maintained by discovery |
 | `collections`, `collection_projects` | Curation and open calls |
 | `project_updates` | Numbered updates |
 | `comments` | Self-referencing threads |
@@ -1678,13 +1679,29 @@ GET    /v1/admin/audit-logs
 >
 > **`GET /v1/categories` is filed under discovery and implemented in the project
 > module**, which is where the taxonomy tables and their seed live. It is public,
-> read-only, returns each category with its subcategories nested, and carries both
-> `nameAz` and `nameEn` — localising through `Accept-Language` is one decision for
-> the whole API and belongs to #123, not to a leaf endpoint. `ETag` and
+> read-only, and returns each category with its subcategories nested. **It
+> localises.** Each taxon carries a `name` resolved against `Accept-Language`
+> through an explicit chain — the requested locale, then `az`, then the slug —
+> and a `names` map of every translation held, for a client that renders its own
+> language switcher. It also still carries `nameAz` and `nameEn`, which are
+> interim: they are the columns V6 created, they are read by no first-party
+> client any more, and they are removed together with the columns by the contract
+> half of V11 once no cached web build can still ask for them. `ETag` and
 > `Cache-Control: public, max-age=3600` per §10.3, the tag being a digest of the
-> content rather than a hash that varies per instance. The faceted, counted version
-> discovery needs replaces this; the campaign editor cannot ask a creator to choose
-> from a list nothing will send them, so it does not wait for that.
+> content — **including the resolved locale** — rather than a hash that varies per
+> instance, plus `Vary: Accept-Language` on both the `200` and the `304`. A cache
+> that returns Azerbaijani names to a client that asked for English is worse than
+> no cache. The faceted, counted version discovery needs replaces this; the
+> campaign editor cannot ask a creator to choose from a list nothing will send
+> them, so it does not wait for that.
+>
+> **There is no `/v1/tags` route, and that is deliberate.** `tags` and
+> `project_tags` exist as schema, entities, and repositories; nothing writes to
+> them. Attaching a tag to a campaign is a field of the campaign editor and
+> belongs with the surface that owns the words, and the cap on tags per campaign
+> is enforced there rather than by a trigger — a limit exceeded in a trigger
+> reaches the client as a `500`, and one enforced in a service reaches it as a
+> `400` naming the field.
 >
 > **`/v1/projects/{id}/prelaunch` is two endpoints on one path**, and the method
 > is the whole difference. `POST` is the creator's `DRAFT → PRELAUNCH` transition
