@@ -48,13 +48,16 @@ the browser half of the auth flow work at all.
 | `/projects/[id]/edit/story` | Rich text story, risks, and version history (#35) |
 | `/projects/[id]/edit/prelaunch` | Open the pre-launch page, share the link, see who is waiting (#39) |
 | `/projects/[id]/prelaunch` | **Public.** The pre-launch page itself, and the reminder signup (#39) |
+| `/projects/[id]/back` | Reward selection, add-ons, destination, and confirmation (#54) |
 | `/discover` | **Public.** The filter rail, sort, chips, and the cursor-paginated feed (#45) |
 
 There is no route at `/` yet; server-rendered project and discovery pages are
 #119.
 
 `/projects/[id]/prelaunch` and `/discover` are the routes that work with no
-session at all. For the pre-launch page the reason is the followers it exists to
+session at all. `/projects/[id]/back` is the half-way case: its reward list is
+`permitAll` and reads through `publicFetch`, so the prices render for a visitor
+who has not registered, and only the two mutations need a session. For the pre-launch page the reason is the followers it exists to
 collect, who have not registered; for discovery it is that a visitor who has not
 registered is the entire audience — requiring a token would mean the front door
 could not render. Both read through `publicFetch`, which sends a bearer token
@@ -93,6 +96,62 @@ rather than disabled.
 "Show more projects" button and an `IntersectionObserver` that presses it. The
 other way round is how a feed becomes unreachable by keyboard and by screen
 reader, because neither produces a scroll that intersects anything.
+
+## The checkout
+
+`/projects/[id]/back` is the pledge flow of `docs/architecture.md` §4.5 — PL-01
+to PL-08 and PL-12. The segment is `back` because that is the reader's word for
+what they are doing; `checkout` is ours for the machinery, and it borrows a
+shopping cart's model, which is wrong here in a way that matters: nothing is
+bought and nothing is charged.
+
+**Three steps, one route, and no query string.** Unlike `/discover`, the state
+here is React state. A half-made pledge is not a thing to link to, and a
+reservation lives five minutes — a back button that could re-enter the review
+step would routinely land on a hold that has gone. The one parameter the route
+reads is PL-15's `?token=`, repeatable, which unlocks secret tiers.
+
+| Module | Holds |
+|---|---|
+| `lib/pledges/api.ts` | The public reward list, the draft, the read, and the confirm |
+| `lib/pledges/quote.ts` | PL-06's total, mirroring `PledgeQuote` in `pledge/domain` |
+| `lib/pledges/idempotency.ts` | What "the same intent" means, and when a key is retired |
+| `lib/pledges/failure.ts` | Each contract refusal, with the recovery that belongs to it |
+| `components/checkout/useCheckout.ts` | The selection, the two requests, and the phase |
+| `components/checkout/useReservationClock.ts` | PL-13's five minutes, counted down and not animated |
+
+**Two totals, and only one of them is true.** The client quotes the selection
+with `decimal.js` so the figure moves as the backer chooses. The moment a draft
+comes back, `PledgeResponse.amounts` replaces it outright — the two are never
+merged and never shown together. The server prices the row it is about to
+reserve, inside the transaction that reserves it; the client is pricing a list it
+fetched some seconds ago.
+
+**The idempotency key belongs to an intent, not to an attempt.** A key is issued
+per request body, so a retry after a dropped connection sends the same key and is
+answered with the same pledge rather than creating a second one. It is retired in
+exactly two cases: a reservation that expired — where the body is identical but
+the intent is new, and replaying would hand back the draft that just expired —
+and a key the service has told us is spent. Going back to change the selection
+does **not** retire it, because a backer who changes nothing should get their
+existing reservation and its existing clock.
+
+**There is no card form, and adding one would be a defect.** Card entry and 3-D
+Secure are #55, blocked on #60 (`status: needs-decision`), so there is no
+provider, no hosted field and nothing to tokenise with. `§17.2` targets SAQ A,
+which holds only while card data never touches our servers — and a field that
+looks like it takes a card teaches somebody that this is where a card goes on
+this site. The payment step is an honest note saying nothing is collected, and
+`paymentMethodId` is sent as null.
+
+**Confirmation is a commitment, not a payment.** §9.2 collects nothing until the
+campaign succeeds, and this build has not even taken a card, so the confirmation
+screen says both in as many words.
+
+**Tax is `0.00` and the line is not printed.** `TaxPolicy` holds the zero
+deliberately until #78. A permanent "Tax 0.00" row invites the one question the
+interface cannot answer; the line appears by itself the day the policy stops
+answering zero.
 
 ## The campaign editor
 
