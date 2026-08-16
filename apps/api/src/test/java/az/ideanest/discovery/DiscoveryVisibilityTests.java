@@ -125,6 +125,44 @@ class DiscoveryVisibilityTests extends DiscoveryTestSupport {
     }
 
     @Test
+    @DisplayName("sort=relevance cannot surface a campaign the public may not see")
+    void relevanceStaysInsideTheVisibleSet() {
+        // #44 added a third scoring expression over this table, and every one of them
+        // is a place the visibility clause can be forgotten. The loop above skips
+        // relevance because it skips every sort that declares a capability — which was
+        // right while relevance was refused and is not right now that it is served, so
+        // it is asserted here instead.
+        //
+        // Both endpoints and both pages: the keyset branch is a different WHERE clause
+        // from the first page's and would pass a single-page assertion having lost the
+        // predicate entirely.
+        assertThat(slugs(feed("?limit=100&sort=relevance")))
+                .doesNotContainAnyElementsOf(hiddenSlugs())
+                .containsExactlyInAnyOrderElementsOf(publicSlugs());
+        assertThat(slugs(search("?limit=100&q={q}&sort=relevance", "summary")))
+                .doesNotContainAnyElementsOf(hiddenSlugs())
+                .containsExactlyInAnyOrderElementsOf(publicSlugs());
+        // And the badge is not a way past it either: a suspended campaign that a
+        // curator had put in a badge-granting collection would score on w4 and must
+        // still never appear. CurationDiscoveryTests holds the fixture for that;
+        // what this asserts is that a whole walk of the relevance order stays inside.
+        List<String> seen = new ArrayList<>();
+        String cursor = null;
+        for (int page = 0; page < 30; page++) {
+            Map<String, Object> body = feed("?limit=2&sort=relevance" + (cursor == null ? "" : "&cursor=" + cursor));
+            seen.addAll(slugs(body));
+            cursor = nextCursor(body);
+            if (cursor == null) {
+                break;
+            }
+        }
+        assertThat(cursor).isNull();
+        assertThat(seen)
+                .doesNotContainAnyElementsOf(hiddenSlugs())
+                .containsExactlyInAnyOrderElementsOf(publicSlugs());
+    }
+
+    @Test
     @DisplayName("no completion band can surface a campaign the public may not see")
     void everyCompletionBandStaysInsideTheVisibleSet() {
         // Every fixture stands at exactly 50%, so one band matches all sixteen rows

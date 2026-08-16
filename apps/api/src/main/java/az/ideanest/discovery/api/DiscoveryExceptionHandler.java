@@ -3,6 +3,7 @@ package az.ideanest.discovery.api;
 import az.ideanest.discovery.application.CollectionNotFoundException;
 import az.ideanest.discovery.application.CollectionSlugTakenException;
 import az.ideanest.discovery.application.CurationRejectedException;
+import az.ideanest.discovery.application.RankingRejectedException;
 import az.ideanest.discovery.application.UnknownFilterValueException;
 import az.ideanest.discovery.application.UnsupportedDiscoveryOptionException;
 import az.ideanest.discovery.domain.DiscoveryCapability;
@@ -43,7 +44,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
             // rather than writing a second advice keeps one refusal to one body; the
             // curation failures below are new and are named individually.
             CollectionController.class,
-            AdminCurationController.class
+            AdminCurationController.class,
+            // #44's admin surface raises the moderator refusal unchanged and adds one
+            // failure of its own. Listed here rather than given a second advice for the
+            // reason the collection endpoints are: one refusal, one body.
+            AdminRankingController.class
         })
 public class DiscoveryExceptionHandler {
 
@@ -162,7 +167,7 @@ public class DiscoveryExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
         problem.setType(URI.create("https://ideanest.az/problems/not-a-moderator"));
         problem.setTitle("Not a moderator");
-        problem.setDetail("Curation is a moderator action.");
+        problem.setDetail("Curating and tuning the ranking are moderator actions.");
         problem.setProperty("code", "NOT_A_MODERATOR");
         return problem;
     }
@@ -175,6 +180,25 @@ public class DiscoveryExceptionHandler {
         problem.setTitle("That change was refused");
         problem.setDetail(exception.getMessage());
         problem.setProperty("code", "CURATION_REJECTED");
+        problem.setProperty("meta", Map.of("field", exception.field()));
+        return problem;
+    }
+
+    /**
+     * 400 for a ranking change the platform will not make.
+     *
+     * <p>A code of its own rather than {@code CURATION_REJECTED}: a client that handles
+     * one should not silently start receiving the other under it, and the two are raised
+     * by different screens for different reasons. {@code meta.field} names the input to
+     * fix — most often {@code active}, for a term nothing computes yet.
+     */
+    @ExceptionHandler(RankingRejectedException.class)
+    public ProblemDetail handleRankingRejected(RankingRejectedException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("https://ideanest.az/problems/ranking-rejected"));
+        problem.setTitle("That change was refused");
+        problem.setDetail(exception.getMessage());
+        problem.setProperty("code", "RANKING_REJECTED");
         problem.setProperty("meta", Map.of("field", exception.field()));
         return problem;
     }

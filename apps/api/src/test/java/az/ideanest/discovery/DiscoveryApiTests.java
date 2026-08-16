@@ -441,7 +441,15 @@ class DiscoveryApiTests extends DiscoveryTestSupport {
     @Test
     @DisplayName("an unimplemented sort is refused by name, not answered in a different order")
     void unimplementedSortsAreRefused() {
-        for (Map.Entry<String, String> sort : Map.of("relevance", "#44", "near_me", "#47").entrySet()) {
+        // `relevance` used to be on this list and is not any more, because #44 landed:
+        // §11.2's composite is served, and what it is made of — three live terms out of
+        // eight, and five that say what is blocking them — is asserted by
+        // RankingApiTests rather than hidden behind a refusal. What has not changed is
+        // that there is no third option: served, or refused by name.
+        assertThat(get("/v1/discover?sort=relevance", new HttpHeaders()).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+
+        for (Map.Entry<String, String> sort : Map.of("near_me", "#47").entrySet()) {
             ResponseEntity<Map<String, Object>> response =
                     get("/v1/discover?sort=" + sort.getKey(), new HttpHeaders());
 
@@ -478,9 +486,14 @@ class DiscoveryApiTests extends DiscoveryTestSupport {
         // with the platform's staff picks would tell every reader that an editorial
         // decision was made for them personally. What has not changed is that there
         // is no third option: served, or refused by name.
+        //
+        // `showOnly=recommended` survived #44 as well, and the issue it names changed:
+        // the composite ranks campaigns and does not know who is reading, so §11.2's w6
+        // is inert and this filter now names D-07 rather than #44. See
+        // DiscoveryCapability.FILTER_RECOMMENDED.
         Map<String, String> refused = Map.of(
                 "showOnly=saved", "saved-projects table",
-                "showOnly=recommended", "#44",
+                "showOnly=recommended", "D-07",
                 "country=AZ", "#47",
                 "city=Baku", "#47");
 

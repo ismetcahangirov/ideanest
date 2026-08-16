@@ -210,7 +210,7 @@ and each entry needs a translation per supported locale.
 
 | Sort | Logic |
 |---|---|
-| Relevance | Composite: recent momentum × social signal × curation × personalisation |
+| Relevance | Composite of §11.2's weighted terms. Live today: text match, completion, curation, recency. Momentum and personalisation are inert — see §11.2 |
 | Popularity | Pledge velocity with time decay |
 | Newest | `launched_at DESC` |
 | Ending soon | `deadline ASC` |
@@ -249,11 +249,19 @@ and each entry needs a translation per supported locale.
 > the two amount orders open on the same handful of campaigns for everybody for
 > ever.
 >
-> **Relevance and near-me are declared and refused** until #44 and #47. Asking for
-> one is an RFC 9457 problem detail naming the issue, not a quiet fall back to a
-> different order — likewise *saved* (no saved-projects table exists),
-> *recommended* (#44), and country/city (no location column exists; #47 brings the
-> schema).
+> **Relevance is served (#44); near-me is still declared and refused** until #47.
+> Asking for near-me is an RFC 9457 problem detail naming the issue, not a quiet
+> fall back to a different order — likewise *saved* (no saved-projects table
+> exists), *recommended* (D-07; see below), and country/city (no location column
+> exists; #47 brings the schema).
+>
+> **Relevance is opt-in, not a default.** An unstated sort still resolves to
+> *newest* while browsing and *best match* while searching. Making the composite
+> the default would change what every existing shared link means and would make the
+> web client's sort control show an order that is not the one in force; it stays
+> `?sort=relevance` until it has been measured against the two defaults, which is
+> what §11.2's tunable weights and its per-campaign diagnostic exist for. Three of
+> §11.2's eight terms are live and five are inert; §11.2 says which and why.
 >
 > **Editorially featured and Programmes are served (#48).** `showOnly=featured` and
 > `?programme={slug}` compose with every filter, every sort, and the cursor, and both
@@ -269,9 +277,14 @@ and each entry needs a translation per supported locale.
 > a way to read an unpublished list.
 >
 > **Show-only is one filter with three values and two of them are still refused**, on
-> purpose. *Recommended* is personalisation (§11.2's `w6`, D-07) and belongs to #44;
-> answering it with the platform's staff picks would tell every reader that an
-> editorial decision was made for them personally.
+> purpose. *Recommended* is personalisation (§11.2's `w6`, D-07), and it survived #44:
+> the composite ranks campaigns and does not know who is reading, because
+> `/v1/discover` is unauthenticated and publicly cached — which is what makes §20's
+> thousand requests a second reachable. So `w6` is inert and this filter is still
+> refused, now naming D-07 rather than #44. Answering it out of the composite would
+> tell every reader that a feed computed identically for all of them had been
+> assembled for them personally; answering it with the platform's staff picks would
+> present an editorial decision as a personal one.
 >
 > **Free text is served (#43).** `?q=` composes with every filter, every sort, the
 > cursor, and the facet counts on both `/v1/discover` and `/v1/search`. It narrows
@@ -290,10 +303,12 @@ and each entry needs a translation per supported locale.
 > story match — and it is what an unstated sort resolves to when `?q=` is present,
 > because ordering search results by launch date puts the campaign that mentions
 > the word once in its ninth paragraph above the one named after it. §11.2's
-> relevance is a composite of seven terms, none of which is about what the reader
-> typed; it stays #44's, and `best_match` becomes its text term rather than being
-> replaced by it. `sort=best_match` with no `q` has nothing to rank and resolves
-> back to newest.
+> relevance is a composite of eight terms, none of which is about what the reader
+> typed. **#44 landed and `best_match` did become its text term rather than being
+> replaced by it** — the composite adds a ninth term which is this same `ts_rank`
+> expression, so the two orders share one definition of a good text match and
+> neither changed meaning. `sort=best_match` with no `q` has nothing to rank and
+> still resolves back to newest.
 
 **Additional**
 
@@ -1972,16 +1987,87 @@ relevance =
 Weights are configuration and must be tunable without a deployment, so ranking
 can be measured rather than argued about.
 
-> **`w4`'s input exists; the term does not.** #48 brought curation and deliberately
-> stopped short of ranking. What it exposes is the `project_editorial_badges` view:
-> one row per campaign per badge-granting collection currently in force, carrying
-> `project_id`, `collection_id`, `collection_slug`, `collection_kind`, and
-> `granted_at`. #44 consumes it by joining or `EXISTS`-ing on `project_id` —
-> `count(*)` is a campaign in more than one badge-granting list, and `granted_at`
-> is when the membership was created, if the bonus turns out to want to decay. The
-> view already applies the publication and window predicates, so a badge cannot
-> outlive the collection that grants it and the ranking query does not have to know
-> that rule. Nothing about the weight or its normalisation is decided by #48.
+**Served as `sort=relevance` (#44), with three of these eight terms live and five
+inert.** The formula above is the specification and stays as written; what
+follows is what actually runs, because a ranking that quietly dropped five of its
+terms is exactly what the sentence above exists to prevent.
+
+| Term | State | Reads | Blocked by |
+|---|---|---|---|
+| `w1` pledge velocity, 48h | **inert** | — | #50 — `pledged_amount` is a running total with no time series |
+| `w2` backer velocity, 48h | **inert** | — | #50 — `backers_count` likewise |
+| `w3` completion | **live** | `pledged_amount`, `goal_amount` | — |
+| `w4` editorial bonus | **live** | `project_editorial_badges` (#48) | — |
+| `w5` view-to-pledge | **inert** | — | #95 — nothing records a view |
+| `w6` personalisation | **inert** | — | D-07 — the feed is anonymous and publicly cached |
+| `w7` recency decay | **live** | `launched_at` | — |
+| `w8` spam signal | **inert** | — | #108 — no automated fraud signal exists |
+| `w0` **text match** | **live** | `search_vector` (#43) | — |
+
+**There is a ninth term, `w0`, and it is not in the formula above by oversight.**
+§4.3 settled it when #43 landed: `best_match` "becomes its text term rather than
+being replaced by it". The composite's text term is the identical `ts_rank`
+expression, clamped into `[0, 1]`, and it is zero for every campaign when there
+is no query — so one sort serves a browsing feed and a searched one. Without it,
+`sort=relevance&q=robot` would rank the campaign named "Robot" exactly as it
+ranks one that has never used the word.
+
+**An inert term is visibly zero, not silently absent.** Every term has a row in
+`ranking_weights` (V15) carrying its weight, whether it is active, and a
+`blocked_by` naming what has to land first; `GET /v1/admin/ranking/weights`
+returns all nine; and the per-campaign diagnostic reports an inert term with *no
+value at all* rather than a zero, because "this campaign has no momentum" and
+"this platform does not measure momentum" are different facts. A CHECK constraint
+refuses to let a term with a `blocked_by` be made active, so switching one on is
+the pull request that computes it rather than a configuration change that appears
+to work.
+
+**"Normalise" is against a fixed scale, not against the result set.** Every term
+is a closed-form function of one row, mapping into `[0, 1]`. Normalising against
+the matching set — divide by the largest score in it — is the reading that spreads
+scores best and it cannot be paged: page two is a different set, so its maximum is
+a different number, so the cursor's key means nothing on the page it is replayed
+against and the scroll duplicates and drops cards. Completion is the Hill function
+`pledged² / (pledged² + goal²)` — a sigmoid with its midpoint at exactly the goal,
+saturating above it, with no `exp` and no division by the goal. Recency is
+`168 / (168 + age_hours)`: half value at seven days, never quite zero. Both are
+`numeric` throughout, because the composite is the keyset cursor's sort key and is
+compared for exact equality.
+
+**Weights are read from the table with a bounded 60-second staleness window** —
+the same window the feed is cached for, and the same one the popularity sort
+buckets to. The instance that takes a tuning request re-reads immediately; the
+others converge within the window. `LISTEN`/`NOTIFY` was rejected for its failure
+mode: a dropped listener serves the weights it had at start-up for ever and
+nothing reports it.
+
+**A cursor is bound to a digest of the weights as well as to the query.** #42
+pinned the decay clock so a score could not move on its own between pages; a
+weight is a sort key whose *definition* is mutable at run time, so a tuning change
+mid-scroll is refused with `DISCOVERY_CURSOR_MISMATCH` and the client restarts
+rather than being served a silently reshuffled feed. What no cursor can pin is
+`pledged_amount`, so the surviving guarantee is the one every order over a mutable
+column makes: a row that moves is seen once or not at all, and no row that stayed
+still is duplicated or dropped.
+
+**Changing a weight is an audited privileged action.** It moves every campaign in
+every feed at once — a larger act than any single curation decision — so
+`/v1/admin/ranking` is moderator-only, requires a stated reason, and writes an
+append-only `ranking_weight_changes` row carrying the value before as well as
+after. The read is privileged too: the weights describe how to rank highly, and a
+campaign that knew them would know what to optimise.
+
+**`showOnly=recommended` is still refused.** It is `w6` wearing a filter's
+clothes, and `w6` is inert.
+
+> **`w4`'s input came from #48.** The `project_editorial_badges` view carries one
+> row per campaign per badge-granting collection currently in force, with the
+> publication and window predicates already inside it — so a badge cannot outlive
+> the collection that grants it and the ranking query does not have to know that
+> rule. #44 reads it as a **binary** one-or-zero rather than as a count: a campaign
+> in two staff selections has not been endorsed twice as hard, and a term that
+> rewarded list membership per list would make "add it to another collection" a
+> ranking lever with no editorial meaning.
 
 ### 11.3 Locale-aware text handling
 

@@ -37,7 +37,19 @@ public enum DiscoveryCapability {
      */
     FULL_TEXT("q", "#43 (full-text search)"),
 
-    /** The composite ranking of §11.2 (D-07). <strong>#44.</strong> */
+    /**
+     * The composite ranking of §11.2. <strong>#44, and served.</strong>
+     *
+     * <p>Needs {@code ranking_weights} — V15 — because §11.2 requires the weights to be
+     * tunable without a deployment, so an implementation that hard-codes them does not
+     * satisfy this capability however well it ranks. It must also serve
+     * {@link DiscoverySort#RELEVANCE} on {@code /v1/discover} and on {@code /v1/search}
+     * and compose it with the keyset cursor; the three are one feature, and a client
+     * that got two of them would find its search results could not be paged.
+     *
+     * <p>It does <strong>not</strong> imply {@link #FILTER_RECOMMENDED}. The composite
+     * ranks campaigns and does not know who is reading; see that constant.
+     */
     SORT_RELEVANCE("sort=relevance", "#44 (ranking)"),
 
     /** Geographic distance from the caller. <strong>#47.</strong> */
@@ -66,8 +78,25 @@ public enum DiscoveryCapability {
      */
     FILTER_SAVED("showOnly=saved", "the saved-projects table, which no migration has created"),
 
-    /** Only campaigns recommended to this caller. <strong>#44.</strong> */
-    FILTER_RECOMMENDED("showOnly=recommended", "#44 (ranking)"),
+    /**
+     * Only campaigns recommended to this caller.
+     *
+     * <p><strong>Still refused after #44, and this is the interesting case.</strong> The
+     * composite ranking landed and this did not, because they are not the same feature:
+     * §11.2's {@code w6} is personalisation and it is one of the five terms seeded inert
+     * in V15, for a reason that is not effort. {@code GET /v1/discover} is
+     * unauthenticated and publicly cached for a minute — the same bytes for everybody is
+     * what makes §20's thousand requests a second reachable — so there is no caller to
+     * personalise for and nowhere to put a per-caller signal.
+     *
+     * <p>Answering it out of the composite anyway would tell every reader that a feed
+     * computed identically for all of them had been assembled for them personally, which
+     * is a stronger claim than the platform can make. Answering it with the staff picks
+     * would be worse still: it would present an editorial decision as a personal one.
+     */
+    FILTER_RECOMMENDED(
+            "showOnly=recommended",
+            "D-07 (personalised feed): §11.2's w6 is inert, and this endpoint has no caller to rank for"),
 
     /**
      * Only editorially featured campaigns. <strong>#48, and served.</strong>
