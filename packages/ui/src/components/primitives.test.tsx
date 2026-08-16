@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { Chip } from './Chip/Chip';
+import { Chip, RemovableChip } from './Chip/Chip';
 import { IconButton } from './IconButton/IconButton';
 import { ProgressBar } from './ProgressBar/ProgressBar';
 import { DotIndicator } from './DotIndicator/DotIndicator';
@@ -34,6 +34,56 @@ describe('Chip', () => {
   it('renders a zero count rather than hiding it', () => {
     render(<Chip count={0}>Empty</Chip>);
     expect(screen.getByRole('button')).toHaveTextContent('0');
+  });
+});
+
+describe('RemovableChip', () => {
+  it('announces what pressing it does, not what it is about', () => {
+    // A row of chips reading "Live", "Games", "Handmade" is unusable by ear:
+    // every one announces as a button whose name is the thing it is about.
+    render(<RemovableChip removeLabel="Remove Status filter: Live">Live</RemovableChip>);
+
+    expect(
+      screen.getByRole('button', { name: 'Remove Status filter: Live' }),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the visible text inside its accessible name', () => {
+    // WCAG 2.5.3: speech input reaches a control by the words printed on it, so
+    // a name that does not contain them makes the chip unreachable by voice.
+    render(<RemovableChip removeLabel="Remove Tag filter: Handmade">Handmade</RemovableChip>);
+
+    const chip = screen.getByRole('button');
+    expect(chip).toHaveTextContent('Handmade');
+    expect(chip.getAttribute('aria-label')).toContain('Handmade');
+  });
+
+  it('is not a toggle', () => {
+    // `aria-pressed` on a delete control tells a screen-reader user it is a
+    // switch that is currently on.
+    render(<RemovableChip removeLabel="Remove filter: Live">Live</RemovableChip>);
+
+    expect(screen.getByRole('button')).not.toHaveAttribute('aria-pressed');
+  });
+
+  it('hides its icon from the accessibility tree', () => {
+    const { container } = render(
+      <RemovableChip removeLabel="Remove filter: Live">Live</RemovableChip>,
+    );
+
+    expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('forwards clicks', async () => {
+    const onClick = vi.fn();
+    render(
+      <RemovableChip removeLabel="Remove filter: Art" onClick={onClick}>
+        Art
+      </RemovableChip>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Remove filter: Art' }));
+    expect(onClick).toHaveBeenCalledOnce();
   });
 });
 

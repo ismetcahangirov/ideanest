@@ -408,6 +408,36 @@ exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/Chip/Ch
 </div>"
 `;
 
+exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/Chip/Chip.stories.tsx — Removable [reduced motion] 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="w-[600px]">
+<div role="group" class="scrollbar-none flex gap-2 overflow-x-auto" aria-label="Applied filters">
+<button type="button" aria-label="Remove filter: Live" class="inline-flex h-[34px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-transparent bg-white px-3 pl-4 text-[13px] font-medium text-on-white transition-[background-color,color] duration-150 ease-in-out hover:bg-[var(--white-muted)]">Live<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x size-3.5 text-on-white/56" aria-hidden="true">
+<path d="M18 6 6 18">
+</path>
+<path d="m6 6 12 12">
+</path>
+</svg>
+</button>
+<button type="button" aria-label="Remove filter: Games" class="inline-flex h-[34px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-transparent bg-white px-3 pl-4 text-[13px] font-medium text-on-white transition-[background-color,color] duration-150 ease-in-out hover:bg-[var(--white-muted)]">Games<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x size-3.5 text-on-white/56" aria-hidden="true">
+<path d="M18 6 6 18">
+</path>
+<path d="m6 6 12 12">
+</path>
+</svg>
+</button>
+<button type="button" aria-label="Remove filter: Handmade" class="inline-flex h-[34px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-transparent bg-white px-3 pl-4 text-[13px] font-medium text-on-white transition-[background-color,color] duration-150 ease-in-out hover:bg-[var(--white-muted)]">Handmade<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x size-3.5 text-on-white/56" aria-hidden="true">
+<path d="M18 6 6 18">
+</path>
+<path d="m6 6 12 12">
+</path>
+</svg>
+</button>
+</div>
+</div>
+</div>"
+`;
+
 exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/Chip/Chip.stories.tsx — Row [reduced motion] 1`] = `
 "<div class="font-sans text-white antialiased">
 <div class="w-[600px]">
@@ -3341,6 +3371,36 @@ exports[`rendered markup > ./components/Chip/Chip.stories.tsx — Active 1`] = `
 exports[`rendered markup > ./components/Chip/Chip.stories.tsx — Default 1`] = `
 "<div class="font-sans text-white antialiased">
 <button type="button" aria-pressed="false" class="inline-flex h-[34px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 text-[13px] font-medium transition-[background-color,color,border-color] duration-150 ease-in-out border border-white/8 bg-surface-2 text-white/64 hover:bg-surface-3 hover:text-white">Technology</button>
+</div>"
+`;
+
+exports[`rendered markup > ./components/Chip/Chip.stories.tsx — Removable 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="w-[600px]">
+<div role="group" class="scrollbar-none flex gap-2 overflow-x-auto" aria-label="Applied filters">
+<button type="button" aria-label="Remove filter: Live" class="inline-flex h-[34px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-transparent bg-white px-3 pl-4 text-[13px] font-medium text-on-white transition-[background-color,color] duration-150 ease-in-out hover:bg-[var(--white-muted)]">Live<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x size-3.5 text-on-white/56" aria-hidden="true">
+<path d="M18 6 6 18">
+</path>
+<path d="m6 6 12 12">
+</path>
+</svg>
+</button>
+<button type="button" aria-label="Remove filter: Games" class="inline-flex h-[34px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-transparent bg-white px-3 pl-4 text-[13px] font-medium text-on-white transition-[background-color,color] duration-150 ease-in-out hover:bg-[var(--white-muted)]">Games<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x size-3.5 text-on-white/56" aria-hidden="true">
+<path d="M18 6 6 18">
+</path>
+<path d="m6 6 12 12">
+</path>
+</svg>
+</button>
+<button type="button" aria-label="Remove filter: Handmade" class="inline-flex h-[34px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-transparent bg-white px-3 pl-4 text-[13px] font-medium text-on-white transition-[background-color,color] duration-150 ease-in-out hover:bg-[var(--white-muted)]">Handmade<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x size-3.5 text-on-white/56" aria-hidden="true">
+<path d="M18 6 6 18">
+</path>
+<path d="m6 6 12 12">
+</path>
+</svg>
+</button>
+</div>
+</div>
 </div>"
 `;
 
