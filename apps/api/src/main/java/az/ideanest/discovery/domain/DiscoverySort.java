@@ -9,10 +9,12 @@ import java.util.Optional;
 /**
  * The seven orders §4.3 offers, and what each one costs to serve.
  *
- * <p>All seven are declared now. Two of them belong to other issues and are refused
- * by {@code PostgresSearchService} through {@link DiscoveryCapability}; declaring
- * them anyway is what stops #44 and #47 from each having to widen this enum, and
- * what lets a client discover the vocabulary before the features land.
+ * <p>All seven are declared now, and all seven are served: #44 brought
+ * {@link #RELEVANCE} and #47 brought {@link #NEAR_ME}. Declaring them before they
+ * worked is what stopped either issue from having to widen this enum, and what let a
+ * client discover the vocabulary before the features landed — each of them switched
+ * on by a constant appearing in {@code PostgresSearchService.capabilities()} and
+ * nothing else changing here. See {@link DiscoveryCapability}.
  *
  * <p><strong>Every order is total.</strong> Each carries a tiebreaker of
  * {@code id ASC} on top of its sort key, and nothing else would be correct: a
@@ -166,7 +168,54 @@ public enum DiscoverySort {
      */
     RELEVANCE("relevance"),
 
-    /** Geographic distance. <strong>#47</strong>; refused until then. */
+    /**
+     * Great-circle distance from an origin the caller supplies, nearest first.
+     * <strong>#47, and served.</strong>
+     *
+     * <p><strong>The origin comes from the request and from nowhere else.</strong>
+     * {@code ?near=lat,lon}. Not from a profile: {@code /v1/discover} is
+     * unauthenticated and publicly cached — the same bytes for everybody is what makes
+     * §20's thousand requests a second reachable — so there is no caller to read a
+     * profile for, and giving it one would break the cache in exactly the way
+     * {@code DiscoveryCapability.FILTER_RECOMMENDED} explains at length. The origin is
+     * quantised to about a kilometre before it reaches anything; see
+     * {@code LocationFilter.Proximity}, where the reasoning is privacy rather than
+     * arithmetic.
+     *
+     * <p><strong>An unstated origin is refused, not resolved to another order.</strong>
+     * {@link #BEST_MATCH} without {@code q} falls back to {@link #DEFAULT} because a
+     * text score over no text is zero for every campaign and the request has exactly
+     * one sensible reading. A distance from no origin is not zero, it is undefined, and
+     * a "near me" control that quietly meant "newest" is the failure
+     * {@link DiscoveryCapability} exists to prevent. {@code DiscoveryQueryBinder}
+     * refuses it.
+     *
+     * <p><strong>A campaign with no location sorts last, and is not excluded.</strong>
+     * §4.3 lists Near me under sorts and proximity under the Location <em>filter</em>:
+     * they are two controls and this is the sort. A sort that dropped rows would take a
+     * reader who switched from newest to near-me and silently remove most of the
+     * platform from their feed, which is the same failure as a filter that is accepted
+     * and ignored, wearing an order's clothes. Nulls last, like {@link #NEWEST} and
+     * {@link #ENDING_SOON}, and the cursor has the null-tail branch those two have. A
+     * <em>radius</em> is a filter and does exclude them — a campaign whose location is
+     * unknown cannot be shown to be within any distance of anywhere.
+     *
+     * <p><strong>The key cannot move, which makes this the easiest cursor in the
+     * module.</strong> Neither the origin (pinned in the fingerprint) nor a city
+     * centroid changes while somebody scrolls, so unlike {@code most_funded},
+     * {@code popularity} and {@code relevance} — all of which read {@code pledged_amount}
+     * — a near-me feed has no rows moving underneath it at all. What the cursor still
+     * has to pin is the origin itself, and it does: see
+     * {@code LocationFilter.Proximity.canonical}.
+     *
+     * <p><strong>Like {@link #POPULARITY}, no index serves the order</strong>, and for a
+     * better reason than that one. The key is an expression over a joined table and a
+     * request parameter, so it is not indexable; but distance is a property of a
+     * <em>location</em> rather than of a campaign, and there are eighteen of those, so
+     * what PostgreSQL actually does is compute a handful of distances and sort the
+     * matching campaigns by a hash-joined number. V16's comment has the measurement and
+     * the reason no GiST index is shipped with it.
+     */
     NEAR_ME("near_me"),
 
     /**

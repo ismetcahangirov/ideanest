@@ -42,6 +42,17 @@ import java.util.List;
  * @param completion keyed by {@code CompletionBand.wireValue()}
  * @param goalAmount keyed by {@code AmountBand.wireValue()}
  * @param amountRaised keyed by {@code AmountBand.wireValue()}
+ * @param countries §4.3's Location control (#47), outer half: every country the
+ *     gazetteer knows, keyed and labelled by its ISO 3166-1 alpha-2 code. <strong>The
+ *     label is the code</strong> — every client platform ships a localised
+ *     country-name table ({@code Intl.DisplayNames}) and §21.1 says to use the
+ *     platform internationalisation APIs, so this service does not maintain a second
+ *     one in four languages
+ * @param cities the inner half: every place in the gazetteer, named in the negotiated
+ *     language through the requested-locale → {@code az} → slug chain, with the
+ *     endonym as the fallback because that is the right default for a proper noun. A
+ *     <strong>fixed</strong> vocabulary — curated reference data, not a free one — so
+ *     zero-count entries are present, exactly as an empty category is
  * @param programmes §4.3's Programmes control (#48): every open call the public may
  *     see, in the order {@code GET /v1/collections} lists them, with the count under
  *     every filter except the programme filter itself. A fixed vocabulary — the open
@@ -60,6 +71,8 @@ public record FacetCounts(
         List<ValueCount> completion,
         List<ValueCount> goalAmount,
         List<ValueCount> amountRaised,
+        List<NamedCount> countries,
+        List<NamedCount> cities,
         List<NamedCount> programmes,
         List<ValueCount> showOnly) {
 
@@ -106,6 +119,8 @@ public record FacetCounts(
         completion = List.copyOf(completion);
         goalAmount = List.copyOf(goalAmount);
         amountRaised = List.copyOf(amountRaised);
+        countries = List.copyOf(countries);
+        cities = List.copyOf(cities);
         programmes = List.copyOf(programmes);
         showOnly = List.copyOf(showOnly);
     }

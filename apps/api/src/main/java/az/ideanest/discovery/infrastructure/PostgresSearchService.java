@@ -20,6 +20,7 @@ import az.ideanest.discovery.domain.DiscoveryCursor;
 import az.ideanest.discovery.domain.DiscoverySort;
 import az.ideanest.discovery.domain.DiscoveryStatus;
 import az.ideanest.discovery.domain.InvalidCursorException;
+import az.ideanest.discovery.domain.LocationFilter;
 import az.ideanest.discovery.domain.ProjectCard;
 import az.ideanest.discovery.domain.RankingTerm;
 import az.ideanest.discovery.domain.ShowOnly;
@@ -59,11 +60,24 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <h2>What this can and cannot do</h2>
  *
- * <p>{@link #capabilities()} holds free text (#43), curation (#48), and the composite
- * ranking (#44). Every other option §4.3 describes that needs something absent — a
- * {@code locations} table, a saved table, a per-caller signal — is refused by the caller
- * with a problem detail naming its issue, rather than accepted and dropped. See
+ * <p>{@link #capabilities()} holds free text (#43), curation (#48), the composite
+ * ranking (#44), and location (#47). Every other option §4.3 describes that needs
+ * something absent — a saved table, a per-caller signal — is refused by the caller with
+ * a problem detail naming its issue, rather than accepted and dropped. See
  * {@link DiscoveryCapability}.
+ *
+ * <h2>Location, and where the arithmetic is not</h2>
+ *
+ * <p>§4.3's Location filter and its Near me sort are served from V16's
+ * {@code locations} table, {@code projects.location_id}, and {@code earthdistance} —
+ * <strong>not PostGIS</strong>, for reasons V16's comment gives at length. The shape
+ * worth knowing here is that a location is shared reference data, so the number of
+ * distinct points the platform measures distance to is the size of a city gazetteer and
+ * not the number of campaigns. Every location question therefore resolves against a
+ * table of eighteen rows and reaches {@code projects} as a membership test that V16's
+ * partial index serves; the geographic arithmetic never touches the large side of the
+ * query. That is also why no GiST index ships with the feature: measured, the planner
+ * will not use one, and V16 says so with the plan.
  *
  * <h2>Relevance, in three live terms out of eight</h2>
  *
@@ -236,7 +250,67 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
      */
     private static final List<String> FACET_FLAGS = List.of(
             "b.m_status", "b.m_taxonomy", "b.m_tags", "b.m_completion",
-            "b.m_goal", "b.m_raised", "b.m_programme", "b.m_featured");
+            "b.m_goal", "b.m_raised", "b.m_location", "b.m_programme", "b.m_featured");
+
+    /**
+     * The distance from the origin to every place, computed once. #47.
+     *
+     * <p><strong>This is the whole performance story of {@link DiscoverySort#NEAR_ME},
+     * and it comes straight out of the data model.</strong> Distance is a property of a
+     * <em>location</em>, and there are eighteen of those, so the arithmetic belongs on
+     * the eighteen-row side of the query rather than on the twenty-thousand-row side.
+     * Written the obvious way — the {@code earth_distance} expression inline in the
+     * {@code SELECT} list and repeated in the keyset predicate — PostgreSQL evaluates
+     * it once per campaign per occurrence, which is four evaluations per row on page
+     * two.
+     *
+     * <p>Measured on postgres:16-alpine against 20,000 publicly visible campaigns, warm:
+     *
+     * <table>
+     *   <caption>near-me, inline expression against this CTE</caption>
+     *   <tr><th></th><th>inline</th><th>this</th></tr>
+     *   <tr><td>first page</td><td>118.7 ms</td><td><strong>19.7 ms</strong></td></tr>
+     *   <tr><td>second page (keyset)</td><td>199.8 ms</td><td><strong>20.4 ms</strong></td></tr>
+     *   <tr><td>first page, radius 100 km</td><td>26.5 ms</td><td><strong>10.3 ms</strong></td></tr>
+     * </table>
+     *
+     * <p>The second effect is larger than the arithmetic saved. With the key a plain
+     * column reference the planner can push the {@code LIMIT} into the sort — the plan
+     * becomes a <em>top-N heapsort of 36 kB</em> rather than a full quicksort of 2.5 MB
+     * across two parallel workers — because a sort key that is an expression over a
+     * joined row is not something it will do that for.
+     *
+     * <p>{@code MATERIALIZED} is explicit for the same reason the facet query's base CTE
+     * says it: without it the planner is free to inline the CTE, and inlining puts the
+     * expression back where it started.
+     */
+    private static final String LOCATION_DISTANCE_CTE = "WITH location_distance AS MATERIALIZED ("
+            + "SELECT l.id, " + distanceMetres("l") + " AS metres FROM locations l) ";
+
+    /**
+     * How the {@link DiscoverySort#NEAR_ME} feed reaches {@link #LOCATION_DISTANCE_CTE}.
+     *
+     * <p>A {@code LEFT} join, and only on the one order that needs it: a campaign with
+     * no location has to survive to be sorted last (see {@link DiscoverySort#NEAR_ME}),
+     * and adding the join to every feed would put a table nothing else reads into the
+     * plan of the platform's hottest query.
+     */
+    private static final String LOCATION_JOIN =
+            " LEFT JOIN location_distance ld ON ld.id = p.location_id";
+
+    /** The projected distance, which is also the keyset's key. See {@link #LOCATION_DISTANCE_CTE}. */
+    private static final String DISTANCE_COLUMN = "ld.metres";
+
+    /**
+     * Facet dimensions whose {@code extra} column is a display label, not a key part.
+     *
+     * <p>A subcategory's {@code extra} is the other half of its identity — slugs are
+     * unique within a parent and not globally — and a tag's and a city's is the word to
+     * render. Two meanings for one column, which is why the list is written down rather
+     * than checked with an {@code ||} that the third such dimension would be left out
+     * of.
+     */
+    private static final Set<String> LABEL_BEARING = Set.of("tag", "city", "country");
 
     private final NamedParameterJdbcTemplate jdbc;
     private final Taxonomy taxonomy;
@@ -266,9 +340,12 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
      * it fails the suite that pins each refusal, and one implemented without being
      * announced is refused by the controller and never reached.
      *
-     * <p>{@code FILTER_SAVED}, {@code FILTER_RECOMMENDED}, {@code SORT_NEAR_ME},
-     * {@code FILTER_LOCATION} and {@code FILTER_PROXIMITY} are deliberately still
-     * absent.
+     * <p>{@code FILTER_SAVED} and {@code FILTER_RECOMMENDED} are deliberately still
+     * absent. {@code SORT_NEAR_ME}, {@code FILTER_LOCATION} and
+     * {@code FILTER_PROXIMITY} were, and are not: #47 brought V16's {@code locations}
+     * table, {@code projects.location_id}, and the {@code earthdistance} arithmetic, so
+     * all three are served — the sort, the country and city filters, and the bounded
+     * radius, on both endpoints and in the facet panel.
      *
      * <p><strong>{@code SORT_RELEVANCE} is here and {@code FILTER_RECOMMENDED} is
      * not, and #44 is why both are true at once.</strong> The composite ranks
@@ -284,6 +361,9 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
         return EnumSet.of(
                 DiscoveryCapability.FULL_TEXT,
                 DiscoveryCapability.SORT_RELEVANCE,
+                DiscoveryCapability.SORT_NEAR_ME,
+                DiscoveryCapability.FILTER_LOCATION,
+                DiscoveryCapability.FILTER_PROXIMITY,
                 DiscoveryCapability.FILTER_FEATURED,
                 DiscoveryCapability.FILTER_PROGRAMME);
     }
@@ -311,6 +391,14 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
         String relevance = query.sort() == DiscoverySort.RELEVANCE
                 ? relevanceScore(exactTier, query.text(), weights, params)
                 : null;
+        // #47. Bound once, before anything is built, for the same reason `asOf` is: the
+        // origin appears in the projected sort key AND in the keyset predicate, which
+        // are two compilations of one expression, and a parameter added by only one of
+        // them would make the second page resume from a distance measured from
+        // somewhere else.
+        if (query.sort() == DiscoverySort.NEAR_ME) {
+            bindOrigin(params, query.location().proximity());
+        }
 
         List<String> where = new ArrayList<>();
         where.add(statePredicate("p", DiscoveryStatus.statesFor(query.statuses()), params));
@@ -329,9 +417,11 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
         // would run on every page of every scroll.
         params.addValue("limit", query.limit() + 1);
 
-        String sql = "SELECT " + ProjectCardRows.COLUMNS + ", "
+        String sql = (query.sort() == DiscoverySort.NEAR_ME ? LOCATION_DISTANCE_CTE : "")
+                + "SELECT " + ProjectCardRows.COLUMNS + ", "
                 + scoreColumn(query.sort(), exactTier, relevance)
                 + ProjectCardRows.FROM
+                + (query.sort() == DiscoverySort.NEAR_ME ? LOCATION_JOIN : "")
                 + " WHERE " + String.join(" AND ", where)
                 + " ORDER BY " + orderBy(query.sort())
                 + " LIMIT :limit";
@@ -442,6 +532,12 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
     public FacetCounts facets(DiscoveryQuery query) {
         MapSqlParameterSource params = new MapSqlParameterSource();
         params.addValue("asOf", OffsetDateTime.ofInstant(asOf(query), ZoneOffset.UTC));
+        // #47's city labels are the one thing in this statement that depends on the
+        // language. The taxonomy's names still come from Taxonomy in Java, for the
+        // reason at the bottom of this comment; there is no in-memory Locations tree to
+        // resolve a place name through, and adding one for a facet label would be a
+        // cache to invalidate for eighteen rows.
+        params.addValue("locale", query.locale());
 
         // The base set is every publicly visible campaign, NOT the status-filtered
         // one: the status facet has to be able to count the statuses the caller did
@@ -476,11 +572,19 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
         // six above, which is what makes "composes with every existing filter" true
         // rather than aspirational: there is no second query and nothing to merge.
         String matchesProgramme = programmePredicate("p", query.programmeSlugs(), params);
+        // Country, city and radius are ONE dimension (#47), exactly as category and
+        // subcategory are one. §4.3's filter table gives Location a single row naming
+        // all three, and they are one control on the panel: a caller who picked a city
+        // and was shown country counts computed under the city filter would see zero
+        // beside every country but one, which is the dead end excluding a dimension
+        // from its own counts exists to prevent.
+        String matchesLocation = locationPredicate("p", query.location(), params);
         String matchesFeatured = featuredPredicate("p", query.showOnly());
 
         String sql = facetSql(
                 publicStates, matchesStatus, matchesTaxonomy, matchesTags,
-                matchesCompletion, matchesGoal, matchesRaised, matchesProgramme, matchesFeatured, params);
+                matchesCompletion, matchesGoal, matchesRaised, matchesLocation,
+                matchesProgramme, matchesFeatured, params);
 
         List<FacetRow> rows = jdbc.query(sql, params, (resultSet, index) -> new FacetRow(
                 resultSet.getString("dimension"),
@@ -491,22 +595,28 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
         Map<String, Map<String, Long>> counts = new LinkedHashMap<>();
         Map<String, String> tagLabels = new LinkedHashMap<>();
         List<String> tagOrder = new ArrayList<>();
+        // The same pair for cities: the resolved name rides in `extra` the way a tag's
+        // label does, so it is a label rather than half of a composite key.
+        Map<String, String> cityNames = new LinkedHashMap<>();
         for (FacetRow row : rows) {
             if ("tag".equals(row.dimension())) {
                 tagLabels.put(row.key(), row.extra());
                 tagOrder.add(row.key());
             }
+            if ("city".equals(row.dimension())) {
+                cityNames.put(row.key(), row.extra());
+            }
             // Subcategory slugs are unique per parent and not globally, so a
             // subcategory's key is the pair. Joining them with a character that
             // cannot occur in a slug keeps one flat map rather than a special case.
-            String composite = row.extra() == null || "tag".equals(row.dimension())
+            String composite = row.extra() == null || LABEL_BEARING.contains(row.dimension())
                     ? row.key()
                     : row.key() + "/" + row.extra();
             counts.computeIfAbsent(row.dimension(), ignored -> new LinkedHashMap<>())
                     .put(composite, row.count());
         }
 
-        return assemble(query.locale(), counts, tagLabels, tagOrder);
+        return assemble(query.locale(), counts, tagLabels, tagOrder, cityNames);
     }
 
     // ---------------------------------------------------------------------------
@@ -775,6 +885,7 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
         add(where, subcategoryPredicate(alias, query.subcategorySlugs(), params));
         add(where, tagPredicate(alias, query.tagSlugs(), params));
         add(where, programmePredicate(alias, query.programmeSlugs(), params));
+        add(where, locationPredicate(alias, query.location(), params));
         add(where, featuredPredicate(alias, query.showOnly()));
         add(where, completionPredicate(alias, query.completion(), params));
         add(where, amountPredicate(alias + ".goal_amount", "goal", query.goal(), params));
@@ -977,6 +1088,124 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
     }
 
     /**
+     * §4.3's Location filter (#47): country, city, and a bounded radius.
+     *
+     * <p><strong>One {@code IN} against a subquery over {@code locations}, not a
+     * join.</strong> The three controls narrow the same small table — eighteen rows of
+     * curated reference data — so the whole filter reduces to "which of these places,
+     * and then which campaigns are in one of them". That leaves the predicate on
+     * {@code projects} an ordinary membership test that V16's partial
+     * {@code projects_discovery_location_idx} serves, and it keeps the geographic
+     * arithmetic off the twenty-thousand-row side of the query entirely. It is the same
+     * shape {@link #categoryPredicate} uses, and for the same reason.
+     *
+     * <p><strong>A campaign with no location matches no location filter.</strong>
+     * {@code NULL IN (…)} is null and a null predicate excludes the row, which is the
+     * answer that is true rather than merely convenient: a campaign whose location is
+     * unknown cannot be shown to be in Azerbaijan, in Baku, or within fifty kilometres
+     * of anywhere. Under {@link DiscoverySort#NEAR_ME} with no radius the same campaign
+     * is <em>ordered</em> last rather than removed, because that is a sort and this is a
+     * filter — see that constant.
+     *
+     * <p><strong>The radius boundary is inclusive, and it is the same number the sort
+     * key is.</strong> {@code distance <= radius}, over the identical rounded
+     * {@code numeric} expression the order reads, so "inside the circle" and "sorted
+     * before the edge" cannot disagree by a floating-point ulp at exactly the boundary.
+     * {@code DiscoveryProximityTests} tests the boundary rather than the middle.
+     *
+     * <p>Country and city are AND'd with each other, unlike the values within either.
+     * {@code ?country=AZ&city=baki} means "in Baku, which is in Azerbaijan" — a
+     * narrowing, like every other pair of dimensions here — while {@code ?city=baki&city=gence}
+     * means either, because a campaign is in one city.
+     */
+    private static String locationPredicate(
+            String alias, LocationFilter location, MapSqlParameterSource params) {
+        if (!location.narrows()) {
+            return "true";
+        }
+        String suffix = String.valueOf(params.getValues().size());
+        List<String> clauses = new ArrayList<>();
+        if (!location.countries().isEmpty()) {
+            params.addValue("countryCodes" + suffix, List.copyOf(location.countries()));
+            clauses.add("lf.country_code IN (:countryCodes" + suffix + ")");
+        }
+        if (!location.cities().isEmpty()) {
+            // By the folded slug, which is what the binder produced and what V16
+            // stores. An unknown slug matches nothing, which is the right answer to a
+            // link shared before the gazetteer changed — an empty feed, not a 400.
+            params.addValue("citySlugs" + suffix, List.copyOf(location.cities()));
+            clauses.add("lf.slug IN (:citySlugs" + suffix + ")");
+        }
+        LocationFilter.Proximity proximity = location.proximity();
+        if (proximity != null && proximity.radiusKilometres() != null) {
+            bindOrigin(params, proximity);
+            params.addValue("radiusMetres" + suffix, proximity.radiusMetres());
+            clauses.add(distanceMetres("lf") + " <= :radiusMetres" + suffix);
+        }
+        return alias + ".location_id IN (SELECT lf.id FROM locations lf WHERE "
+                + String.join(" AND ", clauses) + ")";
+    }
+
+    /**
+     * Great-circle metres from the request's origin to a location, as {@code numeric}.
+     *
+     * <p>{@code earth_distance(ll_to_earth(…), ll_to_earth(…))} — V16's
+     * {@code earthdistance}, and V16's comment has the whole argument for why that
+     * rather than PostGIS. It measures on a sphere of radius 6378168 m, which is under
+     * half a percent from a proper spheroid anywhere and about two parts in a thousand
+     * at Azerbaijani latitudes, against points that are city centroids.
+     *
+     * <p><strong>Rounded to three places and cast to {@code numeric}, for the reason
+     * {@link #POPULARITY_SCORE} and {@link #textScore} are.</strong>
+     * {@code earth_distance} returns {@code double precision}; the keyset predicate
+     * compares the cursor's key to this expression for exact equality, and two
+     * evaluations of a float expression that round differently would make a scroll skip
+     * a row. Three places is a millimetre, which is far below the accuracy of anything
+     * being measured and is there only so the equality is reliable rather than likely.
+     *
+     * <p>Both casts to {@code float8} are explicit. {@code numeric} to
+     * {@code double precision} is an implicit cast in PostgreSQL and the call would
+     * resolve without them, but a function resolution that depends on an implicit cast
+     * is one {@code CREATE FUNCTION} away from resolving to something else.
+     *
+     * @param alias the {@code locations} alias in whichever statement this is being
+     *     built for — {@code l} inside {@link #LOCATION_DISTANCE_CTE}, {@code lf} inside
+     *     the radius filter's subquery. One method rather than two strings, so the sort
+     *     and the filter cannot come to measure distance differently
+     */
+    private static String distanceMetres(String alias) {
+        return "round(earth_distance("
+                + "ll_to_earth(:originLat::float8, :originLon::float8), "
+                + "ll_to_earth(" + alias + ".latitude::float8, " + alias + ".longitude::float8)"
+                + ")::numeric, 3)";
+    }
+
+    /**
+     * The origin, bound under the two names {@link #distanceMetres} reads.
+     *
+     * <p>Fixed names rather than generated ones, because there is exactly one origin
+     * per request and the expression appears in up to three places — the projected sort
+     * key, the keyset predicate, and the radius filter — which all have to mean the same
+     * point. Idempotent, so the order the three are built in does not matter.
+     *
+     * <p>The value is already quantised: {@code LocationFilter.Proximity} rounds it in
+     * its constructor, so nothing at higher precision reaches a statement, a log, or a
+     * cache key. See that record for why that is a privacy decision rather than a
+     * formatting one.
+     */
+    private static void bindOrigin(MapSqlParameterSource params, LocationFilter.Proximity proximity) {
+        if (proximity == null) {
+            // Unreachable: the binder refuses `sort=near_me` with no origin, and the
+            // radius filter cannot exist without one. Throwing rather than binding
+            // nulls is what keeps that true — nulls would make every distance null and
+            // the feed would quietly order by id.
+            throw new IllegalStateException("near_me reached the query with no origin");
+        }
+        params.addValue("originLat", proximity.latitude());
+        params.addValue("originLon", proximity.longitude());
+    }
+
+    /**
      * §4.3's "Show only: editorially featured" (#48).
      *
      * <p>One {@code EXISTS} against {@code project_editorial_badges}, which is V14's
@@ -1081,13 +1310,13 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
             // Every order whose key is an expression rather than a column reads it
             // from the projected alias, so the score is computed once per row.
             case POPULARITY, BEST_MATCH, RELEVANCE -> "sort_score DESC, p.id ASC";
-            case NEAR_ME -> throw new IllegalStateException(
-                    // Unreachable: the controller refuses this before it gets here,
-                    // through the capability check. Throwing rather than falling back
-                    // to another order is what keeps that true — a default branch here
-                    // would silently make `sort=near_me` mean `sort=newest` the day
-                    // somebody removed the check.
-                    sort.wireValue() + " is refused before it reaches the query");
+            // The only ascending order whose key is an expression: nearest first, and
+            // nulls last so a campaign with no location is at the end of the feed
+            // rather than the start of it. Spelled out for the reason V12 spells it
+            // out on the two column orders — PostgreSQL's default for ASC is already
+            // NULLS LAST, and an implicit agreement is one somebody can break by
+            // adding a DESC.
+            case NEAR_ME -> "sort_score ASC NULLS LAST, p.id ASC";
             // Unreachable for a different reason: `curated` is not a value a client
             // may send (DiscoverySort.isClientSelectable), and the order it names
             // belongs to the collection landing page, which is served by
@@ -1103,7 +1332,11 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
             case POPULARITY -> "(" + POPULARITY_SCORE + ") AS sort_score";
             case BEST_MATCH -> "(" + textScore("p", exactTier) + ") AS sort_score";
             case RELEVANCE -> "(" + relevance + ") AS sort_score";
-            case NEWEST, ENDING_SOON, MOST_FUNDED, MOST_BACKED, NEAR_ME, CURATED ->
+            // Null for a campaign with no location — the outer join found no row —
+            // which is what puts it in the nulls-last tail rather than at distance
+            // zero, the origin.
+            case NEAR_ME -> DISTANCE_COLUMN + " AS sort_score";
+            case NEWEST, ENDING_SOON, MOST_FUNDED, MOST_BACKED, CURATED ->
                 "NULL::numeric AS sort_score";
         };
     }
@@ -1161,8 +1394,17 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
             // the SELECT list projects -- so the two are the same characters rather than
             // two builds of one expression that a future edit could separate.
             case RELEVANCE -> presentKeyset("(" + relevance + ")", decimal(key), params);
-            case NEAR_ME -> throw new IllegalStateException(
-                    sort.wireValue() + " is refused before it reaches the query");
+            // Ascending and nullable, which is `ending_soon`'s shape rather than
+            // `popularity`'s: ">" resumes after a distance, and the null branch is the
+            // tail of campaigns with no location. Getting the null branch wrong here
+            // would drop every unlocated campaign from the second page onwards, which
+            // is exactly what deciding to sort them last rather than exclude them was
+            // meant to avoid.
+            // And unlike every other computed key here, this one is a plain column
+            // reference rather than the expression repeated: the CTE already holds it.
+            // Measured, that is the difference between 199.8 ms and 20.4 ms on page two
+            // — see LOCATION_DISTANCE_CTE.
+            case NEAR_ME -> nullableKeyset(DISTANCE_COLUMN, ">", decimal(key), params);
             case CURATED -> throw new IllegalStateException(
                     "curated is the collection page's order and has no meaning in a feed");
         };
@@ -1235,8 +1477,10 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
             case MOST_FUNDED -> card.pledged().amount().toPlainString();
             case MOST_BACKED -> Integer.toString(card.backersCount());
             case POPULARITY, BEST_MATCH, RELEVANCE -> row.score().toPlainString();
-            case NEAR_ME -> throw new IllegalStateException(
-                    sort.wireValue() + " is refused before it reaches the query");
+            // The only computed key that can be null: a campaign with no location. The
+            // cursor encoding distinguishes "no key" from "an empty key" with a
+            // presence flag, so the null tail pages correctly. See DiscoveryCursor.
+            case NEAR_ME -> row.score() == null ? null : row.score().toPlainString();
             case CURATED -> throw new IllegalStateException(
                     "curated is the collection page's order and has no meaning in a feed");
         };
@@ -1298,6 +1542,7 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
             String matchesCompletion,
             String matchesGoal,
             String matchesRaised,
+            String matchesLocation,
             String matchesProgramme,
             String matchesFeatured,
             MapSqlParameterSource params) {
@@ -1318,12 +1563,15 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
         String exceptCompletion = exceptFlag("b.m_completion");
         String exceptGoal = exceptFlag("b.m_goal");
         String exceptRaised = exceptFlag("b.m_raised");
+        // One name, used by both the country facet and the city facet, because §4.3
+        // gives Location one row and one control. See `matchesLocation`.
+        String exceptLocation = exceptFlag("b.m_location");
         String exceptProgramme = exceptFlag("b.m_programme");
         String exceptFeatured = exceptFlag("b.m_featured");
 
         return """
                WITH base AS MATERIALIZED (
-                   SELECT p.id, p.state, p.category_id, p.subcategory_id,
+                   SELECT p.id, p.state, p.category_id, p.subcategory_id, p.location_id,
                           p.goal_amount, p.pledged_amount,
                           (%s) AS m_status,
                           (%s) AS m_taxonomy,
@@ -1331,6 +1579,7 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
                           (%s) AS m_completion,
                           (%s) AS m_goal,
                           (%s) AS m_raised,
+                          (%s) AS m_location,
                           (%s) AS m_programme,
                           (%s) AS m_featured
                      FROM projects p
@@ -1391,6 +1640,43 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
                   AND %s
                 GROUP BY ab.value
                UNION ALL
+               -- §4.3's Location control, outer half (#47). Left-joined from
+               -- `locations` and grouped by country, so a country with no visible
+               -- campaigns comes back as a zero rather than as a missing row: this is
+               -- curated reference data with a short vocabulary, which is the
+               -- programme rule rather than the tag rule.
+               --
+               -- The label is the ISO code itself. Every client platform ships a
+               -- localised country-name table and §21.1 says to use the platform
+               -- internationalisation APIs, so the server does not keep a second one in
+               -- four languages.
+               SELECT 'country'::text, l.country_code, l.country_code, count(b.id)
+                 FROM locations l
+                 LEFT JOIN base b ON b.location_id = l.id AND %s
+                GROUP BY l.country_code
+               UNION ALL
+               -- The inner half. The name is the requested locale, then `az`, then the
+               -- slug -- the chain `Taxonomy` resolves a category through, with the
+               -- endonym rather than English as the fallback, which is the right
+               -- default for a proper noun. Resolved in SQL rather than in Java because
+               -- there is no in-memory Locations tree to resolve it through and adding
+               -- one for a facet label would be a cache to invalidate.
+               --
+               -- WHERE THE CEILING IS. This is a fixed vocabulary and returns every
+               -- place, zeros included, because a filter control that vanishes when its
+               -- count reaches zero is a control that moves under the reader's cursor.
+               -- That holds while the gazetteer is a curated list of the places a
+               -- campaign can be in. The day it becomes a real world city list -- order
+               -- 10^5 rows -- the control stops being a list and becomes a search box,
+               -- and this becomes a top-N like the tag facet. That is the trigger, and
+               -- it is a product change rather than a query optimisation.
+               SELECT 'city'::text, l.slug, COALESCE(lt.name, laz.name, l.slug), count(b.id)
+                 FROM locations l
+                 LEFT JOIN location_translations lt ON lt.location_id = l.id AND lt.locale = :locale
+                 LEFT JOIN location_translations laz ON laz.location_id = l.id AND laz.locale = 'az'
+                 LEFT JOIN base b ON b.location_id = l.id AND %s
+                GROUP BY l.slug, COALESCE(lt.name, laz.name, l.slug)
+               UNION ALL
                -- §4.3's Programmes control. Left-joined from `collections` rather than
                -- grouped out of `base`, so an open call with nothing visible in it
                -- still comes back with a zero: the vocabulary is short and curated,
@@ -1422,6 +1708,7 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
                         matchesCompletion,
                         matchesGoal,
                         matchesRaised,
+                        matchesLocation,
                         matchesProgramme,
                         matchesFeatured,
                         publicStates,
@@ -1436,6 +1723,8 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
                         exceptCompletion,
                         exceptGoal,
                         exceptRaised,
+                        exceptLocation,
+                        exceptLocation,
                         exceptProgramme,
                         exceptFeatured);
     }
@@ -1540,7 +1829,8 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
             String locale,
             Map<String, Map<String, Long>> counts,
             Map<String, String> tagLabels,
-            List<String> tagOrder) {
+            List<String> tagOrder,
+            Map<String, String> cityNames) {
 
         Map<String, Long> statuses = counts.getOrDefault("status", Map.of());
         Map<String, Long> categories = counts.getOrDefault("category", Map.of());
@@ -1549,6 +1839,8 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
         Map<String, Long> completion = counts.getOrDefault("completion", Map.of());
         Map<String, Long> goal = counts.getOrDefault("goal", Map.of());
         Map<String, Long> raised = counts.getOrDefault("raised", Map.of());
+        Map<String, Long> countries = counts.getOrDefault("country", Map.of());
+        Map<String, Long> cities = counts.getOrDefault("city", Map.of());
         Map<String, Long> programmes = counts.getOrDefault("programme", Map.of());
         Map<String, Long> showOnly = counts.getOrDefault("showOnly", Map.of());
 
@@ -1570,6 +1862,21 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
             tagCounts.add(new FacetCounts.NamedCount(slug, tagLabels.get(slug), tags.getOrDefault(slug, 0L)));
         }
 
+        // §4.3's Location control (#47), sorted here rather than in SQL. Sorted by the
+        // stable handle rather than by the count, deliberately: this is a fixed
+        // vocabulary, and a control whose entries reorder as campaigns are pledged to
+        // is a control that moves under the reader's cursor — the same rule that keeps
+        // the zero-count entries present. The folded slug is very nearly Azerbaijani
+        // alphabetical order, which is the order a list of cities should be in.
+        List<FacetCounts.NamedCount> countryCounts = new ArrayList<>();
+        for (String code : new java.util.TreeSet<>(countries.keySet())) {
+            countryCounts.add(new FacetCounts.NamedCount(code, code, countries.get(code)));
+        }
+        List<FacetCounts.NamedCount> cityCounts = new ArrayList<>();
+        for (String slug : new java.util.TreeSet<>(cities.keySet())) {
+            cityCounts.add(new FacetCounts.NamedCount(slug, cityNames.getOrDefault(slug, slug), cities.get(slug)));
+        }
+
         // The programme control, named in the reader's language and in the order the
         // collections index lists them. The titles come from CuratedCollections for
         // the reason the category names come from Taxonomy: that class owns the
@@ -1589,6 +1896,8 @@ public class PostgresSearchService implements SearchService, RankingDiagnostics 
                 fixedVocabulary(CompletionBand.wireValues(), completion),
                 fixedVocabulary(AmountBand.wireValues(), goal),
                 fixedVocabulary(AmountBand.wireValues(), raised),
+                countryCounts,
+                cityCounts,
                 programmeCounts,
                 // One value, deliberately. See FacetCounts: `saved` is per-caller and
                 // `recommended` is #44, and a zero for either would say the platform
