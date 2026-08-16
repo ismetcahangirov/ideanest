@@ -459,6 +459,17 @@ sequenceDiagram
 > (`ideanest.pledge.reservation.ttl`). V17's header carries the whole argument and
 > the reverse.
 
+> **PL-14 is built (#52), and it is more than a unique column.** §10.3 has the four
+> answers a key can produce and §7.2 has the table; the part worth stating beside
+> the capability is that a replay returns *the original response* rather than a
+> fresh one, so the guarantee covers the mutations that create no row to find — the
+> cancellation of PL-10 in particular, where a retry has to answer 204 and there is
+> no pledge left in an active state to carry a key.
+>
+> The diagram's `POST /pledges/:id/confirm` is also built, minus one step: the
+> provider call beside it is #55, blocked on #60, and §9.2 carries what that means
+> and why the transition is correct without it.
+
 ### 4.6 Campaign editor `[W]`
 
 **Basics** — title (≤60 characters), summary (≤135), category and subcategory,
@@ -1266,10 +1277,49 @@ Atomic units: `id`, `project_id`, `name`, `description`, `image_id`,
 `base_amount`, `addons_amount`, `bonus_amount`, `shipping_amount`,
 `tax_amount`, `total_amount` (generated), `currency`, `payment_method_id`,
 `shipping_country`, `is_anonymous`, `is_late_pledge`, `referrer_code`,
-`idempotency_key` (unique), `confirmed_at`, `collected_at`, `canceled_at`.
+`idempotency_key`, `confirmed_at`, `collected_at`, `canceled_at`.
 
 **Unique:** `(project_id, backer_id)` where the pledge is active — one pledge per
 backer per project.
+
+**Unique:** `(backer_id, idempotency_key)` where the key is present.
+
+> **The idempotency key is unique per backer, not globally**, and #52 changed it
+> from the second to the first when it started writing the column. A key is minted
+> by a client and belongs to the account that minted it — `idempotency_keys` is
+> keyed the same way, and for the stronger reason that a global key would let one
+> caller reach another's recorded response by guessing theirs. Over the key alone,
+> two backers who happened to generate the same UUID would have the second of them
+> refused by a constraint violation rather than served.
+>
+> What the index is for is unchanged: it is the second line under §10.3, so that
+> even a total failure of the machinery in `shared` cannot produce two pledges from
+> one backer's one key. The guarantee itself — including the recorded response a
+> replay is answered with — is `idempotency_keys`.
+
+#### `pledge_addons`
+`pledge_id`, `reward_tier_id`, `project_id`, `quantity`. Primary key
+`(pledge_id, reward_tier_id)`.
+
+> **An addition to this section rather than a reading of it (#52).** `pledges`
+> carries an `addons_amount` and a sum cannot be unpacked, and three readers need
+> the lines rather than the total: the backer, who is shown what they selected on
+> every screen after the draft; the edit endpoint, which re-quotes a changed
+> selection and cannot re-quote a number; and the creator, who has to put the right
+> things in the box.
+>
+> A table rather than a jsonb column, because these are references to `reward_tiers`
+> rows: a jsonb array cannot be a foreign key, and a tier deleted out from under a
+> pledge that names it is what the composite reference on `pledges.reward_tier_id`
+> already exists to refuse. Both references here are composite on `project_id` for
+> that reason, so an add-on from another campaign cannot be recorded against this
+> one.
+>
+> **Nothing reserves stock on an add-on yet.** §4.5's PL-13 holds a place on the
+> reward tier; a limited add-on is quoted and not held, because reserving *n* places
+> needs a conditional statement of its own, a matching release, and a sweep that
+> walks this table to give them back — a change to the expiry path rather than an
+> addition to the checkout.
 
 #### `payment_methods`
 `id`, `user_id`, `provider`, `provider_token` (**token only, never a card
@@ -1325,7 +1375,7 @@ by a database constraint and verified by a nightly reconciliation job.
 | `audit_logs` | Privileged actions |
 | `fee_schedules` | Configurable rates |
 | `outbox_events` | Transactional outbox |
-| `idempotency_keys` | Replay protection |
+| `idempotency_keys` | Replay protection (#52). One row per `(account_id, idempotency_key)`, carrying the operation, a SHA-256 fingerprint of the request, and the status and exact bytes of the response the first attempt answered with. The row is inserted *before* the work as a claim — the unique index is what makes two identical requests arriving at once resolve to one — and completed with the response afterwards, in the same transaction as the work. Only successes are recorded; a refusal releases the key so that a client can retry it. Swept after §17.2's 24 hours |
 
 ### 7.3 Data decisions
 
@@ -1496,6 +1546,7 @@ load profile).
 | `token-cleaner` | Daily | Purge tokens from unsuccessful campaigns |
 | `denormalization-sync` | Hourly | Correct cached counters |
 | `account-anonymiser` | Hourly | Anonymise accounts whose deletion grace period has elapsed |
+| `idempotency-key-cleaner` | Hourly | Remove idempotency keys past §17.2's 24-hour retention |
 
 > **`reminder-sender` is half built.** #39 implemented the launch half: it sweeps
 > every campaign that is `LIVE` and still owes somebody the notice they asked for,
@@ -1528,6 +1579,23 @@ load profile).
 > a minute in which a limited tier looks sold out while a place is actually free:
 > a lost sale rather than a wrong one, which is why an in-process timer is
 > tolerable for it and would not be for anything that moves money.
+
+> **`idempotency-key-cleaner` is built (#52), on the same terms, and is the
+> simplest of the three.** §17.2 retains keys for 24 hours; a retention period that
+> nothing enforces is a comment, and the table otherwise grows by one row per
+> payment mutation for ever — every one of them a record of something somebody
+> bought, kept long after the retry it existed to catch became impossible.
+>
+> Unlike the two above it needs no claim. Expiring a reservation has a second
+> effect — the tier's place has to go back — so the row is claimed with a
+> conditional update and exactly one caller credits the tier. Deleting a key has no
+> second effect at all: the delete *is* the work, so two replicas sweeping at once
+> means one of them removes the row and the other finds nothing to remove. The whole
+> job is one bounded `DELETE`, oldest first.
+>
+> Late is cheap. A missed hour is an hour of rows outliving their purpose, and never
+> a wrong answer: a key is matched against its own `expires_at` when it is read,
+> not against whether the sweep has been past.
 
 ---
 
@@ -1578,6 +1646,27 @@ sequenceDiagram
         Note over API: Four retries across seven days
     end
 ```
+
+> **Phase 1 is not built, and confirmation ships without it (#52).** The
+> verification authorisation, 3-D Secure, the stored card token and scheme
+> transaction identifier, and the void are #55, which is blocked on #60 — every one
+> of those steps is a provider's API, and there is no neutral way to write them
+> against a provider nobody has chosen. A stub returning an approval would be worse
+> than nothing: it would make this path look finished and would have told clients
+> that cards were verified when no card was ever seen.
+>
+> What `POST /v1/pledges/{id}/confirm` does today is the rest of the diagram: §6.2's
+> `DRAFT → CONFIRMED`, and the reward tier's held place becoming a claimed one, in
+> one transaction. That is correct and complete on its own precisely because of what
+> this section already says — **no money moves at confirmation and no ledger entry
+> is written**, under any circumstances; the charge is phase 2, at the close of a
+> successful campaign, and belongs to epic #59.
+>
+> So that no client infers more than that, the pledge response carries
+> `cardVerified`, which is `false` on every confirmed pledge the platform holds and
+> becomes true when #55 lands. `pledges.payment_method_id` is accepted and stored in
+> the meantime — a nullable column with no foreign key, because `payment_methods` is
+> #55's table — so the shape a client sends does not change then either.
 
 ### 9.3 Provider requirements
 
@@ -2023,6 +2112,25 @@ PUT    /v1/admin/collections/{slug}/projects/order
 Money crosses the wire as a string because JSON numbers are IEEE 754 doubles.
 Serialising `599.00` as a number invites a client to parse it into a value that
 cannot represent it exactly.
+
+**`Idempotency-Key` is a UUID and it is required, not advisory.** A payment
+mutation without one is refused (`IDEMPOTENCY_KEY_REQUIRED`) rather than run
+unprotected: treating an absent header as "this client does not want replay
+protection" makes the guarantee opt-in for exactly the clients most likely to need
+it. Four answers are possible, and #52 built all four:
+
+| Situation | Answer |
+|---|---|
+| A key nobody has used | The work runs, and its response is recorded against the key |
+| The same key, the same request, the first one finished | **The recorded response**, verbatim — same status, same bytes. Not a re-execution and not a 409 |
+| The same key, a *different* request | 409 `IDEMPOTENCY_KEY_REUSED` |
+| The same key, the first request still running | 409 `IDEMPOTENT_REQUEST_IN_PROGRESS`, with `Retry-After` |
+
+Keys are scoped to the account that spent them, so one caller can neither replay
+another's request nor be handed its response. Two identical requests arriving at
+the same instant are resolved by `idempotency_keys`' unique index and never by a
+read: both insert a claim, exactly one succeeds, and the loser reads what the
+winner wrote.
 
 ### 10.4 Error shape
 
