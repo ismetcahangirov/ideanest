@@ -52,21 +52,50 @@ public enum DiscoveryCapability {
      */
     SORT_RELEVANCE("sort=relevance", "#44 (ranking)"),
 
-    /** Geographic distance from the caller. <strong>#47.</strong> */
+    /**
+     * Great-circle distance from an origin the caller supplies. <strong>#47, and
+     * served.</strong>
+     *
+     * <p>Needs V16 — {@code locations}, {@code projects.location_id}, and the
+     * {@code cube}/{@code earthdistance} arithmetic the distance is measured with. An
+     * implementation that declares this must serve {@link DiscoverySort#NEAR_ME} on
+     * {@code /v1/discover} and on {@code /v1/search} and compose it with the keyset
+     * cursor, pinning the origin the way this one pins it; the three are one feature,
+     * and a client that got two of them would find its nearest-first feed could not be
+     * paged.
+     *
+     * <p>It does <strong>not</strong> imply {@link #FILTER_PROXIMITY}. Ordering by
+     * distance and bounding by a radius are two controls (§4.3 lists the sort in one
+     * table and the filter in the other), and an implementation could sort without
+     * being able to filter.
+     */
     SORT_NEAR_ME("sort=near_me", "#47 (proximity)"),
 
     /**
-     * Filtering by country and city.
+     * Filtering by country and city. <strong>#47, and served.</strong>
      *
-     * <p>Not merely unimplemented — <strong>there is nothing to filter on</strong>.
-     * {@code projects.location_id} is listed in §7.2 and is deliberately absent from
-     * the schema, and no {@code locations} table exists. The filter is representable
-     * so that #47 has a shape to fill in; until the column exists, asking for it is
-     * refused rather than answered with everything.
+     * <p>Was not merely unimplemented — until V16 there was nothing to filter on:
+     * {@code projects.location_id} was listed in §7.2 and deliberately absent from the
+     * schema, and no {@code locations} table existed. The filter was representable so
+     * that #47 had a shape to fill in, which is what this whole enum is for.
+     *
+     * <p>An implementation that declares this must serve {@code country} and
+     * {@code city} on both endpoints <em>and</em> count them in the facet panel, as one
+     * dimension rather than two; the three are one feature, and a client that got two
+     * of them would find that ticking a city changed the feed and not the numbers
+     * beside it.
      */
     FILTER_LOCATION("country / city", "#47 (proximity), which brings the location schema"),
 
-    /** A radius around a point. <strong>#47.</strong> */
+    /**
+     * A bounded radius around an origin. <strong>#47, and served.</strong>
+     *
+     * <p>The parameter is {@code near=lat,lon} with {@code radiusKm}; the capability is
+     * named for {@code near} because that is the parameter that cannot be honoured
+     * without the schema. The bound is not optional — see
+     * {@code LocationFilter.Proximity.MAX_RADIUS_KILOMETRES} — because an unbounded
+     * radius is "everywhere" with arithmetic attached.
+     */
     FILTER_PROXIMITY("near", "#47 (proximity)"),
 
     /**

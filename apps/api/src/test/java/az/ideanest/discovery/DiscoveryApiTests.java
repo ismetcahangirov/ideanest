@@ -449,16 +449,40 @@ class DiscoveryApiTests extends DiscoveryTestSupport {
         assertThat(get("/v1/discover?sort=relevance", new HttpHeaders()).getStatusCode())
                 .isEqualTo(HttpStatus.OK);
 
-        for (Map.Entry<String, String> sort : Map.of("near_me", "#47").entrySet()) {
-            ResponseEntity<Map<String, Object>> response =
-                    get("/v1/discover?sort=" + sort.getKey(), new HttpHeaders());
+        // `near_me` used to be on this list too, and #47 is why it is not: V16 brought
+        // the locations schema and the earthdistance arithmetic, and the sort is served
+        // on both endpoints. Every sort §4.3 lists is now implemented — nothing is
+        // refused with DISCOVERY_OPTION_UNSUPPORTED any more — which is asserted here
+        // rather than assumed, because the alternative failure is a sort that answers
+        // 200 in somebody else's order.
+        assertThat(get("/v1/discover?sort=near_me&near=40.41,49.87", new HttpHeaders())
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
 
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-            assertThat(response.getBody()).containsEntry("code", "DISCOVERY_OPTION_UNSUPPORTED");
-            // The issue that owns the gap is in the body, so a client developer is
-            // sent to the issue rather than to the source.
-            assertThat(response.getBody().get("meta").toString()).contains(sort.getValue());
-        }
+        // What has not changed: a sort that is not a sort is still refused with the
+        // list of the ones that are.
+        ResponseEntity<Map<String, Object>> response = get("/v1/discover?sort=nearest", new HttpHeaders());
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("code", "DISCOVERY_VALUE_UNKNOWN");
+    }
+
+    @Test
+    @DisplayName("near me needs an origin, and says so rather than falling back to another order")
+    void nearMeNeedsAnOrigin() {
+        // #47. The refusal moved rather than disappeared: `sort=near_me` alone is no
+        // longer DISCOVERY_OPTION_UNSUPPORTED, because the option exists — it is
+        // DISCOVERY_VALUE_UNKNOWN naming `near`, because a distance from no origin is
+        // undefined and a near-me control that quietly meant newest is exactly the
+        // silent fallback DiscoveryCapability exists to prevent.
+        ResponseEntity<Map<String, Object>> response = get("/v1/discover?sort=near_me", new HttpHeaders());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("code", "DISCOVERY_VALUE_UNKNOWN");
+        assertThat(response.getBody().get("meta").toString()).contains("near");
+
+        assertThat(get("/v1/discover?sort=near_me&near=40.41,49.87", new HttpHeaders())
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
     }
 
     @Test
@@ -491,11 +515,14 @@ class DiscoveryApiTests extends DiscoveryTestSupport {
         // the composite ranks campaigns and does not know who is reading, so §11.2's w6
         // is inert and this filter now names D-07 rather than #44. See
         // DiscoveryCapability.FILTER_RECOMMENDED.
+        //
+        // `country` and `city` used to be on this list and are not any more, because
+        // #47 landed: V16 brought the `locations` table and `projects.location_id`, so
+        // there is something to filter on. They are asserted the other way round below,
+        // and the whole of their behaviour is DiscoveryProximityTests'.
         Map<String, String> refused = Map.of(
                 "showOnly=saved", "saved-projects table",
-                "showOnly=recommended", "D-07",
-                "country=AZ", "#47",
-                "city=Baku", "#47");
+                "showOnly=recommended", "D-07");
 
         for (Map.Entry<String, String> filter : refused.entrySet()) {
             ResponseEntity<Map<String, Object>> response =
@@ -506,6 +533,15 @@ class DiscoveryApiTests extends DiscoveryTestSupport {
                     .isEqualTo(HttpStatus.BAD_REQUEST);
             assertThat(response.getBody()).containsEntry("code", "DISCOVERY_OPTION_UNSUPPORTED");
             assertThat(response.getBody().get("meta").toString()).contains(filter.getValue());
+        }
+
+        // The two that are served now. A slug or a code nobody is filed under is an
+        // empty feed rather than a 400 — an open vocabulary, like `category` — which
+        // this fixture has none of, so both answer 200 with nothing.
+        for (String served : List.of("country=AZ", "city=Baku")) {
+            assertThat(get("/v1/discover?" + served, new HttpHeaders()).getStatusCode())
+                    .withFailMessage("%s is still refused", served)
+                    .isEqualTo(HttpStatus.OK);
         }
     }
 

@@ -82,8 +82,10 @@ import java.util.TreeSet;
  * @param goal the {@code goal_amount} dimension
  * @param raised the {@code pledged_amount} dimension
  * @param completion §4.3's five completion bands, OR'd
- * @param location country, city, proximity. <strong>#47</strong>; nothing to filter
- *     on yet, see {@link LocationFilter}
+ * @param location country, city, proximity. <strong>Served (#47).</strong> Country
+ *     and city are one dimension for faceting, as category and subcategory are; the
+ *     origin is quantised on the way in and is part of {@link #fingerprint()}, which
+ *     is what pins it to the cursor. See {@link LocationFilter}
  * @param showOnly saved, recommended, featured. <strong>Featured is served (#48);
  *     saved and recommended are still refused</strong>
  * @param sort one of §4.3's seven plus {@link DiscoverySort#BEST_MATCH}. When
@@ -244,7 +246,14 @@ public record DiscoveryQuery(
         parts.add(sorted(completion.stream().map(CompletionBand::wireValue).toList()));
         parts.add(sorted(location.countries()));
         parts.add(sorted(location.cities()));
-        parts.add(location.proximity() == null ? "" : location.proximity().toString());
+        // The origin, canonically (#47). This is what pins it: every distance on a
+        // near-me feed is measured from this point, so a client whose location moved
+        // between page one and page two would resume a keyset from a key that no
+        // longer picks out the row it was written for. Including it here makes that a
+        // DISCOVERY_CURSOR_MISMATCH and a restart rather than a silently reshuffled
+        // scroll — the same protection #42 gave the decay clock and #44 gave the
+        // ranking weights. See LocationFilter.Proximity.canonical.
+        parts.add(location.proximity() == null ? "" : location.proximity().canonical());
         parts.add(sorted(showOnly.stream().map(ShowOnly::wireValue).toList()));
         parts.add(sort.wireValue());
 

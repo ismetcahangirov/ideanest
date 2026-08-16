@@ -10,6 +10,7 @@ import az.ideanest.discovery.domain.DiscoverySort;
 import az.ideanest.discovery.domain.DiscoveryStatus;
 import az.ideanest.discovery.domain.LocationFilter;
 import az.ideanest.discovery.domain.ShowOnly;
+import az.ideanest.shared.Slugs;
 import java.math.BigDecimal;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
@@ -54,7 +55,7 @@ final class DiscoveryQueryBinder {
                 .completion(closedSet(parameters, "completion", CompletionBand::fromWireValue, CompletionBand.wireValues()))
                 .goal(amountRange(parameters, "goalBand", "goalMin", "goalMax"))
                 .raised(amountRange(parameters, "raisedBand", "raisedMin", "raisedMax"))
-                .location(new LocationFilter(openSet(parameters, "country"), openSet(parameters, "city"), null))
+                .location(location(parameters))
                 .showOnly(closedSet(parameters, "showOnly", ShowOnly::fromWireValue, ShowOnly.wireValues()));
 
         String sort = single(parameters, "sort");
@@ -67,6 +68,19 @@ final class DiscoveryQueryBinder {
             builder.sort(DiscoverySort.fromWireValue(sort)
                     .filter(DiscoverySort::isClientSelectable)
                     .orElseThrow(() -> new UnknownFilterValueException("sort", sort, DiscoverySort.wireValues())));
+
+            // #47. `sort=near_me` needs somewhere to be near. Refused rather than
+            // resolved back to the browsing default, unlike `best_match` with no `q`:
+            // a text score over no text is zero for every campaign and the request has
+            // one sensible reading, whereas a distance from no origin is undefined and
+            // a "near me" control that quietly meant "newest" is exactly the
+            // accepted-and-ignored failure DiscoveryCapability exists to prevent.
+            //
+            // Reported against `near` rather than against `sort`, because `near` is the
+            // parameter that is missing and `near_me` is a perfectly good sort.
+            if (DiscoverySort.NEAR_ME.wireValue().equals(sort) && single(parameters, "near") == null) {
+                throw new UnknownFilterValueException("near", "(absent)", List.of("lat,lon"));
+            }
         }
 
         String limit = single(parameters, "limit");
@@ -91,6 +105,86 @@ final class DiscoveryQueryBinder {
         }
 
         return builder.build();
+    }
+
+    /**
+     * §4.3's Location filter: country, city, and proximity (#47).
+     *
+     * <p><strong>City is folded here, not compared here.</strong> {@code locations.slug}
+     * is §11.3's folded comparable form of a place name — the same form
+     * {@code Slugs.slugify} produces and the same one {@code tags.slug} holds — so
+     * {@code ?city=Bakı}, {@code ?city=Baku} and {@code ?city=baki} are one filter
+     * rather than three. Folding in Java and comparing against a stored fold, rather
+     * than folding both sides in SQL, is what lets the comparison be an equality
+     * against an indexed column.
+     *
+     * <p><strong>The slug, not the exonym.</strong> {@code ?city=Bakı} works because
+     * the fold takes it to {@code baki}; {@code ?city=Baku} does not, because "Baku" is
+     * a different word in a different language rather than a spelling of the same one.
+     * That is the same contract {@code category} and {@code programme} have — the value
+     * is a handle and the facet panel is where a client gets it — and the alternative,
+     * matching {@code location_translations} too, would make the set of accepted values
+     * change every time somebody added a translation.
+     *
+     * <p>An open vocabulary, like {@code category} and {@code tag}: a country or city
+     * that names nothing is an empty feed rather than a 400, because a shared link
+     * (D-12) outlives the gazetteer it was written against.
+     */
+    private static LocationFilter location(MultiValueMap<String, String> parameters) {
+        Set<String> cities = new LinkedHashSet<>();
+        for (String city : openSet(parameters, "city")) {
+            String slug = Slugs.slugify(city);
+            if (!slug.isEmpty()) {
+                cities.add(slug);
+            }
+        }
+        return new LocationFilter(openSet(parameters, "country"), cities, proximity(parameters));
+    }
+
+    /**
+     * {@code near=lat,lon} and {@code radiusKm}, or null.
+     *
+     * <p>One parameter for the point rather than two, because a latitude without a
+     * longitude is not half a request — it is a request that cannot be answered, and
+     * two independent parameters make that a state the binder has to check for rather
+     * than one it cannot represent. Comma-separated because that is the form every
+     * geographic API uses and the form a shared URL (D-12) reads legibly in.
+     *
+     * <p>Parsed as {@code BigDecimal}, never {@code Double.parseDouble}, for the reason
+     * the money bounds are: the value ends up as a keyset sort key compared for exact
+     * equality. The quantisation, the range checks and the radius bound all live on
+     * {@code LocationFilter.Proximity}, so they apply however the record is built; this
+     * method only turns the refusal into the RFC 9457 shape §10.4 requires.
+     */
+    private static LocationFilter.Proximity proximity(MultiValueMap<String, String> parameters) {
+        String near = single(parameters, "near");
+        String radius = single(parameters, "radiusKm");
+        if (near == null) {
+            // A radius with nothing to be a radius of. Refused rather than dropped: a
+            // client that sent one believes it narrowed the feed.
+            if (radius != null) {
+                throw new UnknownFilterValueException("near", "(absent)", List.of("lat,lon"));
+            }
+            return null;
+        }
+        String[] parts = near.split(",", -1);
+        if (parts.length != 2) {
+            throw new UnknownFilterValueException("near", near, List.of("lat,lon"));
+        }
+        try {
+            return new LocationFilter.Proximity(
+                    new BigDecimal(parts[0].trim()),
+                    new BigDecimal(parts[1].trim()),
+                    radius == null ? null : new BigDecimal(radius.trim()));
+        } catch (NumberFormatException e) {
+            throw new UnknownFilterValueException("near", near, List.of("lat,lon"));
+        } catch (IllegalArgumentException e) {
+            // A latitude past a pole, a longitude past the antimeridian, or a radius
+            // that is not positive or is past the bound. The message from the record
+            // says which; the parameter is whichever of the two the value came from.
+            String parameter = radius != null && e.getMessage().contains("radius") ? "radiusKm" : "near";
+            throw new UnknownFilterValueException(parameter, "radiusKm".equals(parameter) ? radius : near, List.of());
+        }
     }
 
     /**

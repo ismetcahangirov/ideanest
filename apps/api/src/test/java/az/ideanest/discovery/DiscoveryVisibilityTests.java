@@ -19,6 +19,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * <strong>The most important test in this change.</strong>
@@ -105,8 +106,11 @@ class DiscoveryVisibilityTests extends DiscoveryTestSupport {
     void everySortStaysInsideTheVisibleSet() {
         for (DiscoverySort sort : DiscoverySort.values()) {
             if (sort.requiredCapability().isPresent() || !sort.isClientSelectable()) {
-                // relevance and near_me are refused outright; that they are refused
-                // rather than silently answered is pinned in DiscoveryApiTests.
+                // relevance (#44) and near_me (#47) both declare a capability and both
+                // are served, so this branch no longer means "refused" — it means "not
+                // sendable without another parameter". Each is asserted in a test of
+                // its own below, because a loop that skipped them would be a loop that
+                // never checked the two newest scoring expressions in the module.
                 //
                 // `curated` is skipped for a different reason (#48): it names the order
                 // of a collection landing page, a client may not send it, and there is
@@ -160,6 +164,49 @@ class DiscoveryVisibilityTests extends DiscoveryTestSupport {
         assertThat(seen)
                 .doesNotContainAnyElementsOf(hiddenSlugs())
                 .containsExactlyInAnyOrderElementsOf(publicSlugs());
+    }
+
+    @Test
+    @DisplayName("no location control can surface a campaign the public may not see")
+    void locationStaysInsideTheVisibleSet() {
+        // #47. All sixteen fixtures are filed in the same city — deliberately, because
+        // a location filter that returned nothing would pass every assertion here
+        // without the visibility predicate being involved at all. Baku is one of the
+        // eighteen places V16 seeds; nothing here inserts a location.
+        new JdbcTemplate(dataSource)
+                .update("UPDATE projects SET location_id = (SELECT id FROM locations WHERE slug = 'baki')");
+
+        String origin = "40.41,49.87";
+        List<String> queries = List.of(
+                "?limit=100&country=AZ",
+                "?limit=100&city=baki",
+                "?limit=100&city=Bakı",
+                "?limit=100&sort=near_me&near=" + origin,
+                "?limit=100&sort=near_me&near=" + origin + "&radiusKm=5",
+                "?limit=100&near=" + origin + "&radiusKm=5",
+                // With a second dimension, because the location predicate is one more
+                // AND'd clause and a filter that replaced the visibility clause rather
+                // than joining it would show up here first.
+                "?limit=100&country=AZ&status=live&sort=near_me&near=" + origin);
+
+        for (String query : queries) {
+            List<String> returned = slugs(feed(query));
+
+            assertThat(returned)
+                    .withFailMessage("%s returned a hidden campaign: %s", query, returned)
+                    .doesNotContainAnyElementsOf(hiddenSlugs());
+        }
+
+        // And the nine that may be listed all are, so "nothing matched" is not what
+        // made the seven assertions above pass.
+        assertThat(slugs(feed("?limit=100&city=baki"))).containsExactlyInAnyOrderElementsOf(publicSlugs());
+        assertThat(slugs(feed("?limit=100&sort=near_me&near=" + origin)))
+                .containsExactlyInAnyOrderElementsOf(publicSlugs());
+
+        // The facet panel counts the same nine. A count is a number about campaigns
+        // nobody named, so a leak here is the length of the moderation queue.
+        assertThat(count(facets("?limit=100"), "cities", "baki")).isEqualTo(publicSlugs().size());
+        assertThat(count(facets("?limit=100"), "countries", "AZ")).isEqualTo(publicSlugs().size());
     }
 
     @Test

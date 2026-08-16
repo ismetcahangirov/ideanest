@@ -75,6 +75,13 @@ public final class DiscoveryResponses {
     /**
      * @param tags only tags with campaigns behind them; the vocabulary is free and
      *     unbounded
+     * @param countries §4.3's Location control (#47): the ISO 3166-1 alpha-2 code as
+     *     both the key and the label, because every client already has a localised
+     *     country-name table and §21.1 says to use it
+     * @param cities every place in the gazetteer, named in the negotiated language,
+     *     including the ones at zero. Country and city are <strong>one</strong> facet
+     *     dimension, as category and subcategory are, so both are counted with the
+     *     whole Location filter — country, city and radius alike — excluded
      * @param programmes every open call the public may see, in the order
      *     {@code GET /v1/collections} lists them, including the ones at zero (#48)
      * @param showOnly §4.3's "Show only" control. One value, {@code featured}: the
@@ -87,6 +94,8 @@ public final class DiscoveryResponses {
             List<ValueCount> completion,
             List<ValueCount> goalAmount,
             List<ValueCount> amountRaised,
+            List<NamedCount> countries,
+            List<NamedCount> cities,
             List<NamedCount> programmes,
             List<ValueCount> showOnly) {
     }
@@ -173,6 +182,8 @@ public final class DiscoveryResponses {
                 counts.completion().stream().map(DiscoveryResponses::valueCount).toList(),
                 counts.goalAmount().stream().map(DiscoveryResponses::valueCount).toList(),
                 counts.amountRaised().stream().map(DiscoveryResponses::valueCount).toList(),
+                counts.countries().stream().map(DiscoveryResponses::namedCount).toList(),
+                counts.cities().stream().map(DiscoveryResponses::namedCount).toList(),
                 counts.programmes().stream().map(DiscoveryResponses::namedCount).toList(),
                 counts.showOnly().stream().map(DiscoveryResponses::valueCount).toList());
     }
