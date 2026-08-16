@@ -471,10 +471,16 @@ class DiscoveryApiTests extends DiscoveryTestSupport {
     @Test
     @DisplayName("show-only and location filters are refused, each naming what it needs")
     void unbuiltFiltersAreRefused() {
+        // `showOnly=featured` used to be on this list and is not any more, because #48
+        // landed: curation brought the collections schema and the capability set grew
+        // by one constant. `showOnly=recommended` stays, deliberately — it is
+        // personalisation (§11.2's w6, D-07) rather than curation, and answering it
+        // with the platform's staff picks would tell every reader that an editorial
+        // decision was made for them personally. What has not changed is that there
+        // is no third option: served, or refused by name.
         Map<String, String> refused = Map.of(
                 "showOnly=saved", "saved-projects table",
                 "showOnly=recommended", "#44",
-                "showOnly=featured", "#48",
                 "country=AZ", "#47",
                 "city=Baku", "#47");
 

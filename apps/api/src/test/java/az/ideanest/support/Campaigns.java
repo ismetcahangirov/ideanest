@@ -110,15 +110,25 @@ public final class Campaigns {
      *
      * <p>Discovery is the one module whose assertions are about <em>which</em>
      * campaigns come back and <em>how many</em>, so it cannot share a database with
-     * whatever another suite happened to leave behind. Every foreign key into
+     * whatever another suite happened to leave behind. Almost every foreign key into
      * {@code projects} cascades — rewards, items, story versions, collaborators,
-     * reminders, tag edges — so this one statement is the whole cleanup.
+     * reminders, tag edges, collection membership.
+     *
+     * <p><strong>{@code curation_events} is the exception, and it is deliberate.</strong>
+     * V14 gives it no {@code ON DELETE} clause on either {@code collection_id} or
+     * {@code project_id}, so a curated campaign cannot be hard deleted and the audit of
+     * an editorial decision cannot be removed by removing what it was about. That is
+     * the property the table exists for, and the cost is that this fixture has to say
+     * so out loud: the audit rows and the collections go first, in that order, and a
+     * suite that forgot would fail on a foreign key rather than quietly losing them.
      *
      * <p>Safe because JUnit runs test classes one at a time here: nothing is
      * configured for parallel execution, so no other suite is mid-run.
      */
     public static void clear(DataSource dataSource) {
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        jdbc.update("DELETE FROM curation_events");
+        jdbc.update("DELETE FROM collections");
         jdbc.update("DELETE FROM projects");
         jdbc.update("DELETE FROM tags");
     }

@@ -3,9 +3,11 @@ package az.ideanest.discovery;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import az.ideanest.support.AbstractIntegrationTest;
+import az.ideanest.support.Campaigns;
 import java.util.List;
 import java.util.Map;
 import javax.sql.DataSource;
+import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.core.ParameterizedTypeReference;
@@ -32,6 +34,27 @@ abstract class DiscoveryTestSupport extends AbstractIntegrationTest {
 
     @Autowired
     protected DataSource dataSource;
+
+    /**
+     * Leaves the database as this suite found it.
+     *
+     * <p>Every suite here already clears in its {@code @BeforeEach}, which is what
+     * makes its own assertions about <em>which</em> campaigns come back reliable. This
+     * is the other half, and it is about the suites that come after: campaigns
+     * reference {@code users} and deliberately do not cascade from them (V6), so a
+     * discovery suite that left rows behind makes {@code IdentitySchemaTests}'
+     * {@code DELETE FROM users} fail on a foreign key — a failure whose message names
+     * a table the suite that fails has never heard of.
+     *
+     * <p>It used to pass only because JUnit happened to order the classes favourably,
+     * and adding a class to this package reshuffles that order. Cleaning up here
+     * rather than in each suite means the next class added to this package cannot
+     * reintroduce it.
+     */
+    @AfterEach
+    void clearCampaigns() {
+        Campaigns.clear(dataSource);
+    }
 
     /**
      * @param variables values for {@code {name}} placeholders in the path, encoded by
