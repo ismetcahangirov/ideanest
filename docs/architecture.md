@@ -1770,7 +1770,7 @@ GET    /v1/collections/{slug}
 
 # Project — public
 GET    /v1/projects/{creatorSlug}/{projectSlug}
-GET    /v1/projects/{id}/rewards
+GET    /v1/projects/{id}/rewards/public
 GET    /v1/projects/{id}/updates
 GET    /v1/projects/{id}/comments
 GET    /v1/projects/{id}/faqs
@@ -1796,6 +1796,7 @@ GET    /v1/projects/{id}/items
 POST   /v1/projects/{id}/items
 PATCH  /v1/items/{id}
 DELETE /v1/items/{id}
+GET    /v1/projects/{id}/rewards
 POST   /v1/projects/{id}/rewards
 PATCH  /v1/rewards/{id}
 DELETE /v1/rewards/{id}
@@ -2004,6 +2005,35 @@ PUT    /v1/admin/collections/{slug}/projects/order
 > unsubscribe token from the launch notice, or the caller's own access token, and
 > is never refused for the campaign's state — a `409` on an unsubscribe is how a
 > platform ends up in a spam folder.
+>
+> **A campaign's reward tiers are two endpoints, and the audience is the whole
+> difference.** `GET /v1/projects/{id}/rewards` is the **creator's** list and moved
+> into the section above when #37 built it: it requires the creator, and it returns
+> secret tiers on purpose, because a creator who cannot see a secret tier in their own
+> editor cannot edit or withdraw it. `GET /v1/projects/{id}/rewards/public` is what a
+> backer sees, and is the call §4.5's sequence diagram opens the pledge flow with. It
+> is public, it answers `404` for a campaign in any state §6.1 does not make public —
+> a suspended campaign included, and identically to an identifier that never existed —
+> and it omits three things: secret tiers (PL-15, returned only for a request carrying
+> the tier's `secret_token` as `?token=`), tiers outside their `available_from` /
+> `available_until` window, and every field that belongs to the creator rather than to
+> a backer. The reservation counts and the token itself are in that last group;
+> `remainingQuantity` — `limit_quantity` less what is claimed and reserved, null when
+> unlimited — is what replaces them, and it is PL-01's live stock check. Add-ons are a
+> separate array from selectable tiers, and each tier carries its contents and its
+> per-country shipping rates, without which PL-05 leaves a client unable to quote a
+> total.
+>
+> **Its caching is deliberately not the discovery feed's.** `ETag` per §10.3, and
+> `Cache-Control: private, no-cache` — revalidate every time, rather than a
+> `max-age` window. A card showing last minute's pledged total misleads nobody; a
+> reward list showing three places left when there are none is exactly what PL-01
+> exists to prevent, and it is discovered by the backer after they have chosen. The
+> tag covers `remainingQuantity` along with everything else, so a conditional request
+> is still cheap when nothing has moved. `no-store` was rejected for the same reason:
+> it would throw away the `304` as well. No cache header can make stock true at the
+> moment it is read — `POST /v1/pledges/draft` refusing with `REWARD_SOLD_OUT` is what
+> settles it — but it can refuse to make the list older than it has to be.
 
 ### 10.3 Conventions
 

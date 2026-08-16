@@ -108,6 +108,23 @@ public class SecurityConfiguration {
                         // through to the rule at the bottom.
                         .requestMatchers(HttpMethod.GET, "/v1/projects/*/prelaunch")
                         .permitAll()
+                        // A campaign's reward list as a backer sees it. Public
+                        // because §4.5 opens the pledge flow with it and the
+                        // person reading it is deciding whether to register at
+                        // all. What may be read is not decided here: the handler
+                        // serves it only for a campaign in one of §6.1's nine
+                        // public states and answers 404 otherwise, it omits
+                        // secret tiers unless the request carries the token, and
+                        // it omits tiers outside their availability window.
+                        //
+                        // GET and nothing else, for the reason the categories
+                        // rule gives. Note that the creator's own reward list at
+                        // /v1/projects/*/rewards is a different path and is not
+                        // matched here: it falls through to the rule at the
+                        // bottom and still requires a token, which is what keeps
+                        // secret tiers and reservation counts out of reach.
+                        .requestMatchers(HttpMethod.GET, "/v1/projects/*/rewards/public")
+                        .permitAll()
                         // "Tell me when this opens", and "stop reminding me".
                         // Unauthenticated on purpose and bounded in the handler by
                         // a rate limiter per source address and per email address:
