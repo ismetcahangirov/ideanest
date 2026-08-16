@@ -320,12 +320,19 @@ export async function submitProject(id: string, signal?: AbortSignal): Promise<P
 /* -------------------------------------------------------------------------
  * Taxonomy
  *
- * `GET /v1/categories` is in docs/architecture.md §10.2 under discovery, and
- * the `categories` / `subcategories` tables are seeded by #31's migration — but
- * no sub-issue of this epic owns the endpoint, so it may well answer 404 until
- * the discovery epic lands. The basics form treats that as "the list is
- * unavailable" and keeps saving everything else, rather than blocking the
- * editor on a read it does not strictly need.
+ * `GET /v1/categories` is in docs/architecture.md §10.2 under discovery and is
+ * served by the project module until the discovery epic takes it over. The
+ * basics form still treats a failure as "the list is unavailable" and keeps
+ * saving everything else, because a read it does not strictly need in order to
+ * save a title should not be able to block the editor.
+ *
+ * The endpoint localises. Each taxon carries a `name` already resolved against
+ * the request's `Accept-Language` — which the browser sends on every fetch — and
+ * falls back to Azerbaijani, the platform's primary language (§21.1), when the
+ * requested one has no translation. It also carries `names`, every translation
+ * the taxonomy holds; this client does not read it, because the language of the
+ * page and the language of the request are the same thing here and asking for a
+ * name the server has already chosen would be a second answer to one question.
  * ---------------------------------------------------------------------- */
 
 export interface Subcategory {
@@ -339,25 +346,23 @@ export interface Category extends Subcategory {
 }
 
 /**
- * The taxonomy the seed data holds `name_az` and `name_en` for.
+ * One taxon as the endpoint sends it.
  *
- * Which of them reaches the client depends on whether the endpoint localises
- * through `Accept-Language` (§10.3) or returns both columns, and that decision
- * is not this issue's to make. The read below accepts either and falls back to
- * the slug, so a naming choice made later is a change to one function rather
- * than a broken field.
+ * `name` is optional and the slug is the fallback only so that a malformed
+ * response cannot put `undefined` into an `<option>`. The response also carries
+ * `nameAz` and `nameEn`, which are the interim columns of V6 and are on their
+ * way out under expand-then-contract — this client deliberately does not read
+ * them, because the API cannot drop them until nothing does.
  */
 interface RawTaxon {
   id: string;
   slug: string;
   name?: string;
-  nameEn?: string;
-  nameAz?: string;
   subcategories?: readonly RawTaxon[];
 }
 
 function taxonName(raw: RawTaxon): string {
-  return raw.name ?? raw.nameEn ?? raw.nameAz ?? raw.slug;
+  return raw.name ?? raw.slug;
 }
 
 export async function listCategories(signal?: AbortSignal): Promise<readonly Category[]> {

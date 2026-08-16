@@ -126,10 +126,11 @@ export function BasicsPanel({ projectId }: BasicsPanelProps) {
         setCategories(await listCategories(controller.signal));
       } catch {
         /*
-         * No sub-issue of this epic owns `GET /v1/categories`, so it may not
-         * exist yet. The rest of the form still works, and saying that the list
-         * is unavailable is better than blocking the editor on a read it does
-         * not need in order to save a title.
+         * The rest of the form still works without the taxonomy, and saying
+         * that the list is unavailable is better than blocking the editor on a
+         * read it does not need in order to save a title. The names come back
+         * already resolved against the browser's `Accept-Language`, so there is
+         * nothing to choose between here.
          */
         if (!controller.signal.aborted) setCategoriesUnavailable(true);
       }
