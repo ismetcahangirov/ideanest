@@ -9,12 +9,16 @@ import java.util.Optional;
 /**
  * §4.3's "Show only" filter: recommended, editorially featured, saved.
  *
- * <p>All three need something that does not exist. Each is declared so that the
- * issue which owns it adds one line to {@code PostgresSearchService.capabilities()}
- * rather than widening the query object, and so that asking for one today is
- * refused rather than silently ignored — a backer who filtered to their saved
- * campaigns and was shown the whole platform has been lied to about which of these
- * cards they chose.
+ * <p>Each is declared so that the issue which owns it adds one line to
+ * {@code PostgresSearchService.capabilities()} rather than widening the query
+ * object, and so that asking for one before it exists is refused rather than
+ * silently ignored — a backer who filtered to their saved campaigns and was shown
+ * the whole platform has been lied to about which of these cards they chose.
+ *
+ * <p><strong>{@link #FEATURED} works; the other two are still refused</strong>, and
+ * that is the mechanism doing its job rather than an inconsistency: #48 brought the
+ * curation schema and added one constant to the capability set, and nothing else in
+ * this file or in the query object had to change.
  */
 public enum ShowOnly {
 
@@ -30,15 +34,25 @@ public enum ShowOnly {
      */
     SAVED("saved", DiscoveryCapability.FILTER_SAVED),
 
-    /** Personalised recommendations. §11.2's {@code w6}, which is #44. */
+    /**
+     * Personalised recommendations. §11.2's {@code w6}, which is #44.
+     *
+     * <p><strong>Still refused, deliberately, and #48 did not take it.</strong> It
+     * is the one filter here whose answer depends on who is asking, and answering it
+     * needs the behavioural signals and the composite of §11.2 — none of which
+     * curation has. Serving "featured" under this name would tell every reader that
+     * the platform's staff picks are recommendations chosen for them.
+     */
     RECOMMENDED("recommended", DiscoveryCapability.FILTER_RECOMMENDED),
 
     /**
-     * Editorially featured campaigns.
+     * Editorially featured campaigns. <strong>#48, and served.</strong>
      *
      * <p>{@code projects.is_featured} is listed in §7.2 and V6 left it out saying
-     * "curation is an editorial workflow, not a boolean somebody sets by hand".
-     * #48 brings the workflow and the column together.
+     * "curation is an editorial workflow, not a boolean somebody sets by hand". It
+     * is still not there: a campaign is featured exactly when it is in a published,
+     * in-window collection that grants a badge, which is what V14's
+     * {@code project_editorial_badges} view says and the only place it is said.
      */
     FEATURED("featured", DiscoveryCapability.FILTER_FEATURED);
 

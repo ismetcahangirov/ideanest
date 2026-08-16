@@ -252,8 +252,26 @@ and each entry needs a translation per supported locale.
 > **Relevance and near-me are declared and refused** until #44 and #47. Asking for
 > one is an RFC 9457 problem detail naming the issue, not a quiet fall back to a
 > different order — likewise *saved* (no saved-projects table exists),
-> *recommended* (#44), *featured* (#48), and country/city (no location column
-> exists; #47 brings the schema).
+> *recommended* (#44), and country/city (no location column exists; #47 brings the
+> schema).
+>
+> **Editorially featured and Programmes are served (#48).** `showOnly=featured` and
+> `?programme={slug}` compose with every filter, every sort, and the cursor, and both
+> appear in the facet panel under the same exclude-own-dimension rule as everything
+> else. *Featured* is **derived, not a flag**: a campaign is featured exactly when it
+> is a member of a published, in-window collection whose `grants_badge` is set, which
+> is what the `project_editorial_badges` view says and the only place it is said.
+> `projects.is_featured` is still deliberately absent — V6 refused it because
+> "curation is an editorial workflow, not a boolean somebody sets by hand", and a
+> per-project badge flag would be that boolean with a timestamp on it. *Programmes*
+> narrows to one open call, and only to collections of kind `OPEN_CALL` that are
+> published and inside their window, so a slug that leaked from an admin screen is not
+> a way to read an unpublished list.
+>
+> **Show-only is one filter with three values and two of them are still refused**, on
+> purpose. *Recommended* is personalisation (§11.2's `w6`, D-07) and belongs to #44;
+> answering it with the platform's staff picks would tell every reader that an
+> editorial decision was made for them personally.
 >
 > **Free text is served (#43).** `?q=` composes with every filter, every sort, the
 > cursor, and the facet counts on both `/v1/discover` and `/v1/search`. It narrows
@@ -1202,7 +1220,9 @@ by a database constraint and verified by a nightly reconciliation job.
 | `categories`, `subcategories` | The two-level taxonomy: slug, display order, and — for one more release — the interim `name_az` / `name_en` columns V6 created |
 | `category_translations`, `subcategory_translations` | One name per taxon per locale, keyed by `(taxon_id, locale)`. Every taxon has an `az` row; §21.1's other three arrive as data rather than as a deployment |
 | `tags`, `project_tags` | Tag vocabulary. `tags.slug` is the folded, comparable form and `tags.label` is the word as it was written; `usage_count` is denormalised and maintained by discovery |
-| `collections`, `collection_projects` | Curation and open calls |
+| `collections`, `collection_translations`, `collection_projects` | Curation and open calls (#48). One row per list, one title and description per locale keyed by `(collection_id, locale)`, and membership carrying the curator's explicit `position` — a collection is an edited sequence, not a set |
+| `curation_events` | Append-only audit of every editorial decision: who added or removed what, from which collection, when, and why. Never updated, never deleted; neither foreign key cascades, so a curated campaign cannot be hard deleted and the record cannot be removed by removing what it was about |
+| `project_editorial_badges` *(view)* | The only definition of "editorially featured" (§3.2, §4.4, D-05). One row per campaign per badge-granting collection currently in force; read by `showOnly=featured`, by the card, and by §11.2's `w4` |
 | `project_updates` | Numbered updates |
 | `comments` | Self-referencing threads |
 | `faqs` | Question and answer pairs |
@@ -1722,6 +1742,15 @@ GET    /v1/admin/finance/payouts
 POST   /v1/admin/finance/payouts/{id}/approve
 POST   /v1/admin/finance/refunds
 GET    /v1/admin/audit-logs
+GET    /v1/admin/collections
+POST   /v1/admin/collections
+GET    /v1/admin/collections/{slug}
+PUT    /v1/admin/collections/{slug}
+POST   /v1/admin/collections/{slug}/publish
+POST   /v1/admin/collections/{slug}/unpublish
+POST   /v1/admin/collections/{slug}/projects
+POST   /v1/admin/collections/{slug}/projects/{projectId}/remove
+PUT    /v1/admin/collections/{slug}/projects/order
 ```
 
 > **Two-factor is four endpoints rather than two.** `2fa/verify` is the second
@@ -1778,6 +1807,34 @@ GET    /v1/admin/audit-logs
 > no cache. The faceted, counted version discovery needs replaces this; the
 > campaign editor cannot ask a creator to choose from a list nothing will send
 > them, so it does not wait for that.
+>
+> **`GET /v1/collections` and `GET /v1/collections/{slug}` are public, and an
+> unpublished collection answers `404` rather than `403`** (#48). Which campaigns the
+> platform is about to put its name behind — and by implication which it passed over —
+> is confidential until it is published, and a `403` confirms the slug exists to
+> anybody who guesses it. A collection outside its display window is the same answer.
+> The landing page carries the collection's translated title and description plus its
+> campaigns **in the curator's order**, cursor-paginated on the same `?cursor=&limit=`
+> conventions and with the same token type `/v1/discover` issues, and it reuses the
+> discovery module's project card rather than a second card shape. `ETag`,
+> `Cache-Control: public, max-age=60` and `Vary: Accept-Language` on both, as for
+> `/v1/discover`: the copy is translated and the cards carry amounts that move.
+> Membership and visibility are two different things — a curator may add a campaign
+> that is later suspended, the membership row stays because deleting it would rewrite
+> the editorial record, and the read excludes it from the cards *and* from
+> `projectCount`.
+>
+> **Curation is written through `/v1/admin/collections`, and who may is the same
+> configured list moderation uses.** §4.11's AD-03 names Curation as an admin module
+> and §3.2 grants "apply an editorial badge" to moderators and admins alone; there is
+> still no role model, so `ideanest.project.moderation.moderator-emails` is reused
+> rather than a second directory being invented for epic #100 to find and delete. Every
+> mutation writes exactly one `curation_events` row in the same transaction, and the
+> four that change what the public sees — publish, unpublish, add, remove — require a
+> note, because a discretionary editorial decision's only surviving record of *why* is
+> that row. There is deliberately **no delete** (withdrawing a list is unpublishing it)
+> and **no endpoint over the audit trail** (AD-14 is epic #100's, and a curation-only
+> view of it now would be a surface to replace rather than extend).
 >
 > **There is no `/v1/tags` route, and that is deliberate.** `tags` and
 > `project_tags` exist as schema, entities, and repositories; nothing writes to
@@ -1914,6 +1971,17 @@ relevance =
 
 Weights are configuration and must be tunable without a deployment, so ranking
 can be measured rather than argued about.
+
+> **`w4`'s input exists; the term does not.** #48 brought curation and deliberately
+> stopped short of ranking. What it exposes is the `project_editorial_badges` view:
+> one row per campaign per badge-granting collection currently in force, carrying
+> `project_id`, `collection_id`, `collection_slug`, `collection_kind`, and
+> `granted_at`. #44 consumes it by joining or `EXISTS`-ing on `project_id` —
+> `count(*)` is a campaign in more than one badge-granting list, and `granted_at`
+> is when the membership was created, if the bonus turns out to want to decay. The
+> view already applies the publication and window predicates, so a badge cannot
+> outlive the collection that grants it and the ranking query does not have to know
+> that rule. Nothing about the weight or its normalisation is decided by #48.
 
 ### 11.3 Locale-aware text handling
 

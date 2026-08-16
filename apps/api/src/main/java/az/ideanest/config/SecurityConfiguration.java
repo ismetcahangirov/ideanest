@@ -73,12 +73,25 @@ public class SecurityConfiguration {
                         // visitor who has not registered searching before deciding
                         // whether to is the audience, and a search box that demanded
                         // a token would be a search box nobody uses.
+                        //
+                        // /v1/collections and /v1/collections/{slug} are the same
+                        // reasoning again (#48): D-08's curated collections and
+                        // open-call landing pages are what the platform points a
+                        // visitor at, and a staff-picks page behind a sign-in wall
+                        // would be a staff-picks page nobody sees. Only collections
+                        // the platform has published are reachable — an unpublished
+                        // one answers 404 rather than 403, so this rule does not make
+                        // an editorial decision in progress readable. The writes are
+                        // under /v1/admin/collections and fall through to the rule
+                        // below.
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/v1/discover",
                                 "/v1/discover/facets",
                                 "/v1/search",
-                                "/v1/search/suggest")
+                                "/v1/search/suggest",
+                                "/v1/collections",
+                                "/v1/collections/*")
                         .permitAll()
                         // A campaign's pre-launch page. Public because the people
                         // it exists to collect have not registered — that is what

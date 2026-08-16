@@ -121,7 +121,32 @@ public enum DiscoverySort {
     RELEVANCE("relevance"),
 
     /** Geographic distance. <strong>#47</strong>; refused until then. */
-    NEAR_ME("near_me");
+    NEAR_ME("near_me"),
+
+    /**
+     * The curator's own sequence. <strong>Not selectable by a client.</strong>
+     *
+     * <p>D-08's landing page is an edited list — {@code collection_projects.position}
+     * ascending, {@code project_id} as the tiebreaker that makes it total — and the
+     * first card on a staff-picks page is a choice somebody made rather than whatever
+     * launched most recently.
+     *
+     * <p><strong>Why it is in this enum at all.</strong> A cursor carries the order it
+     * was issued for and refuses to be replayed against another one
+     * ({@code DiscoveryCursor}), so every order this module produces has to have a
+     * name. Giving the collection page a cursor type of its own instead would mean a
+     * second encoding, a second version field, and a second set of the mistakes
+     * {@code DiscoveryCursor}'s comments are about.
+     *
+     * <p><strong>Why it is not selectable.</strong> {@code ?sort=curated} on
+     * {@code /v1/discover} would name an order that does not exist there: outside a
+     * collection there is no curator and no position, so the honest answers are a
+     * refusal or a silent fallback, and a silent fallback is the failure
+     * {@link DiscoveryCapability} exists to prevent. {@link #isClientSelectable} is
+     * how the binder says so, and it is left out of {@link #wireValues()} so it never
+     * appears in the list of values a client is told it may send.
+     */
+    CURATED("curated");
 
     /** What a client sends when it sends nothing and is browsing. See {@link #NEWEST}. */
     public static final DiscoverySort DEFAULT = NEWEST;
@@ -154,16 +179,38 @@ public enum DiscoverySort {
             case BEST_MATCH -> Optional.of(DiscoveryCapability.FULL_TEXT);
             case RELEVANCE -> Optional.of(DiscoveryCapability.SORT_RELEVANCE);
             case NEAR_ME -> Optional.of(DiscoveryCapability.SORT_NEAR_ME);
-            case NEWEST, ENDING_SOON, MOST_FUNDED, MOST_BACKED, POPULARITY -> Optional.empty();
+            case NEWEST, ENDING_SOON, MOST_FUNDED, MOST_BACKED, POPULARITY, CURATED -> Optional.empty();
         };
     }
 
+    /**
+     * Whether a client may ask for this order by name.
+     *
+     * <p>False only for {@link #CURATED}, which exists because a cursor names its
+     * order and not because anybody may choose it. See that constant.
+     */
+    public boolean isClientSelectable() {
+        return this != CURATED;
+    }
+
+    /**
+     * The order named, whether or not a client may select it.
+     *
+     * <p>Deliberately does not filter: {@code DiscoveryCursor.decode} calls this to
+     * read back an order this service issued, and a cursor for the collection page
+     * has to decode. The binder is where selectability is enforced, because that is
+     * where a client's input arrives.
+     */
     public static Optional<DiscoverySort> fromWireValue(String value) {
         return Optional.ofNullable(value).map(BY_WIRE_VALUE::get);
     }
 
+    /** Every order a client may ask for, in declaration order, for an error message. */
     public static List<String> wireValues() {
-        return List.copyOf(BY_WIRE_VALUE.keySet());
+        return BY_WIRE_VALUE.values().stream()
+                .filter(DiscoverySort::isClientSelectable)
+                .map(DiscoverySort::wireValue)
+                .toList();
     }
 
     private static Map<String, DiscoverySort> byWireValue() {

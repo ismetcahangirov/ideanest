@@ -1,5 +1,6 @@
 package az.ideanest.discovery.infrastructure;
 
+import az.ideanest.discovery.application.CuratedCollections;
 import az.ideanest.discovery.application.DiscoveryPage;
 import az.ideanest.discovery.application.DiscoveryQuery;
 import az.ideanest.discovery.application.FacetCounts;
@@ -7,6 +8,7 @@ import az.ideanest.discovery.application.SearchService;
 import az.ideanest.discovery.application.SuggestQuery;
 import az.ideanest.discovery.domain.AmountBand;
 import az.ideanest.discovery.domain.AmountRange;
+import az.ideanest.discovery.domain.CollectionKind;
 import az.ideanest.discovery.domain.CompletionBand;
 import az.ideanest.discovery.domain.DiscoveryCapability;
 import az.ideanest.discovery.domain.DiscoveryCursor;
@@ -14,9 +16,9 @@ import az.ideanest.discovery.domain.DiscoverySort;
 import az.ideanest.discovery.domain.DiscoveryStatus;
 import az.ideanest.discovery.domain.InvalidCursorException;
 import az.ideanest.discovery.domain.ProjectCard;
+import az.ideanest.discovery.domain.ShowOnly;
 import az.ideanest.discovery.domain.Suggestion;
 import az.ideanest.project.application.Taxonomy;
-import az.ideanest.shared.Money;
 import az.ideanest.shared.Slugs;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
@@ -33,7 +35,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -101,24 +102,6 @@ public class PostgresSearchService implements SearchService {
      * with millisecond resolution would make every scroll a unique cache key.
      */
     private static final Duration POPULARITY_BUCKET = Duration.ofSeconds(60);
-
-    /**
-     * The columns a card needs, and nothing else.
-     *
-     * <p>{@code users} is joined rather than looked up per row: D-05 puts the creator
-     * on the card, and one query per card is the N+1 that a feed cannot afford. The
-     * join is inner because {@code projects.creator_id} is {@code NOT NULL} with no
-     * {@code ON DELETE} clause — §17.4 anonymises a departing account in place, so the
-     * row is always there, and an outer join would only hide a foreign key violation.
-     */
-    private static final String CARD_COLUMNS =
-            """
-            p.id, p.slug, p.title, p.state, p.currency,
-            p.goal_amount, p.pledged_amount, p.backers_count,
-            p.launched_at, p.deadline,
-            p.cover_image_url, p.cover_image_width, p.cover_image_height,
-            u.name AS creator_name, u.slug AS creator_slug, u.avatar_url AS creator_avatar_url
-            """;
 
     /**
      * Pledge velocity with time decay, as {@code numeric}.
@@ -225,28 +208,52 @@ public class PostgresSearchService implements SearchService {
      */
     private static final String FUZZY_THRESHOLD = "0.4";
 
+    /**
+     * One flag per facet dimension, in the order the base CTE projects them.
+     *
+     * <p>The single list {@link #exceptFlag} subtracts from. Every dimension the facet
+     * query knows about is here exactly once; adding one to the CTE without adding it
+     * here is a dimension that is applied to its own counts.
+     */
+    private static final List<String> FACET_FLAGS = List.of(
+            "b.m_status", "b.m_taxonomy", "b.m_tags", "b.m_completion",
+            "b.m_goal", "b.m_raised", "b.m_programme", "b.m_featured");
+
     private final NamedParameterJdbcTemplate jdbc;
     private final Taxonomy taxonomy;
+    private final CuratedCollections collections;
     private final Clock clock;
 
-    public PostgresSearchService(NamedParameterJdbcTemplate jdbc, Taxonomy taxonomy, Clock clock) {
+    public PostgresSearchService(
+            NamedParameterJdbcTemplate jdbc, Taxonomy taxonomy, CuratedCollections collections, Clock clock) {
         this.jdbc = jdbc;
         this.taxonomy = taxonomy;
+        this.collections = collections;
         this.clock = clock;
     }
 
     /**
-     * Free text, and nothing else yet. See the class comment and
+     * Free text, curation, and nothing else yet. See the class comment and
      * {@link DiscoveryCapability}.
      *
      * <p>The set is the whole of this class's public promise, and it is a claim the
      * tests hold it to: a capability announced here without an implementation behind
      * it fails the suite that pins each refusal, and one implemented without being
      * announced is refused by the controller and never reached.
+     *
+     * <p>{@code FILTER_SAVED}, {@code FILTER_RECOMMENDED}, {@code SORT_RELEVANCE},
+     * {@code SORT_NEAR_ME}, {@code FILTER_LOCATION} and {@code FILTER_PROXIMITY} are
+     * deliberately still absent. {@code showOnly=recommended} in particular is
+     * <em>not</em> served by curation: it is personalisation, it belongs to #44 and
+     * D-07, and answering it with the platform's staff picks would tell every reader
+     * that an editorial decision was made for them personally.
      */
     @Override
     public Set<DiscoveryCapability> capabilities() {
-        return EnumSet.of(DiscoveryCapability.FULL_TEXT);
+        return EnumSet.of(
+                DiscoveryCapability.FULL_TEXT,
+                DiscoveryCapability.FILTER_FEATURED,
+                DiscoveryCapability.FILTER_PROGRAMME);
     }
 
     @Override
@@ -274,8 +281,8 @@ public class PostgresSearchService implements SearchService {
         // would run on every page of every scroll.
         params.addValue("limit", query.limit() + 1);
 
-        String sql = "SELECT " + CARD_COLUMNS + ", " + scoreColumn(query.sort(), exactTier)
-                + " FROM projects p JOIN users u ON u.id = p.creator_id"
+        String sql = "SELECT " + ProjectCardRows.COLUMNS + ", " + scoreColumn(query.sort(), exactTier)
+                + ProjectCardRows.FROM
                 + " WHERE " + String.join(" AND ", where)
                 + " ORDER BY " + orderBy(query.sort())
                 + " LIMIT :limit";
@@ -368,10 +375,15 @@ public class PostgresSearchService implements SearchService {
         String matchesCompletion = completionPredicate("p", query.completion(), params);
         String matchesGoal = amountPredicate("p.goal_amount", "goalFacet", query.goal(), params);
         String matchesRaised = amountPredicate("p.pledged_amount", "raisedFacet", query.raised(), params);
+        // The two dimensions #48 adds. Each is a flag on the base row exactly like the
+        // six above, which is what makes "composes with every existing filter" true
+        // rather than aspirational: there is no second query and nothing to merge.
+        String matchesProgramme = programmePredicate("p", query.programmeSlugs(), params);
+        String matchesFeatured = featuredPredicate("p", query.showOnly());
 
         String sql = facetSql(
                 publicStates, matchesStatus, matchesTaxonomy, matchesTags,
-                matchesCompletion, matchesGoal, matchesRaised, params);
+                matchesCompletion, matchesGoal, matchesRaised, matchesProgramme, matchesFeatured, params);
 
         List<FacetRow> rows = jdbc.query(sql, params, (resultSet, index) -> new FacetRow(
                 resultSet.getString("dimension"),
@@ -581,6 +593,8 @@ public class PostgresSearchService implements SearchService {
         add(where, categoryPredicate(alias, query.categorySlugs(), params));
         add(where, subcategoryPredicate(alias, query.subcategorySlugs(), params));
         add(where, tagPredicate(alias, query.tagSlugs(), params));
+        add(where, programmePredicate(alias, query.programmeSlugs(), params));
+        add(where, featuredPredicate(alias, query.showOnly()));
         add(where, completionPredicate(alias, query.completion(), params));
         add(where, amountPredicate(alias + ".goal_amount", "goal", query.goal(), params));
         add(where, amountPredicate(alias + ".pledged_amount", "raised", query.raised(), params));
@@ -747,6 +761,62 @@ public class PostgresSearchService implements SearchService {
     }
 
     /**
+     * §4.3's Programmes filter (#48): campaigns in any of these open calls.
+     *
+     * <p>OR'd rather than AND'd — see {@code DiscoveryQuery} — so this is one
+     * {@code EXISTS} over the membership edges rather than the counting probe the tag
+     * filter uses. The probe is by {@code (project_id, collection_id)}, which is
+     * V14's {@code collection_projects_project_idx}.
+     *
+     * <p><strong>It names the kind.</strong> A slug is unique across all collections,
+     * so the {@code kind} clause changes no result today; it is there because the
+     * parameter is called {@code programme} and §4.3 defines a programme as a themed
+     * open call. Without it, {@code ?programme=staff-picks} would quietly work, and
+     * "filter by the list you were picked for" and "filter by having been picked" are
+     * two different questions with two different controls.
+     *
+     * <p><strong>And it applies the same visibility rule the collection's own page
+     * does.</strong> Filtering by an unpublished or expired programme returns nothing
+     * rather than its contents, so a slug that leaked from an admin screen is not a
+     * way to read a list that has not been published.
+     */
+    private static String programmePredicate(String alias, Set<String> slugs, MapSqlParameterSource params) {
+        if (slugs.isEmpty()) {
+            return "true";
+        }
+        String name = "programmeSlugs" + params.getValues().size();
+        params.addValue(name, List.copyOf(slugs));
+        return "EXISTS (SELECT 1 FROM collection_projects cp JOIN collections c ON c.id = cp.collection_id"
+                + " WHERE cp.project_id = " + alias + ".id"
+                + " AND c.slug IN (:" + name + ")"
+                + " AND c.kind = 'OPEN_CALL'"
+                + " AND c.published_at IS NOT NULL"
+                + " AND (c.opens_at IS NULL OR c.opens_at <= now())"
+                + " AND (c.closes_at IS NULL OR c.closes_at > now()))";
+    }
+
+    /**
+     * §4.3's "Show only: editorially featured" (#48).
+     *
+     * <p>One {@code EXISTS} against {@code project_editorial_badges}, which is V14's
+     * view and the only definition of what "featured" means. Written this way rather
+     * than as a column so that this filter, the badge on the card (D-05), the project
+     * page header (§4.4), and #44's {@code w4} cannot come to disagree about which
+     * campaigns are featured — there is one place to read and one place to change.
+     *
+     * <p>The other two {@link ShowOnly} values are unreachable here: the controller
+     * refuses them through {@link DiscoveryCapability} before a query is built. This
+     * method therefore only ever asks about {@code FEATURED}, and it takes no
+     * parameters because the view carries the whole predicate.
+     */
+    private static String featuredPredicate(String alias, Set<ShowOnly> showOnly) {
+        if (!showOnly.contains(ShowOnly.FEATURED)) {
+            return "true";
+        }
+        return "EXISTS (SELECT 1 FROM project_editorial_badges b WHERE b.project_id = " + alias + ".id)";
+    }
+
+    /**
      * The completion bands, OR'd, compared without dividing.
      *
      * <p>{@code pledged × 100 ≥ goal × lower} rather than {@code pledged / goal ≥ …}:
@@ -837,6 +907,12 @@ public class PostgresSearchService implements SearchService {
                     // would silently make `sort=relevance` mean `sort=newest` the day
                     // somebody removed the check.
                     sort.wireValue() + " is refused before it reaches the query");
+            // Unreachable for a different reason: `curated` is not a value a client
+            // may send (DiscoverySort.isClientSelectable), and the order it names
+            // belongs to the collection landing page, which is served by
+            // PostgresCuratedCollections and never reaches this class.
+            case CURATED -> throw new IllegalStateException(
+                    "curated is the collection page's order and has no meaning in a feed");
         };
     }
 
@@ -845,7 +921,7 @@ public class PostgresSearchService implements SearchService {
         return switch (sort) {
             case POPULARITY -> "(" + POPULARITY_SCORE + ") AS sort_score";
             case BEST_MATCH -> "(" + textScore("p", exactTier) + ") AS sort_score";
-            case NEWEST, ENDING_SOON, MOST_FUNDED, MOST_BACKED, RELEVANCE, NEAR_ME ->
+            case NEWEST, ENDING_SOON, MOST_FUNDED, MOST_BACKED, RELEVANCE, NEAR_ME, CURATED ->
                 "NULL::numeric AS sort_score";
         };
     }
@@ -880,6 +956,8 @@ public class PostgresSearchService implements SearchService {
             case BEST_MATCH -> presentKeyset("(" + textScore("p", exactTier) + ")", decimal(key), params);
             case RELEVANCE, NEAR_ME -> throw new IllegalStateException(
                     sort.wireValue() + " is refused before it reaches the query");
+            case CURATED -> throw new IllegalStateException(
+                    "curated is the collection page's order and has no meaning in a feed");
         };
     }
 
@@ -952,6 +1030,8 @@ public class PostgresSearchService implements SearchService {
             case POPULARITY, BEST_MATCH -> row.score().toPlainString();
             case RELEVANCE, NEAR_ME -> throw new IllegalStateException(
                     sort.wireValue() + " is refused before it reaches the query");
+            case CURATED -> throw new IllegalStateException(
+                    "curated is the collection page's order and has no meaning in a feed");
         };
     }
 
@@ -990,55 +1070,7 @@ public class PostgresSearchService implements SearchService {
     }
 
     private static Row toRow(ResultSet resultSet, Instant asOf) throws SQLException {
-        String currency = resultSet.getString("currency");
-        BigDecimal goalAmount = resultSet.getBigDecimal("goal_amount");
-        BigDecimal pledgedAmount = resultSet.getBigDecimal("pledged_amount");
-        Instant launchedAt = instantOf(resultSet, "launched_at");
-        Instant deadline = instantOf(resultSet, "deadline");
-
-        String coverUrl = resultSet.getString("cover_image_url");
-        // The three cover columns are written together or not at all —
-        // projects_cover_image_is_complete — so one check answers for all three.
-        ProjectCard.CoverImage cover = coverUrl == null
-                ? null
-                : new ProjectCard.CoverImage(
-                        coverUrl, resultSet.getInt("cover_image_width"), resultSet.getInt("cover_image_height"));
-
-        ProjectCard card = new ProjectCard(
-                resultSet.getObject("id", UUID.class),
-                resultSet.getString("slug"),
-                resultSet.getString("creator_slug"),
-                resultSet.getString("title"),
-                new ProjectCard.Creator(
-                        resultSet.getString("creator_name"),
-                        resultSet.getString("creator_slug"),
-                        resultSet.getString("creator_avatar_url")),
-                cover,
-                Money.orNull(goalAmount, currency),
-                Money.of(pledgedAmount, currency),
-                ProjectCard.completionPercent(pledgedAmount, goalAmount),
-                resultSet.getInt("backers_count"),
-                // The same instant the scores were computed against, so that a page
-                // is internally consistent and so that the ETag over it is stable for
-                // the length of the cache window.
-                ProjectCard.daysLeft(deadline, asOf),
-                DiscoveryStatus.badgeFor(resultSet.getString("state")).orElse(null),
-                resultSet.getString("state"),
-                launchedAt,
-                deadline);
-        return new Row(card, resultSet.getBigDecimal("sort_score"));
-    }
-
-    /**
-     * A {@code timestamptz} as an instant.
-     *
-     * <p>Through {@code OffsetDateTime} rather than {@code getTimestamp}, which
-     * reinterprets the value in the JVM's default zone and would make a deadline move
-     * when the server's zone did.
-     */
-    private static Instant instantOf(ResultSet resultSet, String column) throws SQLException {
-        OffsetDateTime value = resultSet.getObject(column, OffsetDateTime.class);
-        return value == null ? null : value.toInstant();
+        return new Row(ProjectCardRows.card(resultSet, asOf), resultSet.getBigDecimal("sort_score"));
     }
 
     // ---------------------------------------------------------------------------
@@ -1053,21 +1085,28 @@ public class PostgresSearchService implements SearchService {
             String matchesCompletion,
             String matchesGoal,
             String matchesRaised,
+            String matchesProgramme,
+            String matchesFeatured,
             MapSqlParameterSource params) {
 
         String statusValues = statusValues(params);
         String completionValues = bandValues(params, "completionBand", completionRows());
         String amountValues = bandValues(params, "amountBand", amountRows());
 
-        // Every facet requires all the flags except its own. Written out per facet
-        // rather than composed, so that a reader can see at the point of each count
-        // which dimension was dropped.
-        String exceptStatus = "b.m_taxonomy AND b.m_tags AND b.m_completion AND b.m_goal AND b.m_raised";
-        String exceptTaxonomy = "b.m_status AND b.m_tags AND b.m_completion AND b.m_goal AND b.m_raised";
-        String exceptTags = "b.m_status AND b.m_taxonomy AND b.m_completion AND b.m_goal AND b.m_raised";
-        String exceptCompletion = "b.m_status AND b.m_taxonomy AND b.m_tags AND b.m_goal AND b.m_raised";
-        String exceptGoal = "b.m_status AND b.m_taxonomy AND b.m_tags AND b.m_completion AND b.m_raised";
-        String exceptRaised = "b.m_status AND b.m_taxonomy AND b.m_tags AND b.m_completion AND b.m_goal";
+        // Every facet requires all the flags except its own. Derived from one list
+        // rather than written out eight times, which is the change #48 forced: with
+        // six dimensions the eight-term conjunctions were readable, and with eight
+        // they are eight nearly identical lines in which a missing term is invisible.
+        // The dropped dimension is still named at each call site, which is the part a
+        // reader needs to see.
+        String exceptStatus = exceptFlag("b.m_status");
+        String exceptTaxonomy = exceptFlag("b.m_taxonomy");
+        String exceptTags = exceptFlag("b.m_tags");
+        String exceptCompletion = exceptFlag("b.m_completion");
+        String exceptGoal = exceptFlag("b.m_goal");
+        String exceptRaised = exceptFlag("b.m_raised");
+        String exceptProgramme = exceptFlag("b.m_programme");
+        String exceptFeatured = exceptFlag("b.m_featured");
 
         return """
                WITH base AS MATERIALIZED (
@@ -1078,7 +1117,9 @@ public class PostgresSearchService implements SearchService {
                           (%s) AS m_tags,
                           (%s) AS m_completion,
                           (%s) AS m_goal,
-                          (%s) AS m_raised
+                          (%s) AS m_raised,
+                          (%s) AS m_programme,
+                          (%s) AS m_featured
                      FROM projects p
                     WHERE %s
                ),
@@ -1136,6 +1177,30 @@ public class PostgresSearchService implements SearchService {
                   AND (ab.hi IS NULL OR b.pledged_amount < ab.hi)
                   AND %s
                 GROUP BY ab.value
+               UNION ALL
+               -- §4.3's Programmes control. Left-joined from `collections` rather than
+               -- grouped out of `base`, so an open call with nothing visible in it
+               -- still comes back with a zero: the vocabulary is short and curated,
+               -- and a control that vanishes when its count reaches zero is a control
+               -- that moves under the reader's cursor. Tags are the opposite case and
+               -- are grouped out of `base` above, because that vocabulary is free.
+               SELECT 'programme'::text, oc.slug, NULL::text, count(b.id)
+                 FROM collections oc
+                 LEFT JOIN collection_projects ocp ON ocp.collection_id = oc.id
+                 LEFT JOIN base b ON b.id = ocp.project_id AND %s
+                WHERE oc.kind = 'OPEN_CALL'
+                  AND oc.published_at IS NOT NULL
+                  AND (oc.opens_at IS NULL OR oc.opens_at <= now())
+                  AND (oc.closes_at IS NULL OR oc.closes_at > now())
+                GROUP BY oc.slug
+               UNION ALL
+               -- §4.3's "Show only" control, which has exactly one countable value.
+               -- An aggregate with no GROUP BY always returns one row, so this is a
+               -- zero rather than a missing entry when nothing is featured.
+               SELECT 'showOnly'::text, 'featured'::text, NULL::text, count(*)
+                 FROM base b
+                WHERE %s
+                  AND EXISTS (SELECT 1 FROM project_editorial_badges peb WHERE peb.project_id = b.id)
                """
                 .formatted(
                         matchesStatus,
@@ -1144,6 +1209,8 @@ public class PostgresSearchService implements SearchService {
                         matchesCompletion,
                         matchesGoal,
                         matchesRaised,
+                        matchesProgramme,
+                        matchesFeatured,
                         publicStates,
                         statusValues,
                         completionValues,
@@ -1155,7 +1222,27 @@ public class PostgresSearchService implements SearchService {
                         FacetCounts.TAG_LIMIT,
                         exceptCompletion,
                         exceptGoal,
-                        exceptRaised);
+                        exceptRaised,
+                        exceptProgramme,
+                        exceptFeatured);
+    }
+
+    /**
+     * The flags every facet but one requires.
+     *
+     * <p>The exclude-own-dimension rule of {@link FacetCounts}, as a list minus one
+     * entry. A dimension added to the base CTE and forgotten here would silently be
+     * applied to its own counts, which is the dead-end panel that rule exists to
+     * prevent, so there is one list and it is this one.
+     */
+    private static String exceptFlag(String dropped) {
+        List<String> kept = new ArrayList<>(FACET_FLAGS);
+        if (!kept.remove(dropped)) {
+            // A typo in a flag name would otherwise produce a panel that looks right
+            // and counts the wrong thing.
+            throw new IllegalArgumentException(dropped + " is not a facet dimension");
+        }
+        return String.join(" AND ", kept);
     }
 
     /**
@@ -1249,6 +1336,8 @@ public class PostgresSearchService implements SearchService {
         Map<String, Long> completion = counts.getOrDefault("completion", Map.of());
         Map<String, Long> goal = counts.getOrDefault("goal", Map.of());
         Map<String, Long> raised = counts.getOrDefault("raised", Map.of());
+        Map<String, Long> programmes = counts.getOrDefault("programme", Map.of());
+        Map<String, Long> showOnly = counts.getOrDefault("showOnly", Map.of());
 
         List<FacetCounts.CategoryCount> categoryCounts = new ArrayList<>();
         for (Taxonomy.TaxonomyCategory category : taxonomy.all(locale)) {
@@ -1268,13 +1357,30 @@ public class PostgresSearchService implements SearchService {
             tagCounts.add(new FacetCounts.NamedCount(slug, tagLabels.get(slug), tags.getOrDefault(slug, 0L)));
         }
 
+        // The programme control, named in the reader's language and in the order the
+        // collections index lists them. The titles come from CuratedCollections for
+        // the reason the category names come from Taxonomy: that class owns the
+        // requested-locale → az → slug chain, and resolving it a second time in SQL
+        // would be a second answer to "what is this open call called".
+        List<FacetCounts.NamedCount> programmeCounts = new ArrayList<>();
+        for (Map.Entry<String, String> programme :
+                collections.visibleTitles(CollectionKind.OPEN_CALL, locale).entrySet()) {
+            programmeCounts.add(new FacetCounts.NamedCount(
+                    programme.getKey(), programme.getValue(), programmes.getOrDefault(programme.getKey(), 0L)));
+        }
+
         return new FacetCounts(
                 fixedVocabulary(DiscoveryStatus.wireValues(), statuses),
                 categoryCounts,
                 tagCounts,
                 fixedVocabulary(CompletionBand.wireValues(), completion),
                 fixedVocabulary(AmountBand.wireValues(), goal),
-                fixedVocabulary(AmountBand.wireValues(), raised));
+                fixedVocabulary(AmountBand.wireValues(), raised),
+                programmeCounts,
+                // One value, deliberately. See FacetCounts: `saved` is per-caller and
+                // `recommended` is #44, and a zero for either would say the platform
+                // has none rather than that it cannot count them.
+                fixedVocabulary(List.of(ShowOnly.FEATURED.wireValue()), showOnly));
     }
 
     private static List<FacetCounts.ValueCount> fixedVocabulary(List<String> values, Map<String, Long> counts) {

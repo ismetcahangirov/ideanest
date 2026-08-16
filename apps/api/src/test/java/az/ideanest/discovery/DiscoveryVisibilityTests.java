@@ -104,9 +104,15 @@ class DiscoveryVisibilityTests extends DiscoveryTestSupport {
     @DisplayName("no sort order can surface a campaign the public may not see")
     void everySortStaysInsideTheVisibleSet() {
         for (DiscoverySort sort : DiscoverySort.values()) {
-            if (sort.requiredCapability().isPresent()) {
+            if (sort.requiredCapability().isPresent() || !sort.isClientSelectable()) {
                 // relevance and near_me are refused outright; that they are refused
                 // rather than silently answered is pinned in DiscoveryApiTests.
+                //
+                // `curated` is skipped for a different reason (#48): it names the order
+                // of a collection landing page, a client may not send it, and there is
+                // no collection here to be curated by. The visibility of a collection's
+                // own cards is asserted by CollectionApiTests, against the query that
+                // actually serves them.
                 continue;
             }
             List<String> returned = slugs(feed("?limit=100&sort=" + sort.wireValue()));
