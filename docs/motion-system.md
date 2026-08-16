@@ -441,6 +441,27 @@ decisions.
 > **The rule:** when the user is **spending money** or **doing work**, motion
 > decreases. When the user is **exploring**, motion increases.
 
+### 5.1 What "minimal" buys Discovery, exactly
+
+`/discover` is the surface that tests the budget, because it is both the most
+exploratory screen in the product and the one with the most elements on it. The
+line is drawn per element rather than per page:
+
+| Element | Motion | Why |
+|---|---|---|
+| Page heading and its standfirst | **One `FadeUp`, once** | §5's own row: fade-up survives on the first screen and on section headings. It is one element, above the fold, animated a single time |
+| Project cards | **None** | §8: no animation in long lists. A filtered feed is an unbounded list, and the reader appends more of it by scrolling |
+| Skeleton → content | **Crossfade, 200ms** | The one animation this budget was written to keep |
+| Skeleton shimmer | **Translating overlay** | `transform` only, removed outright under `prefers-reduced-motion` |
+| Progress bar fill | **800ms `ease-out`** | §6. It is the card's one moving part and it is the number the reader came for |
+| Filter rail, chips, sort | **150ms colour only** | Ticking a box is work, not exploration. A panel that animates while somebody is using it is a panel that is slower to use |
+| Infinite-scroll sentinel | **None** | It is a measuring point, not a thing |
+
+The card entry animation is the one people reach for here and it is the one to
+refuse: a stagger ladder across a grid that grows by twenty-four cards on every
+scroll is a page that never settles, and it costs exactly where §5 says speed
+outranks everything.
+
 ---
 
 ## 6. Product-specific motion
