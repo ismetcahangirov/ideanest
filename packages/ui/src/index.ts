@@ -1,7 +1,14 @@
 /* Primitives */
 export { Card, CardTitle, CardSubtitle, CardFooter, type CardProps } from './components/Card/Card';
 export { Pill, type PillProps } from './components/Pill/Pill';
-export { Chip, ChipRow, type ChipProps, type ChipRowProps } from './components/Chip/Chip';
+export {
+  Chip,
+  ChipRow,
+  RemovableChip,
+  type ChipProps,
+  type ChipRowProps,
+  type RemovableChipProps,
+} from './components/Chip/Chip';
 export { IconButton, type IconButtonProps } from './components/IconButton/IconButton';
 export { ExpandButton, type ExpandButtonProps } from './components/IconButton/ExpandButton';
 export { Tag, type TagProps } from './components/Tag/Tag';

@@ -48,17 +48,51 @@ the browser half of the auth flow work at all.
 | `/projects/[id]/edit/story` | Rich text story, risks, and version history (#35) |
 | `/projects/[id]/edit/prelaunch` | Open the pre-launch page, share the link, see who is waiting (#39) |
 | `/projects/[id]/prelaunch` | **Public.** The pre-launch page itself, and the reminder signup (#39) |
+| `/discover` | **Public.** The filter rail, sort, chips, and the cursor-paginated feed (#45) |
 
 There is no route at `/` yet; server-rendered project and discovery pages are
 #119.
 
-`/projects/[id]/prelaunch` is the only route in the application that works with
-no session at all — the followers a pre-launch page exists to collect have not
-registered, and a signup behind a sign-in wall collects nobody. It reads through
-`publicFetch`, which sends a bearer token only when one is already in memory and
-never fetches one; the form hides its address field in that case rather than
-offering one the service would ignore. Rich link previews for it need a
-server-rendered public projection, which is the discovery epic's (#119).
+`/projects/[id]/prelaunch` and `/discover` are the routes that work with no
+session at all. For the pre-launch page the reason is the followers it exists to
+collect, who have not registered; for discovery it is that a visitor who has not
+registered is the entire audience — requiring a token would mean the front door
+could not render. Both read through `publicFetch`, which sends a bearer token
+only when one is already in memory and never fetches one. Rich link previews
+need a server-rendered public projection, which is the discovery epic's (#119).
+
+## Discovery
+
+`/discover` is a client route and its state is the query string. Every filter
+and the sort are parameters the service itself defines, so a filtered feed is a
+shareable URL (D-12), survives a reload, and comes back off the back button. The
+**cursor is deliberately not in the URL**: a shared link should open a fresh
+first page rather than page seven of somebody else's scroll, and a cursor is
+fingerprinted to the query it was issued for, so one in a link would be answered
+`400 DISCOVERY_CURSOR_MISMATCH` the moment the recipient touched a filter.
+
+| Module | Holds |
+|---|---|
+| `lib/discovery/vocabulary.ts` | The closed vocabularies, copied from `az.ideanest.discovery.domain` |
+| `lib/discovery/filters.ts` | The filter state, the URL it serialises to, and the active-chip set |
+| `lib/discovery/bounds.ts` | The custom money range, checked with `decimal.js` |
+| `lib/discovery/api.ts` | `GET /v1/discover` and `/v1/discover/facets` |
+| `lib/discovery/useDiscoveryFeed.ts` | D-04's paging, and the one-request-per-cursor guard |
+| `lib/discovery/useDiscoveryFacets.ts` | D-10's live counts |
+| `lib/discovery/emptiness.ts` | Which filter emptied the feed |
+
+**Filters the service refuses today are not rendered.** Location (country, city,
+proximity), `showOnly=saved`, `showOnly=recommended`, `showOnly=featured`, free
+text, `sort=relevance` and `sort=near_me` are all representable on the service's
+query object and answered with `400 DISCOVERY_OPTION_UNSUPPORTED` naming the
+issue that owns them (#43, #44, #47, #48). A control that cannot work is a
+promise the interface breaks the first time somebody uses it, so they are absent
+rather than disabled.
+
+**Infinite scroll is the enhancement, not the mechanism.** There is a real
+"Show more projects" button and an `IntersectionObserver` that presses it. The
+other way round is how a feed becomes unreachable by keyboard and by screen
+reader, because neither produces a scroll that intersects anything.
 
 ## The campaign editor
 

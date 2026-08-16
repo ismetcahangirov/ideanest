@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { Flame } from 'lucide-react';
-import { Chip, ChipRow } from './Chip';
+import { Chip, ChipRow, RemovableChip } from './Chip';
 import { SAMPLE_CATEGORIES } from '../../sample-data';
 
 const meta = {
@@ -40,6 +40,35 @@ export const Row: Story = {
           ))}
         </ChipRow>
         <p className="mt-4 text-sm text-white/40">Selected: {active}</p>
+      </div>
+    );
+  },
+};
+
+/**
+ * The applied-filter summary. Each chip removes the choice it names, and its
+ * accessible name says so — a row that announces "Live, button" three times
+ * over is unusable by ear.
+ */
+export const Removable: Story = {
+  parameters: { layout: 'padded' },
+  render: function RemovableStory() {
+    const [applied, setApplied] = useState<readonly string[]>(['Live', 'Games', 'Handmade']);
+
+    return (
+      <div className="w-[600px]">
+        <ChipRow fadeEdge={false} aria-label="Applied filters">
+          {applied.map((filter) => (
+            <RemovableChip
+              key={filter}
+              removeLabel={`Remove filter: ${filter}`}
+              onClick={() => setApplied((current) => current.filter((f) => f !== filter))}
+            >
+              {filter}
+            </RemovableChip>
+          ))}
+        </ChipRow>
+        {applied.length === 0 && <p className="mt-4 text-sm text-white/40">No filters applied.</p>}
       </div>
     );
   },

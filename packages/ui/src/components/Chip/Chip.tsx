@@ -1,3 +1,4 @@
+import { X } from 'lucide-react';
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 import { cn } from '../../lib/cn';
 
@@ -45,6 +46,61 @@ export function Chip({
           {count}
         </span>
       )}
+    </button>
+  );
+}
+
+/**
+ * A chip that represents a choice already made, and removes it when pressed.
+ *
+ * NOT A `Chip` WITH AN ICON IN IT. `Chip` is a toggle and says so with
+ * `aria-pressed`; this is a button that deletes something, and announcing a
+ * delete control as "pressed" tells a screen-reader user it is a switch that is
+ * currently on. Two different controls, two different contracts.
+ *
+ * THE ACCESSIBLE NAME SAYS WHAT PRESSING IT DOES. A row of chips reading
+ * "Live", "Games", "Handmade" is unusable by ear: every one of them announces
+ * as a button whose name is the thing it is about rather than the thing it
+ * does. `removeLabel` carries the sentence — "Remove Status filter: Live" — and
+ * it must contain the visible text, so that speech input reaches the control by
+ * the words on it (WCAG 2.5.3).
+ *
+ * WHITE, NOT LIME, exactly as `Chip[data-active]`: an applied filter is where
+ * the reader is, not something to hurry about (docs/ui-kit.md §7.3). The X is
+ * decorative — colour and icon never carry the meaning alone here, because the
+ * name already does.
+ */
+export interface RemovableChipProps extends Omit<ComponentPropsWithoutRef<'button'>, 'color'> {
+  /**
+   * What pressing this does, as a sentence. Required, and it must contain the
+   * visible label.
+   */
+  removeLabel: string;
+}
+
+export function RemovableChip({
+  removeLabel,
+  className,
+  children,
+  type = 'button',
+  ...props
+}: RemovableChipProps) {
+  return (
+    <button
+      type={type}
+      aria-label={removeLabel}
+      className={cn(
+        'inline-flex h-[34px] shrink-0 items-center gap-1.5 whitespace-nowrap',
+        'rounded-full border border-transparent bg-white px-3 pl-4 text-[13px] font-medium',
+        'text-on-white',
+        'transition-[background-color,color] duration-150 ease-in-out',
+        'hover:bg-[var(--white-muted)]',
+        className,
+      )}
+      {...props}
+    >
+      {children}
+      <X aria-hidden="true" className="size-3.5 text-on-white/56" />
     </button>
   );
 }
