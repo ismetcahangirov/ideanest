@@ -28,6 +28,7 @@ pnpm build-storybook    # static build; CI uses it to prove every story renders
 | `Card` + `CardTitle` / `CardSubtitle` / `CardFooter` | default · active · floating |
 | `Pill` | primary · accent · ghost · outline · danger |
 | `Chip` + `ChipRow` | selected / unselected, optional count |
+| `RemovableChip` | an applied filter, removed when pressed. Not a toggle — see docs/ui-kit.md §7.3 |
 | `IconButton` | default · light · accent · danger · ghost |
 | `ExpandButton` | corner affordance revealed on hover and focus |
 | `Tag` | default · onLime · onWhite · success · warning · danger · hot |

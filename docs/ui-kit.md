@@ -413,6 +413,22 @@ reads without a scrollbar:
 }
 ```
 
+**The removable chip is a different control from the toggle chip.** A filter
+panel needs both: a chip that *applies* a value, and a chip in the applied-set
+summary that *takes it back off*. They look almost identical — the removable
+one is the active white fill with an `X` after the label — and their contracts
+are opposite. `Chip` is a toggle and carries `aria-pressed`; `RemovableChip`
+deletes and must not, because a delete control announced as "pressed" is a
+switch that is currently on.
+
+Its accessible name says what pressing it **does**, not what it is about:
+`"Remove Status filter: Live"`, never `"Live"`. A row of chips whose names are
+their own labels announces as three buttons called after the things they
+describe, which is unusable by ear. The name must still **contain** the visible
+text, or speech input cannot reach the control by the word printed on it
+(WCAG 2.5.3). The `X` is `aria-hidden`: the name already carries the meaning,
+and colour and icon never carry it alone (§9.2).
+
 ### 7.4 Circular icon button
 
 ```css
@@ -850,6 +866,39 @@ The most important table in this document:
 Project imagery runs full-bleed at the top of the card, with radius on the upper
 corners only. The black ground is the system's largest advantage here: it makes
 project photography stronger than a light theme can.
+
+#### In a filtered feed, urgency is a lime badge — not a lime card
+
+§8.1 maps "closing within 48 hours" to a `--lime-500` card, and §1.1 says
+exactly one card in a row is lime because lime is a **state**, not decoration.
+On a rail of four cards those two agree. In `/discover` they do not: the feed is
+filtered and sorted by the reader, and `sort=ending_soon&status=live` is a
+screen on which every card qualifies. Forty lime cards is precisely the
+decoration §1.1 forbids — a signal that everything carries is a signal that
+means nothing, and the reader loses the ability to see *which* campaign is about
+to close.
+
+**So the card surface stays `--surface-2` and the urgency is a lime pill on
+it**, with `Clock` and the words "2 days left". That is still lime as a
+*surface* with `--text-on-lime` on it (§2.3), it still carries `data-on-lime` so
+the focus ring flips (§9.3), and it is still scarce inside the one card it
+belongs to. Every other rule is unchanged:
+
+| On a discovery card | Token | Why |
+|---|---|---|
+| Progress, below goal | `--lime-500` fill | In progress |
+| Progress, at or above goal | `--success` fill | Achieved, never lime (§2.4) |
+| Closing within 48 hours | `--lime-500` **badge** | Urgent — the one lime element on the card |
+| Status word | `--success` / `--warning` / neutral + icon | Colour never alone (§9.2) |
+
+The lime **card** remains correct where §8.1 put it — a dashboard rail, a
+selected reward tier, one current item among a handful. It is the feed, where
+the count of urgent items is the reader's to choose, that takes the badge.
+
+**The completion figure is text as well as a bar.** "126% funded" beside the
+track, from the `decimal.js` value rather than the pixel width. A bar that only
+changes colour at 100% has said nothing to a reader with a colour-vision
+deficiency and nothing at all to a screen reader.
 
 ### 8.3 Creator dashboard
 
