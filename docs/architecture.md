@@ -218,6 +218,43 @@ and each entry needs a translation per supported locale.
 | Most backed | `backers_count DESC` |
 | Near me | Geographic distance |
 
+> **Decisions this table leaves open, resolved by `GET /v1/discover` (#42).** They
+> live in `az.ideanest.discovery.domain` — `DiscoveryStatus`, `CompletionBand`,
+> `AmountBand`, `DiscoverySort` — with the reasoning beside each.
+>
+> **Status is a grouping, not a state.** The five words above are discovery-facing
+> names for sets of the sixteen states in §6.1: *upcoming* is `PRELAUNCH`; *live* is
+> `LIVE`; *late pledge* is `LATE_PLEDGE`; *successful* is `SUCCESSFUL`,
+> `COLLECTING`, `LATE_PLEDGE`, `FULFILLING`, and `COMPLETED` together, because
+> reaching the goal is one event and everything after it is fulfilment; and
+> *unsuccessful* is `UNSUCCESSFUL` alone. `CANCELED` is publicly visible and belongs
+> to no grouping — the creator withdrew it, which is not a claim about whether it
+> found backers. **`DRAFT`, `SUBMITTED`, `CHANGES_REQUESTED`, `REJECTED`,
+> `APPROVED`, `SCHEDULED`, and `SUSPENDED` are never returned by discovery, under
+> any filter or sort.**
+>
+> **Bands are closed below and open above** — `[lower, upper)` — so that the five
+> partition the line rather than overlapping at four boundaries. A campaign at
+> exactly its goal is "over 100%": the question is "did it make it", and it did. The
+> money bands are `<1000`, `1000–5000`, `5000–20000`, `20000–50000`, `>50000` in the
+> campaign currency, and a custom range alongside them is inclusive at both ends.
+>
+> **Multiple values within one dimension are OR'd, except tags, which are AND'd.** A
+> campaign has one state, one category, and one band, so AND there returns nothing;
+> it has several tags, and ticking a second tag is a refinement like every other
+> control on the panel.
+>
+> **The default sort is newest.** It is the only order that is meaningful with no
+> filter: ending-soon opens an unfiltered feed on whatever finished longest ago, and
+> the two amount orders open on the same handful of campaigns for everybody for
+> ever.
+>
+> **Relevance and near-me are declared and refused** until #44 and #47. Asking for
+> one is an RFC 9457 problem detail naming the issue, not a quiet fall back to a
+> different order — likewise free text (#43), *saved* (no saved-projects table
+> exists), *recommended* (#44), *featured* (#48), and country/city (no location
+> column exists; #47 brings the schema).
+
 **Additional**
 
 | # | Capability |
@@ -939,6 +976,21 @@ is what that table was separated for.
 Indexes: `(state, deadline)`, `(category_id, state)`, `(creator_id)`, unique
 `(creator_id, slug)`, GIN on `search_vector`, GIST on `geo_point`,
 `(is_featured, launched_at DESC)`.
+
+Plus five that discovery reads through (V12), each **partial over the nine publicly
+visible states of §4.3** — which is the whole of what discovery can ever return, so
+the partial predicate is not an optimisation of a common case. Four are keyset
+orders and each carries `id` as its last column, matching the `ORDER BY` exactly
+because the cursor resumes on `(sort key, id)`:
+`(launched_at DESC NULLS LAST, id)`, `(deadline ASC NULLS LAST, id)`,
+`(pledged_amount DESC, id)`, `(backers_count DESC, id)`. The fifth,
+`(category_id, subcategory_id)`, serves the taxonomy filter and is also the
+cheapest way to enumerate the publicly visible rows for a facet count. The null
+direction is spelled out because PostgreSQL defaults to `NULLS FIRST` for `DESC`,
+and an index that disagrees with the `ORDER BY` is simply not used.
+
+There is deliberately no index for `sort=popularity`: the score is an expression
+over two columns and a request parameter, so PostgreSQL sorts the matching rows.
 
 > **Not all of these columns exist yet.** `location_id` and `geo_point` arrive
 > with proximity search, `search_vector` with #43, `is_featured` with curation,
@@ -1785,6 +1837,22 @@ cannot represent it exactly.
 
 Start with tier 1 behind a `SearchService` interface so the migration is a
 substitution rather than a rewrite.
+
+`az.ideanest.discovery.application.SearchService` is that interface, and
+`infrastructure.PostgresSearchService` is tier 1. Nothing in the signatures is SQL,
+JDBC, a Spring Data type, or a column name: a `DiscoveryQuery` in, a `DiscoveryPage`
+and `FacetCounts` out. What a second implementation additionally has to satisfy —
+visibility, keyset ordering, exact money, facets that exclude their own dimension —
+is written out on the interface, because the interface alone does not say it.
+
+**An implementation declares what it cannot do**, through
+`SearchService.capabilities()` and `DiscoveryCapability`. `DiscoveryQuery` can
+express every filter §4.3 lists, including the ones no implementation supports yet,
+so that #43, #44, #47 and #48 each add a capability rather than widening the query
+object; a query asking for one that is not declared is refused with a problem detail
+naming the issue that owns it. Accepting a parameter and silently ignoring it is the
+failure this exists to prevent — a backer who typed a search term and was shown
+every campaign on the platform has been told the search works.
 
 ### 11.2 Ranking
 
