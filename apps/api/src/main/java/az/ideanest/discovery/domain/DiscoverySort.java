@@ -117,7 +117,53 @@ public enum DiscoverySort {
      */
     BEST_MATCH("best_match"),
 
-    /** §11.2's composite. <strong>#44</strong>; refused until then. */
+    /**
+     * §11.2's composite (#44). <strong>Served.</strong>
+     *
+     * <p>A weighted sum of the terms §11.2 lists, over a fixed scale rather than over
+     * the result set — see {@code RelevanceScore} for why the other reading of
+     * "normalise" cannot be paged. The weights are rows in {@code ranking_weights} and
+     * are changed without a deployment, which is what §11.2 asks for and what makes
+     * ranking measurable rather than arguable.
+     *
+     * <p><strong>Three of §11.2's eight terms run; five are inert and say so.</strong>
+     * Completion, the editorial badge and recency decay have data. Both 48-hour
+     * velocities do not — {@code pledged_amount} and {@code backers_count} are running
+     * totals with no history behind them (epic #50) — and neither do view-to-pledge
+     * conversion (#95), personalisation (D-07), or the spam signal (#108). Their weight
+     * rows exist, the moderator diagnostic reports them contributing nothing, and V15
+     * refuses to let one be switched on until something computes it.
+     *
+     * <p><strong>It contains {@link #BEST_MATCH} rather than replacing it.</strong> The
+     * composite's text term is the identical {@code ts_rank} expression, which is what
+     * #43 said would happen. The two orders remain different orders and the difference
+     * is which question is being asked: {@code best_match} is "how well does this match
+     * the words I typed", and this is "what should I be shown", of which the text match
+     * is one term among several.
+     *
+     * <p><strong>An unstated sort still resolves to {@link #DEFAULT} or
+     * {@link #DEFAULT_WITH_TEXT}, and this is deliberately not either.</strong> A
+     * merged web client (`apps/web/src/lib/discovery/filters.ts`) resolves an absent
+     * sort the same way and shows the reader which order is in force; making relevance
+     * the default here would silently change what every existing link means and would
+     * make that control lie. It is opt-in — {@code ?sort=relevance} — until somebody
+     * has measured it against the two defaults, which is exactly what the tunable
+     * weights and the diagnostic exist to make possible.
+     *
+     * <p><strong>The cursor pins more than #42's.</strong> #42 pinned the decay clock so
+     * the score could not move on its own between pages; this additionally binds the
+     * cursor to a digest of the weights, so a tuning change mid-scroll is refused and
+     * restarted rather than silently reshuffling the feed under the reader. What no
+     * cursor can pin is {@code pledged_amount}, so the surviving guarantee is the one
+     * {@code DiscoveryCursor} states for every order over a mutable column: a row that
+     * moves is seen once or not at all, and no row that stayed still is duplicated or
+     * dropped.
+     *
+     * <p>Like {@link #POPULARITY}, <strong>no index serves it</strong> — the key is an
+     * expression over several columns, a request parameter, and a configuration — so
+     * PostgreSQL sorts the matching rows. At §11.1's tier-1 ceiling that is a sort of a
+     * few thousand rows; past it, this is one of the things that moves to the engine.
+     */
     RELEVANCE("relevance"),
 
     /** Geographic distance. <strong>#47</strong>; refused until then. */

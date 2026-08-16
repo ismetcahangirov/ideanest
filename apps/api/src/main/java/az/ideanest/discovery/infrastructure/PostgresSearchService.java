@@ -4,6 +4,11 @@ import az.ideanest.discovery.application.CuratedCollections;
 import az.ideanest.discovery.application.DiscoveryPage;
 import az.ideanest.discovery.application.DiscoveryQuery;
 import az.ideanest.discovery.application.FacetCounts;
+import az.ideanest.discovery.application.RankingDiagnostics;
+import az.ideanest.discovery.application.RankingExplanation;
+import az.ideanest.discovery.application.RankingWeight;
+import az.ideanest.discovery.application.RankingWeightStore;
+import az.ideanest.discovery.application.RankingWeights;
 import az.ideanest.discovery.application.SearchService;
 import az.ideanest.discovery.application.SuggestQuery;
 import az.ideanest.discovery.domain.AmountBand;
@@ -16,6 +21,7 @@ import az.ideanest.discovery.domain.DiscoverySort;
 import az.ideanest.discovery.domain.DiscoveryStatus;
 import az.ideanest.discovery.domain.InvalidCursorException;
 import az.ideanest.discovery.domain.ProjectCard;
+import az.ideanest.discovery.domain.RankingTerm;
 import az.ideanest.discovery.domain.ShowOnly;
 import az.ideanest.discovery.domain.Suggestion;
 import az.ideanest.project.application.Taxonomy;
@@ -34,6 +40,7 @@ import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -52,11 +59,23 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <h2>What this can and cannot do</h2>
  *
- * <p>{@link #capabilities()} holds {@link DiscoveryCapability#FULL_TEXT} and nothing
- * else. Every other option §4.3 describes that needs something absent — a
- * {@code locations} table, a saved table, an {@code is_featured} column, a ranking
- * model — is refused by the caller with a problem detail naming its issue, rather
- * than accepted and dropped. See {@link DiscoveryCapability}.
+ * <p>{@link #capabilities()} holds free text (#43), curation (#48), and the composite
+ * ranking (#44). Every other option §4.3 describes that needs something absent — a
+ * {@code locations} table, a saved table, a per-caller signal — is refused by the caller
+ * with a problem detail naming its issue, rather than accepted and dropped. See
+ * {@link DiscoveryCapability}.
+ *
+ * <h2>Relevance, in three live terms out of eight</h2>
+ *
+ * <p>§11.2's composite is served under {@link DiscoverySort#RELEVANCE}, and
+ * <strong>five of its eight terms have no data source in this schema</strong>: both
+ * velocities need a pledge ledger, conversion needs analytics, personalisation needs a
+ * caller, and the spam signal needs fraud detection. Those terms are seeded inert in
+ * V15 and say what is blocking them; what actually runs is completion, the editorial
+ * badge, recency, and the text term #43 left for it. {@code RelevanceScore} holds the
+ * arithmetic and the reasoning; the weights are rows in {@code ranking_weights} and are
+ * changed without a deployment, which is what §11.2 requires and why they are not
+ * constants in this file.
  *
  * <h2>Free text, in two tiers</h2>
  *
@@ -84,7 +103,7 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code numeric} throughout, so a band boundary is exact rather than nearly.
  */
 @Service
-public class PostgresSearchService implements SearchService {
+public class PostgresSearchService implements SearchService, RankingDiagnostics {
 
     /**
      * How coarse the instant that {@link DiscoverySort#POPULARITY} decays against is.
@@ -222,13 +241,19 @@ public class PostgresSearchService implements SearchService {
     private final NamedParameterJdbcTemplate jdbc;
     private final Taxonomy taxonomy;
     private final CuratedCollections collections;
+    private final RankingWeightStore rankingWeights;
     private final Clock clock;
 
     public PostgresSearchService(
-            NamedParameterJdbcTemplate jdbc, Taxonomy taxonomy, CuratedCollections collections, Clock clock) {
+            NamedParameterJdbcTemplate jdbc,
+            Taxonomy taxonomy,
+            CuratedCollections collections,
+            RankingWeightStore rankingWeights,
+            Clock clock) {
         this.jdbc = jdbc;
         this.taxonomy = taxonomy;
         this.collections = collections;
+        this.rankingWeights = rankingWeights;
         this.clock = clock;
     }
 
@@ -241,17 +266,24 @@ public class PostgresSearchService implements SearchService {
      * it fails the suite that pins each refusal, and one implemented without being
      * announced is refused by the controller and never reached.
      *
-     * <p>{@code FILTER_SAVED}, {@code FILTER_RECOMMENDED}, {@code SORT_RELEVANCE},
-     * {@code SORT_NEAR_ME}, {@code FILTER_LOCATION} and {@code FILTER_PROXIMITY} are
-     * deliberately still absent. {@code showOnly=recommended} in particular is
-     * <em>not</em> served by curation: it is personalisation, it belongs to #44 and
-     * D-07, and answering it with the platform's staff picks would tell every reader
-     * that an editorial decision was made for them personally.
+     * <p>{@code FILTER_SAVED}, {@code FILTER_RECOMMENDED}, {@code SORT_NEAR_ME},
+     * {@code FILTER_LOCATION} and {@code FILTER_PROXIMITY} are deliberately still
+     * absent.
+     *
+     * <p><strong>{@code SORT_RELEVANCE} is here and {@code FILTER_RECOMMENDED} is
+     * not, and #44 is why both are true at once.</strong> The composite ranks
+     * campaigns; it does not know who is reading. §11.2's {@code w6} — personalisation
+     * — has no data source and is seeded inert (V15), and {@code showOnly=recommended}
+     * is that term wearing a filter's clothes. Answering it out of the composite would
+     * tell every reader that a feed computed identically for all of them had been
+     * assembled for them personally, which is a stronger claim than the platform can
+     * make and the exact failure {@link DiscoveryCapability} exists to prevent.
      */
     @Override
     public Set<DiscoveryCapability> capabilities() {
         return EnumSet.of(
                 DiscoveryCapability.FULL_TEXT,
+                DiscoveryCapability.SORT_RELEVANCE,
                 DiscoveryCapability.FILTER_FEATURED,
                 DiscoveryCapability.FILTER_PROGRAMME);
     }
@@ -261,8 +293,24 @@ public class PostgresSearchService implements SearchService {
     public DiscoveryPage search(DiscoveryQuery query) {
         Instant asOf = asOf(query);
         boolean exactTier = exactTierMatches(query.text());
+        // Taken once, before anything is built, and passed down. A score is a weighted
+        // sum, so reading the weights term by term could legitimately build one score
+        // out of the configuration from before a change and the configuration from
+        // after it -- and the keyset predicate and the projected score are two separate
+        // compilations of the same expression, so the window is real rather than
+        // theoretical. See RankingWeights.
+        RankingWeights weights = weightsFor(query.sort());
+        String fingerprint = fingerprintOf(query, weights);
         MapSqlParameterSource params = new MapSqlParameterSource();
         params.addValue("asOf", OffsetDateTime.ofInstant(asOf, ZoneOffset.UTC));
+
+        // Built once and used twice -- projected as `sort_score` and repeated inside the
+        // keyset predicate, because a SELECT alias is not visible in a WHERE clause. One
+        // string rather than two calls, so the two copies are the same characters and
+        // cannot drift the way two calls to one builder eventually would.
+        String relevance = query.sort() == DiscoverySort.RELEVANCE
+                ? relevanceScore(exactTier, query.text(), weights, params)
+                : null;
 
         List<String> where = new ArrayList<>();
         where.add(statePredicate("p", DiscoveryStatus.statesFor(query.statuses()), params));
@@ -271,8 +319,8 @@ public class PostgresSearchService implements SearchService {
 
         DiscoveryCursor cursor = query.cursor();
         if (cursor != null) {
-            cursor.requireMatches(query.fingerprint(), query.sort());
-            where.add(keyset(query.sort(), cursor, exactTier, params));
+            cursor.requireMatches(fingerprint, query.sort());
+            where.add(keyset(query.sort(), cursor, exactTier, relevance, params));
         }
 
         // One more row than asked for. It is not returned; its existence is the only
@@ -281,7 +329,8 @@ public class PostgresSearchService implements SearchService {
         // would run on every page of every scroll.
         params.addValue("limit", query.limit() + 1);
 
-        String sql = "SELECT " + ProjectCardRows.COLUMNS + ", " + scoreColumn(query.sort(), exactTier)
+        String sql = "SELECT " + ProjectCardRows.COLUMNS + ", "
+                + scoreColumn(query.sort(), exactTier, relevance)
                 + ProjectCardRows.FROM
                 + " WHERE " + String.join(" AND ", where)
                 + " ORDER BY " + orderBy(query.sort())
@@ -297,9 +346,57 @@ public class PostgresSearchService implements SearchService {
         if (hasMore && !page.isEmpty()) {
             Row last = page.get(page.size() - 1);
             next = new DiscoveryCursor(
-                    query.fingerprint(), query.sort(), sortKey(query.sort(), last), last.card().id(), asOf);
+                    fingerprint, query.sort(), sortKey(query.sort(), last), last.card().id(), asOf);
         }
         return new DiscoveryPage(items, next);
+    }
+
+    /**
+     * The weights this request scores with, or null for the seven orders that do not.
+     *
+     * <p>Not fetched for the other orders on purpose. {@code RankingWeightStore} caches
+     * for a minute and the fetch is cheap, but a {@code sort=newest} feed that queried
+     * the ranking configuration would be a dependency nothing needs — and one more thing
+     * that has to be working for the default feed to serve.
+     */
+    private RankingWeights weightsFor(DiscoverySort sort) {
+        return sort == DiscoverySort.RELEVANCE ? rankingWeights.current() : null;
+    }
+
+    /**
+     * What a cursor for this request is bound to.
+     *
+     * <p>{@code DiscoveryQuery.fingerprint()} is "everything that decides which
+     * campaigns are returned and in what order", and under {@code sort=relevance} the
+     * weights are part of that and the query object cannot know them. So they are folded
+     * in here.
+     *
+     * <p><strong>Why this rather than tolerating it.</strong> A weight changed between
+     * page one and page two reorders the entire feed: every campaign's key means
+     * something different, and the keyset resumes from a number that no longer picks out
+     * the row it was written for. The result is a scroll that repeats a page or skips
+     * one, silently. Refusing it produces {@code DISCOVERY_CURSOR_MISMATCH}, which the
+     * client already handles because a filter change produces the same thing — see
+     * {@code DiscoveryExceptionHandler}.
+     *
+     * <p>This is strictly more than #42 pinned. #42 pinned the decay clock in the
+     * cursor, which is what stops the score moving on its own between pages, and that is
+     * kept — {@link #asOf} still reads the instant back out of the cursor, and the
+     * recency term scores against it. What #42 could not have anticipated is a sort key
+     * whose <em>definition</em> is mutable at run time, which is what "tunable without a
+     * deployment" introduces.
+     *
+     * <p><strong>What remains, stated plainly.</strong> The composite reads
+     * {@code pledged_amount}, which changes whenever anybody pledges, and no cursor can
+     * pin that without materialising the whole result set. The property that survives is
+     * the one {@code DiscoveryCursor} claims for every order over a mutable column,
+     * {@code most_funded} included: a row that moves is seen once or not at all
+     * depending on where it moved to, and <strong>no row that stayed still is ever
+     * duplicated or dropped</strong>. That is tested, with a campaign whose
+     * {@code pledged_amount} changes mid-walk.
+     */
+    private static String fingerprintOf(DiscoveryQuery query, RankingWeights weights) {
+        return weights == null ? query.fingerprint() : query.fingerprint() + "." + weights.version();
     }
 
     /**
@@ -575,6 +672,90 @@ public class PostgresSearchService implements SearchService {
             }
         }
         return List.copyOf(merged);
+    }
+
+    // ---------------------------------------------------------------------------
+    // The ranking diagnostic (§11.2)
+    // ---------------------------------------------------------------------------
+
+    /**
+     * One campaign's composite, taken apart term by term.
+     *
+     * <p><strong>Every number here comes from the expressions the feed orders by.</strong>
+     * The per-term columns are {@code RelevanceScore.expressions()} and the total is
+     * {@code RelevanceScore.of()} — the same strings, in the same statement, against the
+     * same row. An explanation computed a second way would be a plausible story about a
+     * position rather than the reason for it, and the day the two drifted somebody would
+     * spend an afternoon tuning against a fiction.
+     *
+     * <p>The clock is the same bucketed instant a feed request would use, so the recency
+     * term reported here is the recency term the feed is applying within this cache
+     * window rather than one measured a few hundred milliseconds later.
+     *
+     * <p>Visibility is the same predicate as everything else in this class. A moderator
+     * tool is still not a way to read a draft — {@code DiscoveryStatus.PUBLIC_STATES},
+     * always — and a campaign that is not in a feed has no position in one to explain.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<RankingExplanation> explain(String slug, String text, RankingWeights weights) {
+        Instant asOf = bucketedNow();
+        boolean exactTier = exactTierMatches(text);
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("asOf", OffsetDateTime.ofInstant(asOf, ZoneOffset.UTC));
+        params.addValue("slug", slug);
+        params.addValue("states", List.copyOf(DiscoveryStatus.PUBLIC_STATES));
+        if (text != null) {
+            params.addValue("text", text);
+        }
+
+        String textTerm = RelevanceScore.textTermFor(text == null ? null : textScore("p", exactTier));
+        Map<RankingTerm, String> expressions = RelevanceScore.expressions(textTerm);
+        Map<RankingTerm, String> aliases = new LinkedHashMap<>();
+        List<String> projections = new ArrayList<>();
+        int index = 0;
+        for (Map.Entry<RankingTerm, String> entry : expressions.entrySet()) {
+            String alias = "term_" + index++;
+            aliases.put(entry.getKey(), alias);
+            projections.add("(" + entry.getValue() + ") AS " + alias);
+        }
+
+        String sql = "SELECT p.slug, p.title, (" + RelevanceScore.of(weights, textTerm, params) + ") AS sort_score, "
+                + String.join(", ", projections)
+                + " FROM projects p WHERE p.slug = :slug AND p.state IN (:states)";
+
+        List<RankingExplanation> found = jdbc.query(sql, params, (resultSet, row) -> {
+            List<RankingExplanation.Term> terms = new ArrayList<>();
+            for (RankingTerm term : RankingTerm.values()) {
+                RankingWeight configured = weights.find(term).orElse(null);
+                String alias = aliases.get(term);
+                // Null rather than zero for the five terms nothing computes. Zero is a
+                // campaign that scores nothing on a term that works, and the difference
+                // is the entire point of this endpoint.
+                BigDecimal value = alias == null ? null : resultSet.getBigDecimal(alias);
+                BigDecimal weight = configured == null ? BigDecimal.ZERO : configured.weight();
+                boolean active = configured != null && configured.active();
+                BigDecimal contribution = BigDecimal.ZERO;
+                if (active && value != null) {
+                    BigDecimal product = weight.multiply(value);
+                    contribution = term.sign() == RankingTerm.Sign.SUBTRACTS ? product.negate() : product;
+                }
+                terms.add(new RankingExplanation.Term(
+                        term,
+                        active,
+                        configured == null ? term.blockedBy() : configured.blockedBy(),
+                        value,
+                        weight,
+                        contribution));
+            }
+            return new RankingExplanation(
+                    resultSet.getString("slug"),
+                    resultSet.getString("title"),
+                    weights.version(),
+                    resultSet.getBigDecimal("sort_score"),
+                    terms);
+        });
+        return found.stream().findFirst();
     }
 
     // ---------------------------------------------------------------------------
@@ -897,14 +1078,14 @@ public class PostgresSearchService implements SearchService {
             case ENDING_SOON -> "p.deadline ASC NULLS LAST, p.id ASC";
             case MOST_FUNDED -> "p.pledged_amount DESC, p.id ASC";
             case MOST_BACKED -> "p.backers_count DESC, p.id ASC";
-            // Both orders whose key is an expression rather than a column read it
+            // Every order whose key is an expression rather than a column reads it
             // from the projected alias, so the score is computed once per row.
-            case POPULARITY, BEST_MATCH -> "sort_score DESC, p.id ASC";
-            case RELEVANCE, NEAR_ME -> throw new IllegalStateException(
-                    // Unreachable: the controller refuses these before they get here,
+            case POPULARITY, BEST_MATCH, RELEVANCE -> "sort_score DESC, p.id ASC";
+            case NEAR_ME -> throw new IllegalStateException(
+                    // Unreachable: the controller refuses this before it gets here,
                     // through the capability check. Throwing rather than falling back
                     // to another order is what keeps that true — a default branch here
-                    // would silently make `sort=relevance` mean `sort=newest` the day
+                    // would silently make `sort=near_me` mean `sort=newest` the day
                     // somebody removed the check.
                     sort.wireValue() + " is refused before it reaches the query");
             // Unreachable for a different reason: `curated` is not a value a client
@@ -917,13 +1098,31 @@ public class PostgresSearchService implements SearchService {
     }
 
     /** {@code sort_score} exists on every query so the row mapper has one shape. */
-    private static String scoreColumn(DiscoverySort sort, boolean exactTier) {
+    private static String scoreColumn(DiscoverySort sort, boolean exactTier, String relevance) {
         return switch (sort) {
             case POPULARITY -> "(" + POPULARITY_SCORE + ") AS sort_score";
             case BEST_MATCH -> "(" + textScore("p", exactTier) + ") AS sort_score";
-            case NEWEST, ENDING_SOON, MOST_FUNDED, MOST_BACKED, RELEVANCE, NEAR_ME, CURATED ->
+            case RELEVANCE -> "(" + relevance + ") AS sort_score";
+            case NEWEST, ENDING_SOON, MOST_FUNDED, MOST_BACKED, NEAR_ME, CURATED ->
                 "NULL::numeric AS sort_score";
         };
+    }
+
+    /**
+     * §11.2's composite, built from the weights this request was pinned to.
+     *
+     * <p><strong>The text term is {@link #textScore}, unchanged.</strong> That is what
+     * #43 said would happen — "{@code best_match} becomes its text term rather than being
+     * replaced by it" — and it is a fact about this one line rather than an aspiration:
+     * both orders call the same method, so a change to how a title match is ranked
+     * changes both, and the two can never come to disagree about what a good text match
+     * is. When there is no query the term is a literal zero for every campaign, so
+     * {@code sort=relevance} is one expression on a searched feed and on a browsing one.
+     */
+    private static String relevanceScore(
+            boolean exactTier, String text, RankingWeights weights, MapSqlParameterSource params) {
+        String textTerm = RelevanceScore.textTermFor(text == null ? null : textScore("p", exactTier));
+        return RelevanceScore.of(weights, textTerm, params);
     }
 
     /**
@@ -941,7 +1140,11 @@ public class PostgresSearchService implements SearchService {
      * with the last row of the previous page.
      */
     private static String keyset(
-            DiscoverySort sort, DiscoveryCursor cursor, boolean exactTier, MapSqlParameterSource params) {
+            DiscoverySort sort,
+            DiscoveryCursor cursor,
+            boolean exactTier,
+            String relevance,
+            MapSqlParameterSource params) {
         params.addValue("cursorId", cursor.id());
         String key = cursor.sortKey();
         return switch (sort) {
@@ -954,7 +1157,11 @@ public class PostgresSearchService implements SearchService {
             // SELECT alias is not visible in the WHERE clause, which is evaluated
             // first. Both copies come from textScore, so they cannot disagree.
             case BEST_MATCH -> presentKeyset("(" + textScore("p", exactTier) + ")", decimal(key), params);
-            case RELEVANCE, NEAR_ME -> throw new IllegalStateException(
+            // The composite, repeated for the same reason and out of the same string
+            // the SELECT list projects -- so the two are the same characters rather than
+            // two builds of one expression that a future edit could separate.
+            case RELEVANCE -> presentKeyset("(" + relevance + ")", decimal(key), params);
+            case NEAR_ME -> throw new IllegalStateException(
                     sort.wireValue() + " is refused before it reaches the query");
             case CURATED -> throw new IllegalStateException(
                     "curated is the collection page's order and has no meaning in a feed");
@@ -1027,8 +1234,8 @@ public class PostgresSearchService implements SearchService {
             case ENDING_SOON -> card.deadline() == null ? null : card.deadline().toString();
             case MOST_FUNDED -> card.pledged().amount().toPlainString();
             case MOST_BACKED -> Integer.toString(card.backersCount());
-            case POPULARITY, BEST_MATCH -> row.score().toPlainString();
-            case RELEVANCE, NEAR_ME -> throw new IllegalStateException(
+            case POPULARITY, BEST_MATCH, RELEVANCE -> row.score().toPlainString();
+            case NEAR_ME -> throw new IllegalStateException(
                     sort.wireValue() + " is refused before it reaches the query");
             case CURATED -> throw new IllegalStateException(
                     "curated is the collection page's order and has no meaning in a feed");
@@ -1046,6 +1253,11 @@ public class PostgresSearchService implements SearchService {
         if (query.cursor() != null) {
             return query.cursor().asOf();
         }
+        return bucketedNow();
+    }
+
+    /** Now, truncated to {@link #POPULARITY_BUCKET}. See {@link #asOf}. */
+    private Instant bucketedNow() {
         long seconds = POPULARITY_BUCKET.toSeconds();
         Instant now = clock.instant();
         return Instant.ofEpochSecond(Math.floorDiv(now.getEpochSecond(), seconds) * seconds);
@@ -1058,9 +1270,10 @@ public class PostgresSearchService implements SearchService {
     /**
      * A card, and the sort key that produced it.
      *
-     * @param score null except under {@link DiscoverySort#POPULARITY} and
-     *     {@link DiscoverySort#BEST_MATCH}, the two orders whose key is computed by
-     *     the database and cannot be recovered from the card
+     * @param score null except under {@link DiscoverySort#POPULARITY},
+     *     {@link DiscoverySort#BEST_MATCH} and {@link DiscoverySort#RELEVANCE}, the
+     *     three orders whose key is computed by the database and cannot be recovered
+     *     from the card
      */
     private record Row(ProjectCard card, BigDecimal score) {
     }

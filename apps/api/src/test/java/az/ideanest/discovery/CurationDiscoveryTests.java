@@ -173,15 +173,20 @@ class CurationDiscoveryTests extends DiscoveryTestSupport {
     @DisplayName("showOnly=recommended is still refused, and says whose it is")
     void recommendedStaysRefused() {
         // Deliberately not served by curation. It is personalisation (§11.2's w6,
-        // D-07), it belongs to #44, and answering it with the platform's staff picks
-        // would tell every reader that an editorial decision was made for them
-        // personally.
+        // D-07), and answering it with the platform's staff picks would tell every
+        // reader that an editorial decision was made for them personally.
+        //
+        // It survived #44 too, which is the case worth pinning: the composite ranking
+        // landed and this did not, because §11.2's w6 is one of the five terms with no
+        // data — /v1/discover is unauthenticated and publicly cached, so there is no
+        // caller to personalise for. The issue in the body moved from #44 to D-07 with
+        // that.
         ResponseEntity<Map<String, Object>> response =
                 get("/v1/discover?showOnly=recommended", new HttpHeaders());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).containsEntry("code", "DISCOVERY_OPTION_UNSUPPORTED");
-        assertThat(response.getBody().get("meta").toString()).contains("#44");
+        assertThat(response.getBody().get("meta").toString()).contains("D-07");
     }
 
     // ------------------------------------------------------------------
