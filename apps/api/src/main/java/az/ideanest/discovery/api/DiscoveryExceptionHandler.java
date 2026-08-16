@@ -1,9 +1,13 @@
 package az.ideanest.discovery.api;
 
+import az.ideanest.discovery.application.CollectionNotFoundException;
+import az.ideanest.discovery.application.CollectionSlugTakenException;
+import az.ideanest.discovery.application.CurationRejectedException;
 import az.ideanest.discovery.application.UnknownFilterValueException;
 import az.ideanest.discovery.application.UnsupportedDiscoveryOptionException;
 import az.ideanest.discovery.domain.DiscoveryCapability;
 import az.ideanest.discovery.domain.InvalidCursorException;
+import az.ideanest.project.application.NotAModeratorException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -29,7 +33,18 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * prose — one means "start again from the first page", one means "stop sending this
  * parameter", and one means "fix the value".
  */
-@RestControllerAdvice(assignableTypes = {DiscoveryController.class, SearchController.class})
+@RestControllerAdvice(
+        assignableTypes = {
+            DiscoveryController.class,
+            SearchController.class,
+            // The collection endpoints raise two of the three above unchanged — a
+            // malformed cursor and a limit that is not a number — because they page
+            // with the same tokens and clamp with the same bounds. Listing them here
+            // rather than writing a second advice keeps one refusal to one body; the
+            // curation failures below are new and are named individually.
+            CollectionController.class,
+            AdminCurationController.class
+        })
 public class DiscoveryExceptionHandler {
 
     /**
@@ -109,6 +124,76 @@ public class DiscoveryExceptionHandler {
         meta.put("value", exception.value());
         meta.put("allowed", exception.allowed());
         problem.setProperty("meta", meta);
+        return problem;
+    }
+
+    /**
+     * 404 for a collection this caller may not see.
+     *
+     * <p>The same answer for "there is no such collection", "it is not published yet",
+     * and "its window has closed", deliberately. See {@link CollectionNotFoundException}
+     * — a 403 would confirm that a list somebody is still assembling exists, which is
+     * the same confidentiality a draft campaign's 404 protects.
+     */
+    @ExceptionHandler(CollectionNotFoundException.class)
+    public ProblemDetail handleCollectionNotFound(CollectionNotFoundException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+        problem.setType(URI.create("https://ideanest.az/problems/collection-not-found"));
+        problem.setTitle("No such collection");
+        // Deliberately not the exception's message, which names the slug that was
+        // asked for and would echo it back into the body.
+        problem.setDetail("That collection does not exist.");
+        problem.setProperty("code", "COLLECTION_NOT_FOUND");
+        return problem;
+    }
+
+    /**
+     * 403 for a signed-in caller who is not platform staff.
+     *
+     * <p>The same shape the project module answers with, because it is the same
+     * refusal and the same configured list behind it — a client that already handles
+     * {@code NOT_A_MODERATOR} from the moderation queue must not have to learn a second
+     * code for the same fact. The body is duplicated rather than shared because the two
+     * advices are scoped to their own controllers on purpose: an advice that caught a
+     * broad type across the service would turn a bug somewhere else into a tidy 4xx.
+     */
+    @ExceptionHandler(NotAModeratorException.class)
+    public ProblemDetail handleNotAModerator(NotAModeratorException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+        problem.setType(URI.create("https://ideanest.az/problems/not-a-moderator"));
+        problem.setTitle("Not a moderator");
+        problem.setDetail("Curation is a moderator action.");
+        problem.setProperty("code", "NOT_A_MODERATOR");
+        return problem;
+    }
+
+    /** 400 for a curation request that names a field the platform will not accept. */
+    @ExceptionHandler(CurationRejectedException.class)
+    public ProblemDetail handleCurationRejected(CurationRejectedException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("https://ideanest.az/problems/curation-rejected"));
+        problem.setTitle("That change was refused");
+        problem.setDetail(exception.getMessage());
+        problem.setProperty("code", "CURATION_REJECTED");
+        problem.setProperty("meta", Map.of("field", exception.field()));
+        return problem;
+    }
+
+    /**
+     * 409 for a slug another collection already answers at.
+     *
+     * <p>Not a 400: nothing about the request is malformed, and what stops it is the
+     * state of the platform rather than the shape of the input — which is what tells a
+     * client to retry with a different slug rather than not to retry at all.
+     */
+    @ExceptionHandler(CollectionSlugTakenException.class)
+    public ProblemDetail handleSlugTaken(CollectionSlugTakenException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/collection-slug-taken"));
+        problem.setTitle("That slug is taken");
+        problem.setDetail("Another collection already answers at that address.");
+        problem.setProperty("code", "COLLECTION_SLUG_TAKEN");
+        problem.setProperty("meta", Map.of("slug", exception.slug()));
         return problem;
     }
 }
