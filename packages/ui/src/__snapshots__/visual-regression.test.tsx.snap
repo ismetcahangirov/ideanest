@@ -2541,6 +2541,200 @@ exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/form/To
 </div>"
 `;
 
+exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/overlay/Combobox.stories.tsx — Closed [reduced motion] 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="h-[320px] w-[420px]">
+<div class="relative">
+<span class="pointer-events-none absolute inset-y-0 left-3 z-10 grid place-items-center text-white/40 [&amp;_svg]:size-4">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search" aria-hidden="true">
+<path d="m21 21-4.34-4.34">
+</path>
+<circle cx="11" cy="11" r="8">
+</circle>
+</svg>
+</span>
+<input placeholder="Search campaigns" role="combobox" autocomplete="off" aria-autocomplete="list" aria-expanded="false" aria-controls="[id-0]-listbox" class="w-full rounded-md bg-surface-3 text-white border border-white/8 placeholder:text-white/40 transition-[background-color,border-color] duration-150 ease-in-out hover:border-white/16 focus:border-white/16 disabled:pointer-events-none disabled:opacity-40 h-11 px-3.5 text-sm pl-10" type="text" value="oyun">
+<p aria-live="polite" aria-atomic="true" class="sr-only">
+</p>
+</div>
+</div>
+</div>"
+`;
+
+exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/overlay/Combobox.stories.tsx — Failed [reduced motion] 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="h-[320px] w-[420px]">
+<div class="relative">
+<span class="pointer-events-none absolute inset-y-0 left-3 z-10 grid place-items-center text-white/40 [&amp;_svg]:size-4">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search" aria-hidden="true">
+<path d="m21 21-4.34-4.34">
+</path>
+<circle cx="11" cy="11" r="8">
+</circle>
+</svg>
+</span>
+<input role="combobox" autocomplete="off" aria-autocomplete="list" aria-expanded="true" aria-controls="[id-0]-listbox" class="w-full rounded-md bg-surface-3 text-white border border-white/8 placeholder:text-white/40 transition-[background-color,border-color] duration-150 ease-in-out hover:border-white/16 focus:border-white/16 disabled:pointer-events-none disabled:opacity-40 h-11 px-3.5 text-sm pl-10" type="text" value="oyun">
+<div class="absolute top-[calc(100%+4px)] right-0 left-0 z-20 overflow-hidden rounded-md border border-white/8 bg-surface-3">
+<p class="px-3 py-2.5 text-[13px] text-white/64">Suggestions are unavailable. Press Enter to search for what you typed.</p>
+<ul id="[id-0]-listbox" role="listbox" aria-label="Suggestions" class="max-h-[min(60vh,320px)] list-none overflow-y-auto">
+</ul>
+</div>
+<p aria-live="polite" aria-atomic="true" class="sr-only">No suggestions.</p>
+</div>
+</div>
+</div>"
+`;
+
+exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/overlay/Combobox.stories.tsx — InAField [reduced motion] 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="h-[320px] w-[420px]">
+<div class="flex flex-col gap-1.5">
+<label id="[id-0]-label" for="[id-0]-control" class="text-sm font-medium text-white">Search campaigns</label>
+<div class="relative">
+<span class="pointer-events-none absolute inset-y-0 left-3 z-10 grid place-items-center text-white/40 [&amp;_svg]:size-4">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search" aria-hidden="true">
+<path d="m21 21-4.34-4.34">
+</path>
+<circle cx="11" cy="11" r="8">
+</circle>
+</svg>
+</span>
+<input role="combobox" autocomplete="off" aria-autocomplete="list" aria-expanded="true" aria-controls="[id-1]-listbox" id="[id-0]-control" aria-describedby="[id-0]-hint" class="w-full rounded-md bg-surface-3 text-white border border-white/8 placeholder:text-white/40 transition-[background-color,border-color] duration-150 ease-in-out hover:border-white/16 focus:border-white/16 disabled:pointer-events-none disabled:opacity-40 h-11 px-3.5 text-sm pl-10" type="text" value="oyun">
+<div class="absolute top-[calc(100%+4px)] right-0 left-0 z-20 overflow-hidden rounded-md border border-white/8 bg-surface-3">
+<ul id="[id-1]-listbox" role="listbox" aria-label="Suggestions" class="max-h-[min(60vh,320px)] list-none overflow-y-auto">
+<li id="suggestion-campaign" role="option" aria-selected="false" class="flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-sm transition-colors duration-150 ease-in-out text-white/64">
+<span class="truncate">Oyun gecəsi dəsti</span>
+<span class="shrink-0 text-xs text-white/40">Campaign</span>
+</li>
+<li id="suggestion-category" role="option" aria-selected="false" class="flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-sm transition-colors duration-150 ease-in-out text-white/64">
+<span class="truncate">Games</span>
+<span class="shrink-0 text-xs text-white/40">Category</span>
+</li>
+<li id="suggestion-subcategory" role="option" aria-selected="false" class="flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-sm transition-colors duration-150 ease-in-out text-white/64">
+<span class="truncate">Tabletop games</span>
+<span class="shrink-0 text-xs text-white/40">Subcategory</span>
+</li>
+<li id="suggestion-tag" role="option" aria-selected="false" class="flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-sm transition-colors duration-150 ease-in-out text-white/64">
+<span class="truncate">handmade</span>
+<span class="shrink-0 text-xs text-white/40">Tag</span>
+</li>
+</ul>
+</div>
+<p aria-live="polite" aria-atomic="true" class="sr-only">4 suggestions available.</p>
+</div>
+<p id="[id-0]-hint" class="text-[13px] text-white/64">Titles, categories, and tags.</p>
+</div>
+</div>
+</div>"
+`;
+
+exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/overlay/Combobox.stories.tsx — Interactive [reduced motion] 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="h-[320px] w-[420px]">
+<div class="relative">
+<span class="pointer-events-none absolute inset-y-0 left-3 z-10 grid place-items-center text-white/40 [&amp;_svg]:size-4">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search" aria-hidden="true">
+<path d="m21 21-4.34-4.34">
+</path>
+<circle cx="11" cy="11" r="8">
+</circle>
+</svg>
+</span>
+<input placeholder="Search campaigns" role="combobox" autocomplete="off" aria-autocomplete="list" aria-expanded="false" aria-controls="[id-0]-listbox" class="w-full rounded-md bg-surface-3 text-white border border-white/8 placeholder:text-white/40 transition-[background-color,border-color] duration-150 ease-in-out hover:border-white/16 focus:border-white/16 disabled:pointer-events-none disabled:opacity-40 h-11 px-3.5 text-sm pl-10" type="text" value="">
+<p aria-live="polite" aria-atomic="true" class="sr-only">
+</p>
+</div>
+</div>
+</div>"
+`;
+
+exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/overlay/Combobox.stories.tsx — Loading [reduced motion] 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="h-[320px] w-[420px]">
+<div class="relative">
+<span class="pointer-events-none absolute inset-y-0 left-3 z-10 grid place-items-center text-white/40 [&amp;_svg]:size-4">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search" aria-hidden="true">
+<path d="m21 21-4.34-4.34">
+</path>
+<circle cx="11" cy="11" r="8">
+</circle>
+</svg>
+</span>
+<input role="combobox" autocomplete="off" aria-autocomplete="list" aria-expanded="true" aria-controls="[id-0]-listbox" class="w-full rounded-md bg-surface-3 text-white border border-white/8 placeholder:text-white/40 transition-[background-color,border-color] duration-150 ease-in-out hover:border-white/16 focus:border-white/16 disabled:pointer-events-none disabled:opacity-40 h-11 px-3.5 text-sm pl-10" type="text" value="oyu">
+<div class="absolute top-[calc(100%+4px)] right-0 left-0 z-20 overflow-hidden rounded-md border border-white/8 bg-surface-3">
+<p class="px-3 py-2.5 text-[13px] text-white/64">Looking for suggestions</p>
+<ul id="[id-0]-listbox" role="listbox" aria-label="Suggestions" class="max-h-[min(60vh,320px)] list-none overflow-y-auto">
+</ul>
+</div>
+<p aria-live="polite" aria-atomic="true" class="sr-only">No suggestions.</p>
+</div>
+</div>
+</div>"
+`;
+
+exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/overlay/Combobox.stories.tsx — NoSuggestions [reduced motion] 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="h-[320px] w-[420px]">
+<div class="relative">
+<span class="pointer-events-none absolute inset-y-0 left-3 z-10 grid place-items-center text-white/40 [&amp;_svg]:size-4">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search" aria-hidden="true">
+<path d="m21 21-4.34-4.34">
+</path>
+<circle cx="11" cy="11" r="8">
+</circle>
+</svg>
+</span>
+<input role="combobox" autocomplete="off" aria-autocomplete="list" aria-expanded="true" aria-controls="[id-0]-listbox" class="w-full rounded-md bg-surface-3 text-white border border-white/8 placeholder:text-white/40 transition-[background-color,border-color] duration-150 ease-in-out hover:border-white/16 focus:border-white/16 disabled:pointer-events-none disabled:opacity-40 h-11 px-3.5 text-sm pl-10" type="text" value="qwertyuiop">
+<div class="absolute top-[calc(100%+4px)] right-0 left-0 z-20 overflow-hidden rounded-md border border-white/8 bg-surface-3">
+<p class="px-3 py-2.5 text-[13px] text-white/64">No suggestions for “qwertyuiop”. Press Enter to search anyway.</p>
+<ul id="[id-0]-listbox" role="listbox" aria-label="Suggestions" class="max-h-[min(60vh,320px)] list-none overflow-y-auto">
+</ul>
+</div>
+<p aria-live="polite" aria-atomic="true" class="sr-only">No suggestions.</p>
+</div>
+</div>
+</div>"
+`;
+
+exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/overlay/Combobox.stories.tsx — Open [reduced motion] 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="h-[320px] w-[420px]">
+<div class="relative">
+<span class="pointer-events-none absolute inset-y-0 left-3 z-10 grid place-items-center text-white/40 [&amp;_svg]:size-4">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search" aria-hidden="true">
+<path d="m21 21-4.34-4.34">
+</path>
+<circle cx="11" cy="11" r="8">
+</circle>
+</svg>
+</span>
+<input placeholder="Search campaigns" role="combobox" autocomplete="off" aria-autocomplete="list" aria-expanded="true" aria-controls="[id-0]-listbox" class="w-full rounded-md bg-surface-3 text-white border border-white/8 placeholder:text-white/40 transition-[background-color,border-color] duration-150 ease-in-out hover:border-white/16 focus:border-white/16 disabled:pointer-events-none disabled:opacity-40 h-11 px-3.5 text-sm pl-10" type="text" value="oyun">
+<div class="absolute top-[calc(100%+4px)] right-0 left-0 z-20 overflow-hidden rounded-md border border-white/8 bg-surface-3">
+<ul id="[id-0]-listbox" role="listbox" aria-label="Suggestions" class="max-h-[min(60vh,320px)] list-none overflow-y-auto">
+<li id="suggestion-campaign" role="option" aria-selected="false" class="flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-sm transition-colors duration-150 ease-in-out text-white/64">
+<span class="truncate">Oyun gecəsi dəsti</span>
+<span class="shrink-0 text-xs text-white/40">Campaign</span>
+</li>
+<li id="suggestion-category" role="option" aria-selected="false" class="flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-sm transition-colors duration-150 ease-in-out text-white/64">
+<span class="truncate">Games</span>
+<span class="shrink-0 text-xs text-white/40">Category</span>
+</li>
+<li id="suggestion-subcategory" role="option" aria-selected="false" class="flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-sm transition-colors duration-150 ease-in-out text-white/64">
+<span class="truncate">Tabletop games</span>
+<span class="shrink-0 text-xs text-white/40">Subcategory</span>
+</li>
+<li id="suggestion-tag" role="option" aria-selected="false" class="flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-sm transition-colors duration-150 ease-in-out text-white/64">
+<span class="truncate">handmade</span>
+<span class="shrink-0 text-xs text-white/40">Tag</span>
+</li>
+</ul>
+</div>
+<p aria-live="polite" aria-atomic="true" class="sr-only">4 suggestions available.</p>
+</div>
+</div>
+</div>"
+`;
+
 exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/overlay/Drawer.stories.tsx — Bottom [reduced motion] 1`] = `
 "<div class="font-sans text-white antialiased">
 <button type="button" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-medium tracking-[-0.01em] transition-[background-color,transform,border-color] duration-150 ease-in-out hover:-translate-y-px active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 bg-white text-on-white hover:bg-[var(--white-muted)] h-10 px-[18px] text-sm">Open bottom drawer</button>
@@ -5503,6 +5697,200 @@ exports[`rendered markup > ./components/form/Toggles.stories.tsx — Switches 1`
 <span class="size-5 rounded-full transition-transform duration-150 ease-in-out translate-x-0 bg-white">
 </span>
 </span>Locked while the campaign is live</button>
+</div>
+</div>"
+`;
+
+exports[`rendered markup > ./components/overlay/Combobox.stories.tsx — Closed 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="h-[320px] w-[420px]">
+<div class="relative">
+<span class="pointer-events-none absolute inset-y-0 left-3 z-10 grid place-items-center text-white/40 [&amp;_svg]:size-4">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search" aria-hidden="true">
+<path d="m21 21-4.34-4.34">
+</path>
+<circle cx="11" cy="11" r="8">
+</circle>
+</svg>
+</span>
+<input placeholder="Search campaigns" role="combobox" autocomplete="off" aria-autocomplete="list" aria-expanded="false" aria-controls="[id-0]-listbox" class="w-full rounded-md bg-surface-3 text-white border border-white/8 placeholder:text-white/40 transition-[background-color,border-color] duration-150 ease-in-out hover:border-white/16 focus:border-white/16 disabled:pointer-events-none disabled:opacity-40 h-11 px-3.5 text-sm pl-10" type="text" value="oyun">
+<p aria-live="polite" aria-atomic="true" class="sr-only">
+</p>
+</div>
+</div>
+</div>"
+`;
+
+exports[`rendered markup > ./components/overlay/Combobox.stories.tsx — Failed 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="h-[320px] w-[420px]">
+<div class="relative">
+<span class="pointer-events-none absolute inset-y-0 left-3 z-10 grid place-items-center text-white/40 [&amp;_svg]:size-4">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search" aria-hidden="true">
+<path d="m21 21-4.34-4.34">
+</path>
+<circle cx="11" cy="11" r="8">
+</circle>
+</svg>
+</span>
+<input role="combobox" autocomplete="off" aria-autocomplete="list" aria-expanded="true" aria-controls="[id-0]-listbox" class="w-full rounded-md bg-surface-3 text-white border border-white/8 placeholder:text-white/40 transition-[background-color,border-color] duration-150 ease-in-out hover:border-white/16 focus:border-white/16 disabled:pointer-events-none disabled:opacity-40 h-11 px-3.5 text-sm pl-10" type="text" value="oyun">
+<div class="absolute top-[calc(100%+4px)] right-0 left-0 z-20 overflow-hidden rounded-md border border-white/8 bg-surface-3">
+<p class="px-3 py-2.5 text-[13px] text-white/64">Suggestions are unavailable. Press Enter to search for what you typed.</p>
+<ul id="[id-0]-listbox" role="listbox" aria-label="Suggestions" class="max-h-[min(60vh,320px)] list-none overflow-y-auto">
+</ul>
+</div>
+<p aria-live="polite" aria-atomic="true" class="sr-only">No suggestions.</p>
+</div>
+</div>
+</div>"
+`;
+
+exports[`rendered markup > ./components/overlay/Combobox.stories.tsx — InAField 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="h-[320px] w-[420px]">
+<div class="flex flex-col gap-1.5">
+<label id="[id-0]-label" for="[id-0]-control" class="text-sm font-medium text-white">Search campaigns</label>
+<div class="relative">
+<span class="pointer-events-none absolute inset-y-0 left-3 z-10 grid place-items-center text-white/40 [&amp;_svg]:size-4">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search" aria-hidden="true">
+<path d="m21 21-4.34-4.34">
+</path>
+<circle cx="11" cy="11" r="8">
+</circle>
+</svg>
+</span>
+<input role="combobox" autocomplete="off" aria-autocomplete="list" aria-expanded="true" aria-controls="[id-1]-listbox" id="[id-0]-control" aria-describedby="[id-0]-hint" class="w-full rounded-md bg-surface-3 text-white border border-white/8 placeholder:text-white/40 transition-[background-color,border-color] duration-150 ease-in-out hover:border-white/16 focus:border-white/16 disabled:pointer-events-none disabled:opacity-40 h-11 px-3.5 text-sm pl-10" type="text" value="oyun">
+<div class="absolute top-[calc(100%+4px)] right-0 left-0 z-20 overflow-hidden rounded-md border border-white/8 bg-surface-3">
+<ul id="[id-1]-listbox" role="listbox" aria-label="Suggestions" class="max-h-[min(60vh,320px)] list-none overflow-y-auto">
+<li id="suggestion-campaign" role="option" aria-selected="false" class="flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-sm transition-colors duration-150 ease-in-out text-white/64">
+<span class="truncate">Oyun gecəsi dəsti</span>
+<span class="shrink-0 text-xs text-white/40">Campaign</span>
+</li>
+<li id="suggestion-category" role="option" aria-selected="false" class="flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-sm transition-colors duration-150 ease-in-out text-white/64">
+<span class="truncate">Games</span>
+<span class="shrink-0 text-xs text-white/40">Category</span>
+</li>
+<li id="suggestion-subcategory" role="option" aria-selected="false" class="flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-sm transition-colors duration-150 ease-in-out text-white/64">
+<span class="truncate">Tabletop games</span>
+<span class="shrink-0 text-xs text-white/40">Subcategory</span>
+</li>
+<li id="suggestion-tag" role="option" aria-selected="false" class="flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-sm transition-colors duration-150 ease-in-out text-white/64">
+<span class="truncate">handmade</span>
+<span class="shrink-0 text-xs text-white/40">Tag</span>
+</li>
+</ul>
+</div>
+<p aria-live="polite" aria-atomic="true" class="sr-only">4 suggestions available.</p>
+</div>
+<p id="[id-0]-hint" class="text-[13px] text-white/64">Titles, categories, and tags.</p>
+</div>
+</div>
+</div>"
+`;
+
+exports[`rendered markup > ./components/overlay/Combobox.stories.tsx — Interactive 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="h-[320px] w-[420px]">
+<div class="relative">
+<span class="pointer-events-none absolute inset-y-0 left-3 z-10 grid place-items-center text-white/40 [&amp;_svg]:size-4">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search" aria-hidden="true">
+<path d="m21 21-4.34-4.34">
+</path>
+<circle cx="11" cy="11" r="8">
+</circle>
+</svg>
+</span>
+<input placeholder="Search campaigns" role="combobox" autocomplete="off" aria-autocomplete="list" aria-expanded="false" aria-controls="[id-0]-listbox" class="w-full rounded-md bg-surface-3 text-white border border-white/8 placeholder:text-white/40 transition-[background-color,border-color] duration-150 ease-in-out hover:border-white/16 focus:border-white/16 disabled:pointer-events-none disabled:opacity-40 h-11 px-3.5 text-sm pl-10" type="text" value="">
+<p aria-live="polite" aria-atomic="true" class="sr-only">
+</p>
+</div>
+</div>
+</div>"
+`;
+
+exports[`rendered markup > ./components/overlay/Combobox.stories.tsx — Loading 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="h-[320px] w-[420px]">
+<div class="relative">
+<span class="pointer-events-none absolute inset-y-0 left-3 z-10 grid place-items-center text-white/40 [&amp;_svg]:size-4">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search" aria-hidden="true">
+<path d="m21 21-4.34-4.34">
+</path>
+<circle cx="11" cy="11" r="8">
+</circle>
+</svg>
+</span>
+<input role="combobox" autocomplete="off" aria-autocomplete="list" aria-expanded="true" aria-controls="[id-0]-listbox" class="w-full rounded-md bg-surface-3 text-white border border-white/8 placeholder:text-white/40 transition-[background-color,border-color] duration-150 ease-in-out hover:border-white/16 focus:border-white/16 disabled:pointer-events-none disabled:opacity-40 h-11 px-3.5 text-sm pl-10" type="text" value="oyu">
+<div class="absolute top-[calc(100%+4px)] right-0 left-0 z-20 overflow-hidden rounded-md border border-white/8 bg-surface-3">
+<p class="px-3 py-2.5 text-[13px] text-white/64">Looking for suggestions</p>
+<ul id="[id-0]-listbox" role="listbox" aria-label="Suggestions" class="max-h-[min(60vh,320px)] list-none overflow-y-auto">
+</ul>
+</div>
+<p aria-live="polite" aria-atomic="true" class="sr-only">No suggestions.</p>
+</div>
+</div>
+</div>"
+`;
+
+exports[`rendered markup > ./components/overlay/Combobox.stories.tsx — NoSuggestions 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="h-[320px] w-[420px]">
+<div class="relative">
+<span class="pointer-events-none absolute inset-y-0 left-3 z-10 grid place-items-center text-white/40 [&amp;_svg]:size-4">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search" aria-hidden="true">
+<path d="m21 21-4.34-4.34">
+</path>
+<circle cx="11" cy="11" r="8">
+</circle>
+</svg>
+</span>
+<input role="combobox" autocomplete="off" aria-autocomplete="list" aria-expanded="true" aria-controls="[id-0]-listbox" class="w-full rounded-md bg-surface-3 text-white border border-white/8 placeholder:text-white/40 transition-[background-color,border-color] duration-150 ease-in-out hover:border-white/16 focus:border-white/16 disabled:pointer-events-none disabled:opacity-40 h-11 px-3.5 text-sm pl-10" type="text" value="qwertyuiop">
+<div class="absolute top-[calc(100%+4px)] right-0 left-0 z-20 overflow-hidden rounded-md border border-white/8 bg-surface-3">
+<p class="px-3 py-2.5 text-[13px] text-white/64">No suggestions for “qwertyuiop”. Press Enter to search anyway.</p>
+<ul id="[id-0]-listbox" role="listbox" aria-label="Suggestions" class="max-h-[min(60vh,320px)] list-none overflow-y-auto">
+</ul>
+</div>
+<p aria-live="polite" aria-atomic="true" class="sr-only">No suggestions.</p>
+</div>
+</div>
+</div>"
+`;
+
+exports[`rendered markup > ./components/overlay/Combobox.stories.tsx — Open 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="h-[320px] w-[420px]">
+<div class="relative">
+<span class="pointer-events-none absolute inset-y-0 left-3 z-10 grid place-items-center text-white/40 [&amp;_svg]:size-4">
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search" aria-hidden="true">
+<path d="m21 21-4.34-4.34">
+</path>
+<circle cx="11" cy="11" r="8">
+</circle>
+</svg>
+</span>
+<input placeholder="Search campaigns" role="combobox" autocomplete="off" aria-autocomplete="list" aria-expanded="true" aria-controls="[id-0]-listbox" class="w-full rounded-md bg-surface-3 text-white border border-white/8 placeholder:text-white/40 transition-[background-color,border-color] duration-150 ease-in-out hover:border-white/16 focus:border-white/16 disabled:pointer-events-none disabled:opacity-40 h-11 px-3.5 text-sm pl-10" type="text" value="oyun">
+<div class="absolute top-[calc(100%+4px)] right-0 left-0 z-20 overflow-hidden rounded-md border border-white/8 bg-surface-3">
+<ul id="[id-0]-listbox" role="listbox" aria-label="Suggestions" class="max-h-[min(60vh,320px)] list-none overflow-y-auto">
+<li id="suggestion-campaign" role="option" aria-selected="false" class="flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-sm transition-colors duration-150 ease-in-out text-white/64">
+<span class="truncate">Oyun gecəsi dəsti</span>
+<span class="shrink-0 text-xs text-white/40">Campaign</span>
+</li>
+<li id="suggestion-category" role="option" aria-selected="false" class="flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-sm transition-colors duration-150 ease-in-out text-white/64">
+<span class="truncate">Games</span>
+<span class="shrink-0 text-xs text-white/40">Category</span>
+</li>
+<li id="suggestion-subcategory" role="option" aria-selected="false" class="flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-sm transition-colors duration-150 ease-in-out text-white/64">
+<span class="truncate">Tabletop games</span>
+<span class="shrink-0 text-xs text-white/40">Subcategory</span>
+</li>
+<li id="suggestion-tag" role="option" aria-selected="false" class="flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-sm transition-colors duration-150 ease-in-out text-white/64">
+<span class="truncate">handmade</span>
+<span class="shrink-0 text-xs text-white/40">Tag</span>
+</li>
+</ul>
+</div>
+<p aria-live="polite" aria-atomic="true" class="sr-only">4 suggestions available.</p>
+</div>
 </div>
 </div>"
 `;
