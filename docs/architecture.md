@@ -433,10 +433,31 @@ sequenceDiagram
 | PL-10 | Cancel a pledge | Releases reserved stock |
 | PL-11 | Replace the card | After a failed collection |
 | PL-12 | Anonymous pledging | Hidden from public lists |
-| PL-13 | Stock reservation | Redis TTL, guards against races |
+| PL-13 | Stock reservation | A DRAFT pledge, expiring five minutes after it is made |
 | PL-14 | Idempotency | `Idempotency-Key` prevents duplicates |
 | PL-15 | Secret rewards | Reachable only by a private URL |
 | PL-16 | Late pledge | If the creator enables it |
+
+> **PL-13 used to say "Redis TTL", and #51 changed it after building the
+> feature**, exactly as #47 changed §7.3's PostGIS row. §7.2 had already
+> described the other mechanism — "reservation increments `reserved_quantity`
+> under a row lock and relies on this constraint refusing the transaction when it
+> gets that wrong" — and V7 had built the constraint for it, so the two halves of
+> this document disagreed and the database half won.
+>
+> The deciding argument is that **taking the place and recording who took it are
+> one fact**. A Redis key and `reward_tiers.reserved_quantity` are two records of
+> it in two systems with no transaction across them, and the process that writes
+> one and then the other can die in between; whichever half survives is now lying,
+> and nothing reconciles them. The constraint that refuses an oversold tier also
+> lives in PostgreSQL, so a reservation held anywhere else is one it cannot see.
+> Against that, Redis buys expiry without a sweep — and §8.4 already lists the
+> sweep.
+>
+> The sequence diagram above is unchanged and still correct: "Reserve stock (5 min
+> TTL)" is what happens, and the five minutes are configuration
+> (`ideanest.pledge.reservation.ttl`). V17's header carries the whole argument and
+> the reverse.
 
 ### 4.6 Campaign editor `[W]`
 
@@ -1495,6 +1516,19 @@ load profile).
 > timer; that is safe rather than merely tolerable, because the claim is a
 > conditional update and exactly one caller wins.
 
+> **`reservation-cleaner` is built (#51), on the same terms.** It sweeps every
+> DRAFT pledge whose `reservation_expires_at` has passed, expiring the pledge and
+> giving its place back to the reward tier in one transaction around one row —
+> a draft that says `EXPIRED` while `reserved_quantity` still counts it is a
+> place nothing will ever release. The claim is the same conditional update, so
+> two replicas sweeping at once credit the tier once.
+>
+> **This job is the price of §4.5's reservation living in PostgreSQL rather than
+> in a key with a TTL**, and it is the whole of that price. A minute late here is
+> a minute in which a limited tier looks sold out while a place is actually free:
+> a lost sale rather than a wrong one, which is why an in-process timer is
+> tolerable for it and would not be for anything that moves money.
+
 ---
 
 ## 9. Payments
@@ -1736,7 +1770,7 @@ GET    /v1/collections/{slug}
 
 # Project — public
 GET    /v1/projects/{creatorSlug}/{projectSlug}
-GET    /v1/projects/{id}/rewards
+GET    /v1/projects/{id}/rewards/public
 GET    /v1/projects/{id}/updates
 GET    /v1/projects/{id}/comments
 GET    /v1/projects/{id}/faqs
@@ -1762,6 +1796,7 @@ GET    /v1/projects/{id}/items
 POST   /v1/projects/{id}/items
 PATCH  /v1/items/{id}
 DELETE /v1/items/{id}
+GET    /v1/projects/{id}/rewards
 POST   /v1/projects/{id}/rewards
 PATCH  /v1/rewards/{id}
 DELETE /v1/rewards/{id}
@@ -1970,6 +2005,35 @@ PUT    /v1/admin/collections/{slug}/projects/order
 > unsubscribe token from the launch notice, or the caller's own access token, and
 > is never refused for the campaign's state — a `409` on an unsubscribe is how a
 > platform ends up in a spam folder.
+>
+> **A campaign's reward tiers are two endpoints, and the audience is the whole
+> difference.** `GET /v1/projects/{id}/rewards` is the **creator's** list and moved
+> into the section above when #37 built it: it requires the creator, and it returns
+> secret tiers on purpose, because a creator who cannot see a secret tier in their own
+> editor cannot edit or withdraw it. `GET /v1/projects/{id}/rewards/public` is what a
+> backer sees, and is the call §4.5's sequence diagram opens the pledge flow with. It
+> is public, it answers `404` for a campaign in any state §6.1 does not make public —
+> a suspended campaign included, and identically to an identifier that never existed —
+> and it omits three things: secret tiers (PL-15, returned only for a request carrying
+> the tier's `secret_token` as `?token=`), tiers outside their `available_from` /
+> `available_until` window, and every field that belongs to the creator rather than to
+> a backer. The reservation counts and the token itself are in that last group;
+> `remainingQuantity` — `limit_quantity` less what is claimed and reserved, null when
+> unlimited — is what replaces them, and it is PL-01's live stock check. Add-ons are a
+> separate array from selectable tiers, and each tier carries its contents and its
+> per-country shipping rates, without which PL-05 leaves a client unable to quote a
+> total.
+>
+> **Its caching is deliberately not the discovery feed's.** `ETag` per §10.3, and
+> `Cache-Control: private, no-cache` — revalidate every time, rather than a
+> `max-age` window. A card showing last minute's pledged total misleads nobody; a
+> reward list showing three places left when there are none is exactly what PL-01
+> exists to prevent, and it is discovered by the backer after they have chosen. The
+> tag covers `remainingQuantity` along with everything else, so a conditional request
+> is still cheap when nothing has moved. `no-store` was rejected for the same reason:
+> it would throw away the `304` as well. No cache header can make stock true at the
+> moment it is read — `POST /v1/pledges/draft` refusing with `REWARD_SOLD_OUT` is what
+> settles it — but it can refuse to make the list older than it has to be.
 
 ### 10.3 Conventions
 

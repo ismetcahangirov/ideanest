@@ -181,6 +181,30 @@ ideanest:
       # trail, so it is pruned; see V8.
       versions-kept: ${STORY_VERSIONS_KEPT:50}
 
+  pledge:
+    reservation:
+      # §4.5's sequence diagram: "Reserve stock (5 min TTL)". A DRAFT pledge holds
+      # a limited reward's place for this long and no longer.
+      #
+      # Here rather than in the code because it is a judgement with a cost on both
+      # sides. Too short and a backer who goes to find their card comes back to a
+      # tier they had already chosen being sold out; too long and one abandoned
+      # checkout keeps a place off the market for the whole window, which on a
+      # limited early-bird tier is the difference between a campaign's best hour
+      # and its worst. The right number comes from watching real checkouts, and it
+      # should not need a deployment.
+      ttl: ${RESERVATION_TTL:5m}
+      # §8.4: reservation-cleaner, every minute. PostgreSQL has no TTL, so a
+      # reservation lapses because this notices that it has -- see V17 for why the
+      # reservation is in the database and not in Redis. A minute late is a minute
+      # in which a tier looks sold out while a place is free, which is a lost sale
+      # rather than a wrong one.
+      cleanup-schedule: "0 * * * * *"
+      # A bound on one pass, not a target. A campaign that closed with thousands of
+      # checkouts in flight must not be one transaction; the rest are found a
+      # minute later, oldest reservation first.
+      cleanup-batch-size: 200
+
   user:
     # §17.4: thirty days between asking and anything being destroyed. Long
     # enough that a deletion made in anger can be undone the next morning, and
