@@ -251,9 +251,31 @@ and each entry needs a translation per supported locale.
 >
 > **Relevance and near-me are declared and refused** until #44 and #47. Asking for
 > one is an RFC 9457 problem detail naming the issue, not a quiet fall back to a
-> different order — likewise free text (#43), *saved* (no saved-projects table
-> exists), *recommended* (#44), *featured* (#48), and country/city (no location
-> column exists; #47 brings the schema).
+> different order — likewise *saved* (no saved-projects table exists),
+> *recommended* (#44), *featured* (#48), and country/city (no location column
+> exists; #47 brings the schema).
+>
+> **Free text is served (#43).** `?q=` composes with every filter, every sort, the
+> cursor, and the facet counts on both `/v1/discover` and `/v1/search`. It narrows
+> the set the facets are counted over rather than being a facet dimension of its
+> own — there is no filter control for the search box, and counts that ignored what
+> was typed would describe a different result set from the one on screen.
+>
+> **D-02's suggestions are `GET /v1/search/suggest`.** Campaign titles, categories,
+> subcategories and tags, each row saying which of the four it is so the client
+> knows where it leads; drawn round robin so no one source fills the list; bounded
+> at ten by default and twenty at most; and empty — not everything — for a blank or
+> one-character fragment.
+>
+> **There is an eighth sort, `best_match`,** and it is not relevance. It is
+> `ts_rank` over the search vector — a title match above a blurb match above a
+> story match — and it is what an unstated sort resolves to when `?q=` is present,
+> because ordering search results by launch date puts the campaign that mentions
+> the word once in its ninth paragraph above the one named after it. §11.2's
+> relevance is a composite of seven terms, none of which is about what the reader
+> typed; it stays #44's, and `best_match` becomes its text term rather than being
+> replaced by it. `sort=best_match` with no `q` has nothing to rank and resolves
+> back to newest.
 
 **Additional**
 
@@ -992,9 +1014,19 @@ and an index that disagrees with the `ORDER BY` is simply not used.
 There is deliberately no index for `sort=popularity`: the score is an expression
 over two columns and a request parameter, so PostgreSQL sorts the matching rows.
 
+`search_vector` arrived with #43 (V13), and two more partial indexes with it: GIN
+on the vector for D-01, and GIN with `gin_trgm_ops` on `ideanest_fold(title)` for
+D-03 and for the suggestion endpoint. It is **maintained by triggers, not
+generated**: a `GENERATED ALWAYS AS` column may reference only its own row, and
+D-01 puts the *creator's* name in the index. One trigger on `projects` rebuilds the
+vector when the title, blurb, story, or creator changes; one on `users` rebuilds
+every campaign's vector when an account is renamed — which §17.4's anonymisation
+is, so without it the index would go on serving the name of somebody who asked to
+be forgotten.
+
 > **Not all of these columns exist yet.** `location_id` and `geo_point` arrive
-> with proximity search, `search_vector` with #43, `is_featured` with curation,
-> and `pledge_manager_state` with the pledge manager — each with the feature that
+> with proximity search, `is_featured` with curation, and
+> `pledge_manager_state` with the pledge manager — each with the feature that
 > owns it, rather than as a column nothing writes to.
 >
 > **The cover image is three interim columns**, `cover_image_url`,
@@ -1845,6 +1877,18 @@ and `FacetCounts` out. What a second implementation additionally has to satisfy 
 visibility, keyset ordering, exact money, facets that exclude their own dimension —
 is written out on the interface, because the interface alone does not say it.
 
+Tier 1 serves free text (#43) from `projects.search_vector`: title at weight A,
+blurb at B, the creator's name at C, and the story's prose at D, all folded by
+§11.3 **in the database**, so the index and the query cannot disagree about what
+`seçənək` means — a query folded in the application and a document folded in the
+database is a failure that answers 200 with an empty list. The weights are the
+point of the column: measured, a title match ranks ten times a story match.
+
+`GET /v1/search` is a thin alias over the same query object, the same binder, the
+same service and the same response as `/v1/discover`, differing only in requiring
+`q`. A second implementation would be a second copy of every filter, and two
+cursor encodings that could not page into each other.
+
 **An implementation declares what it cannot do**, through
 `SearchService.capabilities()` and `DiscoveryCapability`. `DiscoveryQuery` can
 express every filter §4.3 lists, including the ones no implementation supports yet,
@@ -1876,6 +1920,38 @@ can be measured rather than argued about.
 The index must fold locale-specific characters — `ə→e`, `ı→i`, `ö→o`, `ü→u`,
 `ğ→g`, `ş→s`, `ç→c` — because users type both forms interchangeably. A query
 without diacritics must match text with them, and the reverse.
+
+**`ideanest_fold(text)`** (V13) is that fold: an explicit `translate` of the
+fourteen characters, then `lower()`, in that order. **Not `unaccent`**, for two
+independent reasons. It does not fold `ə` at all — measured,
+`unaccent('Əşya ışıq öz üçün')` is `Əsya isiq oz ucun` — because the schwa is a
+letter of the Azerbaijani alphabet rather than an accented `e`, and it is the
+character this section names first. And it is `STABLE`, not `IMMUTABLE`, because
+it reads a dictionary file, so PostgreSQL refuses it in an index expression; the
+usual workaround is an immutable wrapper that lies about what it calls, and the
+lie comes true the day somebody edits `unaccent.rules`.
+
+Folding before lower-casing is deliberate: `lower('İ')` is an `i` with a combining
+dot above under some ctypes and a plain `i` under others, so `İ` is mapped
+straight to `i`. That is what lets Java and SQL agree — `Slugs.fold` is the Java
+half, used for tag slugs and for matching the in-memory category tree, and a test
+pins the two to each other over a shared table of cases.
+
+**Misspelling tolerance (D-03) is a second tier, not a widening of the first.**
+The `tsvector` match is exact on whole lexemes, so `pg_trgm`'s `word_similarity`
+over the folded title is the fallback — and it engages only when the exact tier
+matches nothing at all, so a search that works never pays for it and an exact
+match can never be displaced by an approximate one. The threshold is **0.4**,
+measured rather than chosen: every single-character error tested scored 0.455 or
+above and every unrelated word 0.143 or below. A search box that answers gibberish
+with a page of unrelated campaigns is worse than one that answers it with nothing,
+because the reader cannot tell that it did not understand.
+
+The text configuration is **`simple`** — no stemming, no stop words. `english` is
+worse than nothing here: §21.1 puts four languages in one column with no marker
+saying which, and the English stop-word list contains `at` ("horse"), `on`
+("ten"), `an` ("moment") and `il` ("year"), so a campaign titled "At" would index
+to an empty vector and be unfindable by its own name.
 
 ---
 
