@@ -33,23 +33,42 @@ abstract class DiscoveryTestSupport extends AbstractIntegrationTest {
     @Autowired
     protected DataSource dataSource;
 
-    protected ResponseEntity<Map<String, Object>> get(String path, HttpHeaders headers) {
-        return rest.exchange(path, HttpMethod.GET, new HttpEntity<>(headers), BODY);
+    /**
+     * @param variables values for {@code {name}} placeholders in the path, encoded by
+     *     Spring. <strong>The only correct way to put a search term in a URL from a
+     *     test</strong>: "seçənək" percent-encodes to nine bytes of UTF-8, and a test
+     *     that pasted it into the string would be testing whichever encoding the file
+     *     happened to be saved in
+     */
+    protected ResponseEntity<Map<String, Object>> get(String path, HttpHeaders headers, Object... variables) {
+        return rest.exchange(path, HttpMethod.GET, new HttpEntity<>(headers), BODY, variables);
     }
 
     /** A feed, asserted to have succeeded, so a test reads about ordering rather than about status codes. */
-    protected Map<String, Object> feed(String query) {
-        ResponseEntity<Map<String, Object>> response = get("/v1/discover" + query, new HttpHeaders());
-        assertThat(response.getStatusCode())
-                .withFailMessage("GET /v1/discover%s answered %s: %s", query, response.getStatusCode(), response.getBody())
-                .isEqualTo(HttpStatus.OK);
-        return response.getBody();
+    protected Map<String, Object> feed(String query, Object... variables) {
+        return ok("/v1/discover", query, variables);
     }
 
-    protected Map<String, Object> facets(String query) {
-        ResponseEntity<Map<String, Object>> response = get("/v1/discover/facets" + query, new HttpHeaders());
+    /** The same, against {@code GET /v1/search}. */
+    protected Map<String, Object> search(String query, Object... variables) {
+        return ok("/v1/search", query, variables);
+    }
+
+    protected Map<String, Object> facets(String query, Object... variables) {
+        return ok("/v1/discover/facets", query, variables);
+    }
+
+    /** {@code GET /v1/search/suggest}, whose body is an object with one array in it. */
+    protected List<Map<String, Object>> suggestions(String query, Object... variables) {
+        return items(ok("/v1/search/suggest", query, variables), "items");
+    }
+
+    private Map<String, Object> ok(String path, String query, Object... variables) {
+        ResponseEntity<Map<String, Object>> response = get(path + query, new HttpHeaders(), variables);
         assertThat(response.getStatusCode())
-                .withFailMessage("GET /v1/discover/facets%s answered %s", query, response.getStatusCode())
+                .withFailMessage(
+                        "GET %s%s %s answered %s: %s",
+                        path, query, List.of(variables), response.getStatusCode(), response.getBody())
                 .isEqualTo(HttpStatus.OK);
         return response.getBody();
     }
@@ -59,9 +78,13 @@ abstract class DiscoveryTestSupport extends AbstractIntegrationTest {
         return items(feed).stream().map(item -> (String) item.get("slug")).toList();
     }
 
-    @SuppressWarnings("unchecked")
     protected List<Map<String, Object>> items(Map<String, Object> feed) {
-        return (List<Map<String, Object>>) feed.get("items");
+        return items(feed, "items");
+    }
+
+    @SuppressWarnings("unchecked")
+    protected List<Map<String, Object>> items(Map<String, Object> body, String property) {
+        return (List<Map<String, Object>>) body.get(property);
     }
 
     /**

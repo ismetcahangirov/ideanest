@@ -157,6 +157,68 @@ class DiscoveryVisibilityTests extends DiscoveryTestSupport {
     }
 
     @Test
+    @DisplayName("no free-text search can surface a campaign the public may not see")
+    void everyTextSearchStaysInsideTheVisibleSet() {
+        // #43 added a second way into this table, and a second way in is a second
+        // place to forget the visibility clause. Every fixture is titled after its own
+        // state, so each of these queries names a hidden campaign directly:
+        // `?q=suspended` asks for the one campaign trust and safety took down.
+        for (String state : DiscoveryStatus.HIDDEN_STATES) {
+            String slug = state.toLowerCase(Locale.ROOT).replace('_', '-');
+
+            assertThat(slugs(feed("?limit=100&q={q}", slug)))
+                    .withFailMessage("q=%s returned a hidden campaign", slug)
+                    .doesNotContainAnyElementsOf(hiddenSlugs());
+            assertThat(slugs(search("?limit=100&q={q}", slug)))
+                    .withFailMessage("GET /v1/search?q=%s returned a hidden campaign", slug)
+                    .doesNotContainAnyElementsOf(hiddenSlugs());
+        }
+
+        // A term every campaign matches, so the only thing keeping the seven out is
+        // the visibility predicate — the same shape as the filter tests above. Every
+        // fixture shares this blurb.
+        assertThat(slugs(feed("?limit=100&q={q}", "summary")))
+                .doesNotContainAnyElementsOf(hiddenSlugs())
+                .containsExactlyInAnyOrderElementsOf(publicSlugs());
+
+        // And the misspelling tier is not a way round it either: it runs when the
+        // exact tier matches nothing, over the same nine states.
+        assertThat(slugs(feed("?limit=100&q={q}", "suspendd")))
+                .doesNotContainAnyElementsOf(hiddenSlugs());
+    }
+
+    @Test
+    @DisplayName("a text search paged to its end never reaches a hidden campaign")
+    void walkingAWholeSearchNeverReachesOne() {
+        // The keyset branch of the text path, which is a different WHERE clause from
+        // the first page's and would pass every assertion above if it had lost the
+        // visibility predicate.
+        List<String> seen = new ArrayList<>();
+        String cursor = null;
+        for (int page = 0; page < 20; page++) {
+            Map<String, Object> body = search("?limit=2&q={q}" + (cursor == null ? "" : "&cursor=" + cursor), "summary");
+            seen.addAll(slugs(body));
+            cursor = nextCursor(body);
+            if (cursor == null) {
+                break;
+            }
+        }
+        assertThat(cursor).isNull();
+        assertThat(seen).doesNotContainAnyElementsOf(hiddenSlugs());
+        assertThat(new LinkedHashSet<>(seen)).containsExactlyInAnyOrderElementsOf(publicSlugs());
+    }
+
+    @Test
+    @DisplayName("the facet counts under a text search do not count a hidden campaign")
+    void facetsUnderASearchCountOnlyVisibleCampaigns() {
+        Map<String, Object> facets = facets("?q={q}", "summary");
+
+        assertThat(count(facets, "categories", "games")).isEqualTo(publicSlugs().size());
+        assertThat(count(facets, "tags", "visibility")).isEqualTo(publicSlugs().size());
+        assertThat(count(facets, "status", "live")).isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("paging to the end of the feed never reaches a hidden campaign")
     void walkingTheWholeFeedNeverReachesOne() {
         // A visibility predicate that was applied to the first page and dropped from
