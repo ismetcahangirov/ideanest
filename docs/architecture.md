@@ -2015,11 +2015,13 @@ cannot represent it exactly.
 
 | Tier | When | Technology |
 |---|---|---|
-| **1 (initial)** | Up to roughly ten thousand projects | PostgreSQL `tsvector` with GIN indexes and `pg_trgm` |
-| **2 (scale)** | Beyond that, or when faceting becomes complex | A dedicated search engine |
+| **1 (initial)** | Until §11.4's trigger fires | PostgreSQL `tsvector` with GIN indexes and `pg_trgm` |
+| **2 (scale)** | On the trigger, and not before | A dedicated search engine |
 
 Start with tier 1 behind a `SearchService` interface so the migration is a
-substitution rather than a rewrite.
+substitution rather than a rewrite. **§11.4 is when.** The row count this table
+used to carry — "roughly ten thousand projects" — is not a number anything can
+act on, for the reason given there.
 
 **Proximity (#47) is tier 1's, not an exception to it.** §4.3's near-me sort and
 its radius filter are `cube` + `earthdistance` over `locations`, measured at 19.7 ms
@@ -2195,6 +2197,128 @@ worse than nothing here: §21.1 puts four languages in one column with no marker
 saying which, and the English stop-word list contains `at` ("horse"), `on`
 ("ten"), `an` ("moment") and `il` ("year"), so a campaign titled "At" would index
 to an empty vector and be unfindable by its own name.
+
+### 11.4 When tier 1 stops being enough
+
+#### A row count cannot be the trigger
+
+§11.1 originally said "roughly ten thousand projects". Nobody can act on that,
+and the evidence is in this epic's own measurements. Three implementations
+benchmarked the same feed with `EXPLAIN (ANALYZE, BUFFERS)`:
+
+| Measured | Rows | Result |
+|---|---|---|
+| #42 | 50,000 (12,500 public) | `newest` 0.09 ms, `popularity` 35 ms, facets 118 ms |
+| #44 | 20,000 public | `newest` 0.44 ms, `relevance` 62 ms, `popularity` **138 ms** |
+| #47 | 20,000 public | `newest` 0.07 ms, `near_me` 19.7 ms, `popularity` **28.6 ms** |
+
+`sort=popularity` is one query. On the same 20,000 rows it measured 138 ms and
+28.6 ms — a factor of five, on different hardware in different cache states. That
+spread is **wider than the gap between different sorts**, and it is wider than any
+row-count band would be. A threshold expressed in rows would have fired, or failed
+to fire, on whichever machine happened to run the benchmark.
+
+Nor does the count describe the load. Facets cost more than the feed, filtered
+queries cost *less* than unfiltered ones because the bitmap narrows before the
+sort, and `near_me` is nearly free because distance is a property of eighteen
+locations rather than of twenty thousand campaigns. Doubling the campaigns changes
+each of those differently. **What matters is whether the platform is meeting §20,
+not how many rows it holds.**
+
+#### The trigger
+
+Tier 2 is justified when **production telemetry** shows one of the following,
+sustained over **two weeks** — long enough that a campaign launch spike is not
+mistaken for a trend:
+
+| # | Condition | Why this one |
+|---|---|---|
+| T-1 | `GET /v1/discover` p99 above **300 ms** (§20) in any week, with the database as the dominant span | The stated target, missed. This is the trigger; the rest are its early warnings |
+| T-2 | `GET /v1/discover/facets` p99 above **300 ms** | Facets were already the most expensive read at tier-1 scale (118 ms of a 300 ms budget with no filters at all). This is where the ceiling arrives first |
+| T-3 | p99 for any single sort above **150 ms** — half the budget on one term | Leaves room to act before T-1 fires, rather than after backers have felt it |
+| T-4 | Query planning falls back to a sequential scan on the feed at p50 | The indexes have stopped covering the shape of real traffic |
+| T-5 | A filter §4.3 requires cannot be expressed in one round trip without a new materialised view per facet | "When faceting becomes complex", made concrete |
+| T-6 | Discovery read load forces a database instance size chosen for search rather than for the ledger | The point at which search stops being a tenant and starts being the landlord |
+
+T-1 through T-4 are latency; T-5 and T-6 are shape and cost. **Any one is
+sufficient.** None is a row count, and none can be evaluated from a seeded
+database.
+
+#### The trigger cannot be observed yet
+
+Every condition above is a statement about production percentiles, and the
+platform has **no metrics, tracing, or alerting** — that is #138. Until #138
+lands, the honest position is that tier 1 is adequate because nothing has
+demonstrated otherwise, which is not the same claim as tier 1 being adequate.
+
+> **#138 is a precondition for the decision, not for the migration.** It does not
+> block building tier 2; it blocks *knowing whether to*. Migrating without it
+> would replace a measured system with an unmeasured one and call the result an
+> improvement.
+
+The instrumentation the trigger needs is specific, and cheaper to add while
+building #138 than to retrofit: request duration by endpoint **and by sort**,
+because the sorts differ by three orders of magnitude and one aggregate hides all
+of it; the database span as a fraction of request time, which distinguishes T-1
+from an application-side regression; and the count of queries whose plan chose a
+sequential scan, for T-4.
+
+#### What is not a reason to migrate
+
+- **A benchmark on a seeded database.** None of the numbers above is a load test;
+  that is #141. They compare shapes, not capacities.
+- **Row count alone**, for the reason this section opens with.
+- **A single slow query.** #42 found `power(a, 1.5)` costing 237 ms and rewrote it
+  as `a * sqrt(a)` for 35 ms; #47 found an inline distance expression costing
+  118.7 ms and moved eighteen rows into a materialised CTE for 19.7 ms. Both were
+  arithmetic, not storage. **Exhaust the plan before replacing the engine** — a
+  dedicated engine executing the same bad expression is a bad expression with an
+  operational dependency attached.
+- **Wanting a feature an engine advertises.** Every capability §4.3 asks for is
+  serving from PostgreSQL today.
+
+#### The migration, when the trigger fires
+
+The seam is `SearchService`, and what a second implementation must satisfy —
+visibility, keyset ordering, exact money, facets that exclude their own dimension,
+the band boundaries, §11.3's fold on both sides of the index — is written on the
+interface itself rather than here, because that is where an implementer reads it.
+Two properties of the current design carry the migration:
+
+- **`DiscoveryCapability` makes cutover partial.** A tier-2 implementation need
+  not serve everything on day one. It declares what it has; a query needing more
+  is refused by name, exactly as `relevance` and `near_me` were refused before
+  #44 and #47. Free text can move to an engine while facets stay in PostgreSQL.
+- **`DiscoveryQuery` is already storage-neutral.** No caller holds a SQL
+  fragment, a JDBC type, a `Pageable`, or a column name, so a second
+  implementation is a bean definition rather than an edit to a controller.
+
+The order of operations:
+
+1. **Index feed.** The transactional outbox (#135) is scoped by §8.3 to pledges
+   and payments; feeding an index means widening it to carry project mutations
+   *and* project state transitions. The state transitions are the load-bearing
+   half, and the reason this step comes first: the failure tier 2 must not have is
+   a campaign suspended after it was indexed staying visible in a public feed.
+   Tier 1 cannot have that failure, because visibility is a predicate evaluated at
+   read time; tier 2 needs an eviction path, and a nightly rebuild is not one.
+2. **Shadow read.** Run both implementations against live traffic, serve tier 1,
+   and record where they disagree — on the result set, on the order, and on every
+   facet count. Disagreement is the deliverable; a shadow that only compares
+   latency has verified nothing about correctness.
+3. **Reconcile.** Every difference is a bug in one of the two, and the tier-1
+   behaviour is the specification because it is what the tests, the web client,
+   and every shared filter URL already encode. Money at band boundaries, the fold,
+   and facet exclusion are where the differences will be.
+4. **Cut over by capability**, one at a time, each reversible by removing a
+   constant from `capabilities()`.
+5. **Keep tier 1 runnable** for at least one release after the last capability
+   moves. Deleting `PostgresSearchService` is the contract half and needs its own
+   release, per the expand-then-contract rule.
+
+Rollback at any step is removing a capability constant, which is a configuration
+change rather than a deployment — the same property that makes the cutover safe
+makes the retreat cheap.
 
 ---
 
