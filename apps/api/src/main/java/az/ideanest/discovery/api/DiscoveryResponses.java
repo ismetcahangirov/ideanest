@@ -72,14 +72,23 @@ public final class DiscoveryResponses {
     public record Image(String url, int width, int height) {
     }
 
-    /** @param tags only tags with campaigns behind them; the vocabulary is free and unbounded */
+    /**
+     * @param tags only tags with campaigns behind them; the vocabulary is free and
+     *     unbounded
+     * @param programmes every open call the public may see, in the order
+     *     {@code GET /v1/collections} lists them, including the ones at zero (#48)
+     * @param showOnly §4.3's "Show only" control. One value, {@code featured}: the
+     *     other two are per-caller or unbuilt and cannot be counted
+     */
     public record Facets(
             List<ValueCount> status,
             List<CategoryCount> categories,
             List<NamedCount> tags,
             List<ValueCount> completion,
             List<ValueCount> goalAmount,
-            List<ValueCount> amountRaised) {
+            List<ValueCount> amountRaised,
+            List<NamedCount> programmes,
+            List<ValueCount> showOnly) {
     }
 
     /**
@@ -163,7 +172,9 @@ public final class DiscoveryResponses {
                 counts.tags().stream().map(DiscoveryResponses::namedCount).toList(),
                 counts.completion().stream().map(DiscoveryResponses::valueCount).toList(),
                 counts.goalAmount().stream().map(DiscoveryResponses::valueCount).toList(),
-                counts.amountRaised().stream().map(DiscoveryResponses::valueCount).toList());
+                counts.amountRaised().stream().map(DiscoveryResponses::valueCount).toList(),
+                counts.programmes().stream().map(DiscoveryResponses::namedCount).toList(),
+                counts.showOnly().stream().map(DiscoveryResponses::valueCount).toList());
     }
 
     public static Suggestions suggestions(List<Suggestion> suggestions) {

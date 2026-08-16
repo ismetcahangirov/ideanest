@@ -42,6 +42,16 @@ import java.util.List;
  * @param completion keyed by {@code CompletionBand.wireValue()}
  * @param goalAmount keyed by {@code AmountBand.wireValue()}
  * @param amountRaised keyed by {@code AmountBand.wireValue()}
+ * @param programmes §4.3's Programmes control (#48): every open call the public may
+ *     see, in the order {@code GET /v1/collections} lists them, with the count under
+ *     every filter except the programme filter itself. A fixed vocabulary — the open
+ *     calls are a short curated list, not a free one — so zero-count entries are
+ *     present, exactly as an empty category is
+ * @param showOnly §4.3's "Show only" control (#48). <strong>One value today:
+ *     {@code featured}</strong>. {@code saved} is per-caller and has no table, and
+ *     {@code recommended} is #44; a count for either would be a number this endpoint
+ *     cannot compute, and inventing a zero would tell a reader the platform has no
+ *     recommendations rather than that it has no recommender
  */
 public record FacetCounts(
         List<ValueCount> statuses,
@@ -49,7 +59,9 @@ public record FacetCounts(
         List<NamedCount> tags,
         List<ValueCount> completion,
         List<ValueCount> goalAmount,
-        List<ValueCount> amountRaised) {
+        List<ValueCount> amountRaised,
+        List<NamedCount> programmes,
+        List<ValueCount> showOnly) {
 
     /**
      * How many tags a facet response carries.
@@ -94,5 +106,7 @@ public record FacetCounts(
         completion = List.copyOf(completion);
         goalAmount = List.copyOf(goalAmount);
         amountRaised = List.copyOf(amountRaised);
+        programmes = List.copyOf(programmes);
+        showOnly = List.copyOf(showOnly);
     }
 }

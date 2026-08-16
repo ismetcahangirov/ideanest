@@ -38,8 +38,16 @@ import java.util.TreeSet;
  *   <tr><td>Status</td><td>OR</td><td>a campaign is in one state</td></tr>
  *   <tr><td>Category, subcategory</td><td>OR</td><td>a campaign is filed in one place; AND would return nothing</td></tr>
  *   <tr><td>Completion, goal band, raised band</td><td>OR</td><td>the bands partition the line</td></tr>
+ *   <tr><td>Programmes</td><td>OR</td><td>a campaign is in one open call; see below</td></tr>
  *   <tr><td><strong>Tags</strong></td><td><strong>AND</strong></td><td>a campaign carries several, and adding a tag is a refinement</td></tr>
  * </table>
+ *
+ * <p><strong>Programmes are OR'd rather than AND'd, unlike tags, and the reason is
+ * the same reason.</strong> A tag is something a creator says about their campaign
+ * and several are true at once, so ticking a second one refines. A programme is a
+ * list somebody was accepted into; a campaign is normally in one, and requiring
+ * membership of two open calls at once would return nothing for almost every pair —
+ * the same dead end the category dimension avoids by OR'ing.
  *
  * <p>Tags are the only genuine choice there, and AND is the answer because of what
  * the control looks like. Every other filter in this set narrows when a second value
@@ -67,12 +75,17 @@ import java.util.TreeSet;
  *     {@code categorySlugs} and AND'd with it, so "games, and subcategory tabletop"
  *     and "subcategory tabletop" are both expressible
  * @param tagSlugs folded tag slugs, AND'd. See the table above
+ * @param programmeSlugs §4.3's Programmes filter: the slugs of the open calls a
+ *     campaign may be part of, OR'd. <strong>#48.</strong> A slug naming no open call
+ *     matches nothing, exactly as an unknown category slug does — it is content, not
+ *     a closed vocabulary, so a stale link is an empty feed rather than a 400
  * @param goal the {@code goal_amount} dimension
  * @param raised the {@code pledged_amount} dimension
  * @param completion §4.3's five completion bands, OR'd
  * @param location country, city, proximity. <strong>#47</strong>; nothing to filter
  *     on yet, see {@link LocationFilter}
- * @param showOnly saved, recommended, featured. <strong>#44 / #48</strong>
+ * @param showOnly saved, recommended, featured. <strong>Featured is served (#48);
+ *     saved and recommended are still refused</strong>
  * @param sort one of §4.3's seven plus {@link DiscoverySort#BEST_MATCH}. When
  *     unstated it is {@link DiscoverySort#DEFAULT} while browsing and
  *     {@link DiscoverySort#DEFAULT_WITH_TEXT} while searching; the constructor
@@ -91,6 +104,7 @@ public record DiscoveryQuery(
         Set<String> categorySlugs,
         Set<String> subcategorySlugs,
         Set<String> tagSlugs,
+        Set<String> programmeSlugs,
         AmountRange goal,
         AmountRange raised,
         Set<CompletionBand> completion,
@@ -133,6 +147,7 @@ public record DiscoveryQuery(
         categorySlugs = slugs(categorySlugs);
         subcategorySlugs = slugs(subcategorySlugs);
         tagSlugs = slugs(tagSlugs);
+        programmeSlugs = slugs(programmeSlugs);
         goal = goal == null ? AmountRange.ANY : goal;
         raised = raised == null ? AmountRange.ANY : raised;
         location = location == null ? LocationFilter.ANYWHERE : location;
@@ -162,7 +177,7 @@ public record DiscoveryQuery(
     /** The same query, resuming after {@code cursor}. */
     public DiscoveryQuery withCursor(DiscoveryCursor next) {
         return new DiscoveryQuery(
-                text, statuses, categorySlugs, subcategorySlugs, tagSlugs, goal, raised,
+                text, statuses, categorySlugs, subcategorySlugs, tagSlugs, programmeSlugs, goal, raised,
                 completion, location, showOnly, sort, limit, next, locale);
     }
 
@@ -184,6 +199,9 @@ public record DiscoveryQuery(
         }
         if (location.proximity() != null) {
             required.add(DiscoveryCapability.FILTER_PROXIMITY);
+        }
+        if (!programmeSlugs.isEmpty()) {
+            required.add(DiscoveryCapability.FILTER_PROGRAMME);
         }
         for (ShowOnly only : showOnly) {
             required.add(only.requiredCapability());
@@ -220,6 +238,7 @@ public record DiscoveryQuery(
         parts.add(sorted(categorySlugs));
         parts.add(sorted(subcategorySlugs));
         parts.add(sorted(tagSlugs));
+        parts.add(sorted(programmeSlugs));
         parts.add(amount(goal));
         parts.add(amount(raised));
         parts.add(sorted(completion.stream().map(CompletionBand::wireValue).toList()));
@@ -294,6 +313,7 @@ public record DiscoveryQuery(
         private Set<String> categorySlugs = Set.of();
         private Set<String> subcategorySlugs = Set.of();
         private Set<String> tagSlugs = Set.of();
+        private Set<String> programmeSlugs = Set.of();
         private AmountRange goal = AmountRange.ANY;
         private AmountRange raised = AmountRange.ANY;
         private Set<CompletionBand> completion = Set.of();
@@ -333,6 +353,11 @@ public record DiscoveryQuery(
 
         public Builder tagSlugs(Set<String> value) {
             this.tagSlugs = value;
+            return this;
+        }
+
+        public Builder programmeSlugs(Set<String> value) {
+            this.programmeSlugs = value;
             return this;
         }
 
@@ -383,7 +408,7 @@ public record DiscoveryQuery(
 
         public DiscoveryQuery build() {
             return new DiscoveryQuery(
-                    text, statuses, categorySlugs, subcategorySlugs, tagSlugs, goal, raised,
+                    text, statuses, categorySlugs, subcategorySlugs, tagSlugs, programmeSlugs, goal, raised,
                     completion, location, showOnly, sort, limit, cursor, locale);
         }
     }

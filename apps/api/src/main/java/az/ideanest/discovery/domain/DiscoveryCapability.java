@@ -69,8 +69,28 @@ public enum DiscoveryCapability {
     /** Only campaigns recommended to this caller. <strong>#44.</strong> */
     FILTER_RECOMMENDED("showOnly=recommended", "#44 (ranking)"),
 
-    /** Only editorially featured campaigns. <strong>#48.</strong> */
-    FILTER_FEATURED("showOnly=featured", "#48 (collections and curation)");
+    /**
+     * Only editorially featured campaigns. <strong>#48, and served.</strong>
+     *
+     * <p>Needs V14's {@code collections} and {@code collection_projects}, and the
+     * {@code project_editorial_badges} view that derives the badge from them. An
+     * implementation that declares this must serve {@code showOnly=featured} on
+     * {@code /v1/discover} and on {@code /v1/search}, and must count it in the facet
+     * panel — the three are one feature, and a client that got two of them would find
+     * that ticking the filter changed the feed and not the numbers beside it.
+     */
+    FILTER_FEATURED("showOnly=featured", "#48 (collections and curation)"),
+
+    /**
+     * §4.3's Programmes: narrowing the feed to a themed open call.
+     * <strong>#48, and served.</strong>
+     *
+     * <p>Declared rather than left implicit even though PostgreSQL can serve it
+     * today, for the reason on {@link #FILTER_LOCATION}: this filter is a join to a
+     * table an external index does not have, and a tier-2 implementation that cannot
+     * do the join has to refuse it loudly rather than return a feed that ignores it.
+     */
+    FILTER_PROGRAMME("programme", "#48 (collections and curation)");
 
     private final String parameter;
     private final String owner;

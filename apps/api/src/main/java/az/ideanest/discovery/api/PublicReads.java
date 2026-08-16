@@ -63,31 +63,41 @@ final class PublicReads {
     static String canonical(DiscoveryResponses.Feed feed) {
         StringBuilder canonical = new StringBuilder();
         for (DiscoveryResponses.Card card : feed.items()) {
-            append(canonical, card.id(), card.slug(), card.creatorSlug(), card.title(), card.state(), card.badge());
-            append(
-                    canonical,
-                    card.creator().name(),
-                    card.creator().slug(),
-                    card.creator().avatarUrl());
-            append(
-                    canonical,
-                    card.image() == null ? null : card.image().url(),
-                    card.image() == null ? null : String.valueOf(card.image().width()),
-                    card.image() == null ? null : String.valueOf(card.image().height()));
-            append(
-                    canonical,
-                    card.goal() == null ? null : card.goal().amount().toPlainString(),
-                    card.goal() == null ? null : card.goal().currency(),
-                    card.pledged().amount().toPlainString(),
-                    card.pledged().currency(),
-                    card.completionPercent(),
-                    String.valueOf(card.backersCount()),
-                    String.valueOf(card.daysLeft()),
-                    String.valueOf(card.launchedAt()),
-                    String.valueOf(card.deadline()));
+            appendCard(canonical, card);
         }
         append(canonical, feed.nextCursor());
         return canonical.toString();
+    }
+
+    /**
+     * One card, in a fixed order.
+     *
+     * <p>Extracted when the collection landing page arrived (#48): it serves the same
+     * cards, and two digests over one shape is one of them forgetting a field.
+     */
+    private static void appendCard(StringBuilder canonical, DiscoveryResponses.Card card) {
+        append(canonical, card.id(), card.slug(), card.creatorSlug(), card.title(), card.state(), card.badge());
+        append(
+                canonical,
+                card.creator().name(),
+                card.creator().slug(),
+                card.creator().avatarUrl());
+        append(
+                canonical,
+                card.image() == null ? null : card.image().url(),
+                card.image() == null ? null : String.valueOf(card.image().width()),
+                card.image() == null ? null : String.valueOf(card.image().height()));
+        append(
+                canonical,
+                card.goal() == null ? null : card.goal().amount().toPlainString(),
+                card.goal() == null ? null : card.goal().currency(),
+                card.pledged().amount().toPlainString(),
+                card.pledged().currency(),
+                card.completionPercent(),
+                String.valueOf(card.backersCount()),
+                String.valueOf(card.daysLeft()),
+                String.valueOf(card.launchedAt()),
+                String.valueOf(card.deadline()));
     }
 
     static String canonical(DiscoveryResponses.Facets facets) {
@@ -105,7 +115,57 @@ final class PublicReads {
         appendCounts(canonical, facets.completion());
         appendCounts(canonical, facets.goalAmount());
         appendCounts(canonical, facets.amountRaised());
+        for (DiscoveryResponses.NamedCount programme : facets.programmes()) {
+            append(canonical, programme.slug(), programme.name(), String.valueOf(programme.count()));
+        }
+        appendCounts(canonical, facets.showOnly());
         return canonical.toString();
+    }
+
+    /**
+     * Everything in the collections index that reaches the client.
+     *
+     * <p>{@code projectCount} is in here and it is the field that makes the tag move
+     * most often: a campaign in a collection being suspended changes nothing else on
+     * the page and changes that number, and a digest that skipped it would serve the
+     * old count for the length of the cache window.
+     */
+    static String canonical(CollectionResponses.CollectionIndex index) {
+        StringBuilder canonical = new StringBuilder();
+        for (CollectionResponses.Collection collection : index.items()) {
+            appendCollection(canonical, collection);
+        }
+        return canonical.toString();
+    }
+
+    /** The landing page: its header, then its cards, then where the next page starts. */
+    static String canonical(CollectionResponses.CollectionPage page) {
+        StringBuilder canonical = new StringBuilder();
+        appendCollection(canonical, page.collection());
+        for (DiscoveryResponses.Card card : page.items()) {
+            appendCard(canonical, card);
+        }
+        append(canonical, page.nextCursor());
+        return canonical.toString();
+    }
+
+    private static void appendCollection(StringBuilder canonical, CollectionResponses.Collection collection) {
+        append(
+                canonical,
+                collection.id(),
+                collection.slug(),
+                collection.kind(),
+                collection.title(),
+                collection.description(),
+                String.valueOf(collection.grantsBadge()),
+                String.valueOf(collection.projectCount()),
+                String.valueOf(collection.opensAt()),
+                String.valueOf(collection.closesAt()));
+        append(
+                canonical,
+                collection.image() == null ? null : collection.image().url(),
+                collection.image() == null ? null : String.valueOf(collection.image().width()),
+                collection.image() == null ? null : String.valueOf(collection.image().height()));
     }
 
     static String canonical(DiscoveryResponses.Suggestions suggestions) {

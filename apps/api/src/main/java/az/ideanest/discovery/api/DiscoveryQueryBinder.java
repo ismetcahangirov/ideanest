@@ -45,6 +45,12 @@ final class DiscoveryQueryBinder {
                 .categorySlugs(openSet(parameters, "category"))
                 .subcategorySlugs(openSet(parameters, "subcategory"))
                 .tagSlugs(openSet(parameters, "tag"))
+                // §4.3's Programmes. An open vocabulary like `category` and `tag`
+                // and for the same reason: the slugs are content the platform's own
+                // curators create, so a link shared after a programme was renamed
+                // gets an empty feed rather than a 400. Singular and comma-separable
+                // like every other multi-valued filter here.
+                .programmeSlugs(openSet(parameters, "programme"))
                 .completion(closedSet(parameters, "completion", CompletionBand::fromWireValue, CompletionBand.wireValues()))
                 .goal(amountRange(parameters, "goalBand", "goalMin", "goalMax"))
                 .raised(amountRange(parameters, "raisedBand", "raisedMin", "raisedMax"))
@@ -53,7 +59,13 @@ final class DiscoveryQueryBinder {
 
         String sort = single(parameters, "sort");
         if (sort != null) {
+            // `isClientSelectable` filters out DiscoverySort.CURATED, which names the
+            // order the collection landing page is served in and means nothing here:
+            // outside a collection there is no curator and no position. Refused by the
+            // same path as a misspelt sort, with the same list of what is accepted, so
+            // it is not a special error a client has to learn about.
             builder.sort(DiscoverySort.fromWireValue(sort)
+                    .filter(DiscoverySort::isClientSelectable)
                     .orElseThrow(() -> new UnknownFilterValueException("sort", sort, DiscoverySort.wireValues())));
         }
 
