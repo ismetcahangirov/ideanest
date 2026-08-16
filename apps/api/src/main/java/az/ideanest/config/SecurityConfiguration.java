@@ -53,6 +53,22 @@ public class SecurityConfiguration {
                         // the same path later does not inherit this.
                         .requestMatchers(HttpMethod.GET, "/v1/categories")
                         .permitAll()
+                        // Browsing, and the counts beside it. Public because
+                        // discovery is the front door: a visitor who has not
+                        // registered is exactly the audience it exists for, and
+                        // requiring a token would mean the platform's own home
+                        // page could not render.
+                        //
+                        // Nothing in either response belongs to a person, which
+                        // is what lets them be Cache-Control: public. The one
+                        // filter that would change that is showOnly=saved, and
+                        // it is refused today — DiscoveryController carries the
+                        // note about what has to change here when it is not.
+                        //
+                        // GET and nothing else, for the reason the categories
+                        // rule gives.
+                        .requestMatchers(HttpMethod.GET, "/v1/discover", "/v1/discover/facets")
+                        .permitAll()
                         // A campaign's pre-launch page. Public because the people
                         // it exists to collect have not registered — that is what
                         // makes it a pre-launch page rather than a second editor
