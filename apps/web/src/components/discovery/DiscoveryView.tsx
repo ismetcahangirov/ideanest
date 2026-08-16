@@ -12,6 +12,7 @@ import {
   parseFilters,
   removeFilter,
   toHref,
+  withQuery,
   type ActiveFilter,
   type DiscoveryFilters,
 } from '../../lib/discovery/filters';
@@ -21,6 +22,7 @@ import { ActiveFilters } from './ActiveFilters';
 import { DiscoverySkeleton } from './DiscoverySkeleton';
 import { FilterRail } from './FilterRail';
 import { ProjectCard } from './ProjectCard';
+import { SearchBox } from './SearchBox';
 import { SortControl } from './SortControl';
 
 /**
@@ -149,6 +151,16 @@ export function DiscoveryView() {
         </p>
       </FadeUp>
 
+      {/*
+        OUTSIDE THE `FadeUp`. Discovery's budget gives the heading one entry
+        animation, once (docs/motion-system.md §5.1) — and a control the reader
+        may be typing into before the page has settled must not be one of the
+        things still moving.
+      */}
+      <div className="mt-6 max-w-[720px]">
+        <SearchBox filters={filters} onApply={apply} />
+      </div>
+
       <div className="mt-8 flex flex-col gap-8 lg:flex-row">
         <aside
           aria-label="Filter projects"
@@ -170,6 +182,7 @@ export function DiscoveryView() {
 
               <SortControl
                 sort={filters.sort}
+                hasQuery={filters.query !== ''}
                 onChange={(sort) => apply({ ...filters, sort })}
               />
             </div>
@@ -214,13 +227,31 @@ export function DiscoveryView() {
 
             {feed.status === 'ready' && feed.items.length === 0 && (
               <EmptyState
-                variant={active.length > 0 ? 'filtered' : 'empty'}
+                variant={active.length > 0 || filters.query !== '' ? 'filtered' : 'empty'}
                 headingLevel={2}
                 title={
-                  active.length > 0 ? 'No projects match these filters' : 'No projects to show yet'
+                  /*
+                   * THE SEARCH TEXT IS NAMED WHEN THERE IS ANY. No facet counts
+                   * it — `?q=` narrows the set the facets are counted over
+                   * rather than being a dimension of its own — so `blameFor`
+                   * cannot see it and would blame the filters for an emptiness
+                   * a misspelt word caused. The word is the first thing to try
+                   * changing, so it is the first thing the page says.
+                   */
+                  filters.query !== ''
+                    ? `No projects match “${filters.query}”`
+                    : active.length > 0
+                      ? 'No projects match these filters'
+                      : 'No projects to show yet'
                 }
                 description={
-                  blamed.length === 0 ? (
+                  filters.query !== '' && blamed.length === 0 ? (
+                    <>
+                      Nothing on the platform matches that search
+                      {active.length > 0 ? ' with these filters applied' : ''}. Check the spelling,
+                      or try a shorter word.
+                    </>
+                  ) : blamed.length === 0 ? (
                     'There is nothing published on the platform for this feed to show.'
                   ) : blamed.length === 1 ? (
                     <>
@@ -239,7 +270,7 @@ export function DiscoveryView() {
                   )
                 }
                 action={
-                  blamed.length > 0 ? (
+                  blamed.length > 0 || filters.query !== '' ? (
                     <div className="flex flex-wrap justify-center gap-2">
                       {blamed.map((filter) => (
                         <Pill
@@ -251,9 +282,20 @@ export function DiscoveryView() {
                           {`Remove ${filter.label}`}
                         </Pill>
                       ))}
-                      <Pill size="sm" onClick={() => apply(clearFilters(filters))}>
-                        Clear all filters
-                      </Pill>
+                      {filters.query !== '' && (
+                        <Pill
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => apply(withQuery(filters, ''))}
+                        >
+                          Clear the search
+                        </Pill>
+                      )}
+                      {active.length > 0 && (
+                        <Pill size="sm" onClick={() => apply(clearFilters(filters))}>
+                          Clear all filters
+                        </Pill>
+                      )}
                     </div>
                   ) : undefined
                 }

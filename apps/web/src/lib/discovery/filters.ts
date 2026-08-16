@@ -2,6 +2,7 @@ import {
   AMOUNT_BANDS,
   COMPLETION_BANDS,
   DEFAULT_SORT,
+  DEFAULT_SORT_WITH_QUERY,
   STATUSES,
   isAmountBand,
   isCompletionBand,
@@ -56,6 +57,20 @@ export interface AmountFilter {
 }
 
 export interface DiscoveryFilters {
+  /**
+   * D-01's free text, as it was typed. Empty means no search.
+   *
+   * IT LIVES IN THE URL WITH THE FILTERS, for the reason all of them do: a
+   * searched feed has to be linkable, survive a reload, and come back from the
+   * back button. It is NOT a filter dimension — there is no chip for it and no
+   * facet counts it (docs/architecture.md §4.3) — but it narrows the same set,
+   * so it belongs in the same query string under the service's own name, `q`.
+   *
+   * Trimmed, and never folded. Folding is the service's (`ideanest_fold`), and
+   * a client that folded would show the reader "secenek" where they typed
+   * "seç" — their own language spelled wrong back at them.
+   */
+  readonly query: string;
   readonly statuses: readonly DiscoveryStatus[];
   readonly categories: readonly string[];
   readonly subcategories: readonly string[];
@@ -69,6 +84,7 @@ export interface DiscoveryFilters {
 export const NO_AMOUNT_FILTER: AmountFilter = { bands: [], min: null, max: null };
 
 export const NO_FILTERS: DiscoveryFilters = {
+  query: '',
   statuses: [],
   categories: [],
   subcategories: [],
@@ -142,9 +158,10 @@ function amountFilter(params: URLSearchParams, prefix: 'goal' | 'raised'): Amoun
  * "nothing here" rather than silently widen to everything.
  */
 export function parseFilters(params: URLSearchParams): DiscoveryFilters {
-  const sort = params.get('sort');
+  const query = params.get('q')?.trim() ?? '';
 
   return {
+    query,
     statuses: unique(values(params, 'status').filter(isStatus)),
     categories: slugs(params, 'category'),
     subcategories: slugs(params, 'subcategory'),
@@ -152,8 +169,35 @@ export function parseFilters(params: URLSearchParams): DiscoveryFilters {
     completion: unique(values(params, 'completion').filter(isCompletionBand)),
     goal: amountFilter(params, 'goal'),
     raised: amountFilter(params, 'raised'),
-    sort: sort !== null && isSort(sort) ? sort : DEFAULT_SORT,
+    sort: parseSort(params.get('sort'), query),
   };
+}
+
+/**
+ * The order a query string asks for, resolved exactly as `DiscoveryQuery` does.
+ *
+ * Two rules, both the service's, and both here so that the sort control can
+ * show the order that is actually in force rather than the one the URL happens
+ * to spell:
+ *
+ *   - AN UNSTATED SORT RESOLVES TO `best_match` WHEN THERE IS TEXT. Otherwise
+ *     `/discover?q=ceramics` would say "Newest" while the service was ranking
+ *     by match quality, and the control would be lying about what the reader is
+ *     looking at.
+ *   - `best_match` WITH NO TEXT RESOLVES BACK TO `newest`, because it has
+ *     nothing to rank. A reader who searches, chooses nothing, and then clears
+ *     the box is put back on the default rather than left on an order the
+ *     service quietly stopped honouring.
+ */
+function parseSort(raw: string | null, query: string): DiscoverySort {
+  const fallback = defaultSortFor(query);
+  if (raw === null || !isSort(raw)) return fallback;
+  return raw === DEFAULT_SORT_WITH_QUERY && query === '' ? DEFAULT_SORT : raw;
+}
+
+/** The order in force when the URL names none. See `parseSort`. */
+export function defaultSortFor(query: string): DiscoverySort {
+  return query === '' ? DEFAULT_SORT : DEFAULT_SORT_WITH_QUERY;
 }
 
 /* -------------------------------------------------------------------------
@@ -177,10 +221,17 @@ function appendAmount(params: URLSearchParams, prefix: 'goal' | 'raised', filter
  * `/discover?sort=newest` are the same feed, and printing the default into
  * every link makes the shortest, most-shared URL the noisiest one — and makes
  * "did the reader choose this order" unanswerable from the URL.
+ *
+ * WHICH default depends on whether there is a query, because the service's does
+ * — see `defaultSortFor`. `?q=ceramics` alone means best match and `?q=ceramics`
+ * with `sort=newest` means the reader overrode it, and both round-trip.
  */
 export function toSearchParams(filters: DiscoveryFilters): URLSearchParams {
   const params = new URLSearchParams();
 
+  // `q` first: it is the thing the reader typed, and it is what makes a shared
+  // link legible at a glance.
+  if (filters.query !== '') params.set('q', filters.query);
   appendList(params, 'status', filters.statuses);
   appendList(params, 'category', filters.categories);
   appendList(params, 'subcategory', filters.subcategories);
@@ -188,7 +239,7 @@ export function toSearchParams(filters: DiscoveryFilters): URLSearchParams {
   appendList(params, 'completion', filters.completion);
   appendAmount(params, 'goal', filters.goal);
   appendAmount(params, 'raised', filters.raised);
-  if (filters.sort !== DEFAULT_SORT) params.set('sort', filters.sort);
+  if (filters.sort !== defaultSortFor(filters.query)) params.set('sort', filters.sort);
 
   return params;
 }
@@ -272,15 +323,93 @@ export function withAmountRange(
 }
 
 /**
- * Every filter dropped, the sort kept.
+ * Every filter dropped; the sort and the search text kept.
  *
  * "Clear all" is about the narrowing, not about the order. Somebody who chose
  * "ending soon" and then over-filtered wants their campaigns back in the order
  * they picked; resetting that too would be a second, unasked-for change hidden
  * behind one control.
+ *
+ * THE QUERY IS NOT A FILTER and survives for the same reason. It has no chip
+ * and no facet, the panel never counted it, and "clear all filters" pressed on
+ * a search for "ceramics" must not silently throw away what was typed —
+ * emptying the search box is what the search box is for.
  */
 export function clearFilters(filters: DiscoveryFilters): DiscoveryFilters {
-  return { ...NO_FILTERS, sort: filters.sort };
+  return { ...NO_FILTERS, query: filters.query, sort: filters.sort };
+}
+
+/* -------------------------------------------------------------------------
+ * Free text
+ * ---------------------------------------------------------------------- */
+
+/**
+ * The filter set searching for something else.
+ *
+ * THE FILTERS SURVIVE THE SEARCH. `?q=` composes with every filter server-side
+ * and narrows the set the facets are counted over, so a reader who has picked
+ * Games and then types a word is narrowing what they were already looking at.
+ * Dropping their choices at the first keystroke would be the search box
+ * quietly undoing the panel beside it.
+ *
+ * A SORT THAT WAS THE DEFAULT STAYS THE DEFAULT, and one the reader chose is
+ * kept. Which order is the default depends on whether there is text — see
+ * `defaultSortFor` — so the two cases are:
+ *
+ *   - typing into an unsearched feed nobody had reordered moves `newest` to
+ *     `best_match`, exactly as the service moves it. Carrying `newest` across
+ *     would write `?q=games&sort=newest` for a reader who never touched the
+ *     sort control, and would rank a search by launch date.
+ *   - emptying the box moves `best_match` back to `newest`, because
+ *     `best_match` has nothing to rank and the service resolves it away — so
+ *     leaving it would put a word in the URL that the feed does not obey.
+ *
+ * `ending_soon` survives both, because it is a choice rather than a default.
+ *
+ * A reader who explicitly picks the order that is already the default is
+ * indistinguishable from one who picked nothing, and is treated as the latter.
+ * That is the cost of `toSearchParams` omitting the default rather than writing
+ * it, and it is the right trade: it keeps the shortest, most-shared URL the
+ * quietest one.
+ */
+export function withQuery(filters: DiscoveryFilters, query: string): DiscoveryFilters {
+  const text = query.trim();
+  const wasDefault = filters.sort === defaultSortFor(filters.query);
+
+  return { ...filters, query: text, sort: wasDefault ? defaultSortFor(text) : filters.sort };
+}
+
+/**
+ * A category, subcategory, or tag ADDED to the filter set — not toggled.
+ *
+ * This is what choosing a suggestion of that kind does, and toggling would be
+ * wrong for it: a reader who picks "Games" from the list is asking for Games,
+ * and if Games is already ticked the honest answer is "you already have it",
+ * never "then I shall remove it". `toggleCategory` and its siblings stay the
+ * contract of the CHECKBOX, where pressing an on control is a request to turn
+ * it off.
+ */
+export function addSlugFilter(
+  filters: DiscoveryFilters,
+  dimension: 'category' | 'subcategory' | 'tag',
+  slug: string,
+): DiscoveryFilters {
+  const value = slug.toLowerCase();
+
+  switch (dimension) {
+    case 'category':
+      return { ...filters, categories: unique([...filters.categories, value]) };
+    case 'subcategory':
+      /*
+       * The parent category is NOT added alongside it. The two filters are
+       * independent and AND'd server-side, so adding both would narrow the feed
+       * twice for one choice — and the reader asked for tabletop games, not for
+       * tabletop games that are also filed under Games.
+       */
+      return { ...filters, subcategories: unique([...filters.subcategories, value]) };
+    case 'tag':
+      return { ...filters, tags: unique([...filters.tags, value]) };
+  }
 }
 
 /* -------------------------------------------------------------------------
