@@ -56,6 +56,25 @@ ideanest:
       # a campaign with four followers takes two passes.
       send-batch-size: 3
 
+  pledge:
+    reservation:
+      # Disabled, exactly as the two schedules below are: `-` is Spring's own value
+      # for "do not schedule this". The suite drives ReservationCleanerJob directly
+      # with the instant it wants to test. A sweep firing every minute in the
+      # background would release the very reservations a concurrency test is in the
+      # middle of counting — and it would do it once a fortnight, on CI, in the run
+      # nobody is watching.
+      cleanup-schedule: "-"
+      # The production value. The window is what the tests are checking, so
+      # shortening it here would mean asserting the rule against a configuration
+      # nothing runs on. There is no need either: the suite moves the application's
+      # Clock (AdjustableClock) rather than waiting five minutes.
+      ttl: 5m
+      # Deliberately small. The bound is only observable once more reservations
+      # have lapsed than one pass will take, and reaching two hundred would mean
+      # two hundred checkouts for one assertion. Two exercises the same arithmetic.
+      cleanup-batch-size: 2
+
   user:
     # Disabled. `-` is Spring's own value for "do not schedule this". The suite
     # drives AccountAnonymisationJob directly with the instant it wants to test,
