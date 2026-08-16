@@ -433,10 +433,31 @@ sequenceDiagram
 | PL-10 | Cancel a pledge | Releases reserved stock |
 | PL-11 | Replace the card | After a failed collection |
 | PL-12 | Anonymous pledging | Hidden from public lists |
-| PL-13 | Stock reservation | Redis TTL, guards against races |
+| PL-13 | Stock reservation | A DRAFT pledge, expiring five minutes after it is made |
 | PL-14 | Idempotency | `Idempotency-Key` prevents duplicates |
 | PL-15 | Secret rewards | Reachable only by a private URL |
 | PL-16 | Late pledge | If the creator enables it |
+
+> **PL-13 used to say "Redis TTL", and #51 changed it after building the
+> feature**, exactly as #47 changed §7.3's PostGIS row. §7.2 had already
+> described the other mechanism — "reservation increments `reserved_quantity`
+> under a row lock and relies on this constraint refusing the transaction when it
+> gets that wrong" — and V7 had built the constraint for it, so the two halves of
+> this document disagreed and the database half won.
+>
+> The deciding argument is that **taking the place and recording who took it are
+> one fact**. A Redis key and `reward_tiers.reserved_quantity` are two records of
+> it in two systems with no transaction across them, and the process that writes
+> one and then the other can die in between; whichever half survives is now lying,
+> and nothing reconciles them. The constraint that refuses an oversold tier also
+> lives in PostgreSQL, so a reservation held anywhere else is one it cannot see.
+> Against that, Redis buys expiry without a sweep — and §8.4 already lists the
+> sweep.
+>
+> The sequence diagram above is unchanged and still correct: "Reserve stock (5 min
+> TTL)" is what happens, and the five minutes are configuration
+> (`ideanest.pledge.reservation.ttl`). V17's header carries the whole argument and
+> the reverse.
 
 ### 4.6 Campaign editor `[W]`
 
@@ -1494,6 +1515,19 @@ load profile).
 > `@Scheduled` because the durable scheduler is #134. Every replica runs its own
 > timer; that is safe rather than merely tolerable, because the claim is a
 > conditional update and exactly one caller wins.
+
+> **`reservation-cleaner` is built (#51), on the same terms.** It sweeps every
+> DRAFT pledge whose `reservation_expires_at` has passed, expiring the pledge and
+> giving its place back to the reward tier in one transaction around one row —
+> a draft that says `EXPIRED` while `reserved_quantity` still counts it is a
+> place nothing will ever release. The claim is the same conditional update, so
+> two replicas sweeping at once credit the tier once.
+>
+> **This job is the price of §4.5's reservation living in PostgreSQL rather than
+> in a key with a TTL**, and it is the whole of that price. A minute late here is
+> a minute in which a limited tier looks sold out while a place is actually free:
+> a lost sale rather than a wrong one, which is why an in-process timer is
+> tolerable for it and would not be for anything that moves money.
 
 ---
 
