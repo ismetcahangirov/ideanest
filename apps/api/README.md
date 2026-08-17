@@ -471,7 +471,7 @@ other way would be a cycle. The dependency is inverted instead.
 | Money type and arithmetic rules | [#133](https://github.com/ismetcahangirov/ideanest/issues/133) |
 | Job queue and scheduler | [#134](https://github.com/ismetcahangirov/ideanest/issues/134) |
 | Anything that actually sends a message. Verification links, collaborator invitations, and launch reminders all reach a port and a logging adapter | [#85](https://github.com/ismetcahangirov/ideanest/issues/85), [#86](https://github.com/ismetcahangirov/ideanest/issues/86) |
-| Transactional outbox | [#135](https://github.com/ismetcahangirov/ideanest/issues/135) |
+| Existing announcements moved onto the outbox. The table, the relay, and the guarantee are built (#135), and nothing routes through them yet: `AuthEvents`, `ProjectEvents`, and `LaunchReminderDelivery` still publish from after-commit listeners, so a crash between the commit and the send still loses the message | no issue yet |
 | OpenAPI contract and generated clients | [#136](https://github.com/ismetcahangirov/ideanest/issues/136) |
 | Structured logging with redaction | [#137](https://github.com/ismetcahangirov/ideanest/issues/137) |
 | Metrics, tracing, alerting | [#138](https://github.com/ismetcahangirov/ideanest/issues/138) |
