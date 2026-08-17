@@ -7,8 +7,9 @@ import { ApiError, type Problem } from '../api/problem';
  *
  * `DiscoveryView` renders the service's own `title` and `detail` and says why:
  * the endpoint knows which of its rules refused the request and the client does
- * not. Checkout is the other case. The contract names every refusal this surface
- * can meet — six on the draft and two on the confirm — and each of them has a
+ * not. Checkout is the other case. Every refusal this surface can meet is named
+ * — six on the draft and two on the confirm from the contract, and the four #52
+ * added to both (#204) — and each of them has a
  * DIFFERENT RECOVERY: one wants a different tier, one wants a different country,
  * one wants a new reservation, one wants the amount changed, and one wants the
  * backer to go and look at the pledge they already have. A sentence that is
@@ -29,6 +30,16 @@ export type Recovery =
   | 'change-selection'
   /** Try the same request again; nothing about the selection is wrong. */
   | 'retry'
+  /**
+   * Wait `retryAfterMs` and send the SAME request, with the SAME key.
+   *
+   * Not a variety of `retry`, and the difference is the waiting: the request is
+   * already being carried out by an attempt that got there first, so trying
+   * again immediately earns the same refusal and nothing else. The caller does
+   * this without asking, because a backer cannot act on "your own first attempt
+   * has not finished" — see `useCheckout`, which also bounds it.
+   */
+  | 'wait-and-retry'
   /** Nothing on this screen will help. */
   | 'none';
 
@@ -57,6 +68,28 @@ export interface CheckoutFailure {
    * back the expired draft and loops.
    */
   readonly retireKey: boolean;
+  /**
+   * How long the service asked us to wait, in milliseconds, or null when it
+   * asked for nothing.
+   *
+   * From `Retry-After`, which `errorFrom` copies onto the problem. It is
+   * reported for every refusal that carries one rather than only for
+   * `wait-and-retry`, because a `429` carries it too and a caller that ignored
+   * it would spend the rest of the window being refused.
+   */
+  readonly retryAfterMs: number | null;
+  /**
+   * True when this refusal means THIS CLIENT is broken, not that the backer or
+   * the campaign did anything.
+   *
+   * The two idempotency-header refusals only. `lib/pledges/idempotency.ts`
+   * always sends a `crypto.randomUUID()`, so neither can happen unless a change
+   * to this application stopped it from doing that — which makes them a bug
+   * report rather than a state a backer can be in. They are worded as one, and
+   * they are told apart from the generic fallback so that the interface never
+   * offers "try again" for something that will fail identically every time.
+   */
+  readonly clientBug: boolean;
 }
 
 /** Reads `meta.availableAlternatives` without trusting its shape. */
@@ -66,12 +99,27 @@ function alternativesIn(problem: Problem | null): readonly string[] {
   return value.filter((entry): entry is string => typeof entry === 'string');
 }
 
+/**
+ * `retryAfterSeconds` as milliseconds, without trusting its shape.
+ *
+ * The body is JSON that has been cast, not parsed, so a string or a negative
+ * number is possible in the same way any field is; a wait computed from one
+ * would be `NaN` and would be handed to `setTimeout`, which treats it as zero
+ * and turns a considered pause into a hot loop.
+ */
+function retryAfterMsIn(problem: Problem | null): number | null {
+  const seconds = problem?.retryAfterSeconds;
+  if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < 0) return null;
+  return Math.round(seconds * 1000);
+}
+
 interface Wording {
   title: string;
   detail: string;
   recovery: Recovery;
   field?: 'contribution' | 'destination';
   retireKey?: boolean;
+  clientBug?: boolean;
 }
 
 /**
@@ -132,6 +180,51 @@ const WORDING: Record<string, Wording> = {
     detail: 'It is confirmed or cancelled, so there is nothing left to confirm.',
     recovery: 'none',
   },
+  /*
+   * The four #52 answered that the contract did not specify, and that this
+   * client was merged without (#204). All four are reachable from both payment
+   * mutations, which is why they are here beside the ones the contract named
+   * rather than in a second table keyed by endpoint.
+   */
+  IDEMPOTENT_REQUEST_IN_PROGRESS: {
+    // What a double-click produces: the first request still holds the claim on
+    // the key and the second is told to ask again. Nothing is wrong, nothing is
+    // duplicated, and the work the backer asked for is already being done — so
+    // this is worded as a wait rather than as a failure, and the caller does the
+    // waiting rather than putting the sentence on the screen for a state that
+    // usually lasts a few hundred milliseconds.
+    title: 'Your first attempt is still going',
+    detail:
+      'The same request is already being carried out. Nothing has been pledged twice, and waiting a moment and asking again is safe.',
+    recovery: 'wait-and-retry',
+  },
+  IDEMPOTENCY_KEY_REQUIRED: {
+    title: 'This page sent an incomplete request',
+    detail:
+      'A header this request needs was missing, which is a fault in this site rather than anything you did. Nothing was reserved and no card was involved. Reloading the page is the only thing that will help.',
+    recovery: 'none',
+    clientBug: true,
+  },
+  IDEMPOTENCY_KEY_INVALID: {
+    title: 'This page sent a malformed request',
+    detail:
+      'A header this request needs was not in the form the service accepts, which is a fault in this site rather than anything you did. Nothing was reserved and no card was involved. Reloading the page is the only thing that will help.',
+    recovery: 'none',
+    clientBug: true,
+  },
+  PLEDGE_MODIFIED: {
+    /*
+     * §8.4's sweep expiring a draft in the very moment its backer confirms it.
+     * The service refuses to report a cause it has inferred rather than
+     * observed, so this wording does not claim the hold expired either — it says
+     * what is certainly true, and offers the recovery that is right whether the
+     * sweep or something else wrote to the pledge.
+     */
+    title: 'This pledge changed while you were confirming it',
+    detail:
+      'Something else wrote to it first — most often the five-minute hold running out as you confirmed. Nothing was confirmed and no card was involved. Reserve it again to carry on.',
+    recovery: 'redraft',
+  },
 };
 
 /**
@@ -155,6 +248,8 @@ export function describeFailure(cause: unknown): CheckoutFailure {
       alternatives: [],
       field: null,
       retireKey: false,
+      retryAfterMs: null,
+      clientBug: false,
     };
   }
 
@@ -173,6 +268,8 @@ export function describeFailure(cause: unknown): CheckoutFailure {
         alternatives: [],
         field: null,
         retireKey: false,
+        retryAfterMs: null,
+        clientBug: false,
       };
     }
 
@@ -187,6 +284,8 @@ export function describeFailure(cause: unknown): CheckoutFailure {
       alternatives: alternativesIn(problem),
       field: null,
       retireKey: false,
+      retryAfterMs: retryAfterMsIn(problem),
+      clientBug: false,
     };
   }
 
@@ -195,7 +294,7 @@ export function describeFailure(cause: unknown): CheckoutFailure {
     status: cause.status,
     title: wording.title,
     /*
-     * OURS, NOT THE SERVICE'S, FOR THE EIGHT CODES ABOVE — and this is the one
+     * OURS, NOT THE SERVICE'S, FOR THE CODES ABOVE — and this is the one
      * place this repository overrides RFC 9457 prose. The service's sentence
      * states the fact ("the Super Early Bird tier has no remaining places");
      * the screen is already stating that fact, because the tier is marked sold
@@ -209,5 +308,7 @@ export function describeFailure(cause: unknown): CheckoutFailure {
     alternatives: alternativesIn(problem),
     field: wording.field ?? null,
     retireKey: wording.retireKey ?? false,
+    retryAfterMs: retryAfterMsIn(problem),
+    clientBug: wording.clientBug ?? false,
   };
 }

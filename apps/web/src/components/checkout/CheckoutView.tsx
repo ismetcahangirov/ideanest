@@ -11,7 +11,7 @@ import {
   TextInput,
 } from '@ideanest/ui';
 import { formatMoney, type AmountRejection } from '../../lib/money';
-import type { PublicReward } from '../../lib/pledges/api';
+import type { PledgeResponse, PublicReward } from '../../lib/pledges/api';
 import type { CheckoutFailure } from '../../lib/pledges/failure';
 import { destinationOptions, toAmounts, type QuoteRefusal } from '../../lib/pledges/quote';
 import { AddonChoice } from './AddonChoice';
@@ -110,6 +110,34 @@ function refusalMessage(refusal: QuoteRefusal): string {
   }
 }
 
+/**
+ * What the confirmation says about the card, READ FROM THE PLEDGE.
+ *
+ * Both sentences used to be written here, and both were true — no card is
+ * collected anywhere in this build and §9.2 moves no money at confirmation in
+ * any case. Written here they are claims this screen makes about a service it
+ * cannot see, and they stay on the screen until somebody remembers to change
+ * them; #55 is exactly the change that would make the first one false. So the
+ * response's `cardVerified` and `paymentMethodId` decide the wording, and the
+ * day the service starts verifying cards the screen stops saying it does not.
+ *
+ * NEITHER SENTENCE MAY SOFTEN INTO "THANK YOU FOR YOUR PAYMENT". §9.2 collects
+ * nothing until the campaign succeeds, whatever these two fields say, and a
+ * confirmation that implied otherwise would have somebody budgeting for money
+ * that has not left their account.
+ */
+function cardStatement(pledge: PledgeResponse): { readonly card: string; readonly method: string } {
+  return {
+    card: pledge.cardVerified
+      ? 'Your card was checked and released, not charged.'
+      : 'No card has been charged.',
+    method:
+      pledge.paymentMethodId == null
+        ? 'No payment method was collected, and nothing is taken unless the campaign reaches its goal by its deadline.'
+        : 'The payment method you gave is kept for later, and nothing is taken unless the campaign reaches its goal by its deadline.',
+  };
+}
+
 /** The failure banner, with whatever the recovery for this code happens to be. */
 function FailureNotice({
   failure,
@@ -148,7 +176,14 @@ function FailureNotice({
         </div>
       )}
 
-      {failure.recovery === 'retry' && (
+      {/*
+        `wait-and-retry` is offered as an ordinary "try again" and not as a
+        second kind of button. Reaching this notice at all means the hook has
+        already waited and re-sent the request as many times as it is willing
+        to, so what is left for the backer is exactly what `retry` offers: send
+        it once more, under the same key, which is safe.
+      */}
+      {(failure.recovery === 'retry' || failure.recovery === 'wait-and-retry') && (
         <div className="mt-3">
           <Pill size="sm" variant="ghost" onClick={onRetry}>
             Try again
@@ -256,6 +291,8 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
         ? toAmounts(quote.quote)
         : null;
 
+  const statement = checkout.pledge === null ? null : cardStatement(checkout.pledge);
+
   const destinationLabel =
     checkout.destination === null ? null : countryName(checkout.destination, regionNames);
 
@@ -324,8 +361,8 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
       <p role="status" aria-live="polite" className="sr-only">
         {checkout.phase === 'reserved'
           ? 'Your reward is reserved for five minutes. Review your pledge and confirm it.'
-          : checkout.phase === 'confirmed'
-            ? 'Your pledge is confirmed. No card has been charged.'
+          : checkout.phase === 'confirmed' && statement !== null
+            ? `Your pledge is confirmed. ${statement.card}`
             : ''}
       </p>
 
@@ -338,7 +375,7 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
               failure={checkout.failure}
               alternatives={alternatives}
               onChoose={checkout.chooseReward}
-              onRetry={() => checkout.reserve()}
+              onRetry={checkout.retry}
               onReserveAgain={() => checkout.reserve({ fresh: true })}
             />
           )}
@@ -505,7 +542,7 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
             </>
           )}
 
-          {step === 3 && checkout.pledge !== null && (
+          {step === 3 && checkout.pledge !== null && statement !== null && (
             <>
               <InlineAlert variant="success" title="Your pledge is confirmed">
                 <p>
@@ -515,21 +552,21 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
 
               {/*
                 THE SENTENCE THAT MUST NOT BE SOFTENED. §9.2: nothing is collected
-                until the campaign succeeds, and this build has not even taken a
-                card. A confirmation screen that says "thank you for your payment"
-                would have somebody budgeting for money that has not left their
-                account, and would have them looking for a refund that has nothing
-                to refund.
+                until the campaign succeeds. A confirmation screen that says
+                "thank you for your payment" would have somebody budgeting for
+                money that has not left their account, and would have them looking
+                for a refund that has nothing to refund.
+
+                Both halves of it are READ FROM THE PLEDGE — see `cardStatement`.
               */}
               <section aria-labelledby="checkout-what-happens" className="flex flex-col gap-2">
                 <h2 id="checkout-what-happens" className="text-sm font-medium text-white">
                   What happens now
                 </h2>
                 <p className="text-sm text-white/64">
-                  <strong className="text-white">No card has been charged.</strong> No payment
-                  method was collected, and nothing is taken unless the campaign reaches its goal by
-                  its deadline. If it does, you will be told before anything is collected. If it
-                  does not, nothing happens at all.
+                  <strong className="text-white">{statement.card}</strong> {statement.method} If it
+                  does, you will be told before anything is collected. If it does not, nothing
+                  happens at all.
                 </p>
               </section>
 

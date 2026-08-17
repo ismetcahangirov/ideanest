@@ -28,10 +28,10 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-function problem(body: unknown, status: number): Response {
+function problem(body: unknown, status: number, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'content-type': 'application/problem+json' },
+    headers: { 'content-type': 'application/problem+json', ...headers },
   });
 }
 
@@ -148,6 +148,57 @@ describe('createPledgeDraft', () => {
     expect(thrown.status).toBe(409);
     expect(thrown.problem?.code).toBe('REWARD_SOLD_OUT');
     expect(thrown.problem?.meta?.['availableAlternatives']).toEqual(['reward-2']);
+  });
+
+  it('keeps the Retry-After a busy key was refused with', async () => {
+    /*
+     * `409 IDEMPOTENT_REQUEST_IN_PROGRESS` is the only refusal on these two
+     * endpoints that says when to try again, and it says it in a HEADER. A
+     * client that read only the body would wait for a number of its own
+     * choosing — and this is the refusal a double-click produces, so the number
+     * is the difference between a backer seeing nothing and being shown a
+     * failure for something that was about to succeed.
+     */
+    fetchMock.mockResolvedValueOnce(
+      problem(
+        {
+          title: 'Request already in progress',
+          status: 409,
+          code: 'IDEMPOTENT_REQUEST_IN_PROGRESS',
+        },
+        409,
+        { 'Retry-After': '1' },
+      ),
+    );
+
+    const thrown = await createPledgeDraft(DRAFT, 'key-1').catch((cause: unknown) => cause);
+
+    expect(thrown).toBeInstanceOf(ApiError);
+    if (!(thrown instanceof ApiError)) return;
+    // Read onto the problem, so that a caller has one place to look whether the
+    // service mirrored it into the body or not.
+    expect(thrown.problem?.retryAfterSeconds).toBe(1);
+  });
+
+  it('prefers the header to the body when a proxy has rewritten one of them', async () => {
+    fetchMock.mockResolvedValueOnce(
+      problem(
+        {
+          status: 409,
+          code: 'IDEMPOTENT_REQUEST_IN_PROGRESS',
+          retryAfterSeconds: 1,
+        },
+        409,
+        { 'Retry-After': '4' },
+      ),
+    );
+
+    const thrown = await createPledgeDraft(DRAFT, 'key-1').catch((cause: unknown) => cause);
+
+    if (!(thrown instanceof ApiError)) throw new Error('expected an ApiError');
+    // The header describes the response that actually arrived; the body is a
+    // convenience copy of what the origin meant to say.
+    expect(thrown.problem?.retryAfterSeconds).toBe(4);
   });
 });
 

@@ -53,10 +53,83 @@ import {
  * carries the full argument, including the one case where a key must be retired:
  * a reservation that expired is a new intent, not a retry, and replaying its key
  * would hand back the draft that just expired.
+ *
+ * <h2>The one refusal this hook answers by itself</h2>
+ *
+ * `IDEMPOTENT_REQUEST_IN_PROGRESS` is what a double-click produces: the first
+ * request still holds the claim on the key, and the second is told to ask again
+ * in a moment. It is not a state a backer can do anything about — their pledge
+ * is being made, exactly once, by the attempt that got there first — so it is
+ * waited out here rather than shown. `attemptWithRetry` below does the waiting,
+ * with the SAME key — which is what the keyring makes possible: the key belongs
+ * to the intent, the intent has not changed, and nothing is retired between
+ * tries.
  */
 
 /** The value the "no reward" radio carries. A tier id is a UUID and cannot collide. */
 export const NO_REWARD = 'none';
+
+/**
+ * How long to wait when the service asked us to wait but did not say how long.
+ *
+ * One second, which is what the service's own `Retry-After` carries: the work
+ * being waited on is a database transaction.
+ */
+const DEFAULT_RETRY_AFTER_MS = 1000;
+
+/**
+ * The longest single wait, however long the service asked for.
+ *
+ * A `Retry-After` of a minute would leave a backer looking at "Reserving…" with
+ * nothing happening, and somebody looking at that reloads the page — which is
+ * the one thing that loses the in-memory key and turns a safe replay into a
+ * second request. Trying sooner than asked costs at worst one more refusal, and
+ * the number of those is bounded on the line below.
+ */
+const MAX_RETRY_AFTER_MS = 5000;
+
+/**
+ * How many times a request is re-sent after `IDEMPOTENT_REQUEST_IN_PROGRESS`.
+ *
+ * BOUNDED, and this is the point of the constant. The refusal says "the first
+ * attempt is still running", so a client that retried on a loop would keep
+ * asking for as long as the first attempt is stuck — which is precisely when
+ * asking is least useful. After this many the failure is shown, with the button
+ * that sends it again if the backer wants to.
+ */
+const IN_PROGRESS_RETRY_LIMIT = 3;
+
+/** Either what the request returned, or what refused it. */
+type Attempted<T> =
+  | { readonly ok: true; readonly value: T }
+  | { readonly ok: false; readonly failure: CheckoutFailure };
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Runs a request, waiting out the refusal that means it is already running.
+ *
+ * `run` is called again rather than its promise retained, and it reads the key
+ * from the keyring each time — which returns the same key, because the intent is
+ * the same and nothing retires it here. That is the whole guarantee: a retry
+ * under a fresh key would be a second pledge.
+ */
+async function attemptWithRetry<T>(run: () => Promise<T>): Promise<Attempted<T>> {
+  for (let retries = 0; ; retries += 1) {
+    try {
+      return { ok: true, value: await run() };
+    } catch (cause) {
+      const failure = describeFailure(cause);
+      if (failure.recovery !== 'wait-and-retry' || retries >= IN_PROGRESS_RETRY_LIMIT) {
+        return { ok: false, failure };
+      }
+
+      await wait(Math.min(failure.retryAfterMs ?? DEFAULT_RETRY_AFTER_MS, MAX_RETRY_AFTER_MS));
+    }
+  }
+}
 
 export type CatalogueStatus = 'loading' | 'ready' | 'failed';
 
@@ -116,6 +189,15 @@ export interface CheckoutState {
   /** Reserve stock and quote. `fresh` retires the key first — see the file comment. */
   readonly reserve: (options?: { readonly fresh?: boolean }) => void;
   readonly confirm: () => void;
+  /**
+   * Send the request that failed again, whichever it was.
+   *
+   * The interface offers one "try again" and the two mutations are two
+   * different requests: a confirmation that was refused is not retried by
+   * reserving. Both are safe to repeat — that is what the key is for — but
+   * repeating the wrong one leaves the backer on a screen that has not moved.
+   */
+  readonly retry: () => void;
   /** Back to the form with the reservation abandoned, so it can be made again. */
   readonly startOver: () => void;
 }
@@ -149,6 +231,13 @@ export function useCheckout(projectId: string, secretTokens: readonly string[] =
    * has already asked for.
    */
   const keyring = useRef(new IdempotencyKeyring());
+
+  /*
+   * Which mutation was last sent, so that "try again" sends that one. A ref
+   * rather than state: nothing on the screen depends on it, and re-rendering
+   * when a request starts would be a render nobody asked for.
+   */
+  const lastMutation = useRef<'reserve' | 'confirm'>('reserve');
 
   /*
    * The secret tokens, serialised, so the effect below depends on their VALUE
@@ -312,6 +401,8 @@ export function useCheckout(projectId: string, secretTokens: readonly string[] =
       const body = draftBody;
       if (body === null) return;
 
+      lastMutation.current = 'reserve';
+
       if (options?.fresh === true) {
         // A new reservation after an expiry is a NEW intent that happens to look
         // exactly like the old one. Without this, the replayed key would answer
@@ -323,17 +414,20 @@ export function useCheckout(projectId: string, secretTokens: readonly string[] =
       setFailure(null);
 
       void (async () => {
-        try {
-          const created = await createPledgeDraft(body, keyring.current.keyFor(body));
-          setPledge(created);
-          setPhase('reserved');
-        } catch (cause) {
-          const described = describeFailure(cause);
-          if (described.retireKey) keyring.current.retire(body);
+        const outcome = await attemptWithRetry(() =>
+          createPledgeDraft(body, keyring.current.keyFor(body)),
+        );
 
-          setFailure(described);
-          setPhase('selecting');
+        if (outcome.ok) {
+          setPledge(outcome.value);
+          setPhase('reserved');
+          return;
         }
+
+        if (outcome.failure.retireKey) keyring.current.retire(body);
+
+        setFailure(outcome.failure);
+        setPhase('selecting');
       })();
     },
     [draftBody],
@@ -344,49 +438,72 @@ export function useCheckout(projectId: string, secretTokens: readonly string[] =
     const body = draftBody;
     if (current === null) return;
 
+    lastMutation.current = 'confirm';
+
+    /*
+     * WHAT THE PLEDGE ALREADY CARRIES, echoed back. Null today and null on
+     * everything this build can make — there is no provider to produce a payment
+     * method id, #55 owns the card and is blocked on #60 — but read from the
+     * response rather than written here, so that the day a draft carries one the
+     * confirmation sends it instead of quietly discarding it.
+     */
+    const paymentMethodId = current.paymentMethodId ?? null;
+
     /*
      * The confirm intent is the pledge AND the body. Keying it on the body alone
      * would let two different pledges — the one that expired and the one made to
      * replace it — share a key, and the second confirmation would be answered
      * with the first one's result.
      */
-    const intent = { pledgeId: current.id, paymentMethodId: null };
+    const intent = { pledgeId: current.id, paymentMethodId };
 
     setPhase('confirming');
     setFailure(null);
 
     void (async () => {
-      try {
-        const confirmed = await confirmPledge(
-          current.id,
-          // Null, and honestly so: there is no provider to produce a payment
-          // method id. #55 owns the card and is blocked on #60 — see
-          // `PaymentStep`, which says the same thing to the backer.
-          { paymentMethodId: null },
-          keyring.current.keyFor(intent),
-        );
-        setPledge(confirmed);
+      const outcome = await attemptWithRetry(() =>
+        confirmPledge(current.id, { paymentMethodId }, keyring.current.keyFor(intent)),
+      );
+
+      if (outcome.ok) {
+        setPledge(outcome.value);
         setPhase('confirmed');
-      } catch (cause) {
-        const described = describeFailure(cause);
-        if (described.retireKey) keyring.current.retire(intent);
-
-        if (described.recovery === 'redraft') {
-          // The reservation is gone, so the draft it belonged to is gone with
-          // it. Both keys are retired: the confirm's above, and the draft's here,
-          // so that reserving again asks for a new pledge rather than replaying
-          // the expired one.
-          if (body !== null) keyring.current.retire(body);
-          setPledge(null);
-          setPhase('selecting');
-        } else {
-          setPhase('reserved');
-        }
-
-        setFailure(described);
+        return;
       }
+
+      const described = outcome.failure;
+      if (described.retireKey) keyring.current.retire(intent);
+
+      if (described.recovery === 'redraft') {
+        // The reservation is gone, so the draft it belonged to is gone with
+        // it. Both keys are retired: the confirm's above, and the draft's here,
+        // so that reserving again asks for a new pledge rather than replaying
+        // the expired one. `PLEDGE_MODIFIED` arrives here too: whatever wrote to
+        // the pledge, this client's copy of it is stale and the honest move is
+        // to start the reservation again rather than to confirm from memory.
+        if (body !== null) keyring.current.retire(body);
+        setPledge(null);
+        setPhase('selecting');
+      } else {
+        setPhase('reserved');
+      }
+
+      setFailure(described);
     })();
   }, [pledge, draftBody]);
+
+  /**
+   * The failed request again — the one that failed, and not the other one.
+   *
+   * "Try again" is one button and there are two mutations behind it. Both are
+   * safe to repeat, because both carry their key, but reserving in answer to a
+   * refused confirmation leaves the backer looking at a screen that has not
+   * moved and a pledge that is still unconfirmed.
+   */
+  const retry = useCallback(() => {
+    if (lastMutation.current === 'confirm') confirm();
+    else reserve();
+  }, [confirm, reserve]);
 
   /**
    * Back to the form, with the reservation left where it is.
@@ -444,6 +561,7 @@ export function useCheckout(projectId: string, secretTokens: readonly string[] =
 
     reserve,
     confirm,
+    retry,
     startOver,
   };
 }
