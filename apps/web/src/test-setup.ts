@@ -4,24 +4,33 @@ import '@testing-library/jest-dom/vitest';
  * Browser APIs jsdom does not implement, stubbed so `@ideanest/ui` components
  * render under vitest. The package's own `src/test-setup.ts` explains each of
  * these at length; this is the subset the web application actually reaches.
+ *
+ * EVERY STUB IS GUARDED, because not every test file wants a browser. A file that
+ * declares `@vitest-environment node` gets no `window` and no `Element` — the
+ * Open Graph image tests need exactly that, since `next/og` rasterises through
+ * WebAssembly that will not accept jsdom's typed arrays — and an unguarded
+ * assignment here would fail those files during setup, before a single test ran.
  */
+const isBrowserLike = typeof window !== 'undefined';
 
 /**
  * `useReducedMotion()` from `motion/react` runs on every overlay render, and
  * throws without `matchMedia`. Answering "no preference" keeps the animated
  * path under test — the reduced path is the one the browser gives for free.
  */
-window.matchMedia = (query: string): MediaQueryList =>
-  ({
-    media: query,
-    matches: false,
-    onchange: null,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    addListener: () => {},
-    removeListener: () => {},
-    dispatchEvent: () => false,
-  }) as unknown as MediaQueryList;
+if (isBrowserLike) {
+  window.matchMedia = (query: string): MediaQueryList =>
+    ({
+      media: query,
+      matches: false,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }) as unknown as MediaQueryList;
+}
 
 /**
  * `FadeUp` triggers on `whileInView`, which motion implements with an
@@ -56,6 +65,8 @@ class NoopResizeObserver {
 globalThis.ResizeObserver = NoopResizeObserver as unknown as typeof ResizeObserver;
 
 /** jsdom logs a loud "not implemented" for these, which buries real failures. */
-window.scrollTo = (): void => {};
-Element.prototype.scrollTo = (): void => {};
-Element.prototype.scrollIntoView = (): void => {};
+if (isBrowserLike) {
+  window.scrollTo = (): void => {};
+  Element.prototype.scrollTo = (): void => {};
+  Element.prototype.scrollIntoView = (): void => {};
+}
