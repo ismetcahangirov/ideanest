@@ -2,9 +2,9 @@ package az.ideanest.project.api;
 
 import az.ideanest.project.domain.StoryDocuments;
 import az.ideanest.project.domain.StoryVersion;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
@@ -58,7 +58,7 @@ public class StoryVersionResponses {
     private JsonNode documentOf(StoryVersion version) {
         try {
             return json.readTree(version.getDocument());
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             // Unreachable: PostgreSQL validates jsonb on the way in, so a row that
             // fails here was written by something that bypassed the column type.
             // Serving it as though it were fine would spread the problem.

@@ -1,9 +1,8 @@
 package az.ideanest.project.domain;
 
 import az.ideanest.shared.Slugs;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -250,11 +249,11 @@ public final class StoryDocuments {
             throw invalid(path, "A block is an object.");
         }
         JsonNode type = block.get("type");
-        if (type == null || !type.isTextual()) {
+        if (type == null || !type.isString()) {
             throw invalid(path + ".type", "A block says what kind of block it is.");
         }
 
-        switch (type.textValue()) {
+        switch (type.stringValue()) {
             case "heading" -> validateHeading(block, path, headingIds);
             case "paragraph" -> {
                 requireOnly(block, path, List.of("type", "spans"));
@@ -270,7 +269,7 @@ public final class StoryDocuments {
             case "embed" -> validateEmbed(block, path);
             default -> throw invalid(
                     path + ".type",
-                    "\"" + type.textValue() + "\" is not a kind of story block. The kinds are heading, "
+                    "\"" + type.stringValue() + "\" is not a kind of story block. The kinds are heading, "
                             + "paragraph, list, quote, rule, image, and embed.");
         }
     }
@@ -352,7 +351,7 @@ public final class StoryDocuments {
         requireOnly(block, path, List.of("type", "provider", "url", "title"));
 
         JsonNode provider = block.get("provider");
-        if (provider == null || !provider.isTextual() || !EMBED_PROVIDERS.contains(provider.textValue())) {
+        if (provider == null || !provider.isString() || !EMBED_PROVIDERS.contains(provider.stringValue())) {
             throw invalid(
                     path + ".provider",
                     "Embeds are supported from " + String.join(" and ", sorted())
@@ -394,7 +393,7 @@ public final class StoryDocuments {
             requireOnly(span, spanPath, List.of("text", "marks"));
 
             JsonNode text = span.get("text");
-            if (text == null || !text.isTextual()) {
+            if (text == null || !text.isString()) {
                 throw invalid(spanPath + ".text", "A span needs its text.");
             }
 
@@ -406,7 +405,7 @@ public final class StoryDocuments {
                 throw invalid(spanPath + ".marks", "A span lists its marks, as an empty array when it has none.");
             }
             for (JsonNode mark : marks) {
-                if (!mark.isTextual() || !MARKS.contains(mark.textValue())) {
+                if (!mark.isString() || !MARKS.contains(mark.stringValue())) {
                     throw invalid(
                             spanPath + ".marks",
                             "\"" + textOrEmpty(mark) + "\" is not a mark. The marks are strong and em.");
@@ -427,9 +426,7 @@ public final class StoryDocuments {
      * renderer might read.
      */
     private static void requireOnly(JsonNode node, String path, List<String> allowed) {
-        Iterator<String> names = node.fieldNames();
-        while (names.hasNext()) {
-            String name = names.next();
+        for (String name : node.propertyNames()) {
             if (!allowed.contains(name)) {
                 throw invalid(
                         path.isEmpty() ? name : path + "." + name,
@@ -440,10 +437,10 @@ public final class StoryDocuments {
     }
 
     private static String requireNonBlankText(JsonNode node, String path, String message) {
-        if (node == null || !node.isTextual() || node.textValue().isBlank()) {
+        if (node == null || !node.isString() || node.stringValue().isBlank()) {
             throw invalid(path, message);
         }
-        return node.textValue();
+        return node.stringValue();
     }
 
     private static void requirePositiveInt(JsonNode node, String path) {
@@ -508,7 +505,7 @@ public final class StoryDocuments {
     }
 
     private static String textOrEmpty(JsonNode node) {
-        return node == null || !node.isTextual() ? "" : node.textValue();
+        return node == null || !node.isString() ? "" : node.stringValue();
     }
 
     private static List<String> sorted() {

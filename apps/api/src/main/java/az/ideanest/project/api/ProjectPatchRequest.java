@@ -3,7 +3,7 @@ package az.ideanest.project.api;
 import az.ideanest.project.application.ProjectPatch;
 import az.ideanest.shared.Money;
 import az.ideanest.shared.Patched;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import java.time.Instant;
 import java.util.UUID;
 

@@ -13,7 +13,7 @@ import az.ideanest.project.infrastructure.SubcategoryRepository;
 import az.ideanest.shared.Money;
 import az.ideanest.shared.Patched;
 import az.ideanest.shared.Slugs;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import java.math.BigDecimal;
 import java.util.EnumSet;
 import java.util.Set;

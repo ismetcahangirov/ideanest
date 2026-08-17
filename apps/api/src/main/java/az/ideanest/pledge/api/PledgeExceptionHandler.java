@@ -173,7 +173,7 @@ public class PledgeExceptionHandler {
      */
     @ExceptionHandler(ShippingDestinationUnpricedException.class)
     public ProblemDetail handleUnpricedDestination(ShippingDestinationUnpricedException exception) {
-        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_ENTITY);
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_CONTENT);
         problem.setType(URI.create("https://ideanest.az/problems/shipping-destination-unpriced"));
         problem.setTitle("Destination not priced");
         problem.setDetail(exception.destinationCountry() == null
@@ -197,7 +197,7 @@ public class PledgeExceptionHandler {
      */
     @ExceptionHandler(ContributionBelowRewardPriceException.class)
     public ProblemDetail handleContributionTooLow(ContributionBelowRewardPriceException exception) {
-        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_ENTITY);
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_CONTENT);
         problem.setType(URI.create("https://ideanest.az/problems/contribution-below-reward-price"));
         problem.setTitle("Contribution below the reward's price");
         problem.setDetail("This reward costs more than the amount offered.");

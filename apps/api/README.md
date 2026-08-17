@@ -1,6 +1,6 @@
 # `apps/api` — IdeaNest API
 
-Java 21, Spring Boot 3.5, Gradle. The backend for the web, mobile, and admin
+Java 21, Spring Boot 4.1, Gradle. The backend for the web, mobile, and admin
 clients. The full specification is in [`docs/architecture.md`](../../docs/architecture.md).
 
 ---

@@ -1,7 +1,7 @@
 package az.ideanest.shared.idempotency;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -278,7 +278,12 @@ public class IdempotentRequests {
         } catch (NoSuchAlgorithmException impossible) {
             // Every Java platform is required to provide SHA-256.
             throw new IllegalStateException(DIGEST + " is not available", impossible);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
+            // Jackson 3's exceptions are unchecked, so nothing forces this catch to
+            // exist any more. It stays deliberately: a request that cannot be
+            // serialised must fail before the key is claimed, saying why, rather
+            // than surfacing as a Jackson error from the middle of a payment
+            // mutation.
             throw new IllegalStateException("A request that cannot be serialised cannot be fingerprinted", e);
         }
     }
@@ -287,7 +292,11 @@ public class IdempotentRequests {
     private String serialise(Object result) {
         try {
             return json.writeValueAsString(result);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
+            // Unchecked in Jackson 3, and still caught: this runs inside the work's
+            // transaction, and run() releases the claim on any RuntimeException.
+            // Letting a raw Jackson error through would release the claim just the
+            // same but lose the sentence that says which half failed.
             throw new IllegalStateException("A response that cannot be serialised cannot be recorded", e);
         }
     }
