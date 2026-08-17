@@ -252,6 +252,18 @@ once. Refresh is single-flight: refresh tokens rotate on use and a reused one is
 treated as stolen, so two concurrent refreshes would end the session family
 between them.
 
+**The two helpers cache differently, and neither serves a stale body.**
+`authorizedFetch` sends `cache: 'no-store'`: an account read carries no validator
+to revalidate against, so storing the response buys nothing and a stale device
+list on a security screen is the one thing that page must never show.
+`publicFetch` sends `cache: 'no-cache'`, which still forces a revalidation on
+every single request but lets that revalidation be conditional. Public reads
+carry `ETag` and `Cache-Control` per `docs/architecture.md` §10.3 — the reward
+list is `private, no-cache` — so an unchanged list is answered `304` with no body
+instead of re-sending every tier, item and shipping rule on each poll of a live
+stock count. `no-store` here would make that `304` unreachable, which is what
+#200 fixed.
+
 ## Styling
 
 `src/app/globals.css` imports `@ideanest/ui/styles.css` and nothing else. That
