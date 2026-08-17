@@ -5,8 +5,12 @@ import az.ideanest.shared.Slugs;
 import az.ideanest.user.domain.User;
 import az.ideanest.user.infrastructure.UserRepository;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,6 +65,36 @@ public class UserAccounts {
     @Transactional(readOnly = true)
     public Optional<UserAccount> findById(UUID id) {
         return users.findByIdAndDeletedAtIsNull(id).map(UserAccounts::toAccount);
+    }
+
+    /**
+     * The accounts behind a set of identifiers, keyed by identifier.
+     *
+     * <p>The batch counterpart of {@link #findById}, added by #57 so that a page of
+     * pledges can be resolved into a page of backers in one query rather than one
+     * per row.
+     *
+     * <p><strong>A map, not a list</strong>, because every caller of this is about
+     * to look each account up by the identifier it already holds — and a caller
+     * given a list would build the same map, or would scan it and reintroduce the
+     * N+1 this method exists to remove.
+     *
+     * <p><strong>An absent key is the answer, not an error.</strong> A deleted or
+     * anonymised account is excluded by the repository, so an identifier that a
+     * financial row still references quite legitimately resolves to nothing — that
+     * is precisely what §17.4's anonymisation does, and a caller that must render
+     * something anyway is the one that knows what.
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, UserAccount> findAllById(Collection<UUID> ids) {
+        if (ids.isEmpty()) {
+            // Spring Data would issue `IN ()`, which PostgreSQL parses and which
+            // costs a round trip to learn what the caller already knows.
+            return Map.of();
+        }
+        return users.findByIdInAndDeletedAtIsNull(ids).stream()
+                .map(UserAccounts::toAccount)
+                .collect(Collectors.toMap(UserAccount::id, Function.identity()));
     }
 
     /** Whether an address is spoken for, including by a closed account. */
