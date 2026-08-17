@@ -449,7 +449,7 @@ sequenceDiagram
 | PL-01 | Reward tier selection | Live stock check |
 | PL-02 | Pledge without a reward | Support only |
 | PL-03 | Bonus support above the tier price | |
-| PL-04 | Add-on selection with quantities | Campaign or pledge manager |
+| PL-04 | Add-on selection with quantities | Campaign or pledge manager; a limited add-on holds stock like a tier |
 | PL-05 | Shipping destination | Drives the shipping charge |
 | PL-06 | Total calculation | Reward + add-ons + shipping + tax |
 | PL-07 | Card entry or stored card | Card data never reaches our servers |
@@ -483,6 +483,21 @@ sequenceDiagram
 > TTL)" is what happens, and the five minutes are configuration
 > (`ideanest.pledge.reservation.ttl`). V17's header carries the whole argument and
 > the reverse.
+
+> **PL-13 covers PL-04's add-ons too, and for one release it did not (#203).** An
+> add-on is a `reward_tiers` row with `is_addon` set, so a limited one has the same
+> `limit_quantity` and the same constraint over the same two counters — but #52 quoted
+> it without holding it, and nothing incremented anything, so two backers could each
+> take the last one and the database could not refuse either. What a pledge reserves
+> is now every tier it names: one place on its reward, and PL-04's quantity on each
+> add-on, taken and released together. All of a quantity or none of it, so a backer
+> asking for three of something with two left is refused rather than sold two —
+> §10.4's `REWARD_SOLD_OUT`, naming the add-on and offering the campaign's other
+> add-ons rather than its reward tiers, which are not a substitute for one.
+>
+> The five minutes are unchanged and are the draft's, not the line's: an abandoned
+> checkout gives back its reward's place and its add-ons' quantities in the same sweep
+> and the same transaction. See §7.2's `pledge_addons`.
 
 > **PL-14 is built (#52), and it is more than a unique column.** §10.3 has the four
 > answers a key can produce and §7.2 has the table; the part worth stating beside
@@ -539,9 +554,18 @@ sequenceDiagram
 > does — and the sum, which is what the limit is checked against, still looks
 > correct.
 >
-> **Add-ons are still not reserved, and #56 changed that neither way.** Editing an
-> add-on's quantity moves no count, exactly as selecting it never did, and
-> cancelling releases nothing for it because nothing was held. The gap is #203.
+> **Add-ons move the same two columns (#203), and an edit moves the difference.**
+> Cancelling gives back every place the pledge held — the reward's and each add-on's
+> quantity — from whichever column was counting them. An edit takes what the new
+> selection needs more of and releases what it needs less of: two mugs held and three
+> wanted takes one more, two held and one wanted gives one back, and an edit that
+> changes only a destination or a name writes to `reward_tiers` not at all.
+>
+> **Everything is taken before anything is given back**, across every line at once and
+> not merely for the reward. That is the same rule as switching tiers and for the same
+> reason: an edit that is refused — because the add-on the backer wanted more of has
+> run out — must leave them holding exactly what they had, and the other order would
+> briefly leave them holding nothing.
 
 > **PL-12 is built (#57), and what it needed was not a column.** `is_anonymous` was
 > already stored and already accepted from `POST /v1/pledges/draft` (#52). What was
@@ -1374,6 +1398,19 @@ Atomic units: `id`, `project_id`, `name`, `description`, `image_id`,
 > `reserved_quantity` under a row lock and relies on this constraint refusing the
 > transaction when it gets that wrong. A null `limit_quantity` is unlimited.
 >
+> **The counters apply to an add-on exactly as to a reward (#203)**, because an
+> add-on is one of these rows with `is_addon` set. The difference is the quantity: a
+> pledge holds one place on its reward tier — §7.2 gives it a single `reward_tier_id`
+> — and `pledge_addons.quantity` places on each add-on, so every statement that moves
+> stock moves *n* and evaluates `claimed + reserved + n <= limit` inside the `UPDATE`.
+> At *n* = 1 that is the expression #51 shipped. See `pledge_addons` below.
+>
+> **What the constraint cannot catch is stock that is never written.** It bounds a
+> number; it cannot notice that nothing incremented it, which is exactly how a limited
+> add-on oversold for one release. The count agreeing with the pledges is a property
+> of the code and is asserted by `ReservationTests` with real threads, because nothing
+> in this schema can hold it.
+>
 > `claimed_quantity` and `reserved_quantity` are written by the pledge module and by
 > reservation, never by the campaign editor: they are mapped read-only, which is also
 > why duplicating a tier cannot copy them.
@@ -1462,11 +1499,28 @@ backer per project.
 > that reason, so an add-on from another campaign cannot be recorded against this
 > one.
 >
-> **Nothing reserves stock on an add-on yet.** §4.5's PL-13 holds a place on the
-> reward tier; a limited add-on is quoted and not held, because reserving *n* places
-> needs a conditional statement of its own, a matching release, and a sweep that
-> walks this table to give them back — a change to the expiry path rather than an
-> addition to the checkout.
+> **`quantity` is stock, and it is held (#203).** An add-on is a `reward_tiers` row
+> with `is_addon` set, so it carries `limit_quantity`, `claimed_quantity` and
+> `reserved_quantity` like any other tier and the constraint above applies to it. For
+> one release it did not: #52 quoted an add-on into `addons_amount` and wrote the line
+> here, and nothing ever moved the tier's counters — so two backers could each take
+> the last of a limited add-on, and the constraint could not refuse it, because the
+> number it guards never changed. What a pledge holds is therefore not one place but a
+> map from tier to a count: one for the reward, `quantity` for each of these rows.
+>
+> The five paths that move it are the reward tier's five, taking *n* places rather
+> than one: the draft takes them, confirmation moves them from reserved to claimed,
+> cancellation gives them back from whichever column held them, an edit moves the
+> **difference** in each direction, and §8.4's `reservation-cleaner` walks this table
+> when a draft lapses. All of *n* or none of it — a backer who asked for three of
+> something with two left is refused, not quietly sold two, because three is what they
+> were quoted and what the creator was told to ship.
+>
+> **The rows are taken in one order, by `reward_tier_id`.** Two checkouts selecting
+> the same two add-ons in opposite orders would each hold the row the other wanted
+> next; PostgreSQL would break the deadlock by aborting one of them, and the backer
+> who lost would get a 500 on a campaign with stock to spare. A single global order
+> makes the cycle unconstructible.
 
 #### `payment_methods`
 `id`, `user_id`, `provider`, `provider_token` (**token only, never a card
@@ -1716,10 +1770,16 @@ load profile).
 
 > **`reservation-cleaner` is built (#51), on the same terms.** It sweeps every
 > DRAFT pledge whose `reservation_expires_at` has passed, expiring the pledge and
-> giving its place back to the reward tier in one transaction around one row —
-> a draft that says `EXPIRED` while `reserved_quantity` still counts it is a
-> place nothing will ever release. The claim is the same conditional update, so
-> two replicas sweeping at once credit the tier once.
+> giving its places back in one transaction around one row — a draft that says
+> `EXPIRED` while `reserved_quantity` still counts it is a place nothing will ever
+> release. The claim is the same conditional update, so two replicas sweeping at once
+> credit the tier once.
+>
+> **Its places, plural, since #203**: it walks `pledge_addons` as well as the pledge's
+> reward tier. A sweep that released the reward's place and left a limited add-on's
+> quantity held would leak stock for the life of the campaign, and no constraint in
+> V7 can see stock that is merely never given back — the count would simply be wrong,
+> quietly.
 >
 > **This job is the price of §4.5's reservation living in PostgreSQL rather than
 > in a key with a TTL**, and it is the whole of that price. A minute late here is
@@ -3332,7 +3392,7 @@ collection failure.
 | **Ledger invariant** | Integration | Debits must equal credits in every scenario |
 | **State transitions** | Unit | Both permitted and forbidden paths |
 | **Idempotency** | Integration | The same key twice must produce one effect |
-| **Stock reservation** | Concurrency | 100 parallel pledges against 10 places must yield exactly 10 |
+| **Stock reservation** | Concurrency | 100 parallel pledges against 10 places must yield exactly 10 — and, for an add-on taken *n* at a time, exactly ⌊10 ÷ *n*⌋ |
 | **All-or-nothing finalisation** | Integration | Boundary cases: exactly at goal, one unit short |
 | **Payment flows** | Integration with a stubbed provider | Approve, decline, timeout, partial failure |
 | **Webhook idempotency** | Integration | The same event three times must produce one effect |
