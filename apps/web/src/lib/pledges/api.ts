@@ -155,9 +155,14 @@ export interface PublicRewardOptions {
  * in front of the prices.
  *
  * The response carries `ETag` and `Cache-Control: private, no-cache`, so it
- * revalidates on every request. Nothing here caches on top of that: a second
- * cache in front of live stock is how a tier reads "3 left" after it has sold
- * out.
+ * revalidates on every request — and `publicFetch` sends `cache: 'no-cache'` so
+ * that the browser honours precisely that: the stored copy is never used without
+ * asking the service first, but a list that has not moved comes back as a bodiless
+ * `304` instead of as every tier, item and shipping rule again (#200).
+ *
+ * Nothing adds a cache of its own on top of it. A second cache in front of live
+ * stock is how a tier reads "3 left" after it has sold out; a revalidation that
+ * is forced on every read is not one.
  */
 export async function getPublicRewards(
   projectId: string,
