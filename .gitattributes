@@ -20,5 +20,18 @@
 gradlew text eol=lf
 *.sh    text eol=lf
 
+# Vitest snapshots. Written by the test runner, which always writes LF, so LF
+# is what they are checked out as on every platform. Left to `text=auto` they
+# arrive as CRLF on a Windows clone, the first `pnpm test` rewrites them to LF,
+# and the file is reported as modified with no content change from then on —
+# #211's failure again, in a file that only goes wrong after a test run rather
+# than after a clone.
+#
+# It matters more here than the dirty tree suggests. A snapshot that is always
+# modified is a snapshot a reviewer learns to skip, and CLAUDE.md is explicit
+# that accepting one without reading what changed is the same failure as
+# deleting the test.
+*.snap text eol=lf
+
 # Binary, never normalised and never diffed as text.
 *.jar binary
