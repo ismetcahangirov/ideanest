@@ -100,15 +100,15 @@ public class RewardTierFacts implements RewardFacts, RewardStock {
      */
     @Override
     @Transactional
-    public boolean reserveOnePlace(UUID rewardTierId) {
-        return rewards.reserveOnePlace(rewardTierId) == 1;
+    public boolean reservePlaces(UUID rewardTierId, int places) {
+        return rewards.reservePlaces(rewardTierId, requirePlaces(places)) == 1;
     }
 
     /** {@inheritDoc} */
     @Override
     @Transactional
-    public boolean releaseOnePlace(UUID rewardTierId) {
-        return rewards.releaseOnePlace(rewardTierId) == 1;
+    public boolean releasePlaces(UUID rewardTierId, int places) {
+        return rewards.releasePlaces(rewardTierId, requirePlaces(places)) == 1;
     }
 
     /**
@@ -121,8 +121,8 @@ public class RewardTierFacts implements RewardFacts, RewardStock {
      */
     @Override
     @Transactional
-    public boolean commitOnePlace(UUID rewardTierId) {
-        return rewards.commitOnePlace(rewardTierId) == 1;
+    public boolean commitPlaces(UUID rewardTierId, int places) {
+        return rewards.commitPlaces(rewardTierId, requirePlaces(places)) == 1;
     }
 
     /**
@@ -134,15 +134,37 @@ public class RewardTierFacts implements RewardFacts, RewardStock {
      */
     @Override
     @Transactional
-    public boolean claimOnePlace(UUID rewardTierId) {
-        return rewards.claimOnePlace(rewardTierId) == 1;
+    public boolean claimPlaces(UUID rewardTierId, int places) {
+        return rewards.claimPlaces(rewardTierId, requirePlaces(places)) == 1;
     }
 
     /** {@inheritDoc} */
     @Override
     @Transactional
-    public boolean releaseOneClaimedPlace(UUID rewardTierId) {
-        return rewards.releaseOneClaimedPlace(rewardTierId) == 1;
+    public boolean releaseClaimedPlaces(UUID rewardTierId, int places) {
+        return rewards.releaseClaimedPlaces(rewardTierId, requirePlaces(places)) == 1;
+    }
+
+    /**
+     * Refuses a move of no places, or of a negative number of them.
+     *
+     * <p><strong>An exception rather than a {@code false}</strong>, and the difference
+     * matters: every caller of the five above reads {@code false} as "the tier has not
+     * got them", which for a zero would be a lie the caller then reports to a backer
+     * as {@code REWARD_SOLD_OUT}. A move of nothing is a bug in whoever computed the
+     * quantity — {@code pledge_addons_quantity_is_positive} refuses the row it would
+     * have come from — and a bug that answers 409 is a bug nobody finds.
+     *
+     * <p>It is checked here rather than in the statements because the statements would
+     * not notice. A zero satisfies both guards and both limits, updates one row,
+     * returns 1, and moves nothing at all; a negative release would <em>add</em>
+     * places to a tier, which is the one direction no constraint in V7 bounds.
+     */
+    private static int requirePlaces(int places) {
+        if (places < 1) {
+            throw new IllegalArgumentException("A stock movement is of at least one place, not " + places);
+        }
+        return places;
     }
 
     /**

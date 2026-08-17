@@ -1,16 +1,15 @@
 package az.ideanest.pledge.application;
 
 import az.ideanest.pledge.domain.Pledge;
+import az.ideanest.pledge.domain.PledgeAddon;
 import az.ideanest.pledge.infrastructure.PledgeAddonRepository;
 import az.ideanest.pledge.infrastructure.PledgeRepository;
 import az.ideanest.project.application.PledgeAcceptance;
-import az.ideanest.reward.application.RewardStock;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,12 +17,19 @@ import org.springframework.transaction.annotation.Transactional;
  * What a backer does with a pledge: make one, read it, confirm it, change it, and
  * withdraw it.
  *
- * <p>§4.5's flow, minus the two halves that belong elsewhere. Reserving the place,
- * pricing the selection and moving a place from one tier to another are
- * {@link ReservationService}, which #51 built and #52 and #56 extended; replaying a
- * retried request is {@code shared.idempotency}, which wraps every mutation here.
- * What is left is the ordering, the campaign's own answer about whether it will take
- * a pledge, and §6.2's transitions.
+ * <p>§4.5's flow, minus the two halves that belong elsewhere. Reserving the places,
+ * pricing the selection and moving places from one tier to another are
+ * {@link ReservationService}, which #51 built and #52, #56 and #203 extended;
+ * replaying a retried request is {@code shared.idempotency}, which wraps every
+ * mutation here. What is left is the ordering, the campaign's own answer about whether
+ * it will take a pledge, and §6.2's transitions.
+ *
+ * <p><strong>Nothing here writes {@code reward_tiers} any more (#203).</strong>
+ * Confirmation used to move its single place itself, which was reasonable while a
+ * pledge held one; a pledge holding places on its reward <em>and</em> on each add-on
+ * is the same map the other four stock paths move, so the fifth moved next to them.
+ * One class writes the stock columns, which is the only way the five paths can be
+ * checked against each other by reading them.
  *
  * <p><strong>{@link #requireEditable} is the one place that says whether a backer
  * may still act on a pledge.</strong> §4.5's PL-09 and PL-10 are each bounded by two
@@ -48,13 +54,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PledgeService {
 
-    private static final Logger log = LoggerFactory.getLogger(PledgeService.class);
-
     private final ReservationService reservations;
     private final PledgeAcceptance acceptance;
     private final PledgeRepository pledges;
     private final PledgeAddonRepository addons;
-    private final RewardStock stock;
     private final Clock clock;
 
     public PledgeService(
@@ -62,13 +65,11 @@ public class PledgeService {
             PledgeAcceptance acceptance,
             PledgeRepository pledges,
             PledgeAddonRepository addons,
-            RewardStock stock,
             Clock clock) {
         this.reservations = reservations;
         this.acceptance = acceptance;
         this.pledges = pledges;
         this.addons = addons;
-        this.stock = stock;
         this.clock = clock;
     }
 
@@ -109,15 +110,20 @@ public class PledgeService {
      * {@code POST /v1/pledges/{id}/confirm}: §6.2's {@code DRAFT --> CONFIRMED}.
      *
      * <p><strong>Two things happen, and they are one transaction.</strong> The held
-     * place becomes a claimed one and the pledge becomes {@code CONFIRMED}. Either
-     * alone is a lie: a confirmed pledge against a place still counted as merely
+     * places become claimed ones and the pledge becomes {@code CONFIRMED}. Either
+     * alone is a lie: a confirmed pledge against places still counted as merely
      * reserved is one the sweep would give away if it ever saw the row as a draft
-     * again, and a claimed place against a pledge still in {@code DRAFT} is stock
+     * again, and claimed places against a pledge still in {@code DRAFT} are stock
      * nobody will ever release.
      *
-     * <p><strong>The stock move is one statement</strong>, not a release followed by
-     * a claim — {@code RewardTierRepository#commitOnePlace} carries the argument for
-     * why the tier must never be momentarily short.
+     * <p><strong>Every place the pledge holds, which since #203 is the add-ons as
+     * well as the reward.</strong> The move itself is
+     * {@link ReservationService#confirm}, where the other four stock paths live; what
+     * is left here is the three refusals below and the read of the add-on lines, which
+     * are needed by the move and by the response and are read once for both. The move
+     * per tier is one statement, not a release followed by a claim —
+     * {@code RewardTierRepository#commitPlaces} carries the argument for why the tier
+     * must never be momentarily short.
      *
      * <p><strong>What §9.2 says happens here and does not yet.</strong> Phase 1 of
      * card-on-file is a verification authorisation, 3-D Secure, storing the token and
@@ -159,24 +165,12 @@ public class PledgeService {
             throw new ReservationExpiredException(pledgeId, pledge.getReservationExpiresAt());
         }
 
-        if (pledge.holdsAPlace() && !stock.commitOnePlace(pledge.getRewardTierId())) {
-            // The draft held a tier and the tier had no held place to convert. That
-            // is an invariant violation rather than a race — this transaction has the
-            // pledge and its version — so it is logged loudly and the confirmation
-            // goes ahead. Refusing would strand a backer who did everything right in
-            // front of a state only we can repair; the count is recoverable from the
-            // pledges, and a lost commitment is not.
-            log.error(
-                    "Pledge {} was confirmed against reward tier {}, which had no reserved place to commit.",
-                    pledgeId,
-                    pledge.getRewardTierId());
-        }
+        // Read once and used twice: the places to commit, and the lines the response
+        // reports. Reading them again afterwards would let what was committed and what
+        // was answered describe two different selections.
+        List<PledgeAddon> heldAddons = addons.findByPledge(pledgeId);
 
-        // Where §9.2's phase 1 goes: authorise, 3-D Secure, store the token, void.
-        // PledgeCapability.CARD_VERIFICATION — #55, blocked on #60.
-        pledge.confirm(now, paymentMethodId);
-
-        return detailOf(pledge);
+        return new PledgeDetail(reservations.confirm(pledge, heldAddons, now, paymentMethodId), heldAddons);
     }
 
     /**
@@ -232,7 +226,9 @@ public class PledgeService {
      * {@code PledgeRepository#expireLapsedDraft} matches only a row still in
      * {@code DRAFT} — so the place cannot be released twice.
      *
-     * <p>Nothing is refunded. §9.7: nothing was collected.
+     * <p>Nothing is refunded. §9.7: nothing was collected. What is given back is every
+     * place the pledge held — the reward's and each add-on's (#203) — from whichever
+     * column was counting them.
      *
      * @throws PledgeNotFoundException when the pledge is not this backer's
      * @throws PledgeNotEditableException when its state has moved past withdrawing
@@ -251,7 +247,7 @@ public class PledgeService {
         }
 
         requireEditable(pledge, now, false);
-        reservations.cancel(pledge, now);
+        reservations.cancel(pledge, addons.findByPledge(pledgeId), now);
     }
 
     /**
