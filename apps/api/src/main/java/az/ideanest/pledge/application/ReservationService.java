@@ -11,7 +11,7 @@ import az.ideanest.pledge.domain.QuotedLine;
 import az.ideanest.pledge.infrastructure.PledgeAddonRepository;
 import az.ideanest.pledge.infrastructure.PledgeRepository;
 import az.ideanest.reward.application.RewardStock;
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;

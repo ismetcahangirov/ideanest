@@ -1,7 +1,7 @@
 package az.ideanest.reward.api;
 
 import az.ideanest.reward.application.NewReward;
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;

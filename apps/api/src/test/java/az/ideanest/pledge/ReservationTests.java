@@ -12,7 +12,7 @@ import az.ideanest.pledge.application.RewardSoldOutException;
 import az.ideanest.pledge.application.UnknownRewardTierException;
 import az.ideanest.pledge.domain.Pledge;
 import az.ideanest.shared.Identifiers;
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import az.ideanest.support.AbstractIntegrationTest;
 import az.ideanest.support.AdjustableClock;
 import java.math.BigDecimal;

@@ -1,6 +1,6 @@
 package az.ideanest.pledge.domain;
 
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Locale;

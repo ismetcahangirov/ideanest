@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import az.ideanest.pledge.application.DraftPledge;
 import az.ideanest.pledge.application.PledgeService;
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import az.ideanest.shared.idempotency.IdempotencyKeySweeper;
 import az.ideanest.shared.idempotency.IdempotencyProperties;
 import az.ideanest.support.AbstractIntegrationTest;

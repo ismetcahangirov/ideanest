@@ -1,6 +1,6 @@
 package az.ideanest.project.api;
 
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import tools.jackson.databind.JsonNode;
 import java.time.Instant;

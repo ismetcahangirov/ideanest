@@ -1,7 +1,7 @@
 package az.ideanest.project.api;
 
 import az.ideanest.project.application.ProjectPatch;
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import az.ideanest.shared.Patched;
 import tools.jackson.databind.JsonNode;
 import java.time.Instant;

@@ -1584,7 +1584,7 @@ by a database constraint and verified by a nightly reconciliation job.
 |---|---|
 | PostgreSQL | ACID, exact numerics, JSONB, full-text search, PostGIS, partial indexes |
 | **`numeric(14,2)` for money** | Never floating point. Rounding error here is somebody's pledge |
-| `BigDecimal` in Java | The same discipline in the application layer |
+| `BigDecimal` in Java | The same discipline in the application layer, behind one type: `az.ideanest.shared.money.Money` (#133) |
 | UUID v7 primary keys | Sortable, index-friendly, and they do not leak volume |
 | Soft delete | Audit and recovery |
 | Selective denormalisation | Read performance; the ledger remains the source of truth |
@@ -3515,6 +3515,17 @@ it was written in.
 | Display currency | User preference, shown as an **approximation**; collection occurs in the project currency |
 | Rate source | Central bank rates, cached hourly |
 | Rate retention | The rate used is stored on the pledge, for audit |
+| **Rounding** | **`HALF_EVEN`, at the currency's minor unit.** Declared once, in `MoneyRounding`, and applied by everything that touches money |
+| Splitting | `Money.allocate` — the parts always sum to the whole; a remainder is handed out one minor unit at a time |
+| Mixed currencies | Never combined. Any arithmetic or comparison between two currencies is refused, because §21.2's rate is an approximation shown to a user and never the basis of a collection |
+
+**Why `HALF_EVEN` and not `HALF_UP`** (#133): the values being rounded are computed
+ones — §5.2's 5% platform fee, the per-collection processing fee, §9.5's split of a
+collection. `HALF_UP` resolves every halfway case away from zero, so the bias always
+favours whichever side of the split the code happened to compute. An amount that
+arrives from a client or from the database is not rounded at all: a place the currency
+does not have is **refused**, because rounding it would charge a card a figure nobody
+typed.
 
 ---
 

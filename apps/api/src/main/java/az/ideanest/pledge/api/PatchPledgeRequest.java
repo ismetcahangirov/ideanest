@@ -1,7 +1,7 @@
 package az.ideanest.pledge.api;
 
 import az.ideanest.pledge.application.EditPledge;
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import az.ideanest.shared.Patched;
 import java.util.List;
 import java.util.Locale;
