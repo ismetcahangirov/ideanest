@@ -20,8 +20,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
+import java.util.SortedMap;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
@@ -43,9 +43,9 @@ import org.springframework.transaction.annotation.Transactional;
  * and across two datastores they are not.
  *
  * <p><strong>What makes it correct is one statement, not this class.</strong>
- * {@link RewardStock#reserveOnePlace} is a conditional {@code UPDATE} that takes
+ * {@link RewardStock#reservePlaces} is a conditional {@code UPDATE} that takes
  * PostgreSQL's row lock and re-reads the counts behind it, so two checkouts racing
- * for the last place are serialised by the database. Everything here is ordering
+ * for the last places are serialised by the database. Everything here is ordering
  * and error messages. If this code is wrong, V7's
  * {@code reward_tiers_stock_is_within_the_limit} refuses the transaction rather
  * than letting the tier oversell — which is the property {@code ReservationTests}
@@ -67,13 +67,29 @@ import org.springframework.transaction.annotation.Transactional;
  * through the same three steps. Both go through {@link #hold}; the difference
  * between them is only how much has been decided by the time the row is written.
  *
- * <p><strong>#56 added {@link #edit}, which is the only method here that moves a
- * place rather than taking or giving one.</strong> It takes the new place before
+ * <p><strong>#56 added {@link #edit}, which is the only method here that moves
+ * places rather than taking or giving them.</strong> It takes the new places before
  * releasing the old, so that a backer whose edit is refused still holds what they
  * already had; that ordering is the single most important line in this class and its
  * javadoc carries the argument. It also re-quotes through the same
  * {@link #selectionFor} the checkout uses, so a draft and an edit of that draft
  * cannot come to two different totals for one selection.
+ *
+ * <p><strong>#203 made the add-ons hold stock too, and turned "the place" into
+ * "the places".</strong> An add-on is a {@code reward_tiers} row with
+ * {@code is_addon} set (V7), so it carries {@code limit_quantity},
+ * {@code claimed_quantity} and {@code reserved_quantity} exactly as a selectable tier
+ * does and {@code reward_tiers_stock_is_within_the_limit} applies to it — and until
+ * #203 nothing ever wrote those counters for one, so two backers could each take the
+ * last of a limited add-on and the constraint could not see it, because the count it
+ * guards never moved. What a pledge holds is now a map from tier to a number of
+ * places — see {@link HeldPlaces}, which also carries why the map is sorted — and
+ * every path below moves one of those: the draft takes them, {@link #confirm} moves
+ * them from reserved to claimed, {@link #cancel} gives them back,
+ * {@link #edit} takes the difference and releases the difference, and
+ * {@link ReservationExpiry} walks {@code pledge_addons} when a draft lapses. The
+ * reward tier is a line in the same map with a quantity of one, so there is one rule
+ * rather than a rule and an exception.
  *
  * <p><strong>What is not here.</strong>
  *
@@ -91,17 +107,12 @@ import org.springframework.transaction.annotation.Transactional;
  *       enforced a layer above by {@code shared.idempotency}. Nothing here is
  *       replay-safe on its own, and it does not need to be: the machinery runs this
  *       at most once per key.
- *   <li><strong>Stock on the add-ons — #203.</strong> A place is taken for the
- *       reward tier and for nothing else. §4.5's PL-13 is about a limited reward's
- *       place, and reserving <em>n</em> places on an add-on needs a second
- *       conditional statement, a matching release, and a sweep that walks
- *       {@code pledge_addons} to give them back — a change to the expiry path
- *       rather than an addition to this one. Until then a limited add-on is quoted
- *       and not held, which is stated here rather than discovered when one
- *       oversells. <strong>#56's {@link #edit} makes the gap no wider and no
- *       narrower:</strong> changing an add-on's quantity moves no count, exactly as
- *       selecting it in the first place moved none, and cancelling releases nothing
- *       for it because nothing was held.
+ *   <li><strong>Whether a tier the backer named as an add-on really is one.</strong>
+ *       Nothing here reads {@code is_addon}, so a client that sent a reward tier in
+ *       the {@code addons} list holds places on it and is quoted for them. That is
+ *       the behaviour #52 shipped and #203 has not changed; what #203 changes is that
+ *       the places are now genuinely held either way, so the count and the pledges
+ *       agree whichever the client meant.
  * </ul>
  */
 @Service
@@ -189,7 +200,7 @@ public class ReservationService {
             amount = price.amount();
             currency = price.currency();
 
-            takeThePlace(projectId, rewardTierId);
+            takeThePlaces(projectId, HeldPlaces.of(rewardTierId, List.of()), false);
         }
 
         return insert(Pledge.draft(projectId, backerId, rewardTierId, amount, currency, lapsesAt(now)));
@@ -207,6 +218,13 @@ public class ReservationService {
      * row, so that a failure of the insert rolls the place back inside the same
      * transaction.
      *
+     * <p><strong>The add-on places are taken with the reward's, in one pass (#203).</strong>
+     * Each add-on holds §4.5's PL-04 quantity and the reward holds one, and they go in
+     * the order {@link HeldPlaces} sorts them — which is what keeps two checkouts
+     * selecting the same two add-ons in opposite orders from deadlocking on each
+     * other's rows. A tier that has too few left refuses the whole draft, so a backer
+     * is never quietly sold two of something they asked for three of.
+     *
      * <p>The add-on lines are written last because they reference the pledge, and
      * they are written at all because {@code addons_amount} is a sum: see
      * {@code PledgeAddon} for what needs the lines and V18 for why the table is an
@@ -221,8 +239,8 @@ public class ReservationService {
      *     the reward costs
      * @throws ShippingDestinationUnpricedException when something in the selection is
      *     posted and the destination has no rate
-     * @throws RewardSoldOutException when the tier has no places left — §10.4's
-     *     {@code REWARD_SOLD_OUT}
+     * @throws RewardSoldOutException when the reward tier, or any add-on, has too few
+     *     places left — §10.4's {@code REWARD_SOLD_OUT}, naming whichever it was
      * @throws PledgeAlreadyExistsException when this backer already has a live pledge
      *     on this campaign. §7.2: one per backer per project
      */
@@ -239,9 +257,7 @@ public class ReservationService {
                 command.contribution(),
                 command.shippingCountry()));
 
-        if (command.rewardTierId() != null) {
-            takeThePlace(command.projectId(), command.rewardTierId());
-        }
+        takeThePlaces(command.projectId(), HeldPlaces.of(command.rewardTierId(), command.addons()), false);
 
         Pledge pledge = insert(Pledge.draft(new NewPledge(
                 command.projectId(),
@@ -273,7 +289,7 @@ public class ReservationService {
      * contribution below the new tier — must not cost the backer the place they
      * already hold, and pricing first means it never can.
      *
-     * <p><strong>Take the new place before giving the old one back. This is the
+     * <p><strong>Take the new places before giving the old ones back. This is the
      * whole of the hard part.</strong> The other order is the tempting one, because
      * it keeps {@code claimed + reserved} from rising, and it is wrong in the way
      * that matters most: between the release and the take, the backer holds nothing,
@@ -290,17 +306,22 @@ public class ReservationService {
      * refusal above be a genuine no-op rather than a promise.
      *
      * <p><strong>Which column moves depends on the pledge, not on the tier.</strong>
-     * A {@code DRAFT} holds a <em>reserved</em> place and a {@code CONFIRMED} pledge
-     * holds a <em>claimed</em> one, so an edit moves like for like — see
-     * {@link RewardStock#claimOnePlace} and
-     * {@link RewardStock#releaseOneClaimedPlace}. Moving a confirmed backer's place
+     * A {@code DRAFT} holds <em>reserved</em> places and a {@code CONFIRMED} pledge
+     * holds <em>claimed</em> ones, so an edit moves like for like — see
+     * {@link RewardStock#claimPlaces} and
+     * {@link RewardStock#releaseClaimedPlaces}. Moving a confirmed backer's place
      * through {@code reserved_quantity} would leave a reservation against a pledge
      * that is not a draft, which is exactly the row §8.4's sweep hunts for.
      *
-     * <p><strong>Nothing is reserved on the add-ons, and this method makes that gap
-     * no wider and no narrower.</strong> A limited add-on is quoted and not held —
-     * see this class's header and #203 — so changing an add-on's quantity moves no
-     * count at all, exactly as selecting it in the first place did not.
+     * <p><strong>An add-on's quantity moves the difference, in the same two
+     * passes (#203).</strong> The places the pledge holds before and after are two
+     * maps, and the edit is their difference: raising a quantity from two to three
+     * takes one place, lowering it to one gives one back, and dropping the add-on
+     * gives back all of them. Only the difference moves, so an edit that changes a
+     * destination and nothing else issues no stock statement at all — and the
+     * ordering above holds across every line at once, not merely for the reward, so
+     * an edit that raises one add-on past its limit is refused with the pledge
+     * exactly as it was.
      *
      * @param pledge the backer's own pledge, already established to be theirs and to
      *     be in a state they may change. This method does not re-decide either: see
@@ -315,8 +336,9 @@ public class ReservationService {
      *     the reward now costs
      * @throws ShippingDestinationUnpricedException when the new selection is posted
      *     and the destination has no rate
-     * @throws RewardSoldOutException when the newly chosen tier has no places left —
-     *     §10.4's {@code REWARD_SOLD_OUT}, and the pledge is left exactly as it was
+     * @throws RewardSoldOutException when the newly chosen tier, or an add-on whose
+     *     quantity went up, has too few places left — §10.4's
+     *     {@code REWARD_SOLD_OUT}, and the pledge is left exactly as it was
      */
     @Transactional
     public Pledge edit(Pledge pledge, EditPledge command, List<PledgeAddon> existingAddons) {
@@ -343,7 +365,7 @@ public class ReservationService {
         PledgeQuote quote = PledgeQuote.of(
                 selectionFor(projectId, rewardTierId, addonSelections, contribution, shippingCountry));
 
-        moveThePlace(pledge, rewardTierId);
+        moveThePlaces(pledge, HeldPlaces.of(rewardTierId, addonSelections), existingAddons);
 
         pledge.edit(quote, rewardTierId, shippingCountry, anonymous, paymentMethodId);
         replaceAddons(pledge, existingAddons, addonSelections);
@@ -358,11 +380,64 @@ public class ReservationService {
     }
 
     /**
-     * §4.5's PL-10: the backer withdraws, and the place goes back to the tier. #56.
+     * §6.2's {@code DRAFT --> CONFIRMED}: the backer commits, and every place they
+     * were holding is committed with them. #52, extended by #203.
      *
-     * <p><strong>Which place goes back depends on what the pledge was holding.</strong>
-     * A {@code DRAFT} gives back a <em>reserved</em> place and a {@code CONFIRMED}
-     * pledge gives back a <em>claimed</em> one. They are different statements against
+     * <p><strong>Here rather than in {@link PledgeService} because it moves
+     * stock.</strong> #52 put the single {@code commitOnePlace} call beside the
+     * transition, which was defensible while a pledge held one place; a pledge that
+     * holds places on its reward tier <em>and</em> on each of its add-ons is the same
+     * map every other method in this class moves, and leaving one of the five paths
+     * outside would be the one place a future change could forget.
+     *
+     * <p><strong>Reserved becomes claimed, in one statement per tier.</strong> The sum
+     * never changes, so no other checkout sees a place appear or disappear and V7's
+     * constraint is evaluated against a total that did not move —
+     * {@code RewardTierRepository#commitPlaces} carries the argument for why a release
+     * followed by a claim is wrong in both orders.
+     *
+     * <p><strong>A tier with nothing to convert is logged, and the confirmation goes
+     * ahead.</strong> This transaction holds the pledge and its version, so a mismatch
+     * is an invariant violation rather than a race; refusing would strand a backer who
+     * did everything right in front of a state only we can repair. The count is
+     * recoverable from the pledges, and a lost commitment is not.
+     *
+     * <p>Nothing is charged. §9.2 is explicit that no money moves at confirmation, and
+     * §9.2's phase 1 — the verification authorisation — is #55, blocked on #60.
+     *
+     * @param pledge the backer's own draft, already established to be theirs, to be a
+     *     draft, and to be inside its window. {@link PledgeService#confirm} decides all
+     *     three, because two of them need the clock and one needs an answer a client
+     *     can act on
+     * @param heldAddons the add-on lines as they stand, read by the caller inside this
+     *     transaction — the same lines the response is built from, so what is committed
+     *     and what is reported cannot disagree
+     */
+    @Transactional
+    public Pledge confirm(Pledge pledge, List<PledgeAddon> heldAddons, Instant now, UUID paymentMethodId) {
+        for (Map.Entry<UUID, Integer> line : HeldPlaces.heldBy(pledge, heldAddons).entrySet()) {
+            if (!stock.commitPlaces(line.getKey(), line.getValue())) {
+                log.error(
+                        "Pledge {} was confirmed against reward tier {}, which had no {} reserved places to commit.",
+                        pledge.getId(),
+                        line.getKey(),
+                        line.getValue());
+            }
+        }
+
+        // Where §9.2's phase 1 goes: authorise, 3-D Secure, store the token, void.
+        // PledgeCapability.CARD_VERIFICATION — #55, blocked on #60.
+        pledge.confirm(now, paymentMethodId);
+        return pledge;
+    }
+
+    /**
+     * §4.5's PL-10: the backer withdraws, and every place they held goes back. #56,
+     * extended by #203.
+     *
+     * <p><strong>Which places go back depends on what the pledge was holding.</strong>
+     * A {@code DRAFT} gives back <em>reserved</em> places and a {@code CONFIRMED}
+     * pledge gives back <em>claimed</em> ones. They are different statements against
      * different columns, and releasing the wrong one leaves the tier counting a place
      * nobody holds while it is short of one somebody does — with the sum, which is
      * what the limit is checked against, still looking correct.
@@ -375,25 +450,24 @@ public class ReservationService {
      *
      * <p>The state change and the credit are one transaction, for
      * {@link ReservationExpiry}'s reason: a pledge that says cancelled while the tier
-     * still counts its place is a place nothing will ever release.
-     *
-     * <p>Nothing is released for the add-ons, because nothing was ever held for them
-     * — see this class's header and #203.
+     * still counts its place is a place nothing will ever release. That now covers the
+     * add-on lines as well: a cancellation that gave back the reward's place and left
+     * three mugs held would be stock nobody could ever buy, and nothing would notice.
      *
      * @param pledge the backer's own pledge, already established to be theirs and to
      *     be in a state they may withdraw. See {@link PledgeService#cancel}
+     * @param heldAddons the add-on lines as they stand, read by the caller inside this
+     *     transaction
      */
     @Transactional
-    public void cancel(Pledge pledge, Instant now) {
-        UUID held = pledge.getRewardTierId();
+    public void cancel(Pledge pledge, List<PledgeAddon> heldAddons, Instant now) {
+        SortedMap<UUID, Integer> held = HeldPlaces.heldBy(pledge, heldAddons);
         // Read before the transition, because it is the old state that says which
-        // column the place is counted in.
+        // column the places are counted in.
         boolean committed = pledge.isConfirmed();
 
         pledge.cancelByBacker(now);
-        if (held != null) {
-            releaseTheHeldPlace(pledge, held, committed);
-        }
+        releaseTheHeldPlaces(pledge, held, committed);
         pledges.saveAndFlush(pledge);
     }
 
@@ -442,39 +516,70 @@ public class ReservationService {
     }
 
     /**
-     * Moves the pledge's place from the tier it held to the tier it now names.
+     * Moves the pledge from the places it held to the places it now names.
      *
-     * <p>Nothing happens when the reward did not change, which is the common edit —
-     * a new destination, another add-on, a bigger contribution. A pledge that had no
-     * reward and still has none moves nothing either.
+     * <p>Nothing happens for a tier whose count did not change, which is the common
+     * edit — a new destination, a hidden name, a bigger contribution. Only the
+     * differences move, so an edit that touches no selection issues no statement
+     * against {@code reward_tiers} at all.
      *
-     * @throws RewardSoldOutException when the new tier is full. Thrown <em>before</em>
-     *     the old place is given back, so the transaction rolls back with the backer
-     *     still holding exactly what they had
+     * <p><strong>Every take before every release, and both in
+     * {@link HeldPlaces}' order.</strong> The first half is {@link #edit}'s argument,
+     * unchanged and now spanning several tiers: a refusal must cost the backer
+     * nothing, so nothing is given up until everything asked for has been obtained.
+     * The second is the deadlock argument on {@link HeldPlaces} — within each half the
+     * rows are taken in one order every transaction agrees on.
+     *
+     * @throws RewardSoldOutException when a tier the edit needs more of has too few
+     *     left. Thrown <em>before</em> anything is given back, so the transaction rolls
+     *     back with the backer still holding exactly what they had
      */
-    private void moveThePlace(Pledge pledge, UUID rewardTierId) {
-        UUID held = pledge.getRewardTierId();
-        if (Objects.equals(held, rewardTierId)) {
+    private void moveThePlaces(Pledge pledge, SortedMap<UUID, Integer> wanted, List<PledgeAddon> heldAddons) {
+        SortedMap<UUID, Integer> held = HeldPlaces.heldBy(pledge, heldAddons);
+        if (held.equals(wanted)) {
             return;
         }
 
         // Read before the state changes, because it decides which of the two columns
-        // this pledge's place lives in.
+        // this pledge's places live in.
         boolean committed = pledge.isConfirmed();
 
-        if (rewardTierId != null) {
-            boolean taken = committed ? stock.claimOnePlace(rewardTierId) : stock.reserveOnePlace(rewardTierId);
+        takeThePlaces(pledge.getProjectId(), HeldPlaces.extraIn(wanted, held), committed);
+        releaseTheHeldPlaces(pledge, HeldPlaces.extraIn(held, wanted), committed);
+    }
+
+    /**
+     * Takes every place in the map, or says which tier could not give them.
+     *
+     * <p>One conditional {@code UPDATE} per tier — see
+     * {@link RewardStock#reservePlaces}. Somebody taking the last place while this
+     * backer was reading the page is the ordinary case, not an error, and §10.4
+     * answers it with the alternatives that are left rather than with a bare refusal.
+     *
+     * <p>The map is sorted, and every caller here passes one, for the deadlock reason
+     * {@link HeldPlaces} carries.
+     *
+     * @param claimed true when the pledge is already {@code CONFIRMED}, so the places
+     *     are taken as claimed ones rather than reserved. See
+     *     {@link RewardStock#claimPlaces}
+     * @throws RewardSoldOutException naming the first tier that refused. The
+     *     transaction rolls back, so the tiers before it in the order give their places
+     *     straight back
+     */
+    private void takeThePlaces(UUID projectId, SortedMap<UUID, Integer> places, boolean claimed) {
+        for (Map.Entry<UUID, Integer> line : places.entrySet()) {
+            boolean taken = claimed
+                    ? stock.claimPlaces(line.getKey(), line.getValue())
+                    : stock.reservePlaces(line.getKey(), line.getValue());
             if (!taken) {
-                throw new RewardSoldOutException(pledge.getProjectId(), rewardTierId);
+                throw new RewardSoldOutException(projectId, line.getKey());
             }
-        }
-        if (held != null) {
-            releaseTheHeldPlace(pledge, held, committed);
         }
     }
 
     /**
-     * Gives back the place a pledge was holding, from whichever column was holding it.
+     * Gives back the places a pledge was holding, from whichever column was holding
+     * them.
      *
      * <p>A tier with nothing to give back is logged rather than refused, for
      * {@link ReservationExpiry}'s reason: this transaction owns the pledge, so a
@@ -482,15 +587,19 @@ public class ReservationService {
      * strand a backer in front of a state only we can repair. The count is
      * recoverable from the pledges; a lost edit or a lost cancellation is not.
      */
-    private void releaseTheHeldPlace(Pledge pledge, UUID rewardTierId, boolean committed) {
-        boolean released =
-                committed ? stock.releaseOneClaimedPlace(rewardTierId) : stock.releaseOnePlace(rewardTierId);
-        if (!released) {
-            log.error(
-                    "Pledge {} held a {} place on reward tier {} that the tier had no record of.",
-                    pledge.getId(),
-                    committed ? "claimed" : "reserved",
-                    rewardTierId);
+    private void releaseTheHeldPlaces(Pledge pledge, SortedMap<UUID, Integer> places, boolean committed) {
+        for (Map.Entry<UUID, Integer> line : places.entrySet()) {
+            boolean released = committed
+                    ? stock.releaseClaimedPlaces(line.getKey(), line.getValue())
+                    : stock.releasePlaces(line.getKey(), line.getValue());
+            if (!released) {
+                log.error(
+                        "Pledge {} held {} {} places on reward tier {} that the tier had no record of.",
+                        pledge.getId(),
+                        line.getValue(),
+                        committed ? "claimed" : "reserved",
+                        line.getKey());
+            }
         }
     }
 
@@ -759,20 +868,6 @@ public class ReservationService {
             }
         }
         return null;
-    }
-
-    /**
-     * Takes the place, or says why it could not.
-     *
-     * <p>One conditional {@code UPDATE} — see {@link RewardStock#reserveOnePlace}.
-     * Somebody taking the last place while this backer was reading the page is the
-     * ordinary case, not an error, and §10.4 answers it with the alternatives that
-     * are left rather than with a bare refusal.
-     */
-    private void takeThePlace(UUID projectId, UUID rewardTierId) {
-        if (!stock.reserveOnePlace(rewardTierId)) {
-            throw new RewardSoldOutException(projectId, rewardTierId);
-        }
     }
 
     /** §4.5's five minutes, from the injected clock and the configured TTL. */

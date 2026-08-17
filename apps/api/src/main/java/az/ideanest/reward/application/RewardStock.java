@@ -35,13 +35,23 @@ import java.util.UUID;
  * them is one statement.
  *
  * <p><strong>Two calls rather than one, deliberately.</strong> {@link #priceOf}
- * resolves the tier and {@link #reserveOnePlace} takes a place, and the split is
+ * resolves the tier and {@link #reservePlaces} takes places, and the split is
  * what lets a caller tell "there is no such tier on this campaign" — which is a
  * client that asked for the wrong thing — from "there is, and it is full", which
  * is §10.4's {@code REWARD_SOLD_OUT} and a different answer with different
  * alternatives in it. Collapsing them into one call that returns an empty result
  * for both would make those two indistinguishable at the only place that can tell
  * the backer which happened.
+ *
+ * <p><strong>#203 gave the five stock methods a quantity, and took nothing
+ * away.</strong> They said "one place" because a pledge names one reward tier
+ * (§7.2), and an add-on is the same kind of row with §4.5's PL-04 quantity on it —
+ * so holding one needs the same five moves against the same two columns, {@code n}
+ * at a time. Five methods that take {@code n} are the five that took one, with the
+ * arithmetic moved inside the statement where the row lock already is; a caller
+ * that wants one passes one. The alternative — a second set of methods for add-ons
+ * — would be two implementations of one invariant, free to disagree about the
+ * expression V7's {@code reward_tiers_stock_is_within_the_limit} bounds.
  *
  * <p><strong>#52 widened this seam by three methods, and by nothing else.</strong>
  * Checkout has to price a whole selection rather than one tier, offer something
@@ -65,28 +75,34 @@ public interface RewardStock {
     Optional<RewardTierPrice> priceOf(UUID projectId, UUID rewardTierId);
 
     /**
-     * Takes one place on the tier, if there is one left.
+     * Takes places on the tier, if it has that many left.
      *
      * <p>One conditional {@code UPDATE}, which is the whole mechanism. The
      * statement takes PostgreSQL's row lock, re-reads the counts behind it, and
-     * refuses itself when the tier is full — so two checkouts racing for the last
-     * place are serialised by the database rather than by a check in Java that was
+     * refuses itself when the tier has too few — so two checkouts racing for the last
+     * places are serialised by the database rather than by a check in Java that was
      * true when it ran. V7's {@code reward_tiers_stock_is_within_the_limit} is the
      * second line: if this statement is ever wrong, the transaction is refused
      * rather than the reward oversold.
      *
-     * <p>A tier with no limit is unlimited and always has a place. The count is
+     * <p><strong>All of them or none.</strong> A backer who asked for three of an
+     * add-on and could have two is refused, not sold two: they were quoted for three
+     * and the creator was told to ship three. There is no partial hold to unwind.
+     *
+     * <p>A tier with no limit is unlimited and always has room. The count is
      * still incremented, because §5.3 lets a creator add a limit later and the
      * floor it may be lowered to is the places already taken.
      *
-     * @return false when the tier is full, or has gone since {@link #priceOf} saw
-     *     it — both of which are "there is no place for this backer", which is
-     *     what the caller has to tell them
+     * @param places how many. One for a reward tier, which is all §7.2 lets a pledge
+     *     hold; §4.5's PL-04 quantity for an add-on
+     * @return false when the tier has too few places left, or has gone since
+     *     {@link #priceOf} saw it — both of which are "there is no place for this
+     *     backer", which is what the caller has to tell them
      */
-    boolean reserveOnePlace(UUID rewardTierId);
+    boolean reservePlaces(UUID rewardTierId, int places);
 
     /**
-     * Gives one place back, when a reservation lapses or a draft is abandoned.
+     * Gives places back, when a reservation lapses or a draft is abandoned.
      *
      * <p>Guarded against going below zero rather than trusted: the count is what
      * stands between a limited tier and being oversold, and a release that ran
@@ -94,53 +110,53 @@ public interface RewardStock {
      * a negative count, but the damage of a double release is done above zero,
      * where it is silent.
      *
-     * @return false when there was nothing to give back
+     * @return false when the tier was not counting that many
      */
-    boolean releaseOnePlace(UUID rewardTierId);
+    boolean releasePlaces(UUID rewardTierId, int places);
 
     /**
-     * Turns one held place into a claimed one, when a draft is confirmed.
+     * Turns held places into claimed ones, when a draft is confirmed.
      *
-     * <p>The other half of {@link #reserveOnePlace}: the place stays taken, and what
+     * <p>The other half of {@link #reservePlaces}: the places stay taken, and what
      * changes is which column says so. Nothing is charged — §9.2 is explicit that no
      * money moves at confirmation — so this is a commitment and not a sale.
      *
-     * @return false when this pledge was holding no place the tier knows about,
-     *     which is an invariant violation rather than a race and is treated as one
-     *     by the caller
+     * @return false when this pledge was holding fewer places than the tier knows
+     *     about, which is an invariant violation rather than a race and is treated as
+     *     one by the caller
      */
-    boolean commitOnePlace(UUID rewardTierId);
+    boolean commitPlaces(UUID rewardTierId, int places);
 
     /**
-     * Takes one place directly as a claimed one, if there is one left.
+     * Takes places directly as claimed ones, if the tier has that many left.
      *
-     * <p><strong>For a {@code CONFIRMED} pledge that changes its reward (#56).</strong>
-     * {@link #reserveOnePlace} holds a place for a checkout that has not finished;
-     * this one is for a backer who has already committed, so the place is claimed
-     * from the moment it is taken. Reserving and then committing would express one
-     * fact in two statements and would leave a reservation, briefly, against a pledge
-     * that is not a draft — a row §8.4's sweep is looking for.
+     * <p><strong>For a {@code CONFIRMED} pledge that changes what it is buying
+     * (#56).</strong> {@link #reservePlaces} holds places for a checkout that has not
+     * finished; this one is for a backer who has already committed, so the places are
+     * claimed from the moment they are taken. Reserving and then committing would
+     * express one fact in two statements and would leave a reservation, briefly,
+     * against a pledge that is not a draft — a row §8.4's sweep is looking for.
      *
-     * @return false when the tier is full, or has gone since it was priced — both of
-     *     which are "there is no place for this backer"
+     * @return false when the tier has too few places left, or has gone since it was
+     *     priced — both of which are "there is no place for this backer"
      */
-    boolean claimOnePlace(UUID rewardTierId);
+    boolean claimPlaces(UUID rewardTierId, int places);
 
     /**
-     * Gives one claimed place back, when a confirmed pledge is cancelled or moves to
-     * another tier.
+     * Gives claimed places back, when a confirmed pledge is cancelled or changes what
+     * it is buying.
      *
-     * <p><strong>Not {@link #releaseOnePlace}, and the difference is the whole
-     * point.</strong> A draft holds a <em>reserved</em> place and a confirmed pledge
-     * holds a <em>claimed</em> one, so giving back the wrong one leaves the tier
-     * counting a place nobody holds while it is short of one somebody does — and the
+     * <p><strong>Not {@link #releasePlaces}, and the difference is the whole
+     * point.</strong> A draft holds <em>reserved</em> places and a confirmed pledge
+     * holds <em>claimed</em> ones, so giving back the wrong kind leaves the tier
+     * counting places nobody holds while it is short of ones somebody does — and the
      * sum, which is what the limit is checked against, still looks correct.
      *
-     * <p>Guarded against going below zero for {@link #releaseOnePlace}'s reason.
+     * <p>Guarded against going below zero for {@link #releasePlaces}'s reason.
      *
-     * @return false when there was nothing to give back
+     * @return false when the tier was not counting that many
      */
-    boolean releaseOneClaimedPlace(UUID rewardTierId);
+    boolean releaseClaimedPlaces(UUID rewardTierId, int places);
 
     /**
      * Everything the backer selected, priced, with the rate for where it is going.
@@ -174,11 +190,13 @@ public interface RewardStock {
      * the same refusal with two tiers attached is a checkout that carries on.
      *
      * <p>What is offered is what a backer could actually select right now: this
-     * campaign's public reward tiers, excluding add-ons — which are bought
-     * <em>with</em> a reward and are not a substitute for one — excluding secret
-     * tiers, which are reachable only through their own link, excluding any whose
-     * availability window is not open, and excluding the ones with no places left.
-     * Bounded by construction: §5.3 caps a campaign at a hundred tiers.
+     * campaign's public tiers <em>of the same kind as the one that was refused</em>
+     * — a reward instead of a reward, another add-on instead of an add-on, because
+     * an add-on is bought <em>with</em> a reward and is not a substitute for one —
+     * excluding secret tiers, which are reachable only through their own link,
+     * excluding any whose availability window is not open, and excluding the ones
+     * with no places left. Bounded by construction: §5.3 caps a campaign at a
+     * hundred tiers.
      *
      * @param at the moment the availability windows are judged against, from the
      *     injected {@code Clock}
