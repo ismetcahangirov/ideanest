@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import { NewProjectForm } from '../../../components/campaign-editor/NewProjectForm';
+import { privatePageMetadata } from '../../../lib/seo/metadata';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = privatePageMetadata({
   title: 'Start a project',
   description: 'Name your campaign and start editing it. Nothing is public until you submit it.',
-};
+});
 
 /**
  * A shell around a client form.

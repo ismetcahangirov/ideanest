@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import { ReviewPanel } from '../../../../../components/campaign-editor/ReviewPanel';
+import { privatePageMetadata } from '../../../../../lib/seo/metadata';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = privatePageMetadata({
   title: 'Review',
   description:
     'How complete your campaign is, what moderation has said about it, and submitting it for review.',
-};
+});
 
 /**
  * The checklist is read with the account's bearer token from the browser, so this

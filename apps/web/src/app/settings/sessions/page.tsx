@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import { SessionsPanel } from '../../../components/sessions/SessionsPanel';
+import { privatePageMetadata } from '../../../lib/seo/metadata';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = privatePageMetadata({
   title: 'Active sessions',
   description: 'Review the devices signed in to your IdeaNest account and sign out of any of them.',
-};
+});
 
 /**
  * The list is per-account and authenticated with a bearer token held in memory,
