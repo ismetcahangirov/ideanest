@@ -125,6 +125,30 @@ public class SecurityConfiguration {
                         // secret tiers and reservation counts out of reach.
                         .requestMatchers(HttpMethod.GET, "/v1/projects/*/rewards/public")
                         .permitAll()
+                        // A campaign's backers as its page shows them (#57).
+                        // Public because §4.4 puts the backer count in the
+                        // header, a count beside every reward tier, and the
+                        // community statistics on a tab — all of it on a page
+                        // a visitor reads before deciding whether to register.
+                        //
+                        // What may be read is not decided here. The handler
+                        // serves it only for a campaign in one of §6.1's nine
+                        // public states and answers 404 otherwise, it counts
+                        // only pledges that were confirmed rather than drafts
+                        // in flight, and it carries no identity at all for a
+                        // backer who asked to be anonymous — §4.5's PL-12,
+                        // which PublicBacker enforces by having nowhere to put
+                        // one rather than by remembering to omit it.
+                        //
+                        // GET and nothing else, for the reason the categories
+                        // rule gives. Note that the creator's backer list at
+                        // /v1/projects/*/backers is a different path and is
+                        // deliberately not matched here: it is §10.2's
+                        // dashboard endpoint, it names every backer including
+                        // the anonymous ones because the creator has to ship to
+                        // them, and it falls through to the rule at the bottom.
+                        .requestMatchers(HttpMethod.GET, "/v1/projects/*/backers/public")
+                        .permitAll()
                         // "Tell me when this opens", and "stop reminding me".
                         // Unauthenticated on purpose and bounded in the handler by
                         // a rate limiter per source address and per email address:

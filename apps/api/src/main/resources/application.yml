@@ -204,6 +204,36 @@ ideanest:
       # checkouts in flight must not be one transaction; the rest are found a
       # minute later, oldest reservation first.
       cleanup-batch-size: 200
+    rate-limit:
+      # §17.3: "pledge 10/min per user". Per account rather than per address,
+      # like every limit on a request that carries a token: one stolen token
+      # should be worth one checkout at a time, and an attacker with a token can
+      # come from anywhere.
+      #
+      # What it bounds is the work one caller can demand rather than fraud -- no
+      # card is touched at a draft. Every one of them settles a stale pledge,
+      # reads a campaign, resolves tiers and rates, and takes a row lock on a
+      # reward tier, which on a popular campaign is the row every other backer
+      # needs.
+      pledges-per-user: 10
+      window: PT1M
+
+  idempotency:
+    # §17.2: "keys retained 24 hours". After this a retried payment mutation is
+    # executed again rather than replayed, so the number is the outer bound on
+    # how long a client may take to retry -- long enough to cover an outage,
+    # short enough that a table of what everybody bought yesterday does not keep
+    # growing for a guarantee nobody is still relying on.
+    retention: PT24H
+    # Hourly, on the hour, like the anonymiser. The retention is a day, so the
+    # minute this runs at cannot matter; what matters is that a missed hour costs
+    # an hour of rows. In-process @Scheduled on §8.4's terms until #134, and safe
+    # on more than one replica for a simpler reason than the reservation sweep:
+    # the only effect is a delete, so a second replica finds nothing to remove.
+    sweep-schedule: "0 0 * * * *"
+    # A bound on one pass, not a target. A day of traffic must not be one
+    # transaction; the sweep returns an hour later for the rest.
+    sweep-batch-size: 500
 
   user:
     # §17.4: thirty days between asking and anything being destroyed. Long
