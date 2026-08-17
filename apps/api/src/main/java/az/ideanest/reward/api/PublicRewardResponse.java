@@ -2,7 +2,7 @@ package az.ideanest.reward.api;
 
 import az.ideanest.reward.application.PublicRewardCatalogue;
 import az.ideanest.reward.domain.RewardTier;
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.LocalDate;
 import java.util.List;

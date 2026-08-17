@@ -5,7 +5,7 @@ import az.ideanest.discovery.application.FacetCounts;
 import az.ideanest.discovery.domain.DiscoveryStatus;
 import az.ideanest.discovery.domain.ProjectCard;
 import az.ideanest.discovery.domain.Suggestion;
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import java.time.Instant;
 import java.util.List;
 

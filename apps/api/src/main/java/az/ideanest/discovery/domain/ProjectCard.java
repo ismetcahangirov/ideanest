@@ -1,6 +1,6 @@
 package az.ideanest.discovery.domain;
 
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;

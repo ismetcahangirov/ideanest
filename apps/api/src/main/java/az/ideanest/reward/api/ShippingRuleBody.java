@@ -11,8 +11,8 @@ import java.math.BigDecimal;
  * <p><strong>Both amounts cross the wire as strings.</strong> §10.3 and
  * {@code CLAUDE.md}: a JSON number is an IEEE 754 double in every mainstream parser,
  * and this number is added to a pledge total and charged to a card. {@link JsonFormat}
- * is what makes that true here; {@code shared.Money} carries the same annotation for
- * the same reason.
+ * is what makes that true here; {@code shared.money.Money} has a serialiser of its own
+ * (#133) that does it for the same reason, and refuses a JSON number outright.
  *
  * <p>Deliberately not a {@code Money}, unlike a reward's price. A rate table is
  * denominated in the campaign's currency for every row, so repeating the currency on
