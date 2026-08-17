@@ -395,6 +395,10 @@ ideanest:
       same-site: Strict
 
 logging:
+  # Levels only. The format, the correlation identifiers, and the redaction that
+  # §17.4 requires are in logback-spring.xml, because none of them is expressible
+  # here: `logging.pattern.*` cannot wrap an encoder, and a masking rule that is
+  # not in the pipeline is a masking rule every call site has to remember.
   level:
     root: INFO
     az.ideanest: INFO

@@ -3332,6 +3332,34 @@ Always logged: every payment operation (amount, status, provider response code �
 never card data), every state transition, every privileged action, authentication
 failures, and rate-limit rejections.
 
+**As implemented** (`shared/observability`, `logback-spring.xml`):
+
+| Field | Where it comes from |
+|---|---|
+| `requestId` | The caller's `X-Request-Id` when it matches `[A-Za-z0-9_-]{8,64}`, otherwise a UUID v7. Returned on the response as `X-Request-Id` |
+| `traceId`, `spanId` | The trace of the caller's `traceparent` (W3C Trace Context) when it parses, otherwise minted. The span is always ours — continuing a trace is not adopting a span. `traceId` is returned as `X-Trace-Id` |
+| `userId` | The access token's subject, added after authentication by a second filter |
+| `projectId` | **Not populated yet.** It belongs to an operation rather than to a request, and nothing puts it in the MDC today |
+
+An inbound identifier is validated rather than trusted: it ends up on every line
+of the request, so a newline in it would forge a log entry and a megabyte of it
+would forge an outage. Anything outside the shape above is dropped and replaced.
+The MDC is cleared in a `finally`, so a pooled container thread cannot write the
+previous caller's identifier onto the next caller's lines. Work handed to an
+executor keeps the identifiers, and work started by the scheduler is given a
+fresh set per run.
+
+Format follows the profile: JSON outside `local` and `test`, Spring Boot's
+console format inside them. **Redaction does not follow the profile.** Both
+appenders wrap their encoder in `RedactingEncoder`, which masks the bytes the
+encoder produced — message, MDC, exception message and stack trace alike, since
+by then they are one string. §17.4's list is enforced there rather than at each
+call site, by field name (`password`, `email`, `city`, `recoveryCodes`, …) and by
+shape (address, card, phone, JWT, IBAN, `otpauth://`). Card rules require an
+issuer prefix and Luhn, so a thirteen-digit epoch timestamp is not mistaken for a
+primary account number. `LogFields` is the other direction: a builder with a
+method per safe shape and none that takes free text.
+
 ### 18.2 Metrics
 
 | Metric | Type | Why |
