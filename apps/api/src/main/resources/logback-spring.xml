@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  How a log line is written. docs/architecture.md §18.1.
+
+  Two decisions here, and only one of them depends on the environment.
+
+  FORMAT does. Deployed environments get JSON, because there a line is read by a
+  query and not by a person: §18.1's fields have to be fields. Local development
+  and the test suite get Spring Boot's console format, because there the reader is
+  a person with a terminal, to whom JSON on stdout is worse than useless. The
+  profile decides, so nothing has to be remembered at deploy time.
+
+  REDACTION does not. Both appenders wrap their encoder in RedactingEncoder, so
+  §17.4's rule — personal data is never written — holds whichever format is in
+  use, and holds for the message, the MDC, the exception message and the stack
+  trace alike, because by the time the wrapper sees them they are one string. The
+  alternative, masking at each call site, is a rule that survives until the first
+  afternoon somebody logs a request object to find out what is in it.
+
+  A local console redacts too, deliberately. A developer's terminal is somewhere
+  personal data leaks from as well — into a screenshot, a pasted stack trace, a
+  recording — and a local pipeline that behaves differently from the deployed one
+  is how a redaction bug reaches production unnoticed.
+-->
+<configuration>
+
+    <!--
+      Spring Boot's own console format, with §18.1's identifiers added to it.
+
+      Defined before the include on purpose: defaults.xml declares this property
+      as ${CONSOLE_LOG_PATTERN:-...}, so a value already present wins. That is
+      Boot's intended override point, and it is the reason the rest of the line
+      still looks exactly as a Boot application's does.
+
+      The correlation block replaces Boot's LOG_CORRELATION_PATTERN slot rather
+      than filling it, because Joran trims a property value and that slot needs a
+      trailing space to separate it from the logger name.
+    -->
+    <property name="CONSOLE_LOG_PATTERN"
+              value="%clr(%d{${LOG_DATEFORMAT_PATTERN:-yyyy-MM-dd'T'HH:mm:ss.SSSXXX}}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}){} %clr(${PID:-}){magenta} %clr(--- %esb(){APPLICATION_NAME}%esb{APPLICATION_GROUP}[%15.15t] [%X{requestId:--} %X{traceId:--}/%X{spanId:--} %X{userId:--}] ){faint}%clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
+
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- Local, and the test suite: a person reads these. -->
+    <springProfile name="local | test">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="az.ideanest.shared.observability.RedactingEncoder">
+                <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+                    <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+                    <charset>${CONSOLE_LOG_CHARSET}</charset>
+                </encoder>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!--
+      Everywhere else: preview, staging, production (§19.1). Logback's own
+      JsonEncoder, so nothing is added to the dependency list for this. It writes
+      the whole MDC, which is how §18.1's fields arrive without being named twice.
+    -->
+    <springProfile name="!local &amp; !test">
+        <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="az.ideanest.shared.observability.RedactingEncoder">
+                <encoder class="ch.qos.logback.classic.encoder.JsonEncoder">
+                    <!--
+                      The logger context's own name and birthdate, on every line,
+                      for no reader. Off: it is one value repeated a billion times,
+                      and its "name" field collides with the rule that keeps a
+                      person's name out of a log, so leaving it on would print
+                      "<redacted>" on every line for nothing.
+                    -->
+                    <withContext>false</withContext>
+                </encoder>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="JSON"/>
+        </root>
+    </springProfile>
+
+</configuration>
