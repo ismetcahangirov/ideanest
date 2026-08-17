@@ -2,7 +2,7 @@ package az.ideanest.reward.api;
 
 import az.ideanest.reward.application.RewardContent;
 import az.ideanest.reward.application.RewardPatch;
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import az.ideanest.shared.Patched;
 import java.time.Instant;
 import java.time.LocalDate;

@@ -10,7 +10,7 @@ import az.ideanest.project.domain.StoryDocuments;
 import az.ideanest.project.infrastructure.CategoryRepository;
 import az.ideanest.project.infrastructure.ProjectRepository;
 import az.ideanest.project.infrastructure.SubcategoryRepository;
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import az.ideanest.shared.Patched;
 import az.ideanest.shared.Slugs;
 import tools.jackson.databind.JsonNode;

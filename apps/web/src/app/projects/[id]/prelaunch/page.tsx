@@ -1,24 +1,47 @@
 import type { Metadata } from 'next';
 import { PrelaunchView } from '../../../../components/prelaunch/PrelaunchView';
+import { projectPageMetadata } from '../../../../lib/seo/metadata';
+import { fetchPublicProjectPreview } from '../../../../lib/seo/metadata-source';
 
-export const metadata: Metadata = {
-  title: 'Coming soon',
-  description: 'A campaign that has not opened yet. Ask to be told when it does.',
-};
+/**
+ * The title, description, canonical, and social card of one campaign's public
+ * pre-launch page.
+ *
+ * **This is a link that goes into a social post.** That is the whole reason the
+ * route exists outside `/edit`, and until now the page had a generic title —
+ * "Coming soon" — for every campaign on the site, so every creator who shared
+ * theirs shared a card that named somebody else's too. The comment that used to
+ * sit here said a per-campaign title needed a server-rendered public projection
+ * and left it to the campaign-page epic. It needed one fetch, not a rendered page,
+ * and #120 is where it belongs.
+ *
+ * **The PAGE is still a client boundary and this changes nothing about that.**
+ * `PrelaunchView` still reads the campaign in the browser through `publicFetch`,
+ * because it also reads the follower count and posts the reminder. Server-rendering
+ * the page itself is #119's. What happens here is a single anonymous read of the
+ * public projection, for the `<head>` only.
+ *
+ * **A campaign that cannot be confirmed public gets no title, no description, and
+ * `noindex`** — see `projectPageMetadata` and `fetchPublicProjectPreview`, which
+ * each explain their half. The failure mode is a card that says nothing, never a
+ * card that says something private.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const preview = await fetchPublicProjectPreview(id);
+
+  return projectPageMetadata(preview, `/projects/${encodeURIComponent(id)}/prelaunch`);
+}
 
 /**
  * The public pre-launch page — the address a creator shares.
  *
  * NOT under `/edit`, deliberately: this is a link that goes into a social post,
  * and one with "edit" in it invites questions and looks like a mistake.
- *
- * The title here is generic rather than the campaign's, and that is not
- * laziness. Producing a per-campaign title would mean fetching the campaign on
- * the server, and this route has to work for a visitor with no session at all —
- * so the fetch happens in the client boundary, with the same `publicFetch` the
- * reminder form uses, and the metadata stays static. Rich link previews for
- * pre-launch pages need server-side rendering of a public projection, which is
- * the discovery epic's to build; naming it here is better than a half-version.
  */
 export default async function PublicPrelaunchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

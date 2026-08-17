@@ -1,6 +1,6 @@
 package az.ideanest.pledge.application;
 
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import az.ideanest.shared.Patched;
 import java.util.List;
 import java.util.Objects;

@@ -1575,7 +1575,7 @@ by a database constraint and verified by a nightly reconciliation job.
 | `moderation_cases`, `reports` | Trust and safety |
 | `audit_logs` | Privileged actions |
 | `fee_schedules` | Configurable rates |
-| `outbox_events` | Transactional outbox |
+| `outbox_events` | Transactional outbox (#135). One row per recorded event, written by the same transaction as the business change it describes — which is the whole of the guarantee: the commit that creates the pledge is the commit that creates the event, so neither can exist without the other. Carries the stable `id` a consumer deduplicates on, an `aggregate_type`/`aggregate_id` that is the ordering key and deliberately not a foreign key (an event stays true after its aggregate is deleted, and no single reference can point at four tables), the serialised `payload` as `text` rather than `jsonb` so a consumer receives the bytes the transaction committed, a database-assigned `sequence_no` that decides dispatch order, and `PENDING → PUBLISHED` or `PENDING → DEAD` with `attempts`, `next_attempt_at`, and `last_error`. A relay claims one row at a time with `FOR UPDATE SKIP LOCKED`, so replicas divide the queue rather than double-publishing, and will not dispatch an event while an earlier `PENDING` one for the same aggregate exists. Published rows are not swept yet |
 | `idempotency_keys` | Replay protection (#52). One row per `(account_id, idempotency_key)`, carrying the operation, a SHA-256 fingerprint of the request, and the status and exact bytes of the response the first attempt answered with. The row is inserted *before* the work as a claim — the unique index is what makes two identical requests arriving at once resolve to one — and completed with the response afterwards, in the same transaction as the work. Only successes are recorded; a refusal releases the key so that a client can retry it. Swept after §17.2's 24 hours |
 
 ### 7.3 Data decisions
@@ -1584,7 +1584,7 @@ by a database constraint and verified by a nightly reconciliation job.
 |---|---|
 | PostgreSQL | ACID, exact numerics, JSONB, full-text search, PostGIS, partial indexes |
 | **`numeric(14,2)` for money** | Never floating point. Rounding error here is somebody's pledge |
-| `BigDecimal` in Java | The same discipline in the application layer |
+| `BigDecimal` in Java | The same discipline in the application layer, behind one type: `az.ideanest.shared.money.Money` (#133) |
 | UUID v7 primary keys | Sortable, index-friendly, and they do not leak volume |
 | Soft delete | Audit and recovery |
 | Selective denormalisation | Read performance; the ledger remains the source of truth |
@@ -1718,7 +1718,7 @@ load profile).
 
 | Pattern | Where | Why |
 |---|---|---|
-| **Transactional outbox** | Pledges, payments | A commit and its published event must not diverge |
+| **Transactional outbox** | `shared/outbox`, available to every module | A commit and its published event must not diverge |
 | **Idempotency keys** | Every payment mutation | A network retry must not charge twice |
 | **Double-entry ledger** | Finance | Auditable; the balance proves itself |
 | **Optimistic locking** | Reward stock | A `version` column prevents overselling |
@@ -1728,6 +1728,30 @@ load profile).
 | **Circuit breaker** | Provider calls | Contain a provider outage |
 | **Rate limiting** | Auth, pledge, search | Abuse protection |
 | **Feature flags** | New capability | Safe rollout |
+
+> **The outbox is built (#135), and nothing routes through it yet.** The mechanism
+> is `shared/outbox`: `Outbox.record` is `MANDATORY`, so an event can only be
+> recorded inside a transaction that is making a change, and the row and the change
+> commit together or not at all. `OutboxRelay` polls, `OutboxDispatch` claims one
+> row per transaction with `FOR UPDATE SKIP LOCKED`, dispatches, and then commits
+> that it dispatched — which makes delivery **at-least-once**: a crash between the
+> transport accepting a message and that commit republishes it. The other order
+> would lose events instead, and a loss is visible to nobody.
+>
+> **Every handler therefore has to tolerate redelivery**, keyed on the event's `id`,
+> which is stable across attempts. `shared/idempotency` is deliberately not reused
+> for that: it answers "what did we answer this account when it last sent this key",
+> and its rows carry an `account_id`, an HTTP status, a response body, and §17.2's
+> 24-hour retention — none of which describes a consumer's "have I handled event X".
+>
+> **The transport is a seam, not an integration.** `OutboxDispatcher` is one method,
+> and the only implementation republishes in process, which is where the platform's
+> consumers are today. A broker implements the same interface and nothing else
+> changes. What is *not* done: `AuthEvents`, `ProjectEvents`, and
+> `LaunchReminderDelivery` still publish from after-commit listeners and still admit
+> in their own comments that a crash in that window loses the message. Moving them
+> across is per-feature work, and each move is a behaviour change to a notification
+> that deserves its own review.
 
 ### 8.4 Scheduled work
 
@@ -1748,6 +1772,7 @@ load profile).
 | `denormalization-sync` | Hourly | Correct cached counters |
 | `account-anonymiser` | Hourly | Anonymise accounts whose deletion grace period has elapsed |
 | `idempotency-key-cleaner` | Hourly | Remove idempotency keys past §17.2's 24-hour retention |
+| `outbox-relay` | Every second | Publish recorded events, in order within an aggregate |
 
 > **`reminder-sender` is half built.** #39 implemented the launch half: it sweeps
 > every campaign that is `LIVE` and still owes somebody the notice they asked for,
@@ -1803,6 +1828,27 @@ load profile).
 > Late is cheap. A missed hour is an hour of rows outliving their purpose, and never
 > a wrong answer: a key is matched against its own `expires_at` when it is read,
 > not against whether the sweep has been past.
+
+> **`outbox-relay` is built (#135), on the same terms, and is the one job here where
+> latency is user-visible.** It polls `outbox_events` every second, because §12.1's
+> pledge counter and the notification behind a confirmation both wait on it — a
+> minute would be the difference between a page that updates and a page that looks
+> broken.
+>
+> Like `reservation-cleaner` it needs a claim, and the claim is not a conditional
+> update: it is `SELECT … FOR UPDATE SKIP LOCKED LIMIT 1` inside the transaction that
+> dispatches. Two replicas polling at once therefore divide the queue between them
+> and never meet on a row, and ordering within an aggregate survives it, because a
+> row being dispatched is still `PENDING` and so blocks its own successors from the
+> other replica. Skipping rather than waiting is deliberate: a relay that queued
+> behind the lock would acquire it the instant the holder committed and publish a row
+> that had just been published.
+>
+> A missed tick costs latency and never a message — the row stays `PENDING` until
+> some relay takes it — which is what makes an in-process timer adequate for
+> something this close to money. **When #134 lands, the trigger moves onto it and the
+> `@Scheduled` annotation goes**; the claim, the ordering, and the retry policy are
+> in the relay and do not change with the thing that calls it.
 
 ---
 
@@ -3497,6 +3543,17 @@ it was written in.
 | Display currency | User preference, shown as an **approximation**; collection occurs in the project currency |
 | Rate source | Central bank rates, cached hourly |
 | Rate retention | The rate used is stored on the pledge, for audit |
+| **Rounding** | **`HALF_EVEN`, at the currency's minor unit.** Declared once, in `MoneyRounding`, and applied by everything that touches money |
+| Splitting | `Money.allocate` — the parts always sum to the whole; a remainder is handed out one minor unit at a time |
+| Mixed currencies | Never combined. Any arithmetic or comparison between two currencies is refused, because §21.2's rate is an approximation shown to a user and never the basis of a collection |
+
+**Why `HALF_EVEN` and not `HALF_UP`** (#133): the values being rounded are computed
+ones — §5.2's 5% platform fee, the per-collection processing fee, §9.5's split of a
+collection. `HALF_UP` resolves every halfway case away from zero, so the bias always
+favours whichever side of the split the code happened to compute. An amount that
+arrives from a client or from the database is not rounded at all: a place the currency
+does not have is **refused**, because rounding it would charge a card a figure nobody
+typed.
 
 ---
 

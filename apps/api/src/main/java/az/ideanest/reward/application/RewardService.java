@@ -9,7 +9,7 @@ import az.ideanest.reward.infrastructure.ItemRepository;
 import az.ideanest.reward.infrastructure.RewardTierItemRepository;
 import az.ideanest.reward.infrastructure.RewardTierRepository;
 import az.ideanest.reward.infrastructure.ShippingRuleRepository;
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;

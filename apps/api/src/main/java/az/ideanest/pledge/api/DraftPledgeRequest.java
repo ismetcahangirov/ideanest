@@ -1,7 +1,7 @@
 package az.ideanest.pledge.api;
 
 import az.ideanest.pledge.application.DraftPledge;
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;

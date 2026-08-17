@@ -3,7 +3,7 @@ package az.ideanest.project.api;
 import az.ideanest.project.domain.LockedField;
 import az.ideanest.project.domain.Project;
 import az.ideanest.project.domain.ProjectEditLocks;
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;

@@ -98,6 +98,23 @@ ideanest:
     # pass will take.
     sweep-batch-size: 2
 
+  outbox:
+    # Disabled, exactly as the schedules above are: `-` is Spring's own value for "do
+    # not schedule this". The suite drives OutboxRelay and OutboxDispatch directly
+    # with the instant it wants to test, which is deterministic. This one would
+    # otherwise fire every second, publishing the very rows a test is in the middle
+    # of asserting are still pending -- and it would claim them on another thread,
+    # which is the hardest kind of flake to reproduce.
+    poll-schedule: "-"
+    # The production values. The retry policy is what the exhaustion test is about,
+    # so shortening it here would mean asserting the rule against a configuration
+    # nothing runs on -- and there is no need, because the tests hand the dispatch
+    # the instant to judge rather than waiting for a backoff to elapse.
+    batch-size: 100
+    retry-backoff: PT5S
+    max-backoff: PT10M
+    max-attempts: 8
+
   user:
     # Disabled. `-` is Spring's own value for "do not schedule this". The suite
     # drives AccountAnonymisationJob directly with the instant it wants to test,

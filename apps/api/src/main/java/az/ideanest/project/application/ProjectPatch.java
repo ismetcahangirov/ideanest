@@ -1,7 +1,7 @@
 package az.ideanest.project.application;
 
 import az.ideanest.project.domain.CoverImage;
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import az.ideanest.shared.Patched;
 import tools.jackson.databind.JsonNode;
 import java.time.Instant;

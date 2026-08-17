@@ -1,6 +1,6 @@
 package az.ideanest.reward.domain;
 
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.EmbeddedId;
@@ -134,7 +134,7 @@ public class ShippingRule {
      * The rate as {@code numeric(14,2)} holds it: not negative, at most two decimal
      * places, and padded to two.
      *
-     * <p>The same discipline as {@link az.ideanest.shared.Money}, and for the same
+     * <p>The same discipline as {@link az.ideanest.shared.money.Money}, and for the same
      * reasons. A third decimal place is refused rather than rounded, because PostgreSQL
      * would round it silently and a shipping line that quietly gains a qəpik is a pledge
      * total that does not add up. The padding is what makes the response say

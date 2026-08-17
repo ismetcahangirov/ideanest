@@ -2,7 +2,7 @@ package az.ideanest.pledge.api;
 
 import az.ideanest.pledge.application.PledgeDetail;
 import az.ideanest.pledge.domain.Pledge;
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.Instant;
 import java.util.List;

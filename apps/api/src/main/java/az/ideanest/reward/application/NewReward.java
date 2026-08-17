@@ -1,7 +1,7 @@
 package az.ideanest.reward.application;
 
 import az.ideanest.reward.domain.ShippingType;
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;

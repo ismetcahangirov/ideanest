@@ -2,7 +2,7 @@ package az.ideanest.discovery.infrastructure;
 
 import az.ideanest.discovery.domain.DiscoveryStatus;
 import az.ideanest.discovery.domain.ProjectCard;
-import az.ideanest.shared.Money;
+import az.ideanest.shared.money.Money;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
