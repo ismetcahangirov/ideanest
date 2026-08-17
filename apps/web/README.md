@@ -136,6 +136,28 @@ and a key the service has told us is spent. Going back to change the selection
 does **not** retire it, because a backer who changes nothing should get their
 existing reservation and its existing clock.
 
+**A collision with your own first attempt is waited out, not reported.** `409
+IDEMPOTENT_REQUEST_IN_PROGRESS` is what a double-click produces: the first
+request still holds the claim on the key, and the second is told to ask again.
+The backer can do nothing about it and their pledge is already being made, so
+`useCheckout` waits the `Retry-After` the response carries and sends the **same
+key** again — capped at five seconds a wait and three retries, after which the
+message says what happened and offers the button. A fresh key on that retry
+would be the second pledge this whole mechanism exists to prevent.
+
+| Refusal | What the checkout does |
+|---|---|
+| `IDEMPOTENT_REQUEST_IN_PROGRESS` | Waits `Retry-After` and re-sends, same key, bounded |
+| `IDEMPOTENCY_KEY_REQUIRED` / `IDEMPOTENCY_KEY_INVALID` | Says it is a fault in this page. Neither can happen while `idempotency.ts` sends a `crypto.randomUUID()`, so reaching one is a bug report and not a state a backer can recover from |
+| `PLEDGE_MODIFIED` | Offers a new reservation. Usually §8.4's sweep expiring the draft as it was confirmed — the service will not claim a cause it inferred rather than observed, and neither does the wording |
+
+**The confirmation reads the pledge rather than asserting facts about it.**
+`cardVerified` and `paymentMethodId` come back on every `PledgeResponse`, and
+the "what happens now" sentences are written from them. Both say the same thing
+today as the hard-coded prose they replaced — nothing charged, no method
+collected — and #55 is precisely the change that would have made that prose a
+lie nobody was told to go and fix.
+
 **There is no card form, and adding one would be a defect.** Card entry and 3-D
 Secure are #55, blocked on #60 (`status: needs-decision`), so there is no
 provider, no hosted field and nothing to tokenise with. `§17.2` targets SAQ A,

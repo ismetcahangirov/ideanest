@@ -1814,6 +1814,12 @@ sequenceDiagram
 > becomes true when #55 lands. `pledges.payment_method_id` is accepted and stored in
 > the meantime — a nullable column with no foreign key, because `payment_methods` is
 > #55's table — so the shape a client sends does not change then either.
+>
+> **The web confirmation screen is written from those two fields rather than from
+> this paragraph** (#204). "No card has been charged" and "no payment method was
+> collected" are true today and are read from `cardVerified` and
+> `paymentMethodId` on the response, so the day #55 lands the screen stops making
+> a claim nobody was told to go and correct.
 
 ### 9.3 Provider requirements
 
@@ -2343,6 +2349,18 @@ another's request nor be handed its response. Two identical requests arriving at
 the same instant are resolved by `idempotency_keys`' unique index and never by a
 read: both insert a claim, exactly one succeeds, and the loser reads what the
 winner wrote.
+
+**What a client does with the fourth answer.** `IDEMPOTENT_REQUEST_IN_PROGRESS`
+is not a failure and must not be shown as one: it is what a double-click
+produces, and the work is already being done, exactly once, by the request that
+got there first. The correct behaviour is to wait the `Retry-After` and send the
+**same key** again — a fresh one would be the duplicate the mechanism exists to
+prevent — with a bound on how many times and how long, because the refusal says
+the first attempt is still running and a client that asked forever would be
+asking hardest at the moment asking helps least. The other two are refusals of
+the *request* rather than of the pledge: `IDEMPOTENCY_KEY_REQUIRED` and
+`IDEMPOTENCY_KEY_INVALID` cannot be reached by a client that sends a UUID, so
+they are a bug report and not a state a user can act on.
 
 ### 10.4 Error shape
 
