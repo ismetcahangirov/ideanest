@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import { PrelaunchPanel } from '../../../../../components/campaign-editor/PrelaunchPanel';
+import { privatePageMetadata } from '../../../../../lib/seo/metadata';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = privatePageMetadata({
   title: 'Pre-launch',
   description:
     'Open a pre-launch page, share the link, and collect the people who want to be told when your campaign opens.',
-};
+});
 
 /**
  * The project is loaded with the account's bearer token from the browser, so this
