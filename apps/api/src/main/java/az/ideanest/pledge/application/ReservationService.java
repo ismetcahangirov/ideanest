@@ -11,6 +11,7 @@ import az.ideanest.pledge.domain.QuotedLine;
 import az.ideanest.pledge.infrastructure.PledgeAddonRepository;
 import az.ideanest.pledge.infrastructure.PledgeRepository;
 import az.ideanest.reward.application.RewardStock;
+import az.ideanest.shared.Money;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -19,6 +20,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
@@ -65,6 +67,14 @@ import org.springframework.transaction.annotation.Transactional;
  * through the same three steps. Both go through {@link #hold}; the difference
  * between them is only how much has been decided by the time the row is written.
  *
+ * <p><strong>#56 added {@link #edit}, which is the only method here that moves a
+ * place rather than taking or giving one.</strong> It takes the new place before
+ * releasing the old, so that a backer whose edit is refused still holds what they
+ * already had; that ordering is the single most important line in this class and its
+ * javadoc carries the argument. It also re-quotes through the same
+ * {@link #selectionFor} the checkout uses, so a draft and an edit of that draft
+ * cannot come to two different totals for one selection.
+ *
  * <p><strong>What is not here.</strong>
  *
  * <ul>
@@ -81,14 +91,17 @@ import org.springframework.transaction.annotation.Transactional;
  *       enforced a layer above by {@code shared.idempotency}. Nothing here is
  *       replay-safe on its own, and it does not need to be: the machinery runs this
  *       at most once per key.
- *   <li><strong>Stock on the add-ons.</strong> A place is taken for the reward tier
- *       and for nothing else. §4.5's PL-13 is about a limited reward's place, and
- *       reserving <em>n</em> places on an add-on needs a second conditional
- *       statement, a matching release, and a sweep that walks
+ *   <li><strong>Stock on the add-ons — #203.</strong> A place is taken for the
+ *       reward tier and for nothing else. §4.5's PL-13 is about a limited reward's
+ *       place, and reserving <em>n</em> places on an add-on needs a second
+ *       conditional statement, a matching release, and a sweep that walks
  *       {@code pledge_addons} to give them back — a change to the expiry path
  *       rather than an addition to this one. Until then a limited add-on is quoted
  *       and not held, which is stated here rather than discovered when one
- *       oversells.
+ *       oversells. <strong>#56's {@link #edit} makes the gap no wider and no
+ *       narrower:</strong> changing an add-on's quantity moves no count, exactly as
+ *       selecting it in the first place moved none, and cancelling releases nothing
+ *       for it because nothing was held.
  * </ul>
  */
 @Service
@@ -219,7 +232,12 @@ public class ReservationService {
 
         settleAnyExistingPledge(command.projectId(), command.backerId(), now);
 
-        PledgeQuote quote = PledgeQuote.of(selectionFor(command));
+        PledgeQuote quote = PledgeQuote.of(selectionFor(
+                command.projectId(),
+                command.rewardTierId(),
+                command.addons(),
+                command.contribution(),
+                command.shippingCountry()));
 
         if (command.rewardTierId() != null) {
             takeThePlace(command.projectId(), command.rewardTierId());
@@ -246,6 +264,281 @@ public class ReservationService {
     }
 
     /**
+     * §4.5's PL-09: a new selection on a pledge that already exists, re-quoted, with
+     * its place moved if the reward changed. #56.
+     *
+     * <p><strong>Priced, then the place is moved, then the row is written.</strong>
+     * The same order as {@link #draft} and for a sharper version of its reason: a
+     * selection that cannot be quoted — a destination the creator never priced, a
+     * contribution below the new tier — must not cost the backer the place they
+     * already hold, and pricing first means it never can.
+     *
+     * <p><strong>Take the new place before giving the old one back. This is the
+     * whole of the hard part.</strong> The other order is the tempting one, because
+     * it keeps {@code claimed + reserved} from rising, and it is wrong in the way
+     * that matters most: between the release and the take, the backer holds nothing,
+     * and if the take then fails — the new tier sold its last place a moment ago —
+     * they have lost the reward they already had in exchange for one they never got.
+     * Taking first means the worst case is a refusal that changes nothing, which is
+     * what a failed edit ought to be. The cost is that a backer switching between two
+     * tiers momentarily holds a place on each, so a tier can refuse a switch it would
+     * have allowed had the release come first; that is a refusal somebody can retry,
+     * and losing a reservation is not.
+     *
+     * <p>The whole method is one transaction, so the take, the release, the re-quote
+     * and the add-on rows either all happen or none do. That is what lets the
+     * refusal above be a genuine no-op rather than a promise.
+     *
+     * <p><strong>Which column moves depends on the pledge, not on the tier.</strong>
+     * A {@code DRAFT} holds a <em>reserved</em> place and a {@code CONFIRMED} pledge
+     * holds a <em>claimed</em> one, so an edit moves like for like — see
+     * {@link RewardStock#claimOnePlace} and
+     * {@link RewardStock#releaseOneClaimedPlace}. Moving a confirmed backer's place
+     * through {@code reserved_quantity} would leave a reservation against a pledge
+     * that is not a draft, which is exactly the row §8.4's sweep hunts for.
+     *
+     * <p><strong>Nothing is reserved on the add-ons, and this method makes that gap
+     * no wider and no narrower.</strong> A limited add-on is quoted and not held —
+     * see this class's header and #203 — so changing an add-on's quantity moves no
+     * count at all, exactly as selecting it in the first place did not.
+     *
+     * @param pledge the backer's own pledge, already established to be theirs and to
+     *     be in a state they may change. This method does not re-decide either: see
+     *     {@link PledgeService#edit}, which is where the campaign's deadline and
+     *     §6.2's states are composed into one rule
+     * @param existingAddons the add-on lines as they stand, read by the caller inside
+     *     this transaction. Passed in rather than read again because they are needed
+     *     twice — to resolve an absent {@code addons} field, and to decide whether
+     *     the rows have to be rewritten at all
+     * @throws UnknownRewardTierException when the campaign has no such tier
+     * @throws ContributionBelowRewardPriceException when the backer offered less than
+     *     the reward now costs
+     * @throws ShippingDestinationUnpricedException when the new selection is posted
+     *     and the destination has no rate
+     * @throws RewardSoldOutException when the newly chosen tier has no places left —
+     *     §10.4's {@code REWARD_SOLD_OUT}, and the pledge is left exactly as it was
+     */
+    @Transactional
+    public Pledge edit(Pledge pledge, EditPledge command, List<PledgeAddon> existingAddons) {
+        UUID projectId = pledge.getProjectId();
+
+        UUID rewardTierId =
+                command.rewardTierId().isPresent() ? command.rewardTierId().value() : pledge.getRewardTierId();
+        String shippingCountry = command.shippingCountry().isPresent()
+                ? command.shippingCountry().value()
+                : pledge.getShippingCountry();
+        boolean anonymous =
+                command.anonymous().isPresent() ? command.anonymous().value() : pledge.isAnonymous();
+        UUID paymentMethodId = command.paymentMethodId().isPresent()
+                ? command.paymentMethodId().value()
+                : pledge.getPaymentMethodId();
+        List<DraftPledge.AddonSelection> addonSelections = selectedAddons(command, existingAddons);
+        Money contribution =
+                command.contribution().isPresent() ? command.contribution().value() : contributionOf(pledge);
+
+        // The same rule the checkout applies, from the same method, against a
+        // selection the checkout never saw. See DraftPledge.
+        DraftPledge.requireDistinctSelections(rewardTierId, addonSelections);
+
+        PledgeQuote quote = PledgeQuote.of(
+                selectionFor(projectId, rewardTierId, addonSelections, contribution, shippingCountry));
+
+        moveThePlace(pledge, rewardTierId);
+
+        pledge.edit(quote, rewardTierId, shippingCountry, anonymous, paymentMethodId);
+        replaceAddons(pledge, existingAddons, addonSelections);
+
+        // saveAndFlush for draft's second reason: total_amount is generated, so the
+        // response cannot be built until the UPDATE has run. The version check that
+        // comes with it is the point of the flush being here rather than at the
+        // commit — a backer editing in one tab while another confirms is exactly the
+        // race Pledge's @Version exists for, and it has to surface as an answer
+        // rather than at a commit nothing can translate.
+        return pledges.saveAndFlush(pledge);
+    }
+
+    /**
+     * §4.5's PL-10: the backer withdraws, and the place goes back to the tier. #56.
+     *
+     * <p><strong>Which place goes back depends on what the pledge was holding.</strong>
+     * A {@code DRAFT} gives back a <em>reserved</em> place and a {@code CONFIRMED}
+     * pledge gives back a <em>claimed</em> one. They are different statements against
+     * different columns, and releasing the wrong one leaves the tier counting a place
+     * nobody holds while it is short of one somebody does — with the sum, which is
+     * what the limit is checked against, still looking correct.
+     *
+     * <p><strong>Nothing is refunded, because nothing was collected.</strong> §9.7's
+     * row for this case says so in terms, and §9.2 puts the only collection at the
+     * close of a successful campaign. There is no transaction to reverse and no
+     * ledger entry to write; the refund of a pledge that <em>was</em> collected is
+     * #67's.
+     *
+     * <p>The state change and the credit are one transaction, for
+     * {@link ReservationExpiry}'s reason: a pledge that says cancelled while the tier
+     * still counts its place is a place nothing will ever release.
+     *
+     * <p>Nothing is released for the add-ons, because nothing was ever held for them
+     * — see this class's header and #203.
+     *
+     * @param pledge the backer's own pledge, already established to be theirs and to
+     *     be in a state they may withdraw. See {@link PledgeService#cancel}
+     */
+    @Transactional
+    public void cancel(Pledge pledge, Instant now) {
+        UUID held = pledge.getRewardTierId();
+        // Read before the transition, because it is the old state that says which
+        // column the place is counted in.
+        boolean committed = pledge.isConfirmed();
+
+        pledge.cancelByBacker(now);
+        if (held != null) {
+            releaseTheHeldPlace(pledge, held, committed);
+        }
+        pledges.saveAndFlush(pledge);
+    }
+
+    /**
+     * The add-on selection after the edit: the one that was sent, or the one already
+     * stored.
+     *
+     * <p>{@code "addons": null} is an empty selection — a backer who removed all of
+     * them — and an absent field leaves them alone. Collapsing those two would make
+     * an edit of the contribution alone silently strip every extra off the pledge.
+     */
+    private static List<DraftPledge.AddonSelection> selectedAddons(
+            EditPledge command, List<PledgeAddon> existingAddons) {
+
+        if (!command.addons().isPresent()) {
+            return existingAddons.stream()
+                    .map(addon -> new DraftPledge.AddonSelection(addon.getRewardTierId(), addon.getQuantity()))
+                    .toList();
+        }
+        List<DraftPledge.AddonSelection> sent = command.addons().value();
+        return sent == null ? List.of() : List.copyOf(sent);
+    }
+
+    /**
+     * What the backer chose to give, reconstructed from the pledge when the edit does
+     * not say.
+     *
+     * <p><strong>Base plus bonus, which is the definition rather than a
+     * reconstruction.</strong> {@code PledgeQuote} splits a contribution into the
+     * tier's price and the support above it, so adding the two back together returns
+     * the number the backer actually chose — and it does so for a support-only pledge
+     * as well, where the base is the whole of it and the bonus is zero. Add-ons,
+     * shipping and tax are excluded because they were never part of it.
+     *
+     * <p><strong>When the tier changes and the contribution does not</strong>, the
+     * backer's old number is quoted against the new tier's price. Moving to something
+     * cheaper leaves the difference as PL-03 bonus support, which is what they are
+     * still paying and what they will still be charged. Moving to something dearer is
+     * refused with {@code CONTRIBUTION_BELOW_REWARD_PRICE} rather than silently
+     * raised — quietly charging somebody more for a tier they upgraded to is the one
+     * outcome no client could defend, and the refusal names both amounts so the
+     * client can offer the new figure.
+     */
+    private static Money contributionOf(Pledge pledge) {
+        return Money.of(pledge.getBaseAmount().add(pledge.getBonusAmount()), pledge.getCurrency());
+    }
+
+    /**
+     * Moves the pledge's place from the tier it held to the tier it now names.
+     *
+     * <p>Nothing happens when the reward did not change, which is the common edit —
+     * a new destination, another add-on, a bigger contribution. A pledge that had no
+     * reward and still has none moves nothing either.
+     *
+     * @throws RewardSoldOutException when the new tier is full. Thrown <em>before</em>
+     *     the old place is given back, so the transaction rolls back with the backer
+     *     still holding exactly what they had
+     */
+    private void moveThePlace(Pledge pledge, UUID rewardTierId) {
+        UUID held = pledge.getRewardTierId();
+        if (Objects.equals(held, rewardTierId)) {
+            return;
+        }
+
+        // Read before the state changes, because it decides which of the two columns
+        // this pledge's place lives in.
+        boolean committed = pledge.isConfirmed();
+
+        if (rewardTierId != null) {
+            boolean taken = committed ? stock.claimOnePlace(rewardTierId) : stock.reserveOnePlace(rewardTierId);
+            if (!taken) {
+                throw new RewardSoldOutException(pledge.getProjectId(), rewardTierId);
+            }
+        }
+        if (held != null) {
+            releaseTheHeldPlace(pledge, held, committed);
+        }
+    }
+
+    /**
+     * Gives back the place a pledge was holding, from whichever column was holding it.
+     *
+     * <p>A tier with nothing to give back is logged rather than refused, for
+     * {@link ReservationExpiry}'s reason: this transaction owns the pledge, so a
+     * mismatch is an invariant violation rather than a race, and refusing would
+     * strand a backer in front of a state only we can repair. The count is
+     * recoverable from the pledges; a lost edit or a lost cancellation is not.
+     */
+    private void releaseTheHeldPlace(Pledge pledge, UUID rewardTierId, boolean committed) {
+        boolean released =
+                committed ? stock.releaseOneClaimedPlace(rewardTierId) : stock.releaseOnePlace(rewardTierId);
+        if (!released) {
+            log.error(
+                    "Pledge {} held a {} place on reward tier {} that the tier had no record of.",
+                    pledge.getId(),
+                    committed ? "claimed" : "reserved",
+                    rewardTierId);
+        }
+    }
+
+    /**
+     * Rewrites the add-on lines, and only when they actually changed.
+     *
+     * <p><strong>Compared before it is written, because the common edit changes
+     * nothing here.</strong> A backer raising their contribution or hiding their name
+     * sends the same add-ons back, and deleting and re-inserting identical rows would
+     * be two statements and a composite foreign key check for no change at all.
+     *
+     * <p>When they have changed, the set is replaced wholesale — V18 says so, and
+     * {@code EditPledge} carries the argument for why a per-line patch is the wrong
+     * shape. The rows are removed as entities rather than by a bulk {@code DELETE}:
+     * a bulk statement leaves the persistence context still holding the rows it
+     * deleted, and the insert that follows would then be turned into an {@code
+     * UPDATE} of a row that no longer exists. The flush between the two is what lets
+     * a tier that survived the edit be written again under the primary key it just
+     * gave up.
+     */
+    private void replaceAddons(
+            Pledge pledge, List<PledgeAddon> existingAddons, List<DraftPledge.AddonSelection> selections) {
+
+        Map<UUID, Integer> before = new LinkedHashMap<>();
+        for (PledgeAddon addon : existingAddons) {
+            before.put(addon.getRewardTierId(), addon.getQuantity());
+        }
+        Map<UUID, Integer> after = new LinkedHashMap<>();
+        for (DraftPledge.AddonSelection selection : selections) {
+            after.put(selection.rewardTierId(), selection.quantity());
+        }
+        if (before.equals(after)) {
+            return;
+        }
+
+        if (!existingAddons.isEmpty()) {
+            addons.deleteAll(existingAddons);
+            addons.flush();
+        }
+        if (!selections.isEmpty()) {
+            addons.saveAll(selections.stream()
+                    .map(selection -> PledgeAddon.of(
+                            pledge.getId(), pledge.getProjectId(), selection.rewardTierId(), selection.quantity()))
+                    .toList());
+        }
+    }
+
+    /**
      * Turns what the backer named into what {@link PledgeQuote} can add up.
      *
      * <p>One read of the reward module for every line at once — the reward and each
@@ -260,54 +553,70 @@ public class ReservationService {
      * first, where those are known, and the quote's own refusal stays as the backstop
      * that makes it impossible to price a pledge nobody costed — including for
      * whatever calls it next.
+     *
+     * <p><strong>Taken apart from {@link DraftPledge} by #56</strong>, which quotes a
+     * selection that was never one: an edit resolves a partial body against a stored
+     * pledge, and what comes out is a reward, some add-ons, a contribution and a
+     * destination with no command object around them. Both callers price through this
+     * method, so a draft and an edit of that same draft cannot come to two different
+     * totals for one selection — which is the only property that matters here, and it
+     * is exactly what a second copy of this method would have quietly given up.
      */
-    private PledgeSelection selectionFor(DraftPledge command) {
-        List<UUID> selected = command.selectedTierIds();
+    private PledgeSelection selectionFor(
+            UUID projectId,
+            UUID rewardTierId,
+            List<DraftPledge.AddonSelection> addonSelections,
+            Money contribution,
+            String shippingCountry) {
+
+        List<UUID> selected = new ArrayList<>(addonSelections.size() + 1);
+        if (rewardTierId != null) {
+            selected.add(rewardTierId);
+        }
+        addonSelections.stream().map(DraftPledge.AddonSelection::rewardTierId).forEach(selected::add);
 
         Map<UUID, RewardStock.SelectableTier> tiers = new LinkedHashMap<>();
-        for (RewardStock.SelectableTier tier :
-                stock.selectionOf(command.projectId(), selected, command.shippingCountry())) {
+        for (RewardStock.SelectableTier tier : stock.selectionOf(projectId, selected, shippingCountry)) {
             tiers.put(tier.rewardTierId(), tier);
         }
-        for (UUID rewardTierId : selected) {
-            if (!tiers.containsKey(rewardTierId)) {
+        for (UUID selectedTierId : selected) {
+            if (!tiers.containsKey(selectedTierId)) {
                 // Absent from the answer means "not this campaign's" — see
                 // RewardStock.selectionOf, which leaves this distinction to the
                 // caller because only the caller can say which selection went
                 // missing.
-                throw new UnknownRewardTierException(command.projectId(), rewardTierId);
+                throw new UnknownRewardTierException(projectId, selectedTierId);
             }
         }
 
         String currency = currencyOf(tiers.values());
-        if (!currency.equals(command.contribution().currency())) {
+        if (!currency.equals(contribution.currency())) {
             // Adding the two would produce a number in neither currency, and the
             // pledge has one currency column to record it in. Refused here rather
             // than in the quote so that the message names both.
             throw new IllegalArgumentException("This campaign is priced in " + currency
-                    + " and the contribution is in " + command.contribution().currency());
+                    + " and the contribution is in " + contribution.currency());
         }
 
         QuotedLine reward = null;
-        if (command.rewardTierId() != null) {
-            RewardStock.SelectableTier tier = tiers.get(command.rewardTierId());
-            if (command.contribution().amount().compareTo(tier.amount()) < 0) {
+        if (rewardTierId != null) {
+            RewardStock.SelectableTier tier = tiers.get(rewardTierId);
+            if (contribution.amount().compareTo(tier.amount()) < 0) {
                 throw new ContributionBelowRewardPriceException(
-                        command.contribution().amount(), tier.amount(), tier.currency());
+                        contribution.amount(), tier.amount(), tier.currency());
             }
             // Always one. §7.2 gives a pledge a single reward_tier_id, so two of a
             // tier is two pledges or it is an add-on, and both of those already have
             // a shape.
-            reward = lineFor(tier, 1, command.shippingCountry());
+            reward = lineFor(tier, 1, shippingCountry);
         }
 
-        List<QuotedLine> addonLines = new ArrayList<>(command.addons().size());
-        for (DraftPledge.AddonSelection addon : command.addons()) {
-            addonLines.add(lineFor(tiers.get(addon.rewardTierId()), addon.quantity(), command.shippingCountry()));
+        List<QuotedLine> addonLines = new ArrayList<>(addonSelections.size());
+        for (DraftPledge.AddonSelection addon : addonSelections) {
+            addonLines.add(lineFor(tiers.get(addon.rewardTierId()), addon.quantity(), shippingCountry));
         }
 
-        return new PledgeSelection(
-                currency, command.shippingCountry(), reward, addonLines, command.contribution().amount());
+        return new PledgeSelection(currency, shippingCountry, reward, addonLines, contribution.amount());
     }
 
     /**

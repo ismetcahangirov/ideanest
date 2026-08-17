@@ -22,13 +22,28 @@ public record PledgeAddonBody(
         @NotNull(message = "An add-on names a reward tier") UUID rewardTierId,
         @Min(value = 1, message = "An add-on is selected at least once") int quantity) {
 
-    /** What the checkout takes. */
+    /**
+     * What the checkout takes.
+     *
+     * <p><strong>The null check is not redundant, since #56.</strong> On the draft the
+     * {@code @NotNull} above is enforced by {@code @Valid} and this can never see a
+     * line without a tier. On {@code PATCH} it can: bean validation cannot look inside
+     * a {@code Patched}, so nothing has checked the list by the time it arrives here,
+     * and a line sent as {@code {"quantity": 2}} would otherwise become a
+     * {@code NullPointerException} out of {@code AddonSelection} — a 500 for a request
+     * whose fault is entirely the client's.
+     */
     public static List<DraftPledge.AddonSelection> selectionsOf(List<PledgeAddonBody> bodies) {
         if (bodies == null) {
             return List.of();
         }
         return bodies.stream()
-                .map(body -> new DraftPledge.AddonSelection(body.rewardTierId(), body.quantity()))
+                .map(body -> {
+                    if (body == null || body.rewardTierId() == null) {
+                        throw new IllegalArgumentException("An add-on names a reward tier");
+                    }
+                    return new DraftPledge.AddonSelection(body.rewardTierId(), body.quantity());
+                })
                 .toList();
     }
 

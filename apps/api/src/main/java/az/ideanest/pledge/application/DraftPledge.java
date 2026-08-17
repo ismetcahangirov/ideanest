@@ -51,6 +51,24 @@ public record DraftPledge(
         // List.of() would put a null check at every call site instead of here.
         addons = addons == null ? List.of() : List.copyOf(addons);
 
+        requireDistinctSelections(rewardTierId, addons);
+    }
+
+    /**
+     * The two ways a selection can name one tier twice, refused once for every path
+     * that builds one.
+     *
+     * <p><strong>A static method rather than two copies of the rule.</strong> #56's
+     * {@code PATCH} resolves a partial body against a stored pledge, so the selection
+     * it ends up with was never a {@code DraftPledge} and never passed through the
+     * constructor above — an edit that added, as an add-on, the tier the pledge
+     * already has as its reward would otherwise reach the database and be refused by
+     * a constraint instead of by an answer. One rule, one place, both callers.
+     *
+     * @throws IllegalArgumentException when an add-on is listed twice, or when the
+     *     reward tier is also listed as an add-on
+     */
+    public static void requireDistinctSelections(UUID rewardTierId, List<AddonSelection> addons) {
         // One line per tier. Two lines for one add-on is a quantity expressed twice,
         // and `pledge_addons`' primary key refuses the second row — so without this
         // the client would get a constraint violation instead of being told what was

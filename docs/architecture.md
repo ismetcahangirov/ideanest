@@ -470,6 +470,54 @@ sequenceDiagram
 > provider call beside it is #55, blocked on #60, and §9.2 carries what that means
 > and why the transition is correct without it.
 
+> **PL-09 and PL-10 are built (#56), and "until the deadline" turned out to be two
+> rules rather than one.** A backer may change or withdraw a pledge when **both**
+> of these hold, and the pair is composed in exactly one place —
+> `PledgeService.requireEditable`:
+>
+> 1. **The pledge is `DRAFT` or `CONFIRMED`** (`PledgeState.EDITABLE`). A draft is
+>    a checkout in progress; a confirmed pledge is PL-09's real case, a backer who
+>    committed and has since changed their mind. `EXPIRED` and the two cancelled
+>    states are over, and a pledge that ended cannot be edited back into existence
+>    — the backer's move is to pledge again, which §7.2's partial index permits
+>    precisely because those states are not active. `CHARGE_PENDING` onwards are
+>    past the campaign's close, where money is moving or has moved: changing an
+>    amount there is a refund or a second charge, not an edit.
+> 2. **The campaign is still accepting pledges** — launched, `LIVE`, and before its
+>    deadline. This is not a second rule that could drift from the checkout's; it
+>    is `PledgeAcceptance`, the same call `POST /v1/pledges/draft` makes, so a
+>    campaign that will not take a new pledge will not take a change to an old one
+>    either. A closed campaign is therefore answered `PROJECT_NOT_LIVE` rather than
+>    `PLEDGE_NOT_EDITABLE`, with the deadline in `meta`; `PLEDGE_NOT_EDITABLE` is
+>    left to mean the thing only it can mean, which is that the pledge itself has
+>    moved on.
+>
+> **An edit does not extend a draft's reservation.** `reservation_expires_at` is
+> left exactly where it was, and PL-13's five minutes therefore run from when the
+> draft was *made* and not from when it was last touched. The alternative is worse
+> in a way that is hard to see: a backer who could restart the clock by editing
+> would be able to hold a limited tier's last place indefinitely by changing their
+> mind every four minutes, and it would look like an ordinary checkout rather than
+> like abuse. The cost is real and falls the right way — a backer who spends their
+> window deciding gets what is left of it, and if it runs out the sweep releases
+> the place and they start again, which is what the window is for. Clearing the
+> column is not representable in any case: `pledges_drafts_are_time_bounded`
+> refuses a draft without one.
+>
+> **Cancellation refunds nothing, because nothing was collected** (§9.7). There is
+> no refund path on `DELETE /v1/pledges/{id}` and there should not be one; the
+> refund of a pledge that really was collected is #67's. What cancellation does
+> move is stock, and *which* stock depends on the pledge: a `DRAFT` gives back a
+> **reserved** place and a `CONFIRMED` pledge gives back a **claimed** one. They
+> are separate statements against separate columns, because releasing the wrong one
+> leaves the tier counting a place nobody holds while it is short of one somebody
+> does — and the sum, which is what the limit is checked against, still looks
+> correct.
+>
+> **Add-ons are still not reserved, and #56 changed that neither way.** Editing an
+> add-on's quantity moves no count, exactly as selecting it never did, and
+> cancelling releases nothing for it because nothing was held. The gap is #203.
+
 ### 4.6 Campaign editor `[W]`
 
 **Basics** — title (≤60 characters), summary (≤135), category and subcategory,
@@ -897,6 +945,7 @@ stateDiagram-v2
     [*] --> DRAFT
     DRAFT --> CONFIRMED: card verified
     DRAFT --> EXPIRED: reservation TTL
+    DRAFT --> CANCELED_BY_BACKER: backer abandons
     CONFIRMED --> CANCELED_BY_BACKER
     CONFIRMED --> CANCELED_BY_PROJECT
     CONFIRMED --> CHARGE_PENDING: campaign succeeded
@@ -909,6 +958,25 @@ stateDiagram-v2
     COLLECTED --> FULFILLED
     FULFILLED --> [*]
 ```
+
+> **`DRAFT --> CANCELED_BY_BACKER` is new, and #56 added it while building
+> PL-10.** The diagram had one edge out of a draft that ends it —
+> `DRAFT --> EXPIRED: reservation TTL` — and that edge is about nobody doing
+> anything. A backer who presses "cancel" on a checkout they have decided against
+> is a different fact, and recording it as `EXPIRED` would say a timer ran out
+> when somebody made a decision. The two are told apart by every screen that
+> reports why a reward's place came back, and by any later question about how many
+> checkouts are abandoned deliberately rather than left open.
+>
+> Both edges release the same reserved place and both stamp `canceled_at`, which
+> is why V17 gave that column to "the pledge stopped being active" rather than to
+> one cause of it. The `state` column is what distinguishes them.
+>
+> **An edit is not on this diagram, deliberately.** PL-09 changes what a pledge is
+> for, not what state it is in: a draft that is edited is still a draft and a
+> confirmed pledge that is edited is still confirmed. Sending a confirmed pledge
+> back to `DRAFT` to re-price it would put a committed backer behind a
+> five-minute timer and hand their place to §8.4's sweep.
 
 ### 6.3 Payout
 
@@ -1785,7 +1853,7 @@ expired cards, limits, and issuer declines.
 | Creator cancels | Full refund of collected pledges |
 | Moderator suspends | Full refund |
 | Creator cannot deliver | Creator offers a refund; the platform mediates |
-| Backer changes their mind while live | Cancel — nothing was collected |
+| Backer changes their mind while live | Cancel — nothing was collected (built: #56) |
 | Backer changes their mind after collection | Creator's decision; not compelled |
 | Fraud established | Full refund and account action |
 

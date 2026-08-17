@@ -45,11 +45,13 @@ import org.hibernate.generator.EventType;
  * is the number a card is charged.
  *
  * <p><strong>What is deliberately absent</strong> is every transition except the
- * three that are built. #51 owns nothing to {@link PledgeState#DRAFT} and
+ * ones that are built. #51 owns nothing to {@link PledgeState#DRAFT} and
  * {@code DRAFT} to {@link PledgeState#EXPIRED}; #52 adds {@link #confirm}, which is
- * §6.2's {@code DRAFT --> CONFIRMED}. Cancellation (#56) and collection (epic #59)
- * are not here, and setters that let any caller move the state would be a state
- * machine with no rules in it.
+ * §6.2's {@code DRAFT --> CONFIRMED}; #56 adds {@link #edit}, which moves no state at
+ * all, and {@link #cancelByBacker}, which is {@code CANCELED_BY_BACKER}. Collection
+ * (epic #59), the refund of an already-collected pledge (#67) and
+ * {@code CANCELED_BY_PROJECT} (#103) are not here, and setters that let any caller
+ * move the state would be a state machine with no rules in it.
  */
 @Entity
 @Table(name = "pledges")
@@ -278,9 +280,113 @@ public class Pledge {
         this.paymentMethodId = paymentMethodId;
     }
 
+    /**
+     * §4.5's PL-09: a new selection, re-quoted, on a pledge that keeps its state.
+     *
+     * <p><strong>The state does not move and must not.</strong> A draft that is
+     * edited is still a draft and a confirmed pledge that is edited is still
+     * confirmed — an edit changes what the backer is buying, not whether they have
+     * committed to buying it. Sending a confirmed pledge back to {@code DRAFT} to
+     * re-price it would put a committed backer behind a five-minute timer and hand
+     * their place to §8.4's sweep.
+     *
+     * <p><strong>{@code reservationExpiresAt} is deliberately left alone.</strong>
+     * The five minutes bound how long one backer may hold a limited tier's place out
+     * of the market, and §4.5's PL-13 measures them from when the draft was
+     * <em>made</em>. Restarting the clock on every edit would let one backer hold the
+     * last early-bird place indefinitely by changing their mind every four minutes —
+     * and it would look like an ordinary checkout, not like abuse. The cost is real
+     * and is the right way round: a backer who spends their window deciding gets
+     * what is left of it, and if it runs out the sweep releases the place and they
+     * start again, which is the outcome the window exists to produce. Clearing it
+     * is not even representable — {@code pledges_drafts_are_time_bounded} refuses a
+     * draft without one.
+     *
+     * <p>The total is not passed and could not be: {@code total_amount} is generated,
+     * so PostgreSQL adds the five up and this reads the answer back.
+     *
+     * @param rewardTierId the tier after the edit, or null for a pledge that has
+     *     given up its reward and is now support only
+     * @param paymentMethodId what to charge later, echoed unchanged when the backer
+     *     did not name a new one. Nothing resolves it until #55
+     * @throws IllegalStateException when this pledge is in a state no backer may
+     *     change. The service refuses first, with something a client can act on;
+     *     this is the entity holding its own invariant against a caller that did not
+     *     ask
+     */
+    public void edit(
+            PledgeQuote quote,
+            UUID rewardTierId,
+            String shippingCountry,
+            boolean anonymous,
+            UUID paymentMethodId) {
+
+        if (!state.isEditable()) {
+            throw new IllegalStateException("A pledge in " + state + " cannot be edited");
+        }
+        Objects.requireNonNull(quote, "An edited pledge is re-quoted");
+
+        this.rewardTierId = rewardTierId;
+        this.baseAmount = quote.baseAmount();
+        this.addonsAmount = quote.addonsAmount();
+        this.bonusAmount = quote.bonusAmount();
+        this.shippingAmount = quote.shippingAmount();
+        this.taxAmount = quote.taxAmount();
+        this.currency = quote.currency();
+        this.shippingCountry = shippingCountry;
+        this.anonymous = anonymous;
+        this.paymentMethodId = paymentMethodId;
+    }
+
+    /**
+     * §6.2's {@code CONFIRMED --> CANCELED_BY_BACKER}, and the same edge from a
+     * {@code DRAFT}. §4.5's PL-10.
+     *
+     * <p><strong>Nothing is refunded, because nothing was collected.</strong> §9.7 is
+     * explicit for this row — "backer changes their mind while live: cancel, nothing
+     * was collected" — and §9.2 puts the only collection at the close of a successful
+     * campaign. A pledge cancelled while the campaign runs has never been charged, so
+     * there is no transaction to reverse and no ledger entry to write. Cancelling
+     * something that <em>has</em> been collected is a refund and is #67's.
+     *
+     * <p><strong>A draft may be cancelled too, and §6.2 did not draw that
+     * edge.</strong> It draws {@code DRAFT --> EXPIRED: reservation TTL}, which is
+     * what happens when nobody does anything. A backer who abandons a checkout
+     * deliberately is a different fact, and recording it as {@code EXPIRED} would say
+     * a timer ran out when somebody made a decision — the two are told apart on every
+     * screen that reports why a place came back. {@code docs/architecture.md} §6.2 is
+     * amended in the same change rather than left describing a machine that is no
+     * longer the machine.
+     *
+     * <p>{@code canceled_at} is the timestamp V17 already set aside for "the pledge
+     * stopped being active", which the sweep writes for an expiry and this writes for
+     * a cancellation. The state column is what tells them apart.
+     *
+     * @throws IllegalStateException when this pledge is in a state no backer may
+     *     withdraw. The service refuses first; this is the entity holding its own
+     *     invariant
+     */
+    public void cancelByBacker(Instant at) {
+        if (!state.isEditable()) {
+            throw new IllegalStateException("A pledge in " + state + " cannot be canceled by its backer");
+        }
+        this.state = PledgeState.CANCELED_BY_BACKER;
+        this.canceledAt = Objects.requireNonNull(at, "A cancellation happened at a time");
+    }
+
     /** Whether this pledge is still holding a place. */
     public boolean isDraft() {
         return state == PledgeState.DRAFT;
+    }
+
+    /** Whether the backer has committed, which is what decides how their place is counted. */
+    public boolean isConfirmed() {
+        return state == PledgeState.CONFIRMED;
+    }
+
+    /** Whether this backer has already withdrawn this pledge. See {@code PledgeService#cancel}. */
+    public boolean isCanceledByBacker() {
+        return state == PledgeState.CANCELED_BY_BACKER;
     }
 
     /** Whether this is a draft whose reservation has run out as of {@code now}. */

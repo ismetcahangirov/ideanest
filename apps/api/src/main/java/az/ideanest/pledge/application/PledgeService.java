@@ -15,13 +15,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The three things a backer does with a pledge: make one, read it, confirm it.
+ * What a backer does with a pledge: make one, read it, confirm it, change it, and
+ * withdraw it.
  *
- * <p>§4.5's flow, minus the two halves that belong elsewhere. Reserving the place and
- * pricing the selection are {@link ReservationService}, which #51 built and #52
- * extended; replaying a retried request is {@code shared.idempotency}, which wraps
- * every mutation here. What is left is the ordering, the campaign's own answer about
- * whether it will take a pledge, and §6.2's one transition.
+ * <p>§4.5's flow, minus the two halves that belong elsewhere. Reserving the place,
+ * pricing the selection and moving a place from one tier to another are
+ * {@link ReservationService}, which #51 built and #52 and #56 extended; replaying a
+ * retried request is {@code shared.idempotency}, which wraps every mutation here.
+ * What is left is the ordering, the campaign's own answer about whether it will take
+ * a pledge, and §6.2's transitions.
+ *
+ * <p><strong>{@link #requireEditable} is the one place that says whether a backer
+ * may still act on a pledge.</strong> §4.5's PL-09 and PL-10 are each bounded by two
+ * facts owned by two modules — §6.2's states here, the campaign's deadline in
+ * {@code project} — and scattering that pair across the edit and the cancellation
+ * would be two rules free to drift apart.
  *
  * <p><strong>Where the campaign check lives, and why here.</strong>
  * {@code ReservationService} deliberately does not ask whether the campaign is
@@ -169,6 +177,136 @@ public class PledgeService {
         pledge.confirm(now, paymentMethodId);
 
         return detailOf(pledge);
+    }
+
+    /**
+     * {@code PATCH /v1/pledges/{id}}: §4.5's PL-09, a backer changing their mind.
+     *
+     * <p>The whole {@code PledgeDetail} comes back, never the changed fields: a
+     * client that merged a partial response would keep a stale total, which on this
+     * endpoint is the number somebody is about to be charged.
+     *
+     * <p>Everything that touches money or stock is {@link ReservationService#edit} —
+     * the re-quote and the move of the place, in that order and in one transaction.
+     * What is here is the rule about <em>whether</em> the pledge may be changed at
+     * all, which is {@link #requireEditable}, and the read of the add-on lines that
+     * the edit resolves an absent {@code addons} field against.
+     *
+     * @throws PledgeNotFoundException when the pledge is not this backer's
+     * @throws PledgeNotEditableException when its state has moved past editing
+     * @throws ReservationExpiredException when it is a draft whose five minutes ran
+     *     out
+     * @throws az.ideanest.project.application.ProjectNotAcceptingPledgesException
+     *     when the campaign has closed — §4.5's "until the deadline"
+     */
+    @Transactional
+    public PledgeDetail edit(EditPledge command) {
+        Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
+
+        Pledge pledge = pledges.findOwned(command.pledgeId(), command.backerId())
+                .orElseThrow(() -> new PledgeNotFoundException(command.pledgeId()));
+
+        requireEditable(pledge, now, true);
+
+        return detailOf(reservations.edit(pledge, command, addons.findByPledge(pledge.getId())));
+    }
+
+    /**
+     * {@code DELETE /v1/pledges/{id}}: §4.5's PL-10 and §6.2's
+     * {@code CANCELED_BY_BACKER}.
+     *
+     * <p><strong>Cancelling an already-cancelled pledge succeeds.</strong> It is the
+     * first thing checked, before the campaign and before the state, and it returns
+     * without moving a count. A retried cancellation has to be safe: the ordinary
+     * retry carries the same {@code Idempotency-Key} and never reaches this method,
+     * but a client that lost its key and sent a fresh one is asking for a state the
+     * pledge is already in, and answering that with a 409 — or worse, releasing a
+     * second place — would punish it for the one failure the header exists to
+     * forgive. "It is cancelled" is true either way, and it stays true after the
+     * campaign has closed, which is why this comes before the campaign check as well.
+     *
+     * <p><strong>A lapsed draft may still be cancelled</strong>, unlike edited. The
+     * backer is asking for the place to go back and the sweep is about to do the same
+     * thing; refusing would be our scheduling getting in their way. Whichever of the
+     * two gets there first wins outright —
+     * {@code PledgeRepository#expireLapsedDraft} matches only a row still in
+     * {@code DRAFT} — so the place cannot be released twice.
+     *
+     * <p>Nothing is refunded. §9.7: nothing was collected.
+     *
+     * @throws PledgeNotFoundException when the pledge is not this backer's
+     * @throws PledgeNotEditableException when its state has moved past withdrawing
+     * @throws az.ideanest.project.application.ProjectNotAcceptingPledgesException
+     *     when the campaign has closed
+     */
+    @Transactional
+    public void cancel(UUID pledgeId, UUID backerId) {
+        Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
+
+        Pledge pledge = pledges.findOwned(pledgeId, backerId)
+                .orElseThrow(() -> new PledgeNotFoundException(pledgeId));
+
+        if (pledge.isCanceledByBacker()) {
+            return;
+        }
+
+        requireEditable(pledge, now, false);
+        reservations.cancel(pledge, now);
+    }
+
+    /**
+     * <strong>The whole of "may this backer still change this pledge", in one
+     * place.</strong>
+     *
+     * <p>§4.5's PL-09 says "until the deadline" and PL-10 says nothing about timing
+     * at all, and neither is a complete rule on its own. Two facts decide it, they
+     * are owned by two different modules, and this is the only method that composes
+     * them.
+     *
+     * <ol>
+     *   <li><strong>The pledge's state.</strong> {@code PledgeState.EDITABLE} — a
+     *       {@code DRAFT} that is still being assembled, or a {@code CONFIRMED}
+     *       pledge whose backer has changed their mind. That constant carries why the
+     *       other ten states are out.
+     *   <li><strong>The campaign.</strong> Launched, {@code LIVE}, and before its
+     *       deadline — which is exactly {@link PledgeAcceptance}, the same question
+     *       {@code POST /v1/pledges/draft} asks and the only part of the project
+     *       module this one may see. "Until the deadline" is not a second rule that
+     *       could drift from the checkout's; it is the checkout's rule, called again.
+     * </ol>
+     *
+     * <p><strong>The campaign is checked last, and answered as
+     * {@code PROJECT_NOT_LIVE}.</strong> The epic's contract puts a closed campaign
+     * under {@code PLEDGE_NOT_EDITABLE}; this answers it with the code the draft
+     * endpoint already gives, because one fact should have one answer across the four
+     * endpoints that ask about it — and because that problem detail carries
+     * {@code meta.deadline}, which is what lets a client say "this campaign ended on
+     * Tuesday" instead of "you cannot do that". {@code PLEDGE_NOT_EDITABLE} is left
+     * to mean what only it can mean: the pledge itself has moved on. The deviation is
+     * recorded in the pull request rather than taken quietly.
+     *
+     * <p>The state is checked first because it is already loaded and because it is
+     * the more specific answer: a {@code COLLECTED} pledge on a closed campaign is
+     * better described by what happened to the pledge than by what happened to the
+     * campaign.
+     *
+     * @param refuseALapsedDraft whether a draft past its window is refused. True for
+     *     an edit, which would otherwise re-quote against a reservation that is
+     *     already gone; false for a cancellation, which is asking for that same place
+     *     to go back. See {@link #cancel}
+     */
+    private void requireEditable(Pledge pledge, Instant now, boolean refuseALapsedDraft) {
+        if (!pledge.getState().isEditable()) {
+            throw new PledgeNotEditableException(pledge.getId(), pledge.getState());
+        }
+        if (refuseALapsedDraft && pledge.hasLapsed(now)) {
+            // The clock decides, not the state — confirm()'s reason, unchanged. A
+            // draft whose window closed forty seconds ago is still DRAFT in the
+            // table, and editing it would re-price a place the tier has already
+            // promised to give back.
+            throw new ReservationExpiredException(pledge.getId(), pledge.getReservationExpiresAt());
+        }
+        acceptance.requireAcceptingPledges(pledge.getProjectId());
     }
 
     /** The pledge with its add-on lines, read inside the transaction that loaded it. */
