@@ -45,8 +45,10 @@ import org.hibernate.generator.EventType;
  * is the number a card is charged.
  *
  * <p><strong>What is deliberately absent</strong> is every transition except the
- * two this issue owns. Confirmation, cancellation, and collection are #52 and the
- * epic behind it; setters that let any caller move the state would be a state
+ * three that are built. #51 owns nothing to {@link PledgeState#DRAFT} and
+ * {@code DRAFT} to {@link PledgeState#EXPIRED}; #52 adds {@link #confirm}, which is
+ * §6.2's {@code DRAFT --> CONFIRMED}. Cancellation (#56) and collection (epic #59)
+ * are not here, and setters that let any caller move the state would be a state
  * machine with no rules in it.
  */
 @Entity
@@ -119,7 +121,15 @@ public class Pledge {
     @Column(name = "referrer_code")
     private String referrerCode;
 
-    /** §10.3's {@code Idempotency-Key}. Written by #52; null until then. */
+    /**
+     * §10.3's {@code Idempotency-Key}: which request made this pledge.
+     *
+     * <p>The guarantee itself lives in {@code shared.idempotency}, which records the
+     * response as well as the key and covers the three mutations that create no row
+     * to find. This column is the second line under it: V17's partial unique index
+     * means that even a failure of that machinery cannot produce two pledges from
+     * one key.
+     */
     @Column(name = "idempotency_key")
     private String idempotencyKey;
 
@@ -196,6 +206,76 @@ public class Pledge {
         pledge.reservationExpiresAt =
                 Objects.requireNonNull(reservationExpiresAt, "A reservation is time bounded");
         return pledge;
+    }
+
+    /**
+     * A new draft priced from a whole checkout: the reward, the add-ons, the bonus,
+     * the shipping, and the tax.
+     *
+     * <p>The counterpart of {@link #draft(UUID, UUID, UUID, BigDecimal, String,
+     * Instant)} above, which prices only the tier because #51 had no checkout to
+     * quote from. Both write a DRAFT holding a place for the same window; the
+     * difference is how much of §4.5's PL-01 to PL-06 has been decided by the time
+     * the row is written.
+     *
+     * <p>The total is not passed and could not be: {@code total_amount} is a
+     * generated column, so PostgreSQL adds the five up and the entity reads the
+     * answer back. {@link PledgeQuote} has already checked the same sum, which is
+     * what makes the two definitions unable to disagree.
+     */
+    public static Pledge draft(NewPledge draft) {
+        PledgeQuote quote = draft.quote();
+
+        Pledge pledge = new Pledge();
+        pledge.id = Identifiers.newIdentifier();
+        pledge.projectId = draft.projectId();
+        pledge.backerId = draft.backerId();
+        pledge.rewardTierId = draft.rewardTierId();
+        pledge.state = PledgeState.DRAFT;
+        pledge.baseAmount = quote.baseAmount();
+        pledge.addonsAmount = quote.addonsAmount();
+        pledge.bonusAmount = quote.bonusAmount();
+        pledge.shippingAmount = quote.shippingAmount();
+        pledge.taxAmount = quote.taxAmount();
+        pledge.currency = quote.currency();
+        pledge.shippingCountry = draft.shippingCountry();
+        pledge.anonymous = draft.anonymous();
+        pledge.referrerCode = draft.referrerCode();
+        pledge.idempotencyKey = draft.idempotencyKey();
+        pledge.reservationExpiresAt = draft.reservationExpiresAt();
+        return pledge;
+    }
+
+    /**
+     * §6.2's {@code DRAFT --> CONFIRMED}: the backer is committed.
+     *
+     * <p><strong>Nothing has been charged.</strong> §9.2 is explicit that no money
+     * moves at confirmation and that no ledger entry is written — the card is
+     * verified and the verification is voided, and the charge happens at the close of
+     * a successful campaign. Today not even the verification happens: it needs a
+     * payment provider, which is #55 and is blocked on #60.
+     *
+     * <p>The reservation's expiry is deliberately left where it is rather than
+     * cleared. V17 gives the argument: it is a true statement about the window the
+     * backer actually had, and requiring every transition to clear it would be one
+     * more thing each of them has to remember for no reader's benefit. What
+     * {@code reservationExpiresAt} means to a client is handled where the response is
+     * built, which is the only place that knows a confirmed pledge holds no
+     * reservation.
+     *
+     * @param paymentMethodId what the backer said to charge later, or null until #55
+     *     exists to give them one. No foreign key — see V17
+     * @throws IllegalStateException when this pledge is not a draft. The service
+     *     refuses first, with something a client can act on; this is the entity
+     *     holding its own invariant against a caller that did not ask
+     */
+    public void confirm(Instant at, UUID paymentMethodId) {
+        if (state != PledgeState.DRAFT) {
+            throw new IllegalStateException("A pledge in " + state + " cannot be confirmed");
+        }
+        this.state = PledgeState.CONFIRMED;
+        this.confirmedAt = Objects.requireNonNull(at, "A confirmation happened at a time");
+        this.paymentMethodId = paymentMethodId;
     }
 
     /** Whether this pledge is still holding a place. */

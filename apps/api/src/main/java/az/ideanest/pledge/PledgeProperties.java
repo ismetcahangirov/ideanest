@@ -8,9 +8,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *
  * @param reservation how long a checkout may hold a limited reward's place, and
  *     how the places are given back
+ * @param rateLimit §17.3's bound on how often one account may pledge
  */
 @ConfigurationProperties(prefix = "ideanest.pledge")
-public record PledgeProperties(Reservation reservation) {
+public record PledgeProperties(Reservation reservation, RateLimit rateLimit) {
 
     public PledgeProperties {
         // A deployment that configures nothing still starts, for the reason
@@ -18,6 +19,52 @@ public record PledgeProperties(Reservation reservation) {
         // block is absent, and a null here would be a NullPointerException at the
         // first checkout rather than a configuration error at start-up.
         reservation = reservation == null ? Reservation.defaults() : reservation;
+        rateLimit = rateLimit == null ? RateLimit.defaults() : rateLimit;
+    }
+
+    /**
+     * §17.3: "pledge 10/min per user".
+     *
+     * <p>Per account rather than per address, like every other limit that applies to
+     * a request carrying a token: one stolen access token should be worth one
+     * checkout at a time, and an attacker with one token can come from anywhere.
+     *
+     * <p>What it bounds is not fraud — a card is not even touched here — but the work
+     * one caller can make the platform do: every draft settles a stale pledge, reads
+     * a campaign, resolves tiers and rates, and takes a row lock on a reward tier. A
+     * script looping on the checkout of a popular campaign is contention on exactly
+     * the row every other backer needs.
+     *
+     * @param pledgesPerUser ten. Generous for a person, who makes one draft and
+     *     confirms it; low enough that a loop is stopped within seconds
+     * @param window one minute
+     */
+    public record RateLimit(int pledgesPerUser, Duration window) {
+
+        /** §17.3's numbers. */
+        private static final int DEFAULT_PLEDGES_PER_USER = 10;
+
+        private static final Duration DEFAULT_WINDOW = Duration.ofMinutes(1);
+
+        static RateLimit defaults() {
+            return new RateLimit(DEFAULT_PLEDGES_PER_USER, DEFAULT_WINDOW);
+        }
+
+        public RateLimit {
+            // Binding leaves an omitted property at its zero value, and a limit of
+            // zero is an endpoint nobody can call. §17.3's number is the fallback
+            // rather than "unlimited", because failing open on a rate limit is a
+            // configuration mistake with no symptom until it is exploited.
+            pledgesPerUser = pledgesPerUser == 0 ? DEFAULT_PLEDGES_PER_USER : pledgesPerUser;
+            window = window == null ? DEFAULT_WINDOW : window;
+
+            if (pledgesPerUser < 1) {
+                throw new IllegalArgumentException("A backer may make at least one pledge a window");
+            }
+            if (!window.isPositive()) {
+                throw new IllegalArgumentException("A rate-limit window is a positive duration");
+            }
+        }
     }
 
     /**

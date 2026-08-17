@@ -312,24 +312,42 @@ class PledgeSchemaTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("§10.3: one pledge per idempotency key")
-    void idempotencyKeysAreUnique() {
-        UUID projectId = insertProject();
-        UUID first = insertDraft(projectId, insertUser(), null);
-        UUID second = insertDraft(projectId, insertUser(), null);
+    @DisplayName("§10.3: one pledge per idempotency key, per backer")
+    void idempotencyKeysAreUniquePerBacker() {
+        UUID backerId = insertUser();
+        UUID firstProject = insertProject();
+        UUID secondProject = insertProject();
+
+        UUID first = insertDraft(firstProject, backerId, null);
+        // A second campaign, because §7.2 gives this backer one active pledge per
+        // campaign and the rule being checked here is a different one.
+        UUID second = insertDraft(secondProject, backerId, null);
 
         jdbc().update("UPDATE pledges SET idempotency_key = 'a-client-generated-key' WHERE id = ?", first);
 
         // The whole guarantee: a retried POST /v1/pledges/draft finds the pledge it
-        // already made rather than making a second one. #52 sends the header; the
-        // index is what makes the promise true.
+        // already made rather than making a second one. #52 sends the header and
+        // records the response in `idempotency_keys`; this index is the second line
+        // under it, so that even a failure of that machinery cannot produce two
+        // pledges from one backer's one key.
         assertThatThrownBy(() -> jdbc().update(
                         "UPDATE pledges SET idempotency_key = 'a-client-generated-key' WHERE id = ?", second))
                 .isInstanceOf(DataIntegrityViolationException.class);
 
+        // **And it is per backer**, which V18 widened it to be. A key is minted by a
+        // client and belongs to the account that minted it -- `idempotency_keys` is
+        // unique over (account_id, idempotency_key) for that reason -- so two backers
+        // who happen to generate the same UUID are two requests, not a collision. The
+        // two indexes disagreeing would mean one of them refusing a request the other
+        // considers ordinary.
+        UUID somebodyElse = insertDraft(insertProject(), insertUser(), null);
+        assertThatCode(() -> jdbc().update(
+                        "UPDATE pledges SET idempotency_key = 'a-client-generated-key' WHERE id = ?", somebodyElse))
+                .doesNotThrowAnyException();
+
         // Null is not a value, so the pledges without a key do not collide with each
-        // other -- which is every pledge until #52 lands.
-        assertThat(count("pledges", "project_id", projectId)).isEqualTo(2);
+        // other -- which is every pledge made before #52.
+        assertThat(count("pledges", "project_id", secondProject)).isEqualTo(1);
     }
 
     // -----------------------------------------------------------------------

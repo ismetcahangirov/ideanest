@@ -12,11 +12,12 @@ import java.util.UUID;
  * {@code availableAlternatives}: the honest answer is not "no" but "not this one,
  * and here is what is left".
  *
- * <p><strong>The alternatives are not here.</strong> Assembling them means reading
- * the campaign's other tiers, which is a projection the reward module owns and the
- * response body of an endpoint that does not exist yet (#52). This carries the
- * tier that was refused, which is the one thing only this call knows; #52 maps it
- * to the problem detail and decides what to offer instead.
+ * <p><strong>The alternatives are still not here.</strong> Assembling them means
+ * reading the campaign's other tiers, which is the reward module's to answer — see
+ * {@code RewardStock#alternativesTo} — and it is a read this transaction is about to
+ * roll back anyway. What this carries is the pair that identifies the question: the
+ * tier that was refused, and the campaign to look for something else on.
+ * {@code PledgeExceptionHandler} asks, once, while building the problem detail.
  *
  * <p>Thrown when the conditional update took no place — which covers a tier that
  * is full and a tier that has been deleted since it was priced a statement
@@ -26,11 +27,18 @@ import java.util.UUID;
  */
 public class RewardSoldOutException extends RuntimeException {
 
+    private final UUID projectId;
     private final UUID rewardTierId;
 
-    public RewardSoldOutException(UUID rewardTierId) {
+    public RewardSoldOutException(UUID projectId, UUID rewardTierId) {
         super("Reward tier " + rewardTierId + " has no remaining places");
+        this.projectId = projectId;
         this.rewardTierId = rewardTierId;
+    }
+
+    /** Whose campaign to look on for something to offer instead. */
+    public UUID projectId() {
+        return projectId;
     }
 
     /** The tier that was refused, so the client can name it and offer what is left. */
