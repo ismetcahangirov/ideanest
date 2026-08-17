@@ -128,6 +128,26 @@ public class RewardTierFacts implements RewardFacts, RewardStock {
     /**
      * {@inheritDoc}
      *
+     * <p>{@code REQUIRED}, like the others: taking the new place, giving the old one
+     * back, and re-quoting the pledge are one unit of work, and this committing ahead
+     * of the caller would leave a tier holding a claim for an edit that failed.
+     */
+    @Override
+    @Transactional
+    public boolean claimOnePlace(UUID rewardTierId) {
+        return rewards.claimOnePlace(rewardTierId) == 1;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    @Transactional
+    public boolean releaseOneClaimedPlace(UUID rewardTierId) {
+        return rewards.releaseOneClaimedPlace(rewardTierId) == 1;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
      * <p>Two queries however many lines were selected: the tiers, and then every
      * shipping rule for those tiers in one read. Resolving the rate per tier would
      * be a query per add-on on the request a backer is waiting on.

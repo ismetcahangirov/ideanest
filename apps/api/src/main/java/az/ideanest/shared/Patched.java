@@ -1,6 +1,7 @@
 package az.ideanest.shared;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -33,9 +34,16 @@ import java.util.function.Function;
  * accidentally read as "clear this" because a Jackson version stopped consulting
  * the absent hook.
  *
+ * <p><strong>It serialises as well as deserialises</strong>, which it did not have to
+ * until #56: §10.3's idempotency fingerprints the parsed request by serialising it,
+ * so a partial edit that carried a {@code Patched} had to be written down without
+ * losing the value. Nothing the platform <em>responds</em> with contains one. See
+ * {@link PatchedSerializer}.
+ *
  * @param <T> the field's type
  */
 @JsonDeserialize(using = PatchedDeserializer.class)
+@JsonSerialize(using = PatchedSerializer.class)
 public final class Patched<T> {
 
     private static final Patched<?> ABSENT = new Patched<>(false, null);

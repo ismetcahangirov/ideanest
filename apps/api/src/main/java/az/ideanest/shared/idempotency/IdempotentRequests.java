@@ -82,6 +82,17 @@ public class IdempotentRequests {
 
     private static final String DIGEST = "SHA-256";
 
+    /**
+     * What is recorded for a mutation that answers with no body.
+     *
+     * <p>Empty rather than {@code "null"} or a JSON literal: it is what a 204 sends,
+     * and {@code idempotency_keys.response_body} is documented as the exact bytes
+     * that were sent. The column is {@code NOT NULL} when a status is present —
+     * V18's {@code idempotency_keys_outcome_is_whole} — which an empty string
+     * satisfies and a null would not.
+     */
+    private static final String NO_CONTENT = "";
+
     private final IdempotencyRecords records;
     private final ObjectMapper json;
     private final IdempotencyProperties properties;
@@ -130,6 +141,66 @@ public class IdempotentRequests {
             int status,
             Supplier<?> work) {
 
+        return run(accountId, operation, key, request, status, () -> serialise(work.get()));
+    }
+
+    /**
+     * The same guarantee for a mutation that answers with no body at all.
+     *
+     * <p><strong>{@code DELETE /v1/pledges/{id}} is the reason this exists</strong>,
+     * and it is the case §10.3 is most pointed about: a retried cancellation has to
+     * answer 204 rather than 404, and there is no pledge left in an active state to
+     * carry the key. So the key carries the answer, and the answer is "no content".
+     *
+     * <p><strong>The recorded body is the empty string, which is the truth.</strong>
+     * The alternative — running the mutation through {@link #execute} with a supplier
+     * that returns null — would store the four bytes {@code null} against the key and
+     * then decline to send them, which makes {@code response_body}'s "the exact bytes
+     * that were sent" false for every row this endpoint writes. A 204 sends zero
+     * bytes, and zero bytes is what is kept, so a replay is byte-identical in the
+     * only sense a 204 has.
+     *
+     * <p>Everything else is {@link #execute}'s: the same claim, the same race decided
+     * by the same unique index, the same release when the work fails. This is not a
+     * second implementation of any of that — see {@link #run}, which both go through.
+     *
+     * @param status the no-content status the first run answers with, and therefore
+     *     the status every replay answers with
+     * @param work the mutation. Runs at most once per key
+     */
+    public RecordedResponse executeWithoutContent(
+            UUID accountId,
+            String operation,
+            IdempotencyKey key,
+            Object request,
+            int status,
+            Runnable work) {
+
+        return run(accountId, operation, key, request, status, () -> {
+            work.run();
+            return NO_CONTENT;
+        });
+    }
+
+    /**
+     * The claim, the work, and the record of what it answered — the part that is the
+     * same whether or not there is a body.
+     *
+     * <p>Every word of this class's header is about what happens here, and there is
+     * one copy of it precisely so that the four outcomes and the race between two
+     * identical requests are decided once rather than once per response shape.
+     *
+     * @param serialisedWork the mutation and the bytes it answers with, produced
+     *     together inside the transaction that records them
+     */
+    private RecordedResponse run(
+            UUID accountId,
+            String operation,
+            IdempotencyKey key,
+            Object request,
+            int status,
+            Supplier<String> serialisedWork) {
+
         // Truncated to what the columns hold: PostgreSQL stores microseconds, and
         // this instant is both written and compared against by the sweep.
         Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
@@ -146,7 +217,7 @@ public class IdempotentRequests {
         }
 
         try {
-            return records.runAndRecord(recordId, status, now, () -> serialise(work.get()));
+            return records.runAndRecord(recordId, status, now, serialisedWork);
         } catch (RuntimeException failed) {
             // The work rolled back, so the key must go back too: a refusal is not
             // replayed, and a claim left behind would refuse the client's next

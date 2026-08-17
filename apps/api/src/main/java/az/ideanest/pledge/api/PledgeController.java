@@ -9,13 +9,16 @@ import az.ideanest.shared.ratelimit.RateLimitExceededException;
 import az.ideanest.shared.ratelimit.RateLimiter;
 import az.ideanest.shared.ratelimit.RateLimiter.RateLimitDecision;
 import jakarta.validation.Valid;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,23 +26,33 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * A backer's pledge: making one, reading it, and confirming it.
+ * A backer's pledge: making one, reading it, confirming it, changing it, and
+ * withdrawing it.
  *
- * <p>Three of §10.2's six pledge endpoints. {@code PATCH} and {@code DELETE} are #56
- * and {@code GET /receipt} waits on there being a collection to receipt.
+ * <p>Five of §10.2's six pledge endpoints. {@code GET /receipt} waits on there being
+ * a collection to receipt, which is epic #59's.
  *
- * <p><strong>Both mutations require {@code Idempotency-Key}</strong> (§10.3), and the
- * requirement is enforced before anything else about the request is considered. A
+ * <p><strong>All four mutations require {@code Idempotency-Key}</strong> (§10.3), and
+ * the requirement is enforced before anything else about the request is considered. A
  * missing or malformed key is a refusal rather than a request that quietly runs
  * without protection — see {@link IdempotencyKey}.
  *
- * <p><strong>They answer with recorded bytes, not with an object.</strong> Both
- * return {@code ResponseEntity<String>} carrying JSON that
+ * <p><strong>They answer with recorded bytes, not with an object.</strong> The three
+ * that have a body return {@code ResponseEntity<String>} carrying JSON that
  * {@link IdempotentRequests} produced and stored, so that a replay is byte-identical
  * to the response it replays. Serialising the result twice — once now, once from a
  * re-read on the retry — would make the guarantee only as good as the two
  * serialisations agreeing, which they stop doing the first time a field is added.
- * The read below has nothing to replay and returns the object.
+ * The read has nothing to replay and returns the object; the cancellation has no
+ * body at all and goes through
+ * {@link IdempotentRequests#executeWithoutContent}, which records the zero bytes a
+ * {@code 204} sends.
+ *
+ * <p><strong>Every mutation is counted against §17.3's limit</strong>, the edit and
+ * the cancellation included and in the same bucket. What the limit bounds is the work
+ * one account can demand, and an edit is the most expensive request here: it settles
+ * nothing, but it re-quotes a whole selection and takes a row lock on a reward tier —
+ * the row every other backer of that campaign is contending for.
  *
  * <p><strong>Authorisation is not decided here.</strong> The caller's identifier goes
  * down to {@link PledgeService}, whose reads are scoped to it in the query — so
@@ -65,6 +78,20 @@ public class PledgeController {
     private static final String DRAFT = "pledge.draft";
 
     private static final String CONFIRM = "pledge.confirm";
+
+    private static final String EDIT = "pledge.edit";
+
+    private static final String CANCEL = "pledge.cancel";
+
+    /**
+     * The request a {@code DELETE} fingerprints, which is nothing.
+     *
+     * <p>A cancellation carries no body, so what identifies it is entirely the
+     * operation — and the operation carries the pledge. An empty map rather than null
+     * because the fingerprint is a hash of serialised bytes and there have to be
+     * some.
+     */
+    private static final Object NO_BODY = Map.of();
 
     private final PledgeService pledges;
     private final IdempotentRequests idempotency;
@@ -150,6 +177,82 @@ public class PledgeController {
                 request,
                 HttpStatus.OK.value(),
                 () -> PledgeResponse.of(pledges.confirm(id, backerId, request.paymentMethodId()))));
+    }
+
+    /**
+     * §4.5's PL-09: the backer changes their mind while the campaign runs.
+     *
+     * <p><strong>The whole pledge comes back, not the fields that changed.</strong> A
+     * client that merged a partial response would keep a stale total — and on this
+     * endpoint the total is what somebody is about to be charged. It is the same
+     * {@code PledgeResponse} the other three answer with, so a client applies the
+     * same update whichever call it made.
+     *
+     * <p>Absent and null mean different things in the body. See
+     * {@link PatchPledgeRequest}.
+     */
+    @PatchMapping(path = "/v1/pledges/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> edit(
+            @AuthenticationPrincipal Jwt accessToken,
+            @PathVariable UUID id,
+            @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
+            @RequestBody PatchPledgeRequest request) {
+
+        UUID backerId = callerOf(accessToken);
+        enforcePledgeRateLimit(backerId);
+
+        IdempotencyKey key = IdempotencyKey.of(idempotencyKey);
+        return recorded(idempotency.execute(
+                backerId,
+                // The pledge is part of what the key was spent on, for the reason
+                // confirm() gives: one key must not be able to edit two pledges and
+                // have the second replayed with the first one's body.
+                EDIT + ":" + id,
+                key,
+                request,
+                HttpStatus.OK.value(),
+                () -> PledgeResponse.of(pledges.edit(request.toCommand(id, backerId)))));
+    }
+
+    /**
+     * §4.5's PL-10: the backer withdraws, and the reward's place goes back.
+     *
+     * <p><strong>{@code 204 No Content}, and a retry is {@code 204} too.</strong> The
+     * ordinary retry carries the same key and is replayed from
+     * {@code idempotency_keys} — which is the case that table was added for, since a
+     * cancelled pledge is not in an active state and there is nothing left to find by
+     * the key on the row. A client that lost its key and sent a fresh one is answered
+     * {@code 204} as well, by {@code PledgeService#cancel}, because "it is cancelled"
+     * is true either way.
+     *
+     * <p><strong>Nothing is refunded, because nothing was collected</strong> (§9.7).
+     * There is no refund path here and there should not be one: refunding a pledge
+     * that really was collected is #67's.
+     */
+    @DeleteMapping("/v1/pledges/{id}")
+    public ResponseEntity<Void> cancel(
+            @AuthenticationPrincipal Jwt accessToken,
+            @PathVariable UUID id,
+            @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey) {
+
+        UUID backerId = callerOf(accessToken);
+        enforcePledgeRateLimit(backerId);
+
+        IdempotencyKey key = IdempotencyKey.of(idempotencyKey);
+        RecordedResponse response = idempotency.executeWithoutContent(
+                backerId,
+                CANCEL + ":" + id,
+                key,
+                // There is no body, so the pledge in the operation above is the whole
+                // of what this key was spent on. Two cancellations of two different
+                // pledges under one key are two operations and therefore a reuse,
+                // which is the answer that keeps a client from being told a pledge it
+                // never cancelled is gone.
+                NO_BODY,
+                HttpStatus.NO_CONTENT.value(),
+                () -> pledges.cancel(id, backerId));
+
+        return ResponseEntity.status(response.status()).build();
     }
 
     /**

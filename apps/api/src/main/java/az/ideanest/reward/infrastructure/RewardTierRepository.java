@@ -180,6 +180,69 @@ public interface RewardTierRepository extends JpaRepository<RewardTier, UUID> {
     int commitOnePlace(@Param("id") UUID id);
 
     /**
+     * Takes one place directly as a claimed one. #56.
+     *
+     * <p><strong>For a pledge that is already {@code CONFIRMED} and changes its
+     * reward.</strong> The backer is committed, so the place they take on the new
+     * tier is committed too: routing it through {@link #reserveOnePlace} and then
+     * {@link #commitOnePlace} would be two statements to express one fact, and in
+     * between them the tier would hold a reservation belonging to a pledge that is
+     * not a draft — which is precisely the row §8.4's sweep looks for and precisely
+     * the state {@code ReservationExpiry} refuses to reason about.
+     *
+     * <p>The condition is {@link #reserveOnePlace}'s, unchanged and deliberately so:
+     * a place is a place whichever column ends up counting it, and V7's
+     * {@code reward_tiers_stock_is_within_the_limit} bounds the same sum. A tier with
+     * no limit is unlimited and always matches, and the count still moves, for
+     * {@link #reserveOnePlace}'s reason.
+     *
+     * <p>{@code version} is not incremented, for {@link #reserveOnePlace}'s reason.
+     *
+     * @return 1 when a place was claimed, 0 when the tier is full or no longer exists
+     */
+    @Modifying(flushAutomatically = true)
+    @Query(
+            value =
+                    """
+                    UPDATE reward_tiers
+                       SET claimed_quantity = claimed_quantity + 1
+                     WHERE id = :id
+                       AND (limit_quantity IS NULL OR claimed_quantity + reserved_quantity < limit_quantity)
+                    """,
+            nativeQuery = true)
+    int claimOnePlace(@Param("id") UUID id);
+
+    /**
+     * Gives one claimed place back, when a confirmed pledge is cancelled or changes
+     * its reward. #56.
+     *
+     * <p><strong>The counterpart of {@link #releaseOnePlace}, and a different
+     * statement because it is a different claim.</strong> A {@code DRAFT} holds a
+     * place in {@code reserved_quantity} and a {@code CONFIRMED} pledge holds one in
+     * {@code claimed_quantity}; releasing the wrong column would leave the tier
+     * counting a place nobody holds and short of one somebody does, and the total
+     * would still look right. §9.7's "backer changes their mind while live" is a
+     * cancellation of a confirmed pledge, so this is the column that moves.
+     *
+     * <p>{@code claimed_quantity > 0} is {@link #releaseOnePlace}'s guard doing
+     * {@link #releaseOnePlace}'s job: the damage of a release that ran twice happens
+     * above zero, where the constraint cannot see it and the tier quietly offers a
+     * place that no pledge ever gave back.
+     *
+     * @return 1 when a place was given back, 0 when there was none to give
+     */
+    @Modifying(flushAutomatically = true)
+    @Query(
+            value =
+                    """
+                    UPDATE reward_tiers
+                       SET claimed_quantity = claimed_quantity - 1
+                     WHERE id = :id AND claimed_quantity > 0
+                    """,
+            nativeQuery = true)
+    int releaseOneClaimedPlace(@Param("id") UUID id);
+
+    /**
      * The named tiers, but only the ones that really belong to this campaign.
      *
      * <p>The campaign is part of the query rather than a filter afterwards, for

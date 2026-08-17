@@ -3,6 +3,7 @@ package az.ideanest.pledge.api;
 import az.ideanest.pledge.application.ContributionBelowRewardPriceException;
 import az.ideanest.pledge.application.PledgeAlreadyExistsException;
 import az.ideanest.pledge.application.PledgeNotDraftException;
+import az.ideanest.pledge.application.PledgeNotEditableException;
 import az.ideanest.pledge.application.PledgeNotFoundException;
 import az.ideanest.pledge.application.ReservationExpiredException;
 import az.ideanest.pledge.application.RewardSoldOutException;
@@ -236,6 +237,33 @@ public class PledgeExceptionHandler {
         problem.setTitle("Pledge is not a draft");
         problem.setDetail("This pledge is " + exception.state() + " and cannot be confirmed.");
         problem.setProperty("code", "PLEDGE_NOT_DRAFT");
+        problem.setProperty("meta", Map.of("state", exception.state().name()));
+        return problem;
+    }
+
+    /**
+     * 409 for a pledge whose state has moved past editing or cancelling. §4.5's PL-09
+     * and PL-10.
+     *
+     * <p><strong>The pledge's own state, and never the campaign's.</strong> A campaign
+     * past its deadline is answered {@code PROJECT_NOT_LIVE} by the handler above —
+     * the same code, body and {@code meta.deadline} that {@code POST /v1/pledges/draft}
+     * gives — so that one fact has one answer wherever it is asked, and a client can
+     * say "this campaign ended on Tuesday" rather than "you cannot do that". This code
+     * is left to mean the thing only it can mean. See {@code PledgeService#requireEditable},
+     * which composes the two.
+     *
+     * <p>The state is in {@code meta} because the client's next move depends on it: an
+     * {@code EXPIRED} draft is started again, a {@code COLLECTED} pledge is a
+     * conversation with the creator rather than a button.
+     */
+    @ExceptionHandler(PledgeNotEditableException.class)
+    public ProblemDetail handleNotEditable(PledgeNotEditableException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/pledge-not-editable"));
+        problem.setTitle("Pledge can no longer be changed");
+        problem.setDetail("This pledge is " + exception.state() + " and can no longer be changed.");
+        problem.setProperty("code", "PLEDGE_NOT_EDITABLE");
         problem.setProperty("meta", Map.of("state", exception.state().name()));
         return problem;
     }

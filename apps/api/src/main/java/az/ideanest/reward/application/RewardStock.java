@@ -112,6 +112,37 @@ public interface RewardStock {
     boolean commitOnePlace(UUID rewardTierId);
 
     /**
+     * Takes one place directly as a claimed one, if there is one left.
+     *
+     * <p><strong>For a {@code CONFIRMED} pledge that changes its reward (#56).</strong>
+     * {@link #reserveOnePlace} holds a place for a checkout that has not finished;
+     * this one is for a backer who has already committed, so the place is claimed
+     * from the moment it is taken. Reserving and then committing would express one
+     * fact in two statements and would leave a reservation, briefly, against a pledge
+     * that is not a draft — a row §8.4's sweep is looking for.
+     *
+     * @return false when the tier is full, or has gone since it was priced — both of
+     *     which are "there is no place for this backer"
+     */
+    boolean claimOnePlace(UUID rewardTierId);
+
+    /**
+     * Gives one claimed place back, when a confirmed pledge is cancelled or moves to
+     * another tier.
+     *
+     * <p><strong>Not {@link #releaseOnePlace}, and the difference is the whole
+     * point.</strong> A draft holds a <em>reserved</em> place and a confirmed pledge
+     * holds a <em>claimed</em> one, so giving back the wrong one leaves the tier
+     * counting a place nobody holds while it is short of one somebody does — and the
+     * sum, which is what the limit is checked against, still looks correct.
+     *
+     * <p>Guarded against going below zero for {@link #releaseOnePlace}'s reason.
+     *
+     * @return false when there was nothing to give back
+     */
+    boolean releaseOneClaimedPlace(UUID rewardTierId);
+
+    /**
      * Everything the backer selected, priced, with the rate for where it is going.
      *
      * <p>One call for the reward tier and every add-on together, because a checkout

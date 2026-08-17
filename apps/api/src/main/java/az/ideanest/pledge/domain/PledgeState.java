@@ -68,8 +68,45 @@ public enum PledgeState {
     public static final Set<PledgeState> ACTIVE =
             Set.of(DRAFT, CONFIRMED, CHARGE_PENDING, CHARGE_FAILED, COLLECTED, FULFILLED);
 
+    /**
+     * The states a backer may still change or withdraw. §4.5's PL-09 and PL-10.
+     *
+     * <p><strong>Two, and the argument for each is different.</strong> A
+     * {@link #DRAFT} is a checkout in progress: changing it is what the backer is in
+     * the middle of doing, and withdrawing it is abandoning a purchase nobody has
+     * been charged for. A {@link #CONFIRMED} pledge is PL-09's real case — the backer
+     * committed, the campaign is still running, and they have changed their mind
+     * about the tier or the destination. §9.7 puts cancellation in the same place:
+     * "backer changes their mind while live — cancel, nothing was collected".
+     *
+     * <p><strong>Every other state is out, and none of them is an oversight.</strong>
+     * {@link #EXPIRED} and the two cancellations are over; a pledge that ended cannot
+     * be edited back into existence, and the backer's move is to pledge again, which
+     * {@code pledges_project_backer_active_key} now permits precisely because those
+     * states are not active. {@link #CHARGE_PENDING} onwards are past the campaign's
+     * close, where money is moving or has moved: changing the amount then is a
+     * refund or a second charge, which is #67's and epic #59's, not an edit.
+     *
+     * <p><strong>This set is half of the rule, not the whole of it.</strong> The
+     * other half is the campaign — PL-09 says "until the deadline" — and it cannot
+     * be stated here, because whether a campaign is still taking pledges is a fact
+     * about {@code projects} and this module may not read it.
+     * {@code PledgeService#edit} composes the two, and it is the only place that
+     * does.
+     */
+    public static final Set<PledgeState> EDITABLE = Set.of(DRAFT, CONFIRMED);
+
     /** Whether a pledge in this state still stands between its backer and a second one. */
     public boolean isActive() {
         return ACTIVE.contains(this);
+    }
+
+    /**
+     * Whether a backer may still change or withdraw a pledge in this state.
+     *
+     * <p>Only the pledge's half of the rule. See {@link #EDITABLE}.
+     */
+    public boolean isEditable() {
+        return EDITABLE.contains(this);
     }
 }

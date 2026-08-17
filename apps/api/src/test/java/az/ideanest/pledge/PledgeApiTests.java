@@ -13,6 +13,7 @@ import az.ideanest.support.Campaigns;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -43,9 +44,17 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The checkout over HTTP: drafting a pledge, reading it, and confirming it.
+ * The checkout over HTTP: drafting a pledge, reading it, confirming it, changing it,
+ * and withdrawing it.
  *
- * <p><strong>Three of these carry the issue.</strong>
+ * <p><strong>{@link #aRefusedEditCostsTheBackerNothing()} is the one #56 turns
+ * on.</strong> An edit that is refused because the tier the backer wanted has sold
+ * out must leave them holding the pledge and the place they already had. That is the
+ * whole reason {@code ReservationService#edit} takes the new place before it releases
+ * the old one, and the assertion that fails under the opposite — and more natural —
+ * ordering, which keeps the stock counts tidier and costs somebody their reward.
+ *
+ * <p><strong>Three of these carry #52.</strong>
  *
  * <ul>
  *   <li>{@link #aReplayedKeyReturnsTheOriginalResponse()} is what #52 is for. It
@@ -891,6 +900,619 @@ class PledgeApiTests extends AbstractIntegrationTest {
     }
 
     // -----------------------------------------------------------------------
+    // Editing (#56)
+    // -----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("editing a draft's contribution and add-ons re-quotes the whole total")
+    void editingADraftRequotesIt() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        UUID rewardId = reward(creator, projectId, "A boxed set", "45.00", tier -> {
+            tier.put("shippingType", "DOMESTIC");
+            tier.put("limitQuantity", 10);
+        });
+        shipTo(creator, rewardId, "AZ", "5.00", "2.00");
+        UUID addonId = reward(creator, projectId, "An enamel mug", "15.00", tier -> {
+            tier.put("shippingType", "DOMESTIC");
+            tier.put("isAddon", true);
+        });
+        shipTo(creator, addonId, "AZ", "3.00", "1.00");
+        Campaigns.launch(dataSource, projectId);
+
+        Account backer = account("backer");
+        Map<String, Object> body = draftBody(projectId, rewardId, "50.00");
+        body.put("shippingCountry", "AZ");
+        body.put("addons", List.of(Map.of("rewardTierId", addonId.toString(), "quantity", 2)));
+        UUID pledgeId = id(parse(post("/v1/pledges/draft", backer, newKey(), body)));
+
+        // More support, one fewer mug. Both amounts change and so does the postage,
+        // because the second mug was charged at the additional-item rate.
+        Map<String, Object> edit = new LinkedHashMap<>();
+        edit.put("contribution", Map.of("amount", "60.00", "currency", "AZN"));
+        edit.put("addons", List.of(Map.of("rewardTierId", addonId.toString(), "quantity", 1)));
+
+        ResponseEntity<String> edited = patch("/v1/pledges/" + pledgeId, backer, newKey(), edit);
+        assertThat(edited.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        Map<String, Object> pledge = parse(edited);
+        // **The whole response, not the fields that changed.** A client that merged a
+        // partial body would keep the old total, which is the number a card is charged.
+        assertThat(pledge.get("state")).isEqualTo("DRAFT");
+        assertThat(pledge.get("rewardTierId")).isEqualTo(rewardId.toString());
+        assertThat(amount(pledge, "base")).isEqualTo("45.00");
+        assertThat(amount(pledge, "addons")).isEqualTo("15.00");
+        assertThat(amount(pledge, "bonus")).isEqualTo("15.00");
+        assertThat(amount(pledge, "shipping")).isEqualTo("8.00");
+        assertThat(amount(pledge, "tax")).isEqualTo("0.00");
+        assertThat(amount(pledge, "total")).isEqualTo("83.00");
+        assertThat(addons(pledge)).containsExactly(Map.of("rewardTierId", addonId.toString(), "quantity", 1));
+
+        // The row agrees, so the total above is PostgreSQL's generated column and not
+        // a number this response computed.
+        assertThat(totalOf(pledgeId)).isEqualByComparingTo(new BigDecimal("83.00"));
+
+        // The reward did not change, so the place did not move.
+        assertThat(reservedQuantity(rewardId)).isEqualTo(1);
+        // And still nothing is held for the add-on, whose quantity just changed. That
+        // gap is #203's and this edit neither widens nor narrows it.
+        assertThat(reservedQuantity(addonId)).isZero();
+    }
+
+    @Test
+    @DisplayName("an edit that mentions one field leaves every other field alone")
+    void anEditOnlyChangesWhatItMentions() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        UUID rewardId = reward(creator, projectId, "A boxed set", "45.00", tier -> tier.put("limitQuantity", 5));
+        UUID addonId = reward(creator, projectId, "An enamel mug", "15.00", tier -> tier.put("isAddon", true));
+        Campaigns.launch(dataSource, projectId);
+
+        Account backer = account("backer");
+        Map<String, Object> body = draftBody(projectId, rewardId, "50.00");
+        body.put("addons", List.of(Map.of("rewardTierId", addonId.toString(), "quantity", 1)));
+        UUID pledgeId = id(parse(post("/v1/pledges/draft", backer, newKey(), body)));
+
+        // RFC 7396: a field that is not mentioned is left alone. Bound to an ordinary
+        // record, "hide my name" and "give up my reward" would arrive identically, and
+        // this request would strip the reward and the mug off the pledge.
+        Map<String, Object> pledge =
+                parse(patch("/v1/pledges/" + pledgeId, backer, newKey(), Map.of("isAnonymous", true)));
+
+        assertThat(pledge.get("isAnonymous")).isEqualTo(true);
+        assertThat(pledge.get("rewardTierId")).isEqualTo(rewardId.toString());
+        assertThat(addons(pledge)).containsExactly(Map.of("rewardTierId", addonId.toString(), "quantity", 1));
+        assertThat(amount(pledge, "total")).isEqualTo("65.00");
+        assertThat(reservedQuantity(rewardId)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("an explicit null reward gives the place back and leaves a support-only pledge")
+    void clearingTheRewardReleasesThePlace() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        UUID rewardId = reward(creator, projectId, "A boxed set", "45.00", tier -> tier.put("limitQuantity", 5));
+        Campaigns.launch(dataSource, projectId);
+
+        Account backer = account("backer");
+        UUID pledgeId = id(parse(post("/v1/pledges/draft", backer, newKey(), draftBody(projectId, rewardId, "45.00"))));
+        assertThat(reservedQuantity(rewardId)).isEqualTo(1);
+
+        // The other half of the distinction the test above depends on: null is a
+        // change and not an absence. §4.5's PL-02 -- the backer keeps supporting the
+        // campaign and gives up the reward.
+        //
+        // **Raw JSON rather than a Map**, and it has to be: this service configures
+        // Jackson with `default-property-inclusion: non_null`, so serialising a map
+        // with a null value drops the key entirely and the request would arrive as an
+        // absent field -- testing the opposite of what it says. A real client sends
+        // the two bytes `null`, so the test does too.
+        String edit =
+                """
+                {"rewardTierId": null, "contribution": {"amount": "30.00", "currency": "AZN"}}
+                """;
+
+        Map<String, Object> pledge = parse(patch("/v1/pledges/" + pledgeId, backer, newKey(), edit));
+
+        assertThat(pledge.get("rewardTierId")).isNull();
+        // The whole of a support-only pledge is its base, and the bonus is nothing --
+        // otherwise every "raised through rewards" report reads it as a bonus on a
+        // reward nobody took.
+        assertThat(amount(pledge, "base")).isEqualTo("30.00");
+        assertThat(amount(pledge, "bonus")).isEqualTo("0.00");
+        assertThat(amount(pledge, "total")).isEqualTo("30.00");
+        // Given back, and to the right column.
+        assertThat(reservedQuantity(rewardId)).isZero();
+        assertThat(claimedQuantity(rewardId)).isZero();
+    }
+
+    @Test
+    @DisplayName("switching a draft's reward takes the new place and gives the old one back")
+    void switchingTiersMovesTheReservedPlace() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        UUID chosen = reward(creator, projectId, "A boxed set", "45.00", tier -> tier.put("limitQuantity", 3));
+        UUID wanted = reward(creator, projectId, "The deluxe one", "70.00", tier -> tier.put("limitQuantity", 3));
+        Campaigns.launch(dataSource, projectId);
+
+        Account backer = account("backer");
+        UUID pledgeId = id(parse(post("/v1/pledges/draft", backer, newKey(), draftBody(projectId, chosen, "45.00"))));
+        assertThat(reservedQuantity(chosen)).isEqualTo(1);
+        assertThat(reservedQuantity(wanted)).isZero();
+
+        Map<String, Object> edit = new LinkedHashMap<>();
+        edit.put("rewardTierId", wanted.toString());
+        edit.put("contribution", Map.of("amount", "70.00", "currency", "AZN"));
+
+        Map<String, Object> pledge = parse(patch("/v1/pledges/" + pledgeId, backer, newKey(), edit));
+
+        assertThat(pledge.get("rewardTierId")).isEqualTo(wanted.toString());
+        assertThat(amount(pledge, "total")).isEqualTo("70.00");
+        // Still a draft: an edit changes what is being bought, not whether the backer
+        // has committed to buying it.
+        assertThat(pledge.get("state")).isEqualTo("DRAFT");
+
+        // One place moved, and both tiers agree about it. A reservation left behind on
+        // the old tier is a place nothing would ever release.
+        assertThat(reservedQuantity(chosen)).isZero();
+        assertThat(reservedQuantity(wanted)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("switching a confirmed pledge's reward moves a claimed place, not a reserved one")
+    void switchingTiersOnAConfirmedPledgeMovesAClaimedPlace() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        UUID chosen = reward(creator, projectId, "A boxed set", "45.00", tier -> tier.put("limitQuantity", 3));
+        UUID wanted = reward(creator, projectId, "The deluxe one", "70.00", tier -> tier.put("limitQuantity", 3));
+        Campaigns.launch(dataSource, projectId);
+
+        Account backer = account("backer");
+        UUID pledgeId = id(parse(post("/v1/pledges/draft", backer, newKey(), draftBody(projectId, chosen, "45.00"))));
+        assertThat(post("/v1/pledges/" + pledgeId + "/confirm", backer, newKey(), Map.of())
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(claimedQuantity(chosen)).isEqualTo(1);
+        assertThat(reservedQuantity(chosen)).isZero();
+
+        Map<String, Object> edit = new LinkedHashMap<>();
+        edit.put("rewardTierId", wanted.toString());
+        edit.put("contribution", Map.of("amount", "70.00", "currency", "AZN"));
+
+        Map<String, Object> pledge = parse(patch("/v1/pledges/" + pledgeId, backer, newKey(), edit));
+
+        // **A committed backer's place is claimed on both sides of the move.** Routing
+        // it through reserved_quantity would leave a reservation against a pledge that
+        // is not a draft, which is exactly the row §8.4's sweep hunts for -- and the
+        // sweep would then release a place belonging to somebody who had confirmed.
+        assertThat(pledge.get("state")).isEqualTo("CONFIRMED");
+        assertThat(pledge.get("rewardTierId")).isEqualTo(wanted.toString());
+        assertThat(claimedQuantity(chosen)).isZero();
+        assertThat(reservedQuantity(chosen)).isZero();
+        assertThat(claimedQuantity(wanted)).isEqualTo(1);
+        assertThat(reservedQuantity(wanted)).isZero();
+    }
+
+    @Test
+    @DisplayName("an edit to a sold-out tier is refused and the backer keeps the pledge and the place they had")
+    void aRefusedEditCostsTheBackerNothing() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        UUID held = reward(creator, projectId, "A boxed set", "45.00", tier -> tier.put("limitQuantity", 3));
+        UUID full = reward(creator, projectId, "The last deluxe one", "70.00", tier -> tier.put("limitQuantity", 1));
+        UUID roomLeft = reward(creator, projectId, "Still available", "20.00", tier -> {});
+        Campaigns.launch(dataSource, projectId);
+
+        // Somebody else takes the only deluxe place while this backer is deciding.
+        assertThat(post("/v1/pledges/draft", account("backer"), newKey(), draftBody(projectId, full, "70.00"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.CREATED);
+
+        Account backer = account("backer");
+        UUID pledgeId = id(parse(post("/v1/pledges/draft", backer, newKey(), draftBody(projectId, held, "45.00"))));
+        assertThat(reservedQuantity(held)).isEqualTo(1);
+
+        Map<String, Object> edit = new LinkedHashMap<>();
+        edit.put("rewardTierId", full.toString());
+        edit.put("contribution", Map.of("amount", "70.00", "currency", "AZN"));
+
+        String key = newKey();
+        ResponseEntity<String> refused = patch("/v1/pledges/" + pledgeId, backer, key, edit);
+
+        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(code(refused)).isEqualTo("REWARD_SOLD_OUT");
+        assertThat(meta(refused).get("rewardTierId")).isEqualTo(full.toString());
+        // The same dead-end avoidance the draft gets: a refusal that names nothing at
+        // the moment somebody is trying to give money is a checkout that stops.
+        assertThat(alternatives(refused)).contains(roomLeft.toString());
+
+        // **This is the assertion the endpoint exists to satisfy.** The new place was
+        // taken before the old one was given back, so a failure leaves the backer
+        // holding what they already had rather than nothing at all. Releasing first
+        // would have left them with no reward and no place, having asked for a better
+        // one and been told no.
+        assertThat(reservedQuantity(held)).isEqualTo(1);
+        // And the sold-out tier is untouched: still exactly the other backer's place.
+        assertThat(reservedQuantity(full)).isEqualTo(1);
+        assertThat(claimedQuantity(full)).isZero();
+
+        Map<String, Object> unchanged = parse(get("/v1/pledges/" + pledgeId, backer));
+        assertThat(unchanged.get("state")).isEqualTo("DRAFT");
+        assertThat(unchanged.get("rewardTierId")).isEqualTo(held.toString());
+        assertThat(amount(unchanged, "total")).isEqualTo("45.00");
+
+        // The key is given back, because the reason for the refusal can change: the
+        // other backer's reservation lapses and the place comes free. Recording the
+        // refusal would answer this key with "sold out" for §17.2's whole day.
+        jdbc().update("UPDATE reward_tiers SET reserved_quantity = 0 WHERE id = ?", full);
+        assertThat(patch("/v1/pledges/" + pledgeId, backer, key, edit).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    @DisplayName("editing a pledge on a campaign past its deadline is refused")
+    void editingAfterTheDeadlineIsRefused() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        UUID rewardId = reward(creator, projectId, "A boxed set", "45.00", tier -> tier.put("limitQuantity", 3));
+        Campaigns.launch(dataSource, projectId);
+
+        Account backer = account("backer");
+        UUID pledgeId = id(parse(post("/v1/pledges/draft", backer, newKey(), draftBody(projectId, rewardId, "45.00"))));
+
+        // §4.5's PL-09 is "until the deadline". The launch instant moves with it,
+        // because projects_deadline_follows_launch refuses a campaign that closed
+        // before it opened.
+        jdbc().update(
+                        """
+                        UPDATE projects
+                           SET launched_at = now() - interval '40 days',
+                               deadline = now() - interval '1 hour'
+                         WHERE id = ?
+                        """,
+                        projectId);
+
+        ResponseEntity<String> refused =
+                patch("/v1/pledges/" + pledgeId, backer, newKey(), Map.of("isAnonymous", true));
+
+        // **PROJECT_NOT_LIVE rather than PLEDGE_NOT_EDITABLE**, which is a deliberate
+        // deviation from the epic's contract and is recorded in the pull request. One
+        // fact -- this campaign has closed -- gets one answer across every endpoint
+        // that asks about it, and this problem detail carries the deadline, which is
+        // what lets a client say when rather than merely no.
+        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(code(refused)).isEqualTo("PROJECT_NOT_LIVE");
+        assertThat(meta(refused).get("deadline")).isNotNull();
+
+        // Nothing moved.
+        assertThat(reservedQuantity(rewardId)).isEqualTo(1);
+        assertThat(state(pledgeId)).isEqualTo("DRAFT");
+    }
+
+    @Test
+    @DisplayName("a pledge whose state has moved past editing is refused with its state")
+    void editingAPledgeThatIsOverIsRefused() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        Campaigns.launch(dataSource, projectId);
+
+        Account backer = account("backer");
+        UUID pledgeId = id(parse(post("/v1/pledges/draft", backer, newKey(), draftBody(projectId, null, "25.00"))));
+        assertThat(delete("/v1/pledges/" + pledgeId, backer, newKey()).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+
+        ResponseEntity<String> refused =
+                patch("/v1/pledges/" + pledgeId, backer, newKey(), Map.of("isAnonymous", true));
+
+        // A cancelled pledge cannot be edited back into existence. The state is in meta
+        // because the client's next move depends on it.
+        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(code(refused)).isEqualTo("PLEDGE_NOT_EDITABLE");
+        assertThat(meta(refused).get("state")).isEqualTo("CANCELED_BY_BACKER");
+    }
+
+    @Test
+    @DisplayName("a draft whose five minutes ran out cannot be edited")
+    void editingAfterTheReservationLapsedIsRefused() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        UUID rewardId = reward(creator, projectId, "A boxed set", "45.00", tier -> tier.put("limitQuantity", 3));
+        Campaigns.launch(dataSource, projectId);
+
+        clock.freeze();
+        Account backer = account("backer");
+        UUID pledgeId = id(parse(post("/v1/pledges/draft", backer, newKey(), draftBody(projectId, rewardId, "45.00"))));
+
+        clock.advance(properties.reservation().ttl().plusSeconds(1));
+
+        ResponseEntity<String> refused = patch(
+                "/v1/pledges/" + pledgeId,
+                backer,
+                newKey(),
+                Map.of("contribution", Map.of("amount", "60.00", "currency", "AZN")));
+
+        // The same answer confirming gives, and for the same reason: the clock decides
+        // rather than the state, and re-pricing a place the tier has already promised
+        // to give back would be quoting a reservation that is gone.
+        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(code(refused)).isEqualTo("RESERVATION_EXPIRED");
+        assertThat(totalOf(pledgeId)).isEqualByComparingTo(new BigDecimal("45.00"));
+    }
+
+    @Test
+    @DisplayName("editing a draft does not extend the window it holds its place for")
+    void anEditDoesNotRestartTheReservationClock() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        UUID rewardId = reward(creator, projectId, "A boxed set", "45.00", tier -> tier.put("limitQuantity", 3));
+        Campaigns.launch(dataSource, projectId);
+
+        clock.freeze();
+        Account backer = account("backer");
+        Map<String, Object> drafted =
+                parse(post("/v1/pledges/draft", backer, newKey(), draftBody(projectId, rewardId, "45.00")));
+        UUID pledgeId = id(drafted);
+        String lapsesAt = (String) drafted.get("reservationExpiresAt");
+        assertThat(lapsesAt).isNotNull();
+
+        clock.advance(Duration.ofMinutes(2));
+        Map<String, Object> edited = parse(patch(
+                "/v1/pledges/" + pledgeId,
+                backer,
+                newKey(),
+                Map.of("contribution", Map.of("amount", "60.00", "currency", "AZN"))));
+
+        // **The window is measured from when the draft was made, not from when it was
+        // last touched.** Restarting it here would let one backer hold a limited
+        // tier's last place indefinitely by changing their mind every four minutes --
+        // and it would look like an ordinary checkout rather than like abuse. The
+        // backer gets what is left of their five minutes, and if it runs out the sweep
+        // releases the place and they start again.
+        assertThat(edited.get("reservationExpiresAt")).isEqualTo(lapsesAt);
+        assertThat(amount(edited, "total")).isEqualTo("60.00");
+    }
+
+    @Test
+    @DisplayName("§10.3: a replayed edit returns the original response and edits once")
+    void aReplayedEditRunsOnce() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        UUID rewardId = reward(creator, projectId, "A boxed set", "45.00", tier -> tier.put("limitQuantity", 3));
+        Campaigns.launch(dataSource, projectId);
+
+        Account backer = account("backer");
+        UUID pledgeId = id(parse(post("/v1/pledges/draft", backer, newKey(), draftBody(projectId, rewardId, "45.00"))));
+        long drafted = versionOf(pledgeId);
+
+        String key = newKey();
+        Map<String, Object> edit = Map.of("contribution", Map.of("amount", "60.00", "currency", "AZN"));
+
+        ResponseEntity<String> first = patch("/v1/pledges/" + pledgeId, backer, key, edit);
+        ResponseEntity<String> replay = patch("/v1/pledges/" + pledgeId, backer, key, edit);
+
+        assertThat(first.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(replay.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // The same bytes, not merely an equivalent pledge.
+        assertThat(replay.getBody()).isEqualTo(first.getBody());
+
+        // **Once.** A second execution would write the row again, and the version is
+        // what proves it did not -- the amounts alone could not, because applying the
+        // same edit twice lands on the same numbers.
+        assertThat(versionOf(pledgeId)).isEqualTo(drafted + 1);
+        assertThat(reservedQuantity(rewardId)).isEqualTo(1);
+
+        // And one key does not carry two different edits.
+        ResponseEntity<String> reused = patch(
+                "/v1/pledges/" + pledgeId,
+                backer,
+                key,
+                Map.of("contribution", Map.of("amount", "80.00", "currency", "AZN")));
+        assertThat(reused.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(code(reused)).isEqualTo("IDEMPOTENCY_KEY_REUSED");
+    }
+
+    @Test
+    @DisplayName("editing somebody else's pledge is a 404")
+    void editingAStrangersPledgeIsRefused() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        UUID rewardId = reward(creator, projectId, "A boxed set", "45.00", tier -> tier.put("limitQuantity", 3));
+        Campaigns.launch(dataSource, projectId);
+
+        UUID pledgeId = id(parse(
+                post("/v1/pledges/draft", account("backer"), newKey(), draftBody(projectId, rewardId, "45.00"))));
+
+        // Not a 403. A pledge says who gave money and how much, so confirming that one
+        // exists is itself the disclosure -- PledgeNotFoundException carries the
+        // argument, and PL-12's anonymity depends on it.
+        ResponseEntity<String> refused =
+                patch("/v1/pledges/" + pledgeId, account("backer"), newKey(), Map.of("isAnonymous", true));
+        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(code(refused)).isEqualTo("PLEDGE_NOT_FOUND");
+
+        ResponseEntity<String> alsoRefused = delete("/v1/pledges/" + pledgeId, account("backer"), newKey());
+        assertThat(alsoRefused.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+
+        // Untouched by either.
+        assertThat(state(pledgeId)).isEqualTo("DRAFT");
+        assertThat(reservedQuantity(rewardId)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("an edit requires an Idempotency-Key, like every other payment mutation")
+    void editingRequiresAKey() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        Campaigns.launch(dataSource, projectId);
+
+        Account backer = account("backer");
+        UUID pledgeId = id(parse(post("/v1/pledges/draft", backer, newKey(), draftBody(projectId, null, "25.00"))));
+
+        ResponseEntity<String> refused =
+                patch("/v1/pledges/" + pledgeId, backer, null, Map.of("isAnonymous", true));
+        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(code(refused)).isEqualTo("IDEMPOTENCY_KEY_REQUIRED");
+
+        assertThat(delete("/v1/pledges/" + pledgeId, backer, null).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+
+        // Neither request did anything.
+        assertThat(state(pledgeId)).isEqualTo("DRAFT");
+    }
+
+    // -----------------------------------------------------------------------
+    // Cancelling (#56)
+    // -----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("cancelling a draft gives back a reserved place")
+    void cancellingADraftReleasesAReservedPlace() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        UUID rewardId = reward(creator, projectId, "A boxed set", "45.00", tier -> tier.put("limitQuantity", 3));
+        Campaigns.launch(dataSource, projectId);
+
+        Account backer = account("backer");
+        UUID pledgeId = id(parse(post("/v1/pledges/draft", backer, newKey(), draftBody(projectId, rewardId, "45.00"))));
+        assertThat(reservedQuantity(rewardId)).isEqualTo(1);
+
+        ResponseEntity<String> cancelled = delete("/v1/pledges/" + pledgeId, backer, newKey());
+
+        assertThat(cancelled.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(cancelled.getBody()).isNull();
+
+        // §6.2's CANCELED_BY_BACKER, and not EXPIRED: a backer who decided is a
+        // different fact from a timer that ran out, and every screen reporting why a
+        // place came back has to tell them apart.
+        assertThat(state(pledgeId)).isEqualTo("CANCELED_BY_BACKER");
+        assertThat(canceledAtOf(pledgeId)).isNotNull();
+        // A draft was holding a *reserved* place, so that is the column that moves.
+        assertThat(reservedQuantity(rewardId)).isZero();
+        assertThat(claimedQuantity(rewardId)).isZero();
+    }
+
+    @Test
+    @DisplayName("cancelling a confirmed pledge gives back a claimed place")
+    void cancellingAConfirmedPledgeReleasesAClaimedPlace() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        UUID rewardId = reward(creator, projectId, "A boxed set", "45.00", tier -> tier.put("limitQuantity", 3));
+        Campaigns.launch(dataSource, projectId);
+
+        Account backer = account("backer");
+        UUID pledgeId = id(parse(post("/v1/pledges/draft", backer, newKey(), draftBody(projectId, rewardId, "45.00"))));
+        assertThat(post("/v1/pledges/" + pledgeId + "/confirm", backer, newKey(), Map.of())
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(claimedQuantity(rewardId)).isEqualTo(1);
+        assertThat(reservedQuantity(rewardId)).isZero();
+
+        assertThat(delete("/v1/pledges/" + pledgeId, backer, newKey()).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+
+        // **A different column from the draft above, and that is the point.** A
+        // confirmed pledge holds a claimed place; releasing the reserved one instead
+        // would leave the tier counting a place nobody holds while short of one
+        // somebody does -- and the sum, which is what the limit is checked against,
+        // would still look right.
+        assertThat(state(pledgeId)).isEqualTo("CANCELED_BY_BACKER");
+        assertThat(claimedQuantity(rewardId)).isZero();
+        assertThat(reservedQuantity(rewardId)).isZero();
+        assertThat(committedQuantity(rewardId)).isZero();
+
+        // §9.7: nothing was collected, so nothing is refunded and no transaction is
+        // written. The refund of a pledge that really was collected is #67's.
+        assertThat(collectedAtOf(pledgeId)).isNull();
+    }
+
+    @Test
+    @DisplayName("a replayed cancellation answers 204 and releases the place exactly once")
+    void aReplayedCancellationIsStillNoContent() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        UUID rewardId = reward(creator, projectId, "A boxed set", "45.00", tier -> tier.put("limitQuantity", 2));
+        Campaigns.launch(dataSource, projectId);
+
+        // Two backers, so that a place released twice is visible as a count of zero
+        // where it should be one. With a single backer the guard on the statement
+        // hides the second release and the test proves nothing.
+        Account backer = account("backer");
+        UUID pledgeId = id(parse(post("/v1/pledges/draft", backer, newKey(), draftBody(projectId, rewardId, "45.00"))));
+        assertThat(post("/v1/pledges/draft", account("backer"), newKey(), draftBody(projectId, rewardId, "45.00"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.CREATED);
+        assertThat(reservedQuantity(rewardId)).isEqualTo(2);
+
+        String key = newKey();
+        assertThat(delete("/v1/pledges/" + pledgeId, backer, key).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+
+        // **The retry is 204, not 404.** The pledge is no longer in an active state and
+        // there is nothing left to find by the key on the row, which is exactly why
+        // idempotency_keys records the answer rather than the resource.
+        assertThat(delete("/v1/pledges/" + pledgeId, backer, key).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+
+        // And a client that lost its key and minted a fresh one is answered the same
+        // way: "it is cancelled" is true however many times it is asked.
+        assertThat(delete("/v1/pledges/" + pledgeId, backer, newKey()).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+
+        // One place back, not three. The other backer still holds theirs.
+        assertThat(reservedQuantity(rewardId)).isEqualTo(1);
+        assertThat(state(pledgeId)).isEqualTo("CANCELED_BY_BACKER");
+    }
+
+    @Test
+    @DisplayName("§7.2: cancelling frees the backer to pledge again")
+    void cancellingLetsTheBackerPledgeAgain() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        UUID rewardId = reward(creator, projectId, "A boxed set", "45.00", tier -> tier.put("limitQuantity", 3));
+        Campaigns.launch(dataSource, projectId);
+
+        Account backer = account("backer");
+        UUID first = id(parse(post("/v1/pledges/draft", backer, newKey(), draftBody(projectId, rewardId, "45.00"))));
+
+        // While it stands, the index refuses a second one.
+        assertThat(code(post("/v1/pledges/draft", backer, newKey(), draftBody(projectId, rewardId, "45.00"))))
+                .isEqualTo("PLEDGE_ALREADY_EXISTS");
+
+        assertThat(delete("/v1/pledges/" + first, backer, newKey()).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+
+        // **CANCELED_BY_BACKER is not one of pledges_project_backer_active_key's six**,
+        // deliberately: an ended commitment must not cost somebody the campaign for
+        // ever. V17 carries the argument for which six are in.
+        ResponseEntity<String> again =
+                post("/v1/pledges/draft", backer, newKey(), draftBody(projectId, rewardId, "45.00"));
+        assertThat(again.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(id(parse(again))).isNotEqualTo(first);
+
+        // One cancelled, one live, one place held.
+        assertThat(reservedQuantity(rewardId)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("cancelling a support-only pledge moves no stock at all")
+    void cancellingASupportOnlyPledgeTouchesNoTier() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        UUID untouched = reward(creator, projectId, "A boxed set", "45.00", tier -> tier.put("limitQuantity", 3));
+        Campaigns.launch(dataSource, projectId);
+
+        Account backer = account("backer");
+        UUID pledgeId = id(parse(post("/v1/pledges/draft", backer, newKey(), draftBody(projectId, null, "25.00"))));
+
+        assertThat(delete("/v1/pledges/" + pledgeId, backer, newKey()).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+
+        assertThat(state(pledgeId)).isEqualTo("CANCELED_BY_BACKER");
+        assertThat(reservedQuantity(untouched)).isZero();
+        assertThat(claimedQuantity(untouched)).isZero();
+    }
+
+    // -----------------------------------------------------------------------
     // Running requests at the same time
     // -----------------------------------------------------------------------
 
@@ -1042,6 +1664,23 @@ class PledgeApiTests extends AbstractIntegrationTest {
         return rest.exchange(path, HttpMethod.GET, new HttpEntity<>(bearer(account.accessToken())), String.class);
     }
 
+    private ResponseEntity<String> patch(String path, Account account, String idempotencyKey, Object body) {
+        HttpHeaders headers = bearer(account.accessToken());
+        if (idempotencyKey != null) {
+            headers.set("Idempotency-Key", idempotencyKey);
+        }
+        return rest.exchange(path, HttpMethod.PATCH, new HttpEntity<>(body, headers), String.class);
+    }
+
+    /** No body, by design: §10.2 makes cancellation a DELETE and the key is a header. */
+    private ResponseEntity<String> delete(String path, Account account, String idempotencyKey) {
+        HttpHeaders headers = bearer(account.accessToken());
+        if (idempotencyKey != null) {
+            headers.set("Idempotency-Key", idempotencyKey);
+        }
+        return rest.exchange(path, HttpMethod.DELETE, new HttpEntity<>(headers), String.class);
+    }
+
     private static HttpHeaders jsonHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -1138,5 +1777,25 @@ class PledgeApiTests extends AbstractIntegrationTest {
 
     private String state(UUID pledgeId) {
         return jdbc().queryForObject("SELECT state FROM pledges WHERE id = ?", String.class, pledgeId);
+    }
+
+    /**
+     * The row's optimistic-lock counter.
+     *
+     * <p>What makes "the edit ran once" assertable. Two applications of one edit land
+     * on the same amounts, so the numbers cannot tell a replay from a re-execution
+     * and this can.
+     */
+    private long versionOf(UUID pledgeId) {
+        Long value = jdbc().queryForObject("SELECT version FROM pledges WHERE id = ?", Long.class, pledgeId);
+        return value == null ? -1 : value;
+    }
+
+    private Instant canceledAtOf(UUID pledgeId) {
+        return jdbc().queryForObject("SELECT canceled_at FROM pledges WHERE id = ?", Instant.class, pledgeId);
+    }
+
+    private Instant collectedAtOf(UUID pledgeId) {
+        return jdbc().queryForObject("SELECT collected_at FROM pledges WHERE id = ?", Instant.class, pledgeId);
     }
 }
