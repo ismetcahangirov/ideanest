@@ -1,0 +1,24 @@
+# Line endings are decided here, by the repository, and not by whatever
+# core.autocrlf happens to be set to on each contributor's machine.
+#
+# Without this file a file committed with CRLF and a clone with autocrlf=true
+# disagree permanently: git normalises CRLF to LF on the way into the index,
+# so the working copy never matches and `git status` reports the file as
+# modified forever. That is not cosmetic. A permanently dirty tree trains
+# people to ignore `git status`, and it makes `git checkout` refuse to switch
+# branches over a file nobody edited.
+
+* text=auto
+
+# Windows batch files. cmd.exe requires CRLF, so these are checked out with
+# CRLF on every platform.
+*.bat text eol=crlf
+
+# Shell scripts stay LF even when checked out on Windows. A CRLF in the
+# shebang line makes the kernel look for an interpreter named "sh\r", and the
+# error it prints does not say so. CI runs ./gradlew on Linux.
+gradlew text eol=lf
+*.sh    text eol=lf
+
+# Binary, never normalised and never diffed as text.
+*.jar binary
