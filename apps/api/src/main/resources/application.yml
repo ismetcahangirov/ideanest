@@ -235,6 +235,31 @@ ideanest:
     # transaction; the sweep returns an hour later for the rest.
     sweep-batch-size: 500
 
+  outbox:
+    # Every second. §8.3's outbox is on the path of things a person is watching
+    # happen -- §12.1's pledge counter, the notification behind a confirmation --
+    # so latency here is user-visible in a way the hourly sweeps above are not.
+    # In-process @Scheduled on §8.4's terms until #134, and safe on more than one
+    # replica because the claim is FOR UPDATE SKIP LOCKED: two relays divide the
+    # queue between them rather than meeting on a row.
+    poll-schedule: "* * * * * *"
+    # A bound on one pass, not a target. A backlog built up while a transport was
+    # down must not be one pass that overlaps its own next tick; the rest is a
+    # second away.
+    batch-size: 100
+    # Deliveries, including the first. An event refused the same way eight times is
+    # waiting for a person and not for the network, and retrying it for ever spends
+    # a request per poll for ever while burying the one fact that matters -- that
+    # it was never delivered -- in a log line repeated a million times. After this
+    # it is a dead letter carrying the last error, which is a question for an
+    # operator rather than a disappearance.
+    retry-backoff: PT5S
+    # The ceiling the doubling stops at. Without it the eighth delay would be
+    # measured in hours, and the event would have stopped moving in every practical
+    # sense while still calling itself retryable.
+    max-backoff: PT10M
+    max-attempts: 8
+
   user:
     # §17.4: thirty days between asking and anything being destroyed. Long
     # enough that a deletion made in anger can be undone the next morning, and
