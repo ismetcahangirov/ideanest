@@ -67,8 +67,18 @@ import org.springframework.transaction.support.TransactionTemplate;
  *       every implementation that reads before it writes.
  *   <li>{@link #confirmingMovesTheHeldPlaceToAClaimedOne()} checks both stock columns
  *       either side of one statement, which is the invariant
- *       {@code RewardTierRepository#commitOnePlace} exists to hold.
+ *       {@code RewardTierRepository#commitPlaces} exists to hold.
  * </ul>
+ *
+ * <p><strong>Five of these carry #203</strong>, which is the same set of questions
+ * asked about an add-on's stock rather than a reward tier's: it is held at the draft
+ * ({@link #aDraftCarriesTheWholeQuote()}), refused when there is not enough
+ * ({@link #aSoldOutAddonOffersOtherAddons()}), committed at confirmation
+ * ({@link #confirmingMovesTheAddonPlacesAsWell()}), given back on cancellation
+ * ({@link #cancellingReleasesTheAddonPlacesToo()}), and moved by the difference on an
+ * edit ({@link #editingAnAddonQuantityMovesTheDifference()}). The property that no two
+ * backers can hold the same last places is not here — it needs real threads, and it
+ * lives with the reward tier's in {@code ReservationTests}.
  *
  * <p>Money is asserted as the strings the API answers with, never parsed into a
  * double. §10.3 makes the amount a string precisely so that a client cannot do
@@ -196,9 +206,10 @@ class PledgeApiTests extends AbstractIntegrationTest {
         // PostgreSQL's answer rather than one this response computed.
         assertThat(totalOf(id(pledge))).isEqualByComparingTo(new BigDecimal("89.00"));
         assertThat(reservedQuantity(rewardId)).isEqualTo(1);
-        // Nothing is reserved on the add-on. Stated by the test because it is a
-        // deliberate gap rather than an oversight -- see ReservationService.
-        assertThat(reservedQuantity(addonId)).isZero();
+        // And two on the add-on, because PL-04 selects a quantity (#203). One place for
+        // the reward because §7.2 gives a pledge one reward_tier_id; n for the add-on
+        // because the backer chose n and the creator has to ship n.
+        assertThat(reservedQuantity(addonId)).isEqualTo(2);
     }
 
     @Test
@@ -531,6 +542,43 @@ class PledgeApiTests extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("§10.4: a sold-out add-on is refused with the add-ons that are left")
+    void aSoldOutAddonOffersOtherAddons() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        UUID rewardId = reward(creator, projectId, "A boxed set", "45.00", tier -> {});
+        UUID soldOut = reward(creator, projectId, "The last mug", "15.00", tier -> {
+            tier.put("isAddon", true);
+            tier.put("limitQuantity", 1);
+        });
+        UUID otherAddon = reward(creator, projectId, "A tote bag", "12.00", tier -> tier.put("isAddon", true));
+        Campaigns.launch(dataSource, projectId);
+
+        Map<String, Object> body = draftBody(projectId, rewardId, "45.00");
+        body.put("addons", List.of(Map.of("rewardTierId", soldOut.toString(), "quantity", 1)));
+        assertThat(post("/v1/pledges/draft", account("backer"), newKey(), body).getStatusCode())
+                .isEqualTo(HttpStatus.CREATED);
+
+        ResponseEntity<String> refused = post("/v1/pledges/draft", account("backer"), newKey(), body);
+
+        // **The refusal names the add-on and not the reward.** Before #203 this request
+        // was accepted and the campaign owed two of something it had one of.
+        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(code(refused)).isEqualTo("REWARD_SOLD_OUT");
+        assertThat(meta(refused).get("rewardTierId")).isEqualTo(soldOut.toString());
+
+        // And what is offered is of the same kind. Handing this backer the campaign's
+        // reward tiers -- one of which they are already holding -- would be a list of
+        // things that do not answer the question they asked (#203).
+        assertThat(alternatives(refused)).containsExactly(otherAddon.toString());
+        assertThat(alternatives(refused)).doesNotContain(rewardId.toString(), soldOut.toString());
+
+        // Nothing was taken on the way to the refusal: the reward tier the request also
+        // named is untouched, because the transaction rolled back.
+        assertThat(reservedQuantity(rewardId)).isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("§7.2: a backer gets one pledge per campaign")
     void aSecondPledgeByTheSameBackerIsRefused() {
         Account creator = account("creator");
@@ -821,6 +869,42 @@ class PledgeApiTests extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("confirming moves the add-on's places too, all of them in one statement")
+    void confirmingMovesTheAddonPlacesAsWell() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        UUID rewardId = reward(creator, projectId, "A boxed set", "45.00", tier -> tier.put("limitQuantity", 3));
+        UUID addonId = reward(creator, projectId, "An enamel mug", "15.00", tier -> {
+            tier.put("isAddon", true);
+            tier.put("limitQuantity", 4);
+        });
+        Campaigns.launch(dataSource, projectId);
+
+        Account backer = account("backer");
+        Map<String, Object> body = draftBody(projectId, rewardId, "45.00");
+        body.put("addons", List.of(Map.of("rewardTierId", addonId.toString(), "quantity", 3)));
+        UUID pledgeId = id(parse(post("/v1/pledges/draft", backer, newKey(), body)));
+        assertThat(reservedQuantity(addonId)).isEqualTo(3);
+        assertThat(claimedQuantity(addonId)).isZero();
+
+        assertThat(post("/v1/pledges/" + pledgeId + "/confirm", backer, newKey(), Map.of())
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+
+        // Three places, moved together. A confirmation that committed the reward and
+        // left the add-on reserved would leave a reservation against a pledge that is
+        // not a draft -- the row §8.4's sweep hunts for -- and the sweep would then
+        // hand three mugs somebody has committed to buying to the next person.
+        assertThat(reservedQuantity(rewardId)).isZero();
+        assertThat(claimedQuantity(rewardId)).isEqualTo(1);
+        assertThat(reservedQuantity(addonId)).isZero();
+        assertThat(claimedQuantity(addonId)).isEqualTo(3);
+        // And the sum never moved, which is what stops another checkout taking a place
+        // that is already sold.
+        assertThat(committedQuantity(addonId)).isEqualTo(3);
+    }
+
+    @Test
     @DisplayName("a replayed confirmation returns the original response and commits one place")
     void aReplayedConfirmationCommitsOnce() {
         Account creator = account("creator");
@@ -954,9 +1038,97 @@ class PledgeApiTests extends AbstractIntegrationTest {
 
         // The reward did not change, so the place did not move.
         assertThat(reservedQuantity(rewardId)).isEqualTo(1);
-        // And still nothing is held for the add-on, whose quantity just changed. That
-        // gap is #203's and this edit neither widens nor narrows it.
+        // The add-on's quantity did, so the difference did (#203): two held, one
+        // wanted, one given back. Only the difference moves -- an edit that re-took
+        // both places and then released both would be the same number here and a
+        // window in which the add-on looked full to everybody else.
+        assertThat(reservedQuantity(addonId)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("raising an add-on's quantity takes the extra places and lowering it gives them back")
+    void editingAnAddonQuantityMovesTheDifference() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        UUID rewardId = reward(creator, projectId, "A boxed set", "45.00", tier -> tier.put("limitQuantity", 5));
+        UUID addonId = reward(creator, projectId, "An enamel mug", "15.00", tier -> {
+            tier.put("isAddon", true);
+            tier.put("limitQuantity", 10);
+        });
+        Campaigns.launch(dataSource, projectId);
+
+        Account backer = account("backer");
+        Map<String, Object> body = draftBody(projectId, rewardId, "45.00");
+        body.put("addons", List.of(Map.of("rewardTierId", addonId.toString(), "quantity", 2)));
+        UUID pledgeId = id(parse(post("/v1/pledges/draft", backer, newKey(), body)));
+        assertThat(reservedQuantity(addonId)).isEqualTo(2);
+
+        // Up by three.
+        Map<String, Object> more = new LinkedHashMap<>();
+        more.put("addons", List.of(Map.of("rewardTierId", addonId.toString(), "quantity", 5)));
+        assertThat(patch("/v1/pledges/" + pledgeId, backer, newKey(), more).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(reservedQuantity(addonId)).isEqualTo(5);
+
+        // Down by four.
+        Map<String, Object> fewer = new LinkedHashMap<>();
+        fewer.put("addons", List.of(Map.of("rewardTierId", addonId.toString(), "quantity", 1)));
+        assertThat(patch("/v1/pledges/" + pledgeId, backer, newKey(), fewer).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(reservedQuantity(addonId)).isEqualTo(1);
+
+        // Removed altogether: every place goes back, and the reward's place stays.
+        Map<String, Object> none = new LinkedHashMap<>();
+        none.put("addons", List.of());
+        Map<String, Object> pledge = parse(patch("/v1/pledges/" + pledgeId, backer, newKey(), none));
+        assertThat(addons(pledge)).isEmpty();
         assertThat(reservedQuantity(addonId)).isZero();
+        assertThat(reservedQuantity(rewardId)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("an edit that asks for more of a full add-on is refused and the backer keeps what they had")
+    void aRefusedAddonEditCostsTheBackerNothing() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        UUID rewardId = reward(creator, projectId, "A boxed set", "45.00", tier -> tier.put("limitQuantity", 5));
+        UUID addonId = reward(creator, projectId, "An enamel mug", "15.00", tier -> {
+            tier.put("isAddon", true);
+            tier.put("limitQuantity", 3);
+        });
+        Campaigns.launch(dataSource, projectId);
+
+        Account backer = account("backer");
+        Map<String, Object> body = draftBody(projectId, rewardId, "45.00");
+        body.put("addons", List.of(Map.of("rewardTierId", addonId.toString(), "quantity", 2)));
+        UUID pledgeId = id(parse(post("/v1/pledges/draft", backer, newKey(), body)));
+
+        // Somebody else takes the third and last mug.
+        Map<String, Object> theirs = draftBody(projectId, null, "15.00");
+        theirs.put("addons", List.of(Map.of("rewardTierId", addonId.toString(), "quantity", 1)));
+        assertThat(post("/v1/pledges/draft", account("backer"), newKey(), theirs).getStatusCode())
+                .isEqualTo(HttpStatus.CREATED);
+        assertThat(reservedQuantity(addonId)).isEqualTo(3);
+
+        Map<String, Object> edit = new LinkedHashMap<>();
+        edit.put("addons", List.of(Map.of("rewardTierId", addonId.toString(), "quantity", 3)));
+        ResponseEntity<String> refused = patch("/v1/pledges/" + pledgeId, backer, newKey(), edit);
+
+        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(code(refused)).isEqualTo("REWARD_SOLD_OUT");
+        // The add-on is named, not the reward: the backer asked for a third mug and the
+        // reward tier had nothing to do with it.
+        assertThat(meta(refused).get("rewardTierId")).isEqualTo(addonId.toString());
+
+        // **aRefusedEditCostsTheBackerNothing's assertion, one line down.** The extra
+        // place was taken before anything was released, so a refusal leaves the pledge
+        // holding exactly its two mugs and its reward.
+        assertThat(reservedQuantity(addonId)).isEqualTo(3);
+        assertThat(reservedQuantity(rewardId)).isEqualTo(1);
+
+        Map<String, Object> unchanged = parse(get("/v1/pledges/" + pledgeId, backer));
+        assertThat(addons(unchanged)).containsExactly(Map.of("rewardTierId", addonId.toString(), "quantity", 2));
+        assertThat(amount(unchanged, "addons")).isEqualTo("30.00");
     }
 
     @Test
@@ -1423,6 +1595,50 @@ class PledgeApiTests extends AbstractIntegrationTest {
         // §9.7: nothing was collected, so nothing is refunded and no transaction is
         // written. The refund of a pledge that really was collected is #67's.
         assertThat(collectedAtOf(pledgeId)).isNull();
+    }
+
+    @Test
+    @DisplayName("cancelling gives back the add-on's places from whichever column was holding them")
+    void cancellingReleasesTheAddonPlacesToo() {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        UUID rewardId = reward(creator, projectId, "A boxed set", "45.00", tier -> tier.put("limitQuantity", 3));
+        UUID addonId = reward(creator, projectId, "An enamel mug", "15.00", tier -> {
+            tier.put("isAddon", true);
+            tier.put("limitQuantity", 6);
+        });
+        Campaigns.launch(dataSource, projectId);
+
+        // A draft gives back reserved places.
+        Account first = account("backer");
+        Map<String, Object> body = draftBody(projectId, rewardId, "45.00");
+        body.put("addons", List.of(Map.of("rewardTierId", addonId.toString(), "quantity", 2)));
+        UUID draft = id(parse(post("/v1/pledges/draft", first, newKey(), body)));
+        assertThat(reservedQuantity(addonId)).isEqualTo(2);
+
+        assertThat(delete("/v1/pledges/" + draft, first, newKey()).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(reservedQuantity(addonId)).isZero();
+        assertThat(claimedQuantity(addonId)).isZero();
+
+        // A confirmed pledge gives back claimed ones, which is a different statement
+        // against a different column -- releasing the reserved ones instead would leave
+        // the add-on counting places nobody holds while short of ones somebody does,
+        // and the sum the limit is checked against would still look right.
+        Account second = account("backer");
+        UUID confirmed = id(parse(post("/v1/pledges/draft", second, newKey(), body)));
+        assertThat(post("/v1/pledges/" + confirmed + "/confirm", second, newKey(), Map.of())
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(claimedQuantity(addonId)).isEqualTo(2);
+
+        assertThat(delete("/v1/pledges/" + confirmed, second, newKey()).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+
+        assertThat(claimedQuantity(addonId)).isZero();
+        assertThat(reservedQuantity(addonId)).isZero();
+        assertThat(committedQuantity(addonId)).isZero();
+        assertThat(committedQuantity(rewardId)).isZero();
     }
 
     @Test

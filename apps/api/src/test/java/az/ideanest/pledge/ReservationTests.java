@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import az.ideanest.pledge.application.DraftPledge;
 import az.ideanest.pledge.application.PledgeAlreadyExistsException;
 import az.ideanest.pledge.application.ReservationCleanerJob;
 import az.ideanest.pledge.application.ReservationService;
@@ -11,6 +12,7 @@ import az.ideanest.pledge.application.RewardSoldOutException;
 import az.ideanest.pledge.application.UnknownRewardTierException;
 import az.ideanest.pledge.domain.Pledge;
 import az.ideanest.shared.Identifiers;
+import az.ideanest.shared.Money;
 import az.ideanest.support.AbstractIntegrationTest;
 import az.ideanest.support.AdjustableClock;
 import java.math.BigDecimal;
@@ -57,6 +59,15 @@ import org.springframework.jdbc.core.JdbcTemplate;
  *       reservation that forgot to increment would satisfy every check in the
  *       database and would sell the same place twice.
  * </ul>
+ *
+ * <p><strong>{@link #exactlyTheRemainingAddonPlacesAreSold()} is the same test for
+ * #203's half of the problem.</strong> An add-on is a {@code reward_tiers} row with
+ * {@code is_addon} set, so it has the same counters and the same constraint — and
+ * until #203 nothing ever wrote them, so the constraint could not catch anything and
+ * sixteen backers could each take the last of nine. It differs from the reward-tier
+ * race in the one way that made it a separate piece of work: each backer asks for
+ * <em>three</em> places rather than one, so what is serialised is
+ * {@code reserved + n <= limit} and the answer is three winners rather than nine.
  *
  * <p>Time is the injected {@link AdjustableClock} rather than a sleep. A test that
  * waits five minutes for a TTL is a test nobody runs, and a test that shortens the
@@ -105,6 +116,7 @@ class ReservationTests extends AbstractIntegrationTest {
 
     @AfterEach
     void clearPledgesAndReleaseTheClock() {
+        jdbc().update("DELETE FROM pledge_addons");
         jdbc().update("DELETE FROM pledges");
         jdbc().update("DELETE FROM reward_tiers");
         jdbc().update("DELETE FROM project_state_transitions");
@@ -167,6 +179,146 @@ class ReservationTests extends AbstractIntegrationTest {
         // The count is still kept. §5.3 lets a creator add a limit later, and the
         // floor it may be lowered to is the places already taken.
         assertThat(reservedQuantity(tierId)).isEqualTo(RACERS);
+    }
+
+    // -----------------------------------------------------------------------
+    // The same point, for add-ons — #203
+    // -----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("sixteen backers race for nine add-on places three at a time and exactly three of them win")
+    void exactlyTheRemainingAddonPlacesAreSold() throws InterruptedException {
+        UUID projectId = insertProject();
+        UUID addonId = insertAddon(projectId, 10);
+        // One is already confirmed, so nine are left and the arithmetic under test is
+        // claimed + reserved + n against the limit rather than reserved alone.
+        jdbc().update("UPDATE reward_tiers SET claimed_quantity = 1 WHERE id = ?", addonId);
+
+        Race race = raceForAddonPlaces(projectId, addonId, 3, backers(RACERS));
+
+        // Anything other than a sold-out refusal is a bug: a constraint violation would
+        // mean the add-on oversold, a deadlock would mean the statement order is wrong.
+        assertThat(race.unexpected()).isEmpty();
+
+        // **This is the assertion #203 exists for.** Nine places, three at a time, is
+        // three winners -- and under the implementation that quoted an add-on without
+        // holding it, every one of the sixteen would have won and the creator would owe
+        // forty-eight of something they have nine of.
+        assertThat(race.reserved()).isEqualTo(3);
+        assertThat(race.soldOut()).isEqualTo(RACERS - 3);
+
+        assertThat(reservedQuantity(addonId)).isEqualTo(9);
+        assertThat(committedQuantity(addonId)).isEqualTo(10);
+
+        // The count and the rows agree. No constraint in V7 checks this: a reservation
+        // that took places without recording them, or recorded ones it never took,
+        // would satisfy every check in the database and sell the same mug twice.
+        assertThat(addonQuantityHeld(addonId)).isEqualTo(9);
+    }
+
+    @Test
+    @DisplayName("an add-on with too few left refuses the whole quantity rather than selling what it has")
+    void anAddonSellsAllOfTheQuantityOrNoneOfIt() {
+        UUID projectId = insertProject();
+        UUID addonId = insertAddon(projectId, 2);
+
+        // Three asked for, two available. Two is not the answer: the backer was quoted
+        // for three, would be charged for three, and the creator would be told to ship
+        // three.
+        assertThatThrownBy(() -> reservations.draft(draftWithAddon(projectId, insertBacker(), addonId, 3)))
+                .isInstanceOf(RewardSoldOutException.class);
+
+        assertThat(reservedQuantity(addonId)).isZero();
+        assertThat(addonQuantityHeld(addonId)).isZero();
+
+        // And exactly two is still sold, so the refusal above was about the quantity
+        // and not about the add-on being closed.
+        assertThatCode(() -> reservations.draft(draftWithAddon(projectId, insertBacker(), addonId, 2)))
+                .doesNotThrowAnyException();
+        assertThat(reservedQuantity(addonId)).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("an unlimited add-on refuses nobody and still counts every place")
+    void anUnlimitedAddonNeverRefuses() throws InterruptedException {
+        UUID projectId = insertProject();
+        UUID addonId = insertAddon(projectId, null);
+
+        Race race = raceForAddonPlaces(projectId, addonId, 2, backers(RACERS));
+
+        assertThat(race.unexpected()).isEmpty();
+        assertThat(race.soldOut()).isZero();
+        assertThat(race.reserved()).isEqualTo(RACERS);
+
+        // §5.3 lets a creator add a limit later, and the floor it may be lowered to is
+        // the places already taken -- which for an add-on is the quantities, not the
+        // pledges.
+        assertThat(reservedQuantity(addonId)).isEqualTo(RACERS * 2);
+    }
+
+    @Test
+    @DisplayName("a draft holding both a reward and an add-on holds one place on the tier and n on the add-on")
+    void aRewardAndAnAddonAreHeldTogether() {
+        UUID projectId = insertProject();
+        UUID tierId = insertTier(projectId, 5);
+        UUID addonId = insertAddon(projectId, 5);
+
+        reservations.draft(new DraftPledge(
+                projectId,
+                insertBacker(),
+                tierId,
+                List.of(new DraftPledge.AddonSelection(addonId, 3)),
+                Money.of(new BigDecimal("19.99"), "AZN"),
+                null,
+                false,
+                null,
+                Identifiers.newIdentifier().toString()));
+
+        // §7.2 gives a pledge one reward_tier_id, so the reward is always one place;
+        // PL-04 gives the add-on a quantity, so it is three.
+        assertThat(reservedQuantity(tierId)).isEqualTo(1);
+        assertThat(reservedQuantity(addonId)).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("a lapsed draft gives its add-on places back, not only its reward's")
+    void anExpiredReservationGivesBackItsAddonPlacesToo() {
+        clock.freeze();
+        UUID projectId = insertProject();
+        UUID tierId = insertTier(projectId, 1);
+        UUID addonId = insertAddon(projectId, 4);
+
+        Pledge held = reservations.draft(new DraftPledge(
+                projectId,
+                insertBacker(),
+                tierId,
+                List.of(new DraftPledge.AddonSelection(addonId, 4)),
+                Money.of(new BigDecimal("19.99"), "AZN"),
+                null,
+                false,
+                null,
+                Identifiers.newIdentifier().toString()));
+        assertThat(reservedQuantity(addonId)).isEqualTo(4);
+
+        // Somebody else cannot have one while this checkout is holding all four.
+        assertThatThrownBy(() -> reservations.draft(draftWithAddon(projectId, insertBacker(), addonId, 1)))
+                .isInstanceOf(RewardSoldOutException.class);
+
+        clock.advance(ttl().plusSeconds(1));
+        assertThat(cleaner.releaseExpiredReservations(clock.instant())).isEqualTo(1);
+
+        assertThat(state(held.getId())).isEqualTo("EXPIRED");
+        // **Both, and this is the half the sweep never used to do.** A sweep that gave
+        // back the reward's place and left the add-on's held would leak stock nothing
+        // would ever release, and no constraint in V7 can see stock that is merely
+        // never given back.
+        assertThat(reservedQuantity(tierId)).isZero();
+        assertThat(reservedQuantity(addonId)).isZero();
+
+        // And they are genuinely back on sale, which is the whole point of the sweep.
+        assertThatCode(() -> reservations.draft(draftWithAddon(projectId, insertBacker(), addonId, 4)))
+                .doesNotThrowAnyException();
+        assertThat(reservedQuantity(addonId)).isEqualTo(4);
     }
 
     // -----------------------------------------------------------------------
@@ -339,15 +491,37 @@ class ReservationTests extends AbstractIntegrationTest {
     // -----------------------------------------------------------------------
 
     /**
+     * The same race, for §4.5's PL-04: every backer asks for {@code quantity} of one
+     * add-on at once, on a pledge with no reward of its own.
+     *
+     * <p>No reward tier, deliberately. The add-on's counters are the thing under test,
+     * and a reward tier in the selection would give the checkout a second row it could
+     * be refused by — a run where every backer lost because the <em>tier</em> ran out
+     * would look exactly like a run where the add-on behaved.
+     */
+    private Race raceForAddonPlaces(UUID projectId, UUID addonId, int quantity, List<UUID> backers)
+            throws InterruptedException {
+
+        return race(backers, backerId -> reservations.draft(draftWithAddon(projectId, backerId, addonId, quantity)));
+    }
+
+    /**
      * Every backer calls {@link ReservationService#reserve} at once, and what each of
      * them was told is counted.
+     */
+    private Race raceForPlaces(UUID projectId, UUID tierId, List<UUID> backers) throws InterruptedException {
+        return race(backers, backerId -> reservations.reserve(projectId, backerId, tierId));
+    }
+
+    /**
+     * One checkout per backer, all released together, with what each was told counted.
      *
      * <p>The latch is what makes it a race. Submitting the tasks is not enough: a pool
      * that starts the first thread before the last one is queued would let the early
      * ones finish before the late ones begin, and the test would pass against an
      * implementation with no concurrency control at all.
      */
-    private Race raceForPlaces(UUID projectId, UUID tierId, List<UUID> backers) throws InterruptedException {
+    private Race race(List<UUID> backers, Checkout checkout) throws InterruptedException {
         ExecutorService pool = Executors.newFixedThreadPool(backers.size());
         CountDownLatch start = new CountDownLatch(1);
         CountDownLatch finished = new CountDownLatch(backers.size());
@@ -360,7 +534,7 @@ class ReservationTests extends AbstractIntegrationTest {
                 pool.execute(() -> {
                     try {
                         start.await();
-                        reservations.reserve(projectId, backerId, tierId);
+                        checkout.run(backerId);
                         reserved.incrementAndGet();
                     } catch (RewardSoldOutException e) {
                         soldOut.incrementAndGet();
@@ -388,6 +562,11 @@ class ReservationTests extends AbstractIntegrationTest {
         }
 
         return new Race(reserved.get(), soldOut.get(), List.copyOf(unexpected));
+    }
+
+    /** One backer's attempt, so that both races can share {@link #race}. */
+    private interface Checkout {
+        void run(UUID backerId);
     }
 
     /** What sixteen simultaneous checkouts were told. */
@@ -461,6 +640,51 @@ class ReservationTests extends AbstractIntegrationTest {
                         new BigDecimal("19.99"),
                         limitQuantity);
         return id;
+    }
+
+    /**
+     * An add-on: the same {@code reward_tiers} row with {@code is_addon} set, which is
+     * exactly what V7 makes it and exactly why it carries the same three counters.
+     *
+     * @param limitQuantity null is unlimited, for {@link #insertTier}'s reason
+     */
+    private UUID insertAddon(UUID projectId, Integer limitQuantity) {
+        UUID id = insertTier(projectId, limitQuantity);
+        jdbc().update("UPDATE reward_tiers SET is_addon = true WHERE id = ?", id);
+        return id;
+    }
+
+    /** A support-only pledge that takes {@code quantity} of one add-on. §4.5's PL-02 plus PL-04. */
+    private DraftPledge draftWithAddon(UUID projectId, UUID backerId, UUID addonId, int quantity) {
+        return new DraftPledge(
+                projectId,
+                backerId,
+                null,
+                List.of(new DraftPledge.AddonSelection(addonId, quantity)),
+                // The tier's own currency, which is what selectionFor quotes against.
+                Money.of(new BigDecimal("1.00"), "AZN"),
+                null,
+                false,
+                null,
+                Identifiers.newIdentifier().toString());
+    }
+
+    /**
+     * How many of an add-on the live drafts say they are holding.
+     *
+     * <p>The counterpart of {@link #draftsHolding} for a tier whose lines carry a
+     * quantity: what has to match {@code reserved_quantity} is the sum of the
+     * quantities, not the number of pledges.
+     */
+    private int addonQuantityHeld(UUID addonId) {
+        return read(
+                """
+                SELECT coalesce(sum(addon.quantity), 0)
+                  FROM pledge_addons addon
+                  JOIN pledges pledge ON pledge.id = addon.pledge_id
+                 WHERE addon.reward_tier_id = ? AND pledge.state = 'DRAFT'
+                """,
+                addonId);
     }
 
     private int reservedQuantity(UUID tierId) {
