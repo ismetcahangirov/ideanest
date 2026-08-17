@@ -18,6 +18,7 @@ cd apps/api && ./gradlew bootRun       # http://localhost:8080
 | Variable | Default | Meaning |
 |---|---|---|
 | `IDEANEST_API_ORIGIN` | `http://localhost:8080` | Where `/v1/*` is proxied. Read at build time on the server only — the browser never learns it |
+| `IDEANEST_SITE_ORIGIN` | `http://localhost:3000` | This application's own public origin. Every canonical URL, `og:url`, and absolute image URL is built from it. Server-only for the same reason, and read at build time by the statically rendered pages, so changing it means rebuilding. A value that is not a URL fails the build rather than shipping wrong canonicals |
 
 ### Why the API is proxied rather than called directly
 
@@ -52,7 +53,12 @@ the browser half of the auth flow work at all.
 | `/discover` | **Public.** The filter rail, sort, chips, and the cursor-paginated feed (#45) |
 
 There is no route at `/` yet; server-rendered project and discovery pages are
-#119.
+#119. The root segment still carries the site's default metadata and its
+`opengraph-image`, both of which every route below inherits, and both of which
+work without a page of their own.
+
+Every route above declares its metadata through `src/lib/seo/metadata.ts` — see
+[Metadata and social previews](#metadata-and-social-previews).
 
 `/projects/[id]/prelaunch` and `/discover` are the routes that work with no
 session at all. `/projects/[id]/back` is the half-way case: its reward list is
@@ -61,8 +67,71 @@ who has not registered, and only the two mutations need a session. For the pre-l
 collect, who have not registered; for discovery it is that a visitor who has not
 registered is the entire audience — requiring a token would mean the front door
 could not render. Both read through `publicFetch`, which sends a bearer token
-only when one is already in memory and never fetches one. Rich link previews
-need a server-rendered public projection, which is the discovery epic's (#119).
+only when one is already in memory and never fetches one.
+
+## Metadata and social previews
+
+Every title, description, canonical URL, and social card is built by
+`src/lib/seo/metadata.ts` (#120). No page writes an `openGraph` block of its own:
+a page that did would be the page that forgot `og:site_name`, or spelled the
+locale differently, or printed the site name into `og:title` where
+`og:site_name` already says it — mistakes that render identically in review and
+are visible in every shared link forever.
+
+| Module | Holds |
+|---|---|
+| `lib/seo/metadata.ts` | `publicPageMetadata`, `privatePageMetadata`, `projectPageMetadata`, the canonical rule, word-boundary truncation, and the §6.1 public/private split |
+| `lib/seo/metadata-source.ts` | The one server-side, **anonymous** read of a campaign's public projection |
+| `lib/seo/metadata-card.tsx` | The Open Graph card, drawn from `@ideanest/design-tokens` |
+| `app/opengraph-image.tsx` | The site's card. Static — rendered once by `next build` |
+| `app/discover/opengraph-image.tsx` | The same card for `/discover`, and it is **not** redundant (see below) |
+| `app/projects/[id]/prelaunch/opengraph-image.tsx` | A campaign's card, per request |
+
+**Two shapes, because there are two kinds of page.** A public page gets a
+canonical, a full Open Graph block, and a large X card. A private one —
+`/projects/[id]/back`, `/projects/new`, `/settings/sessions`, every editor tab —
+gets `noindex, nofollow`, no canonical, and no card at all. `nofollow` as well as
+`noindex` on all of them: they are shells around client boundaries, so the markup
+a crawler receives has no links in it, and `follow` would be a promise of crawl
+budget spent finding nothing.
+
+**One canonical for the whole of discovery, and every query string is dropped.**
+The filters live in the query string and the feed they select is fetched in the
+browser, so `/discover`, `/discover?category=games`, and
+`/discover?utm_source=news&page=7` are all served the *same document* — one
+canonical is what actually happened rather than a simplification. Emitting a
+per-filter canonical would mean reading `searchParams` inside `generateMetadata`,
+which was measured to move `/discover` from `○ (Static)` to `ƒ (Dynamic)` in the
+build output. A per-request render of the front door is not worth a tag.
+
+**A campaign's card is its own cover photograph when it has one.** §5.3 requires
+a cover of at least 1024×576, and an unfurler holding a real photograph should
+not be shown typography instead. With no cover — which, until the media pipeline
+of §13.1 exists, is most campaigns — the `opengraph-image` route draws the title
+and summary onto the site's card. It deliberately embeds no bitmap: Satori
+decodes PNG, JPEG, and SVG, while §13.1 serves AVIF first.
+
+**Nothing about a campaign is printed until it is confirmed public.** The
+projection is read anonymously, without credentials, because what a link preview
+may show is exactly what an anonymous request answers — a card built from an
+authenticated read would say more than its audience may see. `PRELAUNCH`,
+`SCHEDULED`, `LIVE`, and the five post-funding states are public;
+`docs/architecture.md` §6.1's other seven are not, and a campaign in one of them
+gets the private shape with no title, no summary, and no cover. A service that
+does not answer is treated the same way: a brief `noindex` is re-crawled and
+recovers, an indexed draft does not.
+
+**`app/discover/opengraph-image.tsx` is load-bearing.** Next merges a file-based
+Open Graph image into the metadata of the segment the file sits in, and a child
+segment that declares its own `openGraph` block replaces its parent's resolved one
+wholesale. `/discover` declares one, so without a card in its own directory it
+would have no `og:image` at all. Any future public route with its own title needs
+the same file, or an explicit image.
+
+**Not done here.** `sitemap.xml`, `robots.txt`, and the finer question of which
+*public* pages should be indexed are #122's (`lib/seo/indexability.ts`).
+`isPubliclyVisible` is the floor both rest on: nothing it refuses may be indexed
+or described, whatever that module decides on top.
 
 ## Discovery
 

@@ -2,11 +2,28 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { DiscoverySkeleton } from '../../components/discovery/DiscoverySkeleton';
 import { DiscoveryView } from '../../components/discovery/DiscoveryView';
+import { publicPageMetadata } from '../../lib/seo/metadata';
 
-export const metadata: Metadata = {
+/**
+ * `/discover`, and every filtered variant of it, is one canonical URL.
+ *
+ * **A STATIC `metadata`, NOT `generateMetadata`.** Reading `searchParams` in
+ * `generateMetadata` would let this page emit a per-filter canonical — and it opts
+ * the route out of static rendering. That was measured rather than assumed: with
+ * it, `next build` prints `/discover` as `ƒ (Dynamic)` instead of `○ (Static)`, so
+ * the front door would be server-rendered on every request in exchange for a
+ * canonical tag.
+ *
+ * It would also be the wrong tag. The filters live in the query string and the
+ * feed they select is fetched in the browser (`DiscoveryView`), so every filter
+ * combination is served the SAME document; one canonical is what actually
+ * happened, and `canonicalUrl` explains the rest.
+ */
+export const metadata: Metadata = publicPageMetadata({
   title: 'Discover',
   description: 'Browse and filter every campaign on IdeaNest.',
-};
+  path: '/discover',
+});
 
 /**
  * `/discover` — docs/architecture.md §4.3.
