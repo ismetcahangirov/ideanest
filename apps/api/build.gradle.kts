@@ -66,7 +66,7 @@ dependencies {
     // ours, and neither of them will sign a token for a key we control. The
     // standalone artefact shades its own Jetty and Jackson, so the stub cannot
     // drag the application's versions around underneath it.
-    testImplementation("org.wiremock:wiremock-standalone:3.13.1")
+    testImplementation("org.wiremock:wiremock-standalone:3.13.2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
