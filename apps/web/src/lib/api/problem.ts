@@ -22,7 +22,15 @@ export interface Problem {
   code?: string;
   /** Reason-specific context, keyed by `code`. §10.4 carries it on a refusal. */
   meta?: Record<string, unknown>;
-  /** Mirrors the `Retry-After` header on a 429. */
+  /**
+   * Mirrors the `Retry-After` header, in seconds.
+   *
+   * Two refusals carry it: `429` from the rate limiter, and the `409
+   * IDEMPOTENT_REQUEST_IN_PROGRESS` a client meets when its own first attempt is
+   * still running. Both are set by the same handler that sets the header, and
+   * `errorFrom` fills this in from the header when a body arrives without it —
+   * see there for why the header is the one to believe.
+   */
   retryAfterSeconds?: number;
 }
 
@@ -53,6 +61,38 @@ export async function problemOf(response: Response): Promise<Problem | null> {
   }
 }
 
+/**
+ * `Retry-After`, in seconds, or null when the response did not carry one.
+ *
+ * Delta-seconds only. RFC 9110 also allows an HTTP-date and this service never
+ * sends one; a date is therefore read as "no advice" rather than guessed at,
+ * and the caller falls back to the `retryAfterSeconds` the same handler puts in
+ * the body.
+ */
+function retryAfterOf(response: Response): number | null {
+  const header = response.headers.get('Retry-After');
+  if (header === null || !/^\d+$/.test(header.trim())) return null;
+
+  const seconds = Number(header.trim());
+  return Number.isFinite(seconds) ? seconds : null;
+}
+
+/**
+ * The thrown form of a refused response.
+ *
+ * THE HEADER IS THE ONE TO BELIEVE. `Retry-After` is what an intermediary reads
+ * and rewrites, and the body's `retryAfterSeconds` is a convenience mirror of
+ * it; when the two disagree the header describes the response that actually
+ * arrived. It is copied onto the problem rather than onto a field of its own so
+ * that a caller has one place to read it, and so that a refusal carrying only
+ * the mirror — a proxy that stripped the header — still tells a client how long
+ * to wait.
+ */
 export async function errorFrom(response: Response): Promise<ApiError> {
-  return new ApiError(response.status, await problemOf(response));
+  const problem = await problemOf(response);
+  const retryAfter = retryAfterOf(response);
+
+  if (problem !== null && retryAfter !== null) problem.retryAfterSeconds = retryAfter;
+
+  return new ApiError(response.status, problem);
 }

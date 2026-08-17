@@ -258,6 +258,32 @@ export interface PledgeResponse {
   reservationExpiresAt?: string | null;
   confirmedAt?: string | null;
   canceledAt?: string | null;
+  /**
+   * What the backer said to charge later, echoed back. Null until #55 exists to
+   * give them one, and null on every pledge this build can make.
+   *
+   * Optional in the same way every nullable field here is, and read rather than
+   * assumed: the confirmation screen states whether a payment method was
+   * collected, and that sentence is only true for as long as somebody keeps
+   * remembering to change it. The field is the thing that stops it being a
+   * claim this client makes about a service it cannot see.
+   */
+  paymentMethodId?: string | null;
+  /**
+   * Whether §9.2's phase 1 happened — the verification authorisation, 3-D
+   * Secure, the stored token and the void.
+   *
+   * ALWAYS PRESENT, and `false` on every confirmed pledge the platform holds
+   * until #55 lands. Required rather than optional because the service writes it
+   * out unconditionally, and because a client that could read it as `undefined`
+   * would need a default — and the only safe default is the value the field
+   * exists to stop being guessed.
+   *
+   * IT DOES NOT MEAN A CHARGE SUCCEEDED OR FAILED. §9.2 moves no money at
+   * confirmation under any circumstances; collection is phase 2, at the close of
+   * a successful campaign, and belongs to epic #59.
+   */
+  cardVerified: boolean;
 }
 
 /**
@@ -328,6 +354,11 @@ function mutationHeaders(idempotencyKey: string): HeadersInit {
  * `IDEMPOTENCY_KEY_REUSED` (409), `SHIPPING_DESTINATION_UNPRICED` (422),
  * `CONTRIBUTION_BELOW_REWARD_PRICE` (422) and `PROJECT_NOT_LIVE` (409). Each is
  * given wording a backer can act on in `./failure`.
+ *
+ * And four the contract did not name, which #52 answered and both mutations can
+ * raise: `IDEMPOTENCY_KEY_REQUIRED` (400), `IDEMPOTENCY_KEY_INVALID` (400),
+ * `IDEMPOTENT_REQUEST_IN_PROGRESS` (409, carrying `Retry-After`) and
+ * `PLEDGE_MODIFIED` (409). See `./failure` for what each of them means here.
  */
 export async function createPledgeDraft(
   body: DraftPledgeRequest,
@@ -360,7 +391,13 @@ export async function getPledge(id: string, signal?: AbortSignal): Promise<Pledg
  *
  * Refused with `RESERVATION_EXPIRED` (409) once the five minutes have elapsed and
  * `PLEDGE_NOT_DRAFT` (409) when the pledge has already moved on. The first is
- * recoverable and the checkout recovers from it; see `useCheckout`.
+ * recoverable and the checkout recovers from it; see `useCheckout`. So is
+ * `PLEDGE_MODIFIED` (409), which is what §8.4's sweep expiring this draft in the
+ * moment it is confirmed looks like from here.
+ *
+ * `cardVerified` on the response says whether §9.2's phase 1 happened. It is
+ * `false` on everything this build can confirm, and the confirmation screen
+ * reads it rather than asserting it.
  */
 export async function confirmPledge(
   id: string,

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { ApiError } from '../../lib/api/problem';
 import {
@@ -152,6 +152,11 @@ function draft(overrides: Partial<PledgeResponse> = {}): PledgeResponse {
     isAnonymous: false,
     // Well into the future, so the countdown is running rather than expired.
     reservationExpiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    // What the service sends on every pledge this build can make: no payment
+    // method, and no card verified. Both are overridden in the two cases that
+    // exist to prove the screen reads them rather than asserting them.
+    paymentMethodId: null,
+    cardVerified: false,
     ...overrides,
   };
 }
@@ -512,6 +517,23 @@ function refusal(code: string, status: number, meta?: Record<string, unknown>): 
   return new ApiError(status, { code, status, title: 'Refused', meta });
 }
 
+/**
+ * `409 IDEMPOTENT_REQUEST_IN_PROGRESS`, as the service sends it.
+ *
+ * `retryAfterSeconds` is the mirror of the `Retry-After` header that
+ * `ApiExceptionHandler` sets on this refusal and this one only; `errorFrom`
+ * prefers the header and falls back to this, so a client that reads the problem
+ * gets the same number either way.
+ */
+function inProgress(retryAfterSeconds = 1): ApiError {
+  return new ApiError(409, {
+    code: 'IDEMPOTENT_REQUEST_IN_PROGRESS',
+    status: 409,
+    title: 'Request already in progress',
+    retryAfterSeconds,
+  });
+}
+
 describe('a refusal', () => {
   it('offers the alternatives the service named for a sold-out tier', async () => {
     draftMock.mockRejectedValue(
@@ -566,6 +588,192 @@ describe('a refusal', () => {
     expect(await screen.findByText('You are already backing this campaign')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
   });
+
+  /*
+   * The two below cannot happen while `lib/pledges/idempotency.ts` sends a
+   * `crypto.randomUUID()` on every mutation, which is exactly why they are
+   * asserted: if one of them ever reaches a backer it is because a change to
+   * this application stopped it doing that, and the screen has to say so rather
+   * than blame the service with "that did not work — try again".
+   */
+  it.each([
+    ['IDEMPOTENCY_KEY_REQUIRED', 'This page sent an incomplete request'],
+    ['IDEMPOTENCY_KEY_INVALID', 'This page sent a malformed request'],
+  ])('reports %s as a fault in this page rather than as a refusal', async (code, title) => {
+    draftMock.mockRejectedValue(refusal(code, 400));
+
+    const user = await open();
+    await reserveTheMug(user);
+
+    const alert = await screen.findByRole('alert');
+    expect(within(alert).getByText(title)).toBeInTheDocument();
+    expect(within(alert).getByText(/a fault in this site rather than anything you did/)).toBeInTheDocument();
+
+    // NOT the generic fallback, which would offer a retry that is certain to
+    // fail in exactly the same way — the header will be missing or malformed
+    // again, because the client is what is wrong.
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/did not say why/)).not.toBeInTheDocument();
+    // Nothing was reserved, so nothing moved on from the form.
+    expect(screen.queryByRole('button', { name: 'Confirm pledge' })).not.toBeInTheDocument();
+  });
+
+  it('recovers from a pledge that was changed underneath the confirmation', async () => {
+    const user = await open();
+    await reserveTheMug(user);
+    await screen.findByRole('button', { name: 'Confirm pledge' });
+
+    /*
+     * §8.4's sweep expiring the draft in the moment its backer confirms it. The
+     * service will not report a cause it has inferred rather than observed, so
+     * this arrives as `PLEDGE_MODIFIED` and not as `RESERVATION_EXPIRED` — and
+     * it is a recovery either way rather than a dead end.
+     */
+    confirmMock.mockRejectedValue(refusal('PLEDGE_MODIFIED', 409));
+    await user.click(screen.getByRole('button', { name: 'Confirm pledge' }));
+
+    expect(
+      await screen.findByText('This pledge changed while you were confirming it'),
+    ).toBeInTheDocument();
+    // And it does not claim a card was involved, because none was.
+    expect(screen.getByText(/no card was involved/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Reserve again' }));
+    await waitFor(() => expect(draftMock).toHaveBeenCalledTimes(2));
+
+    // A NEW key: this client's copy of the pledge is stale, so the second
+    // reservation is a new intent rather than a replay that would hand back the
+    // draft something else has already written to.
+    expect(draftKey(1)).not.toBe(draftKey(0));
+  });
+});
+
+/* -------------------------------------------------------------------------
+ * A request that is already running — IDEMPOTENT_REQUEST_IN_PROGRESS
+ *
+ * What a double-click produces: the first request still holds the claim on the
+ * key and the second is told to ask again. The backer can do nothing about it
+ * and their pledge is already being made, so the checkout waits and asks again
+ * itself — with the same key, which is the whole point.
+ * ---------------------------------------------------------------------- */
+
+describe('a request whose first attempt is still running', () => {
+  /** Lets pending promises settle, and a `Retry-After` elapse when asked. */
+  async function tick(ms = 1): Promise<void> {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(ms);
+    });
+  }
+
+  beforeEach(() => {
+    /*
+     * `shouldAdvanceTime` lets real time drive the fake clock, which is what
+     * makes `userEvent` usable at all here: its async wrapper waits on a
+     * macrotask that a frozen clock never reaches. The waits under test are
+     * seconds long, so they still need `tick` to elapse.
+     */
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  async function openWithTimers(): Promise<UserEvent> {
+    const user = userEvent.setup({ advanceTimers: (ms) => void vi.advanceTimersByTime(ms) });
+    render(<CheckoutView projectId="project-1" />);
+    await tick();
+    return user;
+  }
+
+  it('WAITS THE TIME IT WAS TOLD TO AND RETRIES WITH THE SAME KEY', async () => {
+    draftMock.mockRejectedValueOnce(inProgress(2)).mockResolvedValue(draft());
+
+    const user = await openWithTimers();
+    await reserveTheMug(user);
+
+    // Nothing yet: retrying immediately earns the same refusal, because the
+    // request it collided with is still running.
+    expect(draftMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    await tick(2000);
+
+    expect(draftMock).toHaveBeenCalledTimes(2);
+    /*
+     * THE SAME KEY. A fresh one would make the retry a second pledge on a
+     * campaign that allows this backer one — which is the exact failure the
+     * mechanism exists to prevent, and the reason the key belongs to the intent
+     * rather than to the attempt.
+     */
+    expect(draftKey(0)).toBeTruthy();
+    expect(draftKey(1)).toBe(draftKey(0));
+
+    // And it succeeded, so the backer never saw the collision at all.
+    expect(await screen.findByRole('button', { name: 'Confirm pledge' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('waits no longer than five seconds however long it is asked to', async () => {
+    draftMock.mockRejectedValueOnce(inProgress(3600)).mockResolvedValue(draft());
+
+    const user = await openWithTimers();
+    await reserveTheMug(user);
+
+    await tick(4000);
+    expect(draftMock).toHaveBeenCalledTimes(1);
+
+    // An hour of "Reserving…" is a page somebody reloads, and a reload is the
+    // one thing that loses the in-memory key.
+    await tick(1000);
+    expect(draftMock).toHaveBeenCalledTimes(2);
+    expect(draftKey(1)).toBe(draftKey(0));
+  });
+
+  it('gives up after a bounded number of attempts rather than looping', async () => {
+    draftMock.mockRejectedValue(inProgress(1));
+
+    const user = await openWithTimers();
+    await reserveTheMug(user);
+    await tick(60_000);
+
+    // Four: the first attempt and three retries. A client that kept asking
+    // would keep asking for as long as the first attempt is stuck, which is
+    // when asking helps least.
+    expect(draftMock).toHaveBeenCalledTimes(4);
+    expect(draftKey(3)).toBe(draftKey(0));
+
+    // Now it is the backer's decision, and the message says what happened
+    // rather than reporting a generic failure for something about to succeed.
+    const alert = await screen.findByRole('alert');
+    expect(within(alert).getByText('Your first attempt is still going')).toBeInTheDocument();
+    expect(within(alert).getByText(/Nothing has been pledged twice/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled();
+  });
+
+  it('does the same for the confirmation, and retries the confirmation rather than the draft', async () => {
+    const user = await openWithTimers();
+    await reserveTheMug(user);
+    await screen.findByRole('button', { name: 'Confirm pledge' });
+
+    confirmMock
+      .mockRejectedValueOnce(inProgress(2))
+      .mockResolvedValue(draft({ state: 'CONFIRMED', reservationExpiresAt: null }));
+
+    await user.click(screen.getByRole('button', { name: 'Confirm pledge' }));
+    expect(confirmMock).toHaveBeenCalledTimes(1);
+
+    await tick(2000);
+
+    expect(confirmMock).toHaveBeenCalledTimes(2);
+    // The confirm intent's key, unchanged — and the draft was not sent again,
+    // which would have been a second reservation for a pledge that already has
+    // one.
+    expect(confirmMock.mock.calls[1]?.[2]).toBe(confirmMock.mock.calls[0]?.[2]);
+    expect(draftMock).toHaveBeenCalledTimes(1);
+
+    expect(await screen.findByText('Your pledge is confirmed')).toBeInTheDocument();
+  });
 });
 
 /* -------------------------------------------------------------------------
@@ -607,6 +815,55 @@ describe('confirming', () => {
     expect(confirmMock.mock.calls[0]?.[1]).toEqual({ paymentMethodId: null });
     expect(confirmMock.mock.calls[0]?.[2]).toBeTruthy();
     expect(confirmMock.mock.calls[0]?.[2]).not.toBe(draftKey(0));
+  });
+
+  it('READS whether a card was verified rather than claiming it was not', async () => {
+    /*
+     * `cardVerified` is false on every pledge this build can make, and the two
+     * sentences below used to be written into the screen. #55 is precisely the
+     * change that makes the first one false, and a hard-coded claim is one
+     * nobody is told to go and update. So the response decides the wording, and
+     * this case is the day #55 lands.
+     */
+    confirmMock.mockResolvedValue(
+      draft({
+        state: 'CONFIRMED',
+        reservationExpiresAt: null,
+        paymentMethodId: 'payment-method-1',
+        cardVerified: true,
+      }),
+    );
+
+    const user = await open();
+    await reserveTheMug(user);
+    await user.click(await screen.findByRole('button', { name: 'Confirm pledge' }));
+
+    const outcome = within(await screen.findByRole('region', { name: 'What happens now' }));
+    expect(outcome.getByText('Your card was checked and released, not charged.')).toBeInTheDocument();
+    expect(outcome.getByText(/The payment method you gave is kept for later/)).toBeInTheDocument();
+
+    // The claims that are no longer true are gone, and the one that never stops
+    // being true is not.
+    expect(screen.queryByText(/No card has been charged/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/No payment method was collected/)).not.toBeInTheDocument();
+    expect(outcome.getByText(/nothing is taken unless the campaign reaches its goal/)).toBeInTheDocument();
+  });
+
+  it('sends back the payment method the pledge already carries', async () => {
+    draftMock.mockResolvedValue(draft({ paymentMethodId: 'payment-method-1' }));
+    confirmMock.mockResolvedValue(
+      draft({ state: 'CONFIRMED', reservationExpiresAt: null, paymentMethodId: 'payment-method-1' }),
+    );
+
+    const user = await open();
+    await reserveTheMug(user);
+    await user.click(await screen.findByRole('button', { name: 'Confirm pledge' }));
+
+    await waitFor(() => expect(confirmMock).toHaveBeenCalledTimes(1));
+    // Echoed from the draft rather than written as a literal null: the day a
+    // draft carries a payment method, the confirmation sends it instead of
+    // silently dropping it.
+    expect(confirmMock.mock.calls[0]?.[1]).toEqual({ paymentMethodId: 'payment-method-1' });
   });
 
   it('announces the outcome politely rather than stealing focus to a toast', async () => {
