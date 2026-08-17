@@ -6,15 +6,14 @@ import az.ideanest.pledge.domain.PledgeState;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
 /**
- * The three questions a campaign page asks about its backers, and no others.
+ * The two questions a campaign page asks about its backers, and no others.
  *
- * <p><strong>Its own interface rather than three more methods on
+ * <p><strong>Its own interface rather than two more methods on
  * {@link PledgeRepository}.</strong> That one is the checkout's — a pledge by its
  * owner, a backer's live pledge, the sweep's batch — and every query on it is scoped
  * to one person or to one job. These three are scoped to a campaign and answer a
@@ -33,7 +32,7 @@ import org.springframework.data.repository.query.Param;
  * <p>Every query takes the counted states as a parameter rather than naming them.
  * Which states are a public backing is a decision, it is made once in
  * {@link az.ideanest.pledge.application.PublicBackers#COUNTED}, and a copy of it
- * inlined in three JPQL strings is three copies to keep in step with a state machine
+ * inlined in each JPQL string is one more copy to keep in step with a state machine
  * that is still being built.
  */
 public interface PublicBackerRepository extends Repository<Pledge, UUID> {
@@ -87,31 +86,9 @@ public interface PublicBackerRepository extends Repository<Pledge, UUID> {
     List<RewardTierBackers> countBackersByRewardTier(
             @Param("projectId") UUID projectId, @Param("states") Collection<PledgeState> states);
 
-    /**
-     * A page of this campaign's backings, most recently confirmed first.
-     *
-     * <p>Entities rather than a projection, because what a stranger may be told about
-     * each one is {@link az.ideanest.pledge.application.PublicBacker}'s decision and
-     * not this query's. A projection here that happened to select {@code backerId}
-     * would put the identifier of an anonymous backer into a value object one field
-     * away from a serialiser — the arrangement PL-12 exists to make impossible.
-     *
-     * <p>{@code NULLS LAST} because {@code confirmed_at} is nullable in the schema even
-     * though no transition into a counted state leaves it null; a row that somehow had
-     * none would otherwise sort to the front of the page, where it would be read as the
-     * newest backing on the campaign.
-     *
-     * <p>The identifier breaks ties. Two pledges confirmed in the same millisecond are
-     * ordinary during a launch, and an order that did not decide between them would
-     * return them in whichever sequence the plan happened to produce — a body that
-     * changes without the data changing, and an {@code ETag} that changes with it.
-     */
-    @Query(
-            """
-            SELECT p FROM Pledge p
-             WHERE p.projectId = :projectId AND p.state IN :states
-             ORDER BY p.confirmedAt DESC NULLS LAST, p.id DESC
-            """)
-    List<Pledge> findBackings(
-            @Param("projectId") UUID projectId, @Param("states") Collection<PledgeState> states, Pageable page);
+    // There is deliberately no query here that returns the pledges themselves.
+    // Whether a campaign publishes who backed it is #209, which carries
+    // `status: needs-decision`; until it is answered, a read that could hand a caller
+    // a list of backers is a read nobody has agreed should exist. Adding one is the
+    // first thing that issue does, and PublicBacker is the shape it puts them in.
 }

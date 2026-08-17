@@ -25,25 +25,29 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The public backer list, over HTTP. §4.5's PL-12.
+ * The public backer counts, over HTTP. §4.4's header and Rewards tab.
  *
- * <p><strong>Three of these carry the issue.</strong>
+ * <p><strong>The counting rule is the substance of what this endpoint promises</strong>,
+ * and three of these pin it:
  *
  * <ul>
- *   <li>{@link #anAnonymousBackerIsCountedButNeverNamed()} is the capability itself,
- *       and it asserts both halves in one body: the name is gone and the count is not.
- *       A test that only checked the first would pass against an implementation that
- *       dropped anonymous backers altogether, which is the tempting wrong answer.
- *   <li>{@link #theLedgerKeepsTheBackerOnAnAnonymousPledge()} is the other half of the
+ *   <li>{@link #anAnonymousBackerIsCountedLikeAnybodyElse()} — §4.5's PL-12 hides who,
+ *       never how many. A count that excluded the people who asked not to be named
+ *       would understate the campaign to everybody, including the creator reading their
+ *       own page, and would turn a privacy preference into a funding penalty.
+ *   <li>{@link #theLedgerKeepsTheBackerOnAnAnonymousPledge()} — the other half of the
  *       issue's sentence. §7.2 and §17.4 both require "pledge #123 was made by user X"
  *       to stay true, so it is asserted against the column rather than described in a
  *       comment.
- *   <li>{@link #ananonymisedAccountLosesItsNameAndKeepsItsPlaceInTheCount()} is the
- *       case nobody designed for. §17.4 severs the identity and keeps the financial
- *       row; the projection has no name to render and renders a backer with none,
- *       while the campaign's total is unchanged — closing an account does not retract
+ *   <li>{@link #anAnonymisedAccountKeepsItsPlaceInTheCount()} — §17.4 severs the
+ *       identity and keeps the financial row, so closing an account does not retract
  *       the money it pledged.
  * </ul>
+ *
+ * <p>What a <em>named</em> backer would look like is not tested here, because this
+ * endpoint publishes nobody: §4.4 makes backer data public only in aggregate, and
+ * whether a campaign should list individuals is #209. The projection that would carry
+ * them is exercised directly by {@code PublicBackerProjectionTests}.
  *
  * <p>Every read here is made without a bearer token, because that is what a visitor
  * has. A suite that authenticated would be testing a different endpoint from the one
@@ -92,50 +96,25 @@ class PublicBackerApiTests extends AbstractIntegrationTest {
     // -----------------------------------------------------------------------
 
     @Test
-    @DisplayName("an anonymous backer is counted but never named")
-    void anAnonymousBackerIsCountedButNeverNamed() {
+    @DisplayName("an anonymous backer is counted like anybody else")
+    void anAnonymousBackerIsCountedLikeAnybodyElse() {
         Account creator = account("creator");
         UUID projectId = project(creator);
         UUID rewardId = reward(creator, projectId, "A boxed set", "45.00");
         Campaigns.launch(dataSource, projectId);
 
-        Account open = account("open");
-        back(open, projectId, rewardId, "45.00", false);
-        Account hidden = account("hidden");
-        back(hidden, projectId, rewardId, "45.00", true);
+        back(account("open"), projectId, rewardId, "45.00", false);
+        back(account("hidden"), projectId, rewardId, "45.00", true);
 
         Map<String, Object> body = parse(publicBackers(projectId));
 
-        // Anonymity hides who, never how many. A count that left the hidden backer out
-        // would understate the campaign to everybody -- the visitor deciding whether to
-        // join it, and the creator reading their own page.
+        // Both halves in one body: the count is two, and there is nowhere in it for a
+        // name to be. A count of one would be an implementation that read PL-12 as
+        // "hide the backer" rather than "hide who the backer is".
         assertThat(body.get("backerCount")).isEqualTo(2);
-        assertThat(backers(body)).hasSize(2);
-
-        Map<String, Object> named = backerOf(body, false);
-        assertThat(named.get("id")).isEqualTo(open.id().toString());
-        assertThat(named.get("name")).isEqualTo("Test open");
-        assertThat(named.get("slug")).isNotNull();
-        assertThat(named.get("backedAt")).isNotNull();
-
-        // Not "a null name beside a real identifier": there is no identifier either,
-        // because the account identifier is the join key to the public profile and a
-        // client holding it could resolve the name PL-12 exists to withhold.
-        Map<String, Object> anonymous = backerOf(body, true);
-        assertThat(anonymous.get("id")).isNull();
-        assertThat(anonymous.get("name")).isNull();
-        assertThat(anonymous.get("slug")).isNull();
-        // The keys are present and null rather than absent, so a client does not have
-        // to tell "not published" from "this server does not send that key".
-        assertThat(anonymous).containsKeys("id", "name", "slug");
-        // A timestamp names nobody, and it is what makes "recent backers" an order.
-        assertThat(anonymous.get("backedAt")).isNotNull();
-
-        // The whole body, checked as a set of values rather than field by field: the
-        // hidden backer's name and slug must appear nowhere in it, including in a
-        // field somebody adds later.
+        assertThat(body).containsOnlyKeys("backerCount", "rewardTiers");
         assertThat(body.toString()).doesNotContain("Test hidden");
-        assertThat(body.toString()).doesNotContain(hidden.id().toString());
+        assertThat(body.toString()).doesNotContain("Test open");
     }
 
     @Test
@@ -159,17 +138,15 @@ class PublicBackerApiTests extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("an anonymised account loses its name and keeps its place in the count")
-    void ananonymisedAccountLosesItsNameAndKeepsItsPlaceInTheCount() {
+    @DisplayName("an anonymised account keeps its place in the count")
+    void anAnonymisedAccountKeepsItsPlaceInTheCount() {
         Account creator = account("creator");
         UUID projectId = project(creator);
         Campaigns.launch(dataSource, projectId);
 
         Account leaving = account("leaving");
         back(leaving, projectId, null, "25.00", false);
-
-        Map<String, Object> before = parse(publicBackers(projectId));
-        assertThat(backerOf(before, false).get("name")).isEqualTo("Test leaving");
+        assertThat(parse(publicBackers(projectId)).get("backerCount")).isEqualTo(1);
 
         // What §17.4's anonymisation leaves behind: the pledge row intact, and an
         // account no finder in the user module will return. Written directly rather
@@ -192,13 +169,9 @@ class PublicBackerApiTests extends AbstractIntegrationTest {
                         """,
                         leaving.id());
 
-        Map<String, Object> after = parse(publicBackers(projectId));
-        // Still a backer -- closing an account does not retract the money it pledged.
-        assertThat(after.get("backerCount")).isEqualTo(1);
-        // And rendered as what they now are: somebody whose identity the platform
-        // deliberately no longer holds. The sealed projection has nowhere to put a name
-        // it does not have, so this falls out rather than being handled.
-        assertThat(backerOf(after, true).get("name")).isNull();
+        // Still a backer -- closing an account does not retract the money it pledged,
+        // and the campaign's total is not a count of people who still have accounts.
+        assertThat(parse(publicBackers(projectId)).get("backerCount")).isEqualTo(1);
     }
 
     // -----------------------------------------------------------------------
@@ -220,16 +193,14 @@ class PublicBackerApiTests extends AbstractIntegrationTest {
         Map<String, Object> body = parse(publicBackers(projectId));
 
         // Counting it would make the public number rise every time somebody opened a
-        // checkout and fall again when they wandered off -- and would publish that a
-        // named person is mid-checkout on a campaign they have not decided about.
+        // checkout and fall again when they wandered off.
         assertThat(body.get("backerCount")).isEqualTo(0);
-        assertThat(backers(body)).isEmpty();
         assertThat(rewardTiers(body)).isEmpty();
     }
 
     @Test
-    @DisplayName("the per-tier counts include anonymous backers and exclude support-only pledges")
-    void perTierCountsAreAggregatesOverEverybody() {
+    @DisplayName("the campaign's count is not the sum of its tiers, because a pledge may take no reward")
+    void theCampaignsCountIsNotTheSumOfItsTiers() {
         Account creator = account("creator");
         UUID projectId = project(creator);
         UUID rewardId = reward(creator, projectId, "A boxed set", "45.00");
@@ -243,12 +214,13 @@ class PublicBackerApiTests extends AbstractIntegrationTest {
 
         Map<String, Object> body = parse(publicBackers(projectId));
 
+        // Three on the campaign and two on the tier. This is why the header's count is
+        // its own query rather than a sum of the Rewards tab: deriving it would drop
+        // every backer who gave without taking anything.
         assertThat(body.get("backerCount")).isEqualTo(3);
-        // §4.4's Rewards tab. Two on the tier, including the one who asked not to be
-        // named -- an aggregate says "this tier is popular" without saying it about
-        // anybody.
-        assertThat(rewardTiers(body))
-                .containsExactly(Map.of("rewardTierId", rewardId.toString(), "backerCount", 2));
+        // §4.4's Rewards tab, and the anonymous backer is in it -- an aggregate says
+        // "this tier is popular" without saying it about anybody.
+        assertThat(rewardTiers(body)).containsExactly(Map.of("rewardTierId", rewardId.toString(), "backerCount", 2));
     }
 
     // -----------------------------------------------------------------------
@@ -256,8 +228,8 @@ class PublicBackerApiTests extends AbstractIntegrationTest {
     // -----------------------------------------------------------------------
 
     @Test
-    @DisplayName("the list is public, and a campaign that is not public is answered as one that does not exist")
-    void theListIsPublicAndHidesTheCampaignsNobodyMayRead() {
+    @DisplayName("the counts are public, and a campaign that is not public is answered as one that does not exist")
+    void theCountsArePublicAndHideTheCampaignsNobodyMayRead() {
         Account creator = account("creator");
         UUID projectId = project(creator);
 
@@ -285,8 +257,8 @@ class PublicBackerApiTests extends AbstractIntegrationTest {
         ResponseEntity<String> first = publicBackers(projectId);
         String etag = first.getHeaders().getETag();
         assertThat(etag).isNotNull();
-        // §10.3 asks for both on a public read. Nothing in this body belongs to a
-        // person who did not publish it, which is what lets it be shared.
+        // §10.3 asks for both on a public read. This body is two integers and a list of
+        // integers, so there is nothing in it a shared cache should not hold.
         assertThat(first.getHeaders().getCacheControl()).contains("public").contains("max-age=60");
 
         HttpHeaders conditional = new HttpHeaders();
@@ -301,31 +273,6 @@ class PublicBackerApiTests extends AbstractIntegrationTest {
         // The policy survives the revalidation. A 304 that dropped it would leave a
         // cache deciding for itself how long the stored body stays fresh.
         assertThat(revalidated.getHeaders().getCacheControl()).contains("max-age=60");
-    }
-
-    @Test
-    @DisplayName("the limit bounds the page and never the count")
-    void theLimitBoundsThePageAndNeverTheCount() {
-        Account creator = account("creator");
-        UUID projectId = project(creator);
-        Campaigns.launch(dataSource, projectId);
-
-        back(account("one"), projectId, null, "10.00", false);
-        back(account("two"), projectId, null, "10.00", false);
-        back(account("three"), projectId, null, "10.00", false);
-
-        Map<String, Object> page = parse(publicBackers(projectId, "?limit=1"));
-
-        // The failure this is here to refuse is a caller taking the length of the list
-        // for the campaign's backer count. On a campaign small enough to fit in one
-        // page the two agree, which is exactly why the mistake survives review.
-        assertThat(backers(page)).hasSize(1);
-        assertThat(page.get("backerCount")).isEqualTo(3);
-
-        // A limit is a client's hint about how much it can draw, not an assertion
-        // about the campaign: there is nothing to correct in an absurd one.
-        assertThat(backers(parse(publicBackers(projectId, "?limit=100000")))).hasSize(3);
-        assertThat(backers(parse(publicBackers(projectId, "?limit=-4")))).hasSize(3);
     }
 
     // -----------------------------------------------------------------------
@@ -372,8 +319,8 @@ class PublicBackerApiTests extends AbstractIntegrationTest {
      *
      * <p>Through HTTP rather than by writing the row, because the property under test
      * is that the flag a client sends to {@code POST /v1/pledges/draft} is the flag
-     * this list reads — a fixture that wrote {@code is_anonymous} itself would prove
-     * the projection works on data the application never produced.
+     * these counts are taken over — a fixture that wrote {@code is_anonymous} itself
+     * would prove the count works on data the application never produced.
      */
     private UUID back(Account backer, UUID projectId, UUID rewardTierId, String contribution, boolean anonymous) {
         UUID pledgeId = draft(backer, projectId, rewardTierId, contribution, anonymous);
@@ -405,13 +352,9 @@ class PublicBackerApiTests extends AbstractIntegrationTest {
     // HTTP
     // -----------------------------------------------------------------------
 
-    private ResponseEntity<String> publicBackers(UUID projectId) {
-        return publicBackers(projectId, "");
-    }
-
     /** Deliberately without a bearer token. This endpoint has no caller to establish. */
-    private ResponseEntity<String> publicBackers(UUID projectId, String query) {
-        return rest.getForEntity("/v1/projects/" + projectId + "/backers/public" + query, String.class);
+    private ResponseEntity<String> publicBackers(UUID projectId) {
+        return rest.getForEntity("/v1/projects/" + projectId + "/backers/public", String.class);
     }
 
     private ResponseEntity<String> post(String path, Account account, String idempotencyKey, Object body) {
@@ -452,20 +395,7 @@ class PublicBackerApiTests extends AbstractIntegrationTest {
     }
 
     @SuppressWarnings("unchecked")
-    private static List<Map<String, Object>> backers(Map<String, Object> body) {
-        return (List<Map<String, Object>>) body.get("backers");
-    }
-
-    @SuppressWarnings("unchecked")
     private static List<Map<String, Object>> rewardTiers(Map<String, Object> body) {
         return (List<Map<String, Object>>) body.get("rewardTiers");
-    }
-
-    /** The one backer in this body that is, or is not, anonymous. */
-    private static Map<String, Object> backerOf(Map<String, Object> body, boolean anonymous) {
-        return backers(body).stream()
-                .filter(backer -> Boolean.valueOf(anonymous).equals(backer.get("isAnonymous")))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("No backer with isAnonymous=" + anonymous + " in " + body));
     }
 }

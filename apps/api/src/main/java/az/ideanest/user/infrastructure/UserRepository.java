@@ -4,7 +4,6 @@ import az.ideanest.shared.EmailAddress;
 import az.ideanest.user.domain.User;
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,23 +33,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmailAndDeletedAtIsNull(EmailAddress email);
 
     Optional<User> findBySlugAndDeletedAtIsNull(String slug);
-
-    /**
-     * Several accounts at once, for a caller that already holds a list of
-     * identifiers and needs the person behind each of them.
-     *
-     * <p>Added by #57, whose public backer list resolves a page of pledges into a
-     * page of names. One query rather than one per row: the campaign page is the
-     * most-read surface on the platform, and a loop of {@link
-     * #findByIdAndDeletedAtIsNull} there is an N+1 that is only noticed once there
-     * is enough traffic for it to matter.
-     *
-     * <p>Excludes deleted accounts like every other finder, which is what makes an
-     * anonymised backer come back as no row rather than as the placeholder name
-     * §17.4 leaves behind. The caller decides what that means; the pledge module
-     * renders it as a backer with no identity, which is what it is.
-     */
-    List<User> findByIdInAndDeletedAtIsNull(Collection<UUID> ids);
 
     /**
      * Includes deleted accounts, unlike the finders. An address belonging to a

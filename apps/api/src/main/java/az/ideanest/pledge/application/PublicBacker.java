@@ -9,38 +9,60 @@ import java.util.UUID;
 /**
  * One backing of a campaign, as somebody with no relationship to it may see it.
  *
- * <p>§4.5's PL-12 — "anonymous pledging, hidden from public lists" — is the whole
- * reason this type exists, and the shape is the guarantee. It is not a record with a
- * {@code name} that callers are trusted to leave null, and it is not a record with an
- * {@code isAnonymous} flag beside the name it is supposed to suppress. It is two
- * shapes: {@link Named}, which has an identity, and {@link Anonymous}, which has
- * nowhere to put one.
+ * <h2>Nothing consumes this yet, and that is deliberate</h2>
+ *
+ * <p><strong>Stated first, because unconsumed code is ordinarily a smell and a reader
+ * who discovers it themselves is right to be suspicious.</strong> §4.4 publishes
+ * backer data only in aggregate and never lists an individual, so the platform has no
+ * public per-backer surface — {@link PublicBackers} serves counts. Whether it should
+ * have one is #209, which is open and carries {@code status: needs-decision}.
+ *
+ * <p>The argument for building the guarantee before its consumer is that this is the
+ * order in which it can be built at all. Whoever implements #209 is writing a query, a
+ * response, and a controller; the anonymity rule is one line of their diff and it is
+ * the line that is easy to get subtly right and catastrophically wrong — a name blanked
+ * but an account identifier left in place resolves back to the name through §4.2's
+ * profile. Having the type already means that author picks a shape rather than
+ * remembering a rule. If #209 comes back "no public list", this file and its tests are
+ * deleted in one commit and nothing else moves.
+ *
+ * <p><strong>One thing worth being accurate about:</strong> #97's creator backer list
+ * is <em>not</em> a future consumer of this. The creator must see every backer by name,
+ * anonymous ones included, because they have to ship the reward to somebody — that is a
+ * different projection with the opposite rule. The consumer is #209 and, if it exists,
+ * whatever public surface the pledge manager grows.
+ *
+ * <h2>The shape is the guarantee</h2>
+ *
+ * <p>§4.5's PL-12 — "anonymous pledging, hidden from public lists" — is what this type
+ * is for. It is not a record with a {@code name} that callers are trusted to leave
+ * null, and it is not a record with an {@code isAnonymous} flag beside the name it is
+ * supposed to suppress. It is two shapes: {@link Named}, which has an identity, and
+ * {@link Anonymous}, which has nowhere to put one.
  *
  * <p><strong>Why the shape rather than a check.</strong> A rule spelled
  * {@code if (!pledge.isAnonymous())} at the one place that renders a backer list is
- * correct on the day it is written and stays correct until the second place — the
- * creator's public "our backers" widget, an export, a notification, the mobile
- * client's own projection. Every one of those is a fresh chance to forget, and the
- * failure is silent: nothing throws, a name simply appears where somebody asked for
- * none. Here there is no branch to forget, because an {@link Anonymous} value has no
- * field a name could be read out of. The compiler is what enforces PL-12, and
- * {@code PublicBackerResponse} pattern-matches over the two rather than testing a
- * boolean, so a third variant added later cannot be silently ignored either.
+ * correct on the day it is written and stays correct until the second place. Every one
+ * of those is a fresh chance to forget, and the failure is silent: nothing throws, a
+ * name simply appears where somebody asked for none. Here there is no branch to forget,
+ * because an {@link Anonymous} value has no field a name could be read out of. A
+ * consumer that flattens these for the wire should pattern-match over the two rather
+ * than test a boolean, so that a third variant added later cannot be silently ignored.
  *
- * <p><strong>Anonymity hides who, never how many.</strong> There is no variant for
- * "not shown at all", and that is deliberate: an anonymous backer is still a backer,
- * still appears in this list, and is still counted by
- * {@link PublicBackers.PublicBacking#backerCount()}. A campaign whose public count
- * excluded the people who asked not to be named would understate itself to everybody,
- * including the creator reading their own page, and would turn a privacy preference
- * into a funding penalty. What PL-12 buys is the absence of a name, and nothing else.
+ * <p><strong>Anonymity hides who, never how many.</strong> There is no variant for "not
+ * shown at all", and that is deliberate: an anonymous backer is still a backer and is
+ * still counted by {@link PublicBackers.PublicBacking#backerCount()}. A campaign whose
+ * public count excluded the people who asked not to be named would understate itself to
+ * everybody, including the creator reading their own page, and would turn a privacy
+ * preference into a funding penalty. What PL-12 buys is the absence of a name, and
+ * nothing else.
  *
- * <p><strong>What is never here at all.</strong> No amount, on either variant. What
- * one person gave is between them, the creator, and the ledger; a public list that
- * carried it would publish a stranger's spending whether or not they asked to be
- * named. No reward tier either — a tier with a single backer would identify that
- * backer to anyone reading the reward list beside this one, which is exactly the
- * re-identification an anonymity flag is supposed to prevent. The aggregate counts on
+ * <p><strong>What is never here at all.</strong> No amount, on either variant. What one
+ * person gave is between them, the creator, and the ledger; a public projection that
+ * carried it would publish a stranger's spending whether or not they asked to be named.
+ * No reward tier either — a tier with a single backer would identify that backer to
+ * anyone reading the reward list beside it, which is exactly the re-identification an
+ * anonymity flag is supposed to prevent. The aggregate counts on
  * {@link PublicBackers.PublicBacking} say how many chose each tier without saying who.
  */
 public sealed interface PublicBacker {
@@ -61,8 +83,8 @@ public sealed interface PublicBacker {
      * <p>Three published facts and no more: the account identifier, the display name,
      * and the profile slug — the same three §4.2's profile is reachable by. The email
      * address is on {@link UserAccount} and is deliberately not carried across into
-     * this type; nothing in this module needs it and a projection that held it would
-     * be one serialiser away from publishing it.
+     * this type; nothing needs it and a projection that held it would be one serialiser
+     * away from publishing it.
      *
      * <p>Every field is required. A {@code Named} with a null name is the failure this
      * whole type exists to prevent, arriving by a different door, so the constructor
@@ -114,8 +136,8 @@ public sealed interface PublicBacker {
      * building one of these is a caller deciding for itself, which is the arrangement
      * this type is here to remove.
      *
-     * <p>{@code backedAt} is {@code confirmed_at}, because confirmation is what makes
-     * a pledge a backing — see {@link PublicBackers#COUNTED}. It falls back to
+     * <p>{@code backedAt} is {@code confirmed_at}, because confirmation is what makes a
+     * pledge a backing — see {@link PublicBackers#COUNTED}. It falls back to
      * {@code created_at} rather than throwing if it is somehow absent: no transition
      * that reaches one of those states leaves it unstamped, so this is unreachable
      * today, and the argument {@code PublicRewardCatalogue} makes about a row that
@@ -124,10 +146,11 @@ public sealed interface PublicBacker {
      * render at all. The two instants are at most one reservation window apart.
      *
      * @param identity the backer's account, or null when the user module has none to
-     *     give — an anonymised account, per {@link Anonymous}. Not looked up here: this
-     *     is called once per row of a page and a lookup inside it would be an N+1 on
-     *     the campaign page, which is why {@link PublicBackers} resolves the whole page
-     *     in one call first
+     *     give — an anonymised account, per {@link Anonymous}. Deliberately not looked
+     *     up in here: a consumer rendering a page of these must resolve the whole page
+     *     in one call, and a lookup inside this method would be an N+1 on the campaign
+     *     page. It is also ignored outright for an anonymous pledge, so a caller that
+     *     resolves identities in bulk should not resolve theirs at all
      */
     static PublicBacker of(Pledge pledge, UserAccount identity) {
         Instant backedAt = pledge.getConfirmedAt() == null ? pledge.getCreatedAt() : pledge.getConfirmedAt();

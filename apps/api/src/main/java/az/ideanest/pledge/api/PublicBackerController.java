@@ -9,12 +9,25 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.WebRequest;
 
 /**
- * The backers a campaign publishes. §4.5's PL-12, from the reading side.
+ * The backer counts a campaign publishes. §4.4's header and Rewards tab.
+ *
+ * <h2>Counts, and nobody's name</h2>
+ *
+ * <p>§4.4 makes backer data public only in aggregate — the header's count, a count
+ * beside each tier, and the Community tab's statistics — and never lists an
+ * individual. Whether it should is #209, which carries {@code status: needs-decision},
+ * and `CLAUDE.md` §5 is explicit that an endpoint is not the place to answer one of
+ * those by default. So this serves the aggregates the specification asks for and
+ * nothing else.
+ *
+ * <p>What #57 built alongside it is the guarantee for the day that decision lands:
+ * {@link az.ideanest.pledge.application.PublicBacker} is a sealed pair in which the
+ * anonymous variant has nowhere to put an identity. It has no consumer today, and its
+ * own class comment says so rather than implying otherwise.
  *
  * <h2>{@code /backers/public}, and why not {@code /backers}</h2>
  *
@@ -30,47 +43,36 @@ import org.springframework.web.context.request.WebRequest;
  *
  * <h2>Public, because there is nobody to ask</h2>
  *
- * <p>No credential is taken and none would be used. The body does not vary by viewer,
- * deliberately, and that answers the two questions the reader is about to ask:
- *
- * <ul>
- *   <li><strong>A backer does not see their own anonymous pledge here.</strong> They
- *       see it at {@code GET /v1/pledges/{id}}, which is theirs, requires their token,
- *       and already answers {@code isAnonymous} so they can confirm the choice took
- *       effect. Making this endpoint reveal one row to one viewer would make it
- *       uncacheable for everybody and would make "is this list hiding me" depend on
- *       who loaded the page.
- *   <li><strong>Neither does the creator.</strong> Not because they may not know — they
- *       must — but because this is not where they find out. Their list is the dashboard
- *       endpoint above, which is authorised, not cached, and out of this issue's scope.
- * </ul>
+ * <p>No credential is taken and none would be used. Neither the backer nor the creator
+ * sees anything here that a stranger does not, and with no names in the body there is
+ * nothing either of them could be shown that the other should not: a count is a count.
+ * A backer confirms their own choice took effect at {@code GET /v1/pledges/{id}},
+ * which is theirs and already answers {@code isAnonymous}; the creator's list is the
+ * dashboard endpoint above.
  *
  * <h2>Caching</h2>
  *
- * <p>{@code ETag} and {@code Cache-Control}, per §10.3, and {@code public, max-age=60}
- * — the same window {@code DiscoveryController} uses, for the same reason and not by
- * copying. Nothing in this body belongs to a person who did not publish it, so a shared
- * cache may hold it; and a backer count a minute old misleads nobody, which is the
- * distinction {@code PublicRewardController} draws when it refuses any {@code max-age}
- * at all for a body carrying live stock. Nothing here is stock.
+ * <p>{@code ETag} and {@code Cache-Control: public, max-age=60}, per §10.3 — the same
+ * window {@code DiscoveryController} uses and the same argument, which now applies
+ * without a caveat: this body is two integers and a list of integers, so there is no
+ * personal data in it to hold in a shared cache and nothing a stale copy could reveal
+ * about a person. What goes stale is a count, and a backer count a minute old misleads
+ * nobody. That is exactly the distinction {@code PublicRewardController} draws when it
+ * refuses any {@code max-age} at all: its body carries live stock, and a reward list
+ * showing places that have gone is the failure PL-01 exists to prevent. Nothing here
+ * is stock.
  *
- * <p>The one thing a stale copy could get wrong is a name a backer has just asked to
- * withdraw, and a minute is the bound on it. That bound is a decision rather than an
- * oversight: PL-09 lets a backer edit their pledge until the deadline, so the flag can
- * change, and if a minute is ever judged too long the answer is a shorter window here
- * rather than a client that has to guess.
+ * <p><strong>An earlier revision of this endpoint served the backers themselves</strong>,
+ * and defended the same window partly on the grounds that the worst a stale copy could
+ * do was show a name a backer had just withdrawn. That risk is gone with the field, and
+ * the window is kept on the argument above rather than on the one it replaced.
  *
- * <h2>What this endpoint does not do</h2>
+ * <h2>No pagination, and nothing to paginate</h2>
  *
- * <p><strong>It does not paginate.</strong> §10.3's pagination is cursor based, and a
- * cursor is a commitment to an ordering that clients then depend on. There is no client
- * yet — this is the first public per-backer surface the platform has had — so the
- * ordering to commit to is not known, and inventing one now would mean either keeping
- * it or breaking the first consumer. What exists instead is {@code ?limit=}, bounded by
- * {@link PublicBackers#MAX_PAGE_SIZE}, which is enough for §4.4's "recent backers" and
- * cannot ask an unbounded question of the pledge table. A campaign with more backers
- * than that has more backers than that: {@code backerCount} says so, and it is the
- * number the page renders.
+ * <p>There is no {@code ?limit=} and no cursor, because the response is a fixed-size
+ * summary plus one row per reward tier — and §5.3 caps a campaign's tiers. If #209
+ * decides a public list should exist, pagination is a question for whoever builds it,
+ * along with the ordering a cursor would commit this API to.
  */
 @RestController
 public class PublicBackerController {
@@ -85,22 +87,17 @@ public class PublicBackerController {
     }
 
     /**
-     * The campaign's backer counts, and a page of the backers themselves.
+     * The campaign's backer count, and the count beside each of its reward tiers.
      *
-     * @param limit how many backers to return, {@code 1..100}. Clamped rather than
-     *     refused — see {@link PublicBackers#of}
      * @return {@code 404} for a campaign that does not exist and for one whose state is
      *     not public, identically; {@code 304} when the caller already holds this exact
      *     body
      */
     @GetMapping("/v1/projects/{projectId}/backers/public")
-    public ResponseEntity<PublicBackerListResponse> list(
-            WebRequest request,
-            HttpServletResponse response,
-            @PathVariable UUID projectId,
-            @RequestParam(name = "limit", defaultValue = "0") int limit) {
+    public ResponseEntity<PublicBackerListResponse> counts(
+            WebRequest request, HttpServletResponse response, @PathVariable UUID projectId) {
 
-        PublicBackerListResponse body = PublicBackerListResponse.of(backers.of(projectId, limit));
+        PublicBackerListResponse body = PublicBackerListResponse.of(backers.of(projectId));
 
         // On the raw response rather than on the ResponseEntity, for the reason
         // PublicRewardController gives: the 304 below is written by checkNotModified

@@ -392,27 +392,30 @@ explicit all-or-nothing statement with the deadline in the viewer's timezone.
 | **Comments** | Chronological thread, creator replies highlighted |
 | **Community** | Backer statistics: countries, new versus returning, cities |
 
-> **Everything this page says about backers comes from one place (#57).**
-> `GET /v1/projects/{id}/backers/public` answers the header's backer count, the
-> Rewards tab's count beside each tier, and the list of backers themselves in one
-> body. They are one question, and answering them in two places is how they come
-> to disagree — in particular by taking the length of a page of backers for the
-> campaign's count, which is right on a campaign small enough to fit in one page
-> and wrong on the launch it matters for.
+> **Both backer counts on this page come from one place (#57).**
+> `GET /v1/projects/{id}/backers/public` answers the header's backer count and the
+> Rewards tab's count beside each tier in one body. The campaign's total is its own
+> query rather than a sum of the tiers, because a sum of the tiers omits every
+> pledge that took no reward — §4.5's PL-02 — and the omission is invisible on a
+> campaign where nobody happens to have done that.
 >
 > The count is taken from `pledges`, not from `projects.backers_count`. That
 > denormalised counter exists (V6) and discovery reads it, but nothing writes it
 > yet, so today it is zero for every campaign. Whichever issue starts maintaining
 > it owns reconciling the two.
 >
-> **The Community tab's statistics are not built, and they need a decision
+> **This page names no backer, and that is a decision rather than a gap.** Every
+> public surface here is an aggregate: a count in the header, a count per tier, and
+> the Community tab's statistics. Whether a campaign should publish *who* backed it
+> is **#209**, which is open and labelled `status: needs-decision`. §4.5 has what
+> #57 built against the day it is answered.
+>
+> **The Community tab's statistics are not built, and #209 has to be settled
 > first.** Countries and cities are aggregates, but a small aggregate is an
-> identifier: "1 backer in Georgia" beside a public backer list names that person,
-> and it names them whether or not they asked to be anonymous. Publishing those
+> identifier: "1 backer in Georgia" beside any list of names identifies that person,
+> and it identifies them whether or not they asked to be anonymous. Publishing those
 > counts needs a minimum cell size — suppress any bucket below *k* — and *k* is a
-> product and legal question rather than an implementation detail. #57 deliberately
-> left it open rather than shipping a statistic that undoes the capability in the
-> row below.
+> product and legal question rather than an implementation detail.
 
 ### 4.5 Pledge flow `[W] [M]`
 
@@ -542,20 +545,14 @@ sequenceDiagram
 
 > **PL-12 is built (#57), and what it needed was not a column.** `is_anonymous` was
 > already stored and already accepted from `POST /v1/pledges/draft` (#52). What was
-> missing was the guarantee, and the guarantee is a type: `PublicBacker` is a sealed
-> pair, `Named` and `Anonymous`, and the anonymous variant has no field an identity
-> could be read out of. Not the name, and not the account identifier either — that
-> is the join key to §4.2's profile, so a client holding it could resolve the name.
-> A rule spelled `if (!pledge.isAnonymous())` at each call site is a rule that
-> survives until the second call site; a shape with nowhere to put a name does not
-> need remembering.
+> missing was the guarantee.
 >
 > **Anonymity hides who, never how many.** An anonymous backer is counted in the
-> campaign's backer count, counted in the per-tier counts of §4.4, and present in
-> the public list as an entry with no identity on it. A count that excluded the
-> people who asked not to be named would understate the campaign to everybody,
-> including the creator reading their own page, and would turn a privacy preference
-> into a funding penalty.
+> campaign's backer count and in the per-tier counts of §4.4, exactly like anybody
+> else. A count that excluded the people who asked not to be named would understate
+> the campaign to everybody, including the creator reading their own page, and would
+> turn a privacy preference into a funding penalty. That is the half of PL-12 the
+> platform serves today, at `GET /v1/projects/{id}/backers/public`.
 >
 > **The ledger is untouched.** `pledges.backer_id` is retained on an anonymous
 > pledge exactly as on any other, because §7.2 and §17.4 both require "pledge #123
@@ -564,20 +561,32 @@ sequenceDiagram
 > have to ship the reward to somebody, and their list is `GET
 > /v1/projects/{id}/backers` under Dashboard.
 >
-> **Scope, stated rather than implied: there was no public per-backer list before
-> this.** §4.4's public surfaces were all aggregates, the creator's list is #97, and
-> the pledge manager is epic #72 — so "hidden from public lists" was, until #57, a
-> guarantee about surfaces that did not exist. What #57 built is the projection that
-> makes them safe by default when they arrive, and the first list to consume it. The
-> other consumers are still to come, and each of them is safe exactly to the extent
-> that it takes its backers from here.
+> **The other half has nothing to hide from yet, and the scope is stated rather than
+> implied.** There is no public per-backer list on this platform. §4.4's public
+> surfaces are all aggregates, the creator's list is #97, and the pledge manager is
+> epic #72 — so "hidden from public lists" was, and remains, a guarantee about a
+> surface that does not exist. Whether it should exist is **#209**
+> (`status: needs-decision`): §4.4 never asks for one, and `CLAUDE.md` §5 is explicit
+> that an endpoint is not the place to answer a question like that by default.
 >
-> Two things #57 deliberately did not do. It did not make `is_anonymous` patchable
-> after the draft — that is PL-09's edit endpoint and belongs to #56. And it did not
-> paginate the public list: §10.3's pagination is cursor based, a cursor is a
-> commitment to an ordering that clients then depend on, and there is no consumer yet
-> to know the right one. `?limit=` is bounded at 100 in the meantime, and
-> `backerCount` is the number a page renders.
+> What #57 built for that day is `PublicBacker`, a sealed pair of `Named` and
+> `Anonymous` in which the anonymous variant has no field an identity could be read
+> out of — not the name, and not the account identifier either, which is the join key
+> to §4.2's profile and would resolve back to the name. A rule spelled
+> `if (!pledge.isAnonymous())` at each call site is a rule that survives until the
+> second call site; a shape with nowhere to put a name does not need remembering.
+> **It has no consumer today**, deliberately and with the argument written on the
+> type: whoever implements #209 is writing a query, a response, and a controller, and
+> the anonymity rule would be one line of their diff — the line that is easy to get
+> subtly wrong. If #209 comes back "no public list", the type and its tests are
+> deleted in one commit.
+>
+> Note that #97's creator backer list is **not** a future consumer of it. The creator
+> sees every backer by name, anonymous ones included, because they have to ship — a
+> different projection with the opposite rule.
+>
+> One more thing #57 did not do: it did not make `is_anonymous` patchable after the
+> draft. That is PL-09's edit endpoint and belongs to #56.
 
 ### 4.6 Campaign editor `[W]`
 
@@ -2268,28 +2277,34 @@ PUT    /v1/admin/collections/{slug}/projects/order
 > it is #97, and it names every backer including the anonymous ones — a creator who
 > cannot see who to ship to cannot ship. `GET /v1/projects/{id}/backers/public` is
 > what a visitor sees. It is public, it answers `404` for a campaign in any state
-> §6.1 does not make public, and it carries three things: `backerCount` for the
-> header, `rewardTiers` for the Rewards tab's per-tier count, and `backers` — a page
-> of them, most recently confirmed first, each either named or anonymous.
+> §6.1 does not make public, and it carries two things: `backerCount` for the header,
+> and `rewardTiers` for the Rewards tab's per-tier count.
 >
-> The two must not share a path. One URL whose body depends on whether a token was
-> presented is a URL no cache can be told the truth about, and it is one review away
-> from the creator's projection reaching a stranger. This is the split
-> `/rewards/public` already makes, spelling included.
+> The two must not share a path, even though only one of them names anybody today.
+> One URL whose body depends on whether a token was presented is a URL no cache can
+> be told the truth about, and it is one review away from the creator's projection
+> reaching a stranger. This is the split `/rewards/public` already makes, spelling
+> included.
 >
-> What the public one leaves out is every amount, and which tier each backer chose. A
-> tier with one backer would identify them from the reward list beside it, which is
-> the re-identification PL-12 exists to prevent; the per-tier counts say how many
-> chose each without saying who. A draft is not a backing either — a five-minute
-> reservation is not a commitment, and counting one would publish that a named person
-> is mid-checkout on a campaign they have not decided about.
+> **The public one names nobody**, because §4.4 publishes backer data only in
+> aggregate and whether that should change is #209. It carries no amounts either, and
+> no per-backer tier: a tier with one backer would identify them from the reward list
+> beside it, which is the re-identification PL-12 exists to prevent, while the
+> per-tier *counts* say how many chose each without saying who. A draft is not a
+> backing — a five-minute reservation is not a commitment, and counting one would make
+> the number rise and fall as people opened and abandoned checkouts.
 >
 > **Caching is the discovery feed's rather than the reward list's:** `ETag` per §10.3
-> and `Cache-Control: public, max-age=60`. Nothing in this body belongs to somebody
-> who did not publish it, so a shared cache may hold it, and a backer count a minute
-> old misleads nobody — which is exactly the distinction the reward list draws when it
-> refuses any `max-age` for a body carrying live stock. The bound that minute puts on
-> a name a backer has just withdrawn is a decision, not an oversight.
+> and `Cache-Control: public, max-age=60`. The body is two integers and a list of
+> integers, so there is no personal data in it for a shared cache to hold and nothing
+> a stale copy could reveal about a person; what goes stale is a count, and a backer
+> count a minute old misleads nobody. That is exactly the distinction the reward list
+> draws when it refuses any `max-age` for a body carrying live stock.
+>
+> There is no `?limit=` and no cursor, because the response is a fixed-size summary
+> plus one row per reward tier, and §5.3 caps a campaign's tiers. If #209 decides a
+> public list should exist, pagination and the ordering a cursor commits this API to
+> are questions for whoever builds it.
 
 ### 10.3 Conventions
 
