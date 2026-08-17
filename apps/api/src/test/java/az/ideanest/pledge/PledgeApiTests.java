@@ -2,6 +2,9 @@ package az.ideanest.pledge;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import az.ideanest.pledge.application.DraftPledge;
+import az.ideanest.pledge.application.PledgeService;
+import az.ideanest.shared.Money;
 import az.ideanest.shared.idempotency.IdempotencyKeySweeper;
 import az.ideanest.shared.idempotency.IdempotencyProperties;
 import az.ideanest.support.AbstractIntegrationTest;
@@ -19,8 +22,10 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,6 +39,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The checkout over HTTP: drafting a pledge, reading it, and confirming it.
@@ -89,6 +96,17 @@ class PledgeApiTests extends AbstractIntegrationTest {
 
     @Autowired
     private IdempotencyProperties idempotency;
+
+    /**
+     * Used by one test, which needs a checkout it can hold open across another
+     * request. Every other test goes through HTTP, because that is what a backer
+     * does.
+     */
+    @Autowired
+    private PledgeService pledges;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     private JdbcTemplate jdbc;
 
@@ -523,6 +541,132 @@ class PledgeApiTests extends AbstractIntegrationTest {
         // second checkout.
         assertThat(meta(refused).get("pledgeId")).isEqualTo(id(pledge).toString());
         assertThat(meta(refused).get("state")).isEqualTo("DRAFT");
+    }
+
+    @Test
+    @DisplayName("§7.2: a second pledge that slips past the read is refused by the index, and still as a conflict")
+    void aSecondPledgeRefusedByTheIndexIsStillAConflict() throws Exception {
+        Account creator = account("creator");
+        UUID projectId = project(creator);
+        Campaigns.launch(dataSource, projectId);
+        Account backer = account("backer");
+
+        // **This is the race the read at the top of the checkout cannot win.** Two
+        // requests from one backer arriving together both find no pledge, both
+        // conclude the backer has none, and both insert — an ordinary double-click, or
+        // a client retrying with a fresh key instead of the one it already had.
+        //
+        // Making that deterministic is the point of the transaction held open below,
+        // rather than two threads and a hope. The winner's INSERT runs and stays
+        // uncommitted, so READ COMMITTED *guarantees* the loser's read cannot see it —
+        // it is not a matter of which thread is quicker. The loser therefore reaches
+        // its own INSERT and blocks there on the unique index until this transaction
+        // commits, which is the only way to be sure the test exercises the index
+        // rather than the read it is meant to have slipped past.
+        //
+        // No reward tier, deliberately: with one, the loser would block on the tier's
+        // row lock inside reserveOnePlace instead, and never reach the insert while
+        // the winner is still open.
+        ExecutorService pool = Executors.newSingleThreadExecutor();
+        AtomicReference<Future<ResponseEntity<String>>> loser = new AtomicReference<>();
+        AtomicReference<UUID> winner = new AtomicReference<>();
+
+        try {
+            new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                winner.set(pledges
+                        .draft(new DraftPledge(
+                                projectId,
+                                backer.id(),
+                                null,
+                                List.of(),
+                                Money.of(new BigDecimal("25.00"), "AZN"),
+                                null,
+                                false,
+                                null,
+                                newKey()))
+                        .pledge()
+                        .getId());
+
+                // A different idempotency key, so this is a second intention and not a
+                // retry — a retry would be replayed and never reach the database.
+                loser.set(pool.submit(
+                        () -> post("/v1/pledges/draft", backer, newKey(), draftBody(projectId, null, "25.00"))));
+
+                // Proof that the loser got past the read and is waiting on the index.
+                // Without it this block could commit first and the loser would take the
+                // read path, which is a different test that already exists above.
+                awaitAnInsertBlockedOnPledges();
+            });
+
+            ResponseEntity<String> refused = loser.get().get(60, TimeUnit.SECONDS);
+
+            // **A conflict, not a 500.** The index refused it, and the backer is told
+            // the same thing in the same shape as if the read had — including the
+            // identifier of the pledge they already have, so the client opens it rather
+            // than starting a third checkout. Which of the two paths refused them is
+            // not something they can tell.
+            assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(code(refused)).isEqualTo("PLEDGE_ALREADY_EXISTS");
+            assertThat(meta(refused).get("pledgeId")).isEqualTo(winner.get().toString());
+            assertThat(meta(refused).get("state")).isEqualTo("DRAFT");
+
+            // One pledge, which is what §7.2's index is for.
+            assertThat(draftCount()).isEqualTo(1);
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    /**
+     * Waits until another backend is blocked on this transaction.
+     *
+     * <p><strong>The wait is the signal, not the query text.</strong> A statement that
+     * hits an occupied unique index waits on the holding transaction's identifier —
+     * {@code wait_event_type = 'Lock'}, {@code wait_event = 'transactionid'} — which
+     * is exactly the state this test needs to observe before it lets the winner
+     * commit. Matching on {@code pg_stat_activity.query} instead does not work: the
+     * driver sends the insert through the extended protocol, so the column still
+     * shows the connection's earlier {@code SET application_name} while the backend
+     * sits blocked. That was the first version of this method, and it timed out
+     * against a backend that was blocked exactly as intended.
+     *
+     * <p>Precise enough because this transaction is the only uncommitted write in the
+     * suite while it runs — JUnit runs test classes one at a time here — so a backend
+     * waiting on a transaction identifier is the loser waiting on us. Our own pid is
+     * excluded, since the poll runs on the winner's connection.
+     *
+     * <p>Polls rather than sleeping a fixed interval, so it returns the moment the
+     * condition holds, which is typically the first tick.
+     */
+    private void awaitAnInsertBlockedOnPledges() {
+        for (int attempt = 0; attempt < 200; attempt++) {
+            Integer waiting = jdbc().queryForObject(
+                    """
+                    SELECT count(*) FROM pg_stat_activity
+                     WHERE datname = current_database()
+                       AND pid <> pg_backend_pid()
+                       AND wait_event_type = 'Lock'
+                       AND wait_event = 'transactionid'
+                    """,
+                    Integer.class);
+            if (waiting != null && waiting > 0) {
+                return;
+            }
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("Interrupted while waiting for the blocked insert", interrupted);
+            }
+        }
+        throw new IllegalStateException(
+                "Nothing ever blocked on this transaction, so the loser never reached the index"
+                        + " and this test proves nothing. Activity was: "
+                        + jdbc().queryForList(
+                                """
+                                SELECT pid, state, wait_event_type, wait_event, left(query, 90) AS query
+                                  FROM pg_stat_activity WHERE datname = current_database()
+                                """));
     }
 
     @Test

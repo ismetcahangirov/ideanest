@@ -21,6 +21,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.hibernate.exception.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -90,6 +94,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ReservationService {
 
+    private static final Logger log = LoggerFactory.getLogger(ReservationService.class);
+
+    /**
+     * §7.2's "one pledge per backer per project", as PostgreSQL names it. V17 creates
+     * it, {@code PledgeState.ACTIVE} is the set of states it covers, and it is the
+     * only constraint on {@code pledges} this class translates into an answer.
+     */
+    private static final String ONE_ACTIVE_PLEDGE_PER_BACKER = "pledges_project_backer_active_key";
+
     /**
      * The only currency the platform settles in, for a pledge that has no reward
      * tier to take one from.
@@ -105,6 +118,7 @@ public class ReservationService {
 
     private final PledgeRepository pledges;
     private final PledgeAddonRepository addons;
+    private final PledgeConflicts conflicts;
     private final RewardStock stock;
     private final ReservationExpiry expiry;
     private final PledgeProperties properties;
@@ -113,12 +127,14 @@ public class ReservationService {
     public ReservationService(
             PledgeRepository pledges,
             PledgeAddonRepository addons,
+            PledgeConflicts conflicts,
             RewardStock stock,
             ReservationExpiry expiry,
             PledgeProperties properties,
             Clock clock) {
         this.pledges = pledges;
         this.addons = addons;
+        this.conflicts = conflicts;
         this.stock = stock;
         this.expiry = expiry;
         this.properties = properties;
@@ -163,7 +179,7 @@ public class ReservationService {
             takeThePlace(projectId, rewardTierId);
         }
 
-        return pledges.save(Pledge.draft(projectId, backerId, rewardTierId, amount, currency, lapsesAt(now)));
+        return insert(Pledge.draft(projectId, backerId, rewardTierId, amount, currency, lapsesAt(now)));
     }
 
     /**
@@ -209,15 +225,7 @@ public class ReservationService {
             takeThePlace(command.projectId(), command.rewardTierId());
         }
 
-        // saveAndFlush, and the flush is load-bearing. `total_amount` is a generated
-        // column, so its value only exists once the INSERT has run — and the response
-        // is built inside this transaction. A plain save leaves the insert queued
-        // until something forces it, which is a flush that may or may not happen
-        // depending on whether a later query in this transaction touches `pledges`:
-        // the add-on rows below do, so a pledge with add-ons would come back with a
-        // total and one without add-ons would come back with null. The flush is also
-        // what makes the pledge exist before the rows that reference it.
-        Pledge pledge = pledges.saveAndFlush(Pledge.draft(new NewPledge(
+        Pledge pledge = insert(Pledge.draft(new NewPledge(
                 command.projectId(),
                 command.backerId(),
                 command.rewardTierId(),
@@ -340,6 +348,111 @@ public class ReservationService {
     }
 
     /**
+     * Writes the draft, and turns the one race the read above cannot win into the
+     * same refusal the read gives.
+     *
+     * <p><strong>{@code settleAnyExistingPledge} is a read, and a read cannot decide
+     * this.</strong> Two checkouts by one backer arriving together both find no
+     * pledge, both conclude the backer has none, and both insert;
+     * {@code pledges_project_backer_active_key} refuses the second. That is not an
+     * exotic race — it is somebody double-clicking a button, or a client retrying
+     * with a fresh idempotency key instead of the one it already had — and before
+     * this it reached the backer as a 500, which tells them nothing and pages
+     * somebody. The read decides what to say; the index decides what is true, and
+     * this is where the index gets to say it.
+     *
+     * <p><strong>{@code saveAndFlush}, so the statement runs here.</strong> A plain
+     * {@code save} queues the insert until something forces it — possibly the commit,
+     * which is outside this method and outside anything that could translate it. The
+     * flush is load-bearing for a second reason: {@code total_amount} is a generated
+     * column whose value only exists once the {@code INSERT} has run, and the
+     * response is built inside this transaction.
+     *
+     * <p>The campaign and the backer are read off the draft rather than passed in, so
+     * that what is looked up afterwards cannot describe a different row from the one
+     * that was refused.
+     *
+     * @throws PledgeAlreadyExistsException when the index refused this insert because
+     *     the backer already has a live pledge on the campaign — §7.2
+     */
+    private Pledge insert(Pledge draft) {
+        try {
+            return pledges.saveAndFlush(draft);
+        } catch (DataIntegrityViolationException violation) {
+            throw refusalFor(violation, draft.getProjectId(), draft.getBackerId());
+        }
+    }
+
+    /**
+     * The answer for a violated constraint, or the violation itself when it is one
+     * this class has nothing to say about.
+     *
+     * <p><strong>One constraint by name, and nothing broader — that is the whole
+     * point.</strong> Catching {@code DataIntegrityViolationException} and calling
+     * every one of them "you already have a pledge" would be a comfortable lie: the
+     * other constraint reachable from this transaction is V7's
+     * {@code reward_tiers_stock_is_within_the_limit}, and reporting an oversold
+     * reward as a duplicate pledge would hide the one failure this module exists to
+     * make impossible, behind a message plausible enough that nobody would look. The
+     * same goes for the composite reference to {@code reward_tiers}, the state check,
+     * and the idempotency index: each of those means a bug somewhere, and a bug that
+     * answers 409 is a bug nobody finds.
+     *
+     * <p>So the constraint is matched by name and everything else is rethrown
+     * untouched — a 500, loudly, exactly as it behaves today.
+     */
+    private RuntimeException refusalFor(
+            DataIntegrityViolationException violation, UUID projectId, UUID backerId) {
+
+        if (!ONE_ACTIVE_PLEDGE_PER_BACKER.equals(violatedConstraintOf(violation))) {
+            return violation;
+        }
+
+        // Read outside this transaction, which the violation has already doomed —
+        // see PledgeConflicts. The pledge that refused this insert is committed by
+        // definition, so this normally finds it, and the backer gets the identifier
+        // of the pledge they already have exactly as the read path gives it: they
+        // cannot tell which of the two refused them, and should not be able to.
+        Pledge existing = conflicts.activePledgeOf(projectId, backerId).orElse(null);
+        if (existing == null) {
+            // The pledge that won the race stopped being active in the moment since —
+            // cancelled, or a draft the sweep expired. "You already have a pledge" is
+            // no longer true and there is no identifier to hand over, so nothing
+            // truthful can be said and the violation is not dressed up as an answer.
+            // A retry succeeds, because the read at the top of the checkout will find
+            // nothing too.
+            log.error(
+                    "Pledge insert for backer {} on campaign {} was refused by {}, and no active pledge explains it.",
+                    backerId,
+                    projectId,
+                    ONE_ACTIVE_PLEDGE_PER_BACKER);
+            return violation;
+        }
+        return new PledgeAlreadyExistsException(projectId, backerId, existing.getId(), existing.getState());
+    }
+
+    /**
+     * Which constraint PostgreSQL refused, as it named it.
+     *
+     * <p>Spring wraps the driver's error in a {@code DataIntegrityViolationException}
+     * that says only that <em>something</em> was violated, which is why the name has
+     * to be dug out: Hibernate's own exception carries it, extracted by the
+     * PostgreSQL dialect from the message the server sent.
+     *
+     * @return null when the cause chain holds no Hibernate constraint violation, or
+     *     when it holds one that could not be named — both of which are "this is not
+     *     the constraint we are looking for"
+     */
+    private static String violatedConstraintOf(DataIntegrityViolationException violation) {
+        for (Throwable cause = violation; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException hibernate) {
+                return hibernate.getConstraintName();
+            }
+        }
+        return null;
+    }
+
+    /**
      * Takes the place, or says why it could not.
      *
      * <p>One conditional {@code UPDATE} — see {@link RewardStock#reserveOnePlace}.
@@ -374,6 +487,12 @@ public class ReservationService {
      * and if this read misses a pledge that another transaction is inserting,
      * {@code pledges_project_backer_active_key} refuses the second insert. This
      * read decides what to say; the index decides what is true.
+     *
+     * <p><strong>And when the index is the one that decides, it says the same
+     * thing.</strong> {@link #insert} translates that one constraint into the same
+     * {@link PledgeAlreadyExistsException} raised here, so a backer who
+     * double-clicked cannot tell which of the two paths refused them. Before that
+     * translation the race reached them as a 500.
      */
     private void settleAnyExistingPledge(UUID projectId, UUID backerId, Instant now) {
         Optional<Pledge> existing = pledges.findActive(projectId, backerId, PledgeState.ACTIVE);
