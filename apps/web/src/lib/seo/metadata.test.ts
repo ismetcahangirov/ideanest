@@ -26,9 +26,10 @@ import {
   siteOrigin,
   truncateAtWord,
 } from './metadata';
+import { SITE_URL_VARIABLE, siteUrl } from './sitemap/config';
 
 const ORIGIN = 'https://ideanest.az';
-const env = { IDEANEST_SITE_ORIGIN: ORIGIN };
+const env = { IDEANEST_SITE_URL: ORIGIN };
 
 /* -------------------------------------------------------------------------
  * The origin every absolute URL is built from
@@ -43,17 +44,26 @@ describe('siteOrigin', () => {
     expect(siteOrigin(env).toString()).toBe('https://ideanest.az/');
   });
 
-  it('keeps only the origin of a configured value that carries a path', () => {
-    // A stray path here would be prepended to every canonical on the site.
-    expect(siteOrigin({ IDEANEST_SITE_ORIGIN: 'https://ideanest.az/az/?a=1' }).toString()).toBe(
-      'https://ideanest.az/',
+  it('keeps a configured base path, because the sitemap keeps it too', () => {
+    /*
+     * Not a preference. `siteUrl()` — which `robots.txt` and every sitemap URL
+     * are built from — preserves the path, so stripping it here would make the
+     * canonical for a page name a different URL than the sitemap entry for the
+     * same page. A crawler resolves that by trusting the canonical and dropping
+     * the sitemap entry.
+     */
+    expect(siteOrigin({ IDEANEST_SITE_URL: 'https://ideanest.az/az/?a=1' }).toString()).toBe(
+      'https://ideanest.az/az/',
     );
   });
 
+  it('reads the same variable the sitemap does, so the two cannot disagree', () => {
+    expect(SITE_URL_VARIABLE).toBe('IDEANEST_SITE_URL');
+    expect(siteOrigin({ [SITE_URL_VARIABLE]: ORIGIN }).toString()).toBe(`${siteUrl(env)}/`);
+  });
+
   it('refuses a malformed origin rather than shipping wrong canonicals', () => {
-    expect(() => siteOrigin({ IDEANEST_SITE_ORIGIN: 'ideanest.az' })).toThrow(
-      /IDEANEST_SITE_ORIGIN/,
-    );
+    expect(() => siteOrigin({ IDEANEST_SITE_URL: 'ideanest.az' })).toThrow(/IDEANEST_SITE_URL/);
   });
 
   it('is what metadataBase resolves relative URLs against', () => {

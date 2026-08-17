@@ -43,6 +43,37 @@ export async function authorizedFetch(path: string, init: RequestInit = {}): Pro
  * rather than against a typed address. It is never *fetched* — no refresh is
  * attempted, and a 401 is not retried, because on a public endpoint a 401 is not
  * an expiry to recover from.
+ *
+ * <h2>`no-cache` here, `no-store` on the session read</h2>
+ *
+ * THE TWO HELPERS DIFFER ON PURPOSE, and the difference is the point of #200.
+ *
+ * `no-cache` does not mean "may serve something old". It forces a revalidation
+ * on **every** request, so a public read is never answered from a stored copy
+ * without the service being asked first — the same guarantee `no-store` gives.
+ * What it adds is that the revalidation may be *conditional*: the browser keeps
+ * the body, sends `If-None-Match`, and a service that has nothing new to say
+ * answers `304` with no body at all.
+ *
+ * `no-store` throws that away. A response the browser is forbidden to store is a
+ * response it cannot revalidate against, so no `If-None-Match` is ever sent and
+ * a `304` becomes unreachable. §10.3 puts `ETag` and `Cache-Control` on public
+ * reads as a convention, and `GET /v1/projects/{id}/rewards/public` chose
+ * `private, no-cache` over `no-store` for exactly this reason: a reward list
+ * must never read older than it is, but re-sending unchanged tiers, items and
+ * shipping rules on every poll of a live stock count is pure waste. `no-store`
+ * on this side made the service's choice unreachable from our own client.
+ *
+ * `send` keeps `no-store` because the trade is not the same there: the session
+ * list carries no validator to revalidate against, so there is no `304` to be
+ * won — only a stored copy of somebody's device list, on a security screen, to
+ * be lost.
+ *
+ * Both callers today are client components, so this is the browser's HTTP cache
+ * and the saving is real. If a Server Component ever reaches for this, Next's
+ * extended `fetch` reads `no-cache` as "do not serve this from the Data Cache",
+ * which is the same freshness guarantee; only the conditional saving is absent,
+ * because a server render has no per-visitor cache to hold a validator in.
  */
 export async function publicFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const token = currentAccessToken();
@@ -52,7 +83,7 @@ export async function publicFetch(path: string, init: RequestInit = {}): Promise
   return fetch(path, {
     ...init,
     headers,
-    cache: 'no-store',
+    cache: 'no-cache',
     credentials: 'same-origin',
   });
 }
@@ -64,8 +95,14 @@ function send(path: string, init: RequestInit, token: string): Promise<Response>
   return fetch(path, {
     ...init,
     headers,
-    // The session list has no cache headers of its own, and a stale device list
-    // on a security screen is the one thing this page must never show.
+    /*
+     * `no-store` for the session read, and only for it — NOT a house rule. An
+     * account read carries no validator of its own, so there is no conditional
+     * request to be had here and nothing is given up by refusing to store the
+     * response; a stale device list on a security screen is the one thing that
+     * page must never show. Public reads take `no-cache` instead, for the
+     * reason `publicFetch` gives — generalising this line to them was #200.
+     */
     cache: 'no-store',
     credentials: 'same-origin',
   });

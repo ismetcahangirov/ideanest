@@ -17,8 +17,8 @@ cd apps/api && ./gradlew bootRun       # http://localhost:8080
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `IDEANEST_API_ORIGIN` | `http://localhost:8080` | Where `/v1/*` is proxied. Read at build time on the server only — the browser never learns it |
-| `IDEANEST_SITE_ORIGIN` | `http://localhost:3000` | This application's own public origin. Every canonical URL, `og:url`, and absolute image URL is built from it. Server-only for the same reason, and read at build time by the statically rendered pages, so changing it means rebuilding. A value that is not a URL fails the build rather than shipping wrong canonicals |
+| `IDEANEST_API_ORIGIN` | `http://localhost:8080` | Where `/v1/*` is proxied. Read at build time on the server only — the browser never learns it. The sitemap also reads the service directly through it |
+| `IDEANEST_SITE_URL` | `http://localhost:3000` | This application's public origin. **Must be set in any deployed environment** — every `robots.txt` entry, sitemap URL, canonical URL, `og:url`, and absolute social-image URL is written against it. Server-only, and read at build time by the statically rendered pages, so changing it means rebuilding. A value that is set but is not an absolute `http(s)` URL is refused rather than fallen back on |
 
 ### Why the API is proxied rather than called directly
 
@@ -51,6 +51,9 @@ the browser half of the auth flow work at all.
 | `/projects/[id]/prelaunch` | **Public.** The pre-launch page itself, and the reminder signup (#39) |
 | `/projects/[id]/back` | Reward selection, add-ons, destination, and confirmation (#54) |
 | `/discover` | **Public.** The filter rail, sort, chips, and the cursor-paginated feed (#45) |
+| `/robots.txt` | **Public.** Crawl directives, and the pointer to the sitemap index (#122) |
+| `/sitemap_index.xml` | **Public.** The index over the sitemap segments (#122) |
+| `/sitemap/[segment].xml` | **Public.** One sitemap segment — `pages`, `discovery`, `projects-N` (#122) |
 
 There is no route at `/` yet; server-rendered project and discovery pages are
 #119. The root segment still carries the site's default metadata and its
@@ -165,6 +168,129 @@ rather than disabled.
 "Show more projects" button and an `IntersectionObserver` that presses it. The
 other way round is how a feed becomes unreachable by keyboard and by screen
 reader, because neither produces a scroll that intersects anything.
+
+## Sitemaps and robots
+
+`src/lib/seo/` holds one decision — **may this campaign be indexed** — and the
+files that act on it.
+
+### The indexability rule
+
+`src/lib/seo/indexability.ts` answers for **all sixteen** project states of
+`docs/architecture.md` §6.1, one of three ways. The table is a
+`Record<ProjectState, …>`, so a seventeenth state is a type error rather than a
+campaign that quietly defaults to indexable, and a state this build has never
+heard of is treated as **not public** — it fails closed.
+
+| Answer | States | Why |
+|---|---|---|
+| `NOT_PUBLIC` | `DRAFT`, `SUBMITTED`, `CHANGES_REQUESTED`, `REJECTED`, `APPROVED`, `SCHEDULED`, `SUSPENDED` | §4.3: discovery never returns these under any filter or sort. The service states the same seven independently as `DiscoveryStatus.HIDDEN_STATES` |
+| `PUBLIC_NOT_INDEXABLE` | `PRELAUNCH`, `CANCELED` | Reachable, deliberately not indexed. A pre-launch page is an **unmoderated** teaser — `DRAFT → PRELAUNCH` passes no review — on an id-based URL that stops existing when the campaign opens. A cancelled campaign stays reachable for the backers who have the link, but a permanent search result for a withdrawn campaign is a dead end outranking the live ones beside it |
+| `INDEXABLE` | `LIVE`, `LATE_PLEDGE`, `SUCCESSFUL`, `COLLECTING`, `FULFILLING`, `COMPLETED`, `UNSUCCESSFUL` | Public, moderated, and stable — §4.4's project page is the page a backer is looking for |
+
+**One predicate, both surfaces.** `isIndexableProjectState` is what the sitemap
+filters on, and `projectPageRobots` is the same decision shaped as a `robots`
+meta directive for the project page itself. Nothing renders the second yet —
+#119 owns the page and #120 owns its metadata — and it lives here so that the
+day either lands, the page and the sitemap cannot disagree. A page that says
+`noindex` while the sitemap advertises it is a page a crawler is invited to and
+then turned away from.
+
+`follow` stays true when `index` is false: a withdrawn campaign still links to
+its creator and its category, and those pages are indexable.
+
+### Segmentation
+
+Next's `generateSitemaps` maps `src/app/sitemap.ts` onto `/sitemap/{id}.xml`, one
+file per segment, and `src/app/sitemap_index.xml/route.ts` is the
+`<sitemapindex>` over them — Next writes no index of its own, and taking
+`/sitemap.xml` for a route handler would collide with the metadata route.
+`robots.txt` points at the index and not at the segments, so the shard count can
+change without a redeployment.
+
+| Segment | Holds |
+|---|---|
+| `pages` | Static pages |
+| `discovery` | The unfiltered feed |
+| `projects-N` | Indexable campaigns, 45,000 per shard |
+
+**45,000 and not 50,000.** The limit is 50,000 URLs and 50 MB uncompressed, and a
+file that breaches either is rejected whole rather than truncated. There is
+always at least a `projects-0`, empty if need be: an index referencing a segment
+that 404s is an error in Search Console, and a segment whose URL appears and
+disappears with the campaign count is one nobody can submit.
+
+Segmenting by content type is not only about size. The three kinds change at
+completely different rates, and a crawler can skip a segment whose contents have
+not moved — which is impossible to say about a file mixing a campaign that
+changes hourly with a page that changes yearly.
+
+### What is claimed about each URL
+
+`lastModified` comes from the campaign's own timestamps: `launchedAt`, and
+`deadline` **once it has passed**, because the page changed at that moment from
+one taking pledges to one that succeeded or did not. A deadline in the future is
+a promise rather than a modification. A campaign with neither gets **no**
+`<lastmod>` — `new Date()` would tell a crawler that every page changed on every
+crawl, which is how the field comes to be ignored for the whole file. The public
+listing carries no `updatedAt`; if one is ever added, this is the one function
+that reads it.
+
+`changeFrequency` is a statement about the content and is true: `daily` for a
+live campaign, whose amount raised and backer count move every day; `monthly`
+through fulfilment, which posts updates over weeks; `yearly` for a page that is
+finished.
+
+**There is no `priority`, anywhere, deliberately.** It asks for relative
+importance within the site on a scale with no defined meaning, Google states that
+it ignores the field, and there is no number here that would be true if it did
+not. A field invented to fill a column is a field a reviewer has to pretend to
+check.
+
+### What robots.txt refuses
+
+`Allow: /` first and the exceptions after, rather than the reverse — a robots.txt
+built the other way round quietly stops indexing every page added after it was
+written. The exception list is `PRIVATE_PATH_PREFIXES`, beside the predicate, and
+it covers the pledge flow, the campaign editor, the pre-launch teaser, the
+account, the creator dashboard, the pledge manager, administration, and the
+proxied `/v1` API. **The dashboard, pledge manager and administration are not
+built**, and are disallowed anyway: a private surface has to be disallowed on the
+deploy that introduces it, and a robots.txt updated afterwards is updated too
+late.
+
+`Disallow: /discover?` blocks **every filtered permutation of the feed**. §4.3's
+filters are query parameters, they compose, and several are comma-separated
+lists, so the number of URLs describing one set of campaigns is combinatorial and
+each is crawl budget spent on a page that already exists. That includes `?q=`,
+where the URL set is whatever anybody types. `/discover` itself, with no query,
+is allowed and is in the sitemap.
+
+### Named gaps
+
+- **The URLs the sitemap emits for `/` and `/projects/{creatorSlug}/{projectSlug}`
+  do not resolve yet.** Neither route exists in this application; both are #119.
+  The sitemap encodes the platform's public URL contract (§4.4, §10.2) rather
+  than an inventory of the routes that happen to be built, because a sitemap that
+  has to be rewritten by whoever ships the page is one that gets shipped without
+  it. Until #119 lands, those entries point at 404s.
+- **No category landing pages.** §4.3's fifteen categories and hundred
+  subcategories would make good landing pages, but the only URL reaching one is
+  `/discover?category=games`, which `Disallow: /discover?` blocks — and a sitemap
+  must never advertise a URL robots.txt blocks. A path-based category route is
+  what makes them indexable, and it belongs with #119.
+- **The campaign list is walked, not counted.** There is no endpoint that returns
+  a count or a bare list of public project URLs, so the sitemap pages through
+  `GET /v1/discover` at `limit=100` — bounded at 500 pages, or 50,000 campaigns —
+  and memoises the walk for fifteen minutes. Past that bound the walk is the
+  wrong shape and the service needs an endpoint built for it.
+- **The sitemap reads the service directly rather than through `publicFetch`.**
+  `lib/api/client.ts` issues a same-origin *relative* request, which is what
+  makes the `SameSite=Strict` refresh cookie work in a browser and what makes it
+  unresolvable in Node, and it attaches an in-memory access token that must never
+  ride on a crawl-facing read. The sitemap resolves `/v1/discover` against
+  `IDEANEST_API_ORIGIN` — the same variable the proxy uses — and imports its
+  response types from `lib/discovery/api.ts` rather than restating them.
 
 ## The checkout
 
@@ -320,6 +446,18 @@ cannot read by design.
 once. Refresh is single-flight: refresh tokens rotate on use and a reused one is
 treated as stolen, so two concurrent refreshes would end the session family
 between them.
+
+**The two helpers cache differently, and neither serves a stale body.**
+`authorizedFetch` sends `cache: 'no-store'`: an account read carries no validator
+to revalidate against, so storing the response buys nothing and a stale device
+list on a security screen is the one thing that page must never show.
+`publicFetch` sends `cache: 'no-cache'`, which still forces a revalidation on
+every single request but lets that revalidation be conditional. Public reads
+carry `ETag` and `Cache-Control` per `docs/architecture.md` §10.3 — the reward
+list is `private, no-cache` — so an unchanged list is answered `304` with no body
+instead of re-sending every tier, item and shipping rule on each poll of a live
+stock count. `no-store` here would make that `304` unreachable, which is what
+#200 fixed.
 
 ## Styling
 

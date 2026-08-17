@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ProjectState } from '../projects/api';
+import { absoluteUrl, siteUrl } from './sitemap/config';
 
 /**
  * Every title, description, canonical URL, and social card this application
@@ -71,10 +72,19 @@ export type EnvSource = Readonly<Record<string, string | undefined>>;
  * Where this application lives
  * ---------------------------------------------------------------------- */
 
-const DEV_ORIGIN = 'http://localhost:3000';
-
 /**
- * The origin every absolute URL on the site is built from.
+ * The base every absolute URL on the site is built from.
+ *
+ * DELEGATED TO `sitemap/config.ts` RATHER THAN READ AGAIN HERE, and that is the
+ * whole point of this function existing at all. `robots.txt` and the sitemaps
+ * write absolute URLs from `siteUrl()`; canonicals and `og:url` write them from
+ * here. If the two read different variables — as they did when this module and
+ * #122 were built in parallel, one on `IDEANEST_SITE_ORIGIN` and one on
+ * `IDEANEST_SITE_URL` — then a deployment that sets only one of them ships a
+ * sitemap and a canonical that name different hosts for the same page. A crawler
+ * resolves that contradiction by trusting the canonical and discarding the
+ * sitemap entry, silently, and nothing in CI would have said so. One variable,
+ * `IDEANEST_SITE_URL`, read in one place.
  *
  * NOT A LITERAL, and not `NEXT_PUBLIC_`. Metadata is composed on the server and
  * nowhere else, so the browser has no use for this — the same reasoning
@@ -82,32 +92,14 @@ const DEV_ORIGIN = 'http://localhost:3000';
  * the statically rendered routes and per request by the dynamic ones, so a
  * deployment that changes it rebuilds.
  *
- * A CONFIGURED VALUE IS REDUCED TO ITS ORIGIN. A trailing path would be
- * prepended to every canonical on the site, and a wrong canonical is the one SEO
- * defect that removes pages from an index rather than merely failing to add
- * them. A value that is not a URL at all throws: an unset variable has a sensible
- * development answer, but a misspelt one has no answer and a build that shipped
- * `ideanest.az/discover` as a canonical would be silently pointing every page at
- * nothing.
+ * A CONFIGURED PATH IS KEPT rather than stripped, because `siteUrl()` keeps it
+ * and the sitemap has to agree. A value that is not a URL at all throws: an
+ * unset variable has a sensible development answer, but a misspelt one has no
+ * answer, and a build that shipped `ideanest.az/discover` as a canonical would
+ * be silently pointing every page at nothing.
  */
 export function siteOrigin(env: EnvSource = process.env): URL {
-  const configured = env['IDEANEST_SITE_ORIGIN']?.trim();
-  if (configured === undefined || configured === '') return new URL(DEV_ORIGIN);
-
-  let parsed: URL;
-  try {
-    parsed = new URL(configured);
-  } catch {
-    throw new Error(
-      `IDEANEST_SITE_ORIGIN is not a URL: ${configured}. It must include a scheme, for example https://ideanest.az`,
-    );
-  }
-
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    throw new Error(`IDEANEST_SITE_ORIGIN must be http or https, not ${parsed.protocol}`);
-  }
-
-  return new URL(parsed.origin);
+  return new URL(`${siteUrl(env)}/`);
 }
 
 /**
@@ -149,12 +141,22 @@ export function metadataBase(env: EnvSource = process.env): URL {
  * arrived from a request cannot redirect a canonical to another host.
  */
 export function canonicalUrl(path: string, env: EnvSource = process.env): string {
-  const origin = siteOrigin(env);
-  const { pathname } = new URL(path, origin);
+  const base = siteUrl(env);
+
+  /*
+   * `new URL(path, …)` is used to PARSE rather than to compose. It is what drops
+   * the query string and what forces a value that arrived looking like
+   * `https://elsewhere.example/x` down to its path, so a canonical cannot be
+   * pointed at another host. The result is then composed with `absoluteUrl`,
+   * which is the same function the sitemap composes with — a base carrying a
+   * path (`https://ideanest.az/az`) has to survive here exactly as it survives
+   * there, and `new URL('/discover', base)` would have discarded it.
+   */
+  const { pathname } = new URL(path, `${base}/`);
 
   const trimmed = pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
 
-  return new URL(trimmed, origin).toString();
+  return absoluteUrl(trimmed, base);
 }
 
 /* -------------------------------------------------------------------------

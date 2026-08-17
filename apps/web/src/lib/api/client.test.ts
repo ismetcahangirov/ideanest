@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { authorizedFetch } from './client';
+import { authorizedFetch, publicFetch } from './client';
 import { setAccessToken } from './access-token';
-import { ApiError } from './problem';
+import { ApiError, errorFrom } from './problem';
 
 const fetchMock = vi.fn<typeof fetch>();
 
@@ -25,6 +25,10 @@ function urlOf(call: number): unknown {
   return fetchMock.mock.calls[call]?.[0];
 }
 
+function initOf(call: number): RequestInit | undefined {
+  return fetchMock.mock.calls[call]?.[1];
+}
+
 beforeEach(() => {
   fetchMock.mockReset();
   vi.stubGlobal('fetch', fetchMock);
@@ -46,7 +50,14 @@ describe('authorizedFetch', () => {
 
     expect(urlOf(0)).toBe('/v1/auth/sessions');
     expect(headersOf(0).get('Authorization')).toBe('Bearer token-1');
-    expect(fetchMock.mock.calls[0]?.[1]?.cache).toBe('no-store');
+    /*
+     * `no-store`, and it stays `no-store` (#200). A session list has no cache
+     * headers of its own to revalidate against, so there is no `304` here to
+     * win — only a stored copy of a device list on a security screen to lose.
+     * `publicFetch` is the half that changed; the two are asserted separately
+     * so that generalising one to the other fails a test rather than a review.
+     */
+    expect(initOf(0)?.cache).toBe('no-store');
   });
 
   it('exchanges the refresh cookie for a token when it holds none', async () => {
@@ -128,5 +139,89 @@ describe('authorizedFetch', () => {
 
     const refreshes = fetchMock.mock.calls.filter(([input]) => input === '/v1/auth/refresh');
     expect(refreshes).toHaveLength(1);
+  });
+});
+
+describe('publicFetch', () => {
+  /*
+   * #200. `no-store` forbids the browser from keeping the response at all, so it
+   * never sends `If-None-Match`, so the server can never answer `304` — and
+   * `GET /v1/projects/{id}/rewards/public` carries an `ETag` and
+   * `Cache-Control: private, no-cache` precisely so that it can
+   * (docs/architecture.md §10.3). `no-cache` forces a revalidation on every
+   * single read, so no stale body is ever served; it only allows that
+   * revalidation to be conditional.
+   */
+  it('revalidates every read rather than refusing to store it', async () => {
+    fetchMock.mockResolvedValueOnce(json({ rewards: [] }));
+
+    await publicFetch('/v1/projects/p1/rewards/public');
+
+    expect(initOf(0)?.cache).toBe('no-cache');
+    expect(initOf(0)?.cache).not.toBe('no-store');
+    expect(initOf(0)?.credentials).toBe('same-origin');
+  });
+
+  /*
+   * The token changes the answer where there is one, but it is never fetched: a
+   * 401 on a `permitAll` endpoint is not an expiry to recover from, and a
+   * refresh here would put a sign-in wall in front of a public price list.
+   */
+  it('sends the token it already holds, and never asks for one', async () => {
+    setAccessToken('token-1');
+    fetchMock.mockResolvedValueOnce(json({ rewards: [] }));
+
+    await publicFetch('/v1/projects/p1/rewards/public');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(headersOf(0).get('Authorization')).toBe('Bearer token-1');
+  });
+
+  it('sends no Authorization header when it holds no token', async () => {
+    fetchMock.mockResolvedValueOnce(json({ rewards: [] }));
+
+    await publicFetch('/v1/projects/p1/rewards/public');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(headersOf(0).has('Authorization')).toBe(false);
+  });
+
+  it('leaves the caller its own headers and method', async () => {
+    fetchMock.mockResolvedValueOnce(json({ following: true, followerCount: 1 }));
+
+    await publicFetch('/v1/projects/p1/remind', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+    });
+
+    expect(initOf(0)?.method).toBe('POST');
+    expect(headersOf(0).get('content-type')).toBe('application/json');
+  });
+});
+
+/*
+ * A revalidation the browser performs for itself is invisible to script: it
+ * answers the `fetch` with the stored 200 and its body, and the `304` is spent
+ * inside the HTTP cache. So application code sees a bare `304` only if a caller
+ * has sent a conditional header of its own — nothing does today — and the point
+ * of these two is that such a response degrades rather than crashes.
+ */
+describe('a 304 that reaches application code', () => {
+  it('is handed back untouched by publicFetch', async () => {
+    fetchMock.mockResolvedValueOnce(bare(304));
+
+    const response = await publicFetch('/v1/projects/p1/rewards/public');
+
+    expect(response.status).toBe(304);
+    expect(response.ok).toBe(false);
+  });
+
+  // A 304 is bodiless by definition, so the parser must not need a body.
+  it('reads as a bodiless refusal rather than a parse failure', async () => {
+    const failure = await errorFrom(bare(304));
+
+    expect(failure).toBeInstanceOf(ApiError);
+    expect(failure.status).toBe(304);
+    expect(failure.problem).toBeNull();
   });
 });
