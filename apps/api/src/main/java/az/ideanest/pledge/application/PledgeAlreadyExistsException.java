@@ -22,6 +22,14 @@ import java.util.UUID;
  * <p>The state is carried as well, because "you already have a draft" and "you
  * have already backed this campaign" are the same rule and very different
  * sentences.
+ *
+ * <p><strong>Raised from two places, and deliberately indistinguishable.</strong>
+ * {@code ReservationService} raises it from the read that starts a checkout, and
+ * again when {@code pledges_project_backer_active_key} refuses an insert that got
+ * past that read — which is what two requests from one backer arriving together
+ * produce, and is an ordinary double-click rather than an exotic race. The backer
+ * gets the same status, the same code, and the same pledge identifier either way;
+ * which of the two refused them is our business and not theirs.
  */
 public class PledgeAlreadyExistsException extends RuntimeException {
 

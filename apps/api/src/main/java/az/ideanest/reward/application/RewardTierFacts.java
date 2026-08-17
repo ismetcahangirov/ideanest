@@ -2,9 +2,16 @@ package az.ideanest.reward.application;
 
 import az.ideanest.project.application.RewardFacts;
 import az.ideanest.reward.domain.RewardTier;
+import az.ideanest.reward.domain.ShippingRule;
 import az.ideanest.reward.infrastructure.RewardTierRepository;
+import az.ideanest.reward.infrastructure.ShippingRuleRepository;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -45,9 +52,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class RewardTierFacts implements RewardFacts, RewardStock {
 
     private final RewardTierRepository rewards;
+    private final ShippingRuleRepository shippingRules;
 
-    public RewardTierFacts(RewardTierRepository rewards) {
+    public RewardTierFacts(RewardTierRepository rewards, ShippingRuleRepository shippingRules) {
         this.rewards = rewards;
+        this.shippingRules = shippingRules;
     }
 
     @Override
@@ -100,5 +109,110 @@ public class RewardTierFacts implements RewardFacts, RewardStock {
     @Transactional
     public boolean releaseOnePlace(UUID rewardTierId) {
         return rewards.releaseOnePlace(rewardTierId) == 1;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>{@code REQUIRED}, like the two above and for the same reason: moving a
+     * place from held to claimed and moving the pledge from DRAFT to CONFIRMED are
+     * one unit of work, and this committing ahead of the caller would leave a tier
+     * with a claim against a pledge that never confirmed.
+     */
+    @Override
+    @Transactional
+    public boolean commitOnePlace(UUID rewardTierId) {
+        return rewards.commitOnePlace(rewardTierId) == 1;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>{@code REQUIRED}, like the others: taking the new place, giving the old one
+     * back, and re-quoting the pledge are one unit of work, and this committing ahead
+     * of the caller would leave a tier holding a claim for an edit that failed.
+     */
+    @Override
+    @Transactional
+    public boolean claimOnePlace(UUID rewardTierId) {
+        return rewards.claimOnePlace(rewardTierId) == 1;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    @Transactional
+    public boolean releaseOneClaimedPlace(UUID rewardTierId) {
+        return rewards.releaseOneClaimedPlace(rewardTierId) == 1;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Two queries however many lines were selected: the tiers, and then every
+     * shipping rule for those tiers in one read. Resolving the rate per tier would
+     * be a query per add-on on the request a backer is waiting on.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<SelectableTier> selectionOf(
+            UUID projectId, Collection<UUID> rewardTierIds, String destinationCountry) {
+
+        if (rewardTierIds.isEmpty()) {
+            // Not merely an optimisation: `IN ()` is not valid SQL, and a pledge with
+            // no reward and no add-ons is §4.5's PL-02 rather than a mistake.
+            return List.of();
+        }
+
+        List<RewardTier> tiers = rewards.findSelected(projectId, rewardTierIds);
+        Map<UUID, ShippingRate> rates = ratesTo(tiers, destinationCountry);
+
+        return tiers.stream()
+                .map(tier -> new SelectableTier(
+                        tier.getId(),
+                        tier.getAmount(),
+                        tier.getCurrency(),
+                        tier.getShippingType().isShipped(),
+                        rates.get(tier.getId())))
+                .toList();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    @Transactional(readOnly = true)
+    public List<UUID> alternativesTo(UUID projectId, UUID rewardTierId, Instant at) {
+        return rewards.findAvailableAlternatives(projectId, rewardTierId, at);
+    }
+
+    /**
+     * The rate each tier charges to one destination, for the tiers that priced it.
+     *
+     * <p>A tier with no rule for the destination is absent rather than present with
+     * a zero. The distinction is the whole of §7.2's "anywhere the creator has
+     * priced": a missing rate on a shipped line is a refusal, and a zero would make
+     * the creator pay the carrier out of their funding without either party
+     * noticing.
+     *
+     * <p>No destination means no rates at all. That is not the same as a destination
+     * nobody priced — a backer who has not said where it goes has not chosen
+     * anything wrong — but both come out of the quote as the same refusal, because
+     * both are "this cannot be posted yet".
+     */
+    private Map<UUID, ShippingRate> ratesTo(List<RewardTier> tiers, String destinationCountry) {
+        if (destinationCountry == null || tiers.isEmpty()) {
+            return Map.of();
+        }
+        String destination = destinationCountry.trim().toUpperCase(Locale.ROOT);
+
+        Map<UUID, ShippingRate> rates = new HashMap<>();
+        for (ShippingRule rule : shippingRules.findByRewardTiers(tiers.stream()
+                .map(RewardTier::getId)
+                .toList())) {
+            if (destination.equals(rule.getCountryCode())) {
+                rates.put(
+                        rule.getRewardTierId(),
+                        new ShippingRate(rule.getCountryCode(), rule.getAmount(), rule.getAdditionalItemAmount()));
+            }
+        }
+        return rates;
     }
 }

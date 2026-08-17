@@ -14,14 +14,32 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /**
- * Pledges, by the three questions reservation actually asks of them.
+ * Pledges, by the four questions that are actually asked of them.
  *
- * <p>Everything else a pledge is asked — a backer's list, a creator's backer
- * report, a receipt — belongs to the endpoints that answer those questions (#52
- * and #56) and is not guessed at here. A derived method nobody calls is a query
+ * <p>Three are reservation's (#51) and the fourth is #52's read of one pledge by
+ * the backer who made it. Everything else a pledge will be asked — a backer's list,
+ * a creator's backer report, a receipt — belongs to the endpoints that answer those
+ * questions and is not guessed at here. A derived method nobody calls is a query
  * nobody has looked at the plan for.
  */
 public interface PledgeRepository extends JpaRepository<Pledge, UUID> {
+
+    /**
+     * This pledge, if it is this backer's.
+     *
+     * <p><strong>The owner is part of the query rather than a check afterwards.</strong>
+     * Loading by identifier and comparing the backer in Java would work, and it would
+     * work until the day somebody adds a second read that forgets to compare — which
+     * is exactly the "insecure direct object reference" §17.3 lists. Asking the
+     * question once, in the query, means there is no way to obtain a pledge without
+     * having been entitled to it.
+     *
+     * <p>Empty covers both "no such pledge" and "not yours", which the caller answers
+     * identically: see {@code PledgeNotFoundException} for why a 404 rather than a
+     * 403 is the private answer.
+     */
+    @Query("SELECT p FROM Pledge p WHERE p.id = :pledgeId AND p.backerId = :backerId")
+    Optional<Pledge> findOwned(@Param("pledgeId") UUID pledgeId, @Param("backerId") UUID backerId);
 
     /**
      * This backer's live pledge on this campaign, if they have one.

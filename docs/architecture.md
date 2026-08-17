@@ -392,6 +392,31 @@ explicit all-or-nothing statement with the deadline in the viewer's timezone.
 | **Comments** | Chronological thread, creator replies highlighted |
 | **Community** | Backer statistics: countries, new versus returning, cities |
 
+> **Both backer counts on this page come from one place (#57).**
+> `GET /v1/projects/{id}/backers/public` answers the header's backer count and the
+> Rewards tab's count beside each tier in one body. The campaign's total is its own
+> query rather than a sum of the tiers, because a sum of the tiers omits every
+> pledge that took no reward — §4.5's PL-02 — and the omission is invisible on a
+> campaign where nobody happens to have done that.
+>
+> The count is taken from `pledges`, not from `projects.backers_count`. That
+> denormalised counter exists (V6) and discovery reads it, but nothing writes it
+> yet, so today it is zero for every campaign. Whichever issue starts maintaining
+> it owns reconciling the two.
+>
+> **This page names no backer, and that is a decision rather than a gap.** Every
+> public surface here is an aggregate: a count in the header, a count per tier, and
+> the Community tab's statistics. Whether a campaign should publish *who* backed it
+> is **#209**, which is open and labelled `status: needs-decision`. §4.5 has what
+> #57 built against the day it is answered.
+>
+> **The Community tab's statistics are not built, and #209 has to be settled
+> first.** Countries and cities are aggregates, but a small aggregate is an
+> identifier: "1 backer in Georgia" beside any list of names identifies that person,
+> and it identifies them whether or not they asked to be anonymous. Publishing those
+> counts needs a minimum cell size — suppress any bucket below *k* — and *k* is a
+> product and legal question rather than an implementation detail.
+
 ### 4.5 Pledge flow `[W] [M]`
 
 ```mermaid
@@ -458,6 +483,110 @@ sequenceDiagram
 > TTL)" is what happens, and the five minutes are configuration
 > (`ideanest.pledge.reservation.ttl`). V17's header carries the whole argument and
 > the reverse.
+
+> **PL-14 is built (#52), and it is more than a unique column.** §10.3 has the four
+> answers a key can produce and §7.2 has the table; the part worth stating beside
+> the capability is that a replay returns *the original response* rather than a
+> fresh one, so the guarantee covers the mutations that create no row to find — the
+> cancellation of PL-10 in particular, where a retry has to answer 204 and there is
+> no pledge left in an active state to carry a key.
+>
+> The diagram's `POST /pledges/:id/confirm` is also built, minus one step: the
+> provider call beside it is #55, blocked on #60, and §9.2 carries what that means
+> and why the transition is correct without it.
+
+> **PL-09 and PL-10 are built (#56), and "until the deadline" turned out to be two
+> rules rather than one.** A backer may change or withdraw a pledge when **both**
+> of these hold, and the pair is composed in exactly one place —
+> `PledgeService.requireEditable`:
+>
+> 1. **The pledge is `DRAFT` or `CONFIRMED`** (`PledgeState.EDITABLE`). A draft is
+>    a checkout in progress; a confirmed pledge is PL-09's real case, a backer who
+>    committed and has since changed their mind. `EXPIRED` and the two cancelled
+>    states are over, and a pledge that ended cannot be edited back into existence
+>    — the backer's move is to pledge again, which §7.2's partial index permits
+>    precisely because those states are not active. `CHARGE_PENDING` onwards are
+>    past the campaign's close, where money is moving or has moved: changing an
+>    amount there is a refund or a second charge, not an edit.
+> 2. **The campaign is still accepting pledges** — launched, `LIVE`, and before its
+>    deadline. This is not a second rule that could drift from the checkout's; it
+>    is `PledgeAcceptance`, the same call `POST /v1/pledges/draft` makes, so a
+>    campaign that will not take a new pledge will not take a change to an old one
+>    either. A closed campaign is therefore answered `PROJECT_NOT_LIVE` rather than
+>    `PLEDGE_NOT_EDITABLE`, with the deadline in `meta`; `PLEDGE_NOT_EDITABLE` is
+>    left to mean the thing only it can mean, which is that the pledge itself has
+>    moved on.
+>
+> **An edit does not extend a draft's reservation.** `reservation_expires_at` is
+> left exactly where it was, and PL-13's five minutes therefore run from when the
+> draft was *made* and not from when it was last touched. The alternative is worse
+> in a way that is hard to see: a backer who could restart the clock by editing
+> would be able to hold a limited tier's last place indefinitely by changing their
+> mind every four minutes, and it would look like an ordinary checkout rather than
+> like abuse. The cost is real and falls the right way — a backer who spends their
+> window deciding gets what is left of it, and if it runs out the sweep releases
+> the place and they start again, which is what the window is for. Clearing the
+> column is not representable in any case: `pledges_drafts_are_time_bounded`
+> refuses a draft without one.
+>
+> **Cancellation refunds nothing, because nothing was collected** (§9.7). There is
+> no refund path on `DELETE /v1/pledges/{id}` and there should not be one; the
+> refund of a pledge that really was collected is #67's. What cancellation does
+> move is stock, and *which* stock depends on the pledge: a `DRAFT` gives back a
+> **reserved** place and a `CONFIRMED` pledge gives back a **claimed** one. They
+> are separate statements against separate columns, because releasing the wrong one
+> leaves the tier counting a place nobody holds while it is short of one somebody
+> does — and the sum, which is what the limit is checked against, still looks
+> correct.
+>
+> **Add-ons are still not reserved, and #56 changed that neither way.** Editing an
+> add-on's quantity moves no count, exactly as selecting it never did, and
+> cancelling releases nothing for it because nothing was held. The gap is #203.
+
+> **PL-12 is built (#57), and what it needed was not a column.** `is_anonymous` was
+> already stored and already accepted from `POST /v1/pledges/draft` (#52). What was
+> missing was the guarantee.
+>
+> **Anonymity hides who, never how many.** An anonymous backer is counted in the
+> campaign's backer count and in the per-tier counts of §4.4, exactly like anybody
+> else. A count that excluded the people who asked not to be named would understate
+> the campaign to everybody, including the creator reading their own page, and would
+> turn a privacy preference into a funding penalty. That is the half of PL-12 the
+> platform serves today, at `GET /v1/projects/{id}/backers/public`.
+>
+> **The ledger is untouched.** `pledges.backer_id` is retained on an anonymous
+> pledge exactly as on any other, because §7.2 and §17.4 both require "pledge #123
+> was made by user X" to stay true. Anonymity is a decision about rendering on the
+> way out, never a redaction of the row, and it does not reach the creator: they
+> have to ship the reward to somebody, and their list is `GET
+> /v1/projects/{id}/backers` under Dashboard.
+>
+> **The other half has nothing to hide from yet, and the scope is stated rather than
+> implied.** There is no public per-backer list on this platform. §4.4's public
+> surfaces are all aggregates, the creator's list is #97, and the pledge manager is
+> epic #72 — so "hidden from public lists" was, and remains, a guarantee about a
+> surface that does not exist. Whether it should exist is **#209**
+> (`status: needs-decision`): §4.4 never asks for one, and `CLAUDE.md` §5 is explicit
+> that an endpoint is not the place to answer a question like that by default.
+>
+> What #57 built for that day is `PublicBacker`, a sealed pair of `Named` and
+> `Anonymous` in which the anonymous variant has no field an identity could be read
+> out of — not the name, and not the account identifier either, which is the join key
+> to §4.2's profile and would resolve back to the name. A rule spelled
+> `if (!pledge.isAnonymous())` at each call site is a rule that survives until the
+> second call site; a shape with nowhere to put a name does not need remembering.
+> **It has no consumer today**, deliberately and with the argument written on the
+> type: whoever implements #209 is writing a query, a response, and a controller, and
+> the anonymity rule would be one line of their diff — the line that is easy to get
+> subtly wrong. If #209 comes back "no public list", the type and its tests are
+> deleted in one commit.
+>
+> Note that #97's creator backer list is **not** a future consumer of it. The creator
+> sees every backer by name, anonymous ones included, because they have to ship — a
+> different projection with the opposite rule.
+>
+> One more thing #57 did not do: it did not make `is_anonymous` patchable after the
+> draft. That is PL-09's edit endpoint and belongs to #56.
 
 ### 4.6 Campaign editor `[W]`
 
@@ -886,6 +1015,7 @@ stateDiagram-v2
     [*] --> DRAFT
     DRAFT --> CONFIRMED: card verified
     DRAFT --> EXPIRED: reservation TTL
+    DRAFT --> CANCELED_BY_BACKER: backer abandons
     CONFIRMED --> CANCELED_BY_BACKER
     CONFIRMED --> CANCELED_BY_PROJECT
     CONFIRMED --> CHARGE_PENDING: campaign succeeded
@@ -898,6 +1028,25 @@ stateDiagram-v2
     COLLECTED --> FULFILLED
     FULFILLED --> [*]
 ```
+
+> **`DRAFT --> CANCELED_BY_BACKER` is new, and #56 added it while building
+> PL-10.** The diagram had one edge out of a draft that ends it —
+> `DRAFT --> EXPIRED: reservation TTL` — and that edge is about nobody doing
+> anything. A backer who presses "cancel" on a checkout they have decided against
+> is a different fact, and recording it as `EXPIRED` would say a timer ran out
+> when somebody made a decision. The two are told apart by every screen that
+> reports why a reward's place came back, and by any later question about how many
+> checkouts are abandoned deliberately rather than left open.
+>
+> Both edges release the same reserved place and both stamp `canceled_at`, which
+> is why V17 gave that column to "the pledge stopped being active" rather than to
+> one cause of it. The `state` column is what distinguishes them.
+>
+> **An edit is not on this diagram, deliberately.** PL-09 changes what a pledge is
+> for, not what state it is in: a draft that is edited is still a draft and a
+> confirmed pledge that is edited is still confirmed. Sending a confirmed pledge
+> back to `DRAFT` to re-price it would put a committed backer behind a
+> five-minute timer and hand their place to §8.4's sweep.
 
 ### 6.3 Payout
 
@@ -1266,10 +1415,58 @@ Atomic units: `id`, `project_id`, `name`, `description`, `image_id`,
 `base_amount`, `addons_amount`, `bonus_amount`, `shipping_amount`,
 `tax_amount`, `total_amount` (generated), `currency`, `payment_method_id`,
 `shipping_country`, `is_anonymous`, `is_late_pledge`, `referrer_code`,
-`idempotency_key` (unique), `confirmed_at`, `collected_at`, `canceled_at`.
+`idempotency_key`, `confirmed_at`, `collected_at`, `canceled_at`.
 
 **Unique:** `(project_id, backer_id)` where the pledge is active — one pledge per
 backer per project.
+
+**Unique:** `(backer_id, idempotency_key)` where the key is present.
+
+> **The idempotency key is unique per backer, not globally**, and #52 changed it
+> from the second to the first when it started writing the column. A key is minted
+> by a client and belongs to the account that minted it — `idempotency_keys` is
+> keyed the same way, and for the stronger reason that a global key would let one
+> caller reach another's recorded response by guessing theirs. Over the key alone,
+> two backers who happened to generate the same UUID would have the second of them
+> refused by a constraint violation rather than served.
+>
+> What the index is for is unchanged: it is the second line under §10.3, so that
+> even a total failure of the machinery in `shared` cannot produce two pledges from
+> one backer's one key. The guarantee itself — including the recorded response a
+> replay is answered with — is `idempotency_keys`.
+
+> **`is_anonymous` changes nothing about this row (#57).** `backer_id` is `NOT NULL`
+> and is written on an anonymous pledge exactly as on any other, and it does not
+> cascade from `users` — §17.4 anonymises an account rather than deleting it,
+> precisely so that "pledge #123 was made by user X" survives the person leaving.
+> PL-12 is a rule about what a *public* projection may carry, and it is enforced by
+> the shape of that projection rather than by anything here: see §4.5. A schema that
+> tried to hold the guarantee — a nullable `backer_id`, a second anonymised copy of
+> the row — would trade a rendering decision for a broken ledger.
+
+#### `pledge_addons`
+`pledge_id`, `reward_tier_id`, `project_id`, `quantity`. Primary key
+`(pledge_id, reward_tier_id)`.
+
+> **An addition to this section rather than a reading of it (#52).** `pledges`
+> carries an `addons_amount` and a sum cannot be unpacked, and three readers need
+> the lines rather than the total: the backer, who is shown what they selected on
+> every screen after the draft; the edit endpoint, which re-quotes a changed
+> selection and cannot re-quote a number; and the creator, who has to put the right
+> things in the box.
+>
+> A table rather than a jsonb column, because these are references to `reward_tiers`
+> rows: a jsonb array cannot be a foreign key, and a tier deleted out from under a
+> pledge that names it is what the composite reference on `pledges.reward_tier_id`
+> already exists to refuse. Both references here are composite on `project_id` for
+> that reason, so an add-on from another campaign cannot be recorded against this
+> one.
+>
+> **Nothing reserves stock on an add-on yet.** §4.5's PL-13 holds a place on the
+> reward tier; a limited add-on is quoted and not held, because reserving *n* places
+> needs a conditional statement of its own, a matching release, and a sweep that
+> walks this table to give them back — a change to the expiry path rather than an
+> addition to the checkout.
 
 #### `payment_methods`
 `id`, `user_id`, `provider`, `provider_token` (**token only, never a card
@@ -1325,7 +1522,7 @@ by a database constraint and verified by a nightly reconciliation job.
 | `audit_logs` | Privileged actions |
 | `fee_schedules` | Configurable rates |
 | `outbox_events` | Transactional outbox |
-| `idempotency_keys` | Replay protection |
+| `idempotency_keys` | Replay protection (#52). One row per `(account_id, idempotency_key)`, carrying the operation, a SHA-256 fingerprint of the request, and the status and exact bytes of the response the first attempt answered with. The row is inserted *before* the work as a claim — the unique index is what makes two identical requests arriving at once resolve to one — and completed with the response afterwards, in the same transaction as the work. Only successes are recorded; a refusal releases the key so that a client can retry it. Swept after §17.2's 24 hours |
 
 ### 7.3 Data decisions
 
@@ -1496,6 +1693,7 @@ load profile).
 | `token-cleaner` | Daily | Purge tokens from unsuccessful campaigns |
 | `denormalization-sync` | Hourly | Correct cached counters |
 | `account-anonymiser` | Hourly | Anonymise accounts whose deletion grace period has elapsed |
+| `idempotency-key-cleaner` | Hourly | Remove idempotency keys past §17.2's 24-hour retention |
 
 > **`reminder-sender` is half built.** #39 implemented the launch half: it sweeps
 > every campaign that is `LIVE` and still owes somebody the notice they asked for,
@@ -1528,6 +1726,23 @@ load profile).
 > a minute in which a limited tier looks sold out while a place is actually free:
 > a lost sale rather than a wrong one, which is why an in-process timer is
 > tolerable for it and would not be for anything that moves money.
+
+> **`idempotency-key-cleaner` is built (#52), on the same terms, and is the
+> simplest of the three.** §17.2 retains keys for 24 hours; a retention period that
+> nothing enforces is a comment, and the table otherwise grows by one row per
+> payment mutation for ever — every one of them a record of something somebody
+> bought, kept long after the retry it existed to catch became impossible.
+>
+> Unlike the two above it needs no claim. Expiring a reservation has a second
+> effect — the tier's place has to go back — so the row is claimed with a
+> conditional update and exactly one caller credits the tier. Deleting a key has no
+> second effect at all: the delete *is* the work, so two replicas sweeping at once
+> means one of them removes the row and the other finds nothing to remove. The whole
+> job is one bounded `DELETE`, oldest first.
+>
+> Late is cheap. A missed hour is an hour of rows outliving their purpose, and never
+> a wrong answer: a key is matched against its own `expires_at` when it is read,
+> not against whether the sweep has been past.
 
 ---
 
@@ -1578,6 +1793,27 @@ sequenceDiagram
         Note over API: Four retries across seven days
     end
 ```
+
+> **Phase 1 is not built, and confirmation ships without it (#52).** The
+> verification authorisation, 3-D Secure, the stored card token and scheme
+> transaction identifier, and the void are #55, which is blocked on #60 — every one
+> of those steps is a provider's API, and there is no neutral way to write them
+> against a provider nobody has chosen. A stub returning an approval would be worse
+> than nothing: it would make this path look finished and would have told clients
+> that cards were verified when no card was ever seen.
+>
+> What `POST /v1/pledges/{id}/confirm` does today is the rest of the diagram: §6.2's
+> `DRAFT → CONFIRMED`, and the reward tier's held place becoming a claimed one, in
+> one transaction. That is correct and complete on its own precisely because of what
+> this section already says — **no money moves at confirmation and no ledger entry
+> is written**, under any circumstances; the charge is phase 2, at the close of a
+> successful campaign, and belongs to epic #59.
+>
+> So that no client infers more than that, the pledge response carries
+> `cardVerified`, which is `false` on every confirmed pledge the platform holds and
+> becomes true when #55 lands. `pledges.payment_method_id` is accepted and stored in
+> the meantime — a nullable column with no foreign key, because `payment_methods` is
+> #55's table — so the shape a client sends does not change then either.
 
 ### 9.3 Provider requirements
 
@@ -1696,7 +1932,7 @@ expired cards, limits, and issuer declines.
 | Creator cancels | Full refund of collected pledges |
 | Moderator suspends | Full refund |
 | Creator cannot deliver | Creator offers a refund; the platform mediates |
-| Backer changes their mind while live | Cancel — nothing was collected |
+| Backer changes their mind while live | Cancel — nothing was collected (built: #56) |
 | Backer changes their mind after collection | Creator's decision; not compelled |
 | Fraud established | Full refund and account action |
 
@@ -1771,6 +2007,7 @@ GET    /v1/collections/{slug}
 # Project — public
 GET    /v1/projects/{creatorSlug}/{projectSlug}
 GET    /v1/projects/{id}/rewards/public
+GET    /v1/projects/{id}/backers/public
 GET    /v1/projects/{id}/updates
 GET    /v1/projects/{id}/comments
 GET    /v1/projects/{id}/faqs
@@ -2035,6 +2272,40 @@ PUT    /v1/admin/collections/{slug}/projects/order
 > moment it is read — `POST /v1/pledges/draft` refusing with `REWARD_SOLD_OUT` is what
 > settles it — but it can refuse to make the list older than it has to be.
 
+> **A campaign's backers are two endpoints as well, and for the same reason (#57).**
+> `GET /v1/projects/{id}/backers` is the **creator's**, it is listed under Dashboard,
+> it is #97, and it names every backer including the anonymous ones — a creator who
+> cannot see who to ship to cannot ship. `GET /v1/projects/{id}/backers/public` is
+> what a visitor sees. It is public, it answers `404` for a campaign in any state
+> §6.1 does not make public, and it carries two things: `backerCount` for the header,
+> and `rewardTiers` for the Rewards tab's per-tier count.
+>
+> The two must not share a path, even though only one of them names anybody today.
+> One URL whose body depends on whether a token was presented is a URL no cache can
+> be told the truth about, and it is one review away from the creator's projection
+> reaching a stranger. This is the split `/rewards/public` already makes, spelling
+> included.
+>
+> **The public one names nobody**, because §4.4 publishes backer data only in
+> aggregate and whether that should change is #209. It carries no amounts either, and
+> no per-backer tier: a tier with one backer would identify them from the reward list
+> beside it, which is the re-identification PL-12 exists to prevent, while the
+> per-tier *counts* say how many chose each without saying who. A draft is not a
+> backing — a five-minute reservation is not a commitment, and counting one would make
+> the number rise and fall as people opened and abandoned checkouts.
+>
+> **Caching is the discovery feed's rather than the reward list's:** `ETag` per §10.3
+> and `Cache-Control: public, max-age=60`. The body is two integers and a list of
+> integers, so there is no personal data in it for a shared cache to hold and nothing
+> a stale copy could reveal about a person; what goes stale is a count, and a backer
+> count a minute old misleads nobody. That is exactly the distinction the reward list
+> draws when it refuses any `max-age` for a body carrying live stock.
+>
+> There is no `?limit=` and no cursor, because the response is a fixed-size summary
+> plus one row per reward tier, and §5.3 caps a campaign's tiers. If #209 decides a
+> public list should exist, pagination and the ordering a cursor commits this API to
+> are questions for whoever builds it.
+
 ### 10.3 Conventions
 
 | Convention | Rule |
@@ -2053,6 +2324,25 @@ PUT    /v1/admin/collections/{slug}/projects/order
 Money crosses the wire as a string because JSON numbers are IEEE 754 doubles.
 Serialising `599.00` as a number invites a client to parse it into a value that
 cannot represent it exactly.
+
+**`Idempotency-Key` is a UUID and it is required, not advisory.** A payment
+mutation without one is refused (`IDEMPOTENCY_KEY_REQUIRED`) rather than run
+unprotected: treating an absent header as "this client does not want replay
+protection" makes the guarantee opt-in for exactly the clients most likely to need
+it. Four answers are possible, and #52 built all four:
+
+| Situation | Answer |
+|---|---|
+| A key nobody has used | The work runs, and its response is recorded against the key |
+| The same key, the same request, the first one finished | **The recorded response**, verbatim — same status, same bytes. Not a re-execution and not a 409 |
+| The same key, a *different* request | 409 `IDEMPOTENCY_KEY_REUSED` |
+| The same key, the first request still running | 409 `IDEMPOTENT_REQUEST_IN_PROGRESS`, with `Retry-After` |
+
+Keys are scoped to the account that spent them, so one caller can neither replay
+another's request nor be handed its response. Two identical requests arriving at
+the same instant are resolved by `idempotency_keys`' unique index and never by a
+read: both insert a claim, exactly one succeeds, and the loser reads what the
+winner wrote.
 
 ### 10.4 Error shape
 
