@@ -1,9 +1,8 @@
 package az.ideanest.shared;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ValueSerializer;
 
 /**
  * Writes a {@link Patched} field so that it can be told apart from every other
@@ -31,19 +30,18 @@ import java.io.IOException;
  * the reward alone" and "make this pledge support-only" must never fingerprint the
  * same.
  */
-class PatchedSerializer extends JsonSerializer<Patched<?>> {
+class PatchedSerializer extends ValueSerializer<Patched<?>> {
 
     @Override
-    public void serialize(Patched<?> patched, JsonGenerator generator, SerializerProvider providers)
-            throws IOException {
+    public void serialize(Patched<?> patched, JsonGenerator generator, SerializationContext context) {
 
         generator.writeStartObject();
-        generator.writeBooleanField("present", patched.isPresent());
+        generator.writeBooleanProperty("present", patched.isPresent());
         if (patched.isPresent()) {
-            // writeObjectField rather than writeNullField plus a branch: the value
-            // may be any type, including one with a serializer of its own — Money is
-            // the one that matters here, and its amount is a string.
-            generator.writeObjectField("value", patched.value());
+            // writePOJOProperty rather than writeNullProperty plus a branch: the
+            // value may be any type, including one with a serializer of its own —
+            // Money is the one that matters here, and its amount is a string.
+            generator.writePOJOProperty("value", patched.value());
         }
         generator.writeEndObject();
     }

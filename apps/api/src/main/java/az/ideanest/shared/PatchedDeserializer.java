@@ -1,12 +1,10 @@
 package az.ideanest.shared;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.BeanProperty;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.deser.ContextualDeserializer;
-import java.io.IOException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.BeanProperty;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.ValueDeserializer;
 
 /**
  * Reads a {@link Patched} field, keeping "not mentioned" apart from "set to null".
@@ -23,12 +21,13 @@ import java.io.IOException;
  *       did not mention.</li>
  * </ul>
  *
- * <p>{@link ContextualDeserializer} is what makes it generic: the wrapper's type
+ * <p>{@link #createContextual} is what makes it generic: the wrapper's type
  * parameter is only known from the property being bound, so the inner type is
  * resolved once per property when the deserializer is built rather than guessed
- * per document.
+ * per document. Jackson 3 folded that hook into {@link ValueDeserializer} itself;
+ * it used to be the separate {@code ContextualDeserializer} interface.
  */
-class PatchedDeserializer extends JsonDeserializer<Patched<?>> implements ContextualDeserializer {
+class PatchedDeserializer extends ValueDeserializer<Patched<?>> {
 
     /** Null only in the uncontextualised instance Jackson creates before resolving the property. */
     private final JavaType valueType;
@@ -42,7 +41,7 @@ class PatchedDeserializer extends JsonDeserializer<Patched<?>> implements Contex
     }
 
     @Override
-    public JsonDeserializer<?> createContextual(DeserializationContext context, BeanProperty property) {
+    public ValueDeserializer<?> createContextual(DeserializationContext context, BeanProperty property) {
         JavaType wrapper = property == null ? context.getContextualType() : property.getType();
         // containedTypeOrUnknown rather than containedType(0): a raw Patched
         // would otherwise resolve to null here and fail later inside a document,
@@ -51,7 +50,7 @@ class PatchedDeserializer extends JsonDeserializer<Patched<?>> implements Contex
     }
 
     @Override
-    public Patched<?> deserialize(JsonParser parser, DeserializationContext context) throws IOException {
+    public Patched<?> deserialize(JsonParser parser, DeserializationContext context) {
         return Patched.of(context.readValue(parser, valueType));
     }
 

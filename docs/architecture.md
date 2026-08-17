@@ -2751,7 +2751,7 @@ notifies the API, which enqueues processing.
 | Concern | Choice | Reason |
 |---|---|---|
 | Language | **Java 21 (LTS)** | Virtual threads, records, pattern matching, sealed types |
-| Framework | **Spring Boot 3.5** | Mature transaction management, deep ecosystem. 3.4 left open-source support before the service was written; 3.5 is the maintained line of the same major version |
+| Framework | **Spring Boot 4.1** | Mature transaction management, deep ecosystem. The 3.x line left open-source support, so the service tracks the maintained major version. Spring Boot 4 brings Spring Framework 7, Spring Security 7, Hibernate 7, Jackson 3, and Testcontainers 2 with it — see §15.2 |
 | Build | **Gradle 8.14 (Kotlin DSL)** | Fast incremental builds, good multi-module support |
 | Persistence | **Spring Data JPA** plus **jOOQ** for complex reads | JPA for aggregates; jOOQ where the query is the point |
 | Migrations | **Flyway** | Versioned, reversible, applied automatically |
@@ -2852,7 +2852,10 @@ dependencies {
 
     // Database
     runtimeOnly("org.postgresql:postgresql")
-    implementation("org.flywaydb:flyway-core")
+    // The starter, not flyway-core alone: Spring Boot 4 moved Flyway's
+    // auto-configuration into its own module, and without it nothing runs the
+    // migrations.
+    implementation("org.springframework.boot:spring-boot-starter-flyway")
     implementation("org.flywaydb:flyway-database-postgresql")
     implementation("org.jooq:jooq")                       // complex read queries
     implementation("net.postgis:postgis-jdbc")            // proximity search
@@ -2895,9 +2898,11 @@ dependencies {
 
     // Testing
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.boot:spring-boot-resttestclient") // TestRestTemplate
     testImplementation("org.springframework.security:spring-security-test")
-    testImplementation("org.testcontainers:postgresql")   // real database, not a fake
-    testImplementation("org.testcontainers:junit-jupiter")
+    // Testcontainers 2 prefixes every module with the project's own name.
+    testImplementation("org.testcontainers:testcontainers-postgresql") // real database, not a fake
+    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
     testImplementation("com.redis:testcontainers-redis")
     testImplementation("org.wiremock:wiremock-standalone") // provider stub
     testImplementation("net.jqwik:jqwik")                 // property tests for money
@@ -2913,6 +2918,7 @@ dependencies {
 | **AntiSamy is mandatory** | Creator story content is HTML supplied by an untrusted party. Sanitise server-side on write **and** on read |
 | **Testcontainers over an in-memory database** | An in-memory substitute does not reproduce PostgreSQL locking, constraints, or `numeric` semantics — precisely the behaviour that matters here |
 | **Property-based tests for money** | Rounding bugs hide in specific values that example-based tests never reach |
+| **Jackson 3 lives under `tools.jackson`** | Spring Boot 4 ships Jackson 3, which relocated the streaming and databind packages from `com.fasterxml.jackson.core`/`.databind` to `tools.jackson.core`/`.databind`. The **annotations did not move** — `@JsonFormat`, `@JsonInclude`, `@JsonSerialize` are still `com.fasterxml.jackson.annotation` (and `tools.jackson.databind.annotation` for the databind ones) — which is why §10.3's "money crosses the wire as a string" is unaffected. Jackson 3 also made its exceptions unchecked: `JsonProcessingException` is gone and `tools.jackson.core.JacksonException` extends `RuntimeException`, so any code that wrapped a serialisation failure must still catch it explicitly rather than let it escape |
 | **WireMock for the provider** | Decline, timeout, and duplicate-webhook paths must be exercised. They cannot be with a real sandbox |
 | **Resilience4j** | The payment provider *will* be unavailable during a campaign close |
 | **jOOQ alongside JPA** | JPA is right for aggregates and wrong for faceted discovery queries. Use both, deliberately |

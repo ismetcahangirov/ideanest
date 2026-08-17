@@ -1,5 +1,6 @@
 package az.ideanest.support;
 
+import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
@@ -19,6 +20,11 @@ import org.springframework.test.context.DynamicPropertySource;
 // One web environment for the whole suite. Varying it per class would split the
 // context cache and start a second PostgreSQL container to no purpose.
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+// Spring Boot 4 no longer registers a TestRestTemplate just because the web
+// environment has a port; the bean comes from this annotation. Declared here so
+// that every class carries the identical annotation set and the context cache —
+// and the single PostgreSQL container behind it — still holds.
+@AutoConfigureTestRestTemplate
 @ActiveProfiles("test")
 @Import({ContainersConfiguration.class, TestDoublesConfiguration.class})
 public abstract class AbstractIntegrationTest {

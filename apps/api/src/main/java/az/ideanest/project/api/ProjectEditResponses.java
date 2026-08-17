@@ -4,9 +4,9 @@ import az.ideanest.project.domain.LockedField;
 import az.ideanest.project.domain.Project;
 import az.ideanest.project.domain.ProjectEditLocks;
 import az.ideanest.shared.Money;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
 /**
@@ -73,7 +73,7 @@ public class ProjectEditResponses {
         }
         try {
             return json.readTree(story);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             // Unreachable: PostgreSQL validates jsonb on the way in, so a row that
             // fails here has been written by something that bypassed the column
             // type. Serving it as though it were fine would spread the problem.

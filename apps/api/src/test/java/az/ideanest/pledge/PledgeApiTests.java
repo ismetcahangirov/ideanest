@@ -10,7 +10,7 @@ import az.ideanest.shared.idempotency.IdempotencyProperties;
 import az.ideanest.support.AbstractIntegrationTest;
 import az.ideanest.support.AdjustableClock;
 import az.ideanest.support.Campaigns;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -32,7 +32,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -233,7 +233,7 @@ class PledgeApiTests extends AbstractIntegrationTest {
 
         // Charging the tier's price anyway would take more than the number the backer
         // was looking at when they pressed the button.
-        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
         assertThat(code(refused)).isEqualTo("CONTRIBUTION_BELOW_REWARD_PRICE");
         assertThat(draftCount()).isZero();
     }
@@ -254,7 +254,7 @@ class PledgeApiTests extends AbstractIntegrationTest {
 
         // Quoting it at zero would make the creator pay the carrier out of their own
         // funding, and nobody would notice until the parcel was posted.
-        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
         assertThat(code(refused)).isEqualTo("SHIPPING_DESTINATION_UNPRICED");
         assertThat(meta(refused).get("shippingCountry")).isEqualTo("GE");
         // And the place was never taken: the selection is priced before anything is

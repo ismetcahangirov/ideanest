@@ -36,7 +36,12 @@ dependencies {
     // into a start-up question.
     implementation("org.bouncycastle:bcprov-jdk18on:1.85.2")
 
-    implementation("org.flywaydb:flyway-core")
+    // The starter rather than flyway-core alone. Spring Boot 4 broke
+    // spring-boot-autoconfigure into per-technology modules, so Flyway's
+    // auto-configuration now ships in spring-boot-flyway; with only flyway-core on
+    // the path nothing runs the migrations and Hibernate validates against an
+    // empty schema.
+    implementation("org.springframework.boot:spring-boot-starter-flyway")
     // Flyway 10 split its database support out of the core artifact. Without
     // this the service starts and then fails on the first migration with a
     // message about an unsupported database.
@@ -52,12 +57,20 @@ dependencies {
     developmentOnly("org.springframework.boot:spring-boot-docker-compose")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    // Spring Boot 4 moved TestRestTemplate out of spring-boot-test into its own
+    // module, and it needs RestTemplateBuilder from spring-boot-restclient to be
+    // built. Neither arrives with the starter any more, so both are named here.
+    testImplementation("org.springframework.boot:spring-boot-resttestclient")
+    testImplementation("org.springframework.boot:spring-boot-restclient")
     // A real PostgreSQL, not an in-memory substitute. An in-memory database
     // does not reproduce PostgreSQL locking, constraints, or numeric
     // semantics -- precisely the behaviour this platform depends on.
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
-    testImplementation("org.testcontainers:junit-jupiter")
-    testImplementation("org.testcontainers:postgresql")
+    // Testcontainers 2 renamed every module to carry the project's own prefix,
+    // so `junit-jupiter` and `postgresql` no longer name anything. Versions still
+    // come from Spring Boot's platform; only the artefact ids moved.
+    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+    testImplementation("org.testcontainers:testcontainers-postgresql")
     // Module boundaries that are only written down are module boundaries that
     // erode. These are the same rules as az/ideanest/package-info.java, checked.
     testImplementation("com.tngtech.archunit:archunit-junit5:1.5.0")
