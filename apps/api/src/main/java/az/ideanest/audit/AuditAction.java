@@ -87,7 +87,27 @@ public enum AuditAction {
     SESSION_REVOKED("session.revoked", "session"),
 
     /** Every live session an account had was revoked at once. */
-    SESSIONS_REVOKED("session.revoked_all", "account");
+    SESSIONS_REVOKED("session.revoked_all", "account"),
+
+    // ------------------------------------------------------------------
+    // AD-02's report queue (#102). The two outcomes a moderator can choose.
+    //
+    // The entity is the report and not what was reported, for the reason
+    // COLLABORATOR_INVITED gives about grants: the report is the thing that is
+    // decided, and two rows about one report are only a history if they share an
+    // identifier. Which campaign or account it was about is in `detail`, and on
+    // the `content_reports` row this identifier names.
+    //
+    // Both outcomes are recorded, not only the one that agreed with the reporter.
+    // "Who dismissed the fourteen reports about this campaign" is the question an
+    // investigation starts from, and a table of upheld reports cannot answer it.
+    // ------------------------------------------------------------------
+
+    /** Moderation agreed with a report. Does not itself suspend or remove anything. */
+    REPORT_UPHELD("report.upheld", "report"),
+
+    /** Moderation did not agree with a report. */
+    REPORT_DISMISSED("report.dismissed", "report");
 
     private final String action;
     private final String entityType;
