@@ -3365,6 +3365,16 @@ them: the exceptions belong to the module that decides.
 > because that is what decides which updates a caller sees rather than what they
 > may do. Narrowing it to `PUBLISH_UPDATES` would hide a campaign's own scheduled
 > updates from the person writing its story.
+>
+> **Every module that asks translates the refusal itself.** The decision is made
+> in one place, but the 403 reporting it belongs to the advice in front of the
+> endpoint that was called, so each module asking for a named capability carries a
+> `CAPABILITY_NOT_GRANTED` handler beside its `PROJECT_NOT_FOUND` one. The reward
+> module did not, because under the coarse check every collaborator who could
+> reach its endpoints at all held one of the editing capabilities that question
+> accepts — the refusal was practically unreachable, and escaped as a 500 on the
+> rare path that did reach it. Asking for `EDIT_REWARDS` by name made it the
+> ordinary refusal, and the gap visible.
 
 ---
 
