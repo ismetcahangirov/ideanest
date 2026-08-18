@@ -166,11 +166,30 @@ docker run -d --name "$SOURCE" --network "$NETWORK" \
     -c log_min_messages=warning \
   >/dev/null
 
+# Readiness is asked **over TCP**, and the loopback address is not a detail.
+#
+# The postgres image's entrypoint runs a temporary server during initialisation
+# to create the database and run any init scripts, and it starts that one with
+# `listen_addresses = ''` — reachable on the unix socket and nowhere else. A
+# readiness check over the socket therefore succeeds against a server that is
+# about to be shut down, and everything after it meets a cluster mid-restart.
+# On a workstation the race never fires; on a CI runner, where initialisation
+# finishes inside a second, it fires about half the time, and the symptom is the
+# drill announcing that a cluster which is plainly starting in its own log
+# "never became ready".
+#
+# TCP cannot see the temporary server at all, so it answers the question that
+# was meant: is the server that will still be here in a moment accepting
+# connections?
+source_ready() {
+  docker exec "$SOURCE" pg_isready -h 127.0.0.1 -p 5432 -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1
+}
+
 for _ in $(seq 1 60); do
-  if docker exec "$SOURCE" pg_isready -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1; then break; fi
+  if source_ready; then break; fi
   sleep 1
 done
-docker exec "$SOURCE" pg_isready -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1 \
+source_ready \
   || { docker logs "$SOURCE" | tail -30 >&2; fail "the source cluster never became ready"; }
 
 src_sql() { docker exec -i "$SOURCE" psql -qAtX -v ON_ERROR_STOP=1 -U "$DB_USER" -d "$DB_NAME" -c "$1"; }
