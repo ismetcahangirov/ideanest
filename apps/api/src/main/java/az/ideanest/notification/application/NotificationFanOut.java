@@ -8,6 +8,7 @@ import az.ideanest.notification.domain.NotificationChannel;
 import az.ideanest.notification.domain.NotificationPreference;
 import az.ideanest.notification.domain.NotificationType;
 import az.ideanest.notification.infrastructure.NotificationPreferenceRepository;
+import az.ideanest.notification.infrastructure.NotificationRecipients;
 import az.ideanest.notification.infrastructure.NotificationRepository;
 import java.time.Clock;
 import java.time.Instant;
@@ -17,7 +18,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -69,6 +72,43 @@ import tools.jackson.databind.ObjectMapper;
  * concurrency rather than merely usually right: two relays that both got past the check
  * meet on the unique index and the second one fails, which rolls its dispatch back and
  * leaves the event to be tried once more — at which point the check succeeds.
+ *
+ * <h2>An event that names somebody who is not an account</h2>
+ *
+ * <p><strong>The decision: there is nobody to notify, so nothing is written, and the
+ * reason is logged at {@code WARN}. It is not treated as a malformed event.</strong>
+ * The alternative was to let it fail the way an unreadable payload does, and the
+ * arguments against that are worth stating because they are not obvious.
+ *
+ * <ul>
+ *   <li><strong>A consumer must not be able to veto an event for every other consumer.</strong>
+ *       The dispatcher publishes one message to every listener inside one transaction, so
+ *       throwing here does not fail this module's work — it fails the dispatch. The event
+ *       stays {@code PENDING}, is retried, and on the eighth attempt dead-letters,
+ *       taking with it the writes of every other module that consumes it.
+ *       {@code ReferralAttributionListener} consumes {@code pledge.confirmed} exactly as
+ *       this module does; an opinion about a recipient it has never heard of must not
+ *       destroy its attributions.
+ *   <li><strong>It is not retriable.</strong> No number of redeliveries makes an account
+ *       exist. Failing loudly here means applying a retry policy written for transient
+ *       faults to a permanent condition: seven wasted deliveries and a dead-lettered
+ *       event, which is slower and more destructive than a log line rather than louder.
+ *   <li><strong>The failures that are a producer's fault stay exactly as loud.</strong>
+ *       {@code NotificationEventListener} still throws when a payload cannot be read and
+ *       when a field it needs is absent — those are the disagreements about shape that
+ *       dead-lettering is for. This branch is strictly narrower: the field was present,
+ *       well formed, and names somebody who is not a user.
+ * </ul>
+ *
+ * <p><strong>This is a decision taken before the insert, not an exception caught after
+ * it.</strong> Nothing here catches {@code DataIntegrityViolationException} and nothing
+ * should: {@code notifications_recipient_id_fkey} remains the authority, so an account
+ * that disappears between the check and the flush — or any other constraint this module
+ * has — still throws, still rolls the dispatch back, and is still retried. No safety net
+ * has been removed. One specific, permanent, well understood condition has been turned
+ * into an answer the code gives on purpose, and it is recorded with the event, the
+ * recipient and the notification type, so that "nobody was told" is a thing somebody can
+ * find rather than a silence.
  */
 @Service
 public class NotificationFanOut {
@@ -77,17 +117,20 @@ public class NotificationFanOut {
 
     private final NotificationRepository notifications;
     private final NotificationPreferenceRepository preferences;
+    private final NotificationRecipients recipients;
     private final ObjectMapper json;
     private final Clock clock;
 
     public NotificationFanOut(
             NotificationRepository notifications,
             NotificationPreferenceRepository preferences,
+            NotificationRecipients recipients,
             ObjectMapper json,
             Clock clock) {
 
         this.notifications = notifications;
         this.preferences = preferences;
+        this.recipients = recipients;
         this.json = json;
         this.clock = clock;
     }
@@ -100,9 +143,10 @@ public class NotificationFanOut {
      *     are unique on
      * @param requests who to tell and what. Empty is allowed and does nothing: an event
      *     this module recognises but which turns out to concern nobody is not an error
-     * @return the notifications written, which is empty both when the event was already
-     *     fanned out and when every channel was refused by a preference. The caller is a
-     *     listener with nothing to do either way; the distinction is in the log
+     * @return the notifications written, which is empty when the event was already fanned
+     *     out, when every channel was refused by a preference, and when no recipient it
+     *     named is an account. The caller is a listener with nothing to do in any of the
+     *     three cases; the distinction is in the log, and only the last one warns
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public List<Notification> fanOut(UUID eventId, List<NotificationRequest> requests) {
@@ -116,6 +160,9 @@ public class NotificationFanOut {
             return List.of();
         }
 
+        Set<UUID> known = recipients.existing(
+                requests.stream().map(NotificationRequest::recipientId).collect(Collectors.toSet()));
+
         Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         // One read of the recipient's instructions per recipient, not per channel. An
         // event with several recipients is rare and an event with several channels per
@@ -123,17 +170,31 @@ public class NotificationFanOut {
         // common case.
         Map<UUID, Map<NotificationCategoryChannel, DeliveryMode>> stored = new HashMap<>();
         List<Notification> written = new ArrayList<>();
+        int unnotifiable = 0;
 
         for (NotificationRequest request : requests) {
+            if (!known.contains(request.recipientId())) {
+                // Warn, and carry on with the rest of the event. See the note below for
+                // why this is a decision rather than a caught error.
+                log.warn(
+                        "Event {} names {} as the recipient of a {} notification, and no such account exists;"
+                                + " nobody is being told about it",
+                        eventId,
+                        request.recipientId(),
+                        request.type());
+                unnotifiable++;
+                continue;
+            }
             Map<NotificationCategoryChannel, DeliveryMode> instructions =
                     stored.computeIfAbsent(request.recipientId(), this::instructionsFor);
             written.addAll(fanOut(eventId, request, instructions, now));
         }
 
-        if (written.isEmpty() && !requests.isEmpty()) {
+        if (written.isEmpty() && !requests.isEmpty() && unnotifiable < requests.size()) {
             // Worth a line: "the preferences said no to everything" and "the translation
             // produced nothing" look identical in the table, and only one of them is a
-            // question anybody would ask about a bug report.
+            // question anybody would ask about a bug report. Not logged when the reason
+            // was that there was nobody to tell — that has already been said, louder.
             log.debug("Event {} produced no notifications: every channel was refused by a preference", eventId);
         }
         return List.copyOf(notifications.saveAll(written));
