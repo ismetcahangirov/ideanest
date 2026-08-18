@@ -1,5 +1,9 @@
 package az.ideanest.auth.application;
 
+import az.ideanest.audit.AuditAction;
+import az.ideanest.audit.AuditActor;
+import az.ideanest.audit.AuditLog;
+import az.ideanest.audit.AuditOutcome;
 import az.ideanest.shared.SecureTokens;
 import az.ideanest.auth.domain.SessionRevocationReason;
 import az.ideanest.auth.infrastructure.SessionRepository;
@@ -29,6 +33,7 @@ public class AuthAccountSecurity implements AccountSecurity {
     private final SessionRepository sessions;
     private final VerificationTokenRepository verificationTokens;
     private final PasswordHasher passwordHasher;
+    private final AuditLog audit;
 
     /**
      * The same trick {@code SignInService} uses. An account with no credential
@@ -41,11 +46,13 @@ public class AuthAccountSecurity implements AccountSecurity {
             UserCredentialRepository credentials,
             SessionRepository sessions,
             VerificationTokenRepository verificationTokens,
-            PasswordHasher passwordHasher) {
+            PasswordHasher passwordHasher,
+            AuditLog audit) {
         this.credentials = credentials;
         this.sessions = sessions;
         this.verificationTokens = verificationTokens;
         this.passwordHasher = passwordHasher;
+        this.audit = audit;
         this.decoyHash = passwordHasher.hash(SecureTokens.generate());
     }
 
@@ -68,7 +75,22 @@ public class AuthAccountSecurity implements AccountSecurity {
         // own transaction, which is right when the caller is about to throw and
         // wrong here. If the deletion request that triggered this fails, the
         // user should not be left signed out of a deletion that did not happen.
-        sessions.revokeAllForUser(userId, SessionRevocationReason.USER_REVOKED, at);
+        int revoked = sessions.revokeAllForUser(userId, SessionRevocationReason.USER_REVOKED, at);
+
+        // And the audit row is written the same way, in this transaction rather
+        // than in one of its own — for the same reason and with the same effect. A
+        // deletion request that rolls back leaves neither dead sessions nor a record
+        // claiming they were killed. This is the path SessionRevoker's own recording
+        // deliberately does not cover, because this method deliberately does not go
+        // through it.
+        if (revoked > 0) {
+            audit.record(
+                    AuditAction.SESSIONS_REVOKED,
+                    userId,
+                    AuditActor.user(userId),
+                    AuditOutcome.SUCCEEDED,
+                    revoked + " sessions, reason " + SessionRevocationReason.USER_REVOKED);
+        }
     }
 
     @Override

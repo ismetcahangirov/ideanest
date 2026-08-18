@@ -1,5 +1,9 @@
 package az.ideanest.project.application;
 
+import az.ideanest.audit.AuditAction;
+import az.ideanest.audit.AuditActor;
+import az.ideanest.audit.AuditLog;
+import az.ideanest.audit.AuditOutcome;
 import az.ideanest.project.domain.ActorRole;
 import az.ideanest.project.domain.Capability;
 import az.ideanest.project.domain.Project;
@@ -59,6 +63,7 @@ public class ProjectTransitionService {
     private final ProjectStateTransitionRepository transitions;
     private final ProjectChecklistService checklist;
     private final ApplicationEventPublisher events;
+    private final AuditLog audit;
     private final Clock clock;
 
     public ProjectTransitionService(
@@ -66,11 +71,13 @@ public class ProjectTransitionService {
             ProjectStateTransitionRepository transitions,
             ProjectChecklistService checklist,
             ApplicationEventPublisher events,
+            AuditLog audit,
             Clock clock) {
         this.access = access;
         this.transitions = transitions;
         this.checklist = checklist;
         this.events = events;
+        this.audit = audit;
         this.clock = clock;
     }
 
@@ -211,7 +218,7 @@ public class ProjectTransitionService {
     @Transactional
     public Project approve(UUID projectId, UUID moderatorId, String note) {
         Project project = access.requireModeratable(projectId, moderatorId);
-        return apply(project, ProjectState.APPROVED, ActorRole.MODERATOR, moderatorId, note);
+        return moderate(project, ProjectState.APPROVED, AuditAction.PROJECT_APPROVED, moderatorId, note);
     }
 
     /**
@@ -224,7 +231,7 @@ public class ProjectTransitionService {
     @Transactional
     public Project reject(UUID projectId, UUID moderatorId, String note) {
         Project project = access.requireModeratable(projectId, moderatorId);
-        return apply(project, ProjectState.REJECTED, ActorRole.MODERATOR, moderatorId, requireNote(note));
+        return moderate(project, ProjectState.REJECTED, AuditAction.PROJECT_REJECTED, moderatorId, requireNote(note));
     }
 
     /**
@@ -240,8 +247,51 @@ public class ProjectTransitionService {
     @Transactional
     public Project requestChanges(UUID projectId, UUID moderatorId, String note) {
         Project project = access.requireModeratable(projectId, moderatorId);
-        return apply(
-                project, ProjectState.CHANGES_REQUESTED, ActorRole.MODERATOR, moderatorId, requireNote(note));
+        return moderate(
+                project,
+                ProjectState.CHANGES_REQUESTED,
+                AuditAction.PROJECT_CHANGES_REQUESTED,
+                moderatorId,
+                requireNote(note));
+    }
+
+    /**
+     * The three transitions platform staff perform, and the only three that reach
+     * {@code audit_logs} from here.
+     *
+     * <p><strong>Both records, and they are not duplicates.</strong>
+     * {@code project_state_transitions} is the campaign's history: it belongs to the
+     * campaign, the creator's own screen reads it, and it has a row for every edge
+     * including the ones the creator walked themselves. {@code audit_logs} is the
+     * platform's record of authority being exercised, and it is read by whoever is
+     * asking what staff did — across every module, in one place, and with the
+     * request's source address and correlation identifiers on the row, none of which
+     * the transitions table carries. Keeping the moderation decisions in only one of
+     * the two would mean either a campaign history with staff decisions missing from
+     * it, or an audit surface that cannot answer "what has this moderator done"
+     * without joining across every feature's own table.
+     *
+     * <p>In the same transaction as both the state change and the transition row, so
+     * the three commit together or none of them does.
+     *
+     * <p><strong>The note is deliberately not copied into the audit detail.</strong>
+     * It is free text a moderator wrote about a person's campaign, it is already on
+     * the transition row, and {@code audit_logs} is the one table with no way to
+     * remove a row afterwards. What goes in instead is the edge, which is the fact
+     * an audit reader is after.
+     */
+    private Project moderate(
+            Project project, ProjectState target, AuditAction action, UUID moderatorId, String note) {
+
+        ProjectState from = project.getState();
+        Project moderated = apply(project, target, ActorRole.MODERATOR, moderatorId, note);
+        audit.record(
+                action,
+                moderated.getId(),
+                AuditActor.moderator(moderatorId),
+                AuditOutcome.SUCCEEDED,
+                from + " -> " + target);
+        return moderated;
     }
 
     /**

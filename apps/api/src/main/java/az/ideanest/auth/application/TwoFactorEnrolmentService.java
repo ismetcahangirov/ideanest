@@ -1,5 +1,9 @@
 package az.ideanest.auth.application;
 
+import az.ideanest.audit.AuditAction;
+import az.ideanest.audit.AuditActor;
+import az.ideanest.audit.AuditLog;
+import az.ideanest.audit.AuditOutcome;
 import az.ideanest.auth.AuthProperties;
 import az.ideanest.auth.domain.Base32;
 import az.ideanest.auth.domain.RecoveryCode;
@@ -57,6 +61,7 @@ public class TwoFactorEnrolmentService {
     private final SecondFactors secondFactors;
     private final PasswordHasher passwordHasher;
     private final UserAccounts users;
+    private final AuditLog audit;
     private final AuthProperties properties;
     private final Clock clock;
 
@@ -68,6 +73,7 @@ public class TwoFactorEnrolmentService {
             SecondFactors secondFactors,
             PasswordHasher passwordHasher,
             UserAccounts users,
+            AuditLog audit,
             AuthProperties properties,
             Clock clock) {
         this.secrets = secrets;
@@ -77,6 +83,7 @@ public class TwoFactorEnrolmentService {
         this.secondFactors = secondFactors;
         this.passwordHasher = passwordHasher;
         this.users = users;
+        this.audit = audit;
         this.properties = properties;
         this.clock = clock;
     }
@@ -148,6 +155,12 @@ public class TwoFactorEnrolmentService {
                 .filter(session -> session.getUserId().equals(userId))
                 .ifPresent(session -> sessions.save(session.withSecondFactor(now)));
 
+        // Enrolling is not what gets audited; this is. Two-factor is off until a
+        // code has been entered, so the enrolment is a secret nobody is relying on
+        // and this is the moment the account's security actually changed.
+        audit.record(
+                AuditAction.TWO_FACTOR_ENABLED, userId, AuditActor.user(userId), AuditOutcome.SUCCEEDED);
+
         return issued;
     }
 
@@ -168,11 +181,29 @@ public class TwoFactorEnrolmentService {
                 .orElseThrow(() -> new TwoFactorRejectedException("Two-factor authentication is not enabled."));
 
         if (!secondFactors.accepts(enrolment, code, recoveryCode, now)) {
+            // Independently, because the next line throws and would take this row
+            // with it. "Somebody who knew the password tried to take the second
+            // factor off and could not" is the entry an investigation is looking
+            // for, and a record that only survives when the attempt succeeded
+            // cannot produce it.
+            //
+            // Neither the code nor the recovery code appears in the detail. One of
+            // them may have been right, both are credentials, and this table cannot
+            // be edited afterwards.
+            audit.recordIndependently(
+                    AuditAction.TWO_FACTOR_DISABLED,
+                    userId,
+                    AuditActor.user(userId),
+                    AuditOutcome.REFUSED,
+                    "the second factor was not proved");
             throw new TwoFactorRejectedException(REFUSAL);
         }
 
         recoveryCodes.deleteAllForUser(userId);
         secrets.delete(enrolment);
+
+        audit.record(
+                AuditAction.TWO_FACTOR_DISABLED, userId, AuditActor.user(userId), AuditOutcome.SUCCEEDED);
     }
 
     private List<String> issueRecoveryCodes(UUID userId, Instant now) {

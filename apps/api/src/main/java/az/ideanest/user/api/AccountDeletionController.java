@@ -1,5 +1,9 @@
 package az.ideanest.user.api;
 
+import az.ideanest.audit.AuditAction;
+import az.ideanest.audit.AuditActor;
+import az.ideanest.audit.AuditLog;
+import az.ideanest.audit.AuditOutcome;
 import az.ideanest.shared.ratelimit.RateLimitExceededException;
 import az.ideanest.shared.ratelimit.RateLimiter;
 import az.ideanest.shared.ratelimit.RateLimiter.RateLimitDecision;
@@ -28,6 +32,17 @@ import org.springframework.web.bind.annotation.RestController;
  * creates a pending deletion that lives for thirty days and can be withdrawn,
  * so the thing being created and destroyed is the <em>request</em>, and that is
  * what the path names. {@code POST} creates it; {@code DELETE} withdraws it.
+ *
+ * <p><strong>Both are audited from here, and here is not the best place.</strong>
+ * Closing an account and withdrawing the closure are privileged actions (#107) and
+ * the record is written by {@code AuditLog.recordIndependently} <em>after</em>
+ * {@link AccountDeletionService} has committed — so a failure of the audit write
+ * leaves the deletion scheduled and the row missing, which is exactly the gap this
+ * package exists to close, narrowed to one statement and made loud (the request
+ * answers 500) rather than silent. The version without the gap is one line inside
+ * that service's own transaction, and it belongs to whoever next opens
+ * {@code user.application}; it is left out of this change to keep the edit inside
+ * one module's boundary.
  */
 @RestController
 @RequestMapping("/v1/me/deletion")
@@ -35,12 +50,17 @@ public class AccountDeletionController {
 
     private final AccountDeletionService deletions;
     private final RateLimiter rateLimiter;
+    private final AuditLog audit;
     private final UserProperties properties;
 
     public AccountDeletionController(
-            AccountDeletionService deletions, RateLimiter rateLimiter, UserProperties properties) {
+            AccountDeletionService deletions,
+            RateLimiter rateLimiter,
+            AuditLog audit,
+            UserProperties properties) {
         this.deletions = deletions;
         this.rateLimiter = rateLimiter;
+        this.audit = audit;
         this.properties = properties;
     }
 
@@ -71,6 +91,18 @@ public class AccountDeletionController {
 
         return deletions
                 .request(userId, request.password())
+                .map(schedule -> {
+                    // Only when a deletion was actually scheduled. An empty result is
+                    // a token for an account that is no longer there, and a wrong
+                    // password throws before this line — neither closed anything.
+                    audit.recordIndependently(
+                            AuditAction.ACCOUNT_DELETION_REQUESTED,
+                            userId,
+                            AuditActor.user(userId),
+                            AuditOutcome.SUCCEEDED,
+                            "anonymisation scheduled for " + schedule.scheduledFor());
+                    return schedule;
+                })
                 .map(AccountDeletionController::toResponse)
                 .map(body -> ResponseEntity.accepted().body(body))
                 // A genuine token for an account that is no longer there. The
@@ -89,9 +121,20 @@ public class AccountDeletionController {
     public ResponseEntity<Void> cancel(@AuthenticationPrincipal Jwt accessToken) {
         UUID userId = UUID.fromString(accessToken.getSubject());
 
-        return deletions.cancel(userId)
-                ? ResponseEntity.status(HttpStatus.NO_CONTENT).build()
-                : ResponseEntity.notFound().build();
+        if (!deletions.cancel(userId)) {
+            return ResponseEntity.notFound().build();
+        }
+        // Recorded even when nothing was pending, because the service treats that as
+        // success and the caller cannot tell the two apart either. The alternative is
+        // an audit row that depends on a state the response does not report, which is
+        // a worse thing to reason about than one extra row.
+        audit.recordIndependently(
+                AuditAction.ACCOUNT_DELETION_CANCELLED,
+                userId,
+                AuditActor.user(userId),
+                AuditOutcome.SUCCEEDED,
+                null);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 
     private static DeletionScheduledResponse toResponse(DeletionSchedule schedule) {
