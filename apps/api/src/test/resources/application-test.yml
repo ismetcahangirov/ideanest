@@ -144,6 +144,26 @@ ideanest:
     max-backoff: PT10M
     max-attempts: 8
 
+  notification:
+    delivery:
+      # Disabled, exactly as the outbox relay above is and for the identical reason:
+      # this one would otherwise fire every second and send the very rows a test is
+      # in the middle of asserting are still PENDING, on another thread. The suite
+      # drives NotificationSender and NotificationDispatch directly with the instant
+      # it wants to judge against.
+      send-schedule: "-"
+      # Deliberately small, so that the bound on a pass is observable at all. With
+      # the production hundred, a test proving that a backlog is not drained in one
+      # pass would have to write a hundred and one notifications to see it.
+      batch-size: 2
+      # The production retry policy, because the retry and dead-letter tests are
+      # about that policy: shortening it here would assert the rule against a
+      # configuration nothing runs on. There is no need, because the tests hand the
+      # dispatch the instant to judge rather than waiting for a backoff to elapse.
+      retry-backoff: PT5S
+      max-backoff: PT10M
+      max-attempts: 8
+
   user:
     # Disabled. `-` is Spring's own value for "do not schedule this". The suite
     # drives AccountAnonymisationJob directly with the instant it wants to test,

@@ -1885,6 +1885,7 @@ load profile).
 | `account-anonymiser` | Hourly | Anonymise accounts whose deletion grace period has elapsed |
 | `idempotency-key-cleaner` | Hourly | Remove idempotency keys past §17.2's 24-hour retention |
 | `outbox-relay` | Every second | Publish recorded events, in order within an aggregate |
+| `notification-sender` | Every second | Send what §12.2's fan-out queued, one row per transaction |
 
 > **The scheduler underneath all of them is built (#134).** Every trigger in this
 > table now claims a lease in `scheduled_jobs` before it runs, so a job fires once
@@ -2960,15 +2961,62 @@ emitting an event per pledge.
 ```mermaid
 graph LR
     Event[Domain event] --> Outbox[(Outbox)]
-    Outbox --> Dispatcher[Dispatcher]
-    Dispatcher --> Prefs{User preferences}
-    Prefs -->|email| EmailQ[Email queue]
-    Prefs -->|push| PushQ[Push queue]
-    Prefs -->|in-app| DB[(notifications)]
+    Outbox --> Relay[outbox-relay]
+    Relay --> Listener[NotificationEventListener]
+    Listener --> Prefs{User preferences}
+    Prefs -->|email| Q[(notifications)]
+    Prefs -->|push| Q
+    Prefs -->|in-app| Q
+    Q --> Sender[notification-sender]
+    Sender --> Channels[Channel senders]
 ```
 
-Where a user selects digest mode, notifications accumulate and a scheduled job
-combines them into a single message.
+**There is one queue, not three.** The earlier sketch of this section gave email
+and push a queue each and let in-app be a table; what #85 built is a single
+`notifications` table with a `channel` column and a state machine. A per-channel
+queue would mean three retry policies, three dead-letter stores and three places
+to look when somebody was not told something, for three transports that differ
+only in the last hop.
+
+**The fan-out runs inside the dispatch transaction and sends nothing.** Writing
+the rows in the same transaction that marks the event delivered makes "the event
+was delivered" and "the notifications exist" one fact. Sending is deliberately
+not in it, because a sent email cannot be rolled back — which is the whole reason
+a notification has a state.
+
+**`notification-sender` is the second hop, and it is at-least-once.** It claims
+one row with `FOR UPDATE SKIP LOCKED`, sends, and commits, in that order. A crash
+between the channel accepting the message and the commit therefore sends it
+again. That is chosen rather than tolerated: the other order — commit, then send
+— turns every crash into a notification nobody receives and nothing afterwards
+can tell that anything was lost. A duplicate is visible to the person who got it
+and collapsible by a provider given an idempotency key; the key is
+`notifications.id`, stable across every attempt.
+
+**Preferences resolve per (category, channel), and absence is the common case.** A
+user who has never opened the settings page has no rows at all, so the default is
+policy in `DeliveryPolicy` rather than rows written at sign-up — a default stored
+as data is a default that cannot be changed later without a migration over every
+account. A mandatory category ignores what is stored: the person who would want a
+security alert silenced is the one who stole the account.
+
+**An event naming somebody who is not an account tells nobody, and says so.** It
+is not treated as a malformed event, because the dispatcher publishes one message
+to every listener in one transaction — so failing would dead-letter an event that
+other modules also consume, and no number of retries makes an account exist. A
+payload that cannot be read, or that omits a field, still fails loudly.
+
+> **What is not built.** Digest mode is stored, resolved and written — a
+> notification in a digest is `HELD` rather than `PENDING`, and
+> `notification-sender` will not claim it — but **the job that combines held rows
+> into one message does not exist**, so a user who selects digest currently
+> receives nothing on that channel. Email (#86) and push (#87) have no transport:
+> both are registered as `UndeliverableChannelSender`, which logs at `WARN` and
+> returns, so their rows say `SENT` for messages that reached a log file. In-app
+> is real. §4.10's audiences that are a list the platform computes — a campaign's
+> backers, its followers — cannot be translated yet, because the recipient comes
+> from the event and reading `pledges` from this module is the coupling the module
+> boundary exists to prevent; "goal reached" therefore notifies the creator only.
 
 ---
 

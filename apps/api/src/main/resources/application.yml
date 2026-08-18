@@ -359,6 +359,32 @@ ideanest:
     max-backoff: PT10M
     max-attempts: 8
 
+  notification:
+    delivery:
+      # Every second, like the relay above and for the relay's reason: this is the
+      # second hop of the same path a person is watching. A pledge is confirmed, the
+      # relay publishes the event, the fan-out writes the row, and this sends it --
+      # all of which should finish before the backer has stopped looking at the page.
+      # The two schedules being equal is what keeps the second hop from dominating
+      # the first.
+      send-schedule: "* * * * * *"
+      # A bound on one pass, not a target. The outbox's argument exactly: a backlog
+      # built up while a transport was down must not be one pass that overlaps its
+      # own next tick.
+      batch-size: 100
+      # Deliberately the outbox's numbers. An operator reading a stuck notification
+      # at three in the morning should be reading the vocabulary they already know
+      # from outbox_events, not a second one that differs in the third decimal
+      # place.
+      retry-backoff: PT5S
+      max-backoff: PT10M
+      # Sends attempted before the notification is a dead letter, including the
+      # first. A message refused the same way eight times is waiting for a person
+      # and not for the network. Unlike a dead-lettered event this is something the
+      # platform recorded as owed to somebody and will now never tell them, which is
+      # why NotificationDispatch logs it at ERROR rather than WARN.
+      max-attempts: 8
+
   audit:
     # Two bounds on attacker-controlled text, and they are here rather than in the
     # code because of what makes this table different: everything else in the
