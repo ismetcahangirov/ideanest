@@ -27,6 +27,8 @@ cd apps/api && ./gradlew bootRun       # http://localhost:8080
 |---|---|---|
 | `IDEANEST_API_ORIGIN` | `http://localhost:8080` | Where `/v1/*` is proxied. Read at build time on the server only — the browser never learns it. The sitemap also reads the service directly through it |
 | `IDEANEST_SITE_URL` | `http://localhost:3000` | This application's public origin. **Must be set in any deployed environment** — every `robots.txt` entry, sitemap URL, canonical URL, `og:url`, and absolute social-image URL is written against it. Server-only, and read at build time by the statically rendered pages, so changing it means rebuilding. A value that is set but is not an absolute `http(s)` URL is refused rather than fallen back on |
+| `NEXT_PUBLIC_IDEANEST_RUM_SAMPLE_RATE` | `1` | Fraction of sessions whose Core Web Vitals are reported. `0` collects nothing at all. `NEXT_PUBLIC_`, so it is inlined at build time and changing it means rebuilding. See [Real user monitoring](#real-user-monitoring) |
+| `IDEANEST_RUM_LOCAL_SINK` | on outside production | The in-memory buffer behind `GET /api/rum`. `next start` runs as production on a laptop too, so set `true` to keep the table there |
 
 ### Why the API is proxied rather than called directly
 
@@ -62,6 +64,7 @@ the browser half of the auth flow work at all.
 | `/robots.txt` | **Public.** Crawl directives, and the pointer to the sitemap index (#122) |
 | `/sitemap_index.xml` | **Public.** The index over the sitemap segments (#122) |
 | `/sitemap/[segment].xml` | **Public.** One sitemap segment — `pages`, `discovery`, `projects-N` (#122) |
+| `/api/rum` | **Public**, unauthenticated. The Core Web Vitals collection endpoint (#128) |
 
 There is no route at `/` yet; server-rendered project and discovery pages are
 #119. The root segment still carries the site's default metadata and its
@@ -466,6 +469,58 @@ list is `private, no-cache` — so an unchanged list is answered `304` with no b
 instead of re-sending every tier, item and shipping rule on each poll of a live
 stock count. `no-store` here would make that `304` unreachable, which is what
 #200 fixed.
+
+## Real user monitoring
+
+`src/lib/rum/` measures LCP, INP, CLS, TTFB and FCP on real devices and posts
+them to `POST /api/rum` (#128). `docs/observability/real-user-monitoring.md` is
+the full account — the thresholds, the sampling reasoning, the privacy rules,
+what a production sink would have to be, and the named gaps. The short version:
+
+**Field, not lab.** `apps/web/performance/` measures Core Web Vitals in
+Lighthouse on a CI runner; this measures them on the devices people actually
+use. Both use Google's published good/needs-improvement boundaries, and
+`src/lib/rum/metrics.test.ts` reads `performance/summarise-lighthouse.mjs` and
+fails if the two stop agreeing. INP appears only here — a headless load performs
+no interaction, so no lab tool can report one.
+
+**p75, nearest rank**, because that is how Core Web Vitals is defined and
+because an interpolated percentile is a headline figure no session experienced.
+
+**Nothing that identifies a person.** No URL — a Next route pattern from a fixed
+whitelist, so a campaign identifier and a search term cannot leave the browser.
+No query string, no account, no user agent, no stored IP address, and no field a
+free string can enter. Two locks: the schema refuses unknown keys and validates
+every value against a closed vocabulary, and §17.4's shape rules then run over
+what is left.
+
+**Session-consistent sampling**, defaulting to every session, because a p75 over
+a few hundred samples moves by more between two ordinary days than a regression
+would move it — and there is no production traffic to sample down from yet. A
+coin flip per metric would rank metrics rather than visits and produce something
+with the shape of a p75 that is not one.
+
+**`sendBeacon`, falling back to `fetch(…, { keepalive: true })`.** The metrics
+worth having are final only as the page goes away, which is exactly when a
+browser cancels requests. Reporting a metric does nothing but push onto an
+array; the send happens in an idle callback, or synchronously on `pagehide`.
+`<WebVitals />` renders `null`, so there is no element, no motion, and nothing
+that could shift the layout it is measuring.
+
+**It joins the server's traces.** `instrumentation-client.ts` puts the session's
+W3C `traceparent` on every same-origin `/v1` request, using the identifiers
+`docs/architecture.md` §18.1 already defines, so a slow field session and its
+server spans share a `traceId`. It never overwrites a header a caller set, so
+the day `lib/api/client.ts` does this itself, this stops.
+
+**No analytics vendor is introduced.** Accepted samples become one JSON line per
+sample on stdout, beside the application's other lines. §14.2 lists product
+analytics as a choice not yet made, and it stays not yet made.
+
+```bash
+pnpm --filter @ideanest/web dev
+curl http://localhost:3000/api/rum        # the p75 table, in development
+```
 
 ## Styling
 
