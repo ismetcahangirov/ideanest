@@ -140,7 +140,10 @@ graph TD
 | Ban a user | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
 | Issue a refund | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
 
-¹ Only backers of that project and its creator may comment.
+¹ Only backers of that project and its creator may comment. **As shipped in #84
+this is enforced by half**: a signed-in account and a campaign it may see, but
+not "has an active pledge here", which no module publishes an answer to. §4.9
+has the argument for why that fails open rather than closed, and what closes it.
 ² Subject to the granular grants the creator issued.
 
 ---
@@ -728,10 +731,68 @@ The most valuable and most complex module. It begins when funding closes.
 | C-13 | Sharing, native sheet on mobile |
 | C-14 | Deep links opening the mobile app |
 
-> **Project updates are built (#83), and they are the only part of this section
-> that is.** §4.4's Updates tab and §4.7's CD-12 — numbered updates, public or
-> backers-only, with scheduling — behind §10.2's two endpoints and nothing else.
-> C-05, comments *on* an update, is not built and belongs with comments.
+> **Project updates (#83) and comments (#84) are built; the rest of this section
+> is not.** §4.4's Updates tab and §4.7's CD-12 — numbered updates, public or
+> backers-only, with scheduling — behind §10.2's two endpoints; and C-01, C-02,
+> C-03 and CD-14 behind the community module's four comment endpoints, with
+> C-07 behind the moderation module's fifth. C-04 reactions,
+> C-05 comments *on* an update, C-08 blocking, C-09 saving, C-10 following, C-11
+> reminders, C-12 direct messages and C-13/C-14 sharing are not built.
+>
+> **A comment thread is two levels deep, and the bound is structural.** A reply
+> answers a root; a reply to a reply is a 422 naming the bound. Not a preference:
+> an unbounded tree is a read whose cost depends on how deep the argument went,
+> paged by something no keyset can express, and a page that has to be assembled
+> in memory before any of it can be sent. The rule is stated three times, on
+> purpose — `Comment.replyTo` refuses it, V25's
+> `comments_reply_hangs_below_its_parent` refuses it under a support script too,
+> and every row carries `acceptsReplies` so a client places the reply control
+> rather than discovering the rule by being refused.
+>
+> **The creator highlight is computed at write time, from what the server
+> knows.** C-02 asks for the campaign's own replies to be distinguished, so
+> `by_creator` is settled once, by `ProjectAccess`, at the moment the comment is
+> written — never accepted from the request body, where it would be a claim of
+> authority made by the side making the claim, and never derived on read, where
+> a year-old comment would silently lose its highlight the day its author left
+> the team.
+>
+> **Deleting a comment is a tombstone, not a removal.** The row stays, its body
+> stays, and the read serves neither: `body: null`, `authorId: null`,
+> `deleted: true`. Three separate reasons, each sufficient — replies must not be
+> orphaned when their root is removed, a moderator holding a report about the
+> comment has to be able to read what it said, and "removed" printed beside a
+> name is an accusation published to everybody on the campaign page. Author,
+> campaign team (CD-14) and staff (AD-09) may all remove; the removal is audited
+> unless the author is withdrawing their own, which is not a privileged action.
+> It is idempotent, so a retry cannot rewrite who removed it.
+>
+> **Who may comment is enforced by half, and the missing half is named.** §3.1
+> says "backers of that project and its creator". Enforced: a signed-in account
+> outside §17.4's deletion grace period, and a campaign in one of §6.1's public
+> states. Not enforced: "has an active pledge on this campaign", which is a
+> statement about `pledges` that the pledge module's application layer does not
+> publish — `PublicBackers` counts backers and exposes none of them (#209).
+> **This fails open where `ProjectUpdateService` fails closed, deliberately.** A
+> backers-only update shown to the public cannot be taken back; a comment box
+> open to a signed-in non-backer costs spam, which is rate limited, reportable,
+> and removable by the campaign's team. Closing it is one method on the pledge
+> module's application layer and one line in `CommentService`.
+>
+> **§17.3 names no number for commenting, so the budget is argued rather than
+> quoted.** The table names a CAPTCHA for "bot traffic: challenge on
+> registration and comment", and this platform has none — so the limiter is the
+> whole of the defence on a public write surface. Ten comments per account and a
+> hundred per source address per five minutes, the second much looser because
+> registration is already limited per address and a tight number here refuses
+> the office NAT a real backer sits behind. **One budget across posting and
+> replying**, or a flood simply moves one level down; **and none spent by
+> deleting**, or a creator clearing a flood is stopped part way through by the
+> control that exists to stop it.
+>
+> **There is no edit endpoint.** §10.2 gives a comment none. Withdrawing is the
+> delete, and a comment nobody can quietly rewrite is what makes a screenshot of
+> a thread worth anything.
 >
 > **Scheduling is a timestamp, not a state machine and not a job.**
 > `project_updates.published_at` in the future is the whole of it: the public read
@@ -857,13 +918,26 @@ Preferences are per category and per channel, with a digest option.
 > dismissals, since "who dismissed the fourteen reports about this campaign" is
 > the question an investigation starts from.
 >
-> **Three things are deliberately absent.** `POST /v1/comments/{id}/report` is
-> in §10.2 and is not published, because §4.9's community module has not been
-> built: with no `comments` table an identifier cannot be checked and a
-> moderator would open a report with nothing behind it. `COMMENT` and
-> `PROJECT_UPDATE` are already in the taxonomy and in the table's check
-> constraint, so publishing that route later is a controller method rather than
-> a migration. **Deciding a report does not act on what was reported** — this
+> **`POST /v1/comments/{id}/report` is published as of #84, and it cost no
+> migration.** It was withheld by #102 because with no `comments` table an
+> identifier could not be checked and a moderator would open a report with
+> nothing behind it — but `COMMENT` was already in the taxonomy and in the
+> table's check constraint, so publishing the route was a controller method and
+> a `ReportTargets` branch. That is the whole of the bet #102 made by
+> enumerating the value early, and it paid. The comment is resolved through the
+> community module's `PublicComments` rather than by the moderation module
+> reading `comments` itself, and **a removed comment is deliberately
+> unreportable**, for the same reason a suspended campaign is: it is already off
+> the page, so a further report adds a queue row and no information. A report
+> filed *before* the removal stays open and stays readable — which is what V25's
+> tombstone keeps the body for. Deduplication is unchanged: a comment is a
+> target like any other, so a second report on one comment by one reporter is
+> the same 202 carrying the report already on file.
+>
+> **Two things are still deliberately absent.** `PROJECT_UPDATE` has no report
+> route at all — §10.2 gives an update none, and AD-09's moderation of updates
+> is not built — and it stays in the taxonomy and the check constraint on the
+> same argument. **Deciding a report does not act on what was reported** — this
 > epic's suspension, AD-04's ban, and AD-09's removal are separate privileged
 > actions, and folding them in would mean a moderator could not agree with a
 > report without also taking somebody's funding down. And nothing is hidden
@@ -1651,7 +1725,7 @@ by a database constraint and verified by a nightly reconciliation job.
 | `curation_events` | Append-only audit of every editorial decision: who added or removed what, from which collection, when, and why. Never updated, never deleted; neither foreign key cascades, so a curated campaign cannot be hard deleted and the record cannot be removed by removing what it was about |
 | `project_editorial_badges` *(view)* | The only definition of "editorially featured" (§3.2, §4.4, D-05). One row per campaign per badge-granting collection currently in force; read by `showOnly=featured`, by the card, and by §11.2's `w4` |
 | `project_updates` | Numbered updates (#83). One row per post: a `number` allocated on insert as `max + 1` per campaign and never recomputed — it is what a link and a support conversation name — a `title` and a prose `body`, a `visibility` of `PUBLIC` or `BACKERS_ONLY`, the `author_id`, and a `published_at`. **`published_at` in the future is the whole of "scheduled"**: the public read filters on it, so there is no state column to fall out of step with it and no §8.4 job to be late. `body` is `text` rather than `jsonb` because nothing in §4.7's CD-12 gives an update the story's block editor, and storing an unvalidated document on a public page is the one thing §10.4 says not to do with creator content; the day updates gain that editor it becomes `jsonb` by an expand-then-contract pair. No `deleted_at` yet, deliberately — see §4.9 |
-| `comments` | Self-referencing threads |
+| `comments` | The conversation under a campaign (#84). Two levels and no more: a root and its replies, `parent_id` null on a root, a denormalised `thread_id` and a `depth` of 0 or 1. **The bound is a foreign key, not a check.** `parent_depth` is `GENERATED ALWAYS AS (depth - 1)`, and `(parent_id, parent_depth, thread_id)` references `(id, depth, thread_id)` — so a reply's parent must be the row one level above it *in the same thread*, which is "replies attach to roots and to nothing else" with no way to write around it from a support script. A depth check alone would still accept a reply hanging under a reply that had claimed depth 1. `thread_id` is a column rather than `coalesce(parent_id, id)` because one page of roots then costs one further query for all of their replies, keyset on `(thread_id, id)`. `by_creator` is C-02's highlight, **decided at write time** from the authorisation then in force: derived on read it would change on a year-old comment the day somebody left the campaign's team, and accepted from the client it would be a claim of authority taken from the side making it. **Deletion is a tombstone** — `deleted_at`/`deleted_by`, both or neither — and the row and its body stay: a removed root still heads its thread so its replies are not orphaned, and an open report in `content_reports` still resolves to something a moderator can read. `CommentResponse` is the single place a tombstone becomes `body: null`, `authorId: null`. Cascades on the campaign, like `project_updates`; no `ON DELETE` on `author_id`, since §17.4 anonymises in place |
 | `faqs` | Question and answer pairs |
 | `saves`, `follows` | Backer signals |
 | `reminders` | Who asked to be told when a campaign opens, and whether they were |

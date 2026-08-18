@@ -74,15 +74,22 @@ class ReportStateTests {
     }
 
     @Test
-    @DisplayName("only the two surfaces that exist are reportable")
-    void commentsAndUpdatesAreNotReportableYet() {
+    @DisplayName("only the three surfaces that exist are reportable")
+    void updatesAreNotReportableYet() {
         assertThat(ReportTargetType.PROJECT.isReportable()).isTrue();
         assertThat(ReportTargetType.USER.isReportable()).isTrue();
 
-        // Neither table exists, so an identifier cannot be checked and a moderator
-        // opening the report would find nothing behind it. When §4.9 lands, this
-        // test is what tells whoever ships it that the flag has to move.
-        assertThat(ReportTargetType.COMMENT.isReportable()).isFalse();
+        // COMMENT moved with #84, which is what this assertion was written to make
+        // somebody do: `comments` now exists, `PublicComments` checks an identifier
+        // against it, and `POST /v1/comments/{id}/report` is published.
+        assertThat(ReportTargetType.COMMENT.isReportable()).isTrue();
+
+        // PROJECT_UPDATE has not moved and has no route to move to: §10.2 gives an
+        // update no report endpoint and AD-09's moderation of updates is not built,
+        // so a report accepted about one would be a queue row a moderator can act on
+        // in no way. The value stays in the taxonomy and in V23's constraint for
+        // #102's reason -- naming it costs one string, adding it later costs a
+        // migration on somebody else's critical path.
         assertThat(ReportTargetType.PROJECT_UPDATE.isReportable()).isFalse();
     }
 }

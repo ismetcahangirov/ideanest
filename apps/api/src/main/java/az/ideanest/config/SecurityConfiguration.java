@@ -172,6 +172,29 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/v1/projects/*/updates")
                         .permitAll()
                         // ---- end #83 --------------------------------------
+                        // ---- #84: comments --------------------------------
+                        // A campaign's Comments tab (§4.4). Public because §10.2
+                        // lists this read under "Project — public", and because
+                        // what a visitor is weighing before they back a campaign
+                        // is frequently the creator's answer to the question
+                        // somebody else already asked.
+                        //
+                        // What may be read is not decided here. The handler
+                        // serves it only for a campaign in one of §6.1's nine
+                        // public states and answers 404 otherwise, and a removed
+                        // comment is served as a tombstone with no text and no
+                        // author — see CommentResponse, which is the one place
+                        // that decision is made.
+                        //
+                        // GET and nothing else. POST on this exact path is
+                        // somebody writing a comment, and it falls through to
+                        // the rule at the bottom so that an anonymous caller and
+                        // an account inside its deletion grace period are both
+                        // refused. DELETE /v1/comments/* and the reply and report
+                        // routes are deliberately not matched here either.
+                        .requestMatchers(HttpMethod.GET, "/v1/projects/*/comments")
+                        .permitAll()
+                        // ---- end #84 --------------------------------------
                         // "Tell me when this opens", and "stop reminding me".
                         // Unauthenticated on purpose and bounded in the handler by
                         // a rate limiter per source address and per email address:
