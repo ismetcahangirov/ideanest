@@ -879,6 +879,73 @@ alert is `--surface-2` with a left rule in the status colour, the same form
 §8.1 gives "payment failed". Only `warning` and `danger` take `role="alert"`;
 interrupting a screen reader to say "saved" is a cost with no payoff.
 
+### 7.16 Media
+
+`MediaFrame` and `Media`. Every picture in the product goes through one of them,
+because every picture in the product is a layout shift waiting to happen.
+
+**The box is reserved before the bytes arrive.** `MediaFrame` sets
+`aspect-ratio` on a block that is already the width of its column, so the height
+of the picture is known at first paint and nothing below it moves when the image
+decodes. [`motion-system.md`](./motion-system.md) §8 puts cumulative layout
+shift under 0.05; a single unreserved cover in a card grid spends that budget on
+its own.
+
+```css
+.media-frame {
+  position: relative;         /* a filled image positions against this */
+  width: 100%;
+  overflow: hidden;           /* clips the image and the scaled placeholder */
+  aspect-ratio: 16 / 9;       /* or the image's own width / height */
+  background: var(--surface-3);
+}
+```
+
+**The ratio is either a crop or the truth.** A surface that cuts the picture
+passes a crop token; a surface that shows it whole passes the image's own
+`{ width, height }`.
+
+| Ratio | Use |
+|---|---|
+| `16/9` | Project cover wherever it is cropped — discovery card, share image |
+| `3/2` | Editorial and reward imagery |
+| `4/3` | Denser cards, where a 16:9 strip reads as a letterbox |
+| `1/1` | Avatars, tiles |
+| `{ width, height }` | The picture shown whole — a prelaunch cover, a story image |
+
+The set is closed for the same reason the radius scale is. Reserving 16:9 for a
+portrait photograph is a layout shift with extra steps: the box is right and the
+picture is not in it.
+
+**The empty frame is a real state.** A campaign with no cover renders the
+reserved `--surface-3` box and nothing in it — not a broken image, and not a
+stock graphic that says nothing. A card with a cover and a card without one are
+then the same height, which is the point.
+
+**The placeholder is a paint, not an animation.** A low-quality image
+placeholder arrives as an inline `data:image/…` URI of a few hundred bytes and
+is painted, blurred, inside the reserved box; the real image paints over it.
+Nothing transitions. Discovery's budget is "skeleton to content crossfade only"
+([`motion-system.md`](./motion-system.md) §5.1) and a card grid that cross-fades
+twenty-four covers is exactly the long-list animation §8 forbids — so there is
+no reduced-motion branch here, because there is no motion to reduce. Anything
+that is not an inline image is ignored rather than rendered: the value is
+interpolated into a CSS `url()`.
+
+**`alt` or `decorative`, never neither and never both.** `Media` takes one or
+the other and the type enforces it. A content image gets a sentence about what
+it shows; a decorative one gets `alt=""`, which removes it from the
+accessibility tree. Omitting the attribute is the third option and it is the
+worst: a screen reader then reads the file name.
+
+**The primitive is framework-independent, deliberately.** `next/image` lives in
+the application and cannot be imported into `@ideanest/ui`, which Storybook and
+Vitest render. So `MediaFrame` owns the reservation, the placeholder, the radius
+and the clip, and takes the image as a child — the application supplies whichever
+element knows how to fetch AVIF. `Media` is the same frame with a plain `<img>`
+already in it, for surfaces with no optimiser behind them. Which surfaces those
+are, and why, is in `docs/architecture.md` §13.1.
+
 ---
 
 ## 8. Applying the system to product screens

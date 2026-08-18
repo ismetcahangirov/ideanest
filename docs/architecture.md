@@ -2960,6 +2960,50 @@ notifies the API, which enqueues processing.
 - Optional virus scanning
 - Automated adult-content detection routing to the moderation queue
 
+**The placeholder is a variant, not an afterthought.** Ingestion also emits a
+16-pixel-wide sample, base64'd into the media record beside the URL and the
+dimensions, so a blur placeholder arrives in the same response as the image it
+belongs to and costs no extra request. Sixteen pixels is small enough that no
+recognisable detail survives, which matters because a placeholder is shown
+before moderation has looked at anything.
+
+#### Delivery — what the browser is offered today
+
+Ingestion is not built. Delivery is, and it is separable: `next/image` and
+`apps/web/next.config.mjs` do the optimiser's half of this section against
+whatever addresses exist, which today are addresses creators typed by hand.
+
+| Concern | Setting | Reason |
+|---|---|---|
+| Formats | `['image/avif', 'image/webp']` | Content-negotiated, in that order, with the source encoding last. Nothing is feature-detected in the client |
+| Candidate widths | `deviceSizes` to 1440, `imageSizes` from 16 | The widest box in the product is 720 CSS px — 1440 at 2× — so the framework's 2048 and 3840 candidates encode photographs nobody can see. 1440 is this section's `hero`; 160 is its `thumbnail` |
+| `sizes` | Derived per surface in `apps/web/src/lib/images/sizes.ts` | Read off the Tailwind classes that produce each layout, and asserted in tests, because a stale `sizes` renders perfectly and costs bandwidth on every request |
+| Cache | 30 days | The cache key is a URL a human controls. A year is right for content-addressed storage and wrong until the keys below are immutable |
+| `remotePatterns` | `https` on any host | **Named as a cost.** With no storage, an allowlist matches nothing and no cover is ever converted. It leaves `/_next/image` usable as an image proxy for HTTPS URLs — bandwidth rather than network access, since private and loopback addresses are refused |
+| Aspect ratio | `MediaFrame`, every call site | The box is reserved before the bytes arrive. See [`ui-kit.md`](./ui-kit.md) §7.16 |
+
+**Two things this pipeline owes the front end when it lands, and they are part
+of its definition of done:**
+
+1. **`remotePatterns` narrows to the storage origin.** Every cover is then on
+   one host, the wildcard goes, and the proxy stops existing.
+2. **The media record carries `blurDataUrl`.** Until it does, a blur placeholder
+   only exists where the browser is holding the bytes — the campaign editor,
+   which samples the image it has just loaded to measure
+   (`apps/web/src/lib/images/lqip.ts`, the same algorithm at the same width).
+   That placeholder is not persisted, because `cover_image_url`,
+   `cover_image_width` and `cover_image_height` are the only three columns
+   there are. A statically imported image needs neither: Next reads the file at
+   build time and attaches `blurDataURL` to the import.
+
+**Where the optimiser is not used, and why.** The campaign editor's previews
+render a plain `<img>`. A preview has to show the creator the bytes they
+supplied rather than a re-encode of them, and the file is already in the
+browser cache from the measurement a moment earlier — so the optimiser would
+add a request rather than remove one, on the surface
+[`motion-system.md`](./motion-system.md) §5 gives the tightest budget in the
+product. Public read surfaces — discovery, prelaunch — go through it.
+
 ### 13.2 Video
 
 | Step | Approach |
