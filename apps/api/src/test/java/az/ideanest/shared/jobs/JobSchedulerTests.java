@@ -1,17 +1,20 @@
 package az.ideanest.shared.jobs;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import az.ideanest.support.AbstractIntegrationTest;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.sql.DataSource;
@@ -20,6 +23,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.Trigger;
+import org.springframework.scheduling.support.CronTrigger;
 
 /**
  * The guarantee (#134): a scheduled job fires on every replica and runs on one.
@@ -137,11 +143,22 @@ class JobSchedulerTests extends AbstractIntegrationTest {
     private static final class TestJob implements ScheduledJob {
 
         private final String name;
+        private final String schedule;
         private final Runnable body;
         private final AtomicInteger runs = new AtomicInteger();
 
+        /**
+         * Disabled by default. These tests trigger the job themselves, because a cron
+         * firing in the background would claim the very lease a test is asserting is
+         * free.
+         */
         private TestJob(String name, Runnable body) {
+            this(name, "-", body);
+        }
+
+        private TestJob(String name, String schedule, Runnable body) {
             this.name = name;
+            this.schedule = schedule;
             this.body = body;
         }
 
@@ -152,10 +169,7 @@ class JobSchedulerTests extends AbstractIntegrationTest {
 
         @Override
         public String schedule() {
-            // Never on a timer. These tests trigger the job themselves, because a cron
-            // firing in the background would claim the very lease a test is asserting
-            // is free.
-            return "-";
+            return schedule;
         }
 
         @Override
@@ -166,6 +180,65 @@ class JobSchedulerTests extends AbstractIntegrationTest {
 
         int runs() {
             return runs.get();
+        }
+    }
+
+    /**
+     * A timer that remembers what it was asked to run rather than running it.
+     *
+     * <p>Hand-written rather than mocked, like every other double in this suite, and
+     * here for one reason: the schedules in the test profile are all {@code -}, so the
+     * only way to check that a cron expression reaches a trigger — and that the thing
+     * behind the trigger claims the lease rather than calling the job — is to hold the
+     * timer still and look at it.
+     */
+    private static final class CapturingTimers implements TaskScheduler {
+
+        private final List<Trigger> triggers = new ArrayList<>();
+        private final List<Runnable> tasks = new ArrayList<>();
+
+        @Override
+        public ScheduledFuture<?> schedule(Runnable task, Trigger trigger) {
+            triggers.add(trigger);
+            tasks.add(task);
+            return null;
+        }
+
+        List<Trigger> triggers() {
+            return triggers;
+        }
+
+        List<Runnable> tasks() {
+            return tasks;
+        }
+
+        // Nothing here schedules by rate or delay: §8.4 is entirely cron, and a
+        // scheduler that quietly accepted one of these would hide the day that stops
+        // being true.
+
+        @Override
+        public ScheduledFuture<?> schedule(Runnable task, Instant startTime) {
+            throw new UnsupportedOperationException("Jobs are scheduled by cron expression");
+        }
+
+        @Override
+        public ScheduledFuture<?> scheduleAtFixedRate(Runnable task, Instant startTime, Duration period) {
+            throw new UnsupportedOperationException("Jobs are scheduled by cron expression");
+        }
+
+        @Override
+        public ScheduledFuture<?> scheduleAtFixedRate(Runnable task, Duration period) {
+            throw new UnsupportedOperationException("Jobs are scheduled by cron expression");
+        }
+
+        @Override
+        public ScheduledFuture<?> scheduleWithFixedDelay(Runnable task, Instant startTime, Duration delay) {
+            throw new UnsupportedOperationException("Jobs are scheduled by cron expression");
+        }
+
+        @Override
+        public ScheduledFuture<?> scheduleWithFixedDelay(Runnable task, Duration delay) {
+            throw new UnsupportedOperationException("Jobs are scheduled by cron expression");
         }
     }
 
@@ -305,6 +378,66 @@ class JobSchedulerTests extends AbstractIntegrationTest {
         // And the lease is given back, so the next tick is not refused.
         assertThat(holderOf(name)).isNull();
         assertThat(stateOf(name)).isEqualTo("READY");
+    }
+
+    // -----------------------------------------------------------------------
+    // The trigger
+    // -----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("a job with a schedule is put on a cron trigger that runs it through the lease")
+    void aScheduledJobIsPutOnATrigger() {
+        TestJob job = new TestJob("test-trigger-" + SEQUENCE.incrementAndGet(), "0 0 * * * *", () -> {});
+
+        CapturingTimers timers = new CapturingTimers();
+        new JobScheduler(List.of(job), lease, runner, timers, clock).registerJobs();
+
+        assertThat(timers.triggers()).hasSize(1);
+        // The cron the job asked for, in UTC, reaches the timer unchanged. A schedule
+        // read in the deployment's local zone runs at a different hour twice a year,
+        // and the daily jobs are where that is least likely to be noticed.
+        assertThat(timers.triggers().getFirst()).isInstanceOf(CronTrigger.class);
+        assertThat(((CronTrigger) timers.triggers().getFirst()).getExpression()).isEqualTo("0 0 * * * *");
+        // Registered as eligible immediately: there is nothing to wait for until
+        // something has failed.
+        assertThat(nextAttemptAt(job.name())).isBeforeOrEqualTo(now());
+
+        // And what the timer will run is the claim, not the body: firing it once takes
+        // the lease, runs the job, and gives the lease back.
+        timers.tasks().getFirst().run();
+
+        assertThat(job.runs()).isEqualTo(1);
+        assertThat(holderOf(job.name())).isNull();
+        assertThat(stateOf(job.name())).isEqualTo("READY");
+    }
+
+    @Test
+    @DisplayName("a job whose schedule is disabled is still written down")
+    void aDisabledScheduleRegistersWithoutATimer() {
+        TestJob job = new TestJob("test-disabled-" + SEQUENCE.incrementAndGet(), "-", () -> {});
+
+        CapturingTimers timers = new CapturingTimers();
+        new JobScheduler(List.of(job), lease, runner, timers, clock).registerJobs();
+
+        // `-` is Spring's own value for "do not schedule this", and it has to keep
+        // meaning that: the whole test profile relies on it. The row is written anyway,
+        // because it is the job's identity and its retry state, and a deployment that
+        // runs the job by hand still expects to find it.
+        assertThat(timers.triggers()).isEmpty();
+        assertThat(stateOf(job.name())).isEqualTo("READY");
+    }
+
+    @Test
+    @DisplayName("two jobs under one name refuse to start")
+    void oneNameIsOneJob() {
+        String name = "test-duplicate-" + SEQUENCE.incrementAndGet();
+        List<ScheduledJob> clashing = List.of(new TestJob(name, () -> {}), new TestJob(name, () -> {}));
+        JobScheduler scheduler = new JobScheduler(clashing, lease, runner, new CapturingTimers(), clock);
+
+        // They would share one lease, so each would stop the other from running about
+        // half the time — a scheduler that mostly works, which is the worst thing for
+        // it to be. Refusing to start is the only symptom anybody would see in time.
+        assertThatThrownBy(scheduler::registerJobs).isInstanceOf(IllegalStateException.class);
     }
 
     // -----------------------------------------------------------------------
