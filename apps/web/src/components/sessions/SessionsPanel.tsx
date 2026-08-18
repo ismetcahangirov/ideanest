@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { EmptyState, InlineAlert, Modal, Pill, Skeleton, SkeletonGroup } from '@ideanest/ui';
+import { EmptyState, InlineAlert, Pill, Skeleton, SkeletonGroup } from '@ideanest/ui';
+import { Modal } from '@ideanest/ui/motion';
 import { ApiError } from '../../lib/api/problem';
 import { signOut as endThisSession } from '../../lib/api/access-token';
 import { listSessions, revokeSession, type SessionSummary } from '../../lib/sessions/api';

@@ -6,12 +6,12 @@ import {
   EmptyState,
   IconButton,
   InlineAlert,
-  Modal,
   Pill,
   Skeleton,
   SkeletonGroup,
   Tag,
 } from '@ideanest/ui';
+import { Modal } from '@ideanest/ui/motion';
 import { formatMoney } from '../../lib/money';
 import {
   deleteItem,

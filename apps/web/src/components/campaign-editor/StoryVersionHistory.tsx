@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Drawer, EmptyState, InlineAlert, Modal, Pill, Skeleton, SkeletonGroup } from '@ideanest/ui';
+import { EmptyState, InlineAlert, Pill, Skeleton, SkeletonGroup } from '@ideanest/ui';
+import { Drawer, Modal } from '@ideanest/ui/motion';
 import { ApiError } from '../../lib/api/problem';
 import {
   getStoryVersion,
