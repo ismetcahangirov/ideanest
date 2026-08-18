@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { DiscoverySkeleton } from '../../components/discovery/DiscoverySkeleton';
 import { DiscoveryView } from '../../components/discovery/DiscoveryView';
+import { StructuredData } from '../../components/seo/StructuredData';
 import { publicPageMetadata } from '../../lib/seo/metadata';
+import { discoverPageGraph } from '../../lib/seo/structured-data/graphs';
 
 /**
  * `/discover`, and every filtered variant of it, is one canonical URL.
@@ -39,17 +41,28 @@ export const metadata: Metadata = publicPageMetadata({
  * its members consume `createContext`; reaching it from a Server Component
  * pulls client-only modules into the server graph and the build refuses the
  * route. Both children below carry their own `'use client'`.
+ *
+ * **THE SITE'S IDENTITY IS CLAIMED HERE**, outside the `Suspense` boundary.
+ * `/discover` is the front door — `app/page.tsx` does not exist yet — and
+ * `lib/seo/structured-data/identity.ts` explains why the `Organization` and
+ * `WebSite` nodes belong on the entry page rather than in the root layout. It
+ * sits outside the boundary because it depends on nothing the query string
+ * decides, so it must be in the first byte a crawler is served rather than in a
+ * streamed chunk that arrives after the fallback.
  */
 export default function DiscoverPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="mx-auto w-full max-w-[1400px] px-5 py-10 sm:px-6">
-          <DiscoverySkeleton />
-        </div>
-      }
-    >
-      <DiscoveryView />
-    </Suspense>
+    <>
+      <StructuredData nodes={discoverPageGraph()} />
+      <Suspense
+        fallback={
+          <div className="mx-auto w-full max-w-[1400px] px-5 py-10 sm:px-6">
+            <DiscoverySkeleton />
+          </div>
+        }
+      >
+        <DiscoveryView />
+      </Suspense>
+    </>
   );
 }
