@@ -783,7 +783,7 @@ Preferences are per category and per channel, with a digest option.
 | AD-11 | Fee configuration | Platform and processing rates, exceptions |
 | AD-12 | Feature flags | Gradual rollout, experiments |
 | AD-13 | Analytics | Volume, success rate, average pledge, cohorts, funnels |
-| AD-14 | Audit log | Immutable record of privileged actions |
+| AD-14 | Audit log | Immutable record of privileged actions. The record is built (#107, §7.2); the screen that reads it belongs to this epic |
 | AD-15 | Email templates | Edit, preview, test send |
 | AD-16 | System health | Queue depth, failed jobs, provider status |
 
@@ -1573,7 +1573,7 @@ by a database constraint and verified by a nightly reconciliation job.
 | `referrers` | Attribution |
 | `project_analytics_daily` | Pre-aggregated metrics |
 | `moderation_cases`, `reports` | Trust and safety |
-| `audit_logs` | Privileged actions |
+| `audit_logs` | Privileged actions (#107). Append-only in PostgreSQL rather than by convention: a statement-level `BEFORE UPDATE OR DELETE OR TRUNCATE` trigger raises `restrict_violation`, chosen over a rewrite rule — which would succeed silently — and over a revoked grant, which names a role the migration does not know, does not bind the owner, and does not survive a restore. Carries the actor and, for an impersonated action, whom they acted for; the entity, the outcome, the source address and user agent, and the correlation identifiers. The write is `Propagation.MANDATORY`, so the row and the change it describes are one commit and a failed audit takes the action with it. Deliberately **not** partitioned yet: a statement trigger on a partitioned parent does not fire for a statement aimed at a partition directly, so partitioning today would weaken the guarantee the table exists for |
 | `fee_schedules` | Configurable rates |
 | `outbox_events` | Transactional outbox (#135). One row per recorded event, written by the same transaction as the business change it describes — which is the whole of the guarantee: the commit that creates the pledge is the commit that creates the event, so neither can exist without the other. Carries the stable `id` a consumer deduplicates on, an `aggregate_type`/`aggregate_id` that is the ordering key and deliberately not a foreign key (an event stays true after its aggregate is deleted, and no single reference can point at four tables), the serialised `payload` as `text` rather than `jsonb` so a consumer receives the bytes the transaction committed, a database-assigned `sequence_no` that decides dispatch order, and `PENDING → PUBLISHED` or `PENDING → DEAD` with `attempts`, `next_attempt_at`, and `last_error`. A relay claims one row at a time with `FOR UPDATE SKIP LOCKED`, so replicas divide the queue rather than double-publishing, and will not dispatch an event while an earlier `PENDING` one for the same aggregate exists. Published rows are not swept yet |
 | `idempotency_keys` | Replay protection (#52). One row per `(account_id, idempotency_key)`, carrying the operation, a SHA-256 fingerprint of the request, and the status and exact bytes of the response the first attempt answered with. The row is inserted *before* the work as a claim — the unique index is what makes two identical requests arriving at once resolve to one — and completed with the response afterwards, in the same transaction as the work. Only successes are recorded; a refusal releases the key so that a client can retry it. Swept after §17.2's 24 hours |
@@ -1589,7 +1589,7 @@ by a database constraint and verified by a nightly reconciliation job.
 | Soft delete | Audit and recovery |
 | Selective denormalisation | Read performance; the ledger remains the source of truth |
 | **`cube` + `earthdistance`, not PostGIS** | Proximity search (#47). See below |
-| Monthly partitioning | `transactions`, `ledger_entries`, `audit_logs` |
+| Monthly partitioning | `transactions`, `ledger_entries`, `audit_logs` — none of them yet. For `audit_logs` it is how retention will ever remove a row at all, since `DELETE` is refused; see the row above for why that is a later change rather than the first one |
 | Read replica | Discovery and analytics |
 
 > **This table used to say PostGIS, and #47 changed it after building the
@@ -1774,6 +1774,30 @@ load profile).
 | `idempotency-key-cleaner` | Hourly | Remove idempotency keys past §17.2's 24-hour retention |
 | `outbox-relay` | Every second | Publish recorded events, in order within an aggregate |
 
+> **The scheduler underneath all of them is built (#134).** Every trigger in this
+> table now claims a lease in `scheduled_jobs` before it runs, so a job fires once
+> across the fleet rather than once per replica. The lease is a conditional
+> `UPDATE`, not `pg_advisory_lock`: an advisory lock's lifetime is a *pooled
+> connection's* rather than a run's, so a missed unlock survives until Hikari
+> retires the connection, and it records nothing while the table has to exist for
+> the retry state regardless.
+>
+> **Every replica still keeps its own timer.** A scheduler on one elected replica
+> is a single point of failure with an election to get wrong; a lease is the
+> cheaper answer to the same question. What the lease bounds is a holder that dies
+> mid-run — at most `ideanest.jobs.lock-lease`, a minute by default, which is
+> longer than any bounded pass below and short enough that a crash costs a minute
+> of one job. **The honest half of that trade:** a run that outlasts its lease is
+> joined by a second replica part-way through, so what still prevents a pledge
+> being expired twice is each job's own row-level claim, not the lease.
+>
+> Failures retry on the outbox's policy and in the outbox's vocabulary — five
+> seconds doubling to a ten-minute cap, `DEAD` after eight consecutive failures
+> with the last error kept — because two retry vocabularies in one codebase is one
+> too many. None of the five jobs below *needed* the lease for correctness: each
+> already claimed its own rows. What they gained is the retry accounting and the
+> end of N replicas doing the same reads to find the same nothing.
+
 > **`reminder-sender` is half built.** #39 implemented the launch half: it sweeps
 > every campaign that is `LIVE` and still owes somebody the notice they asked for,
 > claiming each row with a conditional update inside the transaction that sends,
@@ -1788,10 +1812,10 @@ load profile).
 > delivery correct, which is why a launch performed by `campaign-launcher` needs
 > no code of its own here.
 >
-> Both, like `account-anonymiser`, currently run on Spring's in-process
-> `@Scheduled` because the durable scheduler is #134. Every replica runs its own
-> timer; that is safe rather than merely tolerable, because the claim is a
-> conditional update and exactly one caller wins.
+> Both, like `account-anonymiser`, run on the durable scheduler since #134. They
+> were already safe on more than one replica rather than merely tolerable, because
+> the claim is a conditional update and exactly one caller wins; the lease removed
+> the redundant sweeps rather than a correctness problem.
 
 > **`reservation-cleaner` is built (#51), on the same terms.** It sweeps every
 > DRAFT pledge whose `reservation_expires_at` has passed, expiring the pledge and
@@ -1846,9 +1870,10 @@ load profile).
 >
 > A missed tick costs latency and never a message — the row stays `PENDING` until
 > some relay takes it — which is what makes an in-process timer adequate for
-> something this close to money. **When #134 lands, the trigger moves onto it and the
-> `@Scheduled` annotation goes**; the claim, the ordering, and the retry policy are
-> in the relay and do not change with the thing that calls it.
+> something this close to money. **#134 has since moved the trigger onto the durable
+> scheduler and the `@Scheduled` annotation is gone**; the claim, the ordering, and
+> the retry policy are in the relay and did not change with the thing that calls it,
+> which was the point of writing them there.
 
 ---
 
@@ -2427,7 +2452,7 @@ PUT    /v1/admin/collections/{slug}/projects/order
 | Idempotency | `Idempotency-Key` **required** on every payment mutation |
 | Pagination | Cursor based: `?cursor=&limit=`, response carries `nextCursor` |
 | Errors | RFC 9457 problem details |
-| Rate limiting | `X-RateLimit-*` headers |
+| Rate limiting | `X-RateLimit-Limit`, `-Remaining`, `-Reset` (seconds, matching `Retry-After`), and the IETF draft's `RateLimit` / `RateLimit-Policy` alongside them — on the allowed response as well as the refusal, so a client can slow down before it is refused. The policy is deliberately unnamed: naming the bucket that ran out would tell a caller that somebody else has been trying that email address |
 | Caching | `ETag` and `Cache-Control` on public reads |
 | Localisation | `Accept-Language` |
 | Dates | ISO 8601 in UTC |
@@ -2916,7 +2941,9 @@ notifies the API, which enqueues processing.
 | Rich text | **TipTap** |
 | Tables | **TanStack Table** |
 | Charts | **Recharts** |
-| Motion | **Motion** and **GSAP** |
+| Motion | **Motion** and **GSAP**, reached through `@ideanest/ui/motion` (#126) — a static re-export is followed whether or not the binding is used, so a barrel shipped the animation runtime to a checkout that animates nothing |
+| Fonts | **Inter**, self-hosted and subsetted to `latin` + `latin-ext` (#126). `latin-ext` is not optional: `ə`, `Ə`, `ğ`, `ş` and `İ` live in `U+0100-02BA` and a missing `ə` is a broken product in this market |
+| Structured data | Hand-written JSON-LD, one `@graph` per page (#121). No library — the whole sanitiser is escaping `<`, and a dependency in the critical path of every rendered page buys nothing for it |
 | Dates | **date-fns** with timezone support |
 | Money | **decimal.js** |
 | Internationalisation | **next-intl** |
@@ -3155,7 +3182,7 @@ a password sign-in returns.
 | `aud` | Must be one of our client identifiers. **The check most often left out**: Google issues valid tokens to every developer who asks, and this is what makes one ours rather than theirs |
 | `exp` | Checked, with a small clock skew |
 | Age | `iat` must be within `ideanest.auth.oauth.max-token-age` (5 minutes). Expiry is the provider's hour; a token from the sign-in happening now is seconds old |
-| `nonce` | Must equal the nonce the client bound its authorisation request to. Client-supplied for now, which binds the token to the request but does not prove freshness — server-issued nonces need shared storage (#134) |
+| `nonce` | Must equal the nonce the client bound its authorisation request to. Client-supplied for now, which binds the token to the request but does not prove freshness — server-issued nonces need shared storage, which #134 did not provide: it gave the fleet a lease table, not a key-value store |
 | Client assertions | None. The request carries a token and a nonce. Subject, address, and verification status are read out of the token after verification |
 | Configuration | `ideanest.auth.oauth.providers.*`. Client identifiers come from the environment; a provider without them is not enabled and its endpoint answers 501. A provider configured **in part** stops start-up |
 
@@ -3222,7 +3249,7 @@ Apple requires to revoke the token.
 | Cross-site request forgery | Same-site cookies plus a required custom header |
 | Insecure direct object reference | Ownership checked in a security layer, not in controllers |
 | Mass assignment | Explicit request DTOs; entities are never bound to input |
-| Rate limiting | Sign-in 5/15min per address; registration 5/15min per address and 3/15min per email; two-factor codes 5 per challenge and enrolment changes 10/15min per user; pledge 10/min per user; search 60/min |
+| Rate limiting | Sign-in 5/15min per address; registration 5/15min per address and 3/15min per email; two-factor codes 5 per challenge and enrolment changes 10/15min per user; pledge 10/min per user; search 60/min per address, spent by the feed, its facets and search together because all three run the same query; autocomplete 300/min per address, counted apart because a suggestion is one request per keystroke. **The counter is per replica (#142):** with three instances every number here is really three times itself. Closing that needs shared storage, which the platform still does not have — the durable scheduler (#134) gave the fleet a lease table, not a key-value store |
 | **Account enumeration** | Registration answers identically whether or not the address is known. The address itself is told which of the two happened |
 | Bot traffic | Challenge on registration and comment |
 | File upload | Magic-byte validation, size caps, served from a separate origin |
@@ -3316,8 +3343,8 @@ empty. Four decisions follow from that, and they are the ones worth stating:
 > **Open.** How long a reminder that has already been sent may be kept is a
 > retention question with the same legal answer as the financial records above,
 > and it does not have one yet. Until it does the rows stay, rather than being
-> purged to a guessed period; a retention job belongs with the durable scheduler
-> (#134).
+> purged to a guessed period. The durable scheduler (#134) is now there to run
+> such a job; what is missing is the answer it would enforce.
 
 ---
 
@@ -3410,6 +3437,7 @@ test-int      → Testcontainers: real PostgreSQL and Redis
 test-e2e      → Playwright (web), Maestro (mobile)
 security      → dependency scan, secret scan, static analysis
 build         → Gradle and Turborepo, both cached
+perf          → First Load JS against a committed budget per route (#124)
 migrate       → migration dry run against staging
 deploy        → main to staging automatically; tag to production with approval
 ```
