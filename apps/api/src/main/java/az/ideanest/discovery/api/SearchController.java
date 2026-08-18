@@ -7,6 +7,7 @@ import az.ideanest.discovery.application.UnknownFilterValueException;
 import az.ideanest.discovery.application.UnsupportedDiscoveryOptionException;
 import az.ideanest.discovery.domain.Suggestion;
 import az.ideanest.project.application.Taxonomy;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -62,6 +63,12 @@ import org.springframework.web.context.request.WebRequest;
  * see {@link PublicReads}. A search response holds nothing belonging to a person,
  * so it is {@code Cache-Control: public}; it varies with {@code Accept-Language}
  * because the facet labels and the suggestion labels do.
+ *
+ * <h2>Rate limiting</h2>
+ *
+ * <p>§17.3's "search 60/min", per address. {@code /v1/search} spends the same budget
+ * as {@code /v1/discover} and autocomplete spends a larger one of its own; {@link
+ * PublicReadLimits} says why.
  */
 @RestController
 public class SearchController {
@@ -79,9 +86,11 @@ public class SearchController {
     private static final long SUGGEST_MAX_AGE_SECONDS = 300;
 
     private final SearchService search;
+    private final PublicReadLimits limits;
 
-    public SearchController(SearchService search) {
+    public SearchController(SearchService search, PublicReadLimits limits) {
         this.search = search;
+        this.limits = limits;
     }
 
     /**
@@ -92,9 +101,12 @@ public class SearchController {
     @GetMapping("/v1/search")
     public ResponseEntity<DiscoveryResponses.Feed> search(
             WebRequest request,
+            HttpServletRequest httpRequest,
             HttpServletResponse response,
             @RequestHeader(value = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage,
             @RequestParam MultiValueMap<String, String> parameters) {
+
+        limits.countRead(httpRequest);
 
         String locale = Taxonomy.localeFor(acceptLanguage);
         DiscoveryQuery query = DiscoveryQueryBinder.bind(parameters, locale);
@@ -132,10 +144,13 @@ public class SearchController {
     @GetMapping("/v1/search/suggest")
     public ResponseEntity<DiscoveryResponses.Suggestions> suggest(
             WebRequest request,
+            HttpServletRequest httpRequest,
             HttpServletResponse response,
             @RequestHeader(value = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage,
             @RequestParam(value = "q", required = false) String text,
             @RequestParam(value = "limit", required = false) String limit) {
+
+        limits.countSuggestion(httpRequest);
 
         String locale = Taxonomy.localeFor(acceptLanguage);
         SuggestQuery query = new SuggestQuery(text, suggestLimit(limit), locale);

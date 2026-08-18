@@ -109,6 +109,49 @@ class InMemoryRateLimiterTests {
     }
 
     @Test
+    @DisplayName("a decision says how much of the budget is left")
+    void decisionsCarryTheRemainingAllowance() {
+        InMemoryRateLimiter limiter = new InMemoryRateLimiter(new MovableClock(START));
+
+        // Counted down rather than up, and never below zero, because this is the
+        // number a client is handed and asked to act on.
+        assertThat(limiter.recordAttempt("ip:1.2.3.4", 3, WINDOW).remaining()).isEqualTo(2);
+        assertThat(limiter.recordAttempt("ip:1.2.3.4", 3, WINDOW).remaining()).isEqualTo(1);
+        assertThat(limiter.recordAttempt("ip:1.2.3.4", 3, WINDOW).remaining()).isZero();
+        assertThat(limiter.recordAttempt("ip:1.2.3.4", 3, WINDOW).remaining()).isZero();
+    }
+
+    @Test
+    @DisplayName("a decision carries the policy it was made against")
+    void decisionsCarryTheirPolicy() {
+        InMemoryRateLimiter limiter = new InMemoryRateLimiter(new MovableClock(START));
+
+        RateLimitDecision decision = limiter.recordAttempt("ip:1.2.3.4", 3, WINDOW);
+
+        // So that whoever reports the limit reports the one that was applied,
+        // rather than reading a second copy of the configuration that may have
+        // been bound from somewhere else.
+        assertThat(decision.limit()).isEqualTo(3);
+        assertThat(decision.window()).isEqualTo(WINDOW);
+        assertThat(decision.resetAfter()).isEqualTo(WINDOW);
+    }
+
+    @Test
+    @DisplayName("the allowance grows back when the oldest attempt leaves the window")
+    void resetFollowsTheOldestAttempt() {
+        MovableClock clock = new MovableClock(START);
+        InMemoryRateLimiter limiter = new InMemoryRateLimiter(clock);
+
+        limiter.recordAttempt("ip:1.2.3.4", 3, WINDOW);
+        clock.advanceBy(Duration.ofMinutes(5));
+
+        // Not a full window from now: the first attempt has already served five
+        // of its fifteen minutes, and a client told to wait fifteen more would
+        // idle through ten minutes of allowance it already had.
+        assertThat(limiter.recordAttempt("ip:1.2.3.4", 3, WINDOW).resetAfter()).isEqualTo(Duration.ofMinutes(10));
+    }
+
+    @Test
     @DisplayName("attempts made while refused keep counting")
     void refusedAttemptsStillCount() {
         MovableClock clock = new MovableClock(START);

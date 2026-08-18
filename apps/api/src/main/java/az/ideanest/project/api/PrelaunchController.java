@@ -3,9 +3,9 @@ package az.ideanest.project.api;
 import az.ideanest.project.ProjectProperties;
 import az.ideanest.project.application.PrelaunchService;
 import az.ideanest.shared.EmailAddress;
-import az.ideanest.shared.ratelimit.RateLimitExceededException;
+import az.ideanest.shared.ratelimit.ClientAddress;
 import az.ideanest.shared.ratelimit.RateLimiter;
-import az.ideanest.shared.ratelimit.RateLimiter.RateLimitDecision;
+import az.ideanest.shared.ratelimit.RateLimits;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Duration;
 import java.util.UUID;
@@ -116,14 +116,14 @@ public class PrelaunchController {
             HttpServletRequest httpRequest) {
 
         ProjectProperties.Reminders limits = properties.reminders();
-        enforce(rateLimiter.recordAttempt(
-                "remind:ip:" + clientAddressOf(httpRequest), limits.signupsPerClient(), limits.window()));
+        RateLimits.enforce(rateLimiter.recordAttempt(
+                "remind:ip:" + ClientAddress.of(httpRequest), limits.signupsPerClient(), limits.window()));
 
         UUID accountId = accountOf(accessToken);
         EmailAddress email = accountId == null ? emailOf(request) : null;
 
         if (email != null) {
-            enforce(rateLimiter.recordAttempt(
+            RateLimits.enforce(rateLimiter.recordAttempt(
                     "remind:email:" + email.value(), limits.signupsPerAddress(), limits.window()));
         }
 
@@ -175,25 +175,5 @@ public class PrelaunchController {
         // the rate-limit key below is the same key for Person@Example.com and
         // person@example.com, which is the point of having one representation.
         return EmailAddress.of(request.email());
-    }
-
-    private static void enforce(RateLimitDecision decision) {
-        if (!decision.allowed()) {
-            throw new RateLimitExceededException(decision.retryAfter());
-        }
-    }
-
-    /**
-     * The remote address as the container saw it.
-     *
-     * <p>Deliberately not {@code X-Forwarded-For}, for the reason
-     * {@code AuthController} gives: trusting that header without a proxy in front
-     * means any client can pick its own rate-limit bucket by inventing one, which
-     * turns the limiter off. Behind a load balancer the correct fix is
-     * {@code server.forward-headers-strategy} (#139).
-     */
-    private static String clientAddressOf(HttpServletRequest request) {
-        String address = request.getRemoteAddr();
-        return address == null ? "unknown" : address;
     }
 }
