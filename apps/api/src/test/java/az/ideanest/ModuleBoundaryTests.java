@@ -32,6 +32,20 @@ class ModuleBoundaryTests {
      */
     private static final String SHARED = "shared";
 
+    /**
+     * The one class #236 is about: the enum that decides every capability check.
+     *
+     * <p>Named as a string rather than imported, so that the rule below cannot be
+     * satisfied by this test file moving with it.
+     */
+    private static final String CAPABILITY = "az.ideanest.project.domain.Capability";
+
+    /** Where the vocabulary is published, and the only sanctioned way to name one. */
+    private static final String PROJECT_CAPABILITY = "az.ideanest.shared.access.ProjectCapability";
+
+    /** Staff identity, published for the same reason and asked the same way. */
+    private static final String PLATFORM_STAFF = "az.ideanest.shared.access.PlatformStaff";
+
     private static final JavaClasses PRODUCTION_CLASSES = new ClassFileImporter()
             .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
             .importPackages(ROOT);
@@ -79,6 +93,36 @@ class ModuleBoundaryTests {
     }
 
     @Test
+    @DisplayName("no module names the project module's capability enum, and the contract is why they need not")
+    void capabilitiesCrossOnlyThroughTheSharedContract() {
+        // The rule that produced the defect #236 fixed, and it is kept. Four modules
+        // wanted a fine-grained permission check, could not name this enum, and each
+        // settled for the coarsest question the project module happened to publish —
+        // so a collaborator granted only EDIT_REWARDS could publish a project update
+        // and read the referral report. The answer is not to relax this; it is that
+        // the vocabulary is published separately, which the second half asserts.
+        noClasses()
+                .that()
+                .resideOutsideOfPackage("az.ideanest.project..")
+                .should()
+                .dependOnClassesThat()
+                .haveFullyQualifiedName(CAPABILITY)
+                .because("the capability vocabulary crosses as " + PROJECT_CAPABILITY + ", never as " + CAPABILITY)
+                .check(PRODUCTION_CLASSES);
+
+        // And the route is real rather than merely available: these are the four call
+        // sites of #236, and a regression to the coarse check drops the module out of
+        // this list rather than passing quietly.
+        assertThat(modulesNaming(PROJECT_CAPABILITY))
+                .withFailMessage(
+                        "A module stopped asking for a named capability. Expected reward, community and"
+                                + " analytics to name %s; found %s.",
+                        PROJECT_CAPABILITY, modulesNaming(PROJECT_CAPABILITY))
+                .contains("reward", "community", "analytics");
+        assertThat(modulesNaming(PLATFORM_STAFF)).contains("moderation");
+    }
+
+    @Test
     @DisplayName("domain does not depend on infrastructure or api")
     void domainStaysIndependentOfItsPlumbing() {
         // The rules of the business do not know they are stored in PostgreSQL or
@@ -99,6 +143,23 @@ class ModuleBoundaryTests {
         // Two modules that depend on each other are one module with a naming
         // convention, and neither can be extracted or reasoned about alone.
         slices().matching(ROOT + ".(*)..").should().beFreeOfCycles().check(PRODUCTION_CLASSES);
+    }
+
+    /** Which modules depend on a published contract type, by simple module name. */
+    private static List<String> modulesNaming(String contractType) {
+        List<String> modules = new ArrayList<>();
+        for (JavaClass source : PRODUCTION_CLASSES) {
+            String module = moduleOf(source.getPackageName());
+            if (module == null || SHARED.equals(module) || modules.contains(module)) {
+                continue;
+            }
+            boolean names = source.getDirectDependenciesFromSelf().stream()
+                    .anyMatch(dependency -> dependency.getTargetClass().getName().equals(contractType));
+            if (names) {
+                modules.add(module);
+            }
+        }
+        return modules;
     }
 
     /** The module a package belongs to, or null for the root package itself. */
