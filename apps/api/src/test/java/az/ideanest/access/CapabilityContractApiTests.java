@@ -299,9 +299,14 @@ class CapabilityContractApiTests extends AbstractIntegrationTest {
                 get("/v1/projects/" + project + "/referrers", analyst.accessToken());
 
         assertThat(report.getStatusCode()).isEqualTo(HttpStatus.OK);
-        // No attributions and therefore no currency and no total — "this campaign has
-        // taken nothing yet" rather than "this campaign has taken zero".
-        assertThat(report.getBody()).containsEntry("currency", null);
+        // A real report body rather than an empty one, so that "allowed" means the
+        // report was served and not merely that nothing refused it.
+        assertThat(((Number) report.getBody().get("pledgeCount")).longValue()).isZero();
+        assertThat((List<?>) report.getBody().get("sources")).isEmpty();
+        // No attributions and therefore no currency and no total. Absent, not null:
+        // ReferrerReportResponse is NON_NULL, so "this campaign has taken nothing yet"
+        // is said by omitting the fields — the shape ReferralApiTests already fixes.
+        assertThat(report.getBody()).doesNotContainKey("currency").doesNotContainKey("value");
     }
 
     // ------------------------------------------------------------------
