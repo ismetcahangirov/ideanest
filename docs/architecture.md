@@ -820,7 +820,7 @@ Preferences are per category and per channel, with a digest option.
 | # | Module | Capabilities |
 |---|---|---|
 | AD-01 | Project moderation | Queue, approve, reject, request changes, notes, history |
-| AD-02 | Trust and safety | Report queue, fraud signals, suspension |
+| AD-02 | Trust and safety | Report queue, fraud signals, suspension. Reporting and the queue are built (#102, §7.2's `content_reports`); fraud signals and suspension are not |
 | AD-03 | Curation | Editorial badges, collections, open calls, placement |
 | AD-04 | User management | Search, inspect, ban, verification status, audited impersonation |
 | AD-05 | Finance | Payment log, ledger, payout queue, approvals, disputes |
@@ -835,6 +835,39 @@ Preferences are per category and per channel, with a digest option.
 | AD-14 | Audit log | Immutable record of privileged actions. The record is built (#107, §7.2); the screen that reads it belongs to this epic |
 | AD-15 | Email templates | Edit, preview, test send |
 | AD-16 | System health | Queue depth, failed jobs, provider status |
+
+> **AD-02's intake and queue, as #102 built them.** Reporting is
+> `POST /v1/projects/{id}/report` (§10.2, C-06) and `POST /v1/users/{id}/report`
+> — the second is not in §10.2's list and is what AD-09's "profiles" and AD-04's
+> ban are decided from, since a complaint about a person filed against one of
+> their campaigns is filed against the wrong object. Both require a signed-in
+> account: duplicate suppression is unstateable without an identity to compare,
+> and the open-report count is the queue's only triage signal, so an
+> unauthenticated form would make that number one script's to choose. Both are
+> limited per account and per source address.
+>
+> The queue is `GET /v1/admin/moderation/reports` with
+> `?state=&after=&limit=`, plus `GET`, `POST …/{id}/uphold` and
+> `POST …/{id}/dismiss` on a single report. Staff-only through the same
+> configured moderator list AD-01 uses, because there is no role model until
+> epic #100 and two lists that can disagree about who is staff is worse than one
+> dependency that #100 deletes. Both resolutions are terminal and both are
+> written to `audit_logs` in the transaction that performs them — including the
+> dismissals, since "who dismissed the fourteen reports about this campaign" is
+> the question an investigation starts from.
+>
+> **Three things are deliberately absent.** `POST /v1/comments/{id}/report` is
+> in §10.2 and is not published, because §4.9's community module has not been
+> built: with no `comments` table an identifier cannot be checked and a
+> moderator would open a report with nothing behind it. `COMMENT` and
+> `PROJECT_UPDATE` are already in the taxonomy and in the table's check
+> constraint, so publishing that route later is a controller method rather than
+> a migration. **Deciding a report does not act on what was reported** — this
+> epic's suspension, AD-04's ban, and AD-09's removal are separate privileged
+> actions, and folding them in would mean a moderator could not agree with a
+> report without also taking somebody's funding down. And nothing is hidden
+> automatically on a report count: auto-hiding is the mechanism by which a
+> competitor removes a campaign with fifty free accounts.
 
 ### 4.12 Mobile-specific `[M]`
 
@@ -1621,7 +1654,7 @@ by a database constraint and verified by a nightly reconciliation job.
 | `media` | Metadata and transcoding state |
 | `referrers` | Attribution |
 | `project_analytics_daily` | Pre-aggregated metrics |
-| `moderation_cases`, `reports` | Trust and safety |
+| `content_reports` | Trust and safety (#102). **This row used to say `moderation_cases`, `reports`, and #102 renamed the second and did not build the first.** "Reports" already means something else three times over in this specification — CD-10's and PM-17's backer report, and §3.1's "view the backer report" — none of which is a moderation object, so a table called `reports` beside a backer report yet to be built is a table the first support query gets wrong. One row per complaint: what was reported as a `target_type`/`target_id` pair with **no foreign key**, for V19's and V21's reason about `aggregate_id` and `entity_id` — it names `projects` and `users` today and `comments` and `project_updates` when §4.9 exists, no single reference can point at four tables, and the consequence is the right one here: a report outlives what it was about, so a campaign hard deleted during an investigation cannot take the complaint with it. The reporter is never null, which is what makes duplicate suppression expressible at all; that suppression is a **unique index partial on `state = 'OPEN'`** rather than a service check, because a read-then-write loses the race between two taps and the open-report count is the queue's only triage signal. Partial rather than absolute so that a reporter whose complaint was dismissed in March can report the same campaign again in June — dropping that while showing them a success is the worst failure a safety feature has. `OPEN → UPHELD` or `DISMISSED`, both terminal, both audited. `moderation_cases` — grouping many reports about one target into one case — is **not built**: the queue answers the same question with a count per target, and a case table that nothing opens or closes is a join nobody needs yet |
 | `audit_logs` | Privileged actions (#107). Append-only in PostgreSQL rather than by convention: a statement-level `BEFORE UPDATE OR DELETE OR TRUNCATE` trigger raises `restrict_violation`, chosen over a rewrite rule — which would succeed silently — and over a revoked grant, which names a role the migration does not know, does not bind the owner, and does not survive a restore. Carries the actor and, for an impersonated action, whom they acted for; the entity, the outcome, the source address and user agent, and the correlation identifiers. The write is `Propagation.MANDATORY`, so the row and the change it describes are one commit and a failed audit takes the action with it. Deliberately **not** partitioned yet: a statement trigger on a partitioned parent does not fire for a statement aimed at a partition directly, so partitioning today would weaken the guarantee the table exists for |
 | `fee_schedules` | Configurable rates |
 | `outbox_events` | Transactional outbox (#135). One row per recorded event, written by the same transaction as the business change it describes — which is the whole of the guarantee: the commit that creates the pledge is the commit that creates the event, so neither can exist without the other. Carries the stable `id` a consumer deduplicates on, an `aggregate_type`/`aggregate_id` that is the ordering key and deliberately not a foreign key (an event stays true after its aggregate is deleted, and no single reference can point at four tables), the serialised `payload` as `text` rather than `jsonb` so a consumer receives the bytes the transaction committed, a database-assigned `sequence_no` that decides dispatch order, and `PENDING → PUBLISHED` or `PENDING → DEAD` with `attempts`, `next_attempt_at`, and `last_error`. A relay claims one row at a time with `FOR UPDATE SKIP LOCKED`, so replicas divide the queue rather than double-publishing, and will not dispatch an event while an earlier `PENDING` one for the same aggregate exists. Published rows are not swept yet |
