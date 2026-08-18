@@ -4,7 +4,8 @@ import az.ideanest.analytics.AnalyticsProperties;
 import az.ideanest.analytics.domain.ReferralShares;
 import az.ideanest.analytics.infrastructure.ReferralAttributionRepository;
 import az.ideanest.analytics.infrastructure.ReferralSourceTotal;
-import az.ideanest.project.application.ProjectAccess;
+import az.ideanest.shared.access.ProjectAuthorisation;
+import az.ideanest.shared.access.ProjectCapability;
 import az.ideanest.shared.money.Money;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -18,20 +19,19 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <h2>Who may read it</h2>
  *
- * <p>{@code ProjectAccess} decides, as it does for every other question about who may
- * act on a campaign, and this asks it through
- * {@link ProjectAccess#requireEditableLocks} — the creator, or a collaborator holding
- * any editing capability. The answer is discarded; only the refusal matters.
+ * <p>The project module decides, as it does for every other question about who may act
+ * on a campaign, and this asks it through {@link ProjectAuthorisation} for
+ * {@link ProjectCapability#VIEW_FINANCES} — the creator, or a collaborator the creator
+ * granted that one capability. Nothing comes back; only the refusal matters.
  *
- * <p><strong>The coarse check rather than a named capability, and that is a boundary
- * constraint rather than a preference.</strong> The right authority for a marketing
- * report is arguably {@code VIEW_FINANCES}, and this module cannot say so:
- * {@code Capability} lives in {@code project.domain}, and {@code ModuleBoundaryTests}
- * forbids naming it from here. {@code requireEditableLocks} exists precisely because
- * the reward module hit the same wall — it returns an application-layer type so that
- * an out-of-module caller can be authorised without seeing a domain one. Narrowing
- * this to a capability is a change inside the project module, and it is one line here
- * when that module offers a way to ask.
+ * <p><strong>It used to be the coarse "may this account edit this campaign at
+ * all".</strong> Not because that was the right authority — the report says what a
+ * campaign has raised and which channels brought it, which is exactly what
+ * {@code VIEW_FINANCES} is for — but because the deciding enum lives in
+ * {@code project.domain} and {@code ModuleBoundaryTests} rightly forbids naming it from
+ * here. #236 published the vocabulary as {@link ProjectCapability}, and the check
+ * became the one this module always wanted. A collaborator granted only
+ * {@code EDIT_REWARDS} could read this report until it did.
  *
  * <p>A stranger gets {@code ProjectNotFoundException} and a 404, which is
  * {@code ProjectAccess}' standing answer and is the right one here for an extra
@@ -47,12 +47,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ReferralReportService {
 
-    private final ProjectAccess projects;
+    private final ProjectAuthorisation projects;
     private final ReferralAttributionRepository attributions;
     private final AnalyticsProperties properties;
 
     public ReferralReportService(
-            ProjectAccess projects,
+            ProjectAuthorisation projects,
             ReferralAttributionRepository attributions,
             AnalyticsProperties properties) {
 
@@ -67,7 +67,8 @@ public class ReferralReportService {
      * @throws az.ideanest.project.application.ProjectNotFoundException for a campaign
      *     that does not exist and for one this account has no part in, identically
      * @throws az.ideanest.project.application.CapabilityNotGrantedException for a
-     *     collaborator who holds a grant but no editing capability
+     *     collaborator who holds a grant that does not include
+     *     {@link ProjectCapability#VIEW_FINANCES}
      * @throws az.ideanest.shared.money.CurrencyMismatchException if a campaign somehow
      *     holds attributions in two currencies. Deliberately not caught: there is no
      *     total that would be true, and a report that quietly reported one of the two
@@ -75,7 +76,7 @@ public class ReferralReportService {
      */
     @Transactional(readOnly = true)
     public ReferralReport of(UUID projectId, UUID accountId) {
-        projects.requireEditableLocks(projectId, accountId);
+        projects.requireCapability(projectId, accountId, ProjectCapability.VIEW_FINANCES);
 
         List<ReferralSourceTotal> rows = attributions.report(projectId);
         if (rows.isEmpty()) {

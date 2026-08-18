@@ -11,6 +11,7 @@ import az.ideanest.project.application.CapabilityNotGrantedException;
 import az.ideanest.project.application.ProjectAccess;
 import az.ideanest.project.application.ProjectNotFoundException;
 import az.ideanest.project.application.PublicProjects;
+import az.ideanest.shared.access.ProjectCapability;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -47,18 +48,23 @@ import org.springframework.transaction.annotation.Transactional;
  * say something now says it now — it becomes the next number, which is what a reader
  * expects of the newest post.
  *
- * <h2>Authorisation, and the one thing this release cannot ask</h2>
+ * <h2>Authorisation</h2>
  *
- * <p><strong>Writing</strong> goes through {@link ProjectAccess#requireEditable(UUID, UUID)}:
- * the creator, or a collaborator holding any editing capability. §7.2 defines a
- * {@code PUBLISH_UPDATES} capability and this is deliberately <em>not</em> asking for
- * it — the fine-grained form of that method takes a {@code Capability}, which lives in
- * the project module's {@code domain} package and is unreachable from here by
- * {@code ModuleBoundaryTests}. The reward module makes the same compromise for the same
- * reason ({@code RewardAccess}), which is why this matches it rather than inventing a
- * second convention. Closing it is a method on {@code ProjectAccess} that names the
- * capability and answers with something this module may hold; that is a change to
- * another module and is not in this issue.
+ * <p><strong>Writing</strong> asks for {@link ProjectCapability#PUBLISH_UPDATES} and
+ * for nothing else — §7.2's capability, named through the contract #236 published.
+ * Until that contract existed this asked the coarse "may this account edit this
+ * campaign at all", because the deciding enum lives in the project module's
+ * {@code domain} package and {@code ModuleBoundaryTests} rightly forbids naming it from
+ * here. The consequence was real rather than cosmetic: a collaborator invited to price
+ * reward tiers could make an announcement in the campaign's name to everybody following
+ * it, and no endpoint takes one back.
+ *
+ * <p><strong>Reading is a different question and stays coarse on purpose.</strong>
+ * {@link #isTeamMember} decides which updates a caller sees, not whether they may act,
+ * and the honest form of it is "does this account work on this campaign" — for which
+ * any editing capability is the right answer. Narrowing it to
+ * {@code PUBLISH_UPDATES} would hide a campaign's own scheduled updates from the person
+ * writing its story.
  *
  * <p><strong>Reading</strong> has two audiences and they are decided in one place,
  * {@link #audienceOf}. The campaign's own team sees every update including the ones
@@ -166,17 +172,17 @@ public class ProjectUpdateService {
      * @throws ProjectNotFoundException when there is no such campaign, and when this
      *     caller has no relationship to it — deliberately the same answer
      * @throws CapabilityNotGrantedException when the caller works on the campaign and
-     *     holds no editing capability
+     *     was not granted {@link ProjectCapability#PUBLISH_UPDATES}
      * @throws UpdateScheduleInvalidException when {@code publishAt} is in the past, too
      *     far away, or earlier than the newest update
      */
     @Transactional
     public ProjectUpdate publish(UUID projectId, UUID accountId, NewUpdate command) {
-        // Loading and checking are one call, so there is no way to reach the table
-        // without having been authorised for the campaign it belongs to. The campaign
-        // itself is discarded: it is another module's entity and this one may not name
-        // it, which ModuleBoundaryTests enforces.
-        access.requireEditable(projectId, accountId);
+        // Checked before the table is touched, so there is no way to write an update
+        // without having been authorised for the campaign it belongs to. Nothing comes
+        // back: the campaign is another module's entity and this one may not name it,
+        // which ModuleBoundaryTests enforces.
+        access.requireCapability(projectId, accountId, ProjectCapability.PUBLISH_UPDATES);
 
         Optional<ProjectUpdate> newest = updates.lockNewest(projectId);
         Instant publishAt = scheduleOf(command.publishAt(), newest);

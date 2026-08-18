@@ -16,9 +16,11 @@
  * whole job is triage.
  *
  * <p><strong>Who counts as staff is not decided here.</strong> There is no role
- * model until epic #100, so this module asks {@code project.application
- * .ModeratorDirectory} — the same configured list the campaign moderation endpoints
- * check — rather than keeping a second copy of it. Two lists that can disagree about
- * who is staff is a worse arrangement than one dependency that epic #100 deletes.
+ * model until epic #100, so this module asks {@code shared.access.PlatformStaff} —
+ * behind which is the same configured list the campaign moderation endpoints check —
+ * rather than keeping a second copy of it. Two lists that can disagree about who is
+ * staff is a worse arrangement than one dependency that epic #100 deletes. Asked
+ * through the contract rather than by naming the implementation, so that #100 replaces
+ * one class and no module notices.
  */
 package az.ideanest.moderation;

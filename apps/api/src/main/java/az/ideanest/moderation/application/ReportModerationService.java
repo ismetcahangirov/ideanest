@@ -8,8 +8,8 @@ import az.ideanest.moderation.domain.ContentReport;
 import az.ideanest.moderation.domain.ReportState;
 import az.ideanest.moderation.domain.TargetReportCount;
 import az.ideanest.moderation.infrastructure.ContentReportRepository;
-import az.ideanest.project.application.ModeratorDirectory;
 import az.ideanest.project.application.NotAModeratorException;
+import az.ideanest.shared.access.PlatformStaff;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,14 +29,19 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code AuditLog#record} is {@code MANDATORY} precisely so that "the report was
  * upheld and nobody recorded who upheld it" is not a state this code can reach.
  *
- * <p><strong>Who counts as staff is asked of the project module.</strong>
- * {@code ModeratorDirectory} is the configured address list that
- * {@code ProjectModerationController} already checks, and there is no role model to
- * replace it until epic #100. Keeping a second list here would be two answers to
- * "who is staff", which is the kind of disagreement nobody notices until one of the
- * two is out of date and somebody can decide reports and not campaigns. The
- * dependency is on that module's {@code application} layer, which is the boundary
- * {@code ModuleBoundaryTests} allows, and epic #100 deletes both call sites at once.
+ * <p><strong>Who counts as staff is asked through {@link PlatformStaff}.</strong> There
+ * is no role model until epic #100, and what stands in for one is the configured
+ * address list that {@code ProjectModerationController} already checks. Keeping a
+ * second list here would be two answers to "who is staff", which is the kind of
+ * disagreement nobody notices until one of the two is out of date and somebody can
+ * decide reports and not campaigns.
+ *
+ * <p>Asked through the contract in {@code shared.access} rather than by naming the
+ * project module's {@code ModeratorDirectory} directly, which is what this module did
+ * before #236. The dependency on that module's {@code application} layer was legal —
+ * it is the boundary {@code ModuleBoundaryTests} allows — but it was on a class, and
+ * epic #100 replaces the class. Depending on the question instead means #100 changes
+ * one file rather than every module that had to know who is staff.
  *
  * <p><strong>A decision is not an action.</strong> Upholding a report records that
  * the complaint was justified. It does not suspend the campaign, ban the account, or
@@ -48,13 +53,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class ReportModerationService {
 
     private final ContentReportRepository reports;
-    private final ModeratorDirectory moderators;
+    private final PlatformStaff staff;
     private final AuditLog audit;
 
-    public ReportModerationService(
-            ContentReportRepository reports, ModeratorDirectory moderators, AuditLog audit) {
+    public ReportModerationService(ContentReportRepository reports, PlatformStaff staff, AuditLog audit) {
         this.reports = reports;
-        this.moderators = moderators;
+        this.staff = staff;
         this.audit = audit;
     }
 
@@ -70,7 +74,7 @@ public class ReportModerationService {
      */
     @Transactional(readOnly = true)
     public ReportQueuePage queue(UUID moderatorId, ReportState state, UUID after, int limit) {
-        requireModerator(moderatorId);
+        staff.requireStaff(moderatorId);
 
         PageRequest page = PageRequest.ofSize(limit);
         List<ContentReport> rows =
@@ -111,7 +115,7 @@ public class ReportModerationService {
      */
     @Transactional
     public QueuedReport resolve(UUID reportId, UUID moderatorId, ReportState outcome, String note) {
-        requireModerator(moderatorId);
+        staff.requireStaff(moderatorId);
         if (!outcome.isResolution()) {
             // Unreachable from the two endpoints, which name the outcome themselves.
             // Here so that a third one cannot quietly re-open a decided report.
@@ -162,15 +166,9 @@ public class ReportModerationService {
      */
     @Transactional(readOnly = true)
     public QueuedReport report(UUID reportId, UUID moderatorId) {
-        requireModerator(moderatorId);
+        staff.requireStaff(moderatorId);
         ContentReport report = reports.findById(reportId).orElseThrow(() -> new ReportNotFoundException(reportId));
         return QueuedReport.of(report, openReportsOn(report));
-    }
-
-    private void requireModerator(UUID accountId) {
-        if (!moderators.isModerator(accountId)) {
-            throw new NotAModeratorException(accountId);
-        }
     }
 
     private static AuditAction actionFor(ReportState outcome) {
