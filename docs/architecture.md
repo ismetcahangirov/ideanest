@@ -728,6 +728,55 @@ The most valuable and most complex module. It begins when funding closes.
 | C-13 | Sharing, native sheet on mobile |
 | C-14 | Deep links opening the mobile app |
 
+> **Project updates are built (#83), and they are the only part of this section
+> that is.** §4.4's Updates tab and §4.7's CD-12 — numbered updates, public or
+> backers-only, with scheduling — behind §10.2's two endpoints and nothing else.
+> C-05, comments *on* an update, is not built and belongs with comments.
+>
+> **Scheduling is a timestamp, not a state machine and not a job.**
+> `project_updates.published_at` in the future is the whole of it: the public read
+> filters on `published_at <= now()`, so an update becomes visible at the instant
+> it was scheduled for, with no sweep in between and therefore no window in which a
+> scheduled update is late because a job did not fire. That is why §8.4 gains no
+> row here. What a timestamp cannot do is *send* anything at that moment: §4.10's
+> "new update published" needs the notification service (#85), and until it exists
+> a scheduled update appears on the page and nobody is told.
+>
+> **The number is stored, not derived.** "Update 7 said the moulds were late" is a
+> thing a person says to support six months later, so the number is allocated once
+> — `max + 1` per campaign, behind a lock on the newest row — and never recomputed.
+> A `row_number()` at read time would renumber every earlier update the first time
+> one was withdrawn. It also fixes the order: because the page is ordered by a
+> number allocated on insert, an update may not be scheduled *before* the one that
+> precedes it, or update 6 would appear a week after update 7.
+>
+> **`BACKERS_ONLY` is stored and enforced, and not yet against backers.** The
+> column, the write path and the public filter are all real; what is missing is the
+> question "has this account an active pledge on this campaign", which is a
+> statement about `pledges` that the pledge module's application layer does not
+> publish — `PublicBackers` counts backers and deliberately exposes none of them
+> (#209). Rather than reach into another module's tables, the read fails closed: a
+> backers-only update is withheld from everybody outside the campaign's team. That
+> is a promise kept too tightly, rather than the other failure, which cannot be
+> taken back. Closing it is one method on the pledge module's application layer and
+> one line in `ProjectUpdateService`.
+>
+> **Publishing is authorised as "may edit this campaign", not as
+> `PUBLISH_UPDATES`.** §7.2 defines that capability, and the fine-grained form of
+> `ProjectAccess` takes a `Capability`, which lives in the project module's `domain`
+> package and is unreachable from the community module by `ModuleBoundaryTests`.
+> The reward module makes the same compromise for the same reason, so this matches
+> it rather than inventing a second convention; closing it is a method on
+> `ProjectAccess` that names the capability and answers with a type another module
+> may hold.
+>
+> **There is no edit endpoint and no withdrawal.** §10.2 gives an update neither,
+> and the row is immutable to match: an update is a statement to people who have
+> already read it. Withdrawing one is AD-09's content moderation of updates, which
+> is not built — and it is why `project_updates` has no `deleted_at` yet. A
+> nullable column nothing writes and every read has to remember to filter on is a
+> trap rather than a policy.
+
 ### 4.10 Notifications
 
 | Event | Email | Push | In-app |
@@ -1559,7 +1608,7 @@ by a database constraint and verified by a nightly reconciliation job.
 | `collections`, `collection_translations`, `collection_projects` | Curation and open calls (#48). One row per list, one title and description per locale keyed by `(collection_id, locale)`, and membership carrying the curator's explicit `position` — a collection is an edited sequence, not a set |
 | `curation_events` | Append-only audit of every editorial decision: who added or removed what, from which collection, when, and why. Never updated, never deleted; neither foreign key cascades, so a curated campaign cannot be hard deleted and the record cannot be removed by removing what it was about |
 | `project_editorial_badges` *(view)* | The only definition of "editorially featured" (§3.2, §4.4, D-05). One row per campaign per badge-granting collection currently in force; read by `showOnly=featured`, by the card, and by §11.2's `w4` |
-| `project_updates` | Numbered updates |
+| `project_updates` | Numbered updates (#83). One row per post: a `number` allocated on insert as `max + 1` per campaign and never recomputed — it is what a link and a support conversation name — a `title` and a prose `body`, a `visibility` of `PUBLIC` or `BACKERS_ONLY`, the `author_id`, and a `published_at`. **`published_at` in the future is the whole of "scheduled"**: the public read filters on it, so there is no state column to fall out of step with it and no §8.4 job to be late. `body` is `text` rather than `jsonb` because nothing in §4.7's CD-12 gives an update the story's block editor, and storing an unvalidated document on a public page is the one thing §10.4 says not to do with creator content; the day updates gain that editor it becomes `jsonb` by an expand-then-contract pair. No `deleted_at` yet, deliberately — see §4.9 |
 | `comments` | Self-referencing threads |
 | `faqs` | Question and answer pairs |
 | `saves`, `follows` | Backer signals |
