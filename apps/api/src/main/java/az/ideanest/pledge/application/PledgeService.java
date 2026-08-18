@@ -5,11 +5,14 @@ import az.ideanest.pledge.domain.PledgeAddon;
 import az.ideanest.pledge.infrastructure.PledgeAddonRepository;
 import az.ideanest.pledge.infrastructure.PledgeRepository;
 import az.ideanest.project.application.PledgeAcceptance;
+import az.ideanest.shared.outbox.Outbox;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,14 +53,24 @@ import org.springframework.transaction.annotation.Transactional;
  * confirmation the card is verified and the verification is voided, no money moves,
  * and no ledger entry is written. Today not even the verification happens — see
  * {@link PledgeCapability#CARD_VERIFICATION}, which names the issue that owns it.
+ *
+ * <p><strong>{@link #confirm} is the one method here that announces anything</strong>
+ * (#235). It records {@link PledgeConfirmedEvent} through §8.3's outbox, in the
+ * transaction that performs the transition — see that method for why it is there and
+ * nowhere else. The draft, the edit and the cancellation announce nothing yet, and
+ * each is a separate piece of work with a consumer behind it rather than an event
+ * recorded because it would be symmetrical.
  */
 @Service
 public class PledgeService {
+
+    private static final Logger log = LoggerFactory.getLogger(PledgeService.class);
 
     private final ReservationService reservations;
     private final PledgeAcceptance acceptance;
     private final PledgeRepository pledges;
     private final PledgeAddonRepository addons;
+    private final Outbox outbox;
     private final Clock clock;
 
     public PledgeService(
@@ -65,11 +78,13 @@ public class PledgeService {
             PledgeAcceptance acceptance,
             PledgeRepository pledges,
             PledgeAddonRepository addons,
+            Outbox outbox,
             Clock clock) {
         this.reservations = reservations;
         this.acceptance = acceptance;
         this.pledges = pledges;
         this.addons = addons;
+        this.outbox = outbox;
         this.clock = clock;
     }
 
@@ -140,6 +155,28 @@ public class PledgeService {
      * it, and the response says {@code cardVerified: false} rather than letting a
      * client infer otherwise.
      *
+     * <p><strong>The third thing that happens, and it is the same transaction
+     * (#235).</strong> {@link PledgeConfirmedEvent} is recorded through §8.3's outbox,
+     * so the row that says the pledge is confirmed and the row that says so to
+     * everybody else are written by one commit. That is the entire reason the outbox
+     * exists — {@code Outbox} is {@code MANDATORY} precisely so that this cannot
+     * accidentally be recorded next to the transaction rather than inside it — and it
+     * is what makes a consumer's answer unable to disagree with the pledge it is
+     * about. Until this landed the pledge module announced nothing at all, and
+     * {@code analytics}' attribution listener, built and tested against a real
+     * outbox, saw no traffic in production.
+     *
+     * <p><strong>After the transition, and on the path that transitions.</strong>
+     * Before it, the event would describe a confirmation that the three refusals below
+     * may still prevent. And the two ways a confirmation is replayed both miss this
+     * line, which is what makes it record once per pledge rather than once per
+     * request: an ordinary retry carries the same {@code Idempotency-Key} and is
+     * answered by {@code shared.idempotency} without this method running at all, and a
+     * client that lost its key and sent a fresh one arrives at a pledge that is no
+     * longer a {@code DRAFT} and is refused above. Neither reaches here. The outbox's
+     * own delivery is separately at-least-once, which is the consumer's problem and is
+     * the contract {@code OutboxMessage} states.
+     *
      * @throws PledgeNotFoundException when the pledge is not this backer's
      * @throws PledgeNotDraftException when it is not in {@code DRAFT} — §10.4's
      *     {@code PLEDGE_NOT_DRAFT}
@@ -170,7 +207,23 @@ public class PledgeService {
         // was answered describe two different selections.
         List<PledgeAddon> heldAddons = addons.findByPledge(pledgeId);
 
-        return new PledgeDetail(reservations.confirm(pledge, heldAddons, now, paymentMethodId), heldAddons);
+        Pledge confirmed = reservations.confirm(pledge, heldAddons, now, paymentMethodId);
+
+        // In this transaction, which is the whole guarantee. The instant is read back
+        // off the row rather than taken from `now` again, so the event and
+        // `pledges.confirmed_at` cannot come to two answers about when this happened.
+        UUID eventId = outbox.record(
+                PledgeConfirmedEvent.AGGREGATE_TYPE,
+                confirmed.getId(),
+                PledgeConfirmedEvent.EVENT_TYPE,
+                PledgeConfirmedEvent.of(confirmed));
+
+        // The two identifiers together, which is what lets an incident be traced from
+        // a pledge to the event it produced and back. No amount and no backer: a log
+        // line about a pledge should not be a record of what somebody spent.
+        log.debug("Pledge {} confirmed; recorded outbox event {}.", confirmed.getId(), eventId);
+
+        return new PledgeDetail(confirmed, heldAddons);
     }
 
     /**
