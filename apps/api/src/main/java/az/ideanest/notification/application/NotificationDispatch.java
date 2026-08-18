@@ -128,13 +128,39 @@ public class NotificationDispatch {
      */
     @Transactional
     public Outcome sendNext(Instant now) {
+        return sendNext(now, senders);
+    }
+
+    /**
+     * The same, to a given set of channels.
+     *
+     * <p>{@code OutboxDispatch.dispatchNext} takes its target for this reason and it is
+     * the same one: a test about the retry policy needs a channel that refuses, and
+     * replacing the bean would replace it for the whole suite and split the context cache
+     * — which in this codebase means a second PostgreSQL container to prove something
+     * about backoff. Production calls the overload above and gets the injected senders.
+     *
+     * @param senders what to hand each channel's messages to. Must cover the channels the
+     *     queue can produce; a channel missing from it is a programming error rather than
+     *     a delivery failure, and is refused as one rather than counted as an attempt
+     */
+    @Transactional
+    public Outcome sendNext(Instant now, Map<NotificationChannel, ChannelSender> senders) {
         Notification notification = notifications.claimNext(now).orElse(null);
         if (notification == null) {
             return Outcome.NOTHING_TO_DO;
         }
 
+        ChannelSender sender = senders.get(notification.getChannel());
+        if (sender == null) {
+            // Not recordFailure: burning an attempt and eventually dead-lettering a
+            // person's notification because a caller passed an incomplete map would
+            // charge the recipient for the caller's mistake.
+            throw new IllegalStateException("No sender was given for " + notification.getChannel());
+        }
+
         try {
-            senders.get(notification.getChannel()).send(NotificationMessage.of(notification));
+            sender.send(NotificationMessage.of(notification));
         } catch (RuntimeException refused) {
             recordFailure(notification, now, refused);
             return Outcome.FAILED;
