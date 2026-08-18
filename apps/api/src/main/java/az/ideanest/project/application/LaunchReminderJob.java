@@ -1,10 +1,11 @@
 package az.ideanest.project.application;
 
+import az.ideanest.project.ProjectProperties;
+import az.ideanest.shared.jobs.ScheduledJob;
 import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
@@ -16,31 +17,35 @@ import org.springframework.stereotype.Component;
  * hours remaining" rows of §4.10, none of which exist. Writing half of it now
  * would be a job that looks finished.
  *
- * <p><strong>This belongs on the durable scheduler, not here.</strong> There is no
- * job queue yet (#134), so this is Spring's {@code @Scheduled}: an in-process
- * timer with no record of what it did, no retry, and no visibility. It is adequate
- * for the same reasons {@code AccountAnonymisationJob} is — the work is idempotent
- * and bounded — with one difference worth stating: this one is <em>not</em>
- * indifferent to running late. A launch notice that arrives an hour after the
- * campaign opened is a worse message than one that arrives in a minute, which is
- * why {@link LaunchReminderListener} exists beside it rather than instead of it.
- *
- * <p><strong>On more than one instance</strong> every replica runs this on its own
- * timer, so several will look for owed notices at once. That is safe rather than
- * merely tolerable: {@link LaunchReminderDelivery} claims each row with a
+ * <p><strong>On the durable scheduler since #134.</strong> The sweep did not need
+ * the lease to be correct — {@link LaunchReminderDelivery} claims each row with a
  * conditional update, so exactly one caller sends and the others find it already
- * done. The cost of not having a leader election is some duplicated reads, which
- * is the right trade against a lock nobody maintains.
+ * done — but it is the job where doing the work three times was most visible: every
+ * replica read the same list of campaigns owed notices, every minute, and two of
+ * them threw the answer away.
+ *
+ * <p>This one is <em>not</em> indifferent to running late. A launch notice that
+ * arrives an hour after the campaign opened is a worse message than one that arrives
+ * in a minute, which is why {@link LaunchReminderListener} exists beside it rather
+ * than instead of it — and why the lease is a minute rather than an hour.
  */
 @Component
-public class LaunchReminderJob {
+public class LaunchReminderJob implements ScheduledJob {
 
     private static final Logger log = LoggerFactory.getLogger(LaunchReminderJob.class);
 
     private final LaunchReminderSender sender;
+    private final ProjectProperties properties;
 
-    public LaunchReminderJob(LaunchReminderSender sender) {
+    public LaunchReminderJob(LaunchReminderSender sender, ProjectProperties properties) {
         this.sender = sender;
+        this.properties = properties;
+    }
+
+    /** §8.4's {@code reminder-sender}, in the half of it this job owns. */
+    @Override
+    public String name() {
+        return "reminder-sender";
     }
 
     /**
@@ -49,7 +54,12 @@ public class LaunchReminderJob {
      * background of a test suite is a source of failures that reproduce once a
      * fortnight — and this one would fire every minute.
      */
-    @Scheduled(cron = "${ideanest.project.reminders.send-schedule}", zone = "UTC")
+    @Override
+    public String schedule() {
+        return properties.reminders().sendSchedule();
+    }
+
+    @Override
     public void run() {
         sendDueReminders();
     }
