@@ -28,11 +28,13 @@
  * campaign's public facts come through the project module's application layer as
  * {@code PublicProjects} — because that is the only part of it another module may see.
  *
- * <p><strong>Nothing publishes {@code pledge.confirmed} yet</strong>, so attribution has
- * no traffic in production — and neither, therefore, does the rollup, which is derived
- * from it. {@code application.PledgeConfirmed} says what is missing, what the remaining
- * work is, and why it is not in #94. Both features are correct and unexercised, in that
- * order.
+ * <p><strong>{@code pledge.confirmed} is published as of #238</strong>, so both features
+ * carry traffic: a confirmed pledge produces an attribution, and the next scheduled pass
+ * rolls it into {@code project_analytics_daily}. This paragraph said the opposite until
+ * #238 landed — that nothing produced the event, and that both features were correct and
+ * unexercised in that order — which was true when #94 and #95 were written and stopped
+ * being true while #95 was open. {@code application.PledgeConfirmed} still carries the
+ * older note in its own header; that file belongs to #238.
  *
  * <p>The rest of §4.7 is not built and is not stubbed here: the device split, the
  * conversion rate, the per-tier sales, the geography. <strong>CD-09, new versus

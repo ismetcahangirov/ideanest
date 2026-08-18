@@ -34,12 +34,13 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * which asserts nothing. These tests write a few thousand rows across several campaigns
  * and {@code ANALYZE} them, so the plan that comes back is the one a real table produces.
  *
- * <p><strong>The writer is deliberately not covered.</strong> Its window predicate is
- * answered by {@code referral_attributions_pledged_at_idx}, and
- * {@code referral_attributions} is empty in every environment until
- * {@code pledge.confirmed} is published — there is nothing to plan against that would
- * mean anything. V27 records the intent; this covers the read, which is the half that has
- * rows and the half a creator waits on.
+ * <p><strong>The writer is not covered, and that is a gap rather than a decision.</strong>
+ * Its window predicate is answered by {@code referral_attributions_pledged_at_idx}, and
+ * covering it means filling that table the way this class fills the rollup. Worth doing;
+ * not done here because #238 has only just started publishing {@code pledge.confirmed},
+ * so what a real campaign's attributions look like spread over a window is a guess, and a
+ * plan test written against a guessed distribution asserts the guess. V27 records the
+ * intent. This covers the read, which is the half a creator waits on.
  */
 class AnalyticsAccessPathTests extends AbstractIntegrationTest {
 

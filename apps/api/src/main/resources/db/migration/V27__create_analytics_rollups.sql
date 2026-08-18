@@ -16,11 +16,12 @@
 --
 -- Two consequences, said plainly rather than discovered later:
 --
---   * **The rollup is empty until `pledge.confirmed` is published.** Nothing
---     produces that event yet — `analytics.application.PledgeConfirmed` says so
---     and says what the remaining work is — so this table has the same traffic
---     `referral_attributions` has, which is none. The aggregation is correct and
---     unexercised, in that order.
+--   * **The rollup carries whatever `referral_attributions` carries.** #238
+--     started publishing `pledge.confirmed`, so that is one row per confirmed
+--     pledge from the release before this one onwards, and this table aggregates
+--     it from the first scheduled pass. An earlier draft of this header said
+--     nothing produced the event and the rollup was therefore empty; that was
+--     true when it was written and is not true now.
 --   * **There is no new-versus-returning split here** (§4.7's CD-09), and there
 --     is nowhere to compute one from. `referral_attributions` carries no backer
 --     identifier *by design* — V24 spends a paragraph on why a creator's report
@@ -130,11 +131,19 @@
 -- deploy are safe in either order. This is an EXPAND with no contract half.
 --
 -- The two indexes are created without CONCURRENTLY, which is what Flyway's
--- transactional migration requires. That is free here and would not be later:
--- `referral_attributions` is empty in every environment because nothing publishes
--- `pledge.confirmed` yet, so the ACCESS EXCLUSIVE lock is taken on an empty table
--- for microseconds. An index added to this table after it carries traffic needs
--- CONCURRENTLY and therefore a migration that is not in a transaction.
+-- transactional migration requires, and that takes an ACCESS EXCLUSIVE lock on
+-- `referral_attributions` for as long as the build runs. An earlier draft of this
+-- header called that free on the grounds that the table was empty because nothing
+-- published `pledge.confirmed`. **#238 published it**, so the honest statement is
+-- that the table is *small* rather than empty: it gains one row per confirmed
+-- pledge, starting one release before this one, on a platform that has not
+-- launched. That is seconds of lock at the outside, and its only writer is an
+-- outbox relay that retries with a backoff, so a blocked insert is delayed rather
+-- than lost.
+--
+-- The consequence is for the next index rather than this one, and it is now real:
+-- once this table carries a campaign's worth of history, an index added to it
+-- needs CONCURRENTLY and therefore a migration that is not in a transaction.
 --
 -- Reverse:
 --   DROP TABLE IF EXISTS project_analytics_daily_channels;

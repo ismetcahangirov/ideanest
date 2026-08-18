@@ -5,7 +5,8 @@ import az.ideanest.analytics.domain.RollupWindow;
 import az.ideanest.analytics.infrastructure.DailyAnalyticsRow;
 import az.ideanest.analytics.infrastructure.DailyChannelRow;
 import az.ideanest.analytics.infrastructure.DailyRollupRepository;
-import az.ideanest.project.application.ProjectAccess;
+import az.ideanest.shared.access.ProjectAuthorisation;
+import az.ideanest.shared.access.ProjectCapability;
 import az.ideanest.shared.money.CurrencyMismatchException;
 import az.ideanest.shared.money.Money;
 import java.time.Clock;
@@ -28,15 +29,19 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <h2>Who may read it</h2>
  *
- * <p>{@link ProjectAccess#requireEditableLocks} — the creator, or a collaborator holding
- * any editing capability. <strong>The same check the referral report makes today, and
- * deliberately not a different one.</strong> The right authority for a campaign's money
- * is arguably {@code VIEW_FINANCES}, and this module cannot name it:
- * {@code Capability} lives in {@code project.domain} and {@code ModuleBoundaryTests}
- * forbids reaching for it from here, which is the wall {@code ReferralReportService}
- * documents at length. Narrowing both call sites together is one change inside the
- * project module and one line on each side of it; making this endpoint stricter than the
- * one next to it in the meantime would only mean two answers to one question.
+ * <p>{@link ProjectAuthorisation} for {@link ProjectCapability#VIEW_FINANCES} — the
+ * creator, or a collaborator the creator granted that capability. What a campaign has
+ * raised and when is the money, so it is the capability that names the money, and it is
+ * the same check the referral report next door makes.
+ *
+ * <p><strong>This used to be a coarser check, and the reason it was is gone.</strong>
+ * Until #236 there was no way for this module to name a capability at all — the deciding
+ * enum is {@code project.domain.Capability} and {@code ModuleBoundaryTests} forbids
+ * reaching into another module's {@code domain} — so both this endpoint and the referral
+ * report settled for "the creator, or a collaborator holding any editing capability",
+ * which meant a collaborator granted only {@code EDIT_REWARDS} could read a campaign's
+ * takings. #236 published the vocabulary as {@link ProjectCapability}; both call sites
+ * now ask the narrow question.
  *
  * <p>A stranger gets {@code ProjectNotFoundException} and a 404, for the reason the
  * referral report gives: what a campaign is raising and when is competitive information,
@@ -81,13 +86,13 @@ public class ProjectAnalyticsService {
      */
     private static final int MAX_DAYS = 366;
 
-    private final ProjectAccess projects;
+    private final ProjectAuthorisation projects;
     private final DailyRollupRepository rollups;
     private final AnalyticsAggregationProperties properties;
     private final Clock clock;
 
     public ProjectAnalyticsService(
-            ProjectAccess projects,
+            ProjectAuthorisation projects,
             DailyRollupRepository rollups,
             AnalyticsAggregationProperties properties,
             Clock clock) {
@@ -107,7 +112,7 @@ public class ProjectAnalyticsService {
      * @throws az.ideanest.project.application.ProjectNotFoundException for a campaign
      *     that does not exist and for one this account has no part in, identically
      * @throws az.ideanest.project.application.CapabilityNotGrantedException for a
-     *     collaborator who holds a grant but no editing capability
+     *     collaborator who holds a grant that does not include VIEW_FINANCES
      * @throws InvalidAnalyticsRangeException for a range that ends before it starts or is
      *     longer than {@link #MAX_DAYS} days
      * @throws az.ideanest.shared.money.CurrencyMismatchException if a campaign somehow
@@ -118,7 +123,7 @@ public class ProjectAnalyticsService {
      */
     @Transactional(readOnly = true)
     public ProjectAnalytics of(UUID projectId, UUID accountId, LocalDate from, LocalDate to) {
-        projects.requireEditableLocks(projectId, accountId);
+        projects.requireCapability(projectId, accountId, ProjectCapability.VIEW_FINANCES);
 
         ZoneId zone = properties.zone();
         LocalDate last = to == null ? RollupWindow.dayOf(clock.instant(), zone) : to;
