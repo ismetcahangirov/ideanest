@@ -3,6 +3,7 @@
   "sharedFirstLoadKib": 467,
   "routes": {
     "/_not-found": 467,
+    "/admin/moderation": 692,
     "/discover": 729,
     "/projects/[id]/back": 596,
     "/projects/[id]/edit": 467,

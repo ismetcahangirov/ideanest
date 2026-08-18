@@ -1,0 +1,487 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { ApiError } from '../../lib/api/problem';
+import type { QueuedReport, ReportQueuePage } from '../../lib/moderation/api';
+import { decideCampaign, getReport, listReports, resolveReport } from '../../lib/moderation/api';
+import { ModerationQueue } from './ModerationQueue';
+
+vi.mock('../../lib/moderation/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/moderation/api')>();
+  return {
+    ...actual,
+    listReports: vi.fn(),
+    getReport: vi.fn(),
+    resolveReport: vi.fn(),
+    decideCampaign: vi.fn(),
+  };
+});
+
+const listReportsMock = vi.mocked(listReports);
+const getReportMock = vi.mocked(getReport);
+const resolveReportMock = vi.mocked(resolveReport);
+const decideCampaignMock = vi.mocked(decideCampaign);
+
+const PROJECT_ID = 'a1b2c3d4-0000-4000-8000-000000000001';
+const ACCOUNT_ID = 'u9u8u7u6-0000-4000-8000-000000000002';
+
+function hoursAgo(hours: number): string {
+  return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+}
+
+const CAMPAIGN_REPORT: QueuedReport = {
+  id: 'report-campaign',
+  target: { type: 'PROJECT', id: PROJECT_ID },
+  openReportsOnTarget: 3,
+  reporterId: 'reporter-0001-aaaa',
+  reason: 'FRAUD',
+  detail: 'The prototype photographs are lifted from another campaign.',
+  state: 'OPEN',
+  createdAt: hoursAgo(72),
+};
+
+const ACCOUNT_REPORT: QueuedReport = {
+  id: 'report-account',
+  target: { type: 'USER', id: ACCOUNT_ID },
+  openReportsOnTarget: 1,
+  reporterId: 'reporter-0002-bbbb',
+  reason: 'SPAM',
+  state: 'OPEN',
+  createdAt: hoursAgo(2),
+};
+
+function page(reports: QueuedReport[], nextCursor?: string): ReportQueuePage {
+  return { state: reports[0]?.state ?? 'OPEN', reports, nextCursor: nextCursor ?? null };
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  listReportsMock.mockResolvedValue(page([CAMPAIGN_REPORT, ACCOUNT_REPORT]));
+});
+
+/**
+ * Appearance is reviewed in Storybook. These cover BEHAVIOUR and
+ * ACCESSIBILITY — the wiring that breaks silently and still ships. Every one of
+ * the five decisions here is privileged and irreversible, so the tests that
+ * matter most are the ones about a decision that did NOT go through.
+ */
+describe('ModerationQueue', () => {
+  describe('loading, empty and failure', () => {
+    it('announces that it is loading rather than showing a blank queue', () => {
+      listReportsMock.mockReturnValue(new Promise<ReportQueuePage>(() => {}));
+      render(<ModerationQueue />);
+
+      const label = screen.getByText('Loading the moderation queue');
+      expect(label.closest('[aria-busy]')).toHaveAttribute('aria-busy', 'true');
+    });
+
+    it('asks the service for the open reports first, because that is the queue', async () => {
+      render(<ModerationQueue />);
+      await screen.findByRole('heading', { name: /Open reports/ });
+
+      expect(listReportsMock).toHaveBeenCalledWith(expect.objectContaining({ state: 'OPEN' }));
+    });
+
+    it('says the queue is clear rather than showing nothing at all', async () => {
+      listReportsMock.mockResolvedValue(page([]));
+      render(<ModerationQueue />);
+
+      expect(await screen.findByText('The queue is clear')).toBeInTheDocument();
+    });
+
+    it('shows why a load failed and offers to try again', async () => {
+      const user = userEvent.setup();
+      listReportsMock.mockRejectedValueOnce(new TypeError('offline'));
+      render(<ModerationQueue />);
+
+      const alert = await screen.findByRole('alert');
+      expect(alert).toHaveTextContent('The service could not be reached');
+
+      listReportsMock.mockResolvedValue(page([ACCOUNT_REPORT]));
+      await user.click(screen.getByRole('button', { name: 'Try again' }));
+
+      expect(await screen.findByText('Spam')).toBeInTheDocument();
+    });
+
+    it('tells a signed-out browser to sign in instead of showing an empty queue', async () => {
+      listReportsMock.mockRejectedValue(new ApiError(401, null, 'You are not signed in.'));
+      render(<ModerationQueue />);
+
+      expect(await screen.findByText('You are signed out')).toBeInTheDocument();
+    });
+
+    it('tells a signed-in non-moderator that the queue is not theirs', async () => {
+      listReportsMock.mockRejectedValue(
+        new ApiError(403, { code: 'NOT_A_MODERATOR', detail: 'Staff only.' }),
+      );
+      render(<ModerationQueue />);
+
+      expect(await screen.findByText('Not a moderator')).toBeInTheDocument();
+    });
+  });
+
+  describe('the cards', () => {
+    it('names every action by what it does AND what it acts on', async () => {
+      render(<ModerationQueue />);
+      await screen.findByText('Fraud');
+
+      expect(
+        screen.getByRole('button', { name: 'Uphold the report about campaign a1b2c3d4' }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Dismiss the report about campaign a1b2c3d4' }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Uphold the report about account u9u8u7u6' }),
+      ).toBeInTheDocument();
+    });
+
+    it('offers the three campaign outcomes only for a report about a campaign', async () => {
+      render(<ModerationQueue />);
+      await screen.findByText('Fraud');
+
+      const campaign = screen.getByRole('group', { name: 'Act on campaign a1b2c3d4' });
+      expect(within(campaign).getByRole('button', { name: /^Approve/ })).toBeInTheDocument();
+      expect(within(campaign).getByRole('button', { name: /^Reject/ })).toBeInTheDocument();
+      expect(within(campaign).getByRole('button', { name: /^Request changes/ })).toBeInTheDocument();
+
+      expect(screen.queryByRole('group', { name: 'Act on account u9u8u7u6' })).toBeNull();
+    });
+
+    it('marks a report that has waited too long in words, not only in colour', async () => {
+      render(<ModerationQueue />);
+      await screen.findByText('Fraud');
+
+      // 72 hours old, past the 48-hour threshold; the 2-hour-old one is not.
+      expect(screen.getAllByText('Overdue')).toHaveLength(1);
+    });
+
+    it('shows the decision, who took it and when, for a report that is already resolved', async () => {
+      listReportsMock.mockResolvedValue(
+        page([
+          {
+            ...CAMPAIGN_REPORT,
+            state: 'UPHELD',
+            resolution: {
+              moderatorId: 'mod-1234-cccc',
+              at: '2026-08-14T09:30:00.000Z',
+              note: 'Confirmed against the original listing.',
+            },
+          },
+        ]),
+      );
+      render(<ModerationQueue />);
+
+      await screen.findByRole('heading', { name: 'Decision' });
+      expect(screen.getByText(/Upheld by moderator/)).toHaveTextContent('mod-1234');
+      expect(screen.getByText('Confirmed against the original listing.')).toBeInTheDocument();
+      // A decided report has no buttons that would decide it again.
+      expect(screen.queryByRole('button', { name: /^Uphold/ })).toBeNull();
+    });
+  });
+
+  describe('filters', () => {
+    it('asks the service again when the state changes, because only that is a server filter', async () => {
+      const user = userEvent.setup();
+      render(<ModerationQueue />);
+      await screen.findByText('Fraud');
+
+      expect(screen.getByRole('button', { name: 'Open' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+
+      listReportsMock.mockResolvedValue(page([]));
+      await user.click(screen.getByRole('button', { name: 'Upheld' }));
+
+      await waitFor(() => {
+        expect(listReportsMock).toHaveBeenLastCalledWith(
+          expect.objectContaining({ state: 'UPHELD' }),
+        );
+      });
+      expect(screen.getByRole('button', { name: 'Upheld' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    });
+
+    it('narrows what is already loaded without asking again, and says that is what it did', async () => {
+      const user = userEvent.setup();
+      render(<ModerationQueue />);
+      await screen.findByText('Fraud');
+
+      await user.click(screen.getByRole('button', { name: 'Accounts' }));
+
+      expect(screen.queryByText('Fraud')).toBeNull();
+      expect(screen.getByText('Spam')).toBeInTheDocument();
+      expect(screen.getByText(/Showing 1 report of the 2 loaded so far/)).toBeInTheDocument();
+      expect(listReportsMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('explains an empty result that a filter caused rather than claiming the queue is clear', async () => {
+      const user = userEvent.setup();
+      render(<ModerationQueue />);
+      await screen.findByText('Fraud');
+
+      await user.click(screen.getByRole('button', { name: 'Open over 48 hours' }));
+      await user.click(screen.getByRole('button', { name: 'More than one report' }));
+      await user.click(screen.getByRole('button', { name: 'Accounts' }));
+
+      expect(screen.getByText('Nothing matches these filters')).toBeInTheDocument();
+    });
+  });
+
+  describe('paging', () => {
+    it('appends the next page instead of replacing what is on screen', async () => {
+      const user = userEvent.setup();
+      listReportsMock.mockResolvedValueOnce(page([CAMPAIGN_REPORT], 'cursor-2'));
+      render(<ModerationQueue />);
+      await screen.findByText('Fraud');
+
+      listReportsMock.mockResolvedValueOnce(page([ACCOUNT_REPORT]));
+      await user.click(screen.getByRole('button', { name: 'Load more' }));
+
+      expect(await screen.findByText('Spam')).toBeInTheDocument();
+      expect(screen.getByText('Fraud')).toBeInTheDocument();
+      expect(listReportsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ after: 'cursor-2' }),
+      );
+      await waitFor(() => {
+        expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
+      });
+    });
+  });
+
+  describe('deciding a report', () => {
+    it('confirms before it commits, and sends the note the moderator wrote', async () => {
+      const user = userEvent.setup();
+      resolveReportMock.mockResolvedValue({
+        ...CAMPAIGN_REPORT,
+        state: 'UPHELD',
+        resolution: { moderatorId: 'me', at: new Date().toISOString(), note: 'Verified.' },
+      });
+      render(<ModerationQueue />);
+      await screen.findByText('Fraud');
+
+      await user.click(
+        screen.getByRole('button', { name: 'Uphold the report about campaign a1b2c3d4' }),
+      );
+
+      const dialog = await screen.findByRole('dialog');
+      expect(within(dialog).getByText(/cannot be undone/)).toBeInTheDocument();
+      expect(resolveReportMock).not.toHaveBeenCalled();
+
+      await user.type(within(dialog).getByRole('textbox', { name: 'Note' }), 'Verified.');
+      await user.click(within(dialog).getByRole('button', { name: 'Uphold report' }));
+
+      await waitFor(() => {
+        expect(resolveReportMock).toHaveBeenCalledWith('report-campaign', 'uphold', 'Verified.');
+      });
+    });
+
+    it('takes the decided report out of the open queue and says so politely', async () => {
+      const user = userEvent.setup();
+      resolveReportMock.mockResolvedValue({
+        ...CAMPAIGN_REPORT,
+        state: 'DISMISSED',
+        resolution: { moderatorId: 'me', at: new Date().toISOString() },
+      });
+      render(<ModerationQueue />);
+      await screen.findByText('Fraud');
+
+      await user.click(
+        screen.getByRole('button', { name: 'Dismiss the report about campaign a1b2c3d4' }),
+      );
+      await user.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Dismiss report' }),
+      );
+
+      await waitFor(() => expect(screen.queryByText('Fraud')).toBeNull());
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Dismissed the report about campaign a1b2c3d4.',
+      );
+      // An optional note left blank is absent, not an empty string.
+      expect(resolveReportMock).toHaveBeenCalledWith('report-campaign', 'dismiss', null);
+    });
+
+    it('keeps the row and shows the reason when the service refuses', async () => {
+      const user = userEvent.setup();
+      resolveReportMock.mockRejectedValue(
+        new ApiError(500, { title: 'Something broke', detail: 'The decision was not saved.' }),
+      );
+      render(<ModerationQueue />);
+      await screen.findByText('Fraud');
+
+      await user.click(
+        screen.getByRole('button', { name: 'Uphold the report about campaign a1b2c3d4' }),
+      );
+      const dialog = await screen.findByRole('dialog');
+      await user.click(within(dialog).getByRole('button', { name: 'Uphold report' }));
+
+      expect(await within(dialog).findByText('The decision was not saved.')).toBeInTheDocument();
+      // Nothing was removed, and nothing claims to have succeeded.
+      expect(screen.getByText('Fraud')).toBeInTheDocument();
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    it('corrects itself visibly when another moderator decided first', async () => {
+      const user = userEvent.setup();
+      resolveReportMock.mockRejectedValue(
+        new ApiError(409, {
+          code: 'REPORT_ALREADY_RESOLVED',
+          detail: 'That report has already been upheld.',
+          meta: { state: 'UPHELD', allowed: [] },
+        }),
+      );
+      getReportMock.mockResolvedValue({
+        ...CAMPAIGN_REPORT,
+        state: 'UPHELD',
+        resolution: { moderatorId: 'someone-else', at: new Date().toISOString() },
+      });
+      render(<ModerationQueue />);
+      await screen.findByText('Fraud');
+
+      await user.click(
+        screen.getByRole('button', { name: 'Uphold the report about campaign a1b2c3d4' }),
+      );
+      await user.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Uphold report' }),
+      );
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      expect(getReportMock).toHaveBeenCalledWith('report-campaign');
+      // It left the OPEN queue, and the queue said why rather than going quiet.
+      expect(screen.queryByText('Fraud')).toBeNull();
+      expect(screen.getByRole('alert')).toHaveTextContent('Somebody else decided this report');
+    });
+  });
+
+  describe('deciding the campaign', () => {
+    it('will not send a rejection with no reason on it', async () => {
+      const user = userEvent.setup();
+      render(<ModerationQueue />);
+      await screen.findByText('Fraud');
+
+      await user.click(screen.getByRole('button', { name: 'Reject for campaign a1b2c3d4' }));
+      const dialog = await screen.findByRole('dialog');
+      await user.click(within(dialog).getByRole('button', { name: 'Reject campaign' }));
+
+      expect(decideCampaignMock).not.toHaveBeenCalled();
+      const note = within(dialog).getByRole('textbox', { name: 'Why' });
+      expect(note).toHaveAttribute('aria-invalid', 'true');
+      expect(within(dialog).getByText(/Say why/)).toBeInTheDocument();
+    });
+
+    it('sends the campaign back with the note, and says the report is still open', async () => {
+      const user = userEvent.setup();
+      decideCampaignMock.mockResolvedValue({
+        id: PROJECT_ID,
+        slug: 'a-campaign',
+        state: 'CHANGES_REQUESTED',
+        title: 'A campaign',
+      });
+      render(<ModerationQueue />);
+      await screen.findByText('Fraud');
+
+      await user.click(
+        screen.getByRole('button', { name: 'Request changes for campaign a1b2c3d4' }),
+      );
+      const dialog = await screen.findByRole('dialog');
+      await user.type(
+        within(dialog).getByRole('textbox', { name: 'What has to change' }),
+        'Replace the prototype photographs.',
+      );
+      await user.click(within(dialog).getByRole('button', { name: 'Request changes' }));
+
+      await waitFor(() => {
+        expect(decideCampaignMock).toHaveBeenCalledWith(
+          PROJECT_ID,
+          'request-changes',
+          'Replace the prototype photographs.',
+        );
+      });
+      expect(screen.getByRole('status')).toHaveTextContent('is now changes requested');
+      expect(screen.getByRole('status')).toHaveTextContent('The report is still open');
+      // The complaint was not decided by this, so its buttons are still there.
+      expect(
+        screen.getByRole('button', { name: 'Uphold the report about campaign a1b2c3d4' }),
+      ).toBeInTheDocument();
+    });
+
+    it('explains a transition the campaign’s state does not allow', async () => {
+      const user = userEvent.setup();
+      decideCampaignMock.mockRejectedValue(
+        new ApiError(409, {
+          code: 'PROJECT_TRANSITION_NOT_ALLOWED',
+          detail: 'Not allowed.',
+          meta: { state: 'LIVE', allowed: [] },
+        }),
+      );
+      render(<ModerationQueue />);
+      await screen.findByText('Fraud');
+
+      await user.click(screen.getByRole('button', { name: 'Approve for campaign a1b2c3d4' }));
+      const dialog = await screen.findByRole('dialog');
+      await user.click(within(dialog).getByRole('button', { name: 'Approve campaign' }));
+
+      expect(await within(dialog).findByText(/That campaign is live/)).toBeInTheDocument();
+    });
+  });
+
+  describe('keyboard and focus', () => {
+    it('reaches an action by Tab alone and fires it with Enter', async () => {
+      const user = userEvent.setup();
+      listReportsMock.mockResolvedValue(page([ACCOUNT_REPORT]));
+      render(<ModerationQueue />);
+      await screen.findByText('Spam');
+
+      const uphold = screen.getByRole('button', {
+        name: 'Uphold the report about account u9u8u7u6',
+      });
+
+      uphold.focus();
+      expect(uphold).toHaveFocus();
+      await user.keyboard('{Enter}');
+
+      expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    });
+
+    it('moves focus somewhere that still exists when the card it came from is gone', async () => {
+      const user = userEvent.setup();
+      resolveReportMock.mockResolvedValue({
+        ...ACCOUNT_REPORT,
+        state: 'UPHELD',
+        resolution: { moderatorId: 'me', at: new Date().toISOString() },
+      });
+      listReportsMock.mockResolvedValue(page([ACCOUNT_REPORT]));
+      render(<ModerationQueue />);
+      await screen.findByText('Spam');
+
+      await user.click(
+        screen.getByRole('button', { name: 'Uphold the report about account u9u8u7u6' }),
+      );
+      await user.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Uphold report' }),
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: /Open reports/ })).toHaveFocus();
+      });
+    });
+
+    it('lets Escape out of a decision without taking it', async () => {
+      const user = userEvent.setup();
+      render(<ModerationQueue />);
+      await screen.findByText('Fraud');
+
+      await user.click(
+        screen.getByRole('button', { name: 'Uphold the report about campaign a1b2c3d4' }),
+      );
+      await screen.findByRole('dialog');
+      await user.keyboard('{Escape}');
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      expect(resolveReportMock).not.toHaveBeenCalled();
+    });
+  });
+});

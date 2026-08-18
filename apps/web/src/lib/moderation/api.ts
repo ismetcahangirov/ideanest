@@ -1,0 +1,246 @@
+import { authorizedFetch } from '../api/client';
+import { errorFrom } from '../api/problem';
+import type { ProjectState } from '../projects/api';
+
+/**
+ * ONE MODULE, ONE PLACE for everything the moderation queue asks the service.
+ *
+ * The screen behind this reaches TWO controllers, and the split is not
+ * cosmetic. `ReportQueueController` owns the complaint — the queue, and the two
+ * terminal outcomes a moderator can record about it. `ProjectModerationController`
+ * owns the campaign's state machine, and its three outcomes are what
+ * docs/architecture.md §4.11 calls AD-01. Deciding a report deliberately does not
+ * act on what was reported (AD-02's own note says so), so a moderator who agrees
+ * with a complaint and a moderator who takes a campaign down are performing two
+ * requests, and this module keeps them two functions.
+ *
+ * `GET /v1/admin/moderation/queue` — the campaign review queue §10.2 lists — is
+ * NOT implemented in the service. The three campaign outcomes exist and are
+ * reachable by project id, but nothing lists the campaigns awaiting review, so
+ * they are offered here from a report about a campaign and from nowhere else.
+ */
+
+const JSON_HEADERS = { 'Content-Type': 'application/json' } as const;
+
+/* -------------------------------------------------------------------------
+ * The complaint — `/v1/admin/moderation/reports`
+ * ---------------------------------------------------------------------- */
+
+/**
+ * `OPEN` is the queue. The other two are how a decision is looked up afterwards,
+ * which is what makes them this screen's history rather than a second feature.
+ */
+export type ReportState = 'OPEN' | 'UPHELD' | 'DISMISSED';
+
+export const REPORT_STATES: readonly ReportState[] = ['OPEN', 'UPHELD', 'DISMISSED'];
+
+/**
+ * All four are in the service's taxonomy and in V23's check constraint; only
+ * `PROJECT` and `USER` have a route that can produce one today. The other two
+ * are here because the queue will serve them the day §4.9's community module
+ * lands, and a client that crashes on an unknown string is worse than one that
+ * renders it.
+ */
+export type ReportTargetType = 'PROJECT' | 'PROJECT_UPDATE' | 'COMMENT' | 'USER';
+
+export type ReportReason =
+  | 'PROHIBITED_ITEM'
+  | 'MISREPRESENTATION'
+  | 'NOT_ORIGINAL'
+  | 'INTELLECTUAL_PROPERTY'
+  | 'OFFENSIVE'
+  | 'DISCRIMINATION'
+  | 'SPAM'
+  | 'FRAUD'
+  | 'OTHER';
+
+/** What was reported. No foreign key behind it, so the id may outlive the thing. */
+export interface ReportTarget {
+  type: ReportTargetType;
+  id: string;
+}
+
+/**
+ * Who decided it, when, and what they wrote — the audited record, read back
+ * rather than reconstructed here.
+ *
+ * `moderatorId` is an account id and not a name. There is no endpoint that turns
+ * one into a person, so this screen shows the identifier and says that is what
+ * it is.
+ */
+export interface ReportResolution {
+  moderatorId: string;
+  /** ISO-8601 instant, UTC. */
+  at: string;
+  note?: string | null;
+}
+
+/**
+ * A report as the queue shows it to staff.
+ *
+ * Optional fields are `?: T | null` because the service serialises with
+ * `default-property-inclusion: non_null` — an absent note is absent from the
+ * JSON rather than present and null.
+ */
+export interface QueuedReport {
+  id: string;
+  target: ReportTarget;
+  /**
+   * The queue's only triage signal. One complaint about a campaign and fourteen
+   * are different situations, and the service says as much.
+   */
+  openReportsOnTarget: number;
+  reporterId: string;
+  reason: ReportReason;
+  /** What the reporter wrote. Untrusted, so only ever rendered as text. */
+  detail?: string | null;
+  state: ReportState;
+  /** ISO-8601 instant, UTC. */
+  createdAt: string;
+  /** Absent while the report is open — which is what the action row is rendered from. */
+  resolution?: ReportResolution | null;
+}
+
+export interface ReportQueuePage {
+  /** Echoed by the service so a stale response cannot be filed under the wrong filter. */
+  state: ReportState;
+  reports: QueuedReport[];
+  /**
+   * Absent on the last page. KEYSET, not an offset: a moderator working the
+   * queue removes rows from it as they go, and an offset against a shifting set
+   * skips reports. A short page is therefore not the end of the queue — only
+   * the absence of this is.
+   */
+  nextCursor?: string | null;
+}
+
+/**
+ * Under the service's default page (50) and well under its maximum (200).
+ *
+ * A triage screen is read top to bottom, and a first paint holding fifty cards
+ * is fifty cards nobody has looked at yet.
+ */
+export const QUEUE_PAGE_SIZE = 25;
+
+export interface QueueRequest {
+  state: ReportState;
+  /** The previous page's `nextCursor`. */
+  after?: string | null;
+  limit?: number;
+  signal?: AbortSignal;
+}
+
+export function queueQuery(request: QueueRequest): string {
+  const params = new URLSearchParams();
+  params.set('state', request.state);
+  params.set('limit', String(request.limit ?? QUEUE_PAGE_SIZE));
+  if (request.after != null && request.after !== '') params.set('after', request.after);
+  return params.toString();
+}
+
+/** One page of the queue, oldest first, for the state asked for. */
+export async function listReports(request: QueueRequest): Promise<ReportQueuePage> {
+  const response = await authorizedFetch(`/v1/admin/moderation/reports?${queueQuery(request)}`, {
+    signal: request.signal,
+  });
+  if (!response.ok) throw await errorFrom(response);
+
+  return (await response.json()) as ReportQueuePage;
+}
+
+/**
+ * One report, for correcting a single card rather than reloading the queue.
+ *
+ * This is what a `409 REPORT_ALREADY_RESOLVED` is answered with: two moderators
+ * with the same queue open is the ordinary way to reach that refusal, and the
+ * honest response is to show what the other one decided.
+ */
+export async function getReport(id: string, signal?: AbortSignal): Promise<QueuedReport> {
+  const response = await authorizedFetch(
+    `/v1/admin/moderation/reports/${encodeURIComponent(id)}`,
+    { signal },
+  );
+  if (!response.ok) throw await errorFrom(response);
+
+  return (await response.json()) as QueuedReport;
+}
+
+/** The service's verbs, spelled the way the path spells them. */
+export type ReportOutcome = 'uphold' | 'dismiss';
+
+/**
+ * Records a judgement about the complaint. Terminal, and audited.
+ *
+ * The note is optional for both, because nothing in this release shows a
+ * resolution note to the person who made the report — it is written for the next
+ * moderator.
+ */
+export async function resolveReport(
+  id: string,
+  outcome: ReportOutcome,
+  note: string | null,
+  signal?: AbortSignal,
+): Promise<QueuedReport> {
+  const response = await authorizedFetch(
+    `/v1/admin/moderation/reports/${encodeURIComponent(id)}/${outcome}`,
+    { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ note }), signal },
+  );
+  if (!response.ok) throw await errorFrom(response);
+
+  return (await response.json()) as QueuedReport;
+}
+
+/* -------------------------------------------------------------------------
+ * The campaign — `/v1/admin/moderation/{id}`
+ * ---------------------------------------------------------------------- */
+
+/** AD-01's three outcomes, spelled the way the paths spell them. */
+export type CampaignOutcome = 'approve' | 'reject' | 'request-changes';
+
+/**
+ * Whether the service will refuse an outcome for want of a note.
+ *
+ * A rejection and a request for changes are shown to the creator and have to say
+ * why; an approval need not. Checked here as well as in the service so that a
+ * moderator is told before the request rather than by a 400 after it.
+ */
+export function requiresNote(outcome: CampaignOutcome): boolean {
+  return outcome !== 'approve';
+}
+
+/**
+ * What this screen reads out of the editor projection the three endpoints return.
+ *
+ * Narrower than `ProjectEdit` on purpose: a moderation queue has no business
+ * holding a campaign's story document, and a type that named every field would
+ * have to be kept in step with an editor this screen does not open.
+ */
+export interface CampaignDecision {
+  id: string;
+  slug: string;
+  state: ProjectState;
+  title: string;
+}
+
+/**
+ * Moves the campaign's state machine. A separate privileged action from
+ * deciding the report, and it does not touch the report at all.
+ *
+ * Refused with `409 PROJECT_TRANSITION_NOT_ALLOWED` when the campaign is not in
+ * a state the outcome can be reached from — a report about a campaign that is
+ * already live, for instance. The refusal carries the state it is actually in.
+ */
+export async function decideCampaign(
+  projectId: string,
+  outcome: CampaignOutcome,
+  note: string | null,
+  signal?: AbortSignal,
+): Promise<CampaignDecision> {
+  const response = await authorizedFetch(
+    `/v1/admin/moderation/${encodeURIComponent(projectId)}/${outcome}`,
+    { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ note }), signal },
+  );
+  if (!response.ok) throw await errorFrom(response);
+
+  return (await response.json()) as CampaignDecision;
+}
