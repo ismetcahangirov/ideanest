@@ -2,6 +2,7 @@ package az.ideanest.pledge.application;
 
 import az.ideanest.pledge.PledgeProperties;
 import az.ideanest.pledge.infrastructure.PledgeRepository;
+import az.ideanest.shared.jobs.ScheduledJob;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -10,7 +11,6 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
@@ -24,25 +24,21 @@ import org.springframework.stereotype.Component;
  * for it, and it buys something back: an expired reservation is a row with a state
  * and a history rather than a key that silently stopped existing.
  *
- * <p><strong>This belongs on the durable scheduler, not here.</strong> There is no
- * job queue yet (#134), so this is Spring's {@code @Scheduled}: an in-process timer
- * with no record of what it did, no retry, and no visibility. It is adequate for
- * the same reasons {@code AccountAnonymisationJob} and {@code LaunchReminderJob}
- * are — the work is idempotent and bounded — with one difference worth stating: a
- * minute late here is a minute in which a limited tier looks sold out while a place
- * is actually free. That is a lost sale rather than a wrong one, which is why a
- * timer is tolerable for it and would not be for anything that moves money. When
- * #134 lands this becomes a durable job and the annotation goes.
+ * <p><strong>On the durable scheduler since #134</strong>, which means the trigger
+ * claims a lease and exactly one replica sweeps. This job did not need that to be
+ * correct: {@link ReservationExpiry#release} claims each row with a conditional
+ * update, so two replicas sweeping at once already credited the tier once. What it
+ * gains is that they no longer both read the same batch of lapsed drafts a minute —
+ * and what the platform gains is that a sweep which starts failing now backs off and
+ * says so, rather than throwing into a log once a minute for ever.
  *
- * <p><strong>On more than one instance</strong> every replica runs this on its own
- * timer, so several will look for lapsed drafts at once. That is safe rather than
- * merely tolerable: {@link ReservationExpiry#release} claims each row with a
- * conditional update, so exactly one caller credits the tier and the others find it
- * already done. The cost of not having a leader election is some duplicated reads,
- * which is the right trade against a lock nobody maintains.
+ * <p>A minute late here is a minute in which a limited tier looks sold out while a
+ * place is actually free: a lost sale rather than a wrong one, which is why this was
+ * tolerable on an unclaimed timer and would not have been for anything that moves
+ * money.
  */
 @Component
-public class ReservationCleanerJob {
+public class ReservationCleanerJob implements ScheduledJob {
 
     private static final Logger log = LoggerFactory.getLogger(ReservationCleanerJob.class);
 
@@ -59,6 +55,12 @@ public class ReservationCleanerJob {
         this.clock = clock;
     }
 
+    /** §8.4's {@code reservation-cleaner}. */
+    @Override
+    public String name() {
+        return "reservation-cleaner";
+    }
+
     /**
      * The schedule is a property so that the test profile can set it to {@code -}
      * and drive {@link #releaseExpiredReservations(Instant)} directly. A timer
@@ -66,7 +68,12 @@ public class ReservationCleanerJob {
      * reproduce once a fortnight — and this one fires every minute, at rows a
      * concurrency test is in the middle of asserting on.
      */
-    @Scheduled(cron = "${ideanest.pledge.reservation.cleanup-schedule}", zone = "UTC")
+    @Override
+    public String schedule() {
+        return properties.reservation().cleanupSchedule();
+    }
+
+    @Override
     public void run() {
         releaseExpiredReservations(clock.instant().truncatedTo(ChronoUnit.MICROS));
     }

@@ -1,12 +1,12 @@
 package az.ideanest.shared.outbox;
 
+import az.ideanest.shared.jobs.ScheduledJob;
 import az.ideanest.shared.outbox.OutboxDispatch.Outcome;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
@@ -32,22 +32,22 @@ import org.springframework.stereotype.Component;
  * by one relay is still {@code PENDING} and therefore blocks its own successors from the
  * other.
  *
- * <p><strong>This belongs on the durable scheduler, not here.</strong> There is no job
- * queue yet (#134), so this is Spring's in-process {@code @Scheduled}: no record of what
- * it did, no retry of the tick itself, and one timer per replica. It is adequate because
- * the work is idempotent and bounded and because a missed tick costs latency and never a
- * message — an event stays {@code PENDING} until some relay takes it. When #134 lands,
- * the trigger moves onto it and this annotation goes; nothing else here changes.
+ * <p><strong>The trigger is #134's, and nothing else here changed.</strong> This is a
+ * {@link ScheduledJob} rather than a {@code @Scheduled} method, so the tick claims a
+ * lease before it polls and is counted when it throws. The relay did not need that to be
+ * correct — the claim above is what makes it correct, and it still is — but it did need
+ * it to stop being wasteful: every replica used to open a transaction every second to
+ * find out that another replica had already emptied the queue.
  *
- * <p>One consequence of that is worth stating rather than discovering: Spring's scheduler
- * is a single thread by default and every other {@code @Scheduled} job in the service
- * shares it, so a transport that takes seconds to refuse delays the anonymiser and the
- * reservation sweep behind it. That is tolerable while the transport is in-process and is
- * the first thing that stops being tolerable when it is not — which is the same
- * conclusion #134 reaches from the other direction.
+ * <p>One consequence is worth stating rather than discovering: Spring's scheduler is a
+ * single thread by default and every job in the service shares it, so a transport that
+ * takes seconds to refuse delays the anonymiser and the reservation sweep behind it.
+ * That is unchanged by #134 — the lease decides who runs, not how many threads run —
+ * and it is the first thing that stops being tolerable when the transport is no longer
+ * in process.
  */
 @Component
-public class OutboxRelay {
+public class OutboxRelay implements ScheduledJob {
 
     private static final Logger log = LoggerFactory.getLogger(OutboxRelay.class);
 
@@ -64,6 +64,12 @@ public class OutboxRelay {
         this.clock = clock;
     }
 
+    /** §8.4's {@code outbox-relay}. */
+    @Override
+    public String name() {
+        return "outbox-relay";
+    }
+
     /**
      * The schedule is a property so that the test profile can set it to {@code -} and
      * drive {@link #publishPending(Instant)} directly, for the reason
@@ -71,7 +77,12 @@ public class OutboxRelay {
      * background of a test suite acts on the very rows a test is about to assert on — and
      * this one fires every second.
      */
-    @Scheduled(cron = "${ideanest.outbox.poll-schedule}", zone = "UTC")
+    @Override
+    public String schedule() {
+        return properties.pollSchedule();
+    }
+
+    @Override
     public void run() {
         publishPending(clock.instant().truncatedTo(ChronoUnit.MICROS));
     }

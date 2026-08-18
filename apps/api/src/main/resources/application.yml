@@ -227,21 +227,60 @@ ideanest:
     retention: PT24H
     # Hourly, on the hour, like the anonymiser. The retention is a day, so the
     # minute this runs at cannot matter; what matters is that a missed hour costs
-    # an hour of rows. In-process @Scheduled on §8.4's terms until #134, and safe
-    # on more than one replica for a simpler reason than the reservation sweep:
-    # the only effect is a delete, so a second replica finds nothing to remove.
+    # an hour of rows. On the durable scheduler since #134, and it was already
+    # safe on more than one replica for a simpler reason than the reservation
+    # sweep: the only effect is a delete, so a second replica finds nothing to
+    # remove. The lease means only one of them looks.
     sweep-schedule: "0 0 * * * *"
     # A bound on one pass, not a target. A day of traffic must not be one
     # transaction; the sweep returns an hour later for the rest.
     sweep-batch-size: 500
 
+  jobs:
+    # §8.4's durable scheduler (#134). Every replica keeps its own timer -- a
+    # scheduler on one elected replica is a single point of failure with an
+    # election to get wrong -- and every trigger claims a lease before it does
+    # anything, so the number of replicas stopped deciding how often the work
+    # happens. The schedules themselves stay with the jobs, in the blocks above.
+    #
+    # What this process calls itself in a lease. A diagnostic and not an
+    # authority: nothing is decided by comparing it to anything, so two replicas
+    # sharing a name lose the ability to say which one is running a job and lose
+    # nothing else. From the environment because a container knows its pod name
+    # and the JVM does not; empty means the JVM's own pid@host, which is enough
+    # to find the process in a log.
+    holder: ${JOBS_HOLDER:}
+    # How long the platform believes a holder that has stopped answering. The one
+    # number here with a cost on both sides: too long and a replica killed
+    # mid-run takes its job down with it for that long, too short and a run that
+    # legitimately outlasts it is joined by a second replica part-way through. A
+    # minute is comfortably longer than any pass §8.4 describes -- all of them
+    # bounded batches -- and short enough that a crash costs a minute of one job.
+    lock-lease: ${JOBS_LOCK_LEASE:PT1M}
+    # Consecutive failures before the job stops being triggered at all, carrying
+    # the last error for whoever has to look. The outbox's number for the outbox's
+    # reason: a job that has failed the same way eight times is waiting for a
+    # person and not for the network. Consecutive, so a job that fails once an
+    # hour and succeeds the rest of the time never reaches it.
+    max-attempts: 8
+    # The delay after the first failure, doubled per consecutive failure. Not
+    # zero: an immediate retry against a database that has just refused is the
+    # same query arriving again before anything can have changed.
+    retry-backoff: PT5S
+    # The ceiling the doubling stops at. Without it the eighth delay would be
+    # measured in hours, and the job would have stopped running in every practical
+    # sense while still calling itself retryable.
+    max-backoff: PT10M
+
   outbox:
     # Every second. §8.3's outbox is on the path of things a person is watching
     # happen -- §12.1's pledge counter, the notification behind a confirmation --
     # so latency here is user-visible in a way the hourly sweeps above are not.
-    # In-process @Scheduled on §8.4's terms until #134, and safe on more than one
-    # replica because the claim is FOR UPDATE SKIP LOCKED: two relays divide the
-    # queue between them rather than meeting on a row.
+    # On the durable scheduler since #134, and it was already safe on more than
+    # one replica because the claim is FOR UPDATE SKIP LOCKED: two relays divide
+    # the queue between them rather than meeting on a row. The lease means one of
+    # them polls, rather than all of them opening a transaction a second to find
+    # the queue already drained.
     poll-schedule: "* * * * * *"
     # A bound on one pass, not a target. A backlog built up while a transport was
     # down must not be one pass that overlaps its own next tick; the rest is a
