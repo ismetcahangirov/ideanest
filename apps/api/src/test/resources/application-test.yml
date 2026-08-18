@@ -17,6 +17,16 @@ spring:
     password: replaced-by-testcontainers
 
 ideanest:
+  abuse:
+    # The suite shares one process, one limiter, and one client address: every
+    # request in it comes from 127.0.0.1. A realistic per-address budget would
+    # therefore make the discovery suites fail each other rather than fail
+    # themselves, so it is effectively off here -- exactly as the sign-in limits
+    # below are, and for the same reason. The boundary itself is asserted by
+    # SearchRateLimitTests, which drives the endpoints with a limiter of its own.
+    searches-per-address: 100000
+    suggestions-per-address: 100000
+
   project:
     moderation:
       # One address, so the fail-closed default is exercised by every other

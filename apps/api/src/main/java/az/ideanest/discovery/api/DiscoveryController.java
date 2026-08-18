@@ -5,6 +5,7 @@ import az.ideanest.discovery.application.SearchService;
 import az.ideanest.discovery.application.UnsupportedDiscoveryOptionException;
 import az.ideanest.discovery.domain.DiscoveryCapability;
 import az.ideanest.project.application.Taxonomy;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.concurrent.TimeUnit;
 import org.springframework.http.CacheControl;
@@ -56,6 +57,12 @@ import org.springframework.web.context.request.WebRequest;
  * {@code Vary} cannot be corrected afterwards, and the first localised field on a
  * card would then be served in the wrong language to everybody whose request happened
  * to miss.
+ *
+ * <h2>Rate limiting</h2>
+ *
+ * <p>§17.3's "search 60/min", per address, shared with {@link SearchController} —
+ * see {@link PublicReadLimits} for what that budget is protecting and what it fails
+ * to protect.
  */
 @RestController
 public class DiscoveryController {
@@ -64,9 +71,11 @@ public class DiscoveryController {
     static final long MAX_AGE_SECONDS = 60;
 
     private final SearchService search;
+    private final PublicReadLimits limits;
 
-    public DiscoveryController(SearchService search) {
+    public DiscoveryController(SearchService search, PublicReadLimits limits) {
         this.search = search;
+        this.limits = limits;
     }
 
     /**
@@ -79,9 +88,14 @@ public class DiscoveryController {
     @GetMapping("/v1/discover")
     public ResponseEntity<DiscoveryResponses.Feed> discover(
             WebRequest request,
+            HttpServletRequest httpRequest,
             HttpServletResponse response,
             @RequestHeader(value = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage,
             @RequestParam MultiValueMap<String, String> parameters) {
+
+        // Before the query runs, and before the ETag is compared: a revalidation
+        // that answers 304 still costs the scan that produced the tag.
+        limits.countRead(httpRequest);
 
         String locale = Taxonomy.localeFor(acceptLanguage);
         DiscoveryQuery query = requireSupported(DiscoveryQueryBinder.bind(parameters, locale));
@@ -111,9 +125,12 @@ public class DiscoveryController {
     @GetMapping("/v1/discover/facets")
     public ResponseEntity<DiscoveryResponses.Facets> facets(
             WebRequest request,
+            HttpServletRequest httpRequest,
             HttpServletResponse response,
             @RequestHeader(value = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage,
             @RequestParam MultiValueMap<String, String> parameters) {
+
+        limits.countRead(httpRequest);
 
         String locale = Taxonomy.localeFor(acceptLanguage);
         DiscoveryQuery query = requireSupported(DiscoveryQueryBinder.bind(parameters, locale));

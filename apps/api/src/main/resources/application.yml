@@ -93,6 +93,28 @@ management:
       show-components: never
 
 ideanest:
+  # §17.3's limits on the public reads. Everything else in that table guards a
+  # module's own endpoint and is configured beside it; these guard endpoints that
+  # take no token at all, so they are counted per client address -- an office or a
+  # mobile carrier behind one NAT shares a budget, which is the cost of limiting a
+  # caller who has not told us who they are.
+  #
+  # The counter is per replica (InMemoryRateLimiter), so the real ceiling is these
+  # numbers multiplied by the number of instances. Shared storage is #134.
+  abuse:
+    # §17.3: "search 60/min". Spent by GET /v1/discover, its facets, and
+    # GET /v1/search together, because all three run the same query against the
+    # same tables -- two budgets would give a script alternating between them twice
+    # the allowance for exactly the work being bounded.
+    searches-per-address: 60
+    # Autocomplete, and deliberately not the same number. A suggestion is one
+    # request per keystroke, so a reader typing a ten-letter query spends ten of
+    # them; sixty a minute would refuse the sixth thing they searched for. It is
+    # also the cheapest query here -- a prefix match, cached for five minutes -- so
+    # what bounds it is not what bounds a faceted feed scan.
+    suggestions-per-address: 300
+    window: PT1M
+
   project:
     moderation:
       # Who may approve, reject, or send a campaign back, by verified address,
