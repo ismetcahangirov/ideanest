@@ -89,12 +89,25 @@ public class DailyRollupRepository {
      * The rollup itself: every day of every campaign the window touched, with the
      * campaign's running totals attached.
      *
-     * <p><strong>{@code daily} is deliberately not bounded by the window.</strong> The
+     * <p><strong>{@code bucketed} is deliberately not bounded by the window.</strong> The
      * cumulative columns are the campaign's totals from its first pledge, so the
      * running sum has to see every day; only the {@code INSERT} is narrowed to the
      * range being rewritten. That is the cost V27's header takes on purpose, and the
      * covering index {@code referral_attributions_rollup_idx} is what keeps it a
      * per-campaign range scan rather than a heap fetch per pledge.
+     *
+     * <p><strong>The day is derived once, in {@code bucketed}, and grouped by as a
+     * column.</strong> Not a style choice. {@code pledged_at} is an instant and the grain
+     * of this table is a calendar day, so the group key is
+     * {@code (pledged_at AT TIME ZONE zone)::date} — but writing that expression in both
+     * the select list and the {@code GROUP BY} does not work here, because
+     * {@code NamedParameterJdbcTemplate} expands each occurrence of {@code :zone} into a
+     * placeholder of its own. PostgreSQL then compares two parse trees that differ in
+     * their parameter node and concludes the select list holds an ungrouped
+     * {@code a.pledged_at}. Deriving the date in an inner query and grouping by the
+     * resulting column states the daily grain once and cannot drift; adding
+     * {@code a.pledged_at} to the {@code GROUP BY} would also have silenced the error,
+     * and would have produced one row per pledge instant, which is not a daily rollup.
      *
      * <p>{@code min(currency)} is safe because {@code one_currency} has already
      * established there is only one — an aggregate is needed only because
@@ -104,15 +117,22 @@ public class DailyRollupRepository {
      */
     private static final String ROLL_UP_DAYS = SOUND_CAMPAIGNS
             + """
-            , daily AS (
-                SELECT a.project_id                                                AS project_id,
-                       (a.pledged_at AT TIME ZONE CAST(:zone AS text))::date       AS day,
-                       min(a.currency)                                             AS currency,
-                       count(*)                                                    AS pledge_count,
-                       sum(a.amount)                                               AS amount
+            , bucketed AS (
+                SELECT a.project_id                                          AS project_id,
+                       (a.pledged_at AT TIME ZONE CAST(:zone AS text))::date AS day,
+                       a.currency                                            AS currency,
+                       a.amount                                              AS amount
                   FROM referral_attributions a
                   JOIN one_currency c ON c.project_id = a.project_id
-                 GROUP BY a.project_id, (a.pledged_at AT TIME ZONE CAST(:zone AS text))::date
+            ),
+            daily AS (
+                SELECT b.project_id     AS project_id,
+                       b.day            AS day,
+                       min(b.currency)  AS currency,
+                       count(*)         AS pledge_count,
+                       sum(b.amount)    AS amount
+                  FROM bucketed b
+                 GROUP BY b.project_id, b.day
             ),
             running AS (
                 SELECT d.project_id,
@@ -163,22 +183,32 @@ public class DailyRollupRepository {
      * <p>Runs after the parent statement and inside the same transaction, because
      * {@code project_analytics_daily_channels_day_fkey} refuses a split whose day has
      * no total.
+     *
+     * <p>The day is derived in an inner query and grouped by as a column, for the reason
+     * {@link #ROLL_UP_DAYS} gives at length: the group key is the calendar day, and it is
+     * written once so that the writer's grain cannot drift from the one the parent
+     * statement used.
      */
     private static final String ROLL_UP_CHANNELS = SOUND_CAMPAIGNS
             + """
-            , daily AS (
+            , bucketed AS (
                 SELECT a.project_id                                          AS project_id,
                        (a.pledged_at AT TIME ZONE CAST(:zone AS text))::date AS day,
                        a.channel                                             AS channel,
-                       count(*)                                              AS pledge_count,
-                       sum(a.amount)                                         AS amount
+                       a.amount                                              AS amount
                   FROM referral_attributions a
                   JOIN one_currency c ON c.project_id = a.project_id
                  WHERE a.pledged_at >= :startInclusive
                    AND a.pledged_at <  :endExclusive
-                 GROUP BY a.project_id,
-                          (a.pledged_at AT TIME ZONE CAST(:zone AS text))::date,
-                          a.channel
+            ),
+            daily AS (
+                SELECT b.project_id  AS project_id,
+                       b.day         AS day,
+                       b.channel     AS channel,
+                       count(*)      AS pledge_count,
+                       sum(b.amount) AS amount
+                  FROM bucketed b
+                 GROUP BY b.project_id, b.day, b.channel
             )
             INSERT INTO project_analytics_daily_channels (project_id, day, channel, pledge_count, amount)
             SELECT d.project_id, d.day, d.channel, d.pledge_count, d.amount
