@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import az.ideanest.moderation.api.ContentReportController;
 import az.ideanest.moderation.api.ReportRequest;
-import az.ideanest.moderation.application.ReportTargets;
 import az.ideanest.moderation.application.ReportingService;
 import az.ideanest.moderation.application.SubmittedReport;
 import az.ideanest.moderation.domain.ReportReason;
@@ -184,11 +183,21 @@ class ReportRateLimitTests {
      * rather than mocked: a stub with one overridden method is a stub whose behaviour
      * a reader can see, and it cannot drift from the real signature without failing
      * to compile.
+     *
+     * <p><strong>Both collaborators are null, and none is reachable.</strong>
+     * {@link ReportingService#report} is the only method that touches either, and it
+     * is overridden here, so the stub never reads a repository or a
+     * {@code ReportTargets}. Naming them is what would be dishonest: a
+     * {@code ReportTargets} assembled here out of nulls looks like a collaborator
+     * under test and is not one, and it re-breaks this test every time
+     * {@code ReportTargets} takes on another module's read — which is exactly what
+     * #84 adding {@code PublicComments} to it did. What this test asserts about the
+     * limiter is unchanged either way.
      */
     private static final class AcceptingReportingService extends ReportingService {
 
         private AcceptingReportingService() {
-            super(null, new ReportTargets(null, null));
+            super(null, null);
         }
 
         @Override
