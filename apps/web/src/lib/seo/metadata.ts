@@ -415,8 +415,13 @@ export interface PublicProjectPreview {
  * (`lib/projects/api.ts` — there is no media pipeline yet), so it reaches this
  * function unvalidated, and a `javascript:` or `data:` URL in an `og:image` is
  * at best a card that never renders.
+ *
+ * EXPORTED FOR `structured-data/product.ts`, which asks the same question about
+ * a reward tier's image before naming it in a `Product` node. A second copy of
+ * the check would be a second place for the allowed schemes to drift, and the
+ * copy that drifts is always the one nobody remembers exists.
  */
-function isFetchableImageUrl(url: string): boolean {
+export function isFetchableImageUrl(url: string): boolean {
   try {
     const { protocol } = new URL(url);
     return protocol === 'https:' || protocol === 'http:';
