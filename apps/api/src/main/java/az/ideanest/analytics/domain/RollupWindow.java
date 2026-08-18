@@ -14,6 +14,34 @@ import java.util.Objects;
  * agree about where a day starts, and the way they agree is that all three take the
  * boundaries from here.
  *
+ * <h2>Whose calendar, and why it is not UTC</h2>
+ *
+ * <p><strong>The decision: a day is a calendar day in one platform zone,
+ * {@code ideanest.analytics.aggregation.zone}, which is {@code Asia/Baku}.</strong> This
+ * is the correctness question in the whole feature rather than a detail, so it is written
+ * down here as well as in V27's header and in {@code AnalyticsAggregationProperties}.
+ *
+ * <p>UTC is the version of this that ships and is wrong. Baku is UTC+4, so a UTC day ends
+ * at four in the morning locally, and every pledge taken between midnight and 04:00 — the
+ * tail of the evening, which is where a campaign's traffic actually peaks — would be
+ * reported against the previous day. A creator comparing the dashboard against their own
+ * calendar would find it disagreed and would have nothing on screen explaining why. The
+ * campaign's own zone is the honest answer and {@code projects} has no column for one
+ * (V6), so it would be a column nobody sets. The reader's zone is worse than either: the
+ * same campaign would report different daily numbers to a creator and to a collaborator
+ * in another country, and the two would be looking at the same screen.
+ *
+ * <p>The consequence is a rule rather than a convention. <strong>The writer and the reader
+ * take the zone from the same property</strong> — {@code AnalyticsRollupService} buckets
+ * by it, {@code ProjectAnalyticsService} resolves "today" and the requested range by it —
+ * and every row records the zone it was bucketed under in
+ * {@code project_analytics_daily.time_zone}, so reconfiguring the platform is visible at
+ * the read side rather than silently re-labelling history that was never recomputed.
+ * {@code AnalyticsRollupTests} asserts the two sides agree across a midnight, through
+ * PostgreSQL's {@code AT TIME ZONE} on one side and this record's arithmetic on the
+ * other, because agreeing is precisely the thing that could stop being true without
+ * anything failing.
+ *
  * <p><strong>Why the boundaries are computed in Java rather than in the predicate.</strong>
  * A query could say {@code WHERE (pledged_at AT TIME ZONE 'Asia/Baku')::date BETWEEN …}
  * and be correct. It would also be unindexable: an expression over the column is not a
