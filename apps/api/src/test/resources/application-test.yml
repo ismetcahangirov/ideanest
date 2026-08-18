@@ -27,6 +27,25 @@ ideanest:
     searches-per-address: 100000
     suggestions-per-address: 100000
 
+  analytics:
+    aggregation:
+      # Disabled, exactly as every other schedule here is: `-` is Spring's own
+      # value for "do not schedule this". The suite drives AnalyticsRollupService
+      # directly, which is deterministic; a pass firing hourly in the background
+      # would recompute the very rows a test is about to assert on -- and it would
+      # do so against the real clock while the suite is moving AdjustableClock
+      # across a midnight boundary.
+      schedule: "-"
+      # The production zone, deliberately. The timezone decision is what
+      # AnalyticsRollupTests checks, and asserting a midnight boundary against a
+      # zone nothing is deployed in would prove the arithmetic and nothing about
+      # the answer a creator gets. UTC+4 is also what makes those tests mean
+      # something: under UTC they would pass without exercising anything.
+      zone: Asia/Baku
+      # The production window. Late arrival is a rule this suite asserts, and a
+      # shortened window here would assert a different one.
+      re-rollup-window: PT72H
+
   project:
     moderation:
       # One address, so the fail-closed default is exercised by every other
