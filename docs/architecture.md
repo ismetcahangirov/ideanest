@@ -761,14 +761,15 @@ The most valuable and most complex module. It begins when funding closes.
 > taken back. Closing it is one method on the pledge module's application layer and
 > one line in `ProjectUpdateService`.
 >
-> **Publishing is authorised as "may edit this campaign", not as
-> `PUBLISH_UPDATES`.** §7.2 defines that capability, and the fine-grained form of
-> `ProjectAccess` takes a `Capability`, which lives in the project module's `domain`
-> package and is unreachable from the community module by `ModuleBoundaryTests`.
-> The reward module makes the same compromise for the same reason, so this matches
-> it rather than inventing a second convention; closing it is a method on
-> `ProjectAccess` that names the capability and answers with a type another module
-> may hold.
+> **Publishing is authorised as `PUBLISH_UPDATES` (#236).** It used to be the
+> coarse "may this account edit this campaign at all", because the deciding enum
+> lives in the project module's `domain` package and the community module could
+> not name it — so a collaborator invited to price reward tiers could make an
+> announcement in the campaign's name to everybody following it, and no endpoint
+> takes one back. §16.1 is the contract that closed it. Reading is a different
+> question and stays coarse: the timeline decides which updates a caller *sees*,
+> and any editing capability is the right answer to "does this account work on
+> this campaign".
 >
 > **There is no edit endpoint and no withdrawal.** §10.2 gives an update neither,
 > and the row is immutable to match: an update is a statement to people who have
@@ -1451,6 +1452,14 @@ granted capability, from `EDIT_BASICS`, `EDIT_REWARDS`, `EDIT_STORY`,
 > CAPABILITY_NOT_GRANTED` naming only what was missing, so half of a patch can
 > never land. Opening the editor is the looser check: any editing capability, since
 > somebody granted one has to be able to reach the field they were granted.
+>
+> **Other modules enforce the capability that belongs to them, not a coarser
+> one.** Reward tiers and items need `EDIT_REWARDS`, publishing an update needs
+> `PUBLISH_UPDATES`, and the referral report needs `VIEW_FINANCES` — each asked
+> for by name through the contract in §16.1, because a check that accepted any
+> editing capability would make those grants indistinguishable from each other
+> outside the project module in exactly the way the paragraph above refuses inside
+> it.
 
 #### `items`
 Atomic units: `id`, `project_id`, `name`, `description`, `image_id`,
@@ -3267,6 +3276,7 @@ ideanest/
 │   │   │   ├── analytics/
 │   │   │   ├── admin/
 │   │   │   └── shared/               money, outbox, idempotency, audit
+│   │   │       └── access/           the cross-module permission contract (§16.1)
 │   │   └── src/main/resources/db/migration/
 │   │
 │   ├── web/                          Next.js
@@ -3290,6 +3300,71 @@ ideanest/
 Package-by-feature, not layer-by-layer. Everything about pledging lives under
 `pledge/`, which keeps the extraction boundary visible if a module ever needs to
 become a service.
+
+### 16.1 Crossing a module boundary
+
+A module reaches another module through its `application` layer only. Reaching
+into another module's `domain` or `infrastructure` couples the two to each
+other's internals and removes the point of the boundary. `ModuleBoundaryTests`
+checks it, together with the acyclicity of the module graph.
+
+**What that rule cost, and what pays for it.** `Capability` — the eight granular
+grants of §7.2 — lives in `project.domain`, so no other module could name one.
+Four modules in turn wanted a fine-grained permission check, found they could not
+ask for it, and settled for the coarsest question the project module published:
+"may this account edit this campaign at all". That produced an authorisation
+defect rather than an untidiness. A collaborator granted only `EDIT_REWARDS`
+could publish a project update in the campaign's name and read its referral
+report, because both asked the coarse question and both got yes.
+
+The answer is not to relax the boundary. It is `shared/access`, which publishes
+the **vocabulary and nothing else**:
+
+| Type | What it is |
+|---|---|
+| `ProjectCapability` | the eight names, one-for-one with `project.domain.Capability` |
+| `ProjectAuthorisation` | `requireCapability(projectId, accountId, capability)` |
+| `PlatformStaff` | `isStaff` / `requireStaff`, until epic #100 replaces it |
+
+Both ports are implemented inside the project module — `ProjectAccess` and
+`ModeratorDirectory` — which stays the one place either question is answered. No
+campaign, no grant row and no state crosses through the contract; a caller that
+needs something back asks the project module's application layer for it, as the
+reward module does for `EditLocks`. Nothing in `shared/access` may depend on a
+module, so the ports describe their refusals in prose rather than declaring
+them: the exceptions belong to the module that decides.
+
+| Module | Asks for |
+|---|---|
+| `reward` | `EDIT_REWARDS`, for items and tiers alike |
+| `community` | `PUBLISH_UPDATES`, on the write path |
+| `analytics` | `VIEW_FINANCES`, for the referral report |
+| `moderation` | `PlatformStaff`, for the report queue |
+
+> **Why the vocabulary rather than a predicate per capability.** The alternative
+> was `project.application` exposing `mayPublishUpdates(accountId, projectId)`,
+> then `mayViewFinances`, then one more for every capability any module ever
+> wants. That keeps the enum private at the price of a published surface that
+> grows without bound, and of a caller having to get another module changed
+> before it can ask a question the permission model already answers. Naming the
+> capability as a value costs one enum and answers all eight at once.
+>
+> **The cost is two enums that have to agree.** `project.domain.Capability`
+> carries its published counterpart on each constant and refuses to initialise if
+> one is unmapped, and `ProjectCapabilityContractTests` asserts the two name sets
+> are identical in both directions and paired constant for constant. A drift is a
+> build failure rather than a permission that quietly cannot be asked for.
+>
+> **`Capability` itself stays forbidden.** `ModuleBoundaryTests` fails any class
+> outside `az.ideanest.project` that names it, and asserts that reward, community
+> and analytics do name `ProjectCapability` — so a regression to the coarse check
+> fails the boundary test rather than passing quietly.
+>
+> **Reading is not always the same question as writing.** Community's update
+> timeline still asks the coarse "does this account work on this campaign",
+> because that is what decides which updates a caller sees rather than what they
+> may do. Narrowing it to `PUBLISH_UPDATES` would hide a campaign's own scheduled
+> updates from the person writing its story.
 
 ---
 
