@@ -149,6 +149,29 @@ public class SecurityConfiguration {
                         // them, and it falls through to the rule at the bottom.
                         .requestMatchers(HttpMethod.GET, "/v1/projects/*/backers/public")
                         .permitAll()
+                        // ---- #83: project updates -------------------------
+                        // A campaign's Updates tab (§4.4). Public because §10.2
+                        // lists this read under "Project — public" and because
+                        // §5.5 makes updates the record of whether a creator
+                        // keeps their promises — which is exactly what somebody
+                        // reads before deciding to become a backer.
+                        //
+                        // What may be read is not decided here. The handler
+                        // serves it only for a campaign in one of §6.1's nine
+                        // public states and answers 404 otherwise, it omits
+                        // updates whose publication time has not arrived, and it
+                        // omits backers-only ones — see ProjectUpdateService,
+                        // which is also where the campaign's own team is told
+                        // apart from everybody else when a token is presented.
+                        //
+                        // GET and nothing else, for the reason the categories
+                        // rule gives: POST on this exact path is the creator
+                        // publishing an update, and it falls through to the rule
+                        // at the bottom so that an account inside its deletion
+                        // grace period cannot make new promises to backers.
+                        .requestMatchers(HttpMethod.GET, "/v1/projects/*/updates")
+                        .permitAll()
+                        // ---- end #83 --------------------------------------
                         // "Tell me when this opens", and "stop reminding me".
                         // Unauthenticated on purpose and bounded in the handler by
                         // a rate limiter per source address and per email address:

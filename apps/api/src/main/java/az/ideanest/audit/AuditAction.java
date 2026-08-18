@@ -33,6 +33,21 @@ public enum AuditAction {
     PROJECT_CHANGES_REQUESTED("project.changes_requested", "project"),
 
     /**
+     * An update was published to a campaign's backers (#83).
+     *
+     * <p>The entity is the campaign rather than the update, unlike
+     * {@link #COLLABORATOR_INVITED}: an update has no later history of its own — §10.2
+     * gives it no edit and no withdrawal — so a row keyed on it would be a history of
+     * one, invisible to the one query anybody runs against this table. Which update is
+     * in the detail, as its number.
+     *
+     * <p>Privileged because §5.5 makes publishing an update an obligation a funded
+     * creator owes their backers, and because the statement is irreversible: everybody
+     * following the campaign is told, and no endpoint takes it back.
+     */
+    PROJECT_UPDATE_PUBLISHED("project.update_published", "project"),
+
+    /**
      * Somebody was invited onto a campaign.
      *
      * <p>The entity is the grant and not the campaign, because the grant is what is
