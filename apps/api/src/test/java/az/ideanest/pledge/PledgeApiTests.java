@@ -140,6 +140,13 @@ class PledgeApiTests extends AbstractIntegrationTest {
     void clearCheckouts() {
         // In dependency order rather than by cascade, because that is the cleanup and
         // not the assertion -- PledgeSchemaTests is where the cascades are checked.
+        //
+        // outbox_events is first and is not a cascade at all: since #235 a confirmation
+        // records `pledge.confirmed`, and V19 deliberately gives that table no foreign
+        // key to the aggregate it describes, so nothing else here removes the row. A
+        // suite that left them behind would fail OutboxTests, which counts every row in
+        // the table and has no cleanup of its own before the count.
+        jdbc().update("DELETE FROM outbox_events");
         jdbc().update("DELETE FROM pledge_addons");
         jdbc().update("DELETE FROM pledges");
         jdbc().update("DELETE FROM idempotency_keys");
