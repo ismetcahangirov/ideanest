@@ -115,6 +115,44 @@ ideanest:
     suggestions-per-address: 300
     window: PT1M
 
+  analytics:
+    # §4.7's referral rule is defaulted in code and stays there -- see
+    # AnalyticsProperties for why a deployment that configures none of it has to
+    # start. Only the rollup appears here, because §8.4 is a table of sixteen
+    # schedules and an operator asking "when does the aggregator run" reads them
+    # in one place.
+    aggregation:
+      # §8.4's `analytics-aggregator`, hourly. Hourly for a daily table is not a
+      # contradiction: the day being aggregated is the one in progress, so an
+      # hourly pass puts today's figure on the dashboard within an hour of the
+      # truth instead of a day behind it.
+      schedule: "0 0 * * * *"
+      # Whose calendar a "day" is. THE correctness question in this feature, and
+      # V27's header argues it in full: this platform's creators are in UTC+4, so
+      # a UTC day would report every pledge taken between midnight and four in
+      # the morning -- the tail of the evening, where the traffic is -- against
+      # the previous day, and the dashboard would disagree with the creator's own
+      # calendar with nothing on screen explaining why. `projects` carries no
+      # zone of its own (V6), so a per-campaign answer would be a column nobody
+      # sets. The writer and the reader both take it from here, and every row
+      # records the zone it was bucketed under.
+      zone: ${ANALYTICS_ROLLUP_ZONE:Asia/Baku}
+      # How far back every pass recomputes, which is the answer to late-arriving
+      # data. A pledge is attributed when `pledge.confirmed` is delivered, and
+      # the relay retries with a backoff, so an attribution can land after its
+      # own day has closed. Three days is four orders of magnitude beyond that
+      # backoff's ten-minute ceiling, and it is what bounds the pass -- an
+      # unbounded "recompute everything" would grow with the platform and
+      # eventually overlap its own next tick. Later than this, a day stops moving
+      # until somebody re-runs the range on purpose.
+      re-rollup-window: PT72H
+      # How old the newest rollup row may be before a pass says so at WARN. A
+      # rollup that silently stops is worse than no rollup: the dashboard keeps
+      # rendering and the numbers stay plausible. Six hours is comfortably more
+      # than an hourly schedule plus the scheduler's backoff, and comfortably
+      # less than a working day.
+      stale-after: PT6H
+
   project:
     moderation:
       # Who may approve, reject, or send a campaign back, by verified address,
