@@ -656,6 +656,30 @@ class CommentApiTests extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("a comment under a campaign the reporter cannot see is not reportable either")
+    void aCommentUnderAnUnseenCampaignIsNotReportable() {
+        Account creator = account("creator");
+        Account reporter = account("reporter");
+        UUID project = draft(creator);
+        // The creator may comment on their own unlaunched campaign -- see
+        // aDraftIsNotCommentable -- so the comment exists and the campaign does not
+        // exist as far as a stranger is concerned.
+        UUID root = idOf(post(project, creator, "A note to myself before we launch."));
+
+        ResponseEntity<Map<String, Object>> reported = exchange(
+                "/v1/comments/" + root + "/report", HttpMethod.POST, reporter.accessToken(), Map.of("reason", "SPAM"));
+
+        // Otherwise the safety endpoint is an oracle: a caller who reported an
+        // identifier and was told "accepted" would learn that it names a comment, and
+        // therefore that there is a campaign being prepared behind it -- which is
+        // exactly what ProjectAccess spends its class comment refusing to say. The
+        // check belongs to PublicComments, which asks PublicProjects rather than
+        // keeping a second copy of "which campaigns may a stranger see".
+        assertThat(reported.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(reportsOn(root)).isZero();
+    }
+
+    @Test
     @DisplayName("an invented comment identifier cannot be reported")
     void anInventedCommentCannotBeReported() {
         Account reporter = account("reporter");
