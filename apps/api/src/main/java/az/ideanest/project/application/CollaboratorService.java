@@ -1,5 +1,9 @@
 package az.ideanest.project.application;
 
+import az.ideanest.audit.AuditAction;
+import az.ideanest.audit.AuditActor;
+import az.ideanest.audit.AuditLog;
+import az.ideanest.audit.AuditOutcome;
 import az.ideanest.project.ProjectProperties;
 import az.ideanest.project.application.ProjectAccess.ManagedCollaborator;
 import az.ideanest.project.application.ProjectEvents.CollaboratorInvited;
@@ -43,14 +47,23 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p><strong>Auditing.</strong> Issuing, changing, and withdrawing a grant are
  * privileged actions, and CLAUDE.md §3 requires every one of them to be audited.
- * There is no {@code audit_logs} table yet (#107), and
- * {@code project_state_transitions} cannot hold these rows — its check constraints
- * accept the sixteen project states and nothing else, and a grant change is not a
- * state change. So each of them is logged with the actor, the campaign, and the
- * capabilities involved, and <strong>that is not durable auditing</strong>; the
- * pull request says so rather than claiming an audit trail that does not exist. A
- * state change made <em>by</em> a collaborator is audited, in
- * {@code project_state_transitions}, with {@code actor_role = COLLABORATOR}.
+ * Each writes an {@code audit_logs} row (#107) in the same transaction as the
+ * change itself, keyed on the grant rather than on the campaign — the grant is what
+ * is later widened and withdrawn, and three rows about one collaborator are only a
+ * history if they share an identifier. The log lines below stay: they are how an
+ * operator watching a deployment sees the same fact without querying, and they are
+ * no longer the record. {@code project_state_transitions} could never have held
+ * these rows in any case — its check constraints accept the sixteen project states
+ * and nothing else, and a grant change is not a state change. A state change made
+ * <em>by</em> a collaborator is recorded there, with
+ * {@code actor_role = COLLABORATOR}.
+ *
+ * <p><strong>The invited address is not copied into the audit row.</strong> It is
+ * on the {@code collaborators} row this one points at, it is somebody's personal
+ * data, and {@code audit_logs} is the one table with no way to remove a row
+ * afterwards. What the detail carries is the capabilities, by name — "was given
+ * VIEW_FINANCES" is the fact somebody needs later, and "was given three
+ * capabilities" is not.
  */
 @Service
 public class CollaboratorService {
@@ -61,6 +74,7 @@ public class CollaboratorService {
     private final CollaboratorRepository collaborators;
     private final UserAccounts users;
     private final ApplicationEventPublisher events;
+    private final AuditLog audit;
     private final ProjectProperties properties;
     private final Clock clock;
 
@@ -69,12 +83,14 @@ public class CollaboratorService {
             CollaboratorRepository collaborators,
             UserAccounts users,
             ApplicationEventPublisher events,
+            AuditLog audit,
             ProjectProperties properties,
             Clock clock) {
         this.access = access;
         this.collaborators = collaborators;
         this.users = users;
         this.events = events;
+        this.audit = audit;
         this.properties = properties;
         this.clock = clock;
     }
@@ -134,6 +150,15 @@ public class CollaboratorService {
                 now,
                 now.plus(properties.collaborators().invitationTtl())));
 
+        // In this transaction, unlike the event below. A grant that a rollback
+        // removed must leave no record saying it was issued.
+        audit.record(
+                AuditAction.COLLABORATOR_INVITED,
+                invitation.getId(),
+                AuditActor.user(inviterId),
+                AuditOutcome.SUCCEEDED,
+                "on project " + projectId + " with " + capabilities);
+
         // After commit. A link to a grant that a rollback removed cannot be
         // unsent, and the recipient would be clicking something that was never
         // valid.
@@ -178,6 +203,15 @@ public class CollaboratorService {
         Set<Capability> before = Set.copyOf(collaborator.getCapabilities());
         collaborator.changeCapabilities(capabilities);
 
+        // Both sets, because the interesting question is what somebody gained. A row
+        // saying only what they hold now cannot be told apart from the invitation.
+        audit.record(
+                AuditAction.COLLABORATOR_CAPABILITIES_CHANGED,
+                collaboratorId,
+                AuditActor.user(accountId),
+                AuditOutcome.SUCCEEDED,
+                "from " + before + " to " + capabilities);
+
         log.info(
                 "Collaborator {} on project {} changed by {} from {} to {}.",
                 collaboratorId,
@@ -207,6 +241,17 @@ public class CollaboratorService {
         }
 
         collaborator.revoke(accountId, clock.instant().truncatedTo(ChronoUnit.MICROS));
+
+        // Only when something was withdrawn. The early return above means a repeated
+        // DELETE records nothing, which is right: the second request changed no
+        // authority, and a row per retry would make a client's timeout look like a
+        // second decision.
+        audit.record(
+                AuditAction.COLLABORATOR_REVOKED,
+                collaboratorId,
+                AuditActor.user(accountId),
+                AuditOutcome.SUCCEEDED,
+                "withdrew " + collaborator.getCapabilities());
 
         log.info(
                 "Collaborator {} on project {} revoked by {}. Capabilities were {}.",

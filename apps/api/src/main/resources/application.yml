@@ -321,6 +321,23 @@ ideanest:
     max-backoff: PT10M
     max-attempts: 8
 
+  audit:
+    # Two bounds on attacker-controlled text, and they are here rather than in the
+    # code because of what makes this table different: everything else in the
+    # schema has something that prunes it, and audit_logs has a trigger that
+    # refuses DELETE. What arrives stays until the month holding it is detached,
+    # which is not something that happens yet (#134). So an unbounded User-Agent
+    # is not a formatting problem -- it is unbounded growth in the one table that
+    # cannot be tidied afterwards, bought for the price of one header.
+    #
+    # A thousand characters is several sentences: enough for "changed from these
+    # capabilities to those", far short of somewhere to put a request body.
+    # Applied after redaction, so a mask is never cut in half.
+    detail-max-length: 1000
+    # Real user agents run to a couple of hundred characters. This keeps every one
+    # of them and cuts anything using the header as a channel.
+    user-agent-max-length: 512
+
   user:
     # §17.4: thirty days between asking and anything being destroyed. Long
     # enough that a deletion made in anger can be undone the next morning, and
