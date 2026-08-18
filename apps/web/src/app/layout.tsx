@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
+import { WebVitals } from '../components/rum/WebVitals';
 import { SITE_LANGUAGE, rootMetadata } from '../lib/seo/metadata';
 import './globals.css';
 
@@ -70,11 +71,21 @@ export const metadata: Metadata = rootMetadata();
  * `--font-inter` is in scope for anything portalled to `document.body` — every
  * overlay in the kit renders there, and a modal in a different typeface than the
  * page under it is the kind of defect nobody reports and everybody sees.
+ *
+ * `<WebVitals />` renders nothing at all — it is a client boundary that
+ * subscribes to the browser's performance observers and returns `null`, so it
+ * adds no element, no text and no layout. It is here rather than in a page
+ * because a field measurement of one route is not a measurement; see
+ * `docs/observability/real-user-monitoring.md`. It sits before `{children}` so
+ * that the boundary is established before anything that could throw inside it.
  */
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang={SITE_LANGUAGE} className={inter.variable}>
-      <body className="min-h-dvh bg-surface-1">{children}</body>
+      <body className="min-h-dvh bg-surface-1">
+        <WebVitals />
+        {children}
+      </body>
     </html>
   );
 }
