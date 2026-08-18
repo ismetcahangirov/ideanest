@@ -103,7 +103,7 @@ describe('StoryPanel', () => {
     );
     listStoryVersionsMock.mockReset().mockResolvedValue([]);
     restoreStoryVersionMock.mockReset();
-    measureImageMock.mockReset().mockResolvedValue({ width: 1600, height: 900 });
+    measureImageMock.mockReset().mockResolvedValue({ width: 1600, height: 900, placeholder: null });
   });
 
   afterEach(() => {
@@ -211,6 +211,53 @@ describe('StoryPanel', () => {
       alt: 'The prototype on a desk',
     });
     expect(screen.queryByText(/story is not being saved yet/i)).not.toBeInTheDocument();
+  });
+
+  it('previews a measured image in the shape it really is, with the alt as typed', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    measureImageMock.mockResolvedValue({
+      width: 1600,
+      height: 1200,
+      placeholder: 'data:image/webp;base64,AAAA',
+    });
+    renderPanel();
+    await screen.findByRole('group', { name: /^Heading 1 of 2/ });
+
+    await user.click(screen.getByRole('button', { name: /Add image/ }));
+    await screen.findByRole('group', { name: /^Image 3 of 3/ });
+    await user.type(
+      screen.getByRole('textbox', { name: /Address of Image 3 of 3/ }),
+      'https://images.example.com/prototype.jpg',
+    );
+    await user.click(screen.getByRole('button', { name: /Measure and add/ }));
+    await settle(user);
+
+    /*
+     * THE INTRINSIC SHAPE, because the public story shows the picture whole and
+     * reserves its box from these very numbers — which is the only reason the
+     * editor measures at all.
+     */
+    const frame = document.querySelector<HTMLElement>('[data-media-frame]');
+    expect(frame?.style.aspectRatio).toBe('1600 / 1200');
+
+    // The placeholder from the same load, kept out of the accessibility tree.
+    const layer = document.querySelector<HTMLElement>('[data-media-placeholder]');
+    expect(layer?.style.backgroundImage).toBe('url("data:image/webp;base64,AAAA")');
+
+    /*
+     * EMPTY ALT, SHOWN AS EMPTY. The description has not been written yet, and
+     * the preview's job is to give the creator what a reader would get rather
+     * than something kinder.
+     */
+    expect(document.querySelector('img')).toHaveAttribute('alt', '');
+
+    await user.type(
+      screen.getByRole('textbox', { name: /Description of Image 3 of 3/ }),
+      'The prototype on a desk',
+    );
+    await settle(user);
+
+    expect(document.querySelector('img')).toHaveAttribute('alt', 'The prototype on a desk');
   });
 
   it('saves the risks section without refusing a half-written answer', async () => {

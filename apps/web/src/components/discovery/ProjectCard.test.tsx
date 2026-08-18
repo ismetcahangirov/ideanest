@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import type { ProjectCard as ProjectCardData } from '../../lib/discovery/api';
+import { DISCOVERY_CARD_SIZES } from '../../lib/images/sizes';
 import { ProjectCard } from './ProjectCard';
 
 /**
@@ -167,5 +168,87 @@ describe('ProjectCard', () => {
     // proves.
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
     expect(container.querySelector('img')).toHaveAttribute('alt', '');
+  });
+
+  /*
+   * The image pipeline. Every one of these fails invisibly: the page looks
+   * right once the photographs have loaded, and the cost is paid on the first
+   * paint of a cold connection by somebody who is not reviewing the change.
+   */
+  describe('the cover', () => {
+    function frame(container: HTMLElement): HTMLElement {
+      const found = container.querySelector<HTMLElement>('[data-media-frame]');
+      if (found === null) throw new Error('the cover reserved no box at all');
+      return found;
+    }
+
+    it('reserves the card’s crop before the photograph arrives', () => {
+      const { container } = renderCard();
+
+      expect(frame(container).style.aspectRatio).toBe('16 / 9');
+    });
+
+    it('reserves the same box for a campaign with no cover', () => {
+      // Otherwise a feed of mixed cards settles into a different layout than the
+      // one it painted, which is the shift the reservation exists to prevent.
+      const { container } = renderCard({ image: null });
+
+      expect(frame(container).style.aspectRatio).toBe('16 / 9');
+      expect(container.querySelector('img')).toBeNull();
+    });
+
+    it('ignores the recorded shape, because the card crops', () => {
+      // A portrait cover is still a 16:9 box here. Reserving 900×1600 would
+      // give a column-tall card to a picture that is about to be cropped.
+      const { container } = renderCard({
+        image: { url: 'https://example.test/tall.jpg', width: 900, height: 1600 },
+      });
+
+      expect(frame(container).style.aspectRatio).toBe('16 / 9');
+    });
+
+    it('declares how wide the card really is at every breakpoint', () => {
+      // Without `sizes` the browser assumes 100vw and downloads a picture
+      // several times the width of the box it lands in. The string is derived
+      // from this grid's own Tailwind classes in `lib/images/sizes.ts`.
+      const { container } = renderCard();
+
+      expect(container.querySelector('img')).toHaveAttribute('sizes', DISCOVERY_CARD_SIZES);
+    });
+
+    it('goes through the optimiser, with more than one candidate width', () => {
+      // Format negotiation happens at the optimiser rather than in the markup,
+      // so what the markup can prove is that there is a candidate ladder and
+      // that it is the optimiser serving it.
+      const { container } = renderCard();
+      const srcset = container.querySelector('img')?.getAttribute('srcset') ?? '';
+
+      expect(srcset).toContain('/_next/image');
+      expect(srcset.split(',').length).toBeGreaterThan(1);
+    });
+
+    it('is lazy unless it is asked to lead', () => {
+      const lazy = renderCard();
+      expect(lazy.container.querySelector('img')).toHaveAttribute('loading', 'lazy');
+      cleanup();
+
+      const eager = render(<ProjectCard card={CARD} priority />);
+      expect(eager.container.querySelector('img')).not.toHaveAttribute('loading', 'lazy');
+    });
+
+    it('serves an address the optimiser will not fetch as it is, rather than throwing', () => {
+      /*
+       * `next/image` raises on a URL no remote pattern matches, and a raised
+       * render in a server component blanks the whole feed. One creator pasting
+       * `http://` must not be able to do that to everybody else.
+       */
+      const { container } = renderCard({
+        image: { url: 'http://insecure.test/cover.jpg', width: 1600, height: 900 },
+      });
+
+      const image = container.querySelector('img');
+      expect(image).toHaveAttribute('src', 'http://insecure.test/cover.jpg');
+      expect(image).not.toHaveAttribute('srcset');
+    });
   });
 });

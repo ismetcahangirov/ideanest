@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Field, FileDropZone, InlineAlert, Pill, TextInput } from '@ideanest/ui';
+import { Field, FileDropZone, InlineAlert, Media, Pill, TextInput } from '@ideanest/ui';
 import type { CoverImage } from '../../lib/projects/api';
 import {
   COVER_MIN_HEIGHT,
@@ -60,6 +60,15 @@ export function CoverImageField({
 }: CoverImageFieldProps) {
   const [checking, setChecking] = useState(false);
   const [note, setNote] = useState<Note | null>(null);
+  /*
+   * The blur placeholder for the preview below, produced from the very load
+   * that measured the image (`lib/images/lqip.ts`). It lives in state rather
+   * than in the project, because `cover_image_url`, `cover_image_width` and
+   * `cover_image_height` are the only three columns there is — a fourth is the
+   * media epic's to add. It is therefore gone on the next page load, and that
+   * is honest: today nothing on the server has ever seen these bytes.
+   */
+  const [placeholder, setPlaceholder] = useState<string | null>(null);
 
   async function useAddress(): Promise<void> {
     const address = url.trim();
@@ -81,6 +90,7 @@ export function CoverImageField({
         return;
       }
 
+      setPlaceholder(size.placeholder);
       onAccept({ url: address, width: size.width, height: size.height });
       setNote({ tone: 'success', text: `Cover set from a ${describeSize(size)} pixel image.` });
     } catch (cause) {
@@ -140,13 +150,42 @@ export function CoverImageField({
 
         {cover !== null && (
           <figure className="overflow-hidden rounded-lg border border-white/8 bg-surface-2">
-            {/* Decorative: the caption below carries the same information as
-                text, and a preview of an image the creator just chose has no
-                description this component could invent. */}
-            <img src={cover.url} alt="" className="aspect-video w-full object-cover" />
+            {/*
+              THE 16:9 CROP, NOT THE INTRINSIC SHAPE. This preview answers "what
+              will the discovery card look like", and the card crops (§8.2). A
+              creator whose 4:3 photograph loses its top and bottom there should
+              see that here rather than discover it after launch.
+
+              NOT `next/image`, AND THAT IS THE POINT. A preview has to show the
+              creator the bytes they gave us; a re-encode would have them judging
+              their own photograph by our AVIF of it. The full-size file is also
+              already in the browser cache — `measureImage` just loaded it to
+              read the dimensions — so the optimiser would add a request rather
+              than remove one, on the surface docs/motion-system.md §5 gives the
+              tightest budget in the product.
+
+              DECORATIVE: the caption carries the same information as text, and a
+              preview of an image the creator has this second chosen has no
+              description this component could invent.
+            */}
+            <Media
+              src={cover.url}
+              ratio="16/9"
+              placeholder={placeholder ?? undefined}
+              decorative
+            />
             <figcaption className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-[13px] text-white/64">
               <span>Cover is {describeSize(cover)} pixels</span>
-              <Pill variant="ghost" size="sm" disabled={disabled} onClick={onRemove}>
+              <Pill
+                variant="ghost"
+                size="sm"
+                disabled={disabled}
+                onClick={() => {
+                  // The placeholder is a picture of the cover being removed.
+                  setPlaceholder(null);
+                  onRemove();
+                }}
+              >
                 Remove cover
               </Pill>
             </figcaption>

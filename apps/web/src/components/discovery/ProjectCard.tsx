@@ -1,4 +1,5 @@
 import Decimal from 'decimal.js';
+import Image from 'next/image';
 import Link from 'next/link';
 import {
   CalendarClock,
@@ -10,7 +11,9 @@ import {
   Users,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { ProgressBar, Tag } from '@ideanest/ui';
+import { MediaFrame, ProgressBar, Tag } from '@ideanest/ui';
+import { DISCOVERY_CARD_SIZES } from '../../lib/images/sizes';
+import { canOptimise } from '../../lib/images/source';
 import { formatMoney } from '../../lib/money';
 import type { ProjectCard as ProjectCardData } from '../../lib/discovery/api';
 import type { DiscoveryStatus } from '../../lib/discovery/vocabulary';
@@ -38,6 +41,14 @@ import type { DiscoveryStatus } from '../../lib/discovery/vocabulary';
  * nothing to a reader with a colour-vision deficiency and nothing at all to a
  * screen reader (§9.2). Every badge here is colour PLUS an icon PLUS a word for
  * the same reason.
+ *
+ * THE COVER RESERVES ITS BOX BEFORE IT LOADS. `MediaFrame` carries the 16:9
+ * crop, so the height of every card is decided at first paint and the grid does
+ * not reflow as twenty-four photographs decode. `next/image` supplies the AVIF
+ * and WebP variants and the `sizes` string says how wide the card really is at
+ * each breakpoint, which is what stops a 440-pixel box downloading a
+ * 3840-pixel photograph. Both are derived rather than typed here —
+ * `lib/images/sizes.ts` reads them off this grid's own Tailwind classes.
  *
  * NO ENTRY ANIMATION ON THE CARD ITSELF. Discovery's motion budget is "skeleton
  * to content crossfade only" (docs/motion-system.md §5) and §8 forbids animation
@@ -100,9 +111,20 @@ function daysLeftLabel(days: number): string {
 
 export interface ProjectCardProps {
   card: ProjectCardData;
+  /**
+   * Loads the cover eagerly and asks the browser to fetch it first.
+   *
+   * True for the cards above the fold and nothing else. One of them is the
+   * largest contentful paint on `/discover`, and a lazy image cannot be that
+   * until layout has run — which is a measurable delay on the metric
+   * docs/motion-system.md §8 puts under two seconds. Setting it on the whole
+   * feed would put twenty-four covers into the same priority queue as the
+   * document and make every one of them later.
+   */
+  priority?: boolean;
 }
 
-export function ProjectCard({ card }: ProjectCardProps) {
+export function ProjectCard({ card, priority = false }: ProjectCardProps) {
   const completion = completionOf(card);
   const badge = card.badge == null ? null : BADGES[card.badge];
   const days = card.daysLeft ?? null;
@@ -128,22 +150,44 @@ export function ProjectCard({ card }: ProjectCardProps) {
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-lg border border-white/8 bg-surface-2 transition-colors duration-300 ease-in-out hover:bg-surface-3">
       {/*
-        Full-bleed at the top with radius on the upper corners only
-        (docs/ui-kit.md §8.2). A campaign with no cover gets the surface rather
-        than a broken image or a placeholder graphic that says nothing.
+        Full-bleed at the top with radius on the upper corners only — the
+        article clips, so the frame itself is square (docs/ui-kit.md §8.2).
+
+        THE BOX IS RESERVED WHETHER OR NOT THERE IS A COVER. `MediaFrame` sets
+        the 16:9 crop before anything loads, so a card with a cover and a card
+        without one are the same height and the grid below never moves. A
+        campaign with no cover gets that reserved surface rather than a broken
+        image or a stock graphic that says nothing.
+
+        THE CROP TOKEN, NOT THE INTRINSIC SIZE. Every cover is cut to 16:9 here
+        whatever shape it was uploaded in, so the reservation is the crop. The
+        recorded width and height belong to the picture, not to this box.
+
+        ALT IS EMPTY BY DECISION. The title is the next element and it is the
+        link; a description of the cover would be a second announcement of the
+        same campaign, and there is nothing this component could invent that
+        the creator did not write.
       */}
-      {card.image != null ? (
-        <img
-          src={card.image.url}
-          alt=""
-          width={card.image.width}
-          height={card.image.height}
-          loading="lazy"
-          className="aspect-[16/9] w-full object-cover"
-        />
-      ) : (
-        <div aria-hidden="true" className="aspect-[16/9] w-full bg-surface-3" />
-      )}
+      <MediaFrame ratio="16/9">
+        {card.image != null && (
+          <Image
+            src={card.image.url}
+            alt=""
+            fill
+            sizes={DISCOVERY_CARD_SIZES}
+            /*
+             * An address on a host the optimiser will not fetch is served as
+             * it is rather than thrown over. `next/image` raises on a URL no
+             * remote pattern matches, and a raised render in a server
+             * component blanks the whole feed — one creator's typo must not be
+             * able to do that. See `lib/images/source.ts`.
+             */
+            unoptimized={!canOptimise(card.image.url)}
+            priority={priority}
+            className="object-cover"
+          />
+        )}
+      </MediaFrame>
 
       <div className="flex flex-1 flex-col gap-3 p-5">
         <div className="flex flex-wrap items-center gap-2">
