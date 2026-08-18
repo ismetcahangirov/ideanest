@@ -1,0 +1,109 @@
+# §19.4: "Restore rehearsal — quarterly, measured and documented."
+#
+# The quarterly schedule is the point of this file. A drill that only runs when
+# somebody remembers to run it is a drill that runs after the incident that
+# would have needed it, and a restore procedure decays silently: an image tag
+# moves, a migration adds an extension, an archive path changes, and nothing
+# tells anybody until 03:00.
+#
+# It also runs on every pull request that touches ops/backup, because the one
+# thing worse than an unrehearsed restore is a rehearsal script that has been
+# edited without being run.
+#
+# The evidence §19.4 asks for is the artifact this uploads. It is retained for
+# 400 days — longer than the quarterly cadence by a wide margin — so that "when
+# was the last successful restore drill, and what did it verify" is answerable
+# from the repository rather than from memory.
+name: Restore drill
+
+on:
+  schedule:
+    # 04:00 UTC on the first day of each quarter.
+    - cron: '0 4 1 1,4,7,10 *'
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ops/backup/**'
+      - '.github/workflows/restore-drill.yml'
+      - 'apps/api/src/main/resources/db/migration/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  drill:
+    name: Point-in-time recovery drill
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Prepare the evidence directory
+        run: mkdir -p evidence
+        shell: bash
+
+      # The rehearsal. Builds a cluster from this repository's migrations,
+      # archives its write-ahead log, takes a base backup, destroys the source,
+      # recovers to a chosen instant and verifies the result.
+      - name: Rehearsal
+        run: |
+          ./ops/backup/drill/run-drill.sh --report evidence/drill-positive.txt \
+            | tee evidence/drill-positive.log
+        shell: bash
+
+      # Three restores that must fail. A verification nobody has watched fail is
+      # a verification nobody has tested, and every one of these is a shape of
+      # broken restore that a server which merely starts would hide.
+      - name: Negative case — recovery overshoots its target
+        run: |
+          ./ops/backup/drill/run-drill.sh --negative late-target \
+            --report evidence/drill-late-target.txt | tee evidence/drill-late-target.log
+        shell: bash
+
+      - name: Negative case — the schema history is incomplete
+        run: |
+          ./ops/backup/drill/run-drill.sh --negative schema-history \
+            --report evidence/drill-schema-history.txt | tee evidence/drill-schema-history.log
+        shell: bash
+
+      # The exception the drill currently runs with, asserted rather than
+      # trusted: with --ledger-mode required the verification must fail, because
+      # §7.2's ledger tables are specified and not yet created by any migration.
+      # The day that migration lands, this case starts passing and must be
+      # deleted along with `absent-ok` in run-drill.sh.
+      - name: Negative case — the ledger tables are demanded
+        run: |
+          ./ops/backup/drill/run-drill.sh --negative require-ledger \
+            --report evidence/drill-require-ledger.txt | tee evidence/drill-require-ledger.log
+        shell: bash
+
+      - name: Summarise
+        if: always()
+        run: |
+          {
+            echo '## Restore drill'
+            echo
+            for FILE in evidence/*.txt; do
+              [ -f "$FILE" ] || continue
+              echo "### $(basename "$FILE" .txt)"
+              echo '```'
+              cat "$FILE"
+              echo '```'
+            done
+          } >>"$GITHUB_STEP_SUMMARY"
+        shell: bash
+
+      - name: Upload the evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: restore-drill-evidence
+          path: evidence/
+          # §19.4's rehearsal is quarterly; the evidence outlives four of them.
+          retention-days: 400
