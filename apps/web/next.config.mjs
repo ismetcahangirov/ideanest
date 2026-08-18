@@ -12,8 +12,112 @@
  */
 const apiOrigin = process.env.IDEANEST_API_ORIGIN ?? 'http://localhost:8080';
 
+/**
+ * The image pipeline's delivery half. docs/architecture.md §13.1 owns the
+ * ingestion half; this is what a browser is offered once the bytes exist.
+ *
+ * Exported by name so `src/lib/images/config.test.ts` can assert it. A build
+ * setting nothing checks is a setting that silently reverts to the framework
+ * default the first time somebody tidies this file.
+ *
+ * @type {import('next').NextConfig['images']}
+ */
+export const images = {
+  /**
+   * AVIF FIRST, WEBP SECOND, THE ORIGINAL LAST. Next content-negotiates in this
+   * order and falls back on its own: a browser whose `Accept` header omits AVIF
+   * is served WebP, and one that asks for neither is served the source
+   * encoding. Nothing is feature-detected in the client, and §13.1's stated
+   * order is the order here.
+   *
+   * AVIF is materially smaller than WebP on photographs — which is what every
+   * image on this platform is — at the cost of a slower encode. That cost is
+   * paid once per variant, on the server, and `minimumCacheTTL` is what keeps
+   * it to once.
+   */
+  formats: ['image/avif', 'image/webp'],
+
+  /**
+   * THE CANDIDATE WIDTHS, CUT TO WHAT THE LAYOUTS ACTUALLY USE.
+   *
+   * Next builds the `srcset` from `imageSizes` and `deviceSizes` together
+   * whenever `sizes` is present, so every width left in these lists is a width
+   * some browser will request and the optimiser will encode. The defaults end
+   * at 3840. The widest box in this application is the prelaunch cover at 720
+   * CSS pixels — 1440 on a 2× display — and the widest card is 440
+   * (`src/lib/images/sizes.ts` derives both from the Tailwind classes that
+   * produce them). Anything above 1440 is an AVIF encode of a photograph nobody
+   * can see, kept in a cache.
+   *
+   * 1440 is also §13.1's `hero` variant and 160 its `thumbnail`, so the ladder
+   * the optimiser serves and the ladder the media service will store are one
+   * ladder rather than two that drift.
+   */
+  deviceSizes: [640, 750, 828, 1080, 1200, 1440],
+  imageSizes: [16, 32, 48, 64, 96, 128, 160, 256, 384],
+
+  /**
+   * ONE QUALITY. Next 16 requires every quality a component asks for to be
+   * declared here and treats an undeclared one as an error rather than a silent
+   * re-encode. Nothing in the application overrides it, so the list is the
+   * default alone — which makes adding a second a deliberate act with a
+   * measurement behind it, not a number typed into a prop.
+   */
+  qualities: [75],
+
+  /**
+   * WHOSE IMAGES THE OPTIMISER WILL FETCH.
+   *
+   * `https` and nothing else: an `http://` image is blocked as mixed content on
+   * an HTTPS page anyway, so allowing it would only mean re-encoding pictures
+   * no browser will display. `src/lib/images/source.ts` keeps the same rule on
+   * the render side, because an address `next/image` cannot match throws, and a
+   * throw in a server component takes the route down with it.
+   *
+   * THE WILDCARD HOSTNAME IS DELIBERATE AND IT IS A KNOWN COST. There is no
+   * uploader and no object storage yet (docs/architecture.md §13.1, contract
+   * §3): a cover is an address a creator typed, on a host nobody can enumerate
+   * in advance. An allowlist today is an allowlist that matches nothing, and
+   * then no cover on the platform is ever converted to AVIF — the whole point
+   * of this file. What it costs is that `/_next/image` will fetch and re-encode
+   * any HTTPS URL handed to it, so it can be used as an image proxy by anybody
+   * who can write the query string. Next refuses private and loopback addresses
+   * on its own, so the exposure is bandwidth rather than a route into the
+   * network.
+   *
+   * THE FIX IS THE MEDIA PIPELINE, NOT A LONGER PATTERN LIST. Once §13.1's
+   * storage exists every cover is on one origin, this narrows to that origin,
+   * and the proxy stops existing. It is written into §13.1 as part of that
+   * work rather than left here as a comment nobody is accountable for.
+   */
+  remotePatterns: [{ protocol: 'https', hostname: '**' }],
+
+  /**
+   * THIRTY DAYS, NOT A YEAR.
+   *
+   * The cache key is the source URL, so a creator who replaces the photograph
+   * behind an address they already saved keeps serving the old one until this
+   * expires. A year is right for content-addressed storage and wrong for a URL
+   * a human controls, which is every cover today. Thirty days keeps the AVIF
+   * encode off the critical path for any realistic campaign while bounding how
+   * long a replaced picture can be wrong. It becomes a year when §13.1's
+   * immutable keys land.
+   */
+  minimumCacheTTL: 60 * 60 * 24 * 30,
+
+  /**
+   * SVG STAYS OFF. This is the default, and it is written out because it is the
+   * setting most often turned on by somebody who wants to render one logo. An
+   * SVG is a script that happens to draw, and the optimiser serves it from this
+   * application's own origin — which is where the session cookie lives.
+   */
+  dangerouslyAllowSVG: false,
+};
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  images,
+
   /**
    * `@ideanest/ui` and `@ideanest/design-tokens` are source-only packages —
    * their `exports` point straight at `.ts`/`.tsx`. Next has to compile them
