@@ -5,9 +5,8 @@ import az.ideanest.pledge.application.PledgeService;
 import az.ideanest.shared.idempotency.IdempotencyKey;
 import az.ideanest.shared.idempotency.IdempotentRequests;
 import az.ideanest.shared.idempotency.RecordedResponse;
-import az.ideanest.shared.ratelimit.RateLimitExceededException;
 import az.ideanest.shared.ratelimit.RateLimiter;
-import az.ideanest.shared.ratelimit.RateLimiter.RateLimitDecision;
+import az.ideanest.shared.ratelimit.RateLimits;
 import jakarta.validation.Valid;
 import java.util.Map;
 import java.util.UUID;
@@ -270,11 +269,7 @@ public class PledgeController {
     /** §17.3: ten pledges a minute per account. */
     private void enforcePledgeRateLimit(UUID backerId) {
         PledgeProperties.RateLimit limits = properties.rateLimit();
-        RateLimitDecision decision =
-                rateLimiter.recordAttempt("pledge:" + backerId, limits.pledgesPerUser(), limits.window());
-        if (!decision.allowed()) {
-            throw new RateLimitExceededException(decision.retryAfter());
-        }
+        RateLimits.enforce(rateLimiter.recordAttempt("pledge:" + backerId, limits.pledgesPerUser(), limits.window()));
     }
 
     /** The account making the request, as our own signature establishes it. */

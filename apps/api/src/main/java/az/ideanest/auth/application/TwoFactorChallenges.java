@@ -7,9 +7,8 @@ import az.ideanest.auth.domain.TwoFactorChallenge;
 import az.ideanest.auth.domain.TwoFactorSecret;
 import az.ideanest.auth.infrastructure.TwoFactorChallengeRepository;
 import az.ideanest.auth.infrastructure.TwoFactorSecretRepository;
-import az.ideanest.shared.ratelimit.RateLimitExceededException;
 import az.ideanest.shared.ratelimit.RateLimiter;
-import az.ideanest.shared.ratelimit.RateLimiter.RateLimitDecision;
+import az.ideanest.shared.ratelimit.RateLimits;
 import az.ideanest.user.application.UserAccount;
 import az.ideanest.user.application.UserAccounts;
 import java.time.Clock;
@@ -124,11 +123,8 @@ public class TwoFactorChallenges {
         // the only identifier here that the caller cannot vary, and it bounds
         // guessing at exactly the thing being guessed against.
         AuthProperties.RateLimit limits = properties.rateLimit();
-        RateLimitDecision decision = rateLimiter.recordAttempt(
-                "2fa:challenge:" + challenge.getId(), limits.twoFactorCodesPerChallenge(), limits.window());
-        if (!decision.allowed()) {
-            throw new RateLimitExceededException(decision.retryAfter());
-        }
+        RateLimits.enforce(rateLimiter.recordAttempt(
+                "2fa:challenge:" + challenge.getId(), limits.twoFactorCodesPerChallenge(), limits.window()));
 
         if (!challenge.isRedeemable(now)) {
             throw new AuthenticationFailedException(REFUSAL);

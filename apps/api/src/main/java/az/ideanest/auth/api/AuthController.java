@@ -5,9 +5,9 @@ import az.ideanest.auth.application.EmailVerificationService;
 import az.ideanest.auth.application.RegistrationService;
 import az.ideanest.auth.application.RegistrationService.RegistrationCommand;
 import az.ideanest.shared.EmailAddress;
-import az.ideanest.shared.ratelimit.RateLimitExceededException;
+import az.ideanest.shared.ratelimit.ClientAddress;
 import az.ideanest.shared.ratelimit.RateLimiter;
-import az.ideanest.shared.ratelimit.RateLimiter.RateLimitDecision;
+import az.ideanest.shared.ratelimit.RateLimits;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -56,10 +56,10 @@ public class AuthController {
     @ResponseStatus(HttpStatus.ACCEPTED)
     public void register(@Valid @RequestBody RegistrationRequest request, HttpServletRequest httpRequest) {
         AuthProperties.RateLimit limits = properties.rateLimit();
-        String clientAddress = clientAddressOf(httpRequest);
+        String clientAddress = ClientAddress.of(httpRequest);
 
         // Per address, so one script cannot create accounts in bulk.
-        enforce(rateLimiter.recordAttempt(
+        RateLimits.enforce(rateLimiter.recordAttempt(
                 "register:ip:" + clientAddress, limits.registrationsPerAddress(), limits.window()));
 
         EmailAddress email = EmailAddress.of(request.email());
@@ -67,7 +67,7 @@ public class AuthController {
         // And per email, separately: an attacker with many source addresses is
         // still bounded when probing one account, and the per-IP limit alone
         // would not bound them at all.
-        enforce(rateLimiter.recordAttempt(
+        RateLimits.enforce(rateLimiter.recordAttempt(
                 "register:email:" + email.value(), limits.registrationsPerEmail(), limits.window()));
 
         try {
@@ -90,29 +90,9 @@ public class AuthController {
 
         // Not about guessing the token — it is 256 bits. It is about not
         // letting one client spend our database on the attempt.
-        enforce(rateLimiter.recordAttempt(
-                "verify:ip:" + clientAddressOf(httpRequest), limits.verificationsPerAddress(), limits.window()));
+        RateLimits.enforce(rateLimiter.recordAttempt(
+                "verify:ip:" + ClientAddress.of(httpRequest), limits.verificationsPerAddress(), limits.window()));
 
         verifications.verify(request.token());
-    }
-
-    private static void enforce(RateLimitDecision decision) {
-        if (!decision.allowed()) {
-            throw new RateLimitExceededException(decision.retryAfter());
-        }
-    }
-
-    /**
-     * The remote address as the container saw it.
-     *
-     * <p>Deliberately not {@code X-Forwarded-For}. Trusting that header without
-     * a proxy in front means any client can pick its own rate limit bucket by
-     * inventing one, which turns the limiter off. Behind a load balancer the
-     * correct fix is {@code server.forward-headers-strategy}, set per
-     * environment where the proxy is known to be there (#139).
-     */
-    private static String clientAddressOf(HttpServletRequest request) {
-        String address = request.getRemoteAddr();
-        return address == null ? "unknown" : address;
     }
 }
