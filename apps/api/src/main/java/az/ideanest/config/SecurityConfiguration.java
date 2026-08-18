@@ -182,6 +182,38 @@ public class SecurityConfiguration {
                         // would not be an unsubscribe.
                         .requestMatchers(HttpMethod.POST, "/v1/projects/*/remind")
                         .permitAll()
+                        // "Somebody arrived here, from there" (#94). Public
+                        // because the visits that decide an attribution happen
+                        // before anybody signs in: a visitor reads a campaign
+                        // for a week and registers at checkout, and an endpoint
+                        // that required a token would only ever see the last
+                        // step of that journey. Every campaign would then appear
+                        // to convert nobody except the people who arrived
+                        // already logged in, which is the one number §4.7's
+                        // CD-03 exists to get right.
+                        //
+                        // An unauthenticated write, and bounded like the other
+                        // one above: per source address, in the handler. It is
+                        // not fraud protection and ReferralController says so —
+                        // what actually keeps invented sources out of a
+                        // creator's dashboard is that the report folds
+                        // everything past a configured limit into one line.
+                        //
+                        // Nothing is revealed. The handler serves it only for a
+                        // campaign in one of §6.1's public states and answers
+                        // 404 otherwise, so it cannot be used to find out what
+                        // other people are preparing, and the response is a
+                        // token the caller will send back plus the moment it
+                        // stops being useful.
+                        //
+                        // POST and nothing else. The creator's report at
+                        // /v1/projects/*/referrers is a different path, is
+                        // deliberately not matched here, and falls through to
+                        // the rule at the bottom — it carries a campaign's
+                        // marketing performance and every code that ever earned
+                        // it a pledge.
+                        .requestMatchers(HttpMethod.POST, "/v1/projects/*/referral-visits")
+                        .permitAll()
                         .requestMatchers(HttpMethod.DELETE, "/v1/projects/*/remind")
                         .permitAll()
                         // How someone with no credentials gets one, and how a
