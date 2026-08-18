@@ -7,9 +7,9 @@ import az.ideanest.auth.application.TwoFactorChallenges.CompletionCommand;
 import az.ideanest.auth.application.TwoFactorEnrolment;
 import az.ideanest.auth.application.TwoFactorEnrolmentService;
 import az.ideanest.auth.domain.Totp;
-import az.ideanest.shared.ratelimit.RateLimitExceededException;
+import az.ideanest.shared.ratelimit.ClientAddress;
 import az.ideanest.shared.ratelimit.RateLimiter;
-import az.ideanest.shared.ratelimit.RateLimiter.RateLimitDecision;
+import az.ideanest.shared.ratelimit.RateLimits;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.UUID;
@@ -134,8 +134,8 @@ public class TwoFactorController {
         // The same allowance as sign-in itself, because this is sign-in: the
         // per-challenge limit inside the service is what bounds guessing at one
         // account, and this bounds one client working through many.
-        enforce(rateLimiter.recordAttempt(
-                "2fa:verify:ip:" + clientAddressOf(httpRequest), limits.signInsPerAddress(), limits.window()));
+        RateLimits.enforce(rateLimiter.recordAttempt(
+                "2fa:verify:ip:" + ClientAddress.of(httpRequest), limits.signInsPerAddress(), limits.window()));
 
         IssuedTokens tokens = challenges.complete(
                 new CompletionCommand(request.challenge(), request.code(), request.recoveryCode()));
@@ -169,28 +169,12 @@ public class TwoFactorController {
      */
     private void limitChanges(UUID userId) {
         AuthProperties.RateLimit limits = properties.rateLimit();
-        enforce(rateLimiter.recordAttempt(
+        RateLimits.enforce(rateLimiter.recordAttempt(
                 "2fa:change:" + userId, limits.twoFactorChangesPerUser(), limits.window()));
     }
 
     /** The user, from a signature we made. Never from anything the caller chose. */
     private static UUID subjectOf(Jwt accessToken) {
         return UUID.fromString(accessToken.getSubject());
-    }
-
-    private static void enforce(RateLimitDecision decision) {
-        if (!decision.allowed()) {
-            throw new RateLimitExceededException(decision.retryAfter());
-        }
-    }
-
-    /**
-     * The remote address as the container saw it. Deliberately not
-     * {@code X-Forwarded-For}: without a proxy in front, a client that picks its
-     * own bucket has turned the limiter off (#139).
-     */
-    private static String clientAddressOf(HttpServletRequest request) {
-        String address = request.getRemoteAddr();
-        return address == null ? "unknown" : address;
     }
 }

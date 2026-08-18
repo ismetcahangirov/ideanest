@@ -1,0 +1,18 @@
+{
+  "maxSlackPercent": 15,
+  "sharedFirstLoadKib": 467,
+  "routes": {
+    "/_not-found": 467,
+    "/discover": 729,
+    "/projects/[id]/back": 723,
+    "/projects/[id]/edit": 467,
+    "/projects/[id]/edit/basics": 727,
+    "/projects/[id]/edit/prelaunch": 729,
+    "/projects/[id]/edit/review": 683,
+    "/projects/[id]/edit/rewards": 755,
+    "/projects/[id]/edit/story": 713,
+    "/projects/[id]/prelaunch": 668,
+    "/projects/new": 702,
+    "/settings/sessions": 665
+  }
+}

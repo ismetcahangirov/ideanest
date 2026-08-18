@@ -4,9 +4,8 @@ import az.ideanest.audit.AuditAction;
 import az.ideanest.audit.AuditActor;
 import az.ideanest.audit.AuditLog;
 import az.ideanest.audit.AuditOutcome;
-import az.ideanest.shared.ratelimit.RateLimitExceededException;
 import az.ideanest.shared.ratelimit.RateLimiter;
-import az.ideanest.shared.ratelimit.RateLimiter.RateLimitDecision;
+import az.ideanest.shared.ratelimit.RateLimits;
 import az.ideanest.user.UserProperties;
 import az.ideanest.user.application.AccountExport;
 import az.ideanest.user.application.AccountExportService;
@@ -65,7 +64,8 @@ public class AccountExportController {
         // Per account, not per address. One stolen token should be worth one
         // copy of the account, not a tap on it, and the account is the thing
         // being drained.
-        enforce(rateLimiter.recordAttempt("account-export:" + userId, limits.exportsPerAccount(), limits.window()));
+        RateLimits.enforce(rateLimiter.recordAttempt(
+                "account-export:" + userId, limits.exportsPerAccount(), limits.window()));
 
         return exports.exportFor(userId)
                 .map(export -> {
@@ -87,11 +87,5 @@ public class AccountExportController {
                         .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"ideanest-account.json\"")
                         .body(export))
                 .orElseGet(() -> ResponseEntity.notFound().build());
-    }
-
-    private static void enforce(RateLimitDecision decision) {
-        if (!decision.allowed()) {
-            throw new RateLimitExceededException(decision.retryAfter());
-        }
     }
 }

@@ -11,9 +11,9 @@ import az.ideanest.auth.application.SocialSignInService;
 import az.ideanest.auth.application.SocialSignInService.SocialSignInCommand;
 import az.ideanest.auth.domain.IdentityProvider;
 import az.ideanest.shared.EmailAddress;
-import az.ideanest.shared.ratelimit.RateLimitExceededException;
+import az.ideanest.shared.ratelimit.ClientAddress;
 import az.ideanest.shared.ratelimit.RateLimiter;
-import az.ideanest.shared.ratelimit.RateLimiter.RateLimitDecision;
+import az.ideanest.shared.ratelimit.RateLimits;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.time.Duration;
@@ -89,11 +89,11 @@ public class TokenController {
         AuthProperties.RateLimit limits = properties.rateLimit();
         // §17.3: five attempts per address per fifteen minutes. Per email as
         // well, so that a distributed guess against one account is bounded too.
-        enforce(rateLimiter.recordAttempt(
-                "login:ip:" + clientAddressOf(httpRequest), limits.signInsPerAddress(), limits.window()));
+        RateLimits.enforce(rateLimiter.recordAttempt(
+                "login:ip:" + ClientAddress.of(httpRequest), limits.signInsPerAddress(), limits.window()));
 
         EmailAddress email = EmailAddress.of(request.email());
-        enforce(rateLimiter.recordAttempt(
+        RateLimits.enforce(rateLimiter.recordAttempt(
                 "login:email:" + email.value(), limits.signInsPerEmail(), limits.window()));
 
         SignInOutcome outcome = signIns.signIn(new SignInCommand(
@@ -101,7 +101,7 @@ public class TokenController {
                 request.password(),
                 request.deviceLabel(),
                 httpRequest.getHeader(HttpHeaders.USER_AGENT),
-                clientAddressOf(httpRequest)));
+                ClientAddress.of(httpRequest)));
 
         return respondTo(outcome, request.wantsTokenInBody());
     }
@@ -149,8 +149,8 @@ public class TokenController {
         // Not a guessing defence — an ID token cannot be guessed. It bounds what
         // one caller can make us spend on signature verification and on fetching
         // a rotated key set from the provider.
-        enforce(rateLimiter.recordAttempt(
-                "oauth:ip:" + clientAddressOf(httpRequest), limits.socialSignInsPerAddress(), limits.window()));
+        RateLimits.enforce(rateLimiter.recordAttempt(
+                "oauth:ip:" + ClientAddress.of(httpRequest), limits.socialSignInsPerAddress(), limits.window()));
 
         SignInOutcome outcome = socialSignIns.signIn(new SocialSignInCommand(
                 identityProvider,
@@ -160,7 +160,7 @@ public class TokenController {
                 request.localeOrDefault(),
                 request.deviceLabel(),
                 httpRequest.getHeader(HttpHeaders.USER_AGENT),
-                clientAddressOf(httpRequest)));
+                ClientAddress.of(httpRequest)));
 
         return respondTo(outcome, request.wantsTokenInBody());
     }
@@ -217,17 +217,6 @@ public class TokenController {
             }
             return new PresentedToken(value, false);
         });
-    }
-
-    private static void enforce(RateLimitDecision decision) {
-        if (!decision.allowed()) {
-            throw new RateLimitExceededException(decision.retryAfter());
-        }
-    }
-
-    private static String clientAddressOf(HttpServletRequest request) {
-        String address = request.getRemoteAddr();
-        return address == null ? "unknown" : address;
     }
 
     /** A refusal that also has to clear the cookie. */

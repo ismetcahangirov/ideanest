@@ -4,9 +4,8 @@ import az.ideanest.audit.AuditAction;
 import az.ideanest.audit.AuditActor;
 import az.ideanest.audit.AuditLog;
 import az.ideanest.audit.AuditOutcome;
-import az.ideanest.shared.ratelimit.RateLimitExceededException;
 import az.ideanest.shared.ratelimit.RateLimiter;
-import az.ideanest.shared.ratelimit.RateLimiter.RateLimitDecision;
+import az.ideanest.shared.ratelimit.RateLimits;
 import az.ideanest.user.UserProperties;
 import az.ideanest.user.application.AccountDeletionService;
 import az.ideanest.user.application.AccountDeletionService.DeletionSchedule;
@@ -86,7 +85,7 @@ public class AccountDeletionController {
         // rather than per address: the account is what is being attacked, and an
         // attacker with one token can come from anywhere.
         UserProperties.RateLimit limits = properties.rateLimit();
-        enforce(rateLimiter.recordAttempt(
+        RateLimits.enforce(rateLimiter.recordAttempt(
                 "account-deletion:" + userId, limits.deletionAttemptsPerAccount(), limits.window()));
 
         return deletions
@@ -139,11 +138,5 @@ public class AccountDeletionController {
 
     private static DeletionScheduledResponse toResponse(DeletionSchedule schedule) {
         return new DeletionScheduledResponse(schedule.requestedAt(), schedule.scheduledFor());
-    }
-
-    private static void enforce(RateLimitDecision decision) {
-        if (!decision.allowed()) {
-            throw new RateLimitExceededException(decision.retryAfter());
-        }
     }
 }
