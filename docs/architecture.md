@@ -1828,12 +1828,18 @@ load profile).
 > | `pledge.confirmed` | `pledge`, keyed on the pledge | `PledgeService.confirm`, inside §6.2's `DRAFT → CONFIRMED` transaction | `pledgeId`, `projectId`, `backerId`, `total` as §10.3's `{"amount", "currency"}` object with a **string** amount, `referrerCode` when the pledge carries one, `confirmedAt` |
 >
 > The payload is the contract, not a Java type. The producer and the consumer each
-> declare their own record of the same six fields and neither may import the other —
-> two modules sharing a class are one module that cannot be deployed separately, and
-> `ModuleBoundaryTests` fails the build over it. `total` and `confirmedAt` travel on
-> the event rather than being looked up because a consumer cannot read `pledges`:
-> attribution (#94) is the first one, and a rule applied to a message delivered an
-> hour late has to produce the answer it would have produced on time.
+> declare their own record of the same six fields and neither imports the other: two
+> modules sharing a class are one module that cannot be deployed separately, and here
+> the shared type would have to be imported by the *producer*, making a module depend
+> on the one whose only purpose is to react to it. `ModuleBoundaryTests` does **not**
+> catch a renamed field — its rules are about `domain`/`infrastructure` reach and about
+> cycles, and a rename compiles on both sides — so the six names are asserted literally
+> in `PledgeConfirmedEventTests`.
+>
+> `total` and `confirmedAt` travel on the event rather than being looked up because a
+> consumer cannot read `pledges`: attribution (#94) is the first one, and a rule
+> applied to a message delivered an hour late has to produce the answer it would have
+> produced on time.
 >
 > **Every handler therefore has to tolerate redelivery**, keyed on the event's `id`,
 > which is stable across attempts. `shared/idempotency` is deliberately not reused

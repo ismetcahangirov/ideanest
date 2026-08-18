@@ -15,13 +15,22 @@ import java.util.UUID;
  *
  * <p><strong>This is the pledge module's copy of the contract, and it is deliberately
  * a copy.</strong> {@code analytics} declares the same six fields as the shape it
- * reads, and neither record may import the other — {@code ModuleBoundaryTests} fails
- * the build over it, and it is right to: two modules that share a Java type are one
- * module that cannot be deployed separately. What they share instead is the JSON,
- * which is exactly what they would share across a broker. The field names below are
- * therefore the contract, and renaming one is a breaking change to every consumer
- * even though nothing on this side would fail to compile. {@code PledgeEventTests}
- * pins them.
+ * reads, and neither record imports the other. Two modules that share a Java type are
+ * one module that cannot be deployed separately, and the direction makes it worse
+ * rather than better: the consumer already imports nothing from here and says so in
+ * its own comment, so a shared type would have to be imported <em>this</em> way — the
+ * producer taking a dependency on a module whose only purpose is to react to it. What
+ * they share instead is the JSON, which is exactly what they would share across a
+ * broker.
+ *
+ * <p>The field names below are therefore the contract, and renaming one is a breaking
+ * change to every consumer even though nothing on either side would fail to compile.
+ * <strong>No existing check catches that.</strong> {@code ModuleBoundaryTests} forbids
+ * reaching into another module's {@code domain} or {@code infrastructure} and would
+ * not see an import of another module's {@code application} record, and its cycle rule
+ * only bites once the dependency runs both ways. So
+ * {@code PledgeConfirmedEventTests} asserts the six names literally, which is the only
+ * thing that does.
  *
  * <p><strong>A standalone record rather than a member of a {@code PledgeEvents}
  * holder.</strong> {@code AuthEvents} and {@code ProjectEvents} group the messages a

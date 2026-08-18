@@ -65,13 +65,19 @@ import tools.jackson.databind.ObjectMapper;
  * </ul>
  *
  * <p><strong>Nothing here imports {@code az.ideanest.analytics}.</strong> The consumer
- * declares its own record of the same six fields and the two may not see each other —
- * that is the boundary {@code ModuleBoundaryTests} enforces on the production side, and
- * a test that reached across it would be quietly holding the two modules together with
- * a Java type instead of with the JSON they actually share. So {@link ConsumerShape}
- * below mirrors the consumer's declaration, and the field names are asserted literally
- * as well: a rename that broke every consumer would otherwise still pass, because both
- * copies would have been renamed together.
+ * declares its own record of the same six fields and the two do not see each other, so
+ * a test that reached across would be quietly holding the two modules together with a
+ * Java type instead of with the JSON they actually share. {@link ConsumerShape} below
+ * mirrors the consumer's declaration instead.
+ *
+ * <p><strong>And the field names are asserted literally, because nothing else asserts
+ * them.</strong> {@code ModuleBoundaryTests} checks that no module reaches into
+ * another's {@code domain} or {@code infrastructure} and that the modules are acyclic;
+ * neither rule has anything to say about two records in two modules agreeing on six
+ * names. A rename would compile on both sides and pass every structural assertion here
+ * — {@link ConsumerShape} would have been renamed with it — and break every consumer in
+ * production. {@link #thePayloadCarriesExactlyTheAgreedFieldNames()} is the only thing
+ * standing in front of that.
  */
 class PledgeConfirmedEventTests extends AbstractIntegrationTest {
 
