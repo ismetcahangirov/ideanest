@@ -165,6 +165,100 @@ jobs:
               -f body="$BODY" > /dev/null
           fi
 
+  # First Load JS is a property of the build — the same commit produces the same
+  # bytes on every machine — so a failure here is always somebody's change and
+  # never the runner's mood. That is what makes it safe to block on.
+  #
+  # A separate job rather than more steps on `frontend`: it wants its own name
+  # as a required check, and building the web application is a couple of minutes
+  # the typecheck-and-test job should not have to carry inside its timeout.
+  # Nothing here needs a token beyond the read-only one, so it runs on a fork's
+  # pull request exactly as it runs on ours.
+  performance:
+    name: Performance budgets
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the web application
+        run: pnpm --filter @ideanest/web build
+
+      # The gate. Everything below this step reports; only this step fails.
+      - name: Check First Load JS against budgets
+        run: node apps/web/performance/check-first-load-js.mjs
+
+      # A production build that does not serve a page is a defect and not
+      # runner noise, so this one is allowed to fail the job even though the
+      # measurement it exists for is not.
+      - name: Start the production server
+        env:
+          LOG: ${{ runner.temp }}/next-start.log
+        run: |
+          pnpm --filter @ideanest/web start > "$LOG" 2>&1 &
+          for _ in $(seq 1 30); do
+            if curl -sfo /dev/null http://localhost:3000/discover; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::The production server did not answer within 30 seconds."
+          cat "$LOG"
+          exit 1
+
+      # Discovery is the surface with the most on screen and the editor the one
+      # with the most form (motion-system.md §5.1); the application has no root
+      # route to measure. Lighthouse is fetched with `pnpm dlx` at a pinned
+      # version rather than installed, because a tool that runs twice a day in
+      # CI does not belong in the dependency graph of an application nobody
+      # installs it with.
+      #
+      # Three runs each. A single Lighthouse run on a shared runner is a sample,
+      # not a measurement, and one that fails is one missing sample rather than
+      # a broken pull request.
+      - name: Measure lab Core Web Vitals
+        env:
+          REPORTS: ${{ runner.temp }}/lighthouse
+        run: |
+          mkdir -p "$REPORTS"
+          for route in discover projects/new; do
+            for run in 1 2 3; do
+              pnpm dlx lighthouse@13.4.1 "http://localhost:3000/${route}" \
+                --only-categories=performance \
+                --output=json \
+                --output-path="${REPORTS}/${route//\//-}-${run}.json" \
+                --chrome-flags='--headless=new --no-sandbox' \
+                --quiet \
+                || echo "::warning title=Lighthouse::${route} run ${run} did not complete."
+            done
+          done
+
+      - name: Summarise lab Core Web Vitals
+        run: node apps/web/performance/summarise-lighthouse.mjs "${{ runner.temp }}/lighthouse"
+
+      # The table in the job summary is the median. The reports are what you
+      # read when the median is surprising and you want to know which run moved.
+      - name: Upload the Lighthouse reports
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: lighthouse-reports
+          path: ${{ runner.temp }}/lighthouse
+          if-no-files-found: ignore
+          retention-days: 7
+
   backend:
     name: Backend (Java)
     runs-on: ubuntu-latest
