@@ -7,6 +7,8 @@ import az.ideanest.project.domain.Grants;
 import az.ideanest.project.domain.Project;
 import az.ideanest.project.infrastructure.CollaboratorRepository;
 import az.ideanest.project.infrastructure.ProjectRepository;
+import az.ideanest.shared.access.ProjectAuthorisation;
+import az.ideanest.shared.access.ProjectCapability;
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
@@ -50,9 +52,19 @@ import org.springframework.stereotype.Service;
  * already see the campaign, and there is nothing left to hide from them. A
  * <em>revoked</em> collaborator is a stranger again, and gets the 404 — the
  * confidentiality that 404 protects is exactly what a revocation withdraws.
+ *
+ * <p><strong>Other modules ask through {@link ProjectAuthorisation}.</strong> They may
+ * not name {@link Capability}, which is this module's domain enum, so the vocabulary is
+ * published as {@link ProjectCapability} and this class is the implementation that
+ * turns one into the other. Before that contract existed, every out-of-module caller
+ * could only ask the coarse "may this account edit this campaign at all", and four of
+ * them did — which is how a collaborator granted only {@link Capability#EDIT_REWARDS}
+ * came to be able to publish a project update and read the referral report. The
+ * mapping is {@link Capability#of(ProjectCapability)} and it is total; nothing else in
+ * the service needs to know there are two enums.
  */
 @Service
-public class ProjectAccess {
+public class ProjectAccess implements ProjectAuthorisation {
 
     /**
      * Any one of these means "this account works on the campaign".
@@ -103,18 +115,38 @@ public class ProjectAccess {
     }
 
     /**
+     * Refuses unless this account holds this capability on this campaign.
+     *
+     * <p>The whole of {@link ProjectAuthorisation}: the sanctioned route for a module
+     * that knows which capability its request needs and may not name
+     * {@link Capability} to say so. It authorises exactly as
+     * {@link #requireEditable(UUID, UUID, Capability)} does and deliberately answers
+     * nothing, so that no campaign leaves this module through an authorisation call.
+     */
+    @Override
+    public void requireCapability(UUID projectId, UUID accountId, ProjectCapability capability) {
+        requireEditable(projectId, accountId, Capability.of(capability));
+    }
+
+    /**
      * What §5.3 has frozen on the campaign, for a caller that may not name one.
      *
-     * <p>Authorises exactly as {@link #requireEditable(UUID, UUID)} — same load,
-     * same refusals — and answers with {@link EditLocks} instead of the entity. It
-     * exists for the reward module, which enforces two of the five rules and cannot
-     * see a {@code Project} to read the state off: {@code ModuleBoundaryTests} keeps
-     * this module's domain package to this module. Handing it the answer here rather
-     * than letting it ask a second time is what stops "has this campaign launched"
-     * from being computed twice from two different loads.
+     * <p>Authorises exactly as {@link #requireCapability} — same load, same refusals —
+     * and answers with {@link EditLocks} instead of the entity. It exists for the
+     * reward module, which enforces two of the five rules and cannot see a
+     * {@code Project} to read the state off: {@code ModuleBoundaryTests} keeps this
+     * module's domain package to this module. Handing it the answer here rather than
+     * letting it ask a second time is what stops "has this campaign launched" from
+     * being computed twice from two different loads.
+     *
+     * <p><strong>The capability is a parameter and there is no overload without
+     * one.</strong> There was, and it asked the coarse question; the analytics module
+     * found it, used it because it was the only thing it could reach, and the referral
+     * report became readable by anybody granted any editing capability. A coarse
+     * escape hatch on a published surface will be taken.
      */
-    public EditLocks requireEditableLocks(UUID projectId, UUID accountId) {
-        return EditLocks.of(requireEditable(projectId, accountId));
+    public EditLocks requireEditableLocks(UUID projectId, UUID accountId, ProjectCapability capability) {
+        return EditLocks.of(requireEditable(projectId, accountId, Capability.of(capability)));
     }
 
     /**

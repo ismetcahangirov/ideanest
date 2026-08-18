@@ -2,6 +2,7 @@ package az.ideanest.project.application;
 
 import az.ideanest.project.ProjectProperties;
 import az.ideanest.shared.EmailAddress;
+import az.ideanest.shared.access.PlatformStaff;
 import az.ideanest.user.application.UserAccounts;
 import java.util.Set;
 import java.util.UUID;
@@ -34,9 +35,15 @@ import org.springframework.stereotype.Service;
  * authenticated caller, never read from the token or the request body. A list of
  * addresses is checked because that is what an operator can write down; the
  * account identifier is a value they would have to go and query for.
+ *
+ * <p><strong>Other modules ask through {@link PlatformStaff}.</strong> Staff identity
+ * is not a fact about campaigns and does not belong to this module in the long run —
+ * epic #100 replaces what is behind that interface. Callers naming the interface
+ * rather than this class is what makes that replacement a change to one file instead
+ * of to every module that needed to know who is staff.
  */
 @Service
-public class ModeratorDirectory {
+public class ModeratorDirectory implements PlatformStaff {
 
     private final Set<EmailAddress> moderators;
     private final UserAccounts accounts;
@@ -60,7 +67,8 @@ public class ModeratorDirectory {
      * rows, so an access token minted before the account was closed stops being
      * enough here as soon as it is.
      */
-    public boolean isModerator(UUID accountId) {
+    @Override
+    public boolean isStaff(UUID accountId) {
         if (moderators.isEmpty()) {
             // No query when there is no list. Not an optimisation — it keeps the
             // fail-closed case from depending on whether the account loads.
@@ -69,5 +77,25 @@ public class ModeratorDirectory {
         return accounts.findById(accountId)
                 .map(account -> moderators.contains(account.email()))
                 .orElse(false);
+    }
+
+    @Override
+    public void requireStaff(UUID accountId) {
+        if (!isStaff(accountId)) {
+            throw new NotAModeratorException(accountId);
+        }
+    }
+
+    /**
+     * The same question under the name the modules that have not moved still use.
+     *
+     * <p>{@code discovery} and this module's own {@code ProjectAccess} call it. Kept as
+     * a delegation rather than renamed at every call site because those call sites are
+     * outside the scope of #236, and kept as one line rather than a second
+     * implementation because two answers to "who is staff" is exactly the disagreement
+     * this class exists to prevent.
+     */
+    public boolean isModerator(UUID accountId) {
+        return isStaff(accountId);
     }
 }
