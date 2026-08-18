@@ -4,18 +4,24 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * Turns on Spring's in-process scheduler.
+ * Turns on Spring's scheduler, which is the timer the durable scheduler runs on.
  *
- * <p><strong>A placeholder for a real one.</strong> §8.4 lists thirteen
- * scheduled jobs, most of them handling money, and none of them can run on a
- * timer that keeps no record of what it did, retries nothing, and fires once per
- * replica. The durable scheduler is #134.
+ * <p><strong>The annotation stays, and nothing uses it directly.</strong> §8.4's
+ * jobs are registered by {@code JobScheduler} against a {@code TaskScheduler},
+ * not by {@code @Scheduled} — {@code JobTriggerTests} refuses a production
+ * method that carries it. This is still here because Spring Boot only
+ * auto-configures the {@code taskScheduler} bean when scheduling is enabled: the
+ * condition is the presence of {@code internalScheduledAnnotationProcessor},
+ * which is exactly what {@code @EnableScheduling} registers. Removing it as
+ * dead configuration would leave the platform with no timer at all, and the
+ * symptom would be sixteen jobs that never run.
  *
- * <p>What runs here today is account anonymisation, which is the one job whose
- * properties suit this: idempotent, bounded, and indifferent to running an hour
- * late. When #134 lands, this configuration and the {@code @Scheduled} on
- * {@code AccountAnonymisationJob} both go, and the job is registered with the
- * scheduler instead.
+ * <p>What #134 changed is not the timer. Every replica still keeps its own, and
+ * that is deliberate — a scheduler on one elected replica is a scheduler with a
+ * single point of failure and an election to get wrong. What changed is that a
+ * trigger now claims a lease before it does anything, so the number of replicas
+ * stopped deciding how many times the work happens. See
+ * {@code az.ideanest.shared.jobs}.
  */
 @Configuration(proxyBeanMethods = false)
 @EnableScheduling

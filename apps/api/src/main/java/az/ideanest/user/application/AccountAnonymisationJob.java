@@ -1,5 +1,6 @@
 package az.ideanest.user.application;
 
+import az.ideanest.shared.jobs.ScheduledJob;
 import az.ideanest.user.UserProperties;
 import az.ideanest.user.infrastructure.UserRepository;
 import java.time.Clock;
@@ -9,30 +10,25 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
  * Finds the accounts whose grace period has elapsed and hands them to the
  * anonymiser.
  *
- * <p><strong>This belongs on the durable scheduler, not here.</strong> There is
- * no job queue yet (#134), so this is Spring's {@code @Scheduled}: an in-process
- * timer with no record of what it did, no retry, and no visibility. It is
- * adequate because the work is idempotent, bounded, and not urgent to the
- * minute — an account anonymised an hour late is still anonymised — and it is
- * not adequate for anything with money in it. When #134 lands this becomes a
- * durable job and the annotation goes.
+ * <p><strong>On the durable scheduler since #134.</strong> This job did not need
+ * the lease to be correct — {@link AccountAnonymiser#anonymise} locks the row
+ * before it decides, so exactly one caller ever did the work and the others found
+ * it already done — and it is the job that gains the most from being counted.
+ * §17.4's grace period expiring is the platform keeping a promise to somebody who
+ * asked to be forgotten, and an hourly sweep that had been throwing since Tuesday
+ * previously said so only in a log line nobody was looking at.
  *
- * <p><strong>On more than one instance</strong> every replica runs this on its
- * own timer, so several will look for due accounts at once. That is safe rather
- * than merely tolerable: {@link AccountAnonymiser#anonymise} locks the row
- * before it decides, so exactly one caller does the work and the others find it
- * already done. The cost of not having a leader election is some duplicated
- * reads, which is the right trade against a lock nobody maintains.
+ * <p>An account anonymised an hour late is still anonymised, which is why this
+ * was safe on an unclaimed timer in the first place.
  */
 @Component
-public class AccountAnonymisationJob {
+public class AccountAnonymisationJob implements ScheduledJob {
 
     private static final Logger log = LoggerFactory.getLogger(AccountAnonymisationJob.class);
 
@@ -49,13 +45,24 @@ public class AccountAnonymisationJob {
         this.clock = clock;
     }
 
+    /** §8.4's {@code account-anonymiser}. */
+    @Override
+    public String name() {
+        return "account-anonymiser";
+    }
+
     /**
      * The schedule is a property so that the test profile can set it to
      * {@code -} and drive {@link #anonymiseDueAccounts(Instant)} directly. A
      * timer firing in the background of a test suite is a source of failures
      * that reproduce once a fortnight.
      */
-    @Scheduled(cron = "${ideanest.user.anonymisation-schedule}", zone = "UTC")
+    @Override
+    public String schedule() {
+        return properties.anonymisationSchedule();
+    }
+
+    @Override
     public void run() {
         anonymiseDueAccounts(clock.instant());
     }

@@ -1,11 +1,11 @@
 package az.ideanest.shared.idempotency;
 
+import az.ideanest.shared.jobs.ScheduledJob;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
@@ -17,13 +17,13 @@ import org.springframework.stereotype.Component;
  * long after the retry it existed to catch became impossible. §17.2 names the
  * period; a period nothing enforces is a comment.
  *
- * <p><strong>An in-process {@code @Scheduled} timer, on §8.4's terms.</strong> The
- * durable scheduler is #134, so this is the same arrangement
- * {@code ReservationCleanerJob} and {@code AccountAnonymisationJob} already have,
- * and it is safe on more than one replica for a simpler reason than either of them:
- * the sweep's only effect is a delete, so two replicas running it at once means one
- * of them removes the row and the other finds nothing to remove. There is no second
- * effect to keep in step and therefore nothing to claim.
+ * <p><strong>On the durable scheduler since #134</strong>, and this is the job that
+ * needed it least. Its only effect is a delete, so two replicas sweeping at once
+ * already meant one of them removed the row and the other found nothing to remove —
+ * there was no second effect to keep in step and therefore nothing to claim. What the
+ * lease buys is that one replica does the deleting instead of all of them, and what
+ * the scheduler buys is that a sweep failing against a database under pressure backs
+ * off instead of returning every hour to fail identically.
  *
  * <p>Late is cheap here. A missed hour is an hour of rows that outlive their
  * purpose, which is a retention overrun rather than a wrong answer — the keys are
@@ -31,7 +31,7 @@ import org.springframework.stereotype.Component;
  * past.
  */
 @Component
-public class IdempotencyKeySweeper {
+public class IdempotencyKeySweeper implements ScheduledJob {
 
     private static final Logger log = LoggerFactory.getLogger(IdempotencyKeySweeper.class);
 
@@ -45,13 +45,24 @@ public class IdempotencyKeySweeper {
         this.clock = clock;
     }
 
+    /** §8.4's {@code idempotency-key-cleaner}. */
+    @Override
+    public String name() {
+        return "idempotency-key-cleaner";
+    }
+
     /**
      * The schedule is a property so that the test profile can set it to {@code -}
      * and drive {@link #removeExpiredKeys(Instant)} directly, for the reason
      * {@code ReservationCleanerJob} gives: a timer firing in the background of a
      * test suite deletes the very rows a test is about to assert on.
      */
-    @Scheduled(cron = "${ideanest.idempotency.sweep-schedule}", zone = "UTC")
+    @Override
+    public String schedule() {
+        return properties.sweepSchedule();
+    }
+
+    @Override
     public void run() {
         removeExpiredKeys(clock.instant().truncatedTo(ChronoUnit.MICROS));
     }
