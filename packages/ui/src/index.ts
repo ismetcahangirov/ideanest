@@ -119,4 +119,23 @@ export {
 } from './components/data/Skeleton';
 export { InlineAlert, type InlineAlertProps } from './components/data/InlineAlert';
 
+/* Media
+ *
+ * Framework-independent on purpose: `next/image` cannot be imported here, so
+ * the frame takes the image as a child and the application supplies whichever
+ * element knows how to fetch AVIF. See `components/media/Media.tsx`. */
+export {
+  Media,
+  MediaFrame,
+  MEDIA_RATIOS,
+  aspectRatioOf,
+  isPlaceholderUri,
+  type MediaProps,
+  type MediaFrameProps,
+  type MediaRatio,
+  type MediaRatioToken,
+  type MediaRadius,
+  type IntrinsicSize,
+} from './components/media/Media';
+
 export { cn } from './lib/cn';

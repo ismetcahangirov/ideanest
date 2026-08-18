@@ -81,3 +81,21 @@ export const SAMPLE_CATEGORIES = [
   'Photography',
   'Theatre',
 ] as const;
+
+/**
+ * A stand-in cover and the low-quality placeholder that goes with it.
+ *
+ * Inline rather than a file on disk, for the reason `visual-regression.test.tsx`
+ * gives about determinism: a story that fetches anything renders differently
+ * depending on whether the fetch finished, and Storybook's own static server is
+ * not running under Vitest. Both are `data:` URIs, so the stories paint the same
+ * bytes in the browser and in the snapshot.
+ *
+ * The placeholder is 16 pixels wide, which is the width `apps/web/src/lib/images/lqip.ts`
+ * samples uploads at.
+ */
+export const SAMPLE_COVER =
+  'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMUYxRjFGIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=';
+
+export const SAMPLE_COVER_PLACEHOLDER =
+  'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSI5IiB2aWV3Qm94PSIwIDAgMTYgOSI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMkEyQTJBIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjkiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=';

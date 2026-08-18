@@ -2541,6 +2541,70 @@ exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/form/To
 </div>"
 `;
 
+exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/media/Media.stories.tsx — Cropped [reduced motion] 1`] = `
+"<div class="font-sans text-white antialiased">
+<div data-media-frame="" class="relative w-full overflow-hidden bg-surface-3 rounded-lg" style="aspect-ratio: 16 / 9;">
+<img alt="" loading="lazy" decoding="async" class="absolute inset-0 size-full object-cover" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMUYxRjFGIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=">
+</div>
+</div>"
+`;
+
+exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/media/Media.stories.tsx — Described [reduced motion] 1`] = `
+"<div class="font-sans text-white antialiased">
+<div data-media-frame="" class="relative w-full overflow-hidden bg-surface-3 rounded-lg" style="aspect-ratio: 16 / 9;">
+<img alt="A hand-built field recorder on a workbench, its lid open." loading="lazy" decoding="async" class="absolute inset-0 size-full object-cover" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMUYxRjFGIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=">
+</div>
+</div>"
+`;
+
+exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/media/Media.stories.tsx — Empty [reduced motion] 1`] = `
+"<div class="font-sans text-white antialiased">
+<div data-media-frame="" class="relative w-full overflow-hidden bg-surface-3 rounded-lg" style="aspect-ratio: 16 / 9;">
+</div>
+</div>"
+`;
+
+exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/media/Media.stories.tsx — IntrinsicRatio [reduced motion] 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="max-w-[240px]">
+<div data-media-frame="" class="relative w-full overflow-hidden bg-surface-3 rounded-lg" style="aspect-ratio: 3 / 4;">
+<span aria-hidden="true" data-media-placeholder="" class="pointer-events-none absolute inset-0 scale-110 bg-cover bg-center blur-md" style="background-image: url(&quot;data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSI5IiB2aWV3Qm94PSIwIDAgMTYgOSI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMkEyQTJBIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjkiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=&quot;);">
+</span>
+<img alt="" loading="lazy" decoding="async" class="absolute inset-0 size-full object-contain" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMUYxRjFGIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=">
+</div>
+</div>
+</div>"
+`;
+
+exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/media/Media.stories.tsx — Ratios [reduced motion] 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="grid max-w-[720px] grid-cols-4 gap-4">
+<div data-media-frame="" class="relative w-full overflow-hidden bg-surface-3 rounded-md" style="aspect-ratio: 16 / 9;">
+<img alt="" loading="lazy" decoding="async" class="absolute inset-0 size-full object-cover" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMUYxRjFGIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=">
+</div>
+<div data-media-frame="" class="relative w-full overflow-hidden bg-surface-3 rounded-md" style="aspect-ratio: 3 / 2;">
+<img alt="" loading="lazy" decoding="async" class="absolute inset-0 size-full object-cover" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMUYxRjFGIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=">
+</div>
+<div data-media-frame="" class="relative w-full overflow-hidden bg-surface-3 rounded-md" style="aspect-ratio: 4 / 3;">
+<img alt="" loading="lazy" decoding="async" class="absolute inset-0 size-full object-cover" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMUYxRjFGIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=">
+</div>
+<div data-media-frame="" class="relative w-full overflow-hidden bg-surface-3 rounded-md" style="aspect-ratio: 1 / 1;">
+<img alt="" loading="lazy" decoding="async" class="absolute inset-0 size-full object-cover" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMUYxRjFGIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=">
+</div>
+</div>
+</div>"
+`;
+
+exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/media/Media.stories.tsx — WithPlaceholder [reduced motion] 1`] = `
+"<div class="font-sans text-white antialiased">
+<div data-media-frame="" class="relative w-full overflow-hidden bg-surface-3 rounded-lg" style="aspect-ratio: 16 / 9;">
+<span aria-hidden="true" data-media-placeholder="" class="pointer-events-none absolute inset-0 scale-110 bg-cover bg-center blur-md" style="background-image: url(&quot;data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSI5IiB2aWV3Qm94PSIwIDAgMTYgOSI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMkEyQTJBIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjkiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=&quot;);">
+</span>
+<img alt="" loading="lazy" decoding="async" class="absolute inset-0 size-full object-cover" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMUYxRjFGIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=">
+</div>
+</div>"
+`;
+
 exports[`rendered markup (prefers-reduced-motion: reduce) > ./components/overlay/Combobox.stories.tsx — Closed [reduced motion] 1`] = `
 "<div class="font-sans text-white antialiased">
 <div class="h-[320px] w-[420px]">
@@ -5697,6 +5761,70 @@ exports[`rendered markup > ./components/form/Toggles.stories.tsx — Switches 1`
 <span class="size-5 rounded-full transition-transform duration-150 ease-in-out translate-x-0 bg-white">
 </span>
 </span>Locked while the campaign is live</button>
+</div>
+</div>"
+`;
+
+exports[`rendered markup > ./components/media/Media.stories.tsx — Cropped 1`] = `
+"<div class="font-sans text-white antialiased">
+<div data-media-frame="" class="relative w-full overflow-hidden bg-surface-3 rounded-lg" style="aspect-ratio: 16 / 9;">
+<img alt="" loading="lazy" decoding="async" class="absolute inset-0 size-full object-cover" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMUYxRjFGIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=">
+</div>
+</div>"
+`;
+
+exports[`rendered markup > ./components/media/Media.stories.tsx — Described 1`] = `
+"<div class="font-sans text-white antialiased">
+<div data-media-frame="" class="relative w-full overflow-hidden bg-surface-3 rounded-lg" style="aspect-ratio: 16 / 9;">
+<img alt="A hand-built field recorder on a workbench, its lid open." loading="lazy" decoding="async" class="absolute inset-0 size-full object-cover" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMUYxRjFGIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=">
+</div>
+</div>"
+`;
+
+exports[`rendered markup > ./components/media/Media.stories.tsx — Empty 1`] = `
+"<div class="font-sans text-white antialiased">
+<div data-media-frame="" class="relative w-full overflow-hidden bg-surface-3 rounded-lg" style="aspect-ratio: 16 / 9;">
+</div>
+</div>"
+`;
+
+exports[`rendered markup > ./components/media/Media.stories.tsx — IntrinsicRatio 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="max-w-[240px]">
+<div data-media-frame="" class="relative w-full overflow-hidden bg-surface-3 rounded-lg" style="aspect-ratio: 3 / 4;">
+<span aria-hidden="true" data-media-placeholder="" class="pointer-events-none absolute inset-0 scale-110 bg-cover bg-center blur-md" style="background-image: url(&quot;data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSI5IiB2aWV3Qm94PSIwIDAgMTYgOSI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMkEyQTJBIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjkiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=&quot;);">
+</span>
+<img alt="" loading="lazy" decoding="async" class="absolute inset-0 size-full object-contain" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMUYxRjFGIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=">
+</div>
+</div>
+</div>"
+`;
+
+exports[`rendered markup > ./components/media/Media.stories.tsx — Ratios 1`] = `
+"<div class="font-sans text-white antialiased">
+<div class="grid max-w-[720px] grid-cols-4 gap-4">
+<div data-media-frame="" class="relative w-full overflow-hidden bg-surface-3 rounded-md" style="aspect-ratio: 16 / 9;">
+<img alt="" loading="lazy" decoding="async" class="absolute inset-0 size-full object-cover" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMUYxRjFGIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=">
+</div>
+<div data-media-frame="" class="relative w-full overflow-hidden bg-surface-3 rounded-md" style="aspect-ratio: 3 / 2;">
+<img alt="" loading="lazy" decoding="async" class="absolute inset-0 size-full object-cover" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMUYxRjFGIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=">
+</div>
+<div data-media-frame="" class="relative w-full overflow-hidden bg-surface-3 rounded-md" style="aspect-ratio: 4 / 3;">
+<img alt="" loading="lazy" decoding="async" class="absolute inset-0 size-full object-cover" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMUYxRjFGIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=">
+</div>
+<div data-media-frame="" class="relative w-full overflow-hidden bg-surface-3 rounded-md" style="aspect-ratio: 1 / 1;">
+<img alt="" loading="lazy" decoding="async" class="absolute inset-0 size-full object-cover" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMUYxRjFGIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=">
+</div>
+</div>
+</div>"
+`;
+
+exports[`rendered markup > ./components/media/Media.stories.tsx — WithPlaceholder 1`] = `
+"<div class="font-sans text-white antialiased">
+<div data-media-frame="" class="relative w-full overflow-hidden bg-surface-3 rounded-lg" style="aspect-ratio: 16 / 9;">
+<span aria-hidden="true" data-media-placeholder="" class="pointer-events-none absolute inset-0 scale-110 bg-cover bg-center blur-md" style="background-image: url(&quot;data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSI5IiB2aWV3Qm94PSIwIDAgMTYgOSI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMkEyQTJBIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjkiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=&quot;);">
+</span>
+<img alt="" loading="lazy" decoding="async" class="absolute inset-0 size-full object-cover" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIiB2aWV3Qm94PSIwIDAgNjQwIDM2MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMUYxRjFGIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOTRCQzE1Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0MCIgaGVpZ2h0PSIzNjAiIGZpbGw9InVybCgjZykiLz48L3N2Zz4=">
 </div>
 </div>"
 `;
