@@ -306,9 +306,17 @@ export function DiscoveryView() {
             {feed.items.length > 0 && (
               <>
                 <ul className="grid list-none grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                  {feed.items.map((card) => (
+                  {feed.items.map((card, index) => (
                     <li key={card.id}>
-                      <ProjectCard card={card} />
+                      {/*
+                        The first row loads its cover eagerly; everything below
+                        it stays lazy. Three is the widest this grid ever gets
+                        (`xl:grid-cols-3`), so "index under three" is the set of
+                        cards that can be on screen before a scroll rather than
+                        a guess. One of them is the largest contentful paint on
+                        this route and the rest must not compete with it.
+                      */}
+                      <ProjectCard card={card} priority={index < 3} />
                     </li>
                   ))}
                 </ul>

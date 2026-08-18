@@ -140,6 +140,26 @@ describe('Avatar', () => {
     expect(screen.getByRole('img', { name: 'Rowan Hale' }).tagName).toBe('IMG');
   });
 
+  it.each([
+    ['xs', 24],
+    ['sm', 28],
+    ['md', 40],
+    ['lg', 56],
+  ] as const)('reserves its square in the markup at size %s', (size, side) => {
+    // The classes size it too, but attributes are what a browser has before any
+    // stylesheet has arrived. Without them a row of faces reflows on load.
+    render(<Avatar name="Rowan Hale" src="/r.jpg" size={size} />);
+    const image = screen.getByRole('img', { name: 'Rowan Hale' });
+
+    expect(image).toHaveAttribute('width', String(side));
+    expect(image).toHaveAttribute('height', String(side));
+  });
+
+  it('reserves the default square when no size is given', () => {
+    render(<Avatar name="Rowan Hale" src="/r.jpg" />);
+    expect(screen.getByRole('img', { name: 'Rowan Hale' })).toHaveAttribute('width', '40');
+  });
+
   it('collapses the overflow into a +N chip', () => {
     render(
       <AvatarGroup max={2} total={1697}>

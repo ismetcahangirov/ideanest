@@ -1,10 +1,21 @@
 'use client';
 
 import { useEffect, useId, useState } from 'react';
+import Image from 'next/image';
 import { CircleAlert, CircleCheck, Users } from 'lucide-react';
-import { Field, InlineAlert, Pill, Skeleton, SkeletonGroup, TextInput } from '@ideanest/ui';
+import {
+  Field,
+  InlineAlert,
+  MediaFrame,
+  Pill,
+  Skeleton,
+  SkeletonGroup,
+  TextInput,
+} from '@ideanest/ui';
 import { FadeUp } from '@ideanest/ui/motion';
 import { currentAccessToken } from '../../lib/api/access-token';
+import { PRELAUNCH_COVER_SIZES } from '../../lib/images/sizes';
+import { canOptimise, intrinsicSize } from '../../lib/images/source';
 import { ApiError } from '../../lib/api/problem';
 import { getPrelaunchPage, remindMe, type PrelaunchPage } from '../../lib/projects/api';
 
@@ -213,13 +224,33 @@ export function PrelaunchView({ projectId }: PrelaunchViewProps) {
         */}
         <FadeUp>
         {page.coverImage != null && (
-          <img
-            src={page.coverImage.url}
-            alt=""
-            width={page.coverImage.width}
-            height={page.coverImage.height}
-            className="mb-8 w-full rounded-lg border border-white/8 object-cover"
-          />
+          /*
+            THE COVER IS SHOWN WHOLE, so it reserves the shape it really is
+            rather than a crop. A creator's 4:3 photograph forced into 16:9
+            would be a layout shift with extra steps — the box would be right
+            and the picture would not be in it. `intrinsicSize` refuses a
+            measurement of zero, which is what a failed read leaves behind, and
+            the crop token is the honest reservation when the shape is unknown.
+
+            IT IS THE LARGEST CONTENTFUL PAINT ON THIS ROUTE, so it is eager and
+            prioritised: it is the first thing above the fold and there is
+            exactly one of it.
+          */
+          <MediaFrame
+            ratio={intrinsicSize(page.coverImage) ?? '16/9'}
+            radius="lg"
+            className="mb-8 border border-white/8"
+          >
+            <Image
+              src={page.coverImage.url}
+              alt=""
+              fill
+              sizes={PRELAUNCH_COVER_SIZES}
+              unoptimized={!canOptimise(page.coverImage.url)}
+              priority
+              className="object-cover"
+            />
+          </MediaFrame>
         )}
 
         <p className="text-xs font-medium tracking-[0.06em] text-white/40 uppercase">Coming soon</p>

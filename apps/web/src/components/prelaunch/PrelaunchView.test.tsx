@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { ApiError } from '../../lib/api/problem';
+import { PRELAUNCH_COVER_SIZES } from '../../lib/images/sizes';
 import { getPrelaunchPage, remindMe, type PrelaunchPage } from '../../lib/projects/api';
 import { PrelaunchView } from './PrelaunchView';
 
@@ -181,5 +182,57 @@ describe('PrelaunchView', () => {
     // The signup did fail, and saying so would be true and useless. What changed
     // is that there is now a campaign to look at.
     expect(screen.getByText(/already opened/)).toBeInTheDocument();
+  });
+
+  /*
+   * The cover: the largest contentful paint on this route, and the one element
+   * above the heading. Every assertion here is invisible once the photograph
+   * has loaded, and paid for on the first paint of a cold connection.
+   */
+  describe('the cover', () => {
+    const COVER = { url: 'https://images.example.test/cover.jpg', width: 1600, height: 1200 };
+
+    function frame(): HTMLElement {
+      const found = document.querySelector<HTMLElement>('[data-media-frame]');
+      if (found === null) throw new Error('the cover reserved no box at all');
+      return found;
+    }
+
+    it('reserves the shape the picture really is', async () => {
+      // Shown whole rather than cropped, so a 4:3 photograph reserves 4:3. A
+      // 16:9 box would be right and the picture would not be in it.
+      await openPage({ coverImage: COVER });
+
+      expect(frame().style.aspectRatio).toBe('1600 / 1200');
+    });
+
+    it('falls back to the crop when the recorded size is unusable', async () => {
+      // Zero is what a failed measurement leaves behind, and `1600 / 0` is a
+      // declaration the browser drops — taking the reservation with it.
+      await openPage({ coverImage: { ...COVER, width: 0, height: 0 } });
+
+      expect(frame().style.aspectRatio).toBe('16 / 9');
+    });
+
+    it('loads eagerly, because it is the largest contentful paint here', async () => {
+      await openPage({ coverImage: COVER });
+
+      expect(document.querySelector('img')).not.toHaveAttribute('loading', 'lazy');
+    });
+
+    it('declares the width of the reading column', async () => {
+      await openPage({ coverImage: COVER });
+
+      expect(document.querySelector('img')).toHaveAttribute('sizes', PRELAUNCH_COVER_SIZES);
+    });
+
+    it('reserves nothing when there is no cover', async () => {
+      // No frame rather than an empty one: the heading is the first thing on a
+      // campaign that never set a cover, and a reserved strip of surface above
+      // it would be furniture standing in for nothing.
+      await openPage();
+
+      expect(document.querySelector('[data-media-frame]')).toBeNull();
+    });
   });
 });

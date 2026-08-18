@@ -424,7 +424,7 @@ describe('BasicsPanel', () => {
 
     it('reads the size of an address and saves the two together', async () => {
       const user = await openBasics();
-      measureImageMock.mockResolvedValue({ width: 1600, height: 900 });
+      measureImageMock.mockResolvedValue({ width: 1600, height: 900, placeholder: null });
 
       await user.type(
         screen.getByRole('textbox', { name: 'Cover image address' }),
@@ -442,7 +442,7 @@ describe('BasicsPanel', () => {
 
     it('refuses one below 1024×576 and says what it measured', async () => {
       const user = await openBasics();
-      measureImageMock.mockResolvedValue({ width: 800, height: 450 });
+      measureImageMock.mockResolvedValue({ width: 800, height: 450, placeholder: null });
 
       await user.type(
         screen.getByRole('textbox', { name: 'Cover image address' }),
@@ -454,6 +454,49 @@ describe('BasicsPanel', () => {
 
       expect(screen.getByRole('alert')).toHaveTextContent('800×450');
       expect(sent().filter((patch) => patch.coverImage != null)).toEqual([]);
+    });
+
+    it('previews the crop the discovery card will make, with the box reserved', async () => {
+      const user = await openBasics();
+      measureImageMock.mockResolvedValue({ width: 1600, height: 1200, placeholder: null });
+
+      await user.type(
+        screen.getByRole('textbox', { name: 'Cover image address' }),
+        'https://cdn.example.test/tall.jpg',
+      );
+      await user.click(screen.getByRole('button', { name: 'Use this image' }));
+      await tick();
+
+      /*
+       * 16:9 EVEN THOUGH THE PHOTOGRAPH IS 4:3. The card crops (docs/ui-kit.md
+       * §8.2), and a creator about to lose the top and bottom of their picture
+       * should find that out here rather than after launch.
+       */
+      const frame = document.querySelector<HTMLElement>('[data-media-frame]');
+      expect(frame?.style.aspectRatio).toBe('16 / 9');
+      // Decorative: the caption beside it says the same thing in words.
+      expect(document.querySelector('img')).toHaveAttribute('alt', '');
+    });
+
+    it('paints the placeholder the same load produced', async () => {
+      const user = await openBasics();
+      measureImageMock.mockResolvedValue({
+        width: 1600,
+        height: 900,
+        placeholder: 'data:image/webp;base64,AAAA',
+      });
+
+      await user.type(
+        screen.getByRole('textbox', { name: 'Cover image address' }),
+        'https://cdn.example.test/cover.jpg',
+      );
+      await user.click(screen.getByRole('button', { name: 'Use this image' }));
+      await tick();
+
+      const layer = document.querySelector<HTMLElement>('[data-media-placeholder]');
+      expect(layer?.style.backgroundImage).toBe('url("data:image/webp;base64,AAAA")');
+      // It is a picture, not information: it must not reach a screen reader.
+      expect(layer).toHaveAttribute('aria-hidden', 'true');
     });
   });
 

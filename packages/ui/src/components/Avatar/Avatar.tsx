@@ -17,8 +17,19 @@ const avatar = cva(
   },
 );
 
+/**
+ * The pixel side of each size token, docs/ui-kit.md §7.6.
+ *
+ * Written onto the element as `width` and `height` so the square is reserved
+ * from the markup rather than only from the stylesheet. The classes above
+ * already size it, but attributes are what a browser has before any CSS has
+ * arrived, and an avatar row that reflows once the sheet lands is a layout
+ * shift in the one place a reader is already scanning faces.
+ */
+const AVATAR_PX = { xs: 24, sm: 28, md: 40, lg: 56 } as const;
+
 export interface AvatarProps
-  extends Omit<ComponentPropsWithoutRef<'img'>, 'src' | 'alt'>,
+  extends Omit<ComponentPropsWithoutRef<'img'>, 'src' | 'alt' | 'width' | 'height'>,
     VariantProps<typeof avatar> {
   src?: string;
   /** Person's name. Used for alt text and the initials fallback. */
@@ -53,11 +64,16 @@ export function Avatar({ src, name, size, className, ...props }: AvatarProps) {
     );
   }
 
+  const side = AVATAR_PX[size ?? 'md'];
+
   return (
     <img
       src={src}
       alt={name}
+      width={side}
+      height={side}
       loading="lazy"
+      decoding="async"
       className={cn(avatar({ size }), className)}
       {...props}
     />

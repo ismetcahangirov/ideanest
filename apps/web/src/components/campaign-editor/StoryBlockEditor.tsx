@@ -14,7 +14,8 @@ import {
   Trash2,
   Video,
 } from 'lucide-react';
-import { InlineAlert, Pill, Select, TextInput, cn } from '@ideanest/ui';
+import { InlineAlert, Media, Pill, Select, TextInput, cn } from '@ideanest/ui';
+import { intrinsicSize } from '../../lib/images/source';
 import { describeSize, measureImage } from '../../lib/projects/coverImage';
 import {
   BLOCK_LABEL,
@@ -675,6 +676,14 @@ function ImageFields({
   const [typed, setTyped] = useState(block.url);
   const [measuring, setMeasuring] = useState(false);
   const [note, setNote] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
+  /*
+   * The blur placeholder from the same load that measured the image
+   * (`lib/images/lqip.ts`). The story document has no field for it — the server
+   * validates that schema (#35) — so it lives here and is gone on reload, which
+   * is exactly as far as a placeholder can travel until the media pipeline
+   * stores one (docs/architecture.md §13.1).
+   */
+  const [placeholder, setPlaceholder] = useState<string | null>(null);
 
   async function measure(): Promise<void> {
     const address = typed.trim();
@@ -687,6 +696,7 @@ function ImageFields({
     setNote(null);
     try {
       const size = await measureImage(address);
+      setPlaceholder(size.placeholder);
       onChange({ ...block, url: address, width: size.width, height: size.height });
       setNote({ tone: 'success', text: `Added a ${describeSize(size)} pixel image.` });
     } catch (cause) {
@@ -732,9 +742,43 @@ function ImageFields({
 
       {block.width > 0 && (
         <figure className="overflow-hidden rounded-lg border border-white/8 bg-surface-3">
-          {/* The alt text as it stands, so the creator sees what a reader would get
-              — including nothing, when they have not written it yet. */}
-          <img src={block.url} alt={block.alt} className="max-h-64 w-full object-contain" />
+          {/*
+            THE PREVIEW RESERVES THE IMAGE'S OWN SHAPE, which is the whole
+            reason the editor measures at all — the public story does the same
+            with the same numbers, so the page does not jump as the reader
+            scrolls past a picture.
+
+            THE CAP IS ON WIDTH, NOT HEIGHT. A `max-height` on a box that has an
+            aspect ratio and a full-width parent does not shrink the box, it
+            breaks the ratio. Deriving the width a 16rem-tall version of THIS
+            image would occupy keeps a portrait photograph from filling the
+            editor while leaving the reservation exact.
+
+            THE ALT TEXT AS IT STANDS, so the creator sees what a reader would
+            get — including nothing at all, when they have not written it yet.
+            That is why this is `alt` rather than `decorative`: an empty string
+            here is a fact about the document, not a decision about the preview.
+
+            NOT `next/image`, for the reason `CoverImageField` gives: a preview
+            has to show the bytes the creator gave us, and `measureImage` has
+            already put exactly those bytes in the browser cache.
+          */}
+          <div
+            className="mx-auto w-full"
+            style={
+              intrinsicSize(block) === null
+                ? undefined
+                : { maxWidth: `calc(16rem * ${block.width} / ${block.height})` }
+            }
+          >
+            <Media
+              src={block.url}
+              alt={block.alt}
+              ratio={intrinsicSize(block) ?? '16/9'}
+              fit="contain"
+              placeholder={placeholder ?? undefined}
+            />
+          </div>
           <figcaption className="px-4 py-2 text-[13px] text-white/64">
             {describeSize(block)} pixels
           </figcaption>
