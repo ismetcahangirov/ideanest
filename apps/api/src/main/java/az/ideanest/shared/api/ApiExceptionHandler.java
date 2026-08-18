@@ -5,6 +5,7 @@ import az.ideanest.shared.idempotency.IdempotentRequestInProgressException;
 import az.ideanest.shared.idempotency.MalformedIdempotencyKeyException;
 import az.ideanest.shared.idempotency.MissingIdempotencyKeyException;
 import az.ideanest.shared.ratelimit.RateLimitExceededException;
+import az.ideanest.shared.ratelimit.RateLimits;
 import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -123,6 +124,15 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(problem);
     }
 
+    /**
+     * 429, with how long to wait.
+     *
+     * <p>The {@code X-RateLimit-*} and {@code RateLimit} fields are already on this
+     * response — {@link az.ideanest.shared.ratelimit.RateLimits} writes them as the
+     * decision is made, and this adds to the response rather than replacing it. They
+     * are not written here because this handler sees only the refusal, and the
+     * request that produced it may have spent more than one budget.
+     */
     @ExceptionHandler(RateLimitExceededException.class)
     public ResponseEntity<ProblemDetail> handleRateLimit(RateLimitExceededException exception) {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.TOO_MANY_REQUESTS);
@@ -130,7 +140,11 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         problem.setTitle("Too many requests");
         problem.setDetail("Too many attempts. Try again later.");
 
-        long seconds = Math.max(1, exception.getRetryAfter().toSeconds());
+        // Rounded up, and never below a second: half a window rounded down to
+        // zero is a client told to retry immediately into the same refusal, and
+        // a wait shorter than the one RateLimit reports is a response that
+        // contradicts itself.
+        long seconds = Math.max(1, RateLimits.secondsRoundedUp(exception.getRetryAfter()));
         problem.setProperty("retryAfterSeconds", seconds);
 
         // A client that is told to wait can wait. Without the header it retries

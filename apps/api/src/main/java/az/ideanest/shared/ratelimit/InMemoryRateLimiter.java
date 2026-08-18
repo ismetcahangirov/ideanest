@@ -14,11 +14,13 @@ import org.springframework.stereotype.Component;
  *
  * <p><strong>This is correct for one instance and wrong for two.</strong> Two
  * replicas each enforce the limit separately, so the effective limit is the
- * configured one multiplied by the number of instances, and a client that
- * reconnects lands wherever the load balancer sends it. The shared counter
- * belongs in Redis, which arrives with #142; until then this is honest
- * protection against a script and no protection against a botnet, and the
- * deployment is single-instance anyway.
+ * configured one multiplied by the number of instances — "5 per 15 minutes"
+ * across three replicas is fifteen — and a client that reconnects lands wherever
+ * the load balancer sends it. The shared counter belongs in the shared storage
+ * of #134; until then this is honest protection against a script and no
+ * protection against a botnet, and the deployment is single-instance anyway.
+ * Nothing outside this package knows which it is talking to, which is what makes
+ * that swap a bean definition rather than an edit to every call site.
  *
  * <p>A sliding window rather than a fixed one because a fixed window lets twice
  * the limit through across a boundary: five attempts at 14:59:59 and five more
@@ -68,12 +70,17 @@ public class InMemoryRateLimiter implements RateLimiter {
                 timestamps.pollFirst();
             }
 
-            if (allowed) {
-                return RateLimitDecision.allow();
-            }
+            // The oldest attempt still counted is the one whose expiry hands the
+            // caller its next unit back, so one instant answers both "when may a
+            // refused caller retry" and "how long is this remaining count good for".
             Instant oldest = timestamps.peekFirst();
-            Duration retryAfter = Duration.between(now, oldest.plus(window));
-            return RateLimitDecision.refuse(retryAfter.isNegative() ? Duration.ZERO : retryAfter);
+            Duration untilReset = Duration.between(now, oldest.plus(window));
+            Duration resetAfter = untilReset.isNegative() ? Duration.ZERO : untilReset;
+
+            if (allowed) {
+                return RateLimitDecision.allow(limit, limit - timestamps.size(), window, resetAfter);
+            }
+            return RateLimitDecision.refuse(limit, window, resetAfter);
         }
     }
 

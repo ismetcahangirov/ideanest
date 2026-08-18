@@ -20,15 +20,46 @@ public interface RateLimiter {
      */
     RateLimitDecision recordAttempt(String key, int limit, Duration window);
 
-    /** The outcome, and how long to wait if it was refused. */
-    record RateLimitDecision(boolean allowed, Duration retryAfter) {
+    /**
+     * The outcome, and enough of the policy behind it to tell the caller where it
+     * stands.
+     *
+     * <p><strong>It carries the policy as well as the verdict</strong> so that
+     * {@link RateLimits} can report §10.3's rate-limit headers without asking the
+     * limiter a second question. The alternative — a bare boolean, and a second call
+     * to read the counter — would report a number that a concurrent request from the
+     * same client had already moved, which is a header that is wrong exactly when the
+     * client is close enough to the limit to care.
+     *
+     * @param allowed whether this attempt may proceed. The attempt is counted either
+     *     way; see {@link #recordAttempt}
+     * @param limit the budget this decision was made against, so the caller can be
+     *     told what it is spending
+     * @param remaining what is left of that budget after this attempt, never negative
+     * @param window the period the budget is allowed over
+     * @param resetAfter how long until the budget grows again — the moment the oldest
+     *     attempt still being counted leaves the window. On a refusal that is exactly
+     *     how long the caller has to wait, which is what {@link #retryAfter()} returns
+     */
+    record RateLimitDecision(boolean allowed, int limit, int remaining, Duration window, Duration resetAfter) {
 
-        public static RateLimitDecision allow() {
-            return new RateLimitDecision(true, Duration.ZERO);
+        public static RateLimitDecision allow(int limit, int remaining, Duration window, Duration resetAfter) {
+            return new RateLimitDecision(true, limit, remaining, window, resetAfter);
         }
 
-        public static RateLimitDecision refuse(Duration retryAfter) {
-            return new RateLimitDecision(false, retryAfter);
+        public static RateLimitDecision refuse(int limit, Duration window, Duration resetAfter) {
+            return new RateLimitDecision(false, limit, 0, window, resetAfter);
+        }
+
+        /**
+         * How long to wait before retrying, and zero when nothing was refused.
+         *
+         * <p>Derived rather than stored: a refusal lasts until the window gives a unit
+         * back, so "when may I retry" and "when does the budget grow" are one instant
+         * with two names, and storing both is two chances for them to disagree.
+         */
+        public Duration retryAfter() {
+            return allowed ? Duration.ZERO : resetAfter;
         }
     }
 }
