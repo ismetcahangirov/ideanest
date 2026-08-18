@@ -1,5 +1,6 @@
 package az.ideanest.reward.api;
 
+import az.ideanest.project.application.CapabilityNotGrantedException;
 import az.ideanest.project.application.ProjectNotFoundException;
 import az.ideanest.reward.application.ItemInUseException;
 import az.ideanest.reward.application.ItemNotFoundException;
@@ -84,6 +85,39 @@ public class RewardExceptionHandler {
         problem.setTitle("No such project");
         problem.setDetail("That project does not exist.");
         problem.setProperty("code", "PROJECT_NOT_FOUND");
+        return problem;
+    }
+
+    /**
+     * 403 for a collaborator who works on the campaign and was not granted
+     * {@code EDIT_REWARDS}.
+     *
+     * <p>Not a 404: they were invited and can already see the campaign, so the
+     * confidentiality {@code ProjectNotFoundException} protects has nothing left to
+     * protect here. The body names what would have authorised the request and what the
+     * caller holds, so the editor can hide the rewards tab rather than let somebody
+     * price a tier and be refused at the end of it.
+     *
+     * <p><strong>This refusal had no handler until #236.</strong> While this module
+     * asked the coarse "may this account edit this campaign at all", every collaborator
+     * who could reach these endpoints at all held one of the editing capabilities that
+     * question accepts, so the only refusals in practice were the 404s above and this
+     * exception escaped as a 500 — a permission failure reported as a broken server.
+     * Asking for {@link az.ideanest.shared.access.ProjectCapability#EDIT_REWARDS} by
+     * name makes it the ordinary refusal, which is what surfaced the gap.
+     */
+    @ExceptionHandler(CapabilityNotGrantedException.class)
+    public ProblemDetail handleCapabilityNotGranted(CapabilityNotGrantedException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+        problem.setType(URI.create("https://ideanest.az/problems/capability-not-granted"));
+        problem.setTitle("Not permitted on this campaign");
+        problem.setDetail("Your collaborator access on this campaign does not include that.");
+        problem.setProperty("code", "CAPABILITY_NOT_GRANTED");
+
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("requiredAnyOf", exception.requiredAnyOf());
+        meta.put("held", exception.held());
+        problem.setProperty("meta", meta);
         return problem;
     }
 

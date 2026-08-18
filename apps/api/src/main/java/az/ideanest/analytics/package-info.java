@@ -11,9 +11,10 @@
  * that a pledge exists from a published event and from nowhere else:
  * {@code application.ReferralAttributionListener} takes an {@code OutboxMessage} and
  * switches on its type, which is the shape {@code ApplicationEventOutboxDispatcher}
- * prescribes. Authorisation and a campaign's public facts come through the project
- * module's application layer — {@code ProjectAccess}, {@code PublicProjects} — because
- * that is the only part of it another module may see.
+ * prescribes. Authorisation is asked through {@code shared.access.ProjectAuthorisation}
+ * for {@code VIEW_FINANCES}, which is what the referral report exposes, and a
+ * campaign's public facts come through the project module's application layer as
+ * {@code PublicProjects} — because that is the only part of it another module may see.
  *
  * <p><strong>Nothing publishes {@code pledge.confirmed} yet</strong>, so attribution
  * has no traffic in production. {@code application.PledgeConfirmed} says what is

@@ -44,11 +44,11 @@ public class ReferralExceptionHandler {
     }
 
     /**
-     * 403 for a collaborator who is party to the campaign and holds no editing
-     * capability.
+     * 403 for a collaborator who is party to the campaign and was not granted
+     * {@code VIEW_FINANCES}.
      *
      * <p>Not a 404: they were invited, they can already see the campaign, and there is
-     * nothing left to hide from them — {@code ProjectAccess} draws that line and this
+     * nothing left to hide from them — the project module draws that line and this
      * only reports it.
      */
     @ExceptionHandler(CapabilityNotGrantedException.class)

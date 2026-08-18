@@ -7,6 +7,7 @@ import az.ideanest.reward.domain.Item;
 import az.ideanest.reward.domain.RewardTier;
 import az.ideanest.reward.infrastructure.ItemRepository;
 import az.ideanest.reward.infrastructure.RewardTierRepository;
+import az.ideanest.shared.access.ProjectCapability;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
@@ -32,6 +33,15 @@ import org.springframework.stereotype.Service;
  * reward tiers; both arrive through {@link ProjectAccess} as
  * {@link EditLocks}, which is the project module's answer rather than a copy of its
  * table.
+ *
+ * <p><strong>The capability asked for is {@link ProjectCapability#EDIT_REWARDS},
+ * everywhere in this class.</strong> It used to be the coarse "may this account edit
+ * this campaign at all", not because that was the right authority but because
+ * {@code Capability} lives in the project module's domain package and this module
+ * could not name it. §7.2 defines the capability that covers items, tiers and shipping
+ * rules, and #236 published the vocabulary so that this module can ask for it. The
+ * effect is that a collaborator invited to write the story can no longer reprice a
+ * reward tier, which is what the creator's grant already said.
  */
 @Service
 public class RewardAccess {
@@ -47,8 +57,10 @@ public class RewardAccess {
     }
 
     /**
-     * Refuses unless this account may edit the campaign. Throws
-     * {@code ProjectNotFoundException} if not.
+     * Refuses unless this account may edit the campaign's rewards. Throws
+     * {@code ProjectNotFoundException} for a caller with no part in the campaign and
+     * {@code CapabilityNotGrantedException} for a collaborator without
+     * {@link ProjectCapability#EDIT_REWARDS}.
      *
      * @return what §5.3 has frozen on that campaign. Returned rather than discarded
      *     because a caller that has just been authorised for a campaign is the only
@@ -56,7 +68,7 @@ public class RewardAccess {
      *     load that could answer differently
      */
     public EditLocks requireEditableProject(UUID projectId, UUID accountId) {
-        return projects.requireEditableLocks(projectId, accountId);
+        return projects.requireEditableLocks(projectId, accountId, ProjectCapability.EDIT_REWARDS);
     }
 
     /**
@@ -71,7 +83,7 @@ public class RewardAccess {
     public Item requireEditableItem(UUID itemId, UUID accountId) {
         Item item = items.findById(itemId).orElseThrow(() -> new ItemNotFoundException(itemId));
         try {
-            projects.requireEditable(item.getProjectId(), accountId);
+            projects.requireCapability(item.getProjectId(), accountId, ProjectCapability.EDIT_REWARDS);
         } catch (ProjectNotFoundException e) {
             throw new ItemNotFoundException(itemId);
         }
@@ -90,7 +102,10 @@ public class RewardAccess {
     public AuthorisedReward requireEditableReward(UUID rewardId, UUID accountId) {
         RewardTier reward = rewards.findById(rewardId).orElseThrow(() -> new RewardNotFoundException(rewardId));
         try {
-            return new AuthorisedReward(reward, projects.requireEditableLocks(reward.getProjectId(), accountId));
+            return new AuthorisedReward(
+                    reward,
+                    projects.requireEditableLocks(
+                            reward.getProjectId(), accountId, ProjectCapability.EDIT_REWARDS));
         } catch (ProjectNotFoundException e) {
             throw new RewardNotFoundException(rewardId);
         }

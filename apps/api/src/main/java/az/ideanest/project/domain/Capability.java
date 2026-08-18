@@ -1,5 +1,10 @@
 package az.ideanest.project.domain;
 
+import az.ideanest.shared.access.ProjectCapability;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.Map;
+
 /**
  * One thing a collaborator may be permitted to do on a campaign.
  *
@@ -17,17 +22,31 @@ package az.ideanest.project.domain;
  *
  * <p>The creator holds all of them implicitly and holds them without a row. See
  * {@link Grants}.
+ *
+ * <p><strong>This enum stays private to this module, and the vocabulary does
+ * not.</strong> Every constant carries its counterpart in
+ * {@link ProjectCapability}, which is the published contract another module names
+ * when it asks {@code ProjectAccess} for a capability check. The pairing is
+ * declared on the constants rather than derived from {@link Enum#name()}, so a
+ * capability added on one side and not the other is a start-up failure with both
+ * enums in the message — see the static initialiser below — instead of a
+ * {@code valueOf} that throws on the first request that happens to need it.
+ *
+ * <p>Two enums rather than one because they are two different things that happen
+ * to agree: this one is what is stored, validated by
+ * {@code collaborator_capabilities_known}, and reasoned over by {@link Grants};
+ * the other is a list of names other modules may say out loud.
  */
 public enum Capability {
 
     /** Title, summary, category, funding goal, duration, cover image. */
-    EDIT_BASICS,
+    EDIT_BASICS(ProjectCapability.EDIT_BASICS),
 
     /** Items, reward tiers, shipping rules — what a backer is promised. */
-    EDIT_REWARDS,
+    EDIT_REWARDS(ProjectCapability.EDIT_REWARDS),
 
     /** The story document and the mandatory risks section. */
-    EDIT_STORY,
+    EDIT_STORY(ProjectCapability.EDIT_STORY),
 
     /**
      * Send the campaign to moderation.
@@ -42,13 +61,13 @@ public enum Capability {
      * accepting pledges, cancelling abandons commitments people have already
      * made — and they stay with the account that owns the campaign.
      */
-    SUBMIT_FOR_REVIEW,
+    SUBMIT_FOR_REVIEW(ProjectCapability.SUBMIT_FOR_REVIEW),
 
     /** Post numbered updates to backers. */
-    PUBLISH_UPDATES,
+    PUBLISH_UPDATES(ProjectCapability.PUBLISH_UPDATES),
 
     /** Reply to comments and questions as the campaign. */
-    RESPOND_TO_COMMENTS,
+    RESPOND_TO_COMMENTS(ProjectCapability.RESPOND_TO_COMMENTS),
 
     /**
      * See the backer report and the money in it.
@@ -57,7 +76,7 @@ public enum Capability {
      * writing, and the one most worth granting narrowly: it exposes what the
      * campaign has raised and who committed it.
      */
-    VIEW_FINANCES,
+    VIEW_FINANCES(ProjectCapability.VIEW_FINANCES),
 
     /**
      * Invite collaborators and revoke their grants.
@@ -67,5 +86,50 @@ public enum Capability {
      * creator would be one revocation behind for as long as it took them to
      * notice. Holding it is enough to invite and to revoke; conferring it is not.
      */
-    MANAGE_COLLABORATORS
+    MANAGE_COLLABORATORS(ProjectCapability.MANAGE_COLLABORATORS);
+
+    /**
+     * Every published name, mapped back to the constant that decides it.
+     *
+     * <p>Built from the constants rather than written out a second time, and checked
+     * for totality here rather than at the call site: a published capability with no
+     * counterpart would otherwise be a request that reaches
+     * {@code ProjectAccess} and fails with a null, which is a permission bug wearing a
+     * {@code NullPointerException}. Failing at class initialisation makes it a build
+     * and start-up failure instead.
+     */
+    private static final Map<ProjectCapability, Capability> BY_PUBLISHED_NAME;
+
+    static {
+        EnumMap<ProjectCapability, Capability> mapped = new EnumMap<>(ProjectCapability.class);
+        for (Capability capability : values()) {
+            mapped.put(capability.published, capability);
+        }
+        if (mapped.size() != ProjectCapability.values().length) {
+            throw new ExceptionInInitializerError(
+                    "Every ProjectCapability must map to a Capability; mapped " + mapped.keySet());
+        }
+        BY_PUBLISHED_NAME = Collections.unmodifiableMap(mapped);
+    }
+
+    private final ProjectCapability published;
+
+    Capability(ProjectCapability published) {
+        this.published = published;
+    }
+
+    /** How this capability is named in the contract other modules ask through. */
+    public ProjectCapability published() {
+        return published;
+    }
+
+    /**
+     * The capability a caller outside this module asked for.
+     *
+     * <p>The one place the published vocabulary becomes the deciding one, so that
+     * {@code ProjectAccess} is the only class that has to know there are two enums.
+     */
+    public static Capability of(ProjectCapability published) {
+        return BY_PUBLISHED_NAME.get(published);
+    }
 }

@@ -106,9 +106,10 @@ public class ReferralController {
      * {@code GET /v1/projects/{id}/referrers}: §10.2's dashboard endpoint, §4.7's
      * CD-03.
      *
-     * <p>Who may read it is {@code ProjectAccess}' decision and is made one layer in,
-     * where every other "may this account act on this campaign" is made. A stranger
-     * gets a 404.
+     * <p>Who may read it is the project module's decision and is made one layer in,
+     * asked for by name as {@code VIEW_FINANCES} through
+     * {@code shared.access.ProjectAuthorisation}. A stranger gets a 404; a
+     * collaborator holding a grant without that capability gets a 403.
      *
      * <p><strong>{@code Cache-Control: private, no-store}.</strong> Unlike the public
      * reads next door, this body is one campaign's marketing performance and belongs to
