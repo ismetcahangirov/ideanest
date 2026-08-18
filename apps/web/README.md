@@ -3,6 +3,14 @@
 The Next.js application. App Router, React 19, Tailwind 4, and the primitives
 from `@ideanest/ui`.
 
+`@ideanest/ui` has two entry points and the choice is a performance decision, not
+a taste one: the root is free, and `@ideanest/ui/motion` pulls in 116 kB of
+animation runtime. Import `FadeUp`, `Modal`, `Drawer`, `Popover`, `Tooltip` and
+the toast pair from `/motion`; import everything else from the root. A route that
+never imports `/motion` never ships `motion` — which is how the checkout stopped
+paying for an animation library it does not use. `packages/ui/README.md` has the
+measurement.
+
 ## Running it
 
 ```bash
@@ -465,3 +473,35 @@ stock count. `no-store` here would make that `304` unreachable, which is what
 one import brings Tailwind, the token file, and the theme bridge, so this
 application defines no colour of its own — see `docs/ui-kit.md` §10.1, where a
 test fails the build on a colour literal.
+
+### Fonts
+
+`src/app/layout.tsx` loads Inter through `next/font/google` and binds it to
+`--font-inter` on `<html>`; the theme bridge in `@ideanest/ui/styles.css` reads
+that variable for `--font-sans` and `--font-display`. Next self-hosts the files
+out of `/_next/static/media`, so there is no request to a third origin and no
+blocking round trip before the browser learns which `.woff2` to fetch.
+
+**Only `latin` and `latin-ext` are declared, and both are needed.** Google's
+`latin` cut carries `ı`, `ö`, `ü` and `ç`, but `ə` (U+0259), `Ə`, `ğ`, `Ğ`, `ş`,
+`Ş` and `İ` live in `U+0100-02BA`, which only `latin-ext` declares. A missing `ə`
+is a broken product in this market, so `src/app/font-subsets.test.ts` fails if
+the list stops covering those code points, and fails again if one of the
+`cyrillic`, `greek` or `vietnamese` cuts is added — each one is another file
+preloaded against the largest contentful paint.
+
+Those two are the **only** preloads on the page. They earn it: every glyph above
+the fold is set in this family. `adjustFontFallback` is left at its default, so
+Next synthesises a metric-matched local fallback and the `display: 'swap'` does
+not move the layout — which is what keeps cumulative layout shift inside the
+0.05 `docs/motion-system.md` §8 asks for.
+
+Weight is the full variable axis rather than the four weights `docs/ui-kit.md`
+§5.3 names. Google serves Inter v20 as a variable file either way: asking for
+`wght@400;500;600;700` returns the same two subset files 380 bytes smaller, so
+pinning would buy nothing and would break the first `font-bold` somebody adds.
+
+`--font-display` still asks for General Sans first, which `docs/ui-kit.md` §5.1
+makes the first choice for display and headings. It is a Fontshare licence and a
+vendored binary rather than a build-time download, so until somebody makes that
+call the stack resolves to Inter — the substitution §5.1 names itself.

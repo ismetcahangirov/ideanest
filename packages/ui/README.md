@@ -5,6 +5,33 @@ Primitive, layout, and motion components for the IdeaNest design system.
 Design decisions live in [`docs/ui-kit.md`](../../docs/ui-kit.md).
 Motion decisions live in [`docs/motion-system.md`](../../docs/motion-system.md).
 
+## Two entry points
+
+```ts
+import { Card, Pill, TextInput } from '@ideanest/ui';        // costs no motion
+import { FadeUp, Modal, Drawer } from '@ideanest/ui/motion'; // pulls in motion
+```
+
+Everything that drives `motion` — `FadeUp`, `StaggerGroup`, `CountUp`, `Modal`,
+`Drawer`, `Popover`, `Tooltip`, `ToastProvider` — is behind `/motion`, and the
+tables below mark them. The rest of the library is on the root.
+
+The reason is weight, and it was measured: `motion` is 116 kB uncompressed,
+38 kB gzipped, and while these members were re-exported from the root barrel
+every route that imported *anything* from this package paid for it. A bundler
+follows a static re-export whether or not the binding is used, so the checkout —
+which animates nothing, and whose budget is "near zero" in
+[`docs/motion-system.md`](../../docs/motion-system.md) §5 — shipped the whole
+animation runtime before it could paint. Splitting the barrel took 120.8 kB off
+the first load of four routes.
+
+Two members that look like they belong behind `/motion` are deliberately not.
+`FlipButton` is a motion-system component (§4.3) that animates in CSS, and
+`Combobox` is an overlay whose popup §5.1 requires not to animate. Neither
+imports `motion`, so neither costs anything. **The split is by dependency, not
+by theme** — a component added here that imports `motion/react` belongs in
+`src/motion.ts`, and one that does not belongs on the root.
+
 ## Getting started
 
 ```bash
@@ -59,13 +86,14 @@ per `docs/ui-kit.md` §8.1, still not `--success`.
 
 ### Overlays
 
-| Component | Purpose |
-|---|---|
-| `Modal` | centre-stage dialog — the one white overlay |
-| `Drawer` | edge-anchored dialog, right · left · bottom |
-| `Popover` | anchored and non-modal, with placement flipping |
-| `Tooltip` | describes its trigger, on hover **and** on focus |
-| `ToastProvider` + `useToast` | live-region messages that never take focus |
+| Component | Import | Purpose |
+|---|---|---|
+| `Modal` | `/motion` | centre-stage dialog — the one white overlay |
+| `Drawer` | `/motion` | edge-anchored dialog, right · left · bottom |
+| `Popover` | `/motion` | anchored and non-modal, with placement flipping |
+| `Tooltip` | `/motion` | describes its trigger, on hover **and** on focus |
+| `ToastProvider` + `useToast` | `/motion` | live-region messages that never take focus |
+| `Combobox` | root | text input with a filtered listbox; the popup does not animate |
 
 All controlled (`open` + `onOpenChange`). Focus moves in on open and returns to
 the trigger on close; `Escape` closes the topmost overlay only. See
@@ -91,12 +119,12 @@ the trigger on close; `Escape` closes the topmost overlay only. See
 
 ### Motion
 
-| Component | Purpose |
-|---|---|
-| `FadeUp` | the single scroll-entry animation |
-| `StaggerGroup` | orchestrates `FadeUp child` descendants |
-| `FlipButton` | rotating-label call to action |
-| `CountUp` | animated figure, 800ms |
+| Component | Import | Purpose |
+|---|---|---|
+| `FadeUp` | `/motion` | the single scroll-entry animation |
+| `StaggerGroup` | `/motion` | orchestrates `FadeUp child` descendants |
+| `CountUp` | `/motion` | animated figure, 800ms |
+| `FlipButton` | root | rotating-label call to action, animated in CSS |
 
 ## Three rules
 

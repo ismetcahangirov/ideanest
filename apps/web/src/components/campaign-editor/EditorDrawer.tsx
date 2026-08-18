@@ -1,7 +1,8 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Drawer, Pill } from '@ideanest/ui';
+import { Pill } from '@ideanest/ui';
+import { Drawer } from '@ideanest/ui/motion';
 
 /**
  * A drawer with a cancel and a save in its footer.

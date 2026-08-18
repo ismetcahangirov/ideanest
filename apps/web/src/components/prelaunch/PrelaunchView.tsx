@@ -2,7 +2,8 @@
 
 import { useEffect, useId, useState } from 'react';
 import { CircleAlert, CircleCheck, Users } from 'lucide-react';
-import { FadeUp, Field, InlineAlert, Pill, Skeleton, SkeletonGroup, TextInput } from '@ideanest/ui';
+import { Field, InlineAlert, Pill, Skeleton, SkeletonGroup, TextInput } from '@ideanest/ui';
+import { FadeUp } from '@ideanest/ui/motion';
 import { currentAccessToken } from '../../lib/api/access-token';
 import { ApiError } from '../../lib/api/problem';
 import { getPrelaunchPage, remindMe, type PrelaunchPage } from '../../lib/projects/api';

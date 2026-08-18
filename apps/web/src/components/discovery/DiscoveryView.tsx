@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { EmptyState, FadeUp, InlineAlert, Pill, Skeleton, SkeletonGroup } from '@ideanest/ui';
+import { EmptyState, InlineAlert, Pill, Skeleton, SkeletonGroup } from '@ideanest/ui';
+import { FadeUp } from '@ideanest/ui/motion';
 import type { ApiError } from '../../lib/api/problem';
 import { PAGE_SIZE, slugNames } from '../../lib/discovery/api';
 import { blameFor } from '../../lib/discovery/emptiness';

@@ -34,10 +34,16 @@ export { Rail, RailItem, type RailProps, type RailItemProps } from './layout/Rai
 export { TopBar, TopBarLink, type TopBarProps } from './layout/TopBar';
 export { Timeline, type TimelineProps, type TimelineMarker } from './layout/Timeline';
 
-/* Motion */
-export { FadeUp, StaggerGroup, type FadeUpProps, type StaggerGroupProps } from './motion/FadeUp';
+/* Motion
+ *
+ * `FadeUp`, `StaggerGroup` and `CountUp` are NOT here. They drive `motion`, and
+ * a static re-export of them from this barrel put 116 kB of animation runtime
+ * into the first load of every route that imported anything from this package
+ * — including the checkout, which animates nothing. They live behind
+ * `@ideanest/ui/motion`, and `src/motion.ts` explains the measurement.
+ *
+ * `FlipButton` stays because it animates in CSS and costs nothing. */
 export { FlipButton, type FlipButtonProps } from './motion/FlipButton';
-export { CountUp, type CountUpProps } from './motion/CountUp';
 
 /* Form */
 export {
@@ -63,24 +69,18 @@ export {
 export { Switch, type SwitchProps } from './components/form/Switch';
 export { FileDropZone, type FileDropZoneProps } from './components/form/FileDropZone';
 
-/* Overlay */
-export { Modal, type ModalProps } from './components/overlay/Modal';
-export { Drawer, type DrawerProps, type DrawerSide } from './components/overlay/Drawer';
-export { Popover, type PopoverProps } from './components/overlay/Popover';
+/* Overlay
+ *
+ * `Modal`, `Drawer`, `Popover`, `Tooltip` and the toast pair animate, so they
+ * are behind `@ideanest/ui/motion` with the rest of the `motion` consumers.
+ * What is left here is the overlay machinery that does not animate: `Combobox`,
+ * whose popup docs/motion-system.md §5.1 requires to appear and disappear
+ * outright, and the hooks and geometry the animated ones are built from. */
 export {
   Combobox,
   type ComboboxProps,
   type ComboboxOption,
 } from './components/overlay/Combobox';
-export { Tooltip, type TooltipProps } from './components/overlay/Tooltip';
-export {
-  ToastProvider,
-  useToast,
-  type ToastOptions,
-  type ToastVariant,
-  type ToastProviderProps,
-  type ToastContextValue,
-} from './components/overlay/Toast';
 export { useFocusTrap, tabbableElements } from './components/overlay/useFocusTrap';
 export { useDismiss, useScrollLock, useBackdropDismiss } from './components/overlay/useDismiss';
 export {
@@ -90,7 +90,6 @@ export {
   type Position,
   type Rect,
 } from './components/overlay/placement';
-export { OVERLAY_ENTRY_MS } from './components/overlay/overlayMotion';
 
 /* Data display */
 export {

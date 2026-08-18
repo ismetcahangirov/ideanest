@@ -40,8 +40,14 @@
   --shadow-panel: var(--shadow-panel);
   --shadow-float: var(--shadow-float);
 
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-display: 'General Sans', 'Inter', system-ui, sans-serif;
+  /* `--font-inter` is set on `<html>` by `next/font` in the web application's
+     root layout, and resolves to the self-hosted face plus its metric-matched
+     fallback. The literal `'Inter'` behind it is what Storybook and any other
+     consumer that does not run through Next fall back to; without a value in
+     the `var()` the whole declaration would be invalid and drop, taking
+     `system-ui` down with it. */
+  --font-sans: var(--font-inter, 'Inter'), system-ui, -apple-system, sans-serif;
+  --font-display: 'General Sans', var(--font-inter, 'Inter'), system-ui, sans-serif;
 
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 }

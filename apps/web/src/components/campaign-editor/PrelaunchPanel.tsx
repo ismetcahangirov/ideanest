@@ -6,13 +6,13 @@ import {
   CharacterCount,
   Field,
   InlineAlert,
-  Modal,
   Pill,
   Skeleton,
   SkeletonGroup,
   Textarea,
   TextInput,
 } from '@ideanest/ui';
+import { Modal } from '@ideanest/ui/motion';
 import {
   getPrelaunchPage,
   openPrelaunch,
