@@ -48,6 +48,25 @@ public enum AuditAction {
     PROJECT_UPDATE_PUBLISHED("project.update_published", "project"),
 
     /**
+     * Somebody's comment was removed by somebody who did not write it (#84). §4.7's
+     * CD-14 and AD-09.
+     *
+     * <p>The entity is the campaign rather than the comment, for
+     * {@link #PROJECT_UPDATE_PUBLISHED}'s reason: a comment is removed once and never
+     * restored, so a row keyed on it would be a history of one and invisible to the
+     * question anybody actually asks — "what has this campaign's team been taking
+     * down". Which comment, and whose, is in the detail.
+     *
+     * <p><strong>An author withdrawing their own comment is deliberately not recorded,
+     * and that is the line.</strong> Deleting what you wrote is the ordinary use of a
+     * button; deleting what somebody else wrote from a public page is one account
+     * silencing another, is irreversible through any endpoint, and is the first thing a
+     * complaint about over-moderation asks about. Recording both would bury the second
+     * under the first at a ratio nobody can filter.
+     */
+    PROJECT_COMMENT_REMOVED("project.comment_removed", "project"),
+
+    /**
      * Somebody was invited onto a campaign.
      *
      * <p>The entity is the grant and not the campaign, because the grant is what is

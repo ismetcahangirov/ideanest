@@ -8,13 +8,13 @@ package az.ideanest.moderation.domain;
  * script and a bulk import. Neither is redundant with the other; see
  * {@code ContentReportSchemaTests}.
  *
- * <p><strong>Two of the four cannot be reported yet, and they are enumerated
- * anyway.</strong> §4.9's community module has not been built, so there is no
- * {@code comments} table and no {@code project_updates} table for an identifier to
- * be checked against — which is why §10.2's {@code POST /v1/comments/{id}/report} is
- * not published by this release. Naming them now costs one string in a constraint.
- * Adding them later costs a migration on the critical path of somebody else's epic,
- * landing in the same release as the feature that needs it.
+ * <p><strong>One of the four still cannot be reported, and it is enumerated
+ * anyway.</strong> {@code PROJECT_UPDATE} has no route: §10.2 gives an update no
+ * report endpoint, and AD-09's moderation of updates is not built. {@code COMMENT}
+ * was in the same position until #84 — and #102's bet paid off exactly as it was
+ * argued: comments arrived, V23's check constraint already named the value, and
+ * publishing {@code POST /v1/comments/{id}/report} cost a controller method, a
+ * {@code ReportTargets} branch, and no migration at all.
  */
 public enum ReportTargetType {
 
@@ -31,7 +31,9 @@ public enum ReportTargetType {
     /**
      * A comment. §4.9's C-07, and §10.2's {@code POST /v1/comments/{id}/report}.
      *
-     * <p>Nothing can write this: {@code comments} does not exist.
+     * <p>Written since #84. The identifier is checked against {@code comments} through
+     * {@code PublicComments}, which also refuses a removed one — see that class for why
+     * a tombstone is deliberately not reportable.
      */
     COMMENT,
 
@@ -47,6 +49,6 @@ public enum ReportTargetType {
      * it, because the reporter is shown a success.
      */
     public boolean isReportable() {
-        return this == PROJECT || this == USER;
+        return this != PROJECT_UPDATE;
     }
 }

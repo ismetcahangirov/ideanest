@@ -1,5 +1,7 @@
 package az.ideanest.moderation.application;
 
+import az.ideanest.community.application.CommentNotFoundException;
+import az.ideanest.community.application.PublicComments;
 import az.ideanest.moderation.domain.ReportTargetType;
 import az.ideanest.project.application.ProjectNotFoundException;
 import az.ideanest.project.application.PublicProjects;
@@ -21,7 +23,9 @@ import org.springframework.stereotype.Service;
  * <p><strong>Each module answers for its own surface.</strong> A campaign is
  * resolved through {@code PublicProjects}, which already encodes §6.1's nine public
  * states and answers 404 for a draft and for a suspended campaign alike; an account
- * through {@code UserAccounts}, which excludes soft-deleted rows. Neither rule is
+ * through {@code UserAccounts}, which excludes soft-deleted rows; a comment through
+ * {@code PublicComments} (#84), which excludes tombstones and asks
+ * {@code PublicProjects} the same question about the campaign it is under. No rule is
  * restated here, because a second copy of "which campaigns may a stranger see" is
  * the copy that forgets {@code SUSPENDED} the next time the list changes.
  *
@@ -29,17 +33,20 @@ import org.springframework.stereotype.Service;
  * oddly for a safety feature until you notice what a suspension is: trust and safety
  * has already stopped that campaign, so a further report about it adds a row to the
  * queue and no information. The reporter gets the same 404 anybody else browsing
- * gets, which is consistent rather than special.
+ * gets, which is consistent rather than special. A removed comment is refused for the
+ * identical reason, and {@code PublicComments} makes the argument there.
  */
 @Service
 public class ReportTargets {
 
     private final PublicProjects projects;
     private final UserAccounts accounts;
+    private final PublicComments comments;
 
-    public ReportTargets(PublicProjects projects, UserAccounts accounts) {
+    public ReportTargets(PublicProjects projects, UserAccounts accounts, PublicComments comments) {
         this.projects = projects;
         this.accounts = accounts;
+        this.comments = comments;
     }
 
     /**
@@ -55,7 +62,8 @@ public class ReportTargets {
         switch (targetType) {
             case PROJECT -> requireProject(targetId);
             case USER -> requireAccount(targetId);
-            case COMMENT, PROJECT_UPDATE -> throw new UnsupportedReportTargetException(targetType);
+            case COMMENT -> requireComment(targetId);
+            case PROJECT_UPDATE -> throw new UnsupportedReportTargetException(targetType);
         }
     }
 
@@ -73,5 +81,17 @@ public class ReportTargets {
     private void requireAccount(UUID accountId) {
         accounts.findById(accountId)
                 .orElseThrow(() -> new ReportTargetNotFoundException(ReportTargetType.USER, accountId));
+    }
+
+    private void requireComment(UUID commentId) {
+        try {
+            comments.requireReportable(commentId);
+        } catch (CommentNotFoundException e) {
+            // Translated rather than propagated, for the reason above: the community
+            // module's advice is scoped to the community module's controllers, so its
+            // exception escaping here would reach the fallback handler and become a
+            // 500 on a safety endpoint.
+            throw new ReportTargetNotFoundException(ReportTargetType.COMMENT, commentId);
+        }
     }
 }

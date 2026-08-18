@@ -24,26 +24,28 @@ import org.springframework.web.bind.annotation.RestController;
  * How somebody tells the platform that something is wrong. §4.9's C-06 and C-07, and
  * §10.2's {@code POST /v1/projects/{id}/report}.
  *
- * <p><strong>Two endpoints on one controller, because they are one feature and one
- * budget.</strong> Splitting them would mean two rate limiters to keep in step, and
+ * <p><strong>Three endpoints on one controller, because they are one feature and one
+ * budget.</strong> Splitting them would mean three rate limiters to keep in step, and
  * somebody who had spent their reporting allowance on campaigns could then spend a
- * second one on people.
+ * second one on people and a third on comments.
  *
- * <p><strong>Neither endpoint appears in {@code SecurityConfiguration}, and that is
- * the intended arrangement.</strong> Both fall through to the catch-all rule, so both
- * require a bearer token from an account that is not inside §17.4's deletion grace
- * period. Reporting is one of the few writes where requiring an account is not
+ * <p><strong>No endpoint here appears in {@code SecurityConfiguration}, and that is
+ * the intended arrangement.</strong> All three fall through to the catch-all rule, so
+ * all three require a bearer token from an account that is not inside §17.4's deletion
+ * grace period. Reporting is one of the few writes where requiring an account is not
  * friction but the mechanism: the duplicate suppression this feature is built on is
  * unstateable without an identity to compare, and V23's header has the other two
  * reasons.
  *
- * <p><strong>{@code POST /v1/comments/{id}/report} is deliberately absent.</strong>
- * §10.2 lists it and §4.9's community module has not been built — there is no
- * {@code comments} table, so an identifier cannot be checked and a moderator opening
- * the report would find nothing behind it. Accepting the report anyway would show the
- * reporter a success for a complaint nobody can ever read.
- * {@link ReportTargetType#COMMENT} is already in the taxonomy and in V23's
- * constraint, so publishing the route is a controller method rather than a migration.
+ * <p><strong>{@code POST /v1/comments/{id}/report} is published as of #84.</strong> It
+ * was absent because there was no {@code comments} table for an identifier to be
+ * checked against, and accepting a report a moderator could never look at shows the
+ * reporter a success for nothing. {@link ReportTargetType#COMMENT} was already in the
+ * taxonomy and in V23's check constraint, so this cost a controller method and no
+ * migration — which is the whole of the bet #102 made when it enumerated the value
+ * early. Deduplication is unchanged and is still V23's partial unique index: a
+ * comment is a target like any other, so a second report on one comment by one
+ * reporter is the same 202 carrying the report already on file.
  *
  * <p><strong>Rate limiting is here rather than in the service</strong>, following
  * {@code PrelaunchController} and {@code AuthController}: it is about the transport —
@@ -96,6 +98,27 @@ public class ContentReportController {
             HttpServletRequest httpRequest) {
 
         return report(ReportTargetType.USER, id, accessToken, request, httpRequest);
+    }
+
+    /**
+     * "There is something wrong with this comment." §4.9's C-07, and §10.2's
+     * {@code POST /v1/comments/{id}/report}.
+     *
+     * <p>The comment is checked through the community module's {@code PublicComments}
+     * before anything is written, which also refuses a comment that has already been
+     * removed — see {@code ReportTargets}. Nothing about the comment changes: a report
+     * is a request for a person to look, and a comment that disappeared on a report
+     * count would be a comment any five accounts could delete.
+     */
+    @PostMapping("/comments/{id}/report")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public ReportResponse reportComment(
+            @AuthenticationPrincipal Jwt accessToken,
+            @PathVariable UUID id,
+            @Valid @RequestBody ReportRequest request,
+            HttpServletRequest httpRequest) {
+
+        return report(ReportTargetType.COMMENT, id, accessToken, request, httpRequest);
     }
 
     /**
