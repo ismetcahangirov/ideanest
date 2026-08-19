@@ -3,6 +3,9 @@ package az.ideanest.notification.api;
 import az.ideanest.notification.application.EmailTemplates;
 import az.ideanest.notification.domain.NotificationType;
 import az.ideanest.notification.infrastructure.RenderedEmail;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.mail.MessagingException;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -67,12 +70,31 @@ public class EmailTemplateController {
      *     reader with a browser wants; the text part is the one that has to be asked for,
      *     and it is the one worth checking because nothing else renders it
      */
-    @GetMapping(
-            path = "/{type}/preview",
-            // Declared, so that the published contract says what this answers with. Left
-            // off, springdoc infers application/json from the return type and the
-            // document would describe a JSON string where the body is a mail part.
-            produces = {MediaType.TEXT_HTML_VALUE, MediaType.TEXT_PLAIN_VALUE})
+    // **No `produces` on the mapping, and the contract is annotated instead.**
+    //
+    // The obvious version of this declares `produces = text/html, text/plain`, and it is
+    // wrong twice. It is a *mapping* condition, so a client sending
+    // `Accept: application/json` -- which is every generated client, and every attempt to
+    // read a refusal -- does not match the mapping at all and is answered 406 before the
+    // controller runs. And for the clients that do match, the same types become the
+    // request's producible set and then block the advice's `application/problem+json`, so
+    // a refusal is a second 406, this time with an empty body.
+    //
+    // Adding `application/problem+json` to the list fixes the second and not the first,
+    // at the cost of a published contract that says a 200 may be a problem document.
+    //
+    // So the mapping accepts anything, the response carries its own Content-Type -- which
+    // is what actually decides what the reader gets -- and @ApiResponse below is what
+    // makes the document say `text/html` rather than the `application/json` springdoc
+    // would infer from ResponseEntity<String>.
+    @GetMapping("/{type}/preview")
+    @ApiResponse(
+            responseCode = "200",
+            description = "The rendered email, as the body it is sent with.",
+            content = {
+                @Content(mediaType = MediaType.TEXT_HTML_VALUE, schema = @Schema(type = "string")),
+                @Content(mediaType = MediaType.TEXT_PLAIN_VALUE, schema = @Schema(type = "string"))
+            })
     public ResponseEntity<String> preview(
             @AuthenticationPrincipal Jwt accessToken,
             @PathVariable NotificationType type,

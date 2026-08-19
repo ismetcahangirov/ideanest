@@ -17,22 +17,29 @@ spring:
     password: replaced-by-testcontainers
 
   mail:
-    # Port 1 is reserved and nothing listens on it, which is the point: a test
-    # that sends email without saying where must fail to connect rather than
-    # quietly reach whatever is on the developer's 1025. The tests that are
-    # about email start GreenMail and override this port through
-    # @DynamicPropertySource; every other test in the suite drives the dispatch
-    # with its own senders and never gets here.
-    host: localhost
+    # Neither the host nor the port is here: AbstractIntegrationTest points both
+    # at GreenMail, which binds to the loopback address on whichever port is
+    # free. They are registered there rather than on the classes that assert on
+    # mail because a second property source means a second context and a second
+    # PostgreSQL container -- the same reason the identity provider stub's
+    # address is registered there.
+    #
+    # These are the fallback for anything running outside that base class, and
+    # port 1 is reserved and unlistened-on deliberately: such a test must fail to
+    # connect rather than quietly reach whatever is on the developer's 1025.
+    host: 127.0.0.1
     port: 1
     properties:
       mail:
         smtp:
-          # Short, because the failure above is expected and a test should not
-          # spend a connect timeout discovering it.
-          connectiontimeout: 500
-          timeout: 500
-          writetimeout: 500
+          # Short, because a test should not spend a production connect timeout
+          # discovering an expected failure -- but not as short as it could be.
+          # Under 500ms this was long enough on a quiet machine and not on a
+          # loaded CI runner, which is the shape of a test that fails once a
+          # fortnight.
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
 ideanest:
   abuse:

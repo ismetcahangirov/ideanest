@@ -21,14 +21,47 @@ the distribution it is pinned to and verifies its checksum before running it.
 A JDK 21 or newer must be on the path; the build compiles against a Java 21
 toolchain regardless of which JDK launches it.
 
-**Docker is required.** `bootRun` starts the PostgreSQL in `compose.yaml` and
-stops it again on exit, and the tests start their own container. Running the
-stack by hand instead:
+**Docker is required.** `bootRun` starts the services in `compose.yaml` and stops
+them again on exit, and the tests start their own PostgreSQL container. Running
+the stack by hand instead:
 
 ```bash
 docker compose up -d      # from apps/api
 docker compose down       # add -v to discard the data
 ```
+
+The stack is PostgreSQL and **Mailpit**, which accepts every message and
+delivers none. Anything the platform emails locally is at
+<http://localhost:8025> rather than in somebody's real inbox — including a
+campaign the finaliser closed, which is the quickest way to see a real
+notification end to end.
+
+---
+
+## Email
+
+`NotificationChannel.EMAIL` has a transport since #86 (§12.3). The parts worth
+knowing before changing anything:
+
+- **It is SMTP.** `email_deliveries` records `accepted_at`, never
+  `delivered_at`: a relay reports that it took the message and nothing about
+  what happened next. Bounces, spam filing and opens need a provider webhook,
+  and there is no provider.
+- **One layout, twenty-two types.** `EmailComposer` builds an `EmailContent` in
+  an exhaustive `switch` over `NotificationType`, so **adding a type fails to
+  compile** until somebody decides what its email says. The words live in
+  `src/main/resources/messages.properties`; the two layouts live in
+  `src/main/resources/email/`.
+- **Look at a template without sending it**:
+  `GET /v1/admin/email-templates/{type}/preview` answers `text/html`, and
+  `?format=text` answers the plain-text part — which is the one nothing else
+  renders and therefore the one worth checking. `POST …/test-send` sends it to
+  your own address and takes no recipient, deliberately.
+- **The colours in `email/layout.html` are hex literals**, which CLAUDE.md §2
+  forbids in source and which no mail client would resolve any other way.
+  `EmailLayoutTests` asserts every one of them is a value
+  `packages/design-tokens` publishes, so a token change that is not mirrored
+  here fails the build.
 
 ---
 
@@ -498,11 +531,14 @@ other way would be a cycle. The dependency is inverted instead.
 | Encryption at rest for the TOTP secret, and the key management it needs | no issue yet |
 | A payout action that actually requires two-factor | [#69](https://github.com/ismetcahangirov/ideanest/issues/69) |
 | Two-factor over SMS, as a fallback (A-08) | no issue yet |
-| Redis, object storage, and a mail catcher in the local stack | [#134](https://github.com/ismetcahangirov/ideanest/issues/134), [#139](https://github.com/ismetcahangirov/ideanest/issues/139) |
+| Redis and object storage in the local stack. A mail catcher is there since #86 -- Mailpit, on 1025, with its inbox at http://localhost:8025 | [#134](https://github.com/ismetcahangirov/ideanest/issues/134), [#139](https://github.com/ismetcahangirov/ideanest/issues/139) |
 | PostGIS, needed for proximity search | [#47](https://github.com/ismetcahangirov/ideanest/issues/47) |
 | Money type and arithmetic rules | [#133](https://github.com/ismetcahangirov/ideanest/issues/133) |
 | Job queue and scheduler | [#134](https://github.com/ismetcahangirov/ideanest/issues/134) |
-| Anything that actually sends a message. Verification links, collaborator invitations, and launch reminders all reach a port and a logging adapter | [#85](https://github.com/ismetcahangirov/ideanest/issues/85), [#86](https://github.com/ismetcahangirov/ideanest/issues/86) |
+| Push notifications. Email is real since #86; push is still `UndeliverableChannelSender`, which writes a log line and returns | [#87](https://github.com/ismetcahangirov/ideanest/issues/87) |
+| Verification links, collaborator invitations, and launch reminders as **email**. Each still reaches its own port and a logging adapter rather than the notification queue, so #86's transport does not carry them -- they are not `NotificationType` rows | no issue yet |
+| Bounce handling, a suppression list, and open tracking. All three need a provider webhook, and §16 chose an SMTP relay | no issue yet |
+| A campaign's title in an email. `notifications.params` carries `projectId` and no title, so the copy reads "this campaign"; supplying one is a shared port plus a change to seven translations | no issue yet |
 | Existing announcements moved onto the outbox. The table, the relay, and the guarantee are built (#135), and nothing routes through them yet: `AuthEvents`, `ProjectEvents`, and `LaunchReminderDelivery` still publish from after-commit listeners, so a crash between the commit and the send still loses the message | no issue yet |
 | Structured logging with redaction | [#137](https://github.com/ismetcahangirov/ideanest/issues/137) |
 | Metrics, tracing, alerting | [#138](https://github.com/ismetcahangirov/ideanest/issues/138) |

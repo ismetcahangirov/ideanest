@@ -360,7 +360,7 @@
                 }
               }
             },
-            "description" : "OK"
+            "description" : "The rendered email, as the body it is sent with."
           }
         },
         "tags" : [ "email-template-controller" ]

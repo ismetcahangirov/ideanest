@@ -43,5 +43,12 @@ public abstract class AbstractIntegrationTest {
     static void identityProviderStub(DynamicPropertyRegistry registry) {
         registry.add("ideanest.auth.oauth.providers.google.jwks-uri", OidcProviderStub::googleJwksUri);
         registry.add("ideanest.auth.oauth.providers.apple.jwks-uri", OidcProviderStub::appleJwksUri);
+        // #86's relay, here for the identical reason and not on the classes that assert
+        // on mail: GreenMail takes whichever port is free, and a class registering a
+        // property source of its own gets a context of its own and a second PostgreSQL
+        // container with it. Everything else about the transport is ordinary
+        // configuration in application-test.yml.
+        registry.add("spring.mail.host", MailServerStub::smtpHost);
+        registry.add("spring.mail.port", MailServerStub::smtpPort);
     }
 }

@@ -897,6 +897,15 @@ Preferences are per category and per channel, with a digest option.
 > service (#85) is what fans one event out to email, push, and the in-app inbox,
 > and transactional email itself is #86 — until then the adapter writes a log line
 > saying what would have been sent.
+>
+> **Two of the three columns are now real.** #86 built the email transport (§12.3)
+> and the in-app inbox was #85's; push is still #87, and still a log line. Every
+> row in the table above marked ✅ under Email has copy written for it, including
+> the thirteen types nothing publishes an event for yet — `EmailComposer`'s switch
+> is exhaustive, so a type is a compilation error until somebody decides what its
+> email says. The one row that has copy and can never be sent is "24 hours
+> remaining", which this table gives no email column: it renders, and the preview
+> endpoint refuses it.
 
 ### 4.11 Administration `[A]`
 
@@ -916,7 +925,7 @@ Preferences are per category and per channel, with a digest option.
 | AD-12 | Feature flags | Gradual rollout, experiments |
 | AD-13 | Analytics | Volume, success rate, average pledge, cohorts, funnels |
 | AD-14 | Audit log | Immutable record of privileged actions. The record is built (#107, §7.2); the screen that reads it belongs to this epic |
-| AD-15 | Email templates | Edit, preview, test send |
+| AD-15 | Email templates | Edit, preview, test send. **Preview and test send are built (#86, §12.3)** at `GET /v1/admin/email-templates/{type}/preview` and `POST …/test-send`; the test send takes no recipient and goes to the caller's own address, which §12.3 argues. Editing is a schema and a decision about who may rewrite a payment-failure notice, and belongs to this epic |
 | AD-16 | System health | Queue depth, failed jobs, provider status |
 
 > **AD-02's intake and queue, as #102 built them.** Reporting is
@@ -1777,6 +1786,7 @@ by a database constraint and verified by a nightly reconciliation job.
 | `shipping_addresses` | Encrypted at rest |
 | `fulfilments` | Tracking and status |
 | `notifications`, `notification_preferences` | Delivery and settings |
+| `email_deliveries` | What the email transport did, one row per attempt, append only (#86, §12.3). **`accepted_at`, never `delivered_at`**: SMTP reports acceptance by a relay and nothing further, and a column named for delivery would be read as delivery by everybody who ever queried it. Outcomes are `ACCEPTED`, `REFUSED` and `SUPPRESSED`; bounces and opens need a provider webhook and are follow-up work rather than columns nothing writes. **There is no address column** — §17.4 anonymises `users.email`, and an address copied here would survive that in a table the anonymiser does not know about, so `recipient_id` is the join and it correctly stops resolving when there is no longer a person |
 | `media` | Metadata and transcoding state |
 | `referral_touches`, `referral_attributions` | Attribution (#94). §7.2 asked for one table called `referrers` and one table cannot hold this: a **touch** is a visit that carried a source — evidence, only for as long as the attribution window says, and most of them lead to nothing — while an **attribution** is the answer for one pledge, decided once and never moving, because a creator who read "the newsletter brought forty pledges" last week has to read the same number this week. One table would mean either deleting rows a report is made of or retaining browsing evidence for as long as financial records. The attribution therefore **copies** the source rather than joining to the touch, so the touch stays prunable. A visitor is a SHA-256 of an opaque 256-bit token the server minted — never anything derived from `users.id`, because a derivable code turns "guess a code" into "enumerate the platform's users" — and the token itself is never stored. `referral_attributions` carries **no backer identifier at all**, deliberately: a creator who could see which named person a source brought would be told what §4.5's PL-12 spends a column on not telling them. `pledge_id` is unique and has no foreign key, for V19's reason about `outbox_events.aggregate_id`: the row is written by a consumer of a published event, and the uniqueness is what makes redelivery harmless. **No retention job sweeps expired touches yet** — the index for it exists, the schedule does not |
 | `project_analytics_daily`, `project_analytics_daily_channels` | Pre-aggregated daily metrics (#95). **This row used to say `project_analytics_daily`, "pre-aggregated metrics", and did not say what a day is.** The grain is one row per campaign per **calendar day in one platform zone** — `ideanest.analytics.aggregation.zone`, `Asia/Baku` — and that is the correctness question in this feature rather than a detail. Baku is UTC+4, so a UTC day ends at four in the morning locally and every pledge taken between midnight and 04:00, the tail of the evening where a campaign's traffic actually peaks, would be reported against the previous day; the dashboard would disagree with the creator's own calendar and nothing on screen would explain why. The campaign's own zone is the honest answer and `projects` has no column for one (V6), so it would be a column nobody sets; the reader's zone is worse than either, because the same campaign would then report different numbers to a creator and to a collaborator abroad looking at the same screen. So: one zone, read by the writer and by the reader from one property, and **frozen onto every row** in `time_zone`, so that reconfiguring it is visible at the read side rather than retroactively re-labelling history that was never recomputed. Derived entirely from `referral_attributions` and therefore safe to rebuild: a day's row is a **pure function of the attributions in it**, nothing is accumulated onto what was there before, and the running totals are recomputed from the campaign's first pledge on every pass — so `(project_id, day)` as the conflict target of an upsert is the whole of the idempotency, and a re-run is a repair rather than a double count. **A day with no pledges gets no row**: absence means "nothing happened", the alternative grows the table by campaigns × days whether or not anything ever happens, and the cumulative columns are what make the gaps harmless. Late-arriving attributions — the outbox retries, and `pledged_at` is when the pledge was confirmed rather than when the event arrived — are answered by a **bounded re-rollup window**, `ideanest.analytics.aggregation.re-rollup-window`, three days, beyond which a day stops moving until somebody re-runs the range by hand. A campaign whose attributions are not all in one currency is **left out and named in the log** rather than reported as the addition of two different kinds of thing (§7.3, §21.2). The channel split is `ReferralChannel` **only**: `source`, `campaign` and `referrer_code` are free text that arrived in a URL, so at a daily grain they are an unbounded number of rows per campaign per day, and the full breakdown stays in `GET /referrers`, which folds it at read time. `computed_at` is returned by the read side because it is the only thing that distinguishes a quiet week from an aggregator that stopped on Tuesday |
@@ -3233,11 +3243,20 @@ do. Both endpoints and the fan-out resolve a stored preference through the same
 `DeliveryPolicy`: a settings page that disagreed with delivery would look right and
 change nothing.
 
-> **What is not built.** Email (#86) and push (#87) have no transport: both are
-> registered as `UndeliverableChannelSender`, which logs at `WARN` and returns, so
-> their rows say `SENT` for messages that reached a log file — and a digest on
-> those channels reaches the same log file, with its member count in the line.
-> That is a missing transport rather than a missing digest. In-app is real.
+> **What is not built.** Push (#87) has no transport: it is registered as
+> `UndeliverableChannelSender`, which logs at `WARN` and returns, so its rows say
+> `SENT` for messages that reached a log file — and a digest on that channel
+> reaches the same log file, with its member count in the line. That is a missing
+> transport rather than a missing digest. In-app and email are real.
+>
+> **Email is real since #86**, and §12.3 is what it does. The three things worth
+> knowing here: it is SMTP, so the strongest fact the platform records is that a
+> relay accepted the message; a recipient whose account has been anonymised is
+> dead-lettered at once rather than retried eight times, through
+> `PermanentDeliveryFailure`; and every message carries a `Message-ID` derived from
+> `notifications.id`, which is what makes the at-least-once queue's duplicates
+> collapsible by a mail client.
+>
 > §4.10's audiences that are a list the platform computes are **half** built:
 > `shared.audience.ProjectAudiences` is the port #245 asked for, the pledge module
 > publishes `BACKERS` from `pledges`, and "goal reached" now reaches a campaign's
@@ -3261,6 +3280,82 @@ change nothing.
 > most exactly here: a notification delivered, or redelivered, after collections
 > have started failing would otherwise tell a backer their campaign raised less
 > than the campaign it has just said succeeded.
+
+### 12.3 Transactional email (#86)
+
+The transport behind `NotificationChannel.EMAIL`. `EmailChannelSender` is an
+ordinary `ChannelSender` registered for that channel — replacing the
+`UndeliverableChannelSender` bean was the whole of the wiring, exactly as
+`ChannelSenderConfiguration` predicted.
+
+**It is a relay, not a provider, and the vocabulary says so.** §16 chose Spring
+Mail over SMTP. An SMTP relay answers one question — whether it accepted the
+message — and nothing about delivery, spam filing, bounces or opens, which come
+back later over a provider webhook. So `email_deliveries` has `accepted_at` and
+not `delivered_at`, and its outcomes are `ACCEPTED`, `REFUSED` and `SUPPRESSED`
+with no `DELIVERED` and no `BOUNCED`. Adding either is a migration and a provider
+integration, in that order, and **bounce handling and suppression lists are
+follow-up work rather than half-built here**: a `bounced_at` column nothing
+writes is a column every future reader assumes is maintained.
+
+**One row per attempt, append only.** `notifications` holds the current state of
+a message; what it cannot hold is which attempt failed, when, and with what
+answer — which is what somebody needs when a backer says they were never told a
+payment failed. **There is no address column**, deliberately: §17.4's
+anonymisation rewrites `users.email`, and an address copied here would outlive
+that in a table the anonymiser does not know about. `recipient_id` answers the
+question support actually asks, for exactly as long as there is a person to
+answer it about.
+
+**A third outcome.** `ChannelSender` offers two — returning means accepted,
+throwing means refused — and neither describes a recipient whose account has been
+deleted, because §17.4 rewrites the address into the `.invalid` TLD that RFC 2606
+reserves as never resolving. `PermanentDeliveryFailure` is that third answer:
+both dispatchers dead-letter on it at once rather than spending the retry budget
+of a queue everything shares on a settled question.
+
+**Duplicates are reduced, not removed.** The queue sends before it commits, so a
+crash in between sends again — argued in §12.2 and chosen deliberately. What
+makes it survivable is the `Message-ID`, derived from `notifications.id` and
+therefore identical on every attempt, which conforming clients and stores
+collapse. A relay that rewrites the header, or a client that does not
+deduplicate, still shows two. The honest fix is a provider with idempotency keys.
+
+**Templates are typed rather than duplicated.** One HTML layout and one
+plain-text layout, both rendered from `EmailContent`, which `EmailComposer` builds
+in an exhaustive `switch` over `NotificationType` — so a new type does not compile
+until somebody has decided what its email says. Forty per-type template files were
+rejected: they are forty places to change one footer, and two versions of one type
+that drift apart send plain-text readers something different. The copy lives in
+`messages.properties`, which is where #123 adds languages.
+
+Two limits are worth stating rather than discovering. **No email names a
+campaign:** `notifications.params` carries `projectId` and no title, because the
+events behind it have no title field, so supplying one means a shared port in the
+shape of `ProjectAudiences` plus a change to seven translations across three
+modules. The copy is written to read correctly without one and the field has a
+home the day it arrives. And **every message renders in one language**, because
+the sender runs on a background job with no reader attached; `users.locale`
+exists and is not read yet.
+
+**Colours in the HTML layout are hex literals**, which CLAUDE.md §2 forbids in
+source. The rule cannot be honoured in a medium where Gmail, Outlook and Apple
+Mail resolve no custom properties and load no external stylesheets — an email is
+inline literals or it is unstyled. `packages/design-tokens` stays the source of
+truth and `EmailLayoutTests` asserts that every literal in the layout is a value
+that package publishes, so the copy cannot drift silently. The two rules that are
+about meaning rather than values are honoured in full: lime is a surface with
+near-black text on it and never text, and nothing here uses it to mean success.
+
+AD-15 is **preview and test send**, not editing. A preview renders through the
+same composer and renderer the sender uses, against a sample document, and is
+answered as `text/html` or `text/plain` so that a browser shows the message. A
+test send **takes no recipient** and goes to the calling staff member's own
+address: an authenticated endpoint accepting an arbitrary address and a
+platform-branded template is a way to send convincing payment mail to anybody,
+and one compromised staff account is the whole cost of entry. Editing a template
+is a schema, a screen, and a decision about who may change what a payment-failure
+notice says — epic #100.
 
 ---
 
@@ -3360,7 +3455,7 @@ product. Public read surfaces — discovery, prelaunch — go through it.
 | Job queue | **Spring Scheduler** plus a durable queue | Retries, backoff, distributed locking |
 | Caching | **Redis** via Spring Cache | |
 | Real-time | **Spring WebSocket** with a Redis relay | |
-| Email | **Spring Mail** with typed templates | |
+| Email | **Spring Mail** with typed templates | Built (#86, §12.3). SMTP, so what the platform can record is acceptance by a relay and never delivery. Thymeleaf is the engine on its own rather than `thymeleaf-spring6`: `spring-boot-mail` brings Spring Framework 7, and an email template rendered from a `Map` needs none of that integration |
 | Object storage | **AWS SDK v2** | S3-compatible |
 | Money | **`BigDecimal`** | Exact decimal arithmetic |
 | Resilience | **Resilience4j** | Circuit breaker, retry, bulkhead |
@@ -3485,8 +3580,11 @@ dependencies {
     implementation("org.apache.poi:poi-ooxml")            // spreadsheet export
     implementation("com.opencsv:opencsv")
 
-    // Templating
-    implementation("org.thymeleaf:thymeleaf-spring6")     // email templates
+    // Email and its templates (#86). The engine alone, not thymeleaf-spring6 --
+    // spring-boot-mail brings Spring Framework 7 and the Spring integration buys
+    // nothing a template rendered from a Map needs.
+    implementation("org.springframework.boot:spring-boot-starter-mail")
+    implementation("org.thymeleaf:thymeleaf")
 
     // Observability
     implementation("io.micrometer:micrometer-registry-prometheus")
