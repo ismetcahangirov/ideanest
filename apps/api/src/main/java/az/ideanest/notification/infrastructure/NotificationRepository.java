@@ -68,21 +68,31 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
     Optional<Notification> claimNext(@Param("now") Instant now);
 
     /**
-     * One page of somebody's in-app inbox, newest first.
+     * The first page of somebody's in-app inbox, newest first.
      *
-     * <p>Keyset rather than an offset, like every other paged read in the service: an
-     * offset re-reads and re-skips everything before it, and it also skips a row when
-     * something is inserted between two requests — which for an inbox means a
-     * notification the reader never sees.
+     * <p>Keyset paging, like every other paged read in the service: an offset re-reads and
+     * re-skips everything before it, and it also skips a row when something is inserted
+     * between two requests — which for an inbox means a notification the reader never sees.
      *
      * <p>Ordered by {@code occurredAt} and then by the identifier. The identifier is a
      * UUID v7 and therefore time-ordered, which is what breaks a tie between two
      * notifications produced from one event in the same instant.
      *
-     * @param before the cursor: the {@code occurredAt} of the last row of the previous
-     *     page, or null for the first page
-     * @param beforeId the identifier of that same row, which is what makes the cursor
-     *     total rather than merely usually distinct
+     * <h2>Two methods rather than one with a null-tolerant cursor</h2>
+     *
+     * <p><strong>This was one query and the one query did not work.</strong> #85 wrote it as a
+     * single method whose predicate began {@code :before IS NULL OR …}, which reads well and
+     * fails at run time the moment it is called with no cursor: PostgreSQL cannot infer a type
+     * for a parameter that appears only as the operand of {@code IS NULL}, and answers
+     * {@code could not determine data type of parameter $2}. Nothing noticed, because until
+     * #246 there was no endpoint and therefore no caller — a query with no caller is a query
+     * nobody has run.
+     *
+     * <p>So the cursor and the absence of one are two statements. The cost is a duplicated
+     * {@code WHERE} clause; the alternative is a cast in the JPQL, which would be one
+     * expression that has to stay in step with the column's type and would still leave the
+     * planner a parameter it cannot use for the index. These two are each exactly what
+     * {@code notifications_inbox_idx} answers.
      */
     @Query(
             """
@@ -90,12 +100,28 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
              WHERE n.recipientId = :recipientId
                AND n.channel = az.ideanest.notification.domain.NotificationChannel.IN_APP
                AND n.state = az.ideanest.notification.domain.NotificationState.SENT
-               AND (:before IS NULL
-                    OR n.occurredAt < :before
+             ORDER BY n.occurredAt DESC, n.id DESC
+            """)
+    List<Notification> inbox(@Param("recipientId") UUID recipientId, Pageable page);
+
+    /**
+     * The page below a cursor, newest first.
+     *
+     * @param before the {@code occurredAt} of the last row of the previous page
+     * @param beforeId the identifier of that same row, which is what makes the cursor total
+     *     rather than merely usually distinct
+     */
+    @Query(
+            """
+            SELECT n FROM Notification n
+             WHERE n.recipientId = :recipientId
+               AND n.channel = az.ideanest.notification.domain.NotificationChannel.IN_APP
+               AND n.state = az.ideanest.notification.domain.NotificationState.SENT
+               AND (n.occurredAt < :before
                     OR (n.occurredAt = :before AND n.id < :beforeId))
              ORDER BY n.occurredAt DESC, n.id DESC
             """)
-    List<Notification> inbox(
+    List<Notification> inboxBefore(
             @Param("recipientId") UUID recipientId,
             @Param("before") Instant before,
             @Param("beforeId") UUID beforeId,
