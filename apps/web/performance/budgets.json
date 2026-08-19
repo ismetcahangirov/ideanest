@@ -4,16 +4,17 @@
   "routes": {
     "/_not-found": 467,
     "/admin/moderation": 692,
-    "/discover": 729,
+    "/discover": 732,
     "/projects/[id]/[projectSlug]": 492,
     "/projects/[id]/back": 596,
+    "/projects/[id]/dashboard": 598,
     "/projects/[id]/edit": 467,
     "/projects/[id]/edit/basics": 601,
     "/projects/[id]/edit/prelaunch": 729,
     "/projects/[id]/edit/review": 557,
     "/projects/[id]/edit/rewards": 755,
     "/projects/[id]/edit/story": 713,
-    "/projects/[id]/prelaunch": 671,
+    "/projects/[id]/prelaunch": 674,
     "/projects/new": 576,
     "/settings/sessions": 665
   }
