@@ -85,6 +85,18 @@ ideanest:
       # a campaign with four followers takes two passes.
       send-batch-size: 3
 
+    finalisation:
+      # Disabled, for the reason every schedule in this file is, and with one of its
+      # own: the suite moves AdjustableClock past campaign deadlines deliberately, so
+      # a sweep firing in the background would close the very campaigns a test is
+      # about to close itself — and would do it before the test could assert that
+      # they were still live.
+      schedule: "-"
+      # Deliberately small, so that the bound on a pass is observable at all: three
+      # closed campaigns take two passes, which is what proves the sweep is bounded
+      # rather than merely documented as bounded.
+      batch-size: 2
+
   pledge:
     reservation:
       # Disabled, exactly as the two schedules below are: `-` is Spring's own value

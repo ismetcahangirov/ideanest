@@ -1,5 +1,7 @@
 package az.ideanest.notification.application;
 
+import az.ideanest.notification.application.NotificationEvents.CampaignSucceeded;
+import az.ideanest.notification.application.NotificationEvents.CampaignUnsuccessful;
 import az.ideanest.notification.application.NotificationEvents.GoalReached;
 import az.ideanest.notification.application.NotificationEvents.PaymentFailed;
 import az.ideanest.notification.application.NotificationEvents.PledgeConfirmed;
@@ -206,6 +208,30 @@ public class NotificationEventListener {
                         params("goal", event.goal()),
                         at(event.reachedAt(), message));
             }
+            case CampaignSucceeded.EVENT_TYPE -> {
+                CampaignSucceeded event = read(message, CampaignSucceeded.class);
+                yield finalised(
+                        message,
+                        NotificationType.CAMPAIGN_SUCCEEDED,
+                        required(event.projectId(), "projectId", message),
+                        required(event.creatorId(), "creatorId", message),
+                        event.goal(),
+                        event.pledged(),
+                        event.backersCount(),
+                        at(event.finalisedAt(), message));
+            }
+            case CampaignUnsuccessful.EVENT_TYPE -> {
+                CampaignUnsuccessful event = read(message, CampaignUnsuccessful.class);
+                yield finalised(
+                        message,
+                        NotificationType.CAMPAIGN_UNSUCCESSFUL,
+                        required(event.projectId(), "projectId", message),
+                        required(event.creatorId(), "creatorId", message),
+                        event.goal(),
+                        event.pledged(),
+                        event.backersCount(),
+                        at(event.finalisedAt(), message));
+            }
             case ProjectApproved.EVENT_TYPE -> {
                 ProjectApproved event = read(message, ProjectApproved.class);
                 yield List.of(NotificationRequest.about(
@@ -246,6 +272,40 @@ public class NotificationEventListener {
             throw new IllegalStateException(
                     "A " + message.eventType() + " event " + message.id() + " could not be read as one", malformed);
         }
+    }
+
+    /**
+     * §5.1's outcome, to the creator and to everybody who backed the campaign.
+     *
+     * <p>Shared by the two outcomes because the audience, the subject, and the rendering
+     * document are identical and only the {@link NotificationType} differs — which is the
+     * whole of the difference between the two messages, and writing it twice would be two
+     * places for the audience rule to drift apart. The type is a parameter rather than
+     * derived from the event, so the {@code switch} above stays the only thing that maps
+     * an event type to a notification row.
+     *
+     * <p>Nothing here decides whether the campaign succeeded. That was decided at the
+     * deadline, in another module, and is recorded on the campaign; this module is told.
+     */
+    private List<NotificationRequest> finalised(
+            OutboxMessage message,
+            NotificationType type,
+            UUID projectId,
+            UUID creatorId,
+            Object goal,
+            Object pledged,
+            Integer backersCount,
+            Instant finalisedAt) {
+
+        return everybody(
+                // The creator first and never dropped by the bound, for GoalReached's
+                // reason: a truncated audience that lost the one person whose campaign it
+                // is would be the wrong thing to cut.
+                concat(creatorId, backersOf(projectId, message)),
+                type,
+                projectId,
+                params("goal", goal, "pledged", pledged, "backersCount", backersCount),
+                finalisedAt);
     }
 
     /**

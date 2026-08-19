@@ -2,8 +2,11 @@ package az.ideanest.project.infrastructure;
 
 import az.ideanest.project.domain.Project;
 import jakarta.persistence.LockModeType;
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -48,4 +51,39 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM Project p WHERE p.id = :id")
     Optional<Project> findByIdForUpdate(@Param("id") UUID id);
+
+    /**
+     * Campaigns whose deadline has passed and which §5.1 has not yet decided — §8.4's
+     * {@code campaign-finalizer}, one page at a time.
+     *
+     * <p><strong>Identifiers, not entities, and no lock.</strong> The finaliser opens a
+     * transaction per campaign, so entities loaded here would belong to a transaction
+     * that has ended before the first of them is used, and a lock taken here would be
+     * held across the whole batch — turning one slow campaign into a queue behind it.
+     * {@code findByIdForUpdate} is what claims each row, inside the transaction that
+     * decides it.
+     *
+     * <p><strong>Bounded and oldest first.</strong> A platform whose campaigns all end at
+     * midnight must not produce one pass that overlaps its own next tick; the remainder
+     * is a minute away, and the campaign that has been waiting longest is closed first.
+     *
+     * <p>{@code finalized_at IS NULL} is redundant against {@code state = LIVE} — V29's
+     * columns are written in the same transaction as the edge out of {@code LIVE}, so no
+     * row can be both — and it is here because a redundant predicate that documents an
+     * invariant costs nothing on an index the planner already uses for the other two, and
+     * because it is the predicate that would stop a partially finalised row from being
+     * picked up for ever if that invariant were ever broken.
+     *
+     * @param now the pass's instant; a campaign whose deadline is exactly now has closed
+     * @param page the bound, from {@code ideanest.project.finalisation.batch-size}
+     */
+    @Query(
+            """
+            SELECT p.id FROM Project p
+            WHERE p.state = az.ideanest.project.domain.ProjectState.LIVE
+              AND p.deadline <= :now
+              AND p.finalizedAt IS NULL
+            ORDER BY p.deadline ASC
+            """)
+    List<UUID> findClosedCampaigns(@Param("now") Instant now, Pageable page);
 }

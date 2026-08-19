@@ -199,6 +199,18 @@ ideanest:
       # exercise the unsubscribe path at all. On in local only.
       log-unsubscribe-links: false
 
+    finalisation:
+      # §8.4: campaign-finalizer, every minute. This is the interval between a
+      # campaign's countdown reaching zero and the campaign actually closing, so
+      # it is the one schedule in this file that should not be relaxed to save a
+      # query: for that whole interval the page says "0 minutes left" and the
+      # campaign is still taking pledges.
+      schedule: "0 * * * * *"
+      # A bound on one pass, not a target. Deadlines cluster at midnight and at
+      # the ends of months; the pass takes the oldest and returns a minute later
+      # rather than becoming a run that overlaps its own next tick.
+      batch-size: 200
+
     submission:
       # The three bounds §5.3 states as somebody else's decision rather than as a
       # number. Everything else in §5.3 is a literal and lives in
