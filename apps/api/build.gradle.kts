@@ -57,6 +57,27 @@ dependencies {
     // Spring Framework 6 and does not start here.
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-api:3.1.0")
 
+    // #86: the transport behind NotificationChannel.EMAIL. JavaMailSender and
+    // its auto-configuration, which in Spring Boot 4 is its own module rather
+    // than part of spring-boot-autoconfigure — the same split flyway needed
+    // above.
+    implementation("org.springframework.boot:spring-boot-starter-mail")
+    // #86's templates. The engine on its own, and deliberately neither of the
+    // two obvious alternatives.
+    //
+    // Not spring-boot-starter-thymeleaf: it additionally registers a
+    // ViewResolver and a template resolver for rendering HTTP responses. This
+    // service answers in JSON and server-renders nothing, so that would be a
+    // web-facing surface added for the sake of a mail body.
+    //
+    // Not thymeleaf-spring6 either, which is what §16 names — it integrates the
+    // engine with Spring 6, and spring-boot-mail brings Spring Framework 7.
+    // Nothing in an email template needs that integration: the templates are
+    // rendered from a Map, and the subject lines come from MessageSource in
+    // Java rather than through a th:text lookup. So the coupling buys nothing
+    // and costs a version constraint. §16 is updated to say this.
+    implementation("org.thymeleaf:thymeleaf")
+
     // UUID v7: time-ordered, so primary keys are generated in the application
     // without giving up index locality the way v4 does. Java has no built-in.
     implementation("com.github.f4b6a3:uuid-creator:6.1.1")
@@ -89,6 +110,13 @@ dependencies {
     // standalone artefact shades its own Jetty and Jackson, so the stub cannot
     // drag the application's versions around underneath it.
     testImplementation("org.wiremock:wiremock-standalone:3.13.2")
+    // #86's SMTP server, for the same reason Testcontainers runs a real
+    // PostgreSQL: a mocked JavaMailSender proves the code called it, not that
+    // what came out was a message a mail client can read. GreenMail runs
+    // in-process on a free port and hands back the received MIME, so the
+    // subject, the two body parts and the Message-ID are asserted as they went
+    // over the wire.
+    testImplementation("com.icegreen:greenmail-junit5:2.1.9")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

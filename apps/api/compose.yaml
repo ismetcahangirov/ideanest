@@ -24,5 +24,27 @@ services:
       timeout: 3s
       retries: 20
 
+  # #86's mailbox. Accepts everything, delivers nothing, and shows what it took
+  # at http://localhost:8025 — which is the property that matters locally: a
+  # developer running the campaign finaliser should be able to read the mail it
+  # produced without any of it reaching a real address.
+  #
+  # No volume. A mailbox that survived a restart would accumulate the output of
+  # every test run somebody ever did, and none of it is worth keeping.
+  mailpit:
+    image: axllent/mailpit:v1.28
+    container_name: ideanest-mailpit
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
 volumes:
   postgres-data:

@@ -1,0 +1,126 @@
+<!--/*
+  #86's HTML email, and the only one. What differs between the twenty types is
+  EmailContent, not this file -- see that record for why forty per-type templates
+  were rejected.
+
+  ---------------------------------------------------------------------------
+  THE COLOURS ARE LITERALS, AND THAT IS A RULE BEING BROKEN KNOWINGLY
+  ---------------------------------------------------------------------------
+
+  CLAUDE.md §2: "Every colour comes from @ideanest/design-tokens. A hex literal
+  in source fails the build." Every value below is a hex literal.
+
+  The rule cannot be honoured here and the reason is the medium rather than the
+  code. Design tokens are CSS custom properties in a TypeScript package; this
+  file is rendered by a JVM and read by Gmail, Outlook and Apple Mail, none of
+  which resolve custom properties, load external stylesheets, or in several
+  cases support <style> at all. An email is inline attributes and literal values
+  or it is unstyled.
+
+  So the tokens are mirrored rather than referenced, each named in a comment
+  beside its value, and packages/design-tokens stays the source of truth: when a
+  value changes there, it changes here, and EmailLayoutTests asserts that the
+  literals in this file are exactly the ones the token package publishes -- so
+  the copy cannot drift silently, which is the whole risk of copying.
+
+  The two rules that are about meaning rather than about values are honoured
+  fully:
+
+    * Lime is a surface with near-black text on it, never text. The button is
+      #c6f432 with #0a0a0a on it; nothing on this page is lime text.
+    * Lime means urgent, not successful. Nothing here is lime except the call to
+      action, which is neither.
+
+  ---------------------------------------------------------------------------
+  WHY TABLES
+  ---------------------------------------------------------------------------
+
+  Outlook on Windows renders with Word's HTML engine, which does not support
+  flexbox, grid, or float in any form worth relying on. Tables are what work,
+  and an email that renders as a column of unstyled text in the client a
+  significant share of readers use is not a stylistic compromise, it is a broken
+  message.
+*/-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="margin:0;padding:0;background-color:#0d0d0d;">
+  <!--/* --surface-1 */-->
+  <tr>
+    <td align="center" style="padding:32px 16px;">
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="max-width:560px;background-color:#161616;border-radius:16px;">
+        <!--/* --surface-2, --radius-lg */-->
+        <tr>
+          <td style="padding:32px 32px 8px 32px;
+                     font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+
+            <p style="margin:0 0 24px 0;font-size:14px;line-height:20px;font-weight:600;
+                      letter-spacing:0.02em;color:#ffffff;">IdeaNest</p>
+            <!--/* --text-primary. The wordmark, as text: an image would be blocked by
+                   default in most clients and the message would open with a gap. */-->
+
+            <h1 style="margin:0 0 16px 0;font-size:24px;line-height:32px;font-weight:700;
+                       color:#ffffff;" th:text="${content.headline}">Headline</h1>
+
+            <p th:each="paragraph : ${content.paragraphs}" th:text="${paragraph}"
+               style="margin:0 0 16px 0;font-size:16px;line-height:24px;
+                      color:rgba(255,255,255,0.92);">Body</p>
+            <!--/* --text-reading. rgba() rather than the token's rgb(255 255 255 / 0.92):
+                   the space-separated form is CSS Color 4 and older clients drop the
+                   whole declaration, which would leave the text at the browser default
+                   -- black on a near-black card. */-->
+
+            <!--/* A digest's members. Each is a link, which is why a digest has no
+                   button: there is no single destination to send the reader to. */-->
+            <table th:if="${content.hasItems()}" role="presentation" width="100%" cellpadding="0"
+                   cellspacing="0" border="0" style="margin:0 0 24px 0;">
+              <tr th:each="item : ${content.items}">
+                <td style="padding:12px 0;border-top:1px solid rgba(255,255,255,0.08);
+                           font-size:15px;line-height:22px;">
+                  <!--/* --border */-->
+                  <a th:href="${item.url}" th:text="${item.text}"
+                     style="color:#ffffff;text-decoration:underline;">A thing that happened</a>
+                  <!--/* Underlined, not colour-only: CLAUDE.md §2 forbids colour alone
+                         carrying meaning, and "this is a link" is meaning. */-->
+                </td>
+              </tr>
+            </table>
+
+            <!--/* The call to action. A table rather than a styled <a> because Outlook
+                   ignores padding on inline elements, which would collapse the button
+                   to the width of its text. */-->
+            <table th:if="${content.hasAction()}" role="presentation" cellpadding="0" cellspacing="0"
+                   border="0" style="margin:8px 0 24px 0;">
+              <tr>
+                <td align="center" style="background-color:#c6f432;border-radius:12px;">
+                  <!--/* --lime-500, --radius-md */-->
+                  <a th:href="${content.actionUrl}" th:text="${content.actionLabel}"
+                     style="display:inline-block;padding:14px 24px;font-size:16px;line-height:20px;
+                            font-weight:600;color:#0a0a0a;text-decoration:none;
+                            font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+                    Do the thing</a>
+                  <!--/* --text-on-lime, 15.8:1 against the surface above it. */-->
+                </td>
+              </tr>
+            </table>
+
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 32px 32px 32px;
+                     font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+            <hr style="margin:0 0 16px 0;border:0;border-top:1px solid rgba(255,255,255,0.06);">
+            <!--/* --divider */-->
+            <p style="margin:0 0 4px 0;font-size:13px;line-height:20px;color:rgba(255,255,255,0.64);"
+               th:text="${footer}">Why you got this</p>
+            <p style="margin:0;font-size:13px;line-height:20px;color:rgba(255,255,255,0.64);"
+               th:text="${preferences}">How to change it</p>
+            <!--/* --text-secondary, 9.2:1. Not --text-tertiary: 4.9:1 passes only at
+                   16px and up, and this is 13px. */-->
+          </td>
+        </tr>
+      </table>
+
+    </td>
+  </tr>
+</table>

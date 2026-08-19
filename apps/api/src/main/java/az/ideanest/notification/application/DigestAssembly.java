@@ -219,12 +219,30 @@ public class DigestAssembly {
      * <p>Every member gets the same verdict, because they were one message. A policy that
      * dead-lettered some of a group and retried the rest would produce a digest that silently
      * shrank on each attempt.
+     *
+     * <p>A {@link PermanentDeliveryFailure} short-circuits the budget: it says the recipient
+     * cannot be reached at all, which no number of further attempts changes.
      */
     private void recordFailure(
             List<Notification> members, NotificationDigest digest, Instant now, RuntimeException failure) {
 
         int attempt = members.get(0).getAttempts() + 1;
         String reason = describe(failure);
+
+        if (failure instanceof PermanentDeliveryFailure) {
+            // The channel has said this recipient cannot be reached at all, which is a
+            // fact about the recipient rather than about the group — so every member is
+            // dead-lettered at once, exactly as the whole-group rule below requires, and
+            // no attempts are spent waiting for an address that will not appear.
+            // NotificationDispatch takes the same branch for the same reason.
+            members.forEach(member -> member.deadLetter(now, reason));
+            log.error(
+                    "Digest {} cannot be delivered; it and the {} notifications in it are dead letters: {}",
+                    digest,
+                    digest.size(),
+                    reason);
+            return;
+        }
 
         if (attempt >= properties.delivery().maxAttempts()) {
             members.forEach(member -> member.deadLetter(now, reason));

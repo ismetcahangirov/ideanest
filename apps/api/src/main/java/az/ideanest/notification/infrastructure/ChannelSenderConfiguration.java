@@ -6,28 +6,25 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * The two channels with nothing behind them.
+ * The channel with nothing behind it.
  *
- * <p>Beans rather than two {@code @Component} classes, because there is one class and
- * two registrations of it — see {@link UndeliverableChannelSender} for why there is one
- * class. A pair of subclasses named {@code EmailChannelSender} and
- * {@code PushChannelSender} would put back exactly the misreading that class exists to
- * prevent.
+ * <p>One, now: #86 landed, and this class is the record of what that took. The email
+ * bean here was a {@link UndeliverableChannelSender} and is gone —
+ * {@code EmailChannelSender} is a {@code @Component} implementing {@link ChannelSender}
+ * and returning {@link NotificationChannel#EMAIL}, and <strong>deleting the bean was
+ * genuinely the whole of the wiring</strong>. Nothing else in the module changed:
+ * {@code NotificationDispatch} indexes senders by channel and knows nothing about any of
+ * them.
  *
- * <p><strong>Replacing one of these is the whole of the wiring for #86 and #87.</strong>
- * A real sender is a {@code @Component} implementing {@link ChannelSender} and
- * returning the same {@link NotificationChannel}; the bean here is then deleted, and
- * nothing else in the module changes — {@code NotificationDispatch} finds senders by
- * channel and knows nothing about any of them.
+ * <p>A bean rather than a {@code @Component} class, still, because
+ * {@link UndeliverableChannelSender} is one class registered for a channel rather than a
+ * class per channel — see it for why. A subclass named {@code PushChannelSender} would
+ * put back exactly the misreading it exists to prevent.
+ *
+ * <p><strong>#87 is the same three lines in reverse.</strong>
  */
 @Configuration(proxyBeanMethods = false)
 public class ChannelSenderConfiguration {
-
-    /** Transactional email — #86. */
-    @Bean
-    ChannelSender emailChannelSender() {
-        return new UndeliverableChannelSender(NotificationChannel.EMAIL, "#86");
-    }
 
     /** Push, over Expo and the platform services — #87, §14.4. */
     @Bean
