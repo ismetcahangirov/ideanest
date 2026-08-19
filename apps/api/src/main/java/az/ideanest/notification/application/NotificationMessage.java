@@ -35,6 +35,12 @@ import java.util.UUID;
  *     §10.3's object with the amount as a string, never a JSON number
  * @param occurredAt when the reported thing happened. Not when the send is being
  *     attempted — a message about something that happened an hour ago should say so
+ * @param attempt which send this is, counted from one. <strong>The attempt about to be
+ *     made</strong>, not the number already made: a transport recording what it did needs
+ *     to number the row it is writing, and asking it to add one itself would be a
+ *     convention two implementations could disagree about. #86 writes it to
+ *     {@code email_deliveries.attempt}, which is what makes that log readable as a
+ *     sequence rather than as a pile
  */
 public record NotificationMessage(
         UUID id,
@@ -44,7 +50,8 @@ public record NotificationMessage(
         String subjectType,
         UUID subjectId,
         String params,
-        Instant occurredAt) {
+        Instant occurredAt,
+        int attempt) {
 
     /** The message for one row. */
     public static NotificationMessage of(Notification notification) {
@@ -56,7 +63,11 @@ public record NotificationMessage(
                 notification.getSubjectType(),
                 notification.getSubjectId(),
                 notification.getParams(),
-                notification.getOccurredAt());
+                notification.getOccurredAt(),
+                // getAttempts() is what has already been tried, and this is the one about
+                // to be. The two dispatchers count the same way when they record a
+                // failure, so a refused send and the row describing it agree.
+                notification.getAttempts() + 1);
     }
 
     @Override

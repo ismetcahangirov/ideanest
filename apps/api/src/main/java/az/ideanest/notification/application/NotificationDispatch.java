@@ -105,8 +105,9 @@ public class NotificationDispatch {
         SENT,
 
         /**
-         * The channel refused it. The row is either waiting for its next attempt or, if
-         * that was the last one, a dead letter.
+         * The channel refused it. The row is waiting for its next attempt, or is a dead
+         * letter — because that was the last attempt, or because the channel refused with
+         * a {@link PermanentDeliveryFailure} and there is no point in another.
          */
         FAILED,
 
@@ -171,7 +172,9 @@ public class NotificationDispatch {
     }
 
     /**
-     * Counts the attempt and decides whether there is another one.
+     * Counts the attempt and decides whether there is another one — which, for a
+     * {@link PermanentDeliveryFailure}, is decided by the channel rather than by the
+     * budget.
      *
      * <p>Caught rather than propagated, because the exception is the channel's answer
      * and not this transaction's failure: letting it out would roll back the very record
@@ -181,6 +184,20 @@ public class NotificationDispatch {
     private void recordFailure(Notification notification, Instant now, RuntimeException failure) {
         int attempt = notification.getAttempts() + 1;
         String reason = describe(failure);
+
+        if (failure instanceof PermanentDeliveryFailure) {
+            // No backoff and no remaining attempts, because there is nothing to wait
+            // for: the channel has said the message cannot be delivered to this
+            // recipient at all. Retrying would spend the budget of a queue everything
+            // else shares on a question that is already answered, and it would fill the
+            // log with warnings about a transport that is working.
+            notification.deadLetter(now, reason);
+            // ERROR for the reason below, undiminished by the failure being expected:
+            // this is still something the platform recorded as owed to a person and
+            // will now never tell them.
+            log.error("Notification {} cannot be delivered and is a dead letter: {}", notification, reason);
+            return;
+        }
 
         if (attempt >= properties.delivery().maxAttempts()) {
             notification.deadLetter(now, reason);

@@ -19,10 +19,14 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param audience how much of a computed audience one event may fan out to
  * @param inbox §10.2's {@code GET /v1/me/notifications}
  * @param rateLimit §17.3's shape applied to the one write this module exposes
+ * @param email #86's transport: who the mail is from and what its links point at. The
+ *     relay itself is {@code spring.mail}, because it is Spring's to configure and an
+ *     operator setting a host and a password should not have to learn a second place to
+ *     put them
  */
 @ConfigurationProperties(prefix = "ideanest.notification")
 public record NotificationProperties(
-        Delivery delivery, Digest digest, Audience audience, Inbox inbox, RateLimit rateLimit) {
+        Delivery delivery, Digest digest, Audience audience, Inbox inbox, RateLimit rateLimit, Email email) {
 
     public NotificationProperties {
         // A nested record binds to null when its whole block is absent, and a null here
@@ -33,6 +37,7 @@ public record NotificationProperties(
         audience = audience == null ? Audience.defaults() : audience;
         inbox = inbox == null ? Inbox.defaults() : inbox;
         rateLimit = rateLimit == null ? RateLimit.defaults() : rateLimit;
+        email = email == null ? Email.defaults() : email;
     }
 
     /**
@@ -317,6 +322,73 @@ public record NotificationProperties(
             if (!window.isPositive()) {
                 throw new IllegalArgumentException("A rate-limit window is a positive duration");
             }
+        }
+    }
+
+    /**
+     * #86's envelope: the parts of an email that are the platform's rather than the
+     * message's.
+     *
+     * @param from the envelope sender and the {@code From} address. Also where the
+     *     {@code Message-ID} domain comes from, which is why it is parsed rather than
+     *     merely stored — a relay that rewrites the domain of an unqualified identifier
+     *     would break the deduplication {@code ChannelSender} depends on
+     * @param fromName what a mail client shows instead of the address
+     * @param replyTo where a reply goes, or null for none. Null is the default and the
+     *     honest one: there is no inbox behind {@code no-reply}, and a {@code Reply-To}
+     *     pointing at an address nobody reads is worse than its absence, because a client
+     *     that sees none at least offers no reply button
+     * @param baseUrl what a link in a template is resolved against. Every template builds
+     *     its call to action from this and a path, so that a message about a campaign in
+     *     a preview environment does not send the reader to production
+     */
+    public record Email(String from, String fromName, String replyTo, String baseUrl) {
+
+        private static final String DEFAULT_FROM = "no-reply@ideanest.az";
+
+        private static final String DEFAULT_FROM_NAME = "IdeaNest";
+
+        private static final String DEFAULT_BASE_URL = "https://ideanest.az";
+
+        static Email defaults() {
+            return new Email(DEFAULT_FROM, DEFAULT_FROM_NAME, null, DEFAULT_BASE_URL);
+        }
+
+        public Email {
+            from = from == null || from.isBlank() ? DEFAULT_FROM : from.trim();
+            fromName = fromName == null || fromName.isBlank() ? DEFAULT_FROM_NAME : fromName.trim();
+            replyTo = replyTo == null || replyTo.isBlank() ? null : replyTo.trim();
+            baseUrl = baseUrl == null || baseUrl.isBlank() ? DEFAULT_BASE_URL : baseUrl.trim();
+
+            // Checked at start-up rather than on the first send. Both of these produce a
+            // message the relay refuses, and the queue would absorb that as eight failed
+            // attempts per notification before dead-lettering each one — a configuration
+            // typo spending the retry budget of everything the platform owes anybody.
+            if (from.indexOf('@') <= 0 || from.endsWith("@")) {
+                throw new IllegalArgumentException(
+                        "The sender is an email address, and '" + from + "' is not one");
+            }
+            while (baseUrl.endsWith("/")) {
+                // Trailing slashes are stripped here so that every template can write
+                // baseUrl + "/projects/..." without each one remembering to check.
+                baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+            }
+            if (baseUrl.isEmpty()) {
+                throw new IllegalArgumentException("A link in an email is resolved against some origin");
+            }
+        }
+
+        /**
+         * The right-hand side of the {@code Message-ID}, taken from {@link #from}.
+         *
+         * <p>RFC 5322 wants a globally unique right-hand side and the sending domain is
+         * the one thing here that is certainly ours. Deriving it rather than configuring
+         * it separately removes the failure where the two disagree and a relay rewrites
+         * the identifier — which would silently end the deduplication that makes the
+         * at-least-once queue tolerable.
+         */
+        public String messageIdDomain() {
+            return from.substring(from.indexOf('@') + 1);
         }
     }
 }

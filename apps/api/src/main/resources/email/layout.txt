@@ -1,0 +1,17 @@
+[( ${content.headline} )]
+
+[# th:each="paragraph : ${content.paragraphs}"]
+[( ${paragraph} )]
+
+[/]
+[# th:each="item : ${content.items}"]
+* [( ${item.text} )]
+  [( ${item.url} )]
+[/]
+[# th:if="${content.hasAction()}"]
+[( ${content.actionLabel} )]: [( ${content.actionUrl} )]
+
+[/]
+--
+[( ${footer} )]
+[( ${preferences} )]

@@ -64,6 +64,37 @@ spring:
     # any other environment.
     clean-disabled: true
 
+  # #86's transport. The defaults point at the Mailpit container in
+  # `compose.yaml`, which accepts everything and delivers nothing; every
+  # deployed environment overrides host, port and credentials.
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    # Deliberately not `test-connection: true`. A mail relay that is briefly
+    # unreachable would then stop the service from starting, and the queue this
+    # transport drains is durable precisely so that it does not have to be up.
+    test-connection: false
+    properties:
+      mail:
+        smtp:
+          # STARTTLS is required rather than merely enabled, so that a
+          # misconfigured relay fails instead of falling back to sending
+          # somebody's address in the clear. Both are off locally because
+          # Mailpit speaks plain SMTP.
+          starttls:
+            enable: ${MAIL_STARTTLS:false}
+            required: ${MAIL_STARTTLS:false}
+          auth: ${MAIL_AUTH:false}
+          # Bounded, and short. This runs inside the transaction that claims a
+          # notification row, so a relay that accepts the connection and then
+          # stops talking would otherwise hold that row's lock for as long as the
+          # socket stayed open.
+          connectiontimeout: 5000
+          timeout: 10000
+          writetimeout: 10000
+
 server:
   port: ${SERVER_PORT:8080}
   # In-flight requests finish before the process exits. During a rolling deploy
@@ -425,6 +456,15 @@ ideanest:
       # platform recorded as owed to somebody and will now never tell them, which is
       # why NotificationDispatch logs it at ERROR rather than WARN.
       max-attempts: 8
+    # #86. The relay is spring.mail above; this is the envelope. Deliberately
+    # not a reply-to: there is no inbox behind no-reply, and pointing a reply
+    # button at an address nobody reads is worse than offering none.
+    email:
+      from: ${MAIL_FROM:no-reply@ideanest.az}
+      from-name: ${MAIL_FROM_NAME:IdeaNest}
+      # Every link in every template is built from this. A preview environment
+      # that left it at the default would send its readers to production.
+      base-url: ${WEB_BASE_URL:http://localhost:3000}
 
   audit:
     # Two bounds on attacker-controlled text, and they are here rather than in the
