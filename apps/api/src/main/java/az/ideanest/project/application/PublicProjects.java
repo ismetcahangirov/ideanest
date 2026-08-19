@@ -3,6 +3,7 @@ package az.ideanest.project.application;
 import az.ideanest.project.domain.Project;
 import az.ideanest.project.domain.ProjectState;
 import az.ideanest.project.infrastructure.ProjectRepository;
+import az.ideanest.project.infrastructure.PublicProjectPages;
 import java.util.EnumSet;
 import java.util.Set;
 import java.util.UUID;
@@ -68,9 +69,40 @@ public class PublicProjects {
             ProjectState.COMPLETED);
 
     private final ProjectRepository projects;
+    private final PublicProjectPages pages;
 
-    public PublicProjects(ProjectRepository projects) {
+    public PublicProjects(ProjectRepository projects, PublicProjectPages pages) {
         this.projects = projects;
+        this.pages = pages;
+    }
+
+    /**
+     * The campaign at a public URL — §10.2's
+     * {@code GET /v1/projects/{creatorSlug}/{projectSlug}}, and what #119 server-renders.
+     *
+     * <p><strong>The same nine states as {@link #requireVisible}, checked by the same
+     * set.</strong> That is the whole reason this method is here rather than on the
+     * repository: the rule about which campaigns a stranger may see has one statement,
+     * and a second read path that filtered by its own list would be the copy that
+     * eventually falls behind — publishing a campaign a moderator has just suspended,
+     * quietly, on the one surface a search engine indexes.
+     *
+     * <p>404 for a campaign in any other state, and for a URL that resolves to nothing.
+     * The same answer for both, so this endpoint cannot be used to find out what a
+     * creator is preparing under a name they have not announced.
+     *
+     * @param locale one of §21.1's four, from {@code Taxonomy.localeFor}; decides which
+     *     translation the category and subcategory names come back in
+     */
+    @Transactional(readOnly = true)
+    public PublicProjectPage page(String creatorSlug, String projectSlug, String locale) {
+        PublicProjectPage page = pages.find(creatorSlug, projectSlug, locale)
+                .orElseThrow(() -> new ProjectNotFoundException(creatorSlug, projectSlug));
+
+        if (!VISIBLE.contains(ProjectState.valueOf(page.state()))) {
+            throw new ProjectNotFoundException(creatorSlug, projectSlug);
+        }
+        return page;
     }
 
     /**

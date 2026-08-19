@@ -14,6 +14,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.util.matcher.RegexRequestMatcher;
 
 /**
  * Who may reach what.
@@ -37,6 +38,28 @@ public class SecurityConfiguration {
      * closed account carry on.
      */
     private static final String ACCOUNT_ACTIVE = "ACCOUNT_ACTIVE";
+
+    /**
+     * §10.2's {@code /v1/projects/{creatorSlug}/{projectSlug}}, and nothing that merely
+     * looks like it.
+     *
+     * <p>Anchored at both ends, so it cannot match a longer path; two segments, neither
+     * containing a slash; and the first one is refused if it is a UUID, which is what
+     * separates the public page from every campaign sub-resource addressed by identifier.
+     * See the rule below for why that is the discriminator and why it is written as an
+     * exclusion.
+     *
+     * <p>The lookahead ends in {@code /} rather than in {@code $}, and the difference is
+     * the whole of it: a UUID at the end of the string never occurs on this path — there
+     * is always a second segment after it — so a lookahead anchored to the end would
+     * always succeed and this pattern would silently match {@code /v1/projects/{id}/edit}.
+     *
+     * <p>The query string is not part of what this matches — {@code RegexRequestMatcher}
+     * is given the servlet path — so a request cannot smuggle a second path past it.
+     */
+    private static final String PUBLIC_CAMPAIGN_PAGE =
+            "^/v1/projects/(?![0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}"
+                    + "-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/)[^/]+/[^/]+$";
 
     @Bean
     public SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {
@@ -108,6 +131,46 @@ public class SecurityConfiguration {
                         // through to the rule at the bottom.
                         .requestMatchers(HttpMethod.GET, "/v1/projects/*/prelaunch")
                         .permitAll()
+                        // ---- #119: the public campaign page ---------------
+                        // §4.4's page, at §10.2's /v1/projects/{creatorSlug}/
+                        // {projectSlug}. Public because it is the platform: a
+                        // campaign is shared, indexed and linked under this URL,
+                        // and requiring a token would mean a crawler and a link
+                        // unfurler are served nothing.
+                        //
+                        // What may be read is not decided here. PublicProjects
+                        // serves it only for a campaign in one of §6.1's nine
+                        // public states and answers 404 otherwise — including for
+                        // a suspended one, so a guessed URL cannot confirm that
+                        // trust and safety has stopped a campaign.
+                        //
+                        // **A regular expression, and this is the one place in
+                        // this file that needs one.** The public page is two path
+                        // segments and so is every campaign sub-resource reached
+                        // by identifier: /v1/projects/*/* would match
+                        // /v1/projects/{id}/edit as readily as
+                        // /v1/projects/ayan/studio, and would therefore publish
+                        // the campaign editor. Spring MVC tells the two apart
+                        // because a literal segment beats a variable, but a
+                        // security matcher has no route table to consult, so the
+                        // distinction has to be written down: the public page is
+                        // addressed by slugs, and a UUID in the first position is
+                        // never it.
+                        //
+                        // Stated as "not a UUID" rather than as "a slug" on
+                        // purpose. users_slug_shape permits lowercase letters,
+                        // digits and hyphens, which is a superset of a UUID's
+                        // spelling — so a pattern that described a slug would
+                        // match every identifier as well, and the rule has to
+                        // exclude rather than include to fail closed.
+                        //
+                        // GET and nothing else, for the reason the categories rule
+                        // gives. There is no write on this path, and one added
+                        // later must not inherit this.
+                        .requestMatchers(RegexRequestMatcher.regexMatcher(
+                                HttpMethod.GET, PUBLIC_CAMPAIGN_PAGE))
+                        .permitAll()
+                        // ---- end #119 -------------------------------------
                         // A campaign's reward list as a backer sees it. Public
                         // because §4.5 opens the pledge flow with it and the
                         // person reading it is deciding whether to register at
