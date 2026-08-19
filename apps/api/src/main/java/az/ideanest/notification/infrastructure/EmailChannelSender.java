@@ -11,10 +11,6 @@ import az.ideanest.notification.domain.NotificationChannel;
 import az.ideanest.user.application.UserAccount;
 import az.ideanest.user.application.UserAccounts;
 import jakarta.mail.MessagingException;
-import jakarta.mail.internet.InternetAddress;
-import jakarta.mail.internet.MimeMessage;
-import java.io.UnsupportedEncodingException;
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -23,8 +19,6 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.mail.MailException;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 
 /**
@@ -84,29 +78,26 @@ public class EmailChannelSender implements ChannelSender {
      */
     private static final String UNDELIVERABLE_SUFFIX = ".invalid";
 
-    private final JavaMailSender mail;
+    private final MimeEmails mime;
     private final UserAccounts users;
     private final EmailComposer composer;
     private final EmailRenderer renderer;
     private final EmailDeliveryRepository deliveries;
-    private final NotificationProperties properties;
     private final Clock clock;
 
     public EmailChannelSender(
-            JavaMailSender mail,
+            MimeEmails mime,
             UserAccounts users,
             EmailComposer composer,
             EmailRenderer renderer,
             EmailDeliveryRepository deliveries,
-            NotificationProperties properties,
             Clock clock) {
 
-        this.mail = mail;
+        this.mime = mime;
         this.users = users;
         this.composer = composer;
         this.renderer = renderer;
         this.deliveries = deliveries;
-        this.properties = properties;
         this.clock = clock;
     }
 
@@ -121,10 +112,10 @@ public class EmailChannelSender implements ChannelSender {
                 .orElseThrow(() -> suppress(message));
 
         RenderedEmail email = renderer.render(composer.compose(message, recipient.name()));
-        String messageId = messageId(message.id());
+        String messageId = mime.messageIdFor(message.id());
 
         try {
-            mail.send(mimeMessage(recipient, email, messageId));
+            mime.send(mime.build(recipient.email().value(), recipient.name(), email, messageId));
         } catch (MailException | MessagingException refused) {
             deliveries.save(EmailDelivery.notSent(
                     message.id(),
@@ -161,10 +152,10 @@ public class EmailChannelSender implements ChannelSender {
                 .orElseThrow(() -> suppress(digest, first.attempt()));
 
         RenderedEmail email = renderer.render(composer.compose(digest, recipient.name()));
-        String messageId = messageId(digest.id());
+        String messageId = mime.messageIdFor(digest.id());
 
         try {
-            mail.send(mimeMessage(recipient, email, messageId));
+            mime.send(mime.build(recipient.email().value(), recipient.name(), email, messageId));
         } catch (MailException | MessagingException refused) {
             deliveries.save(EmailDelivery.digestNotSent(
                     digest.id(),
@@ -249,69 +240,6 @@ public class EmailChannelSender implements ChannelSender {
         return users.findById(recipientId).isEmpty()
                 ? "The recipient is not an account"
                 : "The recipient's address has been anonymised";
-    }
-
-    /**
-     * The message, as MIME.
-     *
-     * <p>{@code multipart/alternative} with the plain-text part first, which is the order
-     * the standard gives meaning to: a client shows the last part it understands, so text
-     * first and HTML second is what makes an HTML-capable client show the HTML.
-     * {@link MimeMessageHelper} writes them in that order when handed the text first,
-     * which is why the argument order below is not arbitrary.
-     */
-    private MimeMessage mimeMessage(UserAccount recipient, RenderedEmail email, String messageId)
-            throws MessagingException {
-
-        MimeMessage mime = mail.createMimeMessage();
-
-        MimeMessageHelper helper = new MimeMessageHelper(mime, true, StandardCharsets.UTF_8.name());
-        helper.setFrom(address(properties.email().from(), properties.email().fromName()));
-        if (properties.email().replyTo() != null) {
-            helper.setReplyTo(properties.email().replyTo());
-        }
-        helper.setTo(address(recipient.email().value(), recipient.name()));
-        helper.setSubject(email.subject());
-        helper.setText(email.text(), email.html());
-
-        // JavaMail generates its own Message-ID inside saveChanges(), which would
-        // discard this one and with it the deduplication the class comment is about.
-        // JavaMailSenderImpl.doSend reads the header before calling saveChanges() and
-        // writes it back afterwards precisely so that an explicitly set identifier
-        // survives — so this works, and it works because Spring sends the message rather
-        // than because the header was set last. A transport that called
-        // Transport.send(mime) directly would need saveChanges() and this line after it.
-        mime.setHeader("Message-ID", messageId);
-        return mime;
-    }
-
-    /**
-     * A named address, encoded so that a name outside ASCII survives the header.
-     *
-     * <p>{@code UnsupportedEncodingException} is checked and cannot happen: every JVM is
-     * required to support UTF-8, and it is named here from {@link StandardCharsets}
-     * rather than as a string somebody could mistype. Rethrown as unchecked rather than
-     * declared, because propagating it would put a charset question in the signature of
-     * every method between here and the port.
-     */
-    private static InternetAddress address(String value, String name) throws MessagingException {
-        try {
-            return new InternetAddress(value, name, StandardCharsets.UTF_8.name());
-        } catch (UnsupportedEncodingException impossible) {
-            throw new IllegalStateException("This JVM does not support UTF-8", impossible);
-        }
-    }
-
-    /**
-     * The {@code Message-ID}, derived rather than generated.
-     *
-     * <p>{@code <notification-id@sending-domain>}. The left-hand side is the identifier
-     * {@link ChannelSender} guarantees is stable across attempts, which is the entire
-     * point; the right-hand side comes from the {@code From} address so that the two
-     * cannot disagree.
-     */
-    private String messageId(UUID id) {
-        return "<" + id + "@" + properties.email().messageIdDomain() + ">";
     }
 
     /**
