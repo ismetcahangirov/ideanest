@@ -13,6 +13,7 @@ cd apps/api
 ./gradlew bootRun        # start on http://localhost:8080
 ./gradlew build          # compile, run tests, produce the jar
 ./gradlew test           # tests only
+./gradlew exportOpenApi  # rewrite openapi.json from the running application
 ```
 
 There is no wrapper to install and no Gradle to install: `./gradlew` downloads
@@ -28,6 +29,37 @@ stack by hand instead:
 docker compose up -d      # from apps/api
 docker compose down       # add -v to discard the data
 ```
+
+---
+
+## The published contract
+
+`openapi.json` beside this file is the OpenAPI 3.1 document §10.1 says the public
+API is described by. It is **generated from the controllers, committed, and
+asserted current** — `OpenApiContractTests` fails when it stops describing the
+service, and `packages/api-client` is generated from it in turn.
+
+```bash
+./gradlew exportOpenApi   # rewrite it, then read the diff before committing
+```
+
+A task rather than something `build` does, deliberately: a contract regenerated
+by the build is a contract whose changes are invisible in review, which is the
+same failure as accepting a visual snapshot without reading what changed. Every
+line of that diff is something a client depends on.
+
+The document is served at `GET /v3/api-docs` and is `permitAll`, because that is
+what "published" means — a document behind a token is a document a build cannot
+fetch. It describes endpoints rather than exposing them: every path in it is
+still governed by `SecurityConfiguration`. Swagger UI is not on the classpath;
+the `-api` starter carries no assets, and a browsable rendering belongs wherever
+the documentation is hosted rather than inside the service that holds the payment
+endpoints.
+
+Three types are documented by hand because reflection describes the Java and not
+the JSON — `Money`, `Patched<T>`, and `/v1/discover`'s filter vocabulary. See
+`ContractSchemas` and `DiscoveryQueryDocumentation`, each of which says what it
+would otherwise have got wrong.
 
 ---
 
@@ -472,6 +504,5 @@ other way would be a cycle. The dependency is inverted instead.
 | Job queue and scheduler | [#134](https://github.com/ismetcahangirov/ideanest/issues/134) |
 | Anything that actually sends a message. Verification links, collaborator invitations, and launch reminders all reach a port and a logging adapter | [#85](https://github.com/ismetcahangirov/ideanest/issues/85), [#86](https://github.com/ismetcahangirov/ideanest/issues/86) |
 | Existing announcements moved onto the outbox. The table, the relay, and the guarantee are built (#135), and nothing routes through them yet: `AuthEvents`, `ProjectEvents`, and `LaunchReminderDelivery` still publish from after-commit listeners, so a crash between the commit and the send still loses the message | no issue yet |
-| OpenAPI contract and generated clients | [#136](https://github.com/ismetcahangirov/ideanest/issues/136) |
 | Structured logging with redaction | [#137](https://github.com/ismetcahangirov/ideanest/issues/137) |
 | Metrics, tracing, alerting | [#138](https://github.com/ismetcahangirov/ideanest/issues/138) |

@@ -130,6 +130,32 @@ public class Project {
     private Instant latePledgeEndsAt;
 
     /**
+     * §5.1's decision, frozen — V29's four columns, written once by
+     * {@link #finalise} and never again.
+     *
+     * <p>They are copies of {@link #goalAmount}, {@link #pledgedAmount} and
+     * {@link #backersCount} taken at the deadline, and V29's header argues at
+     * length why copies rather than a comparison anybody can redo: the pledged
+     * total keeps moving after the campaign closes, as collections fail and
+     * pledges are refunded, so a campaign that closed above its goal would
+     * gradually appear to have failed. #63's own sentence is the rule — a later
+     * collection failure reduces the payout, never the outcome.
+     *
+     * <p>All four or none, which the database also states.
+     */
+    @Column(name = "finalized_at")
+    private Instant finalizedAt;
+
+    @Column(name = "outcome_goal_amount")
+    private BigDecimal outcomeGoalAmount;
+
+    @Column(name = "outcome_pledged_amount")
+    private BigDecimal outcomePledgedAmount;
+
+    @Column(name = "outcome_backers_count")
+    private Integer outcomeBackersCount;
+
+    /**
      * Both timestamps belong to the database — {@code created_at} to a default and
      * {@code updated_at} to a trigger, so that an application which forgot to set
      * one could not produce a row that lies about when it changed.
@@ -220,6 +246,57 @@ public class Project {
         }
 
         this.state = next;
+    }
+
+    /**
+     * §5.1 applied to this campaign's own numbers, right now.
+     *
+     * <p>Asked before the transition rather than derived from it, so that the state a
+     * campaign is moved to and the numbers frozen against it are one reading of one row
+     * — see {@link #freezeOutcome}.
+     */
+    public CampaignOutcome outcome() {
+        return CampaignOutcome.of(pledgedAmount, goalAmount);
+    }
+
+    /**
+     * Records what decided this campaign, after {@link #applyTransition} has moved it.
+     *
+     * <p><strong>Once, and only onto a campaign that has been decided.</strong> Both
+     * refusals are {@link IllegalStateException} for {@link #applyTransition}'s reason:
+     * by the time this is reached, {@code CampaignFinalizer} has claimed the row and
+     * checked the state, so either failure means a caller went around it.
+     *
+     * <p><strong>The columns are copied, not computed on read.</strong> V29's header is
+     * the argument in full and it is the whole of #63's "freeze the outcome":
+     * {@link #pledgedAmount} keeps moving after the deadline as collections fail and
+     * pledges are refunded, so a campaign that closed above its goal would drift below
+     * it and appear — to a backer, on a page, weeks later — to have failed all along.
+     *
+     * @param at when the decision was made. The finaliser's instant for the whole pass,
+     *     not a second reading of the clock, so a campaign's state row and its outcome
+     *     agree about when it closed
+     */
+    public void freezeOutcome(Instant at) {
+        Objects.requireNonNull(at, "A frozen outcome needs the moment it was decided");
+
+        if (state != ProjectState.SUCCESSFUL && state != ProjectState.UNSUCCESSFUL) {
+            throw new IllegalStateException(
+                    "A campaign in " + state + " has no outcome to freeze; §5.1 decides only at the deadline");
+        }
+        if (finalizedAt != null) {
+            throw new IllegalStateException("Campaign " + id + " was already finalised at " + finalizedAt);
+        }
+
+        this.finalizedAt = at;
+        this.outcomeGoalAmount = goalAmount;
+        this.outcomePledgedAmount = pledgedAmount;
+        this.outcomeBackersCount = backersCount;
+    }
+
+    /** Whether §5.1 has already been applied to this campaign. */
+    public boolean isFinalised() {
+        return finalizedAt != null;
     }
 
     /** Whether this account is the campaign's creator. Authorisation is decided in {@code ProjectAccess}. */
@@ -381,6 +458,22 @@ public class Project {
 
     public Instant getLatePledgeEndsAt() {
         return latePledgeEndsAt;
+    }
+
+    public Instant getFinalizedAt() {
+        return finalizedAt;
+    }
+
+    public BigDecimal getOutcomeGoalAmount() {
+        return outcomeGoalAmount;
+    }
+
+    public BigDecimal getOutcomePledgedAmount() {
+        return outcomePledgedAmount;
+    }
+
+    public Integer getOutcomeBackersCount() {
+        return outcomeBackersCount;
     }
 
     public Instant getCreatedAt() {

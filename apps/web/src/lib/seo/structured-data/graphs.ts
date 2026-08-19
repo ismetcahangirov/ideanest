@@ -57,12 +57,16 @@ export interface ProjectPageGraphInput {
  * page, and repeating it on every campaign would be two `Organization` nodes for
  * one organisation across the crawl.
  *
- * NOTHING MOUNTS THIS YET. The server-rendered campaign page is #119 and does
- * not exist — `app/projects/[id]/prelaunch/page.tsx` is the only campaign route
- * in this build, it is `PUBLIC_NOT_INDEXABLE` by design, and it has neither
- * reward tiers nor an FAQ on it. Composing the graph now means the page ships
- * with its structured data rather than acquiring it in a later pull request that
- * nobody files.
+ * **MOUNTED SINCE #119**, on `app/projects/[id]/[projectSlug]/page.tsx`, which is
+ * the server-rendered campaign page this was written ahead of. It is served the
+ * same projection the page renders and the same tiers the page lists, so the
+ * machine-readable and human-readable halves cannot describe two different
+ * campaigns.
+ *
+ * `faqs` is still empty at that call site: `GET /v1/projects/{id}/faqs` is in
+ * §10.2 and is not built. `faqPageNode` answers null for an empty list rather
+ * than emitting an `FAQPage` with no questions in it, so the absence costs a
+ * node and never a wrong one.
  */
 export function projectPageGraph(input: ProjectPageGraphInput): readonly JsonLdNode[] {
   const { preview } = input;

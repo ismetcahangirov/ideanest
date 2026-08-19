@@ -1,0 +1,159 @@
+import { describe, expect, it } from 'vitest';
+import { fetchCampaignPage, fetchDiscoveryFeed, fetchPublicRewards } from './server';
+
+/**
+ * The reads a Server Component makes — #119.
+ *
+ * What is worth asserting here is the wiring, because none of it fails loudly:
+ *
+ *   - **an absolute URL.** `lib/api/client.ts` uses a relative `/v1` path, which works in a
+ *     browser because `next.config.mjs` rewrites it and throws on a server, where there is
+ *     no origin and no rewrite. Getting this wrong is a page that works in every test and
+ *     500s in production;
+ *   - **a refusal is `null`, a bug is not.** A 404 must render a 404 and a misconfigured
+ *     base URL must not be swallowed into "this campaign does not exist";
+ *   - **the filters reach the service under its own parameter names**, repeated where they
+ *     were repeated — a comma-joined list is one filter whose name contains a comma.
+ */
+
+const ENV = { IDEANEST_API_ORIGIN: 'https://api.test' };
+
+function ok(body: unknown) {
+  const calls: { url: string; init?: RequestInit }[] = [];
+  const fetchImpl = (async (url: string, init?: RequestInit) => {
+    calls.push({ url, ...(init === undefined ? {} : { init }) });
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  }) as unknown as typeof fetch;
+
+  return { calls, fetchImpl };
+}
+
+function refuses(status: number) {
+  return (async () =>
+    new Response(JSON.stringify({ code: 'PROJECT_NOT_FOUND' }), {
+      status,
+      headers: { 'content-type': 'application/problem+json' },
+    })) as unknown as typeof fetch;
+}
+
+describe('the campaign read', () => {
+  it('addresses the service directly, by both slugs', async () => {
+    const { calls, fetchImpl } = ok({ id: 'p1' });
+
+    await fetchCampaignPage('ayan', 'coffee-table-book', { env: ENV, fetchImpl });
+
+    expect(calls[0]?.url).toBe('https://api.test/v1/projects/ayan/coffee-table-book');
+  });
+
+  it('asks for the reader’s language', async () => {
+    const { calls, fetchImpl } = ok({ id: 'p1' });
+
+    await fetchCampaignPage('ayan', 'book', { env: ENV, fetchImpl, locale: 'az' });
+
+    expect(new Headers(calls[0]?.init?.headers).get('accept-language')).toBe('az');
+  });
+
+  /**
+   * The service puts sixty seconds on its own `Cache-Control`. Holding a different opinion
+   * here would mean two caches disagreeing about the same bytes, with the tighter one
+   * winning by accident.
+   */
+  it('holds the response for as long as the service says it may', async () => {
+    const { calls, fetchImpl } = ok({ id: 'p1' });
+
+    await fetchCampaignPage('ayan', 'book', { env: ENV, fetchImpl });
+
+    expect((calls[0]?.init as { next?: { revalidate?: number } }).next?.revalidate).toBe(60);
+  });
+
+  it('is null for a campaign the service will not serve', async () => {
+    const page = await fetchCampaignPage('ayan', 'gone', { env: ENV, fetchImpl: refuses(404) });
+
+    expect(page).toBeNull();
+  });
+
+  it('is null when the service cannot be reached at all', async () => {
+    const unreachable = (async () => {
+      throw new TypeError('fetch failed');
+    }) as unknown as typeof fetch;
+
+    expect(await fetchCampaignPage('ayan', 'book', { env: ENV, fetchImpl: unreachable })).toBeNull();
+  });
+
+  /**
+   * A bug is not a refusal. Swallowing this would turn a misconfigured deployment into a
+   * site where every campaign has quietly stopped existing — which nobody notices in
+   * staging and everybody notices in production.
+   */
+  it('lets a programming error surface rather than answering null', async () => {
+    const broken = (async () => {
+      throw new RangeError('somebody wrote a bug');
+    }) as unknown as typeof fetch;
+
+    await expect(fetchCampaignPage('ayan', 'book', { env: ENV, fetchImpl: broken })).rejects.toThrow(
+      RangeError,
+    );
+  });
+});
+
+describe('the reward read', () => {
+  it('asks by campaign identifier, on the public path', async () => {
+    const { calls, fetchImpl } = ok({ currency: 'AZN', rewards: [] });
+
+    await fetchPublicRewards('0193f2a1', { env: ENV, fetchImpl });
+
+    expect(calls[0]?.url).toBe('https://api.test/v1/projects/0193f2a1/rewards/public');
+  });
+
+  /**
+   * `null` rather than an empty list. An empty list is a campaign offering nothing, which is
+   * a real and different thing, and a page that could not tell them apart would print "no
+   * rewards" over a service that was merely restarting.
+   */
+  it('is null when the read failed, not an empty list', async () => {
+    expect(await fetchPublicRewards('p1', { env: ENV, fetchImpl: refuses(503) })).toBeNull();
+  });
+});
+
+describe('the discovery read', () => {
+  it('sends the filters under the service’s own parameter names', async () => {
+    const { calls, fetchImpl } = ok({ items: [] });
+
+    await fetchDiscoveryFeed('status=live&limit=24', { env: ENV, fetchImpl });
+
+    const url = new URL(calls[0]?.url as string);
+    expect(url.origin + url.pathname).toBe('https://api.test/v1/discover');
+    expect(url.searchParams.get('status')).toBe('live');
+    expect(url.searchParams.get('limit')).toBe('24');
+  });
+
+  /**
+   * `?tag=a&tag=b` is two tags to `DiscoveryQueryBinder`; `?tag=a,b` is one tag whose name
+   * contains a comma. A round trip through an object has to preserve the difference.
+   */
+  it('keeps a repeated filter repeated', async () => {
+    const { calls, fetchImpl } = ok({ items: [] });
+
+    await fetchDiscoveryFeed('tag=ceramics&tag=design', { env: ENV, fetchImpl });
+
+    expect(new URL(calls[0]?.url as string).searchParams.getAll('tag')).toEqual([
+      'ceramics',
+      'design',
+    ]);
+  });
+
+  it('asks for the unfiltered feed when there are no filters', async () => {
+    const { calls, fetchImpl } = ok({ items: [] });
+
+    await fetchDiscoveryFeed('', { env: ENV, fetchImpl });
+
+    expect(calls[0]?.url).toBe('https://api.test/v1/discover');
+  });
+
+  it('is null when the service refuses, so the page falls back to fetching in the browser', async () => {
+    expect(await fetchDiscoveryFeed('', { env: ENV, fetchImpl: refuses(429) })).toBeNull();
+  });
+});

@@ -149,6 +149,58 @@ public final class NotificationEvents {
     }
 
     /**
+     * §5.1 applied at the deadline: the campaign funded.
+     *
+     * <p>Recipient: <strong>the creator and the campaign's backers.</strong> The same audience
+     * as {@link GoalReached} and resolved the same way, through {@code shared.audience}; what
+     * differs is that this one is final. "Goal reached" is news about a campaign that is still
+     * running, and a campaign can reach its goal and then have a backer cancel; this is the
+     * message that says the money is going to be taken.
+     *
+     * <p><strong>The two outcomes are two event types rather than one with a flag</strong>, and
+     * {@code project.application.CampaignFinalisedEvent} argues why on the producing side. What
+     * it buys here is that the branch which chooses between §4.10's two rows is the same
+     * {@code switch} that recognises the event at all, so there is no way to route a succeeded
+     * event into an unsuccessful message.
+     *
+     * @param goal what the campaign had to raise. Money, and §10.3's rules apply
+     * @param pledged what it raised, <strong>frozen at the deadline</strong> — V29's
+     *     {@code outcome_pledged_amount} rather than the live total. It matters here more than
+     *     anywhere: this notification may be delivered, or redelivered, long after collections
+     *     have started failing, and a message that reported the live total would tell a backer
+     *     their campaign raised less than the campaign it just said succeeded
+     * @param backersCount how many people were behind that total, for the message
+     * @param finalisedAt when the campaign closed. Not when this was delivered
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record CampaignSucceeded(
+            UUID projectId, UUID creatorId, Money goal, Money pledged, Integer backersCount, Instant finalisedAt) {
+
+        public static final String EVENT_TYPE = "project.succeeded";
+    }
+
+    /**
+     * §5.1 applied at the deadline: the campaign did not fund.
+     *
+     * <p>Recipient: <strong>the creator and the campaign's backers.</strong> Both, and the
+     * backers are not optional politeness — they are holding a commitment that is now never
+     * going to be charged, and §5.1 has the platform delete their stored card within thirty
+     * days. Somebody who is not told will either expect a charge that never arrives or, worse,
+     * see one from an unrelated campaign and attribute it to this one.
+     *
+     * <p>The same six fields as {@link CampaignSucceeded}, deliberately: the difference between
+     * the two messages is entirely in the wording, and a payload that dropped {@code pledged}
+     * because the campaign failed would make "you raised 8,400 ₼ of your 10,000 ₼ goal"
+     * unwritable — which is the sentence a creator most needs to see.
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record CampaignUnsuccessful(
+            UUID projectId, UUID creatorId, Money goal, Money pledged, Integer backersCount, Instant finalisedAt) {
+
+        public static final String EVENT_TYPE = "project.unsuccessful";
+    }
+
+    /**
      * §4.11's AD-01: moderation cleared a campaign for launch.
      *
      * <p>Recipient: the creator. Unambiguous, and it is the notification that turns a

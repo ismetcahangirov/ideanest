@@ -48,6 +48,15 @@ dependencies {
     implementation("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
 
+    // The OpenAPI 3.1 document §10.1 says the public API is described by, built
+    // from the controllers rather than written beside them (#136). The `-api`
+    // starter and not `-ui`: this service publishes a contract, and Swagger UI is
+    // a web application with its own asset pipeline that nothing here needs — the
+    // browsable version belongs wherever the documentation is hosted, not in the
+    // deployed jar. 3.x is the line that supports Spring Boot 4; 2.x targets
+    // Spring Framework 6 and does not start here.
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-api:3.1.0")
+
     // UUID v7: time-ordered, so primary keys are generated in the application
     // without giving up index locality the way v4 does. Java has no built-in.
     implementation("com.github.f4b6a3:uuid-creator:6.1.1")
@@ -98,4 +107,28 @@ tasks.withType<Test>().configureEach {
         events("failed")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
+}
+
+// #136: rewrite openapi.json from the running application.
+//
+// A task rather than something `build` does, and that is the point. The contract
+// is a reviewed file: a build that regenerated it would make every change to a
+// response body invisible in review, which is the same failure as accepting a
+// visual snapshot without reading what changed. `check` asserts that the file is
+// current; this is how you make it current, deliberately, and then read the diff.
+//
+// It reuses the ordinary test task's classpath and the ordinary integration test
+// container, because the only honest source of the document is the application
+// with every controller wired up. `outputs.upToDateWhen { false }` because the
+// point of running it is to overwrite a file whose contents Gradle cannot predict.
+tasks.register<Test>("exportOpenApi") {
+    group = "documentation"
+    description = "Regenerates apps/api/openapi.json from the running application."
+
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform()
+    filter { includeTestsMatching("az.ideanest.OpenApiContractTests") }
+    systemProperty("openapi.write", "true")
+    outputs.upToDateWhen { false }
 }

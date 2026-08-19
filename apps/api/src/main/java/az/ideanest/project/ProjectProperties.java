@@ -13,6 +13,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param collaborators how invitations to work on a campaign behave
  * @param submission the bounds §5.3 leaves to configuration
  * @param reminders how launch reminders are collected and sent
+ * @param finalisation how often §5.1 is applied at the deadline, and to how many
+ *     campaigns at once
  */
 @ConfigurationProperties(prefix = "ideanest.project")
 public record ProjectProperties(
@@ -20,7 +22,8 @@ public record ProjectProperties(
         Story story,
         Collaborators collaborators,
         Submission submission,
-        Reminders reminders) {
+        Reminders reminders,
+        Finalisation finalisation) {
 
     public ProjectProperties {
         // A deployment that configures neither section still starts. Nested records
@@ -32,6 +35,51 @@ public record ProjectProperties(
         collaborators = collaborators == null ? Collaborators.defaults() : collaborators;
         submission = submission == null ? Submission.defaults() : submission;
         reminders = reminders == null ? Reminders.defaults() : reminders;
+        finalisation = finalisation == null ? Finalisation.defaults() : finalisation;
+    }
+
+    /**
+     * §8.4's {@code campaign-finalizer} (#63).
+     *
+     * @param schedule when the sweep fires, as a UTC cron expression, or {@code -} to
+     *     register the job without scheduling it. <strong>Every minute in production, and
+     *     not negotiable downwards.</strong> The value is configuration because
+     *     {@link az.ideanest.shared.jobs.ScheduledJob#schedule()} requires every job's to
+     *     be — the test profile disables it and drives the pass directly — and not because
+     *     an operator has a reason to slow it down: the interval is the maximum time a
+     *     campaign spends taking money after its countdown has reached zero
+     * @param batchSize the most campaigns one pass closes. <strong>A bound on the pass, not
+     *     a target.</strong> Campaigns cluster at midnight and at the ends of months, so
+     *     the honest failure mode is a hundred deadlines in the same second; the pass takes
+     *     the oldest of them and returns a minute later for the rest, rather than becoming
+     *     one run that overlaps its own next tick. Two hundred, matching
+     *     {@link Reminders#sendBatchSize()}, because both are one short transaction per row
+     *     against an indexed lookup and there is no reason for the platform to hold two
+     *     different opinions about how big a sweep is
+     */
+    public record Finalisation(String schedule, int batchSize) {
+
+        /** Every minute, which is what §8.4 says {@code campaign-finalizer} runs at. */
+        private static final String DEFAULT_SCHEDULE = "0 * * * * *";
+
+        private static final int DEFAULT_BATCH_SIZE = 200;
+
+        static Finalisation defaults() {
+            return new Finalisation(DEFAULT_SCHEDULE, DEFAULT_BATCH_SIZE);
+        }
+
+        public Finalisation {
+            schedule = schedule == null || schedule.isBlank() ? DEFAULT_SCHEDULE : schedule;
+            batchSize = batchSize == 0 ? DEFAULT_BATCH_SIZE : batchSize;
+
+            if (batchSize < 1) {
+                // A sweep that closes no campaigns is the feature switched off, and it
+                // would be switched off silently — every campaign staying LIVE past its
+                // deadline, with nothing in the log saying why. An operator sees this at
+                // start-up instead.
+                throw new IllegalArgumentException("A finalisation pass that closes no campaigns never closes any");
+            }
+        }
     }
 
     /**

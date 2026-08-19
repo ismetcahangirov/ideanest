@@ -24,4 +24,18 @@ public class ProjectNotFoundException extends RuntimeException {
         // the title of an unlaunched campaign is the confidential part.
         super("No project " + projectId + " is visible to this caller");
     }
+
+    /**
+     * The same refusal for a campaign addressed by its public URL rather than by its
+     * identifier — §10.2's {@code /v1/projects/{creatorSlug}/{projectSlug}}.
+     *
+     * <p>The two slugs are already in the request line, so naming them here reveals
+     * nothing the caller did not send. What is still withheld is which half was wrong: a
+     * message distinguishing "no such creator" from "that creator has no such campaign"
+     * would answer, for anybody willing to guess, whether a creator has something in
+     * progress under a name they have not announced.
+     */
+    public ProjectNotFoundException(String creatorSlug, String projectSlug) {
+        super("No project " + creatorSlug + "/" + projectSlug + " is visible to this caller");
+    }
 }

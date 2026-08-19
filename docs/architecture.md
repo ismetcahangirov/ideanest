@@ -372,6 +372,27 @@ and each entry needs a translation per supported locale.
 
 ### 4.4 Project page `[W] [M]`
 
+> **The page is server-rendered, and #119 is what that had to mean.** The
+> requirement is not "renders on the server" but "the content is in the initial
+> HTML, not assembled by the client" — so the read behind it,
+> `GET /v1/projects/{creatorSlug}/{projectSlug}`, carries the story document
+> rather than leaving the page's own body to a second request. A page that
+> fetched its narrative separately would satisfy the letter and fail the thing
+> the issue is about, since the narrative is the entire content a crawler and a
+> link unfurler are given.
+>
+> **The first pass is the header, the story, the risks and the reward tiers.**
+> Those are the parts a stranger reads before deciding whether to register, and
+> each of the remaining tabs already has a public endpoint of its own — folding
+> them in would produce one response whose cost is decided by the longest comment
+> thread on the platform, cached for as long as its least cacheable part. The
+> tabs, the media player, the trust block and the save and share controls are
+> still to come; what is on the page today is complete rather than partial.
+>
+> **A closed campaign shows two totals.** What it raised at its deadline, frozen
+> by §5.1, beside what has actually been collected since — see §5.1 for why
+> conflating them eventually contradicts the word printed next to them.
+
 **Header:** media player (poster-first, no autoplay), editorial badge,
 subcategory and location links, amount raised, backer count, live countdown,
 progress bar, primary call to action, reminder control, share, save, and an
@@ -984,6 +1005,28 @@ ELSE IF pledged_total < goal AND now >= deadline
     → delete stored card tokens within 30 days
     → charge no fee
 ```
+
+> **This is applied by §8.4's `campaign-finalizer` (#63), and the decision is
+> frozen when it is taken.** V29 gives `projects` four columns — `finalized_at`,
+> `outcome_goal_amount`, `outcome_pledged_amount`, `outcome_backers_count` —
+> written once, in the same transaction as the `LIVE → SUCCESSFUL` or
+> `LIVE → UNSUCCESSFUL` edge and the `project.succeeded` / `project.unsuccessful`
+> outbox event.
+>
+> **The copies are the point.** `projects.pledged_amount` is denormalised from
+> the pledge ledger and keeps moving after the deadline: a card is refused, a
+> retry window elapses, a pledge is `DROPPED` (§6.2), a charge is refunded or
+> charged back (§9.7, §9.8). A campaign that closed at 105% of its goal and then
+> lost eight percent of its collections would, read from the live total, appear
+> to have failed — and would appear to have failed *retroactively*, on a page a
+> backer is looking at, weeks after being told it succeeded. **A later collection
+> failure reduces the payout, never the outcome.** The campaign page shows both
+> numbers, each labelled as what it is.
+>
+> What the job does *not* do is collect: §6.1 makes `SUCCESSFUL → COLLECTING` a
+> separate edge so that deciding and charging are two decisions with a durable
+> record between them, and #64 owns the second. Nor does it purge tokens, which
+> is `token-cleaner` on a thirty-day horizon rather than this job's minute.
 
 ### 5.2 Fees
 
@@ -1904,11 +1947,25 @@ load profile).
 > transport accepting a message and that commit republishes it. The other order
 > would lose events instead, and a loss is visible to nobody.
 >
-> **The catalogue, which is one event.**
+> **The catalogue.**
 >
 > | Event | `aggregate_type` | Recorded by | Payload |
 > |---|---|---|---|
 > | `pledge.confirmed` | `pledge`, keyed on the pledge | `PledgeService.confirm`, inside §6.2's `DRAFT → CONFIRMED` transaction | `pledgeId`, `projectId`, `backerId`, `total` as §10.3's `{"amount", "currency"}` object with a **string** amount, `referrerCode` when the pledge carries one, `confirmedAt` |
+> | `project.succeeded` | `project`, keyed on the campaign | `CampaignFinalizer.finalise` (#63), inside §5.1's `LIVE → SUCCESSFUL` transaction | `projectId`, `creatorId`, `goal` and `pledged` as money objects, `backersCount`, `finalisedAt` |
+> | `project.unsuccessful` | `project`, keyed on the campaign | the same, on §5.1's other branch | the same six fields |
+>
+> **The outcome is the event type rather than a field on one event.** One
+> `project.finalised` carrying an `outcome` would make every consumer switch on a
+> string to discover the event is theirs and switch on a field to discover what it
+> says — two decisions that can disagree. §4.10 gives the two outcomes two rows
+> with two bodies going to the same people, so the routing decision is real and
+> belongs where consumers already route.
+>
+> Both carry the **frozen** amounts of §5.1 rather than the live ones, so a
+> redelivery eight hours later reproduces the message the deadline would have
+> produced. Both are keyed on the campaign, which is what makes "goal reached"
+> unable to arrive after "campaign succeeded".
 >
 > The payload is the contract, not a Java type. The producer and the consumer each
 > declare their own record of the same six fields and neither imports the other: two
@@ -2004,6 +2061,35 @@ load profile).
 > were already safe on more than one replica rather than merely tolerable, because
 > the claim is a conditional update and exactly one caller wins; the lease removed
 > the redundant sweeps rather than a correctness problem.
+
+> **`campaign-finalizer` is built (#63), and it is the job the platform is built
+> around.** Every other sweep here keeps something tidy or moves something along;
+> this one is the moment a campaign stops being a page and becomes an obligation.
+> Until it existed, a campaign whose deadline had passed simply stayed `LIVE` —
+> §6.1 has had both edges since #31 and nothing performed them, so a funded
+> campaign went on counting down for ever and nobody was charged.
+>
+> **A minute is the right lateness and an hour would not be.** A deadline is a
+> promise about a wall-clock moment; an hourly sweep is up to an hour in which
+> the page says "0 minutes left" and the campaign is still taking pledges. Late
+> is safe and early would not be: each campaign is judged against its own stored
+> deadline under a lock, so a run that starts ten minutes late closes exactly the
+> campaigns that would have closed on time and gives every one of them the same
+> outcome. What that costs is that pledges made in those ten minutes count, which
+> is the correct answer — a pledge the platform accepted is a pledge the platform
+> accepted.
+>
+> **The lease is not what makes this correct**, and it matters more here than
+> anywhere else in this table. A run that outlasts its lease is joined by a
+> second replica, and what prevents a campaign being closed twice is the row
+> claim: `findByIdForUpdate` and a state re-read under the lock, so the second
+> caller waits, finds `SUCCESSFUL`, and does nothing. Closing a campaign twice
+> would record two decisions and publish two events, and the second event is ten
+> thousand duplicate notifications about somebody's money.
+>
+> One campaign per transaction rather than one pass, so a campaign whose event
+> will not serialise cannot hold every campaign behind it open. §5.1 has the
+> decision itself and why its inputs are frozen.
 
 > **`reservation-cleaner` is built (#51), on the same terms.** It sweeps every
 > DRAFT pledge whose `reservation_expires_at` has passed, expiring the pledge and
@@ -2288,6 +2374,38 @@ expired cards, limits, and issuer declines.
 > with a generated specification means less operational surface and simpler
 > caching for mobile. A gateway-level GraphQL layer remains possible later.
 
+**The specification is published and the clients are generated from it (#136).**
+
+| Artefact | Where | Kept honest by |
+|---|---|---|
+| The document | `apps/api/openapi.json`, served at `GET /v3/api-docs` | `OpenApiContractTests` fails when it stops describing the service |
+| The typed client | `packages/api-client`, `src/schema.ts` | `schema.test.ts` fails when it stops describing the document |
+
+Both are committed rather than built on demand, and that is the point of the
+arrangement: a change to a response body appears in a diff. Rename a field and
+the first test fails; accept the new specification and the generated types
+change; a client still reading the old name stops compiling. Regenerate with
+`./gradlew exportOpenApi` and `pnpm --filter @ideanest/api-client generate`,
+deliberately, and read the diff — every line of it is something a client
+depends on.
+
+> **Three things a scanner gets wrong are corrected rather than tolerated**, and
+> each was wrong in a way a generated client would have inherited silently.
+> `Money` reflected as `{amount: number}` plus three derived booleans, which
+> would have had every client parsing pledges into IEEE 754 doubles — the exact
+> failure §10.3 makes the amount a string to prevent. `Patched<T>`, the
+> merge-patch wrapper, reflected as `{present: boolean}`, describing every
+> `PATCH` body on the platform as a set of booleans. And `/v1/discover`, the most
+> requested endpoint here, reflected as one opaque map because §4.3's filter
+> language is bound by hand; its parameters are now written down beside the
+> binder, with the closed vocabularies read from the enums the binder validates
+> against.
+>
+> Swagger UI is deliberately absent. #136 asks for a specification that produces
+> typed clients, which is a JSON document; a browsable rendering belongs wherever
+> the documentation is hosted rather than inside the service that holds the
+> payment endpoints.
+
 ### 10.2 Endpoints
 
 ```
@@ -2332,7 +2450,7 @@ GET    /v1/collections
 GET    /v1/collections/{slug}
 
 # Project — public
-GET    /v1/projects/{creatorSlug}/{projectSlug}
+GET    /v1/projects/{creatorSlug}/{projectSlug}   # built (#119)
 GET    /v1/projects/{id}/rewards/public
 GET    /v1/projects/{id}/backers/public
 GET    /v1/projects/{id}/updates
@@ -3129,6 +3247,20 @@ change nothing.
 > audience. The port is bounded at `ideanest.notification.audience.max-recipients`
 > and logs at `ERROR` when a campaign exceeds it; a fan-out chunked across several
 > transactions is the follow-up that removes the bound.
+>
+> **`CAMPAIGN_SUCCEEDED` and `CAMPAIGN_UNSUCCESSFUL` have producers since #63.**
+> §8.4's `campaign-finalizer` records `project.succeeded` or
+> `project.unsuccessful` in the same transaction as the decision, and this module
+> translates each to the creator and to the campaign's backers through the same
+> port. The unsuccessful row is not politeness: those backers hold a commitment
+> that will never be charged and a stored card §5.1 has the platform delete within
+> thirty days, and somebody who is not told waits for a charge that never arrives
+> — or sees one from an unrelated campaign and attributes it to this one.
+>
+> The message reports the **frozen** total rather than the live one, which matters
+> most exactly here: a notification delivered, or redelivered, after collections
+> have started failing would otherwise tell a backer their campaign raised less
+> than the campaign it has just said succeeded.
 
 ---
 
@@ -3251,7 +3383,8 @@ product. Public read surfaces — discovery, prelaunch — go through it.
 | Language | **TypeScript 7**, strict, `noUncheckedIndexedAccess` |
 | UI | **React 19** |
 | Styling | **Tailwind 4** on design tokens |
-| Components | `@ideanest/ui` |
+| Components | `@ideanest/ui`, plus `@ideanest/ui/server` for the stateless members a Server Component may import (#119). The root barrel reaches `createContext` and fails the build from a server graph, so the split is a boundary a test enforces rather than a comment asking people not to |
+| API client | `@ideanest/api-client`, generated from `apps/api/openapi.json` (#136). Zero runtime dependencies: this package is imported by an application whose First Load JS is a budget CI fails on |
 | Server state | **TanStack Query 5** |
 | Client state | **Zustand 5** |
 | Forms | **React Hook Form** with **Zod** |

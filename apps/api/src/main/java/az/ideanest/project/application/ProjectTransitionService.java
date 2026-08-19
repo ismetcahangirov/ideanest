@@ -5,17 +5,20 @@ import az.ideanest.audit.AuditActor;
 import az.ideanest.audit.AuditLog;
 import az.ideanest.audit.AuditOutcome;
 import az.ideanest.project.domain.ActorRole;
+import az.ideanest.project.domain.CampaignOutcome;
 import az.ideanest.project.domain.Capability;
 import az.ideanest.project.domain.Project;
 import az.ideanest.project.domain.ProjectState;
 import az.ideanest.project.domain.ProjectStateMachine;
 import az.ideanest.project.domain.ProjectStateTransition;
+import az.ideanest.project.infrastructure.ProjectRepository;
 import az.ideanest.project.infrastructure.ProjectStateTransitionRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +63,7 @@ public class ProjectTransitionService {
     private static final Logger log = LoggerFactory.getLogger(ProjectTransitionService.class);
 
     private final ProjectAccess access;
+    private final ProjectRepository projects;
     private final ProjectStateTransitionRepository transitions;
     private final ProjectChecklistService checklist;
     private final ApplicationEventPublisher events;
@@ -68,12 +72,14 @@ public class ProjectTransitionService {
 
     public ProjectTransitionService(
             ProjectAccess access,
+            ProjectRepository projects,
             ProjectStateTransitionRepository transitions,
             ProjectChecklistService checklist,
             ApplicationEventPublisher events,
             AuditLog audit,
             Clock clock) {
         this.access = access;
+        this.projects = projects;
         this.transitions = transitions;
         this.checklist = checklist;
         this.events = events;
@@ -212,6 +218,104 @@ public class ProjectTransitionService {
                     "reason", "Backers are told why a campaign was cancelled, so a reason is required.");
         }
         return apply(project, ProjectState.CANCELED, access.roleOf(project, accountId), accountId, reason.trim());
+    }
+
+    /**
+     * Applies §5.1 to a campaign whose deadline has passed: {@code LIVE} →
+     * {@code SUCCESSFUL} or {@code LIVE} → {@code UNSUCCESSFUL}, and freezes the numbers
+     * that decided it.
+     *
+     * <p><strong>The first transition performed by nobody</strong>, which is what the
+     * {@link ActorRole#SYSTEM} parameter on {@link #apply} has been waiting for since this
+     * class was written — its own comment says so. There is no account, so there is no
+     * authorisation check and no capability: the deadline is the authority, and
+     * {@code project_state_transitions} takes a null actor for exactly this role.
+     *
+     * <p><strong>Two things commit or neither does</strong>: the state and V29's frozen
+     * outcome. {@code CampaignFinalizer} adds the outbox event to the same transaction,
+     * which is why it and not this method is the thing a sweep calls.
+     *
+     * <h2>Empty is the normal answer, not a failure</h2>
+     *
+     * <p>The row is loaded with {@code findByIdForUpdate}, so a second caller — another
+     * replica whose lease overlapped, a redelivery, the same pass twice — waits, re-reads,
+     * and finds the campaign already decided. It gets {@link Optional#empty()} rather than
+     * an exception, because "somebody else finalised this" is the mechanism working. The
+     * lease of §8.4 makes it rare; this is what makes it correct.
+     *
+     * <p>The deadline is re-checked here as well as in the sweep's query, and that is not
+     * belt and braces: the query ran before the lock was taken, and between the two a
+     * creator's campaign could have been suspended, cancelled, or — in a world with a
+     * deadline extension — moved. What is read under the lock is what decides.
+     *
+     * @param projectId the campaign, already selected by
+     *     {@link ProjectRepository#findClosedCampaigns}
+     * @param now the finaliser's instant for this pass. Stamped on the transition row and
+     *     on {@code projects.finalized_at}, so every campaign closed by one pass agrees
+     *     about when the pass was
+     * @return the finalised campaign, or empty when it was no longer this pass's to close
+     * @throws ProjectNotFoundException when the campaign has been removed between the
+     *     sweep's query and the lock, which cannot happen today — nothing deletes a
+     *     campaign — and is a fault rather than a skip if it ever does
+     */
+    @Transactional
+    public Optional<Project> finalise(UUID projectId, Instant now) {
+        Project project =
+                projects.findByIdForUpdate(projectId).orElseThrow(() -> new ProjectNotFoundException(projectId));
+
+        if (project.getState() != ProjectState.LIVE) {
+            log.debug("Campaign {} is in {} and is not this pass's to finalise.", projectId, project.getState());
+            return Optional.empty();
+        }
+        Instant deadline = project.getDeadline();
+        if (deadline == null || deadline.isAfter(now)) {
+            // A LIVE campaign always has a deadline — applyTransition computes one on the
+            // edge into LIVE and refuses the edge without a duration — so the null branch
+            // is unreachable through this service. It is here because "unreachable"
+            // describes today's callers, and the alternative is a NullPointerException
+            // inside a sweep that then stops closing everybody else's campaigns.
+            log.debug("Campaign {} closes at {}, which is not yet.", projectId, deadline);
+            return Optional.empty();
+        }
+
+        // Read before the transition and used for both halves, so the state a campaign is
+        // moved to and the numbers frozen against it are one reading of one locked row.
+        CampaignOutcome outcome = project.outcome();
+
+        apply(project, outcome.state(), ActorRole.SYSTEM, null, decision(project));
+        project.freezeOutcome(now);
+
+        log.info(
+                "Campaign {} closed {} with {} of {} from {} backers.",
+                projectId,
+                outcome,
+                project.getOutcomePledgedAmount(),
+                project.getOutcomeGoalAmount(),
+                project.getOutcomeBackersCount());
+        return Optional.of(project);
+    }
+
+    /**
+     * What the transition row says about a decision nobody made.
+     *
+     * <p>Every other transition's note is either absent or something a person wrote. This
+     * one has no person, and a history row reading only {@code LIVE -> UNSUCCESSFUL} with
+     * a null actor and no reason is the row somebody will be staring at when a creator
+     * asks why their campaign closed. The comparison is written out because it is the
+     * entire reason — and because the frozen columns it repeats are on {@code projects},
+     * where a later schema change could move them and leave the history unreadable.
+     *
+     * <p>Read off the campaign before the freeze, so the amounts are the live ones the
+     * decision was actually taken on; {@link Project#freezeOutcome} then stores the same
+     * two numbers.
+     */
+    private static String decision(Project project) {
+        return "Raised %s of %s %s from %d backers at the deadline."
+                .formatted(
+                        project.getPledgedAmount(),
+                        project.getGoalAmount(),
+                        project.getCurrency(),
+                        project.getBackersCount());
     }
 
     /** Moderation clears a campaign: {@code SUBMITTED} → {@code APPROVED}. */

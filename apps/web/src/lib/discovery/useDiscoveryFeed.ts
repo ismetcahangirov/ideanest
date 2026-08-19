@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError } from '../api/problem';
-import { getDiscoveryFeed, type ProjectCard } from './api';
+import { getDiscoveryFeed, type DiscoveryFeed, type ProjectCard } from './api';
 import { filterKey, type DiscoveryFilters } from './filters';
 
 /**
@@ -63,15 +63,67 @@ function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
 }
 
-export function useDiscoveryFeed(filters: DiscoveryFilters): DiscoveryFeedState {
+/**
+ * What the polite live region says once a first page has settled.
+ *
+ * One function because there are three places a first page can arrive from — a fetch, a
+ * seeded render, and a seeded render that replaced a previous filter set — and three
+ * spellings of the same sentence is three chances for a screen-reader user to be told
+ * something slightly different about the same event.
+ */
+function firstPageAnnouncement(count: number): string {
+  return count === 0
+    ? 'No projects match these filters.'
+    : `${plural(count, 'project', 'projects')} shown.`;
+}
+
+/**
+ * The first page, as the server already rendered it — #119.
+ *
+ * The key is the point of the pair. `filterKey` is what this hook already uses to decide
+ * whether a page it holds still answers the question being asked, and a seeded page carries
+ * the key it was fetched for so the two can be compared. A page seeded under one filter set
+ * and shown under another would be a feed that ignores the filters somebody just chose.
+ */
+export interface SeededFeed {
+  readonly key: string;
+  readonly feed: DiscoveryFeed;
+}
+
+/**
+ * @param seeded the first page from the server render, when there is one. Absent in every
+ *     client-only caller and in every test that is about the fetching rather than about the
+ *     seeding, which is why it is optional rather than nullable.
+ */
+export function useDiscoveryFeed(filters: DiscoveryFilters, seeded?: SeededFeed): DiscoveryFeedState {
   const key = filterKey(filters);
 
-  const [items, setItems] = useState<readonly ProjectCard[]>([]);
-  const [status, setStatus] = useState<FeedStatus>('loading');
+  /** The seeded page, but only when it answers the question currently being asked. */
+  const seededHere = seeded !== undefined && seeded.key === key ? seeded.feed : null;
+
+  const [items, setItems] = useState<readonly ProjectCard[]>(() => seededHere?.items ?? []);
+  const [status, setStatus] = useState<FeedStatus>(() => (seededHere === null ? 'loading' : 'ready'));
   const [error, setError] = useState<ApiError | null>(null);
-  const [cursor, setCursor] = useState<string | null>(null);
+  const [cursor, setCursor] = useState<string | null>(() => seededHere?.nextCursor ?? null);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [announcement, setAnnouncement] = useState('');
+  /*
+   * Seeded as well as the cards, because the live region is how a screen-reader user learns
+   * that the feed arrived — and with a server-rendered page it arrived before they got here.
+   * Left empty, a seeded feed would be silent to exactly the reader who cannot see it.
+   */
+  const [announcement, setAnnouncement] = useState(() =>
+    seededHere === null ? '' : firstPageAnnouncement(seededHere.items.length),
+  );
+
+  /**
+   * The filter key whose first page came from the server rather than from a fetch.
+   *
+   * Read by the effect below, which is what stops the browser re-requesting a page that is
+   * already in the HTML it was served. Without it #119 would put the feed in the markup and
+   * then fetch it again a moment later — the render would be right and the request would be
+   * pure waste, on the platform's busiest read.
+   */
+  const seededKey = useRef<string | null>(seededHere === null ? null : key);
 
   /**
    * Every cursor a request has already been sent for, including the sentinel
@@ -100,7 +152,40 @@ export function useDiscoveryFeed(filters: DiscoveryFilters): DiscoveryFeedState 
   const latestFilters = useRef(filters);
   latestFilters.current = filters;
 
+  /*
+   * A NEW SEEDED PAGE ARRIVES AS A PROP, AND IS ADOPTED DURING RENDER.
+   *
+   * Changing a filter is `router.push` to the same route with a different query string,
+   * which re-runs the Server Component and hands this hook a fresh first page for the new
+   * key. Adopting it in an effect would mean one paint of the previous filter's cards
+   * followed by a swap; adopting it here means the very first render under the new key
+   * shows the right feed — which is React's documented way of deriving state from props
+   * that changed, and it re-renders immediately rather than committing the stale one.
+   *
+   * The guard is the key, so this runs once per seeded page and not on every render.
+   */
+  if (seededHere !== null && seededKey.current !== key) {
+    seededKey.current = key;
+    requested.current = new Set(['']);
+    setItems(seededHere.items);
+    setCursor(seededHere.nextCursor ?? null);
+    setStatus('ready');
+    setError(null);
+    setLoadingMore(false);
+    setAnnouncement(firstPageAnnouncement(seededHere.items.length));
+  }
+
   useEffect(() => {
+    if (seededKey.current === key) {
+      /*
+       * The first page for this filter set is already on screen because the server put it
+       * there. `requested` still has to carry the sentinel, so that `loadMore` cannot be
+       * talked into re-fetching page one, and the abort below has nothing to abort.
+       */
+      requested.current = new Set(['']);
+      return;
+    }
+
     const controller = new AbortController();
 
     requested.current = new Set(['']);
@@ -118,11 +203,7 @@ export function useDiscoveryFeed(filters: DiscoveryFilters): DiscoveryFeedState 
         setItems(page.items);
         setCursor(page.nextCursor ?? null);
         setStatus('ready');
-        setAnnouncement(
-          page.items.length === 0
-            ? 'No projects match these filters.'
-            : `${plural(page.items.length, 'project', 'projects')} shown.`,
-        );
+        setAnnouncement(firstPageAnnouncement(page.items.length));
       } catch (cause) {
         if (controller.signal.aborted || wasAborted(cause)) return;
 
@@ -180,6 +261,14 @@ export function useDiscoveryFeed(filters: DiscoveryFilters): DiscoveryFeedState 
   }, [cursor]);
 
   const retry = useCallback(() => {
+    /*
+     * The seed is released first, and it has to be. A seeded page that failed on the server
+     * arrives as no seed at all — but a seeded page that succeeded and was then followed by
+     * a failed "show more" leaves `seededKey` set, and without this the effect would take
+     * the early return and "try again" would do nothing at all. Releasing it makes retry
+     * mean what it says: fetch page one again, from the browser.
+     */
+    seededKey.current = null;
     setAttempt((n) => n + 1);
   }, []);
 

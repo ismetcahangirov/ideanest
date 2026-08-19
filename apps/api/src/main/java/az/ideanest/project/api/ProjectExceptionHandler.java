@@ -42,7 +42,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
             // controller here rather than writing a second advice is the same
             // reasoning ProjectProblems gives: one refusal should not have two
             // bodies, and the second one to be edited is the one nobody notices.
-            PrelaunchController.class
+            PrelaunchController.class,
+            // And the public campaign page (#119), which raises exactly one of the
+            // failures below: a campaign that does not exist, or one whose state is
+            // not public. Both must come back as the same 404 with the same code,
+            // which is the whole reason for listing it here rather than letting the
+            // exception escape — an unhandled one on a permitAll endpoint reaches
+            // Spring Security's error dispatch and comes back as 401, which tells an
+            // anonymous visitor to sign in to see a campaign that does not exist.
+            PublicProjectController.class
         })
 public class ProjectExceptionHandler {
 

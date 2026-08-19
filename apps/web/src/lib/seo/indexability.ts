@@ -120,9 +120,10 @@ export function isIndexableProjectState(state: string): boolean {
  * pages are indexable — `nofollow` would throw away the one useful thing an
  * unindexed page does.
  *
- * Nothing renders this yet: the server-rendered public project page is #119 and
- * page metadata is #120. It lives here so that when either lands, the page and
- * the sitemap cannot disagree.
+ * **Rendered since #119**, by `app/projects/[id]/[projectSlug]/page.tsx`. It lives
+ * here rather than in that page so that the page and the sitemap filter on one
+ * predicate: a campaign that is in the sitemap and `noindex` on its own page, or
+ * the reverse, is a contradiction a crawler resolves by trusting neither.
  */
 export function projectPageRobots(state: string): { index: boolean; follow: boolean } {
   return { index: isIndexableProjectState(state), follow: true };
