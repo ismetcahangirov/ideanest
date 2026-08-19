@@ -5,13 +5,19 @@ import az.ideanest.notification.application.NotificationEvents.PaymentFailed;
 import az.ideanest.notification.application.NotificationEvents.PledgeConfirmed;
 import az.ideanest.notification.application.NotificationEvents.PledgeEdited;
 import az.ideanest.notification.application.NotificationEvents.ProjectApproved;
+import az.ideanest.notification.NotificationProperties;
 import az.ideanest.notification.domain.NotificationType;
+import az.ideanest.shared.audience.ProjectAudience;
+import az.ideanest.shared.audience.ProjectAudiences;
 import az.ideanest.shared.outbox.OutboxMessage;
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -49,13 +55,24 @@ import tools.jackson.databind.ObjectMapper;
  * whether to send, which is the recipient's preference and {@code NotificationFanOut}'s
  * job.
  *
- * <p><strong>The recipient always comes out of the payload.</strong> A translation may
- * not look up who ought to be told: a campaign's backers are rows in {@code pledges} and
- * its followers are rows in {@code project_reminders}, and reading either from here is
- * the coupling this whole arrangement exists to prevent. That is a real limit on what
- * #85 delivers and it is stated rather than worked around — {@link GoalReached} notifies
- * the creator and not the backers, and the pull request names the audience port that
- * would change it.
+ * <p><strong>A recipient comes out of the payload, or out of a published port. Never out of
+ * another module's tables.</strong> A translation may not look up who ought to be told by
+ * reading {@code pledges} or {@code project_reminders}; that is the coupling this whole
+ * arrangement exists to prevent, and nothing in this file imports anything from
+ * {@code az.ideanest.pledge} or {@code az.ideanest.project}.
+ *
+ * <p>#85 stopped there, which meant {@link GoalReached} notified the creator and nobody else —
+ * the least useful half of that event, since the people who funded the campaign heard nothing.
+ * #245 is the port that fixes it: {@code shared.audience.ProjectAudiences} is a question the
+ * pledge module answers about its own rows, so the audience is <em>asked for</em> rather than
+ * read. {@link #backersOf} is the one call site, and it is where the bound on a computed
+ * audience is applied and logged.
+ *
+ * <p><strong>Followers are still not expressible</strong>, and that is a missing table rather
+ * than a missing port: #90 owns saving and following, so {@code ProjectAudience} has no
+ * {@code FOLLOWERS} constant to ask for — that enum says why adding one now would be worse than
+ * leaving it out. §4.10's {@code FOLLOWED_CREATOR_LAUNCHED} and
+ * {@code SAVED_PROJECT_ENDING_SOON} therefore have no audience yet.
  *
  * <h2>Failure</h2>
  *
@@ -92,10 +109,19 @@ public class NotificationEventListener {
     private static final String PROJECT = "project";
 
     private final NotificationFanOut fanOut;
+    private final ProjectAudiences audiences;
+    private final NotificationProperties properties;
     private final ObjectMapper json;
 
-    public NotificationEventListener(NotificationFanOut fanOut, ObjectMapper json) {
+    public NotificationEventListener(
+            NotificationFanOut fanOut,
+            ProjectAudiences audiences,
+            NotificationProperties properties,
+            ObjectMapper json) {
+
         this.fanOut = fanOut;
+        this.audiences = audiences;
+        this.properties = properties;
         this.json = json;
     }
 
@@ -168,13 +194,17 @@ public class NotificationEventListener {
             }
             case GoalReached.EVENT_TYPE -> {
                 GoalReached event = read(message, GoalReached.class);
-                yield List.of(NotificationRequest.about(
-                        required(event.creatorId(), "creatorId", message),
+                UUID projectId = required(event.projectId(), "projectId", message);
+                UUID creatorId = required(event.creatorId(), "creatorId", message);
+                yield everybody(
+                        // The creator first, and never dropped by the bound below: it is their
+                        // campaign, and a truncated audience that lost the one recipient who is
+                        // certain to want the message would be the wrong thing to cut.
+                        concat(creatorId, backersOf(projectId, message)),
                         NotificationType.GOAL_REACHED,
-                        PROJECT,
-                        required(event.projectId(), "projectId", message),
+                        projectId,
                         params("goal", event.goal()),
-                        at(event.reachedAt(), message)));
+                        at(event.reachedAt(), message));
             }
             case ProjectApproved.EVENT_TYPE -> {
                 ProjectApproved event = read(message, ProjectApproved.class);
@@ -216,6 +246,75 @@ public class NotificationEventListener {
             throw new IllegalStateException(
                     "A " + message.eventType() + " event " + message.id() + " could not be read as one", malformed);
         }
+    }
+
+    /**
+     * The same notification, to several people.
+     *
+     * <p>One {@link NotificationRequest} each, because a request is one person — the fan-out
+     * resolves preferences per recipient, so a broadcast has to be several requests or it would
+     * be one message that ignored everybody's settings but the first person's.
+     */
+    private static List<NotificationRequest> everybody(
+            List<UUID> recipients,
+            NotificationType type,
+            UUID projectId,
+            Map<String, Object> params,
+            Instant occurredAt) {
+
+        return recipients.stream()
+                .map(recipientId ->
+                        NotificationRequest.about(recipientId, type, PROJECT, projectId, params, occurredAt))
+                .toList();
+    }
+
+    /**
+     * One recipient in front of a list, without repeating anybody.
+     *
+     * <p><strong>The deduplication is load-bearing rather than tidy.</strong>
+     * {@code notifications_event_recipient_channel_key} is unique on (event, recipient, channel),
+     * so a creator who has also backed their own campaign would appear twice, the second insert
+     * would violate the index, and the whole dispatch would roll back and be retried — for ever,
+     * because no redelivery changes the audience. A {@link LinkedHashSet} so the order stays the
+     * one written here.
+     */
+    private static List<UUID> concat(UUID first, List<UUID> rest) {
+        Set<UUID> recipients = new LinkedHashSet<>();
+        recipients.add(first);
+        recipients.addAll(rest);
+        return List.copyOf(recipients);
+    }
+
+    /**
+     * The campaign's backers, from the port the pledge module publishes — #245.
+     *
+     * <p><strong>The bound is applied here and never silently.</strong> One more than the ceiling
+     * is asked for, so "there were more" is a fact this method knows rather than one it infers
+     * from a full page; when there were, it logs at {@code ERROR} naming the campaign and the
+     * count, because the notifications that fall off the end are people the platform decided not
+     * to tell. {@code NotificationProperties.Audience} argues the number and says what removes
+     * the bound rather than raising it.
+     *
+     * <p>Not a failure, for {@code NotificationFanOut}'s reason: this listener shares the dispatch
+     * transaction with every other consumer of the event, so throwing would destroy their writes
+     * over a condition no redelivery can fix.
+     */
+    private List<UUID> backersOf(UUID projectId, OutboxMessage message) {
+        int ceiling = properties.audience().maxRecipients();
+        List<UUID> backers = audiences.membersOf(projectId, ProjectAudience.BACKERS, ceiling + 1);
+
+        if (backers.size() <= ceiling) {
+            return backers;
+        }
+        log.error(
+                "Campaign {} has more than {} backers, so a {} notification from event {} reaches the first {}"
+                        + " of them and the rest are not told; the fan-out has to be chunked to remove this bound",
+                projectId,
+                ceiling,
+                message.eventType(),
+                message.id(),
+                ceiling);
+        return backers.subList(0, ceiling);
     }
 
     /**

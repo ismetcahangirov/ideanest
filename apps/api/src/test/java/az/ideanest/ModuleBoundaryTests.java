@@ -46,6 +46,12 @@ class ModuleBoundaryTests {
     /** Staff identity, published for the same reason and asked the same way. */
     private static final String PLATFORM_STAFF = "az.ideanest.shared.access.PlatformStaff";
 
+    /**
+     * The one #245 is about: who a message about a campaign goes to, when the answer is rows
+     * another module owns.
+     */
+    private static final String PROJECT_AUDIENCES = "az.ideanest.shared.audience.ProjectAudiences";
+
     private static final JavaClasses PRODUCTION_CLASSES = new ClassFileImporter()
             .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
             .importPackages(ROOT);
@@ -120,6 +126,27 @@ class ModuleBoundaryTests {
                         PROJECT_CAPABILITY, modulesNaming(PROJECT_CAPABILITY))
                 .contains("reward", "community", "analytics");
         assertThat(modulesNaming(PLATFORM_STAFF)).contains("moderation");
+    }
+
+    @Test
+    @DisplayName("a computed audience crosses only through the shared contract")
+    void audiencesCrossOnlyThroughTheSharedContract() {
+        // #245's shape, and the same one #236 arrived at. §4.10 has notifications whose
+        // audience is a list the platform computes -- a campaign's backers -- and the
+        // notification module cannot compute one without reading `pledges`. The wrong
+        // answers were available and both are worse: reach into the pledge module, which
+        // the rule above forbids, or put the whole audience in the event, which is ten
+        // thousand identifiers in a message.
+        assertThat(modulesNaming(PROJECT_AUDIENCES))
+                .withFailMessage(
+                        "The notification module stopped asking for a published audience. Expected it to name"
+                                + " %s; found %s.",
+                        PROJECT_AUDIENCES, modulesNaming(PROJECT_AUDIENCES))
+                .contains("notification");
+
+        // And the implementation is the pledge module's, because `pledges` is its table.
+        // If `shared` ever answered this itself, `shared` would have acquired a feature.
+        assertThat(modulesNaming(PROJECT_AUDIENCES)).contains("pledge");
     }
 
     @Test
