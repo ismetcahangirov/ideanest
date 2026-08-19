@@ -50,7 +50,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
             // exception escape — an unhandled one on a permitAll endpoint reaches
             // Spring Security's error dispatch and comes back as 401, which tells an
             // anonymous visitor to sign in to see a campaign that does not exist.
-            PublicProjectController.class
+            PublicProjectController.class,
+            // And the creator's dashboard (#93), which raises exactly two of the
+            // failures below and needs both answered as they already are: a 404 for
+            // a campaign the caller is not party to, so that the endpoint does not
+            // confirm which identifiers are real, and a 403 for a collaborator whose
+            // grant does not include VIEW_FINANCES.
+            DashboardController.class
         })
 public class ProjectExceptionHandler {
 
