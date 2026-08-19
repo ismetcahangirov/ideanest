@@ -69,6 +69,22 @@ public class SecurityConfiguration {
                         // component detail; see application.yml.
                         .requestMatchers("/actuator/health", "/actuator/health/**")
                         .permitAll()
+                        // The published contract (#136). Public because that is
+                        // what "published" means: §10.1 makes OpenAPI the way a
+                        // client is written against this service, and a document
+                        // behind a token is a document a build cannot fetch.
+                        //
+                        // It describes endpoints rather than exposing them. Every
+                        // path in it is still governed by the rules below, so the
+                        // administration surface being documented is not the
+                        // administration surface being reachable — and a caller
+                        // who has to read a specification to discover that
+                        // /v1/admin exists was going to try it anyway.
+                        //
+                        // GET and nothing else, for the reason the categories rule
+                        // gives.
+                        .requestMatchers(HttpMethod.GET, "/v3/api-docs", "/v3/api-docs/**")
+                        .permitAll()
                         // The category tree. Public because it is the discovery
                         // navigation: the same list, with nothing in it that
                         // belongs to a person, and cached for an hour. Read only —

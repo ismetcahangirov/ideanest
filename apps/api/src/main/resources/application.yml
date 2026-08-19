@@ -92,6 +92,35 @@ management:
       show-details: never
       show-components: never
 
+# §10.1's OpenAPI 3.1 document (#136). OpenApiConfiguration holds everything a
+# scanner cannot infer; what is here is how the document itself is served.
+springdoc:
+  api-docs:
+    # The conventional path, kept rather than moved: every generator, every
+    # linter and every reader looks here first, and a relocated document is one
+    # more thing a client's build has to be told.
+    path: /v3/api-docs
+  # Swagger UI is not on the classpath -- the `-api` starter has no assets --
+  # and this says so rather than leaving it to the absence of a dependency.
+  # A future release that adds the UI starter for local use then has to turn it
+  # on deliberately instead of exposing it by having depended on something.
+  swagger-ui:
+    enabled: false
+  # Every handler here answers JSON and every body it accepts is JSON, and none of
+  # them says so with `produces`/`consumes` because there has never been a second
+  # representation to choose between. Without these the document describes every
+  # response as `*/*`, which a generator turns into a client keyed on a wildcard
+  # media type -- correct, unreadable, and the first thing anybody writing against
+  # the contract would ask about.
+  default-produces-media-type: application/json
+  default-consumes-media-type: application/json
+  writer-with-order-by-keys: true
+  # Alphabetical, both of them. The document is a committed file compared byte
+  # for byte by OpenApiContractTests, so any ordering the scanner decides by
+  # classpath order or reflection would produce a diff on every unrelated change
+  # and eventually be ignored.
+  writer-with-default-pretty-printer: true
+
 ideanest:
   # §17.3's limits on the public reads. Everything else in that table guards a
   # module's own endpoint and is configured beside it; these guard endpoints that

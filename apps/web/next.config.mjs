@@ -123,7 +123,7 @@ const nextConfig = {
    * their `exports` point straight at `.ts`/`.tsx`. Next has to compile them
    * rather than assume a built `dist`.
    */
-  transpilePackages: ['@ideanest/ui', '@ideanest/design-tokens'],
+  transpilePackages: ['@ideanest/ui', '@ideanest/design-tokens', '@ideanest/api-client'],
 
   /**
    * The API is proxied under this application's own origin, and that is not a

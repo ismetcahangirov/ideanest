@@ -1,0 +1,6552 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "description" : "The public API of the IdeaNest crowdfunding platform, as specified in docs/architecture.md §10.\n\nTwo conventions are worth reading before generating a client against this document. **Money is an object with a string amount** — `{\"amount\": \"599.00\", \"currency\": \"AZN\"}` — and never a JSON number, because a JSON number is an IEEE 754 double and cannot hold what somebody pledged. **Errors are RFC 9457 problem details** carrying a `code` alongside the status; the status says how to behave and the code says what happened, and a client branches on the code.\n\nEndpoints listed under \"Project — public\", discovery, and search answer without an `Authorization` header. Everything else refuses one that is absent.",
+    "license" : {
+      "name" : "Proprietary"
+    },
+    "title" : "IdeaNest API",
+    "version" : "1"
+  },
+  "servers" : [ {
+    "url" : "/",
+    "description" : "This deployment"
+  } ],
+  "security" : [ {
+    "bearerAuth" : [ ]
+  } ],
+  "paths" : {
+    "/v1/admin/collections" : {
+      "get" : {
+        "operationId" : "adminCurationList",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminCollectionIndex"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-curation-controller" ]
+      },
+      "post" : {
+        "operationId" : "adminCurationCreate",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateCollection"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminCollectionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-curation-controller" ]
+      }
+    },
+    "/v1/admin/collections/{slug}" : {
+      "get" : {
+        "operationId" : "adminCurationRead",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminCollectionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-curation-controller" ]
+      },
+      "put" : {
+        "operationId" : "adminCurationReplace",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CollectionBody"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminCollectionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-curation-controller" ]
+      }
+    },
+    "/v1/admin/collections/{slug}/projects" : {
+      "post" : {
+        "operationId" : "adminCurationAddProject",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AddProject"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminCollectionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-curation-controller" ]
+      }
+    },
+    "/v1/admin/collections/{slug}/projects/order" : {
+      "put" : {
+        "operationId" : "adminCurationReorder",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReorderProjects"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminCollectionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-curation-controller" ]
+      }
+    },
+    "/v1/admin/collections/{slug}/projects/{projectId}/remove" : {
+      "post" : {
+        "operationId" : "adminCurationRemoveProject",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RemoveProject"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminCollectionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-curation-controller" ]
+      }
+    },
+    "/v1/admin/collections/{slug}/publish" : {
+      "post" : {
+        "operationId" : "adminCurationPublish",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PublishCollection"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminCollectionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-curation-controller" ]
+      }
+    },
+    "/v1/admin/collections/{slug}/unpublish" : {
+      "post" : {
+        "operationId" : "adminCurationUnpublish",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PublishCollection"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminCollectionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-curation-controller" ]
+      }
+    },
+    "/v1/admin/moderation/reports" : {
+      "get" : {
+        "operationId" : "reportQueueQueue",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "state",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : "OPEN",
+            "enum" : [ "OPEN", "UPHELD", "DISMISSED" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "after",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReportQueueResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "report-queue-controller" ]
+      }
+    },
+    "/v1/admin/moderation/reports/{id}" : {
+      "get" : {
+        "operationId" : "reportQueueReport",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/QueuedReportResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "report-queue-controller" ]
+      }
+    },
+    "/v1/admin/moderation/reports/{id}/dismiss" : {
+      "post" : {
+        "operationId" : "reportQueueDismiss",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReportResolutionRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/QueuedReportResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "report-queue-controller" ]
+      }
+    },
+    "/v1/admin/moderation/reports/{id}/uphold" : {
+      "post" : {
+        "operationId" : "reportQueueUphold",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReportResolutionRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/QueuedReportResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "report-queue-controller" ]
+      }
+    },
+    "/v1/admin/moderation/{id}/approve" : {
+      "post" : {
+        "operationId" : "projectModerationApprove",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ModerationDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectEdit"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-moderation-controller" ]
+      }
+    },
+    "/v1/admin/moderation/{id}/reject" : {
+      "post" : {
+        "operationId" : "projectModerationReject",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ModerationDecisionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectEdit"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-moderation-controller" ]
+      }
+    },
+    "/v1/admin/moderation/{id}/request-changes" : {
+      "post" : {
+        "operationId" : "projectModerationRequestChanges",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ModerationDecisionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectEdit"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-moderation-controller" ]
+      }
+    },
+    "/v1/admin/ranking/explain/{slug}" : {
+      "get" : {
+        "operationId" : "adminRankingExplain",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ExplanationResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-ranking-controller" ]
+      }
+    },
+    "/v1/admin/ranking/weights" : {
+      "get" : {
+        "operationId" : "adminRankingWeights",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WeightsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-ranking-controller" ]
+      }
+    },
+    "/v1/admin/ranking/weights/{term}" : {
+      "put" : {
+        "operationId" : "adminRankingSetWeight",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "term",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SetWeight"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WeightsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-ranking-controller" ]
+      }
+    },
+    "/v1/auth/2fa/confirm" : {
+      "post" : {
+        "operationId" : "twoFactorConfirm",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ConfirmTwoFactorRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RecoveryCodesResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "two-factor-controller" ]
+      }
+    },
+    "/v1/auth/2fa/disable" : {
+      "post" : {
+        "operationId" : "twoFactorDisable",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DisableTwoFactorRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "two-factor-controller" ]
+      }
+    },
+    "/v1/auth/2fa/enable" : {
+      "post" : {
+        "operationId" : "twoFactorEnable",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EnableTwoFactorRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TwoFactorEnrolmentResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "two-factor-controller" ]
+      }
+    },
+    "/v1/auth/2fa/verify" : {
+      "post" : {
+        "operationId" : "twoFactorVerify",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/VerifyTwoFactorRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "two-factor-controller" ]
+      }
+    },
+    "/v1/auth/login" : {
+      "post" : {
+        "operationId" : "tokenSignIn",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SignInRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "token-controller" ]
+      }
+    },
+    "/v1/auth/logout" : {
+      "post" : {
+        "operationId" : "tokenSignOut",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RefreshRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "token-controller" ]
+      }
+    },
+    "/v1/auth/oauth/{provider}" : {
+      "post" : {
+        "operationId" : "tokenSignInWithProvider",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "provider",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/OAuthSignInRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "token-controller" ]
+      }
+    },
+    "/v1/auth/refresh" : {
+      "post" : {
+        "operationId" : "tokenRefresh",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RefreshRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "token-controller" ]
+      }
+    },
+    "/v1/auth/register" : {
+      "post" : {
+        "operationId" : "authRegister",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RegistrationRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "202" : {
+            "description" : "Accepted"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/v1/auth/sessions" : {
+      "get" : {
+        "operationId" : "sessionList",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/SessionSummary"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "session-controller" ]
+      }
+    },
+    "/v1/auth/sessions/{id}" : {
+      "delete" : {
+        "operationId" : "sessionRevoke",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "session-controller" ]
+      }
+    },
+    "/v1/auth/verify-email" : {
+      "post" : {
+        "operationId" : "authVerifyEmail",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/VerifyEmailRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/v1/categories" : {
+      "get" : {
+        "operationId" : "categoryCategories",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "Accept-Language",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/CategoryResponse"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "category-controller" ]
+      }
+    },
+    "/v1/collaborators/invitations/{token}/accept" : {
+      "post" : {
+        "operationId" : "collaboratorAccept",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CollaboratorResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "collaborator-controller" ]
+      }
+    },
+    "/v1/collaborators/{id}" : {
+      "delete" : {
+        "operationId" : "collaboratorRevoke",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "collaborator-controller" ]
+      },
+      "patch" : {
+        "operationId" : "collaboratorChangeCapabilities",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CollaboratorCapabilitiesRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CollaboratorResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "collaborator-controller" ]
+      }
+    },
+    "/v1/collections" : {
+      "get" : {
+        "operationId" : "collectionIndex",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "Accept-Language",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CollectionIndex"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "collection-controller" ]
+      }
+    },
+    "/v1/collections/{slug}" : {
+      "get" : {
+        "operationId" : "collectionCollection",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "Accept-Language",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "cursor",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CollectionPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "collection-controller" ]
+      }
+    },
+    "/v1/comments/{commentId}" : {
+      "delete" : {
+        "operationId" : "commentDelete",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "commentId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CommentResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "comment-controller" ]
+      }
+    },
+    "/v1/comments/{commentId}/reply" : {
+      "post" : {
+        "operationId" : "commentReply",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "commentId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PostCommentRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CommentResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "comment-controller" ]
+      }
+    },
+    "/v1/comments/{id}/report" : {
+      "post" : {
+        "operationId" : "contentReportReportComment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReportRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "202" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReportResponse"
+                }
+              }
+            },
+            "description" : "Accepted"
+          }
+        },
+        "tags" : [ "content-report-controller" ]
+      }
+    },
+    "/v1/discover" : {
+      "get" : {
+        "operationId" : "discoveryDiscover",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "Accept-Language",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Free text. §11.3 folds diacritics, so \"kitab\" matches \"kitаb\".",
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Which of §6.1's states a campaign may be in. Repeat or comma-separate.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "upcoming", "live", "late_pledge", "successful", "unsuccessful" ]
+            }
+          }
+        }, {
+          "description" : "Category slugs. An open vocabulary: an unknown slug is an empty feed, not a 400, so a link shared after a rename still resolves.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "category",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "description" : "Subcategory slugs, under the categories above.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "subcategory",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "description" : "Tag slugs.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "tag",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "description" : "Programme slugs — §4.3's editorial programmes.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "programme",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "description" : "How close to its goal a campaign is.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "completion",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "under_25", "25_to_50", "50_to_75", "75_to_100", "over_100" ]
+            }
+          }
+        }, {
+          "description" : "A named goal range, as an alternative to goalMin and goalMax.",
+          "in" : "query",
+          "name" : "goalBand",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Lowest goal, as a decimal string. Money is never a query number either.",
+          "in" : "query",
+          "name" : "goalMin",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Highest goal, as a decimal string.",
+          "in" : "query",
+          "name" : "goalMax",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "A named raised range, as an alternative to raisedMin and raisedMax.",
+          "in" : "query",
+          "name" : "raisedBand",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Least raised, as a decimal string.",
+          "in" : "query",
+          "name" : "raisedMin",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Most raised, as a decimal string.",
+          "in" : "query",
+          "name" : "raisedMax",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "ISO country codes.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "country",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "description" : "City slugs.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "city",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "description" : "A point, as \"lat,lon\". Required when sort=near-me, which is why asking for that sort without it is refused rather than silently answered as newest.",
+          "in" : "query",
+          "name" : "near",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "How far from `near` to look.",
+          "in" : "query",
+          "name" : "radiusKm",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Editorial and campaign qualifiers.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "showOnly",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "saved", "recommended", "featured" ]
+            }
+          }
+        }, {
+          "description" : "Ordering. §11.2 decides what each one means.",
+          "in" : "query",
+          "name" : "sort",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "newest", "ending_soon", "most_funded", "most_backed", "popularity", "best_match", "relevance", "near_me" ]
+          }
+        }, {
+          "description" : "Page size. Bounded by the service; an out-of-range value is refused rather than clamped, so a client learns its request was not the one answered.",
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "The `nextCursor` from the previous page. §10.3's cursor pagination: opaque, and never an offset.",
+          "in" : "query",
+          "name" : "cursor",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Feed"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "discovery-controller" ]
+      }
+    },
+    "/v1/discover/facets" : {
+      "get" : {
+        "operationId" : "discoveryFacets",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "Accept-Language",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Free text. §11.3 folds diacritics, so \"kitab\" matches \"kitаb\".",
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Which of §6.1's states a campaign may be in. Repeat or comma-separate.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "upcoming", "live", "late_pledge", "successful", "unsuccessful" ]
+            }
+          }
+        }, {
+          "description" : "Category slugs. An open vocabulary: an unknown slug is an empty feed, not a 400, so a link shared after a rename still resolves.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "category",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "description" : "Subcategory slugs, under the categories above.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "subcategory",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "description" : "Tag slugs.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "tag",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "description" : "Programme slugs — §4.3's editorial programmes.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "programme",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "description" : "How close to its goal a campaign is.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "completion",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "under_25", "25_to_50", "50_to_75", "75_to_100", "over_100" ]
+            }
+          }
+        }, {
+          "description" : "A named goal range, as an alternative to goalMin and goalMax.",
+          "in" : "query",
+          "name" : "goalBand",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Lowest goal, as a decimal string. Money is never a query number either.",
+          "in" : "query",
+          "name" : "goalMin",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Highest goal, as a decimal string.",
+          "in" : "query",
+          "name" : "goalMax",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "A named raised range, as an alternative to raisedMin and raisedMax.",
+          "in" : "query",
+          "name" : "raisedBand",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Least raised, as a decimal string.",
+          "in" : "query",
+          "name" : "raisedMin",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Most raised, as a decimal string.",
+          "in" : "query",
+          "name" : "raisedMax",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "ISO country codes.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "country",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "description" : "City slugs.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "city",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "description" : "A point, as \"lat,lon\". Required when sort=near-me, which is why asking for that sort without it is refused rather than silently answered as newest.",
+          "in" : "query",
+          "name" : "near",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "How far from `near` to look.",
+          "in" : "query",
+          "name" : "radiusKm",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Editorial and campaign qualifiers.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "showOnly",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "saved", "recommended", "featured" ]
+            }
+          }
+        }, {
+          "description" : "Ordering. §11.2 decides what each one means.",
+          "in" : "query",
+          "name" : "sort",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "newest", "ending_soon", "most_funded", "most_backed", "popularity", "best_match", "relevance", "near_me" ]
+          }
+        }, {
+          "description" : "Page size. Bounded by the service; an out-of-range value is refused rather than clamped, so a client learns its request was not the one answered.",
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "The `nextCursor` from the previous page. §10.3's cursor pagination: opaque, and never an offset.",
+          "in" : "query",
+          "name" : "cursor",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Facets"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "discovery-controller" ]
+      }
+    },
+    "/v1/items/{id}" : {
+      "delete" : {
+        "operationId" : "itemDelete",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "item-controller" ]
+      },
+      "patch" : {
+        "operationId" : "itemEdit",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ItemPatchRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ItemResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "item-controller" ]
+      }
+    },
+    "/v1/me" : {
+      "get" : {
+        "operationId" : "meMe",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MeResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "me-controller" ]
+      }
+    },
+    "/v1/me/deletion" : {
+      "delete" : {
+        "operationId" : "accountDeletionCancel",
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "account-deletion-controller" ]
+      },
+      "post" : {
+        "operationId" : "accountDeletionRequest",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DeleteAccountRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DeletionScheduledResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "account-deletion-controller" ]
+      }
+    },
+    "/v1/me/export" : {
+      "get" : {
+        "operationId" : "accountExportExport",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AccountExport"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "account-export-controller" ]
+      }
+    },
+    "/v1/me/notification-preferences" : {
+      "get" : {
+        "operationId" : "notificationPreferencePreferences",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotificationPreferencesResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "notification-preference-controller" ]
+      },
+      "patch" : {
+        "operationId" : "notificationPreferenceUpdate",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateNotificationPreferencesRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotificationPreferencesResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "notification-preference-controller" ]
+      }
+    },
+    "/v1/me/notifications" : {
+      "get" : {
+        "operationId" : "notificationInboxNotifications",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "before",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }, {
+          "in" : "query",
+          "name" : "beforeId",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotificationInboxResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "notification-inbox-controller" ]
+      }
+    },
+    "/v1/me/notifications/{notificationId}/read" : {
+      "post" : {
+        "operationId" : "notificationInboxRead",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "notificationId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotificationResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "notification-inbox-controller" ]
+      }
+    },
+    "/v1/pledges/draft" : {
+      "post" : {
+        "operationId" : "pledgeDraft",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DraftPledgeRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "pledge-controller" ]
+      }
+    },
+    "/v1/pledges/{id}" : {
+      "delete" : {
+        "operationId" : "pledgeCancel",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "pledge-controller" ]
+      },
+      "get" : {
+        "operationId" : "pledgeRead",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PledgeResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "pledge-controller" ]
+      },
+      "patch" : {
+        "operationId" : "pledgeEdit",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PatchPledgeRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "pledge-controller" ]
+      }
+    },
+    "/v1/pledges/{id}/confirm" : {
+      "post" : {
+        "operationId" : "pledgeConfirm",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ConfirmPledgeRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "pledge-controller" ]
+      }
+    },
+    "/v1/projects" : {
+      "post" : {
+        "operationId" : "projectCreate",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateProjectRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectEdit"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/v1/projects/{creatorSlug}/{projectSlug}" : {
+      "get" : {
+        "operationId" : "publicProjectPage",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "Accept-Language",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "creatorSlug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "projectSlug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectPageResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "public-project-controller" ]
+      }
+    },
+    "/v1/projects/{id}" : {
+      "patch" : {
+        "operationId" : "projectEdit",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ProjectPatchRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectEdit"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/v1/projects/{id}/cancel" : {
+      "post" : {
+        "operationId" : "projectCancel",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CancelProjectRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectEdit"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/v1/projects/{id}/checklist" : {
+      "get" : {
+        "operationId" : "projectChecklist",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectChecklist"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/v1/projects/{id}/edit" : {
+      "get" : {
+        "operationId" : "projectForEdit",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectEdit"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/v1/projects/{id}/launch" : {
+      "post" : {
+        "operationId" : "projectLaunch",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectEdit"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/v1/projects/{id}/prelaunch" : {
+      "get" : {
+        "operationId" : "prelaunchPage",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PrelaunchPageResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "prelaunch-controller" ]
+      },
+      "post" : {
+        "operationId" : "projectOpenPrelaunch",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectEdit"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/v1/projects/{id}/remind" : {
+      "delete" : {
+        "operationId" : "prelaunchForget",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "token",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "prelaunch-controller" ]
+      },
+      "post" : {
+        "operationId" : "prelaunchRemind",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RemindRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RemindResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "prelaunch-controller" ]
+      }
+    },
+    "/v1/projects/{id}/report" : {
+      "post" : {
+        "operationId" : "contentReportReportProject",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReportRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "202" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReportResponse"
+                }
+              }
+            },
+            "description" : "Accepted"
+          }
+        },
+        "tags" : [ "content-report-controller" ]
+      }
+    },
+    "/v1/projects/{id}/story/versions" : {
+      "get" : {
+        "operationId" : "storyVersionList",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/StoryVersionSummary"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "story-version-controller" ]
+      }
+    },
+    "/v1/projects/{id}/story/versions/{number}" : {
+      "get" : {
+        "operationId" : "storyVersionGet",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StoryVersionDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "story-version-controller" ]
+      }
+    },
+    "/v1/projects/{id}/story/versions/{number}/restore" : {
+      "post" : {
+        "operationId" : "storyVersionRestore",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "path",
+          "name" : "number",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectEdit"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "story-version-controller" ]
+      }
+    },
+    "/v1/projects/{id}/submit" : {
+      "post" : {
+        "operationId" : "projectSubmit",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectEdit"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/analytics" : {
+      "get" : {
+        "operationId" : "analyticsAnalytics",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "from",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }, {
+          "in" : "query",
+          "name" : "to",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectAnalyticsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "analytics-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/backers/public" : {
+      "get" : {
+        "operationId" : "publicBackerCounts",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PublicBackerListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "public-backer-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/collaborators" : {
+      "get" : {
+        "operationId" : "projectCollaboratorList",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/CollaboratorResponse"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-collaborator-controller" ]
+      },
+      "post" : {
+        "operationId" : "projectCollaboratorInvite",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/InviteCollaboratorRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CollaboratorResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-collaborator-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/comments" : {
+      "get" : {
+        "operationId" : "publicCommentList",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "thread",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "cursor",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CommentListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "public-comment-controller" ]
+      },
+      "post" : {
+        "operationId" : "commentPost",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PostCommentRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CommentResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "comment-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/items" : {
+      "get" : {
+        "operationId" : "itemList",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ItemResponse"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "item-controller" ]
+      },
+      "post" : {
+        "operationId" : "itemCreate",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateItemRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ItemResponse"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "tags" : [ "item-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/referral-visits" : {
+      "post" : {
+        "operationId" : "referralVisit",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CaptureVisitRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReferralVisitResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "referral-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/referrers" : {
+      "get" : {
+        "operationId" : "referralReferrers",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReferrerReportResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "referral-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/rewards" : {
+      "get" : {
+        "operationId" : "rewardList",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/RewardResponse"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "reward-controller" ]
+      },
+      "post" : {
+        "operationId" : "rewardCreate",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateRewardRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RewardResponse"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "tags" : [ "reward-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/rewards/public" : {
+      "get" : {
+        "operationId" : "publicRewardList",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "token",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PublicRewardListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "public-reward-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/rewards/reorder" : {
+      "patch" : {
+        "operationId" : "rewardReorder",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReorderRewardsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/RewardResponse"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "reward-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/updates" : {
+      "get" : {
+        "operationId" : "publicProjectUpdateList",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "cursor",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectUpdateListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "public-project-update-controller" ]
+      },
+      "post" : {
+        "operationId" : "projectUpdatePublish",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PublishUpdateRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectUpdateResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-update-controller" ]
+      }
+    },
+    "/v1/rewards/{id}" : {
+      "delete" : {
+        "operationId" : "rewardDelete",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "reward-controller" ]
+      },
+      "patch" : {
+        "operationId" : "rewardEdit",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RewardPatchRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RewardResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "reward-controller" ]
+      }
+    },
+    "/v1/rewards/{id}/duplicate" : {
+      "post" : {
+        "operationId" : "rewardDuplicate",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RewardResponse"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "tags" : [ "reward-controller" ]
+      }
+    },
+    "/v1/rewards/{id}/shipping-rules" : {
+      "put" : {
+        "operationId" : "rewardReplaceShippingRules",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ShippingRulesRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RewardResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "reward-controller" ]
+      }
+    },
+    "/v1/search" : {
+      "get" : {
+        "operationId" : "searchSearch",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "Accept-Language",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Free text. §11.3 folds diacritics, so \"kitab\" matches \"kitаb\".",
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Which of §6.1's states a campaign may be in. Repeat or comma-separate.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "upcoming", "live", "late_pledge", "successful", "unsuccessful" ]
+            }
+          }
+        }, {
+          "description" : "Category slugs. An open vocabulary: an unknown slug is an empty feed, not a 400, so a link shared after a rename still resolves.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "category",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "description" : "Subcategory slugs, under the categories above.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "subcategory",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "description" : "Tag slugs.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "tag",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "description" : "Programme slugs — §4.3's editorial programmes.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "programme",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "description" : "How close to its goal a campaign is.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "completion",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "under_25", "25_to_50", "50_to_75", "75_to_100", "over_100" ]
+            }
+          }
+        }, {
+          "description" : "A named goal range, as an alternative to goalMin and goalMax.",
+          "in" : "query",
+          "name" : "goalBand",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Lowest goal, as a decimal string. Money is never a query number either.",
+          "in" : "query",
+          "name" : "goalMin",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Highest goal, as a decimal string.",
+          "in" : "query",
+          "name" : "goalMax",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "A named raised range, as an alternative to raisedMin and raisedMax.",
+          "in" : "query",
+          "name" : "raisedBand",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Least raised, as a decimal string.",
+          "in" : "query",
+          "name" : "raisedMin",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Most raised, as a decimal string.",
+          "in" : "query",
+          "name" : "raisedMax",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "ISO country codes.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "country",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "description" : "City slugs.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "city",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "description" : "A point, as \"lat,lon\". Required when sort=near-me, which is why asking for that sort without it is refused rather than silently answered as newest.",
+          "in" : "query",
+          "name" : "near",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "How far from `near` to look.",
+          "in" : "query",
+          "name" : "radiusKm",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Editorial and campaign qualifiers.",
+          "explode" : true,
+          "in" : "query",
+          "name" : "showOnly",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "saved", "recommended", "featured" ]
+            }
+          }
+        }, {
+          "description" : "Ordering. §11.2 decides what each one means.",
+          "in" : "query",
+          "name" : "sort",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "newest", "ending_soon", "most_funded", "most_backed", "popularity", "best_match", "relevance", "near_me" ]
+          }
+        }, {
+          "description" : "Page size. Bounded by the service; an out-of-range value is refused rather than clamped, so a client learns its request was not the one answered.",
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "description" : "The `nextCursor` from the previous page. §10.3's cursor pagination: opaque, and never an offset.",
+          "in" : "query",
+          "name" : "cursor",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Feed"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "search-controller" ]
+      }
+    },
+    "/v1/search/suggest" : {
+      "get" : {
+        "operationId" : "searchSuggest",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "Accept-Language",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Suggestions"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "search-controller" ]
+      }
+    },
+    "/v1/users/{id}/report" : {
+      "post" : {
+        "operationId" : "contentReportReportUser",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReportRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "202" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReportResponse"
+                }
+              }
+            },
+            "description" : "Accepted"
+          }
+        },
+        "tags" : [ "content-report-controller" ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "Account" : {
+        "type" : "object",
+        "properties" : {
+          "avatarUrl" : {
+            "type" : "string"
+          },
+          "bio" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "currency" : {
+            "type" : "string"
+          },
+          "deletionRequestedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "deletionScheduledAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "emailVerifiedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "locale" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "AccountExport" : {
+        "type" : "object",
+        "properties" : {
+          "account" : {
+            "$ref" : "#/components/schemas/Account"
+          },
+          "exportedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "format" : {
+            "type" : "string"
+          },
+          "sessions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SessionRecord"
+            }
+          },
+          "verifications" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/VerificationRecord"
+            }
+          }
+        }
+      },
+      "AddProject" : {
+        "type" : "object",
+        "properties" : {
+          "note" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "note", "projectId" ]
+      },
+      "AdminCollectionIndex" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AdminCollectionResponse"
+            }
+          }
+        }
+      },
+      "AdminCollectionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "closesAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "copy" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "$ref" : "#/components/schemas/CopyBody"
+            }
+          },
+          "grantsBadge" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "image" : {
+            "$ref" : "#/components/schemas/Image"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "opensAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "projects" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AdminMember"
+            }
+          },
+          "publishedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "sortOrder" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "AdminMember" : {
+        "type" : "object",
+        "properties" : {
+          "position" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "projectId" : {
+            "type" : "string"
+          },
+          "publiclyVisible" : {
+            "type" : "boolean"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Amounts" : {
+        "type" : "object",
+        "properties" : {
+          "addons" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "base" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "bonus" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "shipping" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "tax" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "total" : {
+            "$ref" : "#/components/schemas/Money"
+          }
+        }
+      },
+      "CancelProjectRequest" : {
+        "type" : "object",
+        "properties" : {
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "reason" ]
+      },
+      "CaptureVisitRequest" : {
+        "type" : "object",
+        "properties" : {
+          "campaign" : {
+            "type" : "string",
+            "maxLength" : 64,
+            "minLength" : 0
+          },
+          "channel" : {
+            "type" : "string",
+            "enum" : [ "DIRECT", "REFERRAL_LINK", "SOCIAL", "EMAIL", "SEARCH", "PAID", "OTHER" ]
+          },
+          "referrerCode" : {
+            "type" : "string",
+            "maxLength" : 64,
+            "minLength" : 0
+          },
+          "source" : {
+            "type" : "string",
+            "maxLength" : 64,
+            "minLength" : 0
+          },
+          "visitorToken" : {
+            "type" : "string",
+            "maxLength" : 128,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "channel" ]
+      },
+      "Card" : {
+        "type" : "object",
+        "properties" : {
+          "backersCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "badge" : {
+            "type" : "string"
+          },
+          "completionPercent" : {
+            "type" : "string"
+          },
+          "creator" : {
+            "$ref" : "#/components/schemas/Creator"
+          },
+          "creatorSlug" : {
+            "type" : "string"
+          },
+          "daysLeft" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "deadline" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "goal" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "image" : {
+            "$ref" : "#/components/schemas/Image"
+          },
+          "launchedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "pledged" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
+      },
+      "CategoryCount" : {
+        "type" : "object",
+        "properties" : {
+          "count" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "subcategories" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/NamedCount"
+            }
+          }
+        }
+      },
+      "CategoryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "nameAz" : {
+            "type" : "string"
+          },
+          "nameEn" : {
+            "type" : "string"
+          },
+          "names" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "subcategories" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SubcategoryResponse"
+            }
+          }
+        }
+      },
+      "Change" : {
+        "type" : "object",
+        "properties" : {
+          "category" : {
+            "type" : "string",
+            "enum" : [ "PLEDGES", "CAMPAIGN", "PAYMENTS", "COMMUNITY", "REWARDS", "DISCOVERY", "SECURITY" ]
+          },
+          "channel" : {
+            "type" : "string",
+            "enum" : [ "IN_APP", "EMAIL", "PUSH" ]
+          },
+          "mode" : {
+            "type" : "string",
+            "enum" : [ "OFF", "IMMEDIATE", "DIGEST" ]
+          }
+        },
+        "required" : [ "category", "channel", "mode" ]
+      },
+      "ChannelTotal" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "channel" : {
+            "type" : "string"
+          },
+          "pledgeCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "ChecklistItemBody" : {
+        "type" : "object",
+        "properties" : {
+          "detail" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "requirement" : {
+            "type" : "string"
+          },
+          "satisfied" : {
+            "type" : "boolean"
+          },
+          "section" : {
+            "type" : "string"
+          }
+        }
+      },
+      "CollaboratorCapabilitiesRequest" : {
+        "type" : "object",
+        "properties" : {
+          "capabilities" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "EDIT_BASICS", "EDIT_REWARDS", "EDIT_STORY", "SUBMIT_FOR_REVIEW", "PUBLISH_UPDATES", "RESPOND_TO_COMMENTS", "VIEW_FINANCES", "MANAGE_COLLABORATORS" ]
+            },
+            "minItems" : 1,
+            "uniqueItems" : true
+          }
+        },
+        "required" : [ "capabilities" ]
+      },
+      "CollaboratorResponse" : {
+        "type" : "object",
+        "properties" : {
+          "acceptedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "accountId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "capabilities" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "invitedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "invitedById" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "revokedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Collection" : {
+        "type" : "object",
+        "properties" : {
+          "closesAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "grantsBadge" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "image" : {
+            "$ref" : "#/components/schemas/Image"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "opensAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "projectCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
+      },
+      "CollectionBody" : {
+        "type" : "object",
+        "properties" : {
+          "closesAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "copy" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "$ref" : "#/components/schemas/CopyBody"
+            },
+            "minProperties" : 1
+          },
+          "cover" : {
+            "$ref" : "#/components/schemas/CoverBody"
+          },
+          "grantsBadge" : {
+            "type" : "boolean"
+          },
+          "kind" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "opensAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "sortOrder" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "copy", "kind" ]
+      },
+      "CollectionIndex" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Collection"
+            }
+          }
+        }
+      },
+      "CollectionPage" : {
+        "type" : "object",
+        "properties" : {
+          "collection" : {
+            "$ref" : "#/components/schemas/Collection"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Card"
+            }
+          },
+          "nextCursor" : {
+            "type" : "string"
+          }
+        }
+      },
+      "CommentListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "nextCursor" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "threads" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Thread"
+            }
+          }
+        }
+      },
+      "CommentResponse" : {
+        "type" : "object",
+        "properties" : {
+          "acceptsReplies" : {
+            "type" : "boolean"
+          },
+          "authorId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "body" : {
+            "type" : "string"
+          },
+          "byCreator" : {
+            "type" : "boolean"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "deleted" : {
+            "type" : "boolean"
+          },
+          "depth" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "parentId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "threadId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }
+      },
+      "ConfirmPledgeRequest" : {
+        "type" : "object",
+        "properties" : {
+          "paymentMethodId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }
+      },
+      "ConfirmTwoFactorRequest" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string",
+            "maxLength" : 16,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "code" ]
+      },
+      "CopyBody" : {
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
+      },
+      "CoverBody" : {
+        "type" : "object",
+        "properties" : {
+          "height" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "url" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "width" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "url" ]
+      },
+      "CoverImageBody" : {
+        "type" : "object",
+        "properties" : {
+          "height" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "url" : {
+            "type" : "string"
+          },
+          "width" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "CreateCollection" : {
+        "type" : "object",
+        "properties" : {
+          "collection" : {
+            "$ref" : "#/components/schemas/CollectionBody"
+          },
+          "slug" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "collection", "slug" ]
+      },
+      "CreateItemRequest" : {
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "imageUrl" : {
+            "type" : "string"
+          },
+          "isDigital" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string",
+            "maxLength" : 120,
+            "minLength" : 0
+          },
+          "sku" : {
+            "type" : "string"
+          },
+          "weightGrams" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "name" ]
+      },
+      "CreateProjectRequest" : {
+        "type" : "object",
+        "properties" : {
+          "title" : {
+            "type" : "string",
+            "maxLength" : 60,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "title" ]
+      },
+      "CreateRewardRequest" : {
+        "type" : "object",
+        "properties" : {
+          "availableFrom" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "availableUntil" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "estimatedDelivery" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "isAddon" : {
+            "type" : "boolean"
+          },
+          "isEarlyBird" : {
+            "type" : "boolean"
+          },
+          "isFeatured" : {
+            "type" : "boolean"
+          },
+          "isSecret" : {
+            "type" : "boolean"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/RewardItemBody"
+            }
+          },
+          "limitQuantity" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "price" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "shippingType" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string",
+            "maxLength" : 80,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "price", "title" ]
+      },
+      "Creator" : {
+        "type" : "object",
+        "properties" : {
+          "avatarUrl" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "slug" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Day" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "channels" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ChannelTotal"
+            }
+          },
+          "cumulativeAmount" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "cumulativePledgeCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "day" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "pledgeCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "timeZone" : {
+            "type" : "string"
+          }
+        }
+      },
+      "DeleteAccountRequest" : {
+        "type" : "object",
+        "properties" : {
+          "password" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "password" ]
+      },
+      "DeletionScheduledResponse" : {
+        "type" : "object",
+        "properties" : {
+          "requestedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "scheduledFor" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "DisableTwoFactorRequest" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string",
+            "maxLength" : 16,
+            "minLength" : 0
+          },
+          "password" : {
+            "type" : "string",
+            "maxLength" : 256,
+            "minLength" : 0
+          },
+          "recoveryCode" : {
+            "type" : "string",
+            "maxLength" : 40,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "password" ]
+      },
+      "DraftPledgeRequest" : {
+        "type" : "object",
+        "properties" : {
+          "addons" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PledgeAddonBody"
+            }
+          },
+          "contribution" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "isAnonymous" : {
+            "type" : "boolean"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "referrerCode" : {
+            "type" : "string",
+            "maxLength" : 64,
+            "minLength" : 0
+          },
+          "rewardTierId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "shippingCountry" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "contribution", "projectId" ]
+      },
+      "EnableTwoFactorRequest" : {
+        "type" : "object",
+        "properties" : {
+          "password" : {
+            "type" : "string",
+            "maxLength" : 256,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "password" ]
+      },
+      "ExplanationResponse" : {
+        "type" : "object",
+        "properties" : {
+          "slug" : {
+            "type" : "string"
+          },
+          "terms" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TermResponse"
+            }
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "total" : {
+            "type" : "number"
+          },
+          "weightsVersion" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Facets" : {
+        "type" : "object",
+        "properties" : {
+          "amountRaised" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ValueCount"
+            }
+          },
+          "categories" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CategoryCount"
+            }
+          },
+          "cities" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/NamedCount"
+            }
+          },
+          "completion" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ValueCount"
+            }
+          },
+          "countries" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/NamedCount"
+            }
+          },
+          "goalAmount" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ValueCount"
+            }
+          },
+          "programmes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/NamedCount"
+            }
+          },
+          "showOnly" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ValueCount"
+            }
+          },
+          "status" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ValueCount"
+            }
+          },
+          "tags" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/NamedCount"
+            }
+          }
+        }
+      },
+      "Feed" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Card"
+            }
+          },
+          "nextCursor" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Image" : {
+        "type" : "object",
+        "properties" : {
+          "height" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "url" : {
+            "type" : "string"
+          },
+          "width" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "InviteCollaboratorRequest" : {
+        "type" : "object",
+        "properties" : {
+          "capabilities" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "EDIT_BASICS", "EDIT_REWARDS", "EDIT_STORY", "SUBMIT_FOR_REVIEW", "PUBLISH_UPDATES", "RESPOND_TO_COMMENTS", "VIEW_FINANCES", "MANAGE_COLLABORATORS" ]
+            },
+            "minItems" : 1,
+            "uniqueItems" : true
+          },
+          "email" : {
+            "type" : "string",
+            "format" : "email",
+            "maxLength" : 254,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "capabilities", "email" ]
+      },
+      "ItemBody" : {
+        "type" : "object",
+        "properties" : {
+          "isDigital" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "quantity" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "ItemPatchRequest" : {
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "imageUrl" : {
+            "type" : "string"
+          },
+          "isDigital" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "sku" : {
+            "type" : "string"
+          },
+          "weightGrams" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "ItemResponse" : {
+        "type" : "object",
+        "properties" : {
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "imageUrl" : {
+            "type" : "string"
+          },
+          "isDigital" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "sku" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "weightGrams" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "JsonNode" : {
+        "type" : "object",
+        "properties" : {
+          "array" : {
+            "type" : "boolean"
+          },
+          "bigDecimal" : {
+            "type" : "boolean"
+          },
+          "bigInteger" : {
+            "type" : "boolean"
+          },
+          "binary" : {
+            "type" : "boolean"
+          },
+          "boolean" : {
+            "type" : "boolean"
+          },
+          "container" : {
+            "type" : "boolean"
+          },
+          "double" : {
+            "type" : "boolean"
+          },
+          "embeddedValue" : {
+            "type" : "boolean"
+          },
+          "empty" : {
+            "type" : "boolean"
+          },
+          "float" : {
+            "type" : "boolean"
+          },
+          "floatingPointNumber" : {
+            "type" : "boolean"
+          },
+          "int" : {
+            "type" : "boolean"
+          },
+          "integralNumber" : {
+            "type" : "boolean"
+          },
+          "long" : {
+            "type" : "boolean"
+          },
+          "missingNode" : {
+            "type" : "boolean"
+          },
+          "nodeType" : {
+            "type" : "string",
+            "enum" : [ "ARRAY", "BINARY", "BOOLEAN", "MISSING", "NULL", "NUMBER", "OBJECT", "POJO", "STRING" ]
+          },
+          "null" : {
+            "type" : "boolean"
+          },
+          "number" : {
+            "type" : "boolean"
+          },
+          "object" : {
+            "type" : "boolean"
+          },
+          "pojo" : {
+            "type" : "boolean"
+          },
+          "short" : {
+            "type" : "boolean"
+          },
+          "string" : {
+            "type" : "boolean"
+          },
+          "textual" : {
+            "type" : "boolean",
+            "deprecated" : true
+          },
+          "valueNode" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "MeResponse" : {
+        "type" : "object",
+        "properties" : {
+          "deletionScheduledAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "emailVerified" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "slug" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ModerationDecisionRequest" : {
+        "type" : "object",
+        "properties" : {
+          "note" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 0
+          }
+        }
+      },
+      "ModerationOutcomeBody" : {
+        "type" : "object",
+        "properties" : {
+          "current" : {
+            "type" : "boolean"
+          },
+          "decidedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "outcome" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Money" : {
+        "type" : "object",
+        "description" : "An amount of money. §10.3: the amount is a **string**, never a JSON number — a JSON number is an IEEE 754 double and cannot represent a pledge exactly. Parse it with a decimal type.",
+        "properties" : {
+          "amount" : {
+            "type" : "string",
+            "example" : "599.00",
+            "pattern" : "^-?\\d+(\\.\\d{1,2})?$"
+          },
+          "currency" : {
+            "type" : "string",
+            "example" : "AZN",
+            "pattern" : "^[A-Z]{3}$"
+          }
+        },
+        "required" : [ "amount", "currency" ]
+      },
+      "NamedCount" : {
+        "type" : "object",
+        "properties" : {
+          "count" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "slug" : {
+            "type" : "string"
+          }
+        }
+      },
+      "NotificationInboxResponse" : {
+        "type" : "object",
+        "properties" : {
+          "nextCursor" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "nextCursorId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "notifications" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/NotificationResponse"
+            }
+          },
+          "unreadCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "NotificationPreferencesResponse" : {
+        "type" : "object",
+        "properties" : {
+          "preferences" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Preference"
+            }
+          }
+        }
+      },
+      "NotificationResponse" : {
+        "type" : "object",
+        "properties" : {
+          "category" : {
+            "type" : "string",
+            "enum" : [ "PLEDGES", "CAMPAIGN", "PAYMENTS", "COMMUNITY", "REWARDS", "DISCOVERY", "SECURITY" ]
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "occurredAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "params" : {
+            "type" : "string"
+          },
+          "readAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "subjectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "subjectType" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
+          }
+        }
+      },
+      "OAuthSignInRequest" : {
+        "type" : "object",
+        "properties" : {
+          "deviceLabel" : {
+            "type" : "string",
+            "maxLength" : 120,
+            "minLength" : 0
+          },
+          "idToken" : {
+            "type" : "string",
+            "maxLength" : 8192,
+            "minLength" : 0
+          },
+          "locale" : {
+            "type" : "string",
+            "pattern" : "az|en|ru|tr"
+          },
+          "name" : {
+            "type" : "string",
+            "maxLength" : 80,
+            "minLength" : 0
+          },
+          "nonce" : {
+            "type" : "string",
+            "maxLength" : 512,
+            "minLength" : 0
+          },
+          "tokenDelivery" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "idToken" ]
+      },
+      "Outcome" : {
+        "type" : "object",
+        "properties" : {
+          "backersCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "finalisedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "goal" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "pledged" : {
+            "$ref" : "#/components/schemas/Money"
+          }
+        }
+      },
+      "PatchPledgeRequest" : {
+        "type" : "object",
+        "properties" : {
+          "addons" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PledgeAddonBody"
+            }
+          },
+          "contribution" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "isAnonymous" : {
+            "type" : "boolean"
+          },
+          "paymentMethodId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "rewardTierId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "shippingCountry" : {
+            "type" : "string"
+          }
+        }
+      },
+      "PledgeAddonBody" : {
+        "type" : "object",
+        "properties" : {
+          "quantity" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          },
+          "rewardTierId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "rewardTierId" ]
+      },
+      "PledgeResponse" : {
+        "type" : "object",
+        "properties" : {
+          "addons" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PledgeAddonBody"
+            }
+          },
+          "amounts" : {
+            "$ref" : "#/components/schemas/Amounts"
+          },
+          "canceledAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "cardVerified" : {
+            "type" : "boolean"
+          },
+          "confirmedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "isAnonymous" : {
+            "type" : "boolean"
+          },
+          "paymentMethodId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "reservationExpiresAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "rewardTierId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "shippingCountry" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          }
+        }
+      },
+      "PostCommentRequest" : {
+        "type" : "object",
+        "properties" : {
+          "body" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Preference" : {
+        "type" : "object",
+        "properties" : {
+          "category" : {
+            "type" : "string",
+            "enum" : [ "PLEDGES", "CAMPAIGN", "PAYMENTS", "COMMUNITY", "REWARDS", "DISCOVERY", "SECURITY" ]
+          },
+          "changeable" : {
+            "type" : "boolean"
+          },
+          "channel" : {
+            "type" : "string",
+            "enum" : [ "IN_APP", "EMAIL", "PUSH" ]
+          },
+          "digestOffered" : {
+            "type" : "boolean"
+          },
+          "mode" : {
+            "type" : "string",
+            "enum" : [ "OFF", "IMMEDIATE", "DIGEST" ]
+          },
+          "stored" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "PrelaunchPageResponse" : {
+        "type" : "object",
+        "properties" : {
+          "blurb" : {
+            "type" : "string"
+          },
+          "coverImage" : {
+            "$ref" : "#/components/schemas/CoverImageBody"
+          },
+          "followerCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "scheduledLaunchAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ProjectAnalyticsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "computedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "currency" : {
+            "type" : "string"
+          },
+          "days" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Day"
+            }
+          },
+          "from" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "timeZone" : {
+            "type" : "string"
+          },
+          "to" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }
+      },
+      "ProjectChecklist" : {
+        "type" : "object",
+        "properties" : {
+          "advisory" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ChecklistItemBody"
+            }
+          },
+          "blocking" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ChecklistItemBody"
+            }
+          },
+          "moderation" : {
+            "$ref" : "#/components/schemas/ModerationOutcomeBody"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "score" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "submittable" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "ProjectEdit" : {
+        "type" : "object",
+        "properties" : {
+          "blurb" : {
+            "type" : "string"
+          },
+          "categoryId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "coverImage" : {
+            "$ref" : "#/components/schemas/CoverImageBody"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "deadline" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "durationDays" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "goal" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "latePledgeEnabled" : {
+            "type" : "boolean"
+          },
+          "launchedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "lockedFields" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "risks" : {
+            "type" : "string"
+          },
+          "scheduledLaunchAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "story" : {
+            "$ref" : "#/components/schemas/JsonNode"
+          },
+          "subcategoryId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "ProjectPageResponse" : {
+        "type" : "object",
+        "properties" : {
+          "backersCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "blurb" : {
+            "type" : "string"
+          },
+          "category" : {
+            "$ref" : "#/components/schemas/Taxon"
+          },
+          "coverImage" : {
+            "$ref" : "#/components/schemas/CoverImageBody"
+          },
+          "creator" : {
+            "$ref" : "#/components/schemas/Creator"
+          },
+          "deadline" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "goal" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "launchedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "outcome" : {
+            "$ref" : "#/components/schemas/Outcome"
+          },
+          "pledged" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "risks" : {
+            "type" : "string"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "story" : {
+            "$ref" : "#/components/schemas/JsonNode"
+          },
+          "subcategory" : {
+            "$ref" : "#/components/schemas/Taxon"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ProjectPatchRequest" : {
+        "type" : "object",
+        "properties" : {
+          "blurb" : {
+            "type" : "string"
+          },
+          "categoryId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "coverImage" : {
+            "$ref" : "#/components/schemas/CoverImageBody"
+          },
+          "durationDays" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "goal" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "latePledgeEnabled" : {
+            "type" : "boolean"
+          },
+          "risks" : {
+            "type" : "string"
+          },
+          "scheduledLaunchAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "story" : {
+            "$ref" : "#/components/schemas/JsonNode"
+          },
+          "subcategoryId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ProjectUpdateListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "nextCursor" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "updates" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ProjectUpdateResponse"
+            }
+          }
+        }
+      },
+      "ProjectUpdateResponse" : {
+        "type" : "object",
+        "properties" : {
+          "authorId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "body" : {
+            "type" : "string"
+          },
+          "number" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "publishedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "visibility" : {
+            "type" : "string"
+          }
+        }
+      },
+      "PublicBackerListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "backerCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "rewardTiers" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/RewardTierCountBody"
+            }
+          }
+        }
+      },
+      "PublicRewardListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "addons" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PublicRewardResponse"
+            }
+          },
+          "currency" : {
+            "type" : "string"
+          },
+          "rewards" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PublicRewardResponse"
+            }
+          }
+        }
+      },
+      "PublicRewardResponse" : {
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "estimatedDelivery" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "isEarlyBird" : {
+            "type" : "boolean"
+          },
+          "isFeatured" : {
+            "type" : "boolean"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ItemBody"
+            }
+          },
+          "limitQuantity" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "price" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "remainingQuantity" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "shippingRates" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ShippingRuleBody"
+            }
+          },
+          "shippingType" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
+      },
+      "PublishCollection" : {
+        "type" : "object",
+        "properties" : {
+          "note" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "note" ]
+      },
+      "PublishUpdateRequest" : {
+        "type" : "object",
+        "properties" : {
+          "body" : {
+            "type" : "string"
+          },
+          "publishAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "visibility" : {
+            "type" : "string",
+            "enum" : [ "PUBLIC", "BACKERS_ONLY" ]
+          }
+        },
+        "required" : [ "visibility" ]
+      },
+      "QueuedReportResponse" : {
+        "type" : "object",
+        "properties" : {
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "detail" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "openReportsOnTarget" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "reporterId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "resolution" : {
+            "$ref" : "#/components/schemas/Resolution"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "target" : {
+            "$ref" : "#/components/schemas/Target"
+          }
+        }
+      },
+      "RecoveryCodesResponse" : {
+        "type" : "object",
+        "properties" : {
+          "recoveryCodes" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "ReferralVisitResponse" : {
+        "type" : "object",
+        "properties" : {
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "visitorToken" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ReferrerReportResponse" : {
+        "type" : "object",
+        "properties" : {
+          "currency" : {
+            "type" : "string"
+          },
+          "pledgeCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "remainder" : {
+            "$ref" : "#/components/schemas/Remainder"
+          },
+          "sources" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Source"
+            }
+          },
+          "value" : {
+            "$ref" : "#/components/schemas/Money"
+          }
+        }
+      },
+      "RefreshRequest" : {
+        "type" : "object",
+        "properties" : {
+          "refreshToken" : {
+            "type" : "string",
+            "maxLength" : 256,
+            "minLength" : 0
+          }
+        }
+      },
+      "RegistrationRequest" : {
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "type" : "string",
+            "format" : "email",
+            "maxLength" : 254,
+            "minLength" : 0
+          },
+          "locale" : {
+            "type" : "string",
+            "pattern" : "az|en|ru|tr"
+          },
+          "name" : {
+            "type" : "string",
+            "maxLength" : 80,
+            "minLength" : 0
+          },
+          "password" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "email", "name", "password" ]
+      },
+      "Remainder" : {
+        "type" : "object",
+        "properties" : {
+          "pledgeCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "share" : {
+            "type" : "number"
+          },
+          "sourceCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "value" : {
+            "$ref" : "#/components/schemas/Money"
+          }
+        }
+      },
+      "RemindRequest" : {
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "type" : "string"
+          }
+        }
+      },
+      "RemindResponse" : {
+        "type" : "object",
+        "properties" : {
+          "followerCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "following" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "RemoveProject" : {
+        "type" : "object",
+        "properties" : {
+          "note" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "note" ]
+      },
+      "ReorderProjects" : {
+        "type" : "object",
+        "properties" : {
+          "projectIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid"
+            },
+            "minItems" : 1
+          }
+        },
+        "required" : [ "projectIds" ]
+      },
+      "ReorderRewardsRequest" : {
+        "type" : "object",
+        "properties" : {
+          "rewardIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid"
+            }
+          }
+        }
+      },
+      "ReportQueueResponse" : {
+        "type" : "object",
+        "properties" : {
+          "nextCursor" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "reports" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/QueuedReportResponse"
+            }
+          },
+          "state" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ReportRequest" : {
+        "type" : "object",
+        "properties" : {
+          "detail" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 0
+          },
+          "reason" : {
+            "type" : "string",
+            "enum" : [ "PROHIBITED_ITEM", "MISREPRESENTATION", "NOT_ORIGINAL", "INTELLECTUAL_PROPERTY", "OFFENSIVE", "DISCRIMINATION", "SPAM", "FRAUD", "OTHER" ]
+          }
+        },
+        "required" : [ "reason" ]
+      },
+      "ReportResolutionRequest" : {
+        "type" : "object",
+        "properties" : {
+          "note" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 0
+          }
+        }
+      },
+      "ReportResponse" : {
+        "type" : "object",
+        "properties" : {
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "target" : {
+            "$ref" : "#/components/schemas/Target"
+          }
+        }
+      },
+      "Resolution" : {
+        "type" : "object",
+        "properties" : {
+          "at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "moderatorId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "note" : {
+            "type" : "string"
+          }
+        }
+      },
+      "RewardItemBody" : {
+        "type" : "object",
+        "properties" : {
+          "itemId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "quantity" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "RewardPatchRequest" : {
+        "type" : "object",
+        "properties" : {
+          "availableFrom" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "availableUntil" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "estimatedDelivery" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "isAddon" : {
+            "type" : "boolean"
+          },
+          "isEarlyBird" : {
+            "type" : "boolean"
+          },
+          "isFeatured" : {
+            "type" : "boolean"
+          },
+          "isSecret" : {
+            "type" : "boolean"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/RewardItemBody"
+            }
+          },
+          "limitQuantity" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "price" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "shippingType" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
+      },
+      "RewardResponse" : {
+        "type" : "object",
+        "properties" : {
+          "availableFrom" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "availableUntil" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "claimedQuantity" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "estimatedDelivery" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "isAddon" : {
+            "type" : "boolean"
+          },
+          "isEarlyBird" : {
+            "type" : "boolean"
+          },
+          "isFeatured" : {
+            "type" : "boolean"
+          },
+          "isSecret" : {
+            "type" : "boolean"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/RewardItemBody"
+            }
+          },
+          "limitQuantity" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "price" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "pricingLocked" : {
+            "type" : "boolean"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "remainingQuantity" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "reservedQuantity" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "secretToken" : {
+            "type" : "string"
+          },
+          "shippingRules" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ShippingRuleBody"
+            }
+          },
+          "shippingType" : {
+            "type" : "string"
+          },
+          "sortOrder" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "RewardTierCountBody" : {
+        "type" : "object",
+        "properties" : {
+          "backerCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "rewardTierId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }
+      },
+      "SessionRecord" : {
+        "type" : "object",
+        "properties" : {
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "deviceLabel" : {
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "ipAddress" : {
+            "type" : "string"
+          },
+          "lastSeenAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "revokedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "revokedReason" : {
+            "type" : "string"
+          },
+          "userAgent" : {
+            "type" : "string"
+          }
+        }
+      },
+      "SessionSummary" : {
+        "type" : "object",
+        "properties" : {
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "current" : {
+            "type" : "boolean"
+          },
+          "deviceLabel" : {
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "ipAddress" : {
+            "type" : "string"
+          },
+          "lastSeenAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "userAgent" : {
+            "type" : "string"
+          }
+        }
+      },
+      "SetWeight" : {
+        "type" : "object",
+        "properties" : {
+          "active" : {
+            "type" : "boolean"
+          },
+          "note" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "weight" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "active", "note", "weight" ]
+      },
+      "ShippingRuleBody" : {
+        "type" : "object",
+        "properties" : {
+          "additionalItemAmount" : {
+            "type" : "number"
+          },
+          "amount" : {
+            "type" : "number"
+          },
+          "countryCode" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ShippingRulesRequest" : {
+        "type" : "object",
+        "properties" : {
+          "rules" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ShippingRuleBody"
+            }
+          }
+        }
+      },
+      "SignInRequest" : {
+        "type" : "object",
+        "properties" : {
+          "deviceLabel" : {
+            "type" : "string",
+            "maxLength" : 120,
+            "minLength" : 0
+          },
+          "email" : {
+            "type" : "string",
+            "format" : "email",
+            "maxLength" : 254,
+            "minLength" : 0
+          },
+          "password" : {
+            "type" : "string",
+            "maxLength" : 256,
+            "minLength" : 0
+          },
+          "tokenDelivery" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "email", "password" ]
+      },
+      "Source" : {
+        "type" : "object",
+        "properties" : {
+          "campaign" : {
+            "type" : "string"
+          },
+          "channel" : {
+            "type" : "string"
+          },
+          "pledgeCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "referrerCode" : {
+            "type" : "string"
+          },
+          "share" : {
+            "type" : "number"
+          },
+          "source" : {
+            "type" : "string"
+          },
+          "value" : {
+            "$ref" : "#/components/schemas/Money"
+          }
+        }
+      },
+      "StoryVersionDetail" : {
+        "type" : "object",
+        "properties" : {
+          "authorId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "characters" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "document" : {
+            "$ref" : "#/components/schemas/JsonNode"
+          },
+          "number" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "StoryVersionSummary" : {
+        "type" : "object",
+        "properties" : {
+          "authorId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "characters" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "number" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "SubcategoryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "nameAz" : {
+            "type" : "string"
+          },
+          "nameEn" : {
+            "type" : "string"
+          },
+          "names" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
+          "slug" : {
+            "type" : "string"
+          }
+        }
+      },
+      "SuggestionItem" : {
+        "type" : "object",
+        "properties" : {
+          "kind" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "parentSlug" : {
+            "type" : "string"
+          },
+          "slug" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Suggestions" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SuggestionItem"
+            }
+          }
+        }
+      },
+      "Target" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Taxon" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "slug" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TermResponse" : {
+        "type" : "object",
+        "properties" : {
+          "active" : {
+            "type" : "boolean"
+          },
+          "blockedBy" : {
+            "type" : "string"
+          },
+          "contribution" : {
+            "type" : "number"
+          },
+          "term" : {
+            "type" : "string"
+          },
+          "value" : {
+            "type" : "number"
+          },
+          "weight" : {
+            "type" : "number"
+          }
+        }
+      },
+      "Thread" : {
+        "type" : "object",
+        "properties" : {
+          "nextReplyCursor" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "replies" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CommentResponse"
+            }
+          },
+          "root" : {
+            "$ref" : "#/components/schemas/CommentResponse"
+          }
+        }
+      },
+      "TokenResponse" : {
+        "type" : "object",
+        "properties" : {
+          "accessToken" : {
+            "type" : "string"
+          },
+          "expiresInSeconds" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "refreshToken" : {
+            "type" : "string"
+          },
+          "tokenType" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TwoFactorEnrolmentResponse" : {
+        "type" : "object",
+        "properties" : {
+          "algorithm" : {
+            "type" : "string"
+          },
+          "digits" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "otpauthUri" : {
+            "type" : "string"
+          },
+          "periodSeconds" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "secret" : {
+            "type" : "string"
+          }
+        }
+      },
+      "UpdateNotificationPreferencesRequest" : {
+        "type" : "object",
+        "properties" : {
+          "preferences" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Change"
+            }
+          }
+        },
+        "required" : [ "preferences" ]
+      },
+      "ValueCount" : {
+        "type" : "object",
+        "properties" : {
+          "count" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "value" : {
+            "type" : "string"
+          }
+        }
+      },
+      "VerificationRecord" : {
+        "type" : "object",
+        "properties" : {
+          "consumedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "purpose" : {
+            "type" : "string"
+          }
+        }
+      },
+      "VerifyEmailRequest" : {
+        "type" : "object",
+        "properties" : {
+          "token" : {
+            "type" : "string",
+            "maxLength" : 256,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "token" ]
+      },
+      "VerifyTwoFactorRequest" : {
+        "type" : "object",
+        "properties" : {
+          "challenge" : {
+            "type" : "string",
+            "maxLength" : 128,
+            "minLength" : 0
+          },
+          "code" : {
+            "type" : "string",
+            "maxLength" : 16,
+            "minLength" : 0
+          },
+          "recoveryCode" : {
+            "type" : "string",
+            "maxLength" : 40,
+            "minLength" : 0
+          },
+          "tokenDelivery" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "challenge" ]
+      },
+      "WeightResponse" : {
+        "type" : "object",
+        "properties" : {
+          "active" : {
+            "type" : "boolean"
+          },
+          "blockedBy" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "term" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "weight" : {
+            "type" : "number"
+          }
+        }
+      },
+      "WeightsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "terms" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/WeightResponse"
+            }
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      }
+    },
+    "securitySchemes" : {
+      "bearerAuth" : {
+        "bearerFormat" : "JWT",
+        "description" : "A fifteen-minute access token from POST /v1/auth/login or /v1/auth/refresh. The refresh token is not sent this way: it lives in an httpOnly cookie on web and in secure storage on mobile.",
+        "scheme" : "bearer",
+        "type" : "http"
+      }
+    }
+  }
+}
