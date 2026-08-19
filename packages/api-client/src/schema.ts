@@ -116,6 +116,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/email-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["emailTemplateTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/email-templates/{type}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["emailTemplatePreview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/email-templates/{type}/test-send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["emailTemplateTestSend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/moderation/reports": {
         parameters: {
             query?: never;
@@ -1618,6 +1666,9 @@ export interface components {
             rewardTierId?: string;
             shippingCountry?: string;
         };
+        EmailTemplateListResponse: {
+            templates?: components["schemas"]["Template"][];
+        };
         EnableTwoFactorRequest: {
             password: string;
         };
@@ -2281,6 +2332,11 @@ export interface components {
             name?: string;
             slug?: string;
         };
+        Template: {
+            category?: string;
+            mandatory?: boolean;
+            type?: string;
+        };
         TermResponse: {
             active?: boolean;
             blockedBy?: string;
@@ -2395,6 +2451,7 @@ export type SchemaDeleteAccountRequest = components['schemas']['DeleteAccountReq
 export type SchemaDeletionScheduledResponse = components['schemas']['DeletionScheduledResponse'];
 export type SchemaDisableTwoFactorRequest = components['schemas']['DisableTwoFactorRequest'];
 export type SchemaDraftPledgeRequest = components['schemas']['DraftPledgeRequest'];
+export type SchemaEmailTemplateListResponse = components['schemas']['EmailTemplateListResponse'];
 export type SchemaEnableTwoFactorRequest = components['schemas']['EnableTwoFactorRequest'];
 export type SchemaExplanationResponse = components['schemas']['ExplanationResponse'];
 export type SchemaFacets = components['schemas']['Facets'];
@@ -2468,6 +2525,7 @@ export type SchemaSuggestionItem = components['schemas']['SuggestionItem'];
 export type SchemaSuggestions = components['schemas']['Suggestions'];
 export type SchemaTarget = components['schemas']['Target'];
 export type SchemaTaxon = components['schemas']['Taxon'];
+export type SchemaTemplate = components['schemas']['Template'];
 export type SchemaTermResponse = components['schemas']['TermResponse'];
 export type SchemaThread = components['schemas']['Thread'];
 export type SchemaTokenResponse = components['schemas']['TokenResponse'];
@@ -2701,6 +2759,71 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AdminCollectionResponse"];
                 };
+            };
+        };
+    };
+    emailTemplateTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailTemplateListResponse"];
+                };
+            };
+        };
+    };
+    emailTemplatePreview: {
+        parameters: {
+            query?: {
+                format?: string;
+            };
+            header?: never;
+            path: {
+                type: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The rendered email, as the body it is sent with. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                    "text/plain": string;
+                };
+            };
+        };
+    };
+    emailTemplateTestSend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
