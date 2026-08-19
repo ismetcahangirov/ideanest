@@ -10,8 +10,79 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-/** Notification rows, by the four questions anything asks of them. */
+/** Notification rows, by the questions anything asks of them. */
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
+
+    /**
+     * One recipient and one channel with held notifications due to be combined.
+     *
+     * <p><strong>Two queries rather than one, and this is the first.</strong> A digest is a
+     * grouping, so the claim cannot be a single {@code FOR UPDATE SKIP LOCKED} statement the
+     * way {@link #claimNext} is: an aggregate and a row lock do not compose — PostgreSQL
+     * refuses {@code FOR UPDATE} with {@code GROUP BY} — so what is asked here is which group
+     * to do next, and {@link #claimHeld} locks it. The window between the two is what
+     * {@code JobLease} closes; {@code DigestAssembly} says so at length.
+     *
+     * <p>Ordered by the oldest thing waiting, so that the person who has been waiting longest
+     * is served first and nothing starves behind a busier recipient.
+     *
+     * <p>{@code notifications_held_idx} is
+     * {@code (recipient_id, channel, occurred_at) WHERE state = 'HELD'} — written by V26 for
+     * exactly this query, before there was one.
+     *
+     * @param cutoff the end of the most recently closed digest period. A row from after it
+     *     belongs to the period in progress — {@code DigestWindow} argues the bound
+     * @param now the instant eligibility is judged against, which excludes a group whose
+     *     rows are backing off from a refused digest
+     */
+    @Query(
+            """
+            SELECT new az.ideanest.notification.infrastructure.HeldGroup(n.recipientId, n.channel)
+              FROM Notification n
+             WHERE n.state = az.ideanest.notification.domain.NotificationState.HELD
+               AND n.occurredAt < :cutoff
+               AND n.nextAttemptAt <= :now
+             GROUP BY n.recipientId, n.channel
+             ORDER BY min(n.occurredAt), n.recipientId, n.channel
+            """)
+    List<HeldGroup> heldGroups(@Param("cutoff") Instant cutoff, @Param("now") Instant now, Pageable page);
+
+    /**
+     * The held notifications of one group, locked so that no other pass can take them.
+     *
+     * <p>{@code SKIP LOCKED} rather than a wait, as everywhere else in this service. Unlike
+     * {@link #claimNext} it is not what makes the claim correct — a partial group would
+     * produce a digest missing some of its members — and what makes it correct is the job's
+     * lease. It is here so that a pass which somehow overlaps another returns a short digest
+     * and leaves the rest {@code HELD} for the next one, rather than blocking on a row until
+     * its own lease expires.
+     *
+     * <p>Oldest first, so a rendered digest reads in the order the things happened.
+     *
+     * @param limit the bound on one message. A digest of ten thousand items is not a message —
+     *     {@code NotificationProperties.Digest} argues the number and what happens to the
+     *     remainder
+     */
+    @Query(
+            value =
+                    """
+                    SELECT n.* FROM notifications n
+                     WHERE n.state = 'HELD'
+                       AND n.recipient_id = :recipientId
+                       AND n.channel = :channel
+                       AND n.occurred_at < :cutoff
+                       AND n.next_attempt_at <= :now
+                     ORDER BY n.occurred_at, n.id
+                     LIMIT :limit
+                     FOR UPDATE OF n SKIP LOCKED
+                    """,
+            nativeQuery = true)
+    List<Notification> claimHeld(
+            @Param("recipientId") UUID recipientId,
+            @Param("channel") String channel,
+            @Param("cutoff") Instant cutoff,
+            @Param("now") Instant now,
+            @Param("limit") int limit);
 
     /**
      * Has this outbox event already been fanned out?
@@ -49,8 +120,11 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
      * out of order is a mild annoyance rather than a corruption, so the queue is ordered
      * by eligibility and nothing blocks behind anything.
      *
-     * <p>{@code HELD} is not a candidate. That is the point of the state: a digest waits
-     * for a combining job, and there is not one yet.
+     * <p><strong>{@code HELD} is not a candidate, and that is still right now that something
+     * drains it.</strong> The point of the state is that a digest is not sent one row at a
+     * time; {@link #heldGroups} and {@link #claimHeld} are the pair {@code notification-digest}
+     * claims by, and the two queues never contend for a row because a row is in exactly one
+     * state.
      *
      * <p>Native rather than JPQL because JPQL cannot express {@code SKIP LOCKED} at all.
      */

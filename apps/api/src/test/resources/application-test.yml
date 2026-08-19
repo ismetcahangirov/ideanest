@@ -163,7 +163,26 @@ ideanest:
       retry-backoff: PT5S
       max-backoff: PT10M
       max-attempts: 8
-
+    digest:
+      # Disabled, exactly as the delivery schedule above is and for the identical
+      # reason: this one would otherwise fire on the hour and combine the very rows
+      # a test is in the middle of asserting are still HELD, on another thread. The
+      # suite drives NotificationDigestJob and DigestAssembly directly with the
+      # instant it wants to judge the digest period against.
+      schedule: "-"
+      # UTC here rather than the production Asia/Baku, so that a test computing an
+      # expected digest boundary does it in the zone its own instants are in. What
+      # the zone is for is argued in DigestWindow; that argument is about a real
+      # deployment sending mail to a real person, and a suite has neither.
+      zone: "UTC"
+      at-hour: 8
+      # Deliberately small, so that the bound on a pass is observable at all —
+      # the same reason the delivery batch size above is two.
+      batch-size: 2
+      # Small for the same reason: a test proving that a digest is bounded and that
+      # the remainder stays held and due would otherwise need two hundred and one
+      # notifications to see it.
+      max-notifications-per-message: 3
   user:
     # Disabled. `-` is Spring's own value for "do not schedule this". The suite
     # drives AccountAnonymisationJob directly with the instant it wants to test,

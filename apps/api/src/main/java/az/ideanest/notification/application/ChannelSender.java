@@ -62,4 +62,33 @@ public interface ChannelSender {
      *     throwing is how a failure is reported, and it is the only way
      */
     void send(NotificationMessage message);
+
+    /**
+     * Hands a combined message to the channel — §12.2's digest.
+     *
+     * <p><strong>A second method rather than a digest of one, and rather than a default
+     * implementation that loops.</strong> Both alternatives were available and both are
+     * wrong in the same way: a digest is <em>one</em> message about several things, so
+     * sending its members individually is precisely the behaviour the person who chose
+     * digest mode asked not to have, and a port that let an implementation fall back to it
+     * silently would make "digest" a preference the platform appears to honour and does not.
+     * Making it abstract means #86 and #87 cannot ship a transport without deciding what a
+     * digest of their channel looks like.
+     *
+     * <p>The contract is {@link #send(NotificationMessage)}'s, unchanged: returning means
+     * the channel accepted it, throwing means it did not, and the same digest will be handed
+     * over twice if the process dies between the two.
+     * {@link NotificationDigest#id()} is the key that makes that collapsible, and it is
+     * derived from the members rather than being a row identifier — that record explains
+     * what follows from the difference.
+     *
+     * <p><strong>Never called for {@link NotificationChannel#IN_APP}.</strong>
+     * {@code notification_preferences_in_app_does_not_digest} refuses the preference and
+     * {@code notifications_in_app_is_not_held} refuses the row, so an inbox digest cannot be
+     * constructed, let alone sent. {@code InAppChannelSender} implements this by refusing,
+     * which is the honest body for a method that cannot be reached.
+     *
+     * @throws RuntimeException when the channel did not take it
+     */
+    void send(NotificationDigest digest);
 }

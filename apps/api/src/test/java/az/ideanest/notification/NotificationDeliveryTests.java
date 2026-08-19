@@ -3,9 +3,7 @@ package az.ideanest.notification;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import az.ideanest.notification.NotificationProperties;
-import az.ideanest.notification.application.ChannelSender;
 import az.ideanest.notification.application.NotificationEvents.PledgeConfirmed;
-import az.ideanest.notification.application.NotificationMessage;
 import az.ideanest.notification.application.NotificationSender;
 import az.ideanest.notification.domain.NotificationChannel;
 import az.ideanest.shared.money.Money;
@@ -13,12 +11,11 @@ import az.ideanest.shared.outbox.Outbox;
 import az.ideanest.shared.outbox.OutboxRelay;
 import az.ideanest.support.AbstractIntegrationTest;
 import az.ideanest.support.Campaigns;
+import az.ideanest.support.RecordingChannels;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -118,7 +115,7 @@ class NotificationDeliveryTests extends AbstractIntegrationTest {
     @DisplayName("a pass sends what is pending and marks it sent")
     void aPassDrainsTheQueue() {
         confirm();
-        Channels channels = Channels.accepting();
+        RecordingChannels channels = RecordingChannels.accepting();
 
         int sent = drain(channels);
 
@@ -137,7 +134,7 @@ class NotificationDeliveryTests extends AbstractIntegrationTest {
     @DisplayName("a pass sends no more than its batch size, and the next pass takes the rest")
     void aPassIsBounded() {
         confirm();
-        Channels channels = Channels.accepting();
+        RecordingChannels channels = RecordingChannels.accepting();
         int batchSize = properties.delivery().batchSize();
 
         assertThat(sender.sendPending(now, channels.map()))
@@ -165,7 +162,7 @@ class NotificationDeliveryTests extends AbstractIntegrationTest {
     @DisplayName("a sent notification is never sent again, however often the sender runs")
     void aSentNotificationIsNeverSentAgain() {
         confirm();
-        Channels channels = Channels.accepting();
+        RecordingChannels channels = RecordingChannels.accepting();
         drain(channels);
 
         drain(channels);
@@ -189,7 +186,7 @@ class NotificationDeliveryTests extends AbstractIntegrationTest {
     @DisplayName("a refused notification waits for its backoff and then goes exactly once")
     void aRefusedNotificationWaitsForItsBackoffAndThenGoesExactlyOnce() {
         confirm();
-        Channels channels = Channels.refusing(NotificationChannel.EMAIL);
+        RecordingChannels channels = RecordingChannels.refusing(NotificationChannel.EMAIL);
 
         drain(channels);
 
@@ -227,7 +224,7 @@ class NotificationDeliveryTests extends AbstractIntegrationTest {
     @DisplayName("every attempt at a notification carries the same idempotency key")
     void everyAttemptCarriesTheSameIdempotencyKey() {
         confirm();
-        Channels channels = Channels.refusing(NotificationChannel.EMAIL);
+        RecordingChannels channels = RecordingChannels.refusing(NotificationChannel.EMAIL);
 
         drain(channels);
         UUID rowId = idOf(NotificationChannel.EMAIL);
@@ -255,7 +252,7 @@ class NotificationDeliveryTests extends AbstractIntegrationTest {
     @DisplayName("a channel that keeps refusing becomes a dead letter carrying the last error")
     void aChannelThatKeepsRefusingBecomesADeadLetterCarryingTheLastError() {
         confirm();
-        Channels channels = Channels.refusing(NotificationChannel.EMAIL);
+        RecordingChannels channels = RecordingChannels.refusing(NotificationChannel.EMAIL);
 
         Instant at = now;
         for (int attempt = 1; attempt <= properties.delivery().maxAttempts(); attempt++) {
@@ -267,7 +264,7 @@ class NotificationDeliveryTests extends AbstractIntegrationTest {
         assertThat(attemptsOf(NotificationChannel.EMAIL)).isEqualTo(properties.delivery().maxAttempts());
         assertThat(lastErrorOf(NotificationChannel.EMAIL))
                 .as("the dead letter says which channel said no and what it said")
-                .contains(Channels.REFUSAL);
+                .contains(RecordingChannels.REFUSAL);
 
         // And it stops being work. A dead letter that were still claimable would be the
         // retry loop the bound exists to end.
@@ -294,7 +291,7 @@ class NotificationDeliveryTests extends AbstractIntegrationTest {
     }
 
     /** Passes until the queue stops yielding, so that a bounded pass is not a limit here. */
-    private int drain(Channels channels) {
+    private int drain(RecordingChannels channels) {
         int sent = 0;
         for (int pass = 0; pass < PLEDGE_CONFIRMED_CHANNELS; pass++) {
             sent += sender.sendPending(now, channels.map());
@@ -329,89 +326,5 @@ class NotificationDeliveryTests extends AbstractIntegrationTest {
 
     private JdbcTemplate jdbc() {
         return new JdbcTemplate(dataSource);
-    }
-
-    /**
-     * The channels a pass sends to, as a test controls them.
-     *
-     * <p>Passed to {@link NotificationSender#sendPending(Instant, Map)} rather than
-     * replacing the {@code ChannelSender} beans, for the reason
-     * {@code NotificationDispatch} gives: replacing a bean replaces it for the whole
-     * suite and splits the context cache, which here would mean a second PostgreSQL
-     * container to prove something about backoff.
-     */
-    private static final class Channels {
-
-        /** What a refusing channel says, so that the dead letter can be checked for it. */
-        static final String REFUSAL = "the transport is unreachable";
-
-        private final Map<NotificationChannel, ChannelSender> map =
-                new EnumMap<>(NotificationChannel.class);
-        private final List<UUID> sent = new ArrayList<>();
-        private final List<Attempt> attempts = new ArrayList<>();
-        private NotificationChannel refused;
-
-        private Channels(NotificationChannel refused) {
-            this.refused = refused;
-            for (NotificationChannel channel : NotificationChannel.values()) {
-                map.put(channel, new Recording(channel));
-            }
-        }
-
-        static Channels accepting() {
-            return new Channels(null);
-        }
-
-        static Channels refusing(NotificationChannel channel) {
-            return new Channels(channel);
-        }
-
-        /** Stops refusing, which is what a transport coming back up looks like. */
-        void accept() {
-            refused = null;
-        }
-
-        Map<NotificationChannel, ChannelSender> map() {
-            return map;
-        }
-
-        /** The notifications a channel accepted, in order. */
-        List<UUID> sent() {
-            return List.copyOf(sent);
-        }
-
-        /** Every message handed to a channel, accepted or not. */
-        List<UUID> attemptedIds(NotificationChannel channel) {
-            return attempts.stream()
-                    .filter(attempt -> attempt.channel() == channel)
-                    .map(Attempt::id)
-                    .toList();
-        }
-
-        private record Attempt(NotificationChannel channel, UUID id) {
-        }
-
-        private final class Recording implements ChannelSender {
-
-            private final NotificationChannel channel;
-
-            private Recording(NotificationChannel channel) {
-                this.channel = channel;
-            }
-
-            @Override
-            public NotificationChannel channel() {
-                return channel;
-            }
-
-            @Override
-            public void send(NotificationMessage message) {
-                attempts.add(new Attempt(channel, message.id()));
-                if (channel == refused) {
-                    throw new IllegalStateException(REFUSAL);
-                }
-                sent.add(message.id());
-            }
-        }
     }
 }

@@ -1,6 +1,8 @@
 package az.ideanest.notification;
 
+import az.ideanest.notification.domain.DigestWindow;
 import java.time.Duration;
+import java.time.ZoneId;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -13,17 +15,19 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * has to be the one somebody argued for rather than a zero left behind by binding.
  *
  * @param delivery the outbound queue — the second half of §12.2's diagram
+ * @param digest §12.2's combining job: when a held notification stops being held
  * @param inbox §10.2's {@code GET /v1/me/notifications}
  * @param rateLimit §17.3's shape applied to the one write this module exposes
  */
 @ConfigurationProperties(prefix = "ideanest.notification")
-public record NotificationProperties(Delivery delivery, Inbox inbox, RateLimit rateLimit) {
+public record NotificationProperties(Delivery delivery, Digest digest, Inbox inbox, RateLimit rateLimit) {
 
     public NotificationProperties {
         // A nested record binds to null when its whole block is absent, and a null here
         // would be a NullPointerException on the first notification rather than a
         // configuration error at start-up.
         delivery = delivery == null ? Delivery.defaults() : delivery;
+        digest = digest == null ? Digest.defaults() : digest;
         inbox = inbox == null ? Inbox.defaults() : inbox;
         rateLimit = rateLimit == null ? RateLimit.defaults() : rateLimit;
     }
@@ -118,6 +122,96 @@ public record NotificationProperties(Delivery delivery, Inbox inbox, RateLimit r
             }
             Duration backoff = retryBackoff.multipliedBy(1L << (attempt - 1));
             return backoff.compareTo(maxBackoff) > 0 ? maxBackoff : backoff;
+        }
+    }
+
+    /**
+     * The combining job — §12.2's "notifications accumulate and a scheduled job combines them
+     * into a single message", which until #244 was the one part of that sentence with nothing
+     * behind it.
+     *
+     * @param schedule how often the platform <em>asks</em> whether a digest is due. Hourly,
+     *     and that is not the cadence of the digest: {@code DigestWindow} sends everything
+     *     held from before the most recently closed digest hour, so the cron decides how
+     *     promptly a due digest goes out and never whether it goes out at all. A tick missed
+     *     at the digest hour is caught by the next one. A property rather than a constant so
+     *     that the test profile can set it to {@code -}, Spring's own value for "do not
+     *     schedule this" — a combining job firing in the background of a suite sends the very
+     *     rows a test is about to assert are held
+     * @param zone whose clock {@link #atHour} is read on. {@code RollupWindow} makes the
+     *     argument for a zone rather than UTC and every word of it applies: Baku is UTC+4, so
+     *     a fixed UTC hour is a different local hour, and the entire point of choosing an hour
+     *     is that it is a reasonable time of day for the person receiving the mail. A
+     *     {@code ZoneId} rather than an offset, so that a zone which observes daylight saving
+     *     keeps the local hour rather than drifting an hour twice a year
+     * @param atHour the local hour a digest goes out at. Eight in the morning: late enough
+     *     that a phone is not waking somebody, early enough that a campaign closing today is
+     *     still something they can act on. A product decision, stated here and in
+     *     {@code DigestWindow} rather than left in a cron expression nobody reads
+     * @param batchSize how many (recipient, channel) groups one pass may combine. A bound on
+     *     the pass, not a target — the same argument {@link Delivery#batchSize} makes: a
+     *     backlog built up while the job was failing must not become one pass that overlaps
+     *     its own next tick and holds a lease past its lease time
+     * @param maxNotificationsPerMessage how many notifications may go into one digest.
+     *     <strong>The remainder is not dropped and is not silently deferred</strong>: it stays
+     *     {@code HELD}, remains due — its period has already closed — and the next pass sends
+     *     it as a further message, which {@code DigestAssembly} logs. Two hundred is well past
+     *     any digest a person reads and well short of a message a transport would refuse for
+     *     size; the point of the bound is that one recipient cannot make one message unbounded
+     */
+    public record Digest(String schedule, ZoneId zone, int atHour, int batchSize, int maxNotificationsPerMessage) {
+
+        /** Hourly, on the hour. See {@link #schedule} for why this is not the cadence. */
+        private static final String DEFAULT_SCHEDULE = "0 0 * * * *";
+
+        /** The platform's zone, the same one {@code AnalyticsAggregationProperties} defaults to. */
+        private static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Baku");
+
+        private static final int DEFAULT_AT_HOUR = 8;
+
+        private static final int DEFAULT_BATCH_SIZE = 100;
+
+        private static final int DEFAULT_MAX_NOTIFICATIONS_PER_MESSAGE = 200;
+
+        private static final int LATEST_HOUR = 23;
+
+        static Digest defaults() {
+            return new Digest(
+                    DEFAULT_SCHEDULE,
+                    DEFAULT_ZONE,
+                    DEFAULT_AT_HOUR,
+                    DEFAULT_BATCH_SIZE,
+                    DEFAULT_MAX_NOTIFICATIONS_PER_MESSAGE);
+        }
+
+        public Digest {
+            schedule = schedule == null || schedule.isBlank() ? DEFAULT_SCHEDULE : schedule;
+            zone = zone == null ? DEFAULT_ZONE : zone;
+            batchSize = batchSize == 0 ? DEFAULT_BATCH_SIZE : batchSize;
+            maxNotificationsPerMessage = maxNotificationsPerMessage == 0
+                    ? DEFAULT_MAX_NOTIFICATIONS_PER_MESSAGE
+                    : maxNotificationsPerMessage;
+
+            // Not defaulted from zero, unlike every number above it: midnight is a legitimate
+            // digest hour, so "absent" and "zero" cannot be told apart here and treating zero
+            // as absent would make 00:00 unconfigurable. An absent block is handled by
+            // Digest.defaults() instead, and a partial block that omits this one gets
+            // midnight — which is a stated hour rather than a silent fallback.
+            if (atHour < 0 || atHour > LATEST_HOUR) {
+                throw new IllegalArgumentException(
+                        "A digest goes out at an hour of the day, and " + atHour + " is not one");
+            }
+            if (batchSize < 1) {
+                throw new IllegalArgumentException("A combining pass combines at least one digest");
+            }
+            if (maxNotificationsPerMessage < 1) {
+                throw new IllegalArgumentException("A digest holds at least one notification");
+            }
+        }
+
+        /** The decision {@code DigestWindow} makes, as the value the job asks. */
+        public DigestWindow window() {
+            return DigestWindow.at(zone, atHour);
         }
     }
 
