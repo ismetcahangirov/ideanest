@@ -59,6 +59,7 @@ the browser half of the auth flow work at all.
 | `/projects/[id]/edit/story` | Rich text story, risks, and version history (#35) |
 | `/projects/[id]/edit/prelaunch` | Open the pre-launch page, share the link, see who is waiting (#39) |
 | `/projects/[id]/prelaunch` | **Public.** The pre-launch page itself, and the reminder signup (#39) |
+| `/projects/[id]/[projectSlug]` | **Public.** The campaign page, server-rendered — §10.2's `/projects/{creatorSlug}/{projectSlug}` (#119) |
 | `/projects/[id]/back` | Reward selection, add-ons, destination, and confirmation (#54) |
 | `/discover` | **Public.** The filter rail, sort, chips, and the cursor-paginated feed (#45) |
 | `/robots.txt` | **Public.** Crawl directives, and the pointer to the sitemap index (#122) |
@@ -66,10 +67,17 @@ the browser half of the auth flow work at all.
 | `/sitemap/[segment].xml` | **Public.** One sitemap segment — `pages`, `discovery`, `projects-N` (#122) |
 | `/api/rum` | **Public**, unauthenticated. The Core Web Vitals collection endpoint (#128) |
 
-There is no route at `/` yet; server-rendered project and discovery pages are
-#119. The root segment still carries the site's default metadata and its
-`opengraph-image`, both of which every route below inherits, and both of which
-work without a page of their own.
+There is no route at `/` yet. The root segment still carries the site's default
+metadata and its `opengraph-image`, both of which every route below inherits, and
+both of which work without a page of their own.
+
+**The first segment of the campaign page is a creator's slug, and the folder is
+called `[id]` anyway.** Next allows exactly one slug name per dynamic level, and
+`app/projects/[id]/` already carries the creator's own routes, where the segment
+really is a campaign identifier; a sibling `[creatorSlug]` is a build error. The
+URL is correct and the folder name is a framework artefact — see the page's own
+comment. Renaming it belongs with whatever moves the creator's routes out from
+under `/projects`.
 
 Every route above declares its metadata through `src/lib/seo/metadata.ts` — see
 [Metadata and social previews](#metadata-and-social-previews).
@@ -82,6 +90,77 @@ collect, who have not registered; for discovery it is that a visitor who has not
 registered is the entire audience — requiring a token would mean the front door
 could not render. Both read through `publicFetch`, which sends a bearer token
 only when one is already in memory and never fetches one.
+
+## Server rendering
+
+`docs/architecture.md` §4.4 and issue #119. The requirement is not "renders on
+the server" — every route here already did — but that **the content is in the
+initial HTML rather than assembled by the client**. Two routes were failing it,
+in different ways.
+
+| Route | Before | Now |
+|---|---|---|
+| `/projects/[id]/[projectSlug]` | Did not exist. Every campaign link in discovery pointed at a 404 | A Server Component with no `'use client'` beneath it. Title, summary, creator, funding figures, story, risks and reward tiers are all in the first response |
+| `/discover` | Shipped an empty grid and fetched page one from the browser | The first page is fetched on the server for whatever filters the URL names, and handed to the view |
+
+### How the two reads work
+
+`src/lib/api/server.ts` is the server-side counterpart of `lib/api/client.ts`,
+and the split is not cosmetic. The client module issues a **relative** `/v1`
+request, which is same-origin in a browser because `next.config.mjs` rewrites it
+— the only arrangement in which a `SameSite=Strict` refresh cookie travels — and
+which throws `Failed to parse URL` in a Server Component, where there is no
+document, no origin, and no rewrite. Server reads therefore resolve against
+`IDEANEST_API_ORIGIN` directly, exactly as the sitemap already did.
+
+Everything there is **anonymous**, and that is a decision. A server render that
+varied by session could not be cached by anything, shared by anybody, or served
+to the crawler the work exists for. A signed-in visitor's personal additions —
+whether they have saved a campaign, whether they have backed it — belong to a
+client component that fetches them after hydration, because those are the parts
+that must not be in a shared cache.
+
+**A refused read is `null` and never a thrown page.** The campaign page turns
+`null` into a 404; discovery passes nothing and the view fetches page one itself,
+which is exactly what it did before. A visitor whose first request lands during a
+restart sees the skeleton and then the feed rather than an error. A *bug* —
+a malformed base URL, say — is allowed to surface, because swallowing it would
+turn a misconfigured deployment into a site where every campaign has quietly
+stopped existing.
+
+### The seeded feed
+
+`useDiscoveryFeed` takes an optional first page carrying the filter key it was
+fetched for. It is adopted only while it answers the question being asked, so a
+page fetched for `?status=live` is never shown under `?category=games`; when the
+key matches, the browser does not request page one again. Changing a filter is
+`router.push` to the same route with a different query, which re-runs the Server
+Component and produces a fresh seed for the new key.
+
+**`/discover` is dynamic rather than static as a result.** That is the direct
+cost of rendering a filtered feed on the server, and it is the trade #119 asks
+for: a static page with an empty grid has nothing in its HTML. The single
+canonical URL is unaffected and stands on its own argument — the filters select a
+subset of one corpus, and indexing every combination would spend the whole site's
+crawl budget on permutations of one list.
+
+### Typed against the published contract
+
+Both reads go through `@ideanest/api-client`, generated from
+`apps/api/openapi.json`. Every property on a generated response type is optional
+— springdoc marks a field required only when it can prove it — so
+`src/lib/projects/publicPage.ts` narrows once, in one place, and answers `null`
+for a response that is not a campaign rather than letting a component print
+`undefined` into somebody's page.
+
+### `@ideanest/ui/server`
+
+A Server Component may not import the root barrel: several of its members consume
+`createContext`, and `next build` refuses the route outright, naming a component
+the page never used. The stateless members are re-exported from
+`@ideanest/ui/server`, and `packages/ui/src/server.test.ts` walks everything
+reachable from it and fails if any of it acquires a hook. The rule used to be a
+comment in `app/discover/page.tsx` asking people not to; it is now a boundary.
 
 ## Metadata and social previews
 
@@ -201,11 +280,10 @@ heard of is treated as **not public** — it fails closed.
 
 **One predicate, both surfaces.** `isIndexableProjectState` is what the sitemap
 filters on, and `projectPageRobots` is the same decision shaped as a `robots`
-meta directive for the project page itself. Nothing renders the second yet —
-#119 owns the page and #120 owns its metadata — and it lives here so that the
-day either lands, the page and the sitemap cannot disagree. A page that says
-`noindex` while the sitemap advertises it is a page a crawler is invited to and
-then turned away from.
+meta directive for the campaign page, which renders it since #119. Both read the
+same table, so a page that says `noindex` while the sitemap advertises it is not
+a state this application can reach — and that state is a crawler being invited to
+a page and then turned away from it.
 
 `follow` stays true when `index` is false: a withdrawn campaign still links to
 its creator and its category, and those pages are indexable.
@@ -279,17 +357,17 @@ is allowed and is in the sitemap.
 
 ### Named gaps
 
-- **The URLs the sitemap emits for `/` and `/projects/{creatorSlug}/{projectSlug}`
-  do not resolve yet.** Neither route exists in this application; both are #119.
-  The sitemap encodes the platform's public URL contract (§4.4, §10.2) rather
-  than an inventory of the routes that happen to be built, because a sitemap that
-  has to be rewritten by whoever ships the page is one that gets shipped without
-  it. Until #119 lands, those entries point at 404s.
+- **The sitemap still emits `/`, which does not resolve.** The campaign URLs it
+  emits do, since #119. The sitemap encodes the platform's public URL contract
+  (§4.4, §10.2) rather than an inventory of the routes that happen to be built,
+  because a sitemap that has to be rewritten by whoever ships the page is one
+  that gets shipped without it — which is exactly why the campaign entries
+  needed no change when the page landed.
 - **No category landing pages.** §4.3's fifteen categories and hundred
   subcategories would make good landing pages, but the only URL reaching one is
   `/discover?category=games`, which `Disallow: /discover?` blocks — and a sitemap
   must never advertise a URL robots.txt blocks. A path-based category route is
-  what makes them indexable, and it belongs with #119.
+  what makes them indexable, and it is still to be built.
 - **The campaign list is walked, not counted.** There is no endpoint that returns
   a count or a bare list of public project URLs, so the sitemap pages through
   `GET /v1/discover` at `limit=100` — bounded at 500 pages, or 50,000 campaigns —
