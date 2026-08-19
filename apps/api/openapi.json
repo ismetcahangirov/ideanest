@@ -2363,6 +2363,33 @@
         "tags" : [ "project-controller" ]
       }
     },
+    "/v1/projects/{id}/dashboard" : {
+      "get" : {
+        "operationId" : "dashboardDashboard",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DashboardResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "dashboard-controller" ]
+      }
+    },
     "/v1/projects/{id}/edit" : {
       "get" : {
         "operationId" : "projectForEdit",
@@ -4497,6 +4524,58 @@
             "type" : "string"
           },
           "slug" : {
+            "type" : "string"
+          }
+        }
+      },
+      "DashboardResponse" : {
+        "type" : "object",
+        "properties" : {
+          "backersCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "currency" : {
+            "type" : "string"
+          },
+          "deadline" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "goal" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "goalReached" : {
+            "type" : "boolean"
+          },
+          "launchedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "outcome" : {
+            "$ref" : "#/components/schemas/Outcome"
+          },
+          "percentFunded" : {
+            "type" : "number"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "raised" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "serverTime" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "title" : {
             "type" : "string"
           }
         }

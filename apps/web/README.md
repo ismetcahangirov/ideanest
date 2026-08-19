@@ -61,6 +61,7 @@ the browser half of the auth flow work at all.
 | `/projects/[id]/prelaunch` | **Public.** The pre-launch page itself, and the reminder signup (#39) |
 | `/projects/[id]/[projectSlug]` | **Public.** The campaign page, server-rendered — §10.2's `/projects/{creatorSlug}/{projectSlug}` (#119) |
 | `/projects/[id]/back` | Reward selection, add-ons, destination, and confirmation (#54) |
+| `/projects/[id]/dashboard` | The creator dashboard shell and its overview panel -- CD-01's live totals (#93) |
 | `/discover` | **Public.** The filter rail, sort, chips, and the cursor-paginated feed (#45) |
 | `/robots.txt` | **Public.** Crawl directives, and the pointer to the sitemap index (#122) |
 | `/sitemap_index.xml` | **Public.** The index over the sitemap segments (#122) |
@@ -127,6 +128,21 @@ restart sees the skeleton and then the feed rather than an error. A *bug* —
 a malformed base URL, say — is allowed to surface, because swallowing it would
 turn a misconfigured deployment into a site where every campaign has quietly
 stopped existing.
+
+### What is deliberately not server-rendered
+
+The creator dashboard (#93). It is one creator's view of their own money behind
+a bearer token, and the service answers it `no-store` — none of the three
+reasons above applies to it. `lib/api/server.ts` sends no token by design, so
+there is nothing for a Server Component to read, and a render that varied by
+session is exactly what that module refuses to do. The panel fetches after
+hydration, like the moderation queue, and its loading state is honest: those
+figures move while you are looking at them.
+
+Reading this table as "server rendering is better" would be the wrong lesson.
+The rule is that content a stranger and a crawler need belongs in the first
+byte; content only one signed-in person may see does not, and putting it there
+costs the cacheability that made the rule worth having.
 
 ### The seeded feed
 

@@ -916,6 +916,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{id}/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["dashboardDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{id}/edit": {
         parameters: {
             query?: never;
@@ -1628,6 +1644,27 @@ export interface components {
             avatarUrl?: string;
             name?: string;
             slug?: string;
+        };
+        DashboardResponse: {
+            /** Format: int32 */
+            backersCount?: number;
+            currency?: string;
+            /** Format: date-time */
+            deadline?: string;
+            goal?: components["schemas"]["Money"];
+            goalReached?: boolean;
+            /** Format: date-time */
+            launchedAt?: string;
+            outcome?: components["schemas"]["Outcome"];
+            percentFunded?: number;
+            /** Format: uuid */
+            projectId?: string;
+            raised?: components["schemas"]["Money"];
+            /** Format: date-time */
+            serverTime?: string;
+            slug?: string;
+            state?: string;
+            title?: string;
         };
         Day: {
             amount?: components["schemas"]["Money"];
@@ -2446,6 +2483,7 @@ export type SchemaCreateItemRequest = components['schemas']['CreateItemRequest']
 export type SchemaCreateProjectRequest = components['schemas']['CreateProjectRequest'];
 export type SchemaCreateRewardRequest = components['schemas']['CreateRewardRequest'];
 export type SchemaCreator = components['schemas']['Creator'];
+export type SchemaDashboardResponse = components['schemas']['DashboardResponse'];
 export type SchemaDay = components['schemas']['Day'];
 export type SchemaDeleteAccountRequest = components['schemas']['DeleteAccountRequest'];
 export type SchemaDeletionScheduledResponse = components['schemas']['DeletionScheduledResponse'];
@@ -4153,6 +4191,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectChecklist"];
+                };
+            };
+        };
+    };
+    dashboardDashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardResponse"];
                 };
             };
         };

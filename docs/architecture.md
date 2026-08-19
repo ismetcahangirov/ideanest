@@ -682,7 +682,7 @@ moderation outcome, launch (scheduled or immediate).
 
 | # | Capability |
 |---|---|
-| CD-01 | Live totals: raised, backers, completion, time remaining |
+| CD-01 | Live totals: raised, backers, completion, time remaining. Built (#93). Read from `projects` at the moment of the request, which is why it is not folded into CD-02's endpoint — that one is as fresh as #95's last rollup, and a screen mixing them would show a total from this second beside a chart that stopped at midnight. **"Time remaining" crosses as `deadline` and `serverTime` rather than as a countdown**: a remainder computed on the server is wrong the moment it is sent and grows more wrong for as long as the page stays open, so the client measures its own clock's offset once and counts down against it. Completion is rounded **down** and is not capped — a campaign at 99.99% has not reached its goal, and one at 240% should say so |
 | CD-02 | Pledge trend over time |
 | CD-03 | **Referrer attribution** — top sources with pledge count, value, and share. Built (#94, §7.2). The rule is **last non-direct touch inside a thirty-day window**: a visit carrying a source is recorded against an opaque visitor token, and a confirmed pledge belongs to the most recent such visit that was not direct, ignoring any past its window and any recorded after the pledge. A pledge with none is reported as `DIRECT` rather than left out, so a share is a share of the campaign and not of the part that could be explained. Nothing in the report names a backer: `referral_attributions` has nowhere to put one |
 | CD-04 | Device split per source |
@@ -2518,7 +2518,7 @@ POST   /v1/payment-methods/setup/{sessionId}/resolve
 DELETE /v1/payment-methods/{id}
 
 # Dashboard
-GET    /v1/projects/{id}/dashboard
+GET    /v1/projects/{id}/dashboard        # CD-01 (#93); VIEW_FINANCES, no-store
 GET    /v1/projects/{id}/analytics
 GET    /v1/projects/{id}/referrers
 POST   /v1/projects/{id}/referral-visits     # public; the other half of CD-03
