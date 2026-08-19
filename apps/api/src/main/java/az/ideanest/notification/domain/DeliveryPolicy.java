@@ -45,12 +45,29 @@ public final class DeliveryPolicy {
      * off, the cost is a backer who never finds out their payment failed, which is a
      * pledge lost for a reason nobody can see.
      *
-     * <p><strong>Never {@link DeliveryMode#DIGEST}.</strong> Nothing drains a held
-     * notification yet — see that constant — so defaulting anybody to it would default
-     * them to silence.
+     * <p><strong>Never {@link DeliveryMode#DIGEST}.</strong> Until #244 the reason was that
+     * nothing drained a held notification, so defaulting anybody to it would have defaulted
+     * them to silence. That is fixed and the answer does not change: everything in §4.10 is
+     * transactional, and a payment refused a day ago is a pledge already lost. A digest is a
+     * reasonable thing to choose and an unreasonable thing to be given.
      */
     public static DeliveryMode defaultFor(NotificationType type, NotificationChannel channel) {
         Objects.requireNonNull(type, "A default is for some kind of notification");
+        return defaultFor(type.category(), channel);
+    }
+
+    /**
+     * The same default, asked about a category rather than a type.
+     *
+     * <p>A preference is stored per (category, channel) — §4.10's last line — so this is
+     * the question the settings page asks, and the type overload above is the question the
+     * fan-out asks. Both must give the same answer, which is why one delegates to the
+     * other rather than each holding a copy of it: a settings page showing a switch on
+     * while the fan-out reads it as off is the worst possible disagreement, because
+     * everything looks right and nothing arrives.
+     */
+    public static DeliveryMode defaultFor(NotificationCategory category, NotificationChannel channel) {
+        Objects.requireNonNull(category, "A default is for some category");
         Objects.requireNonNull(channel, "A default is for some channel");
         return DeliveryMode.IMMEDIATE;
     }
@@ -88,11 +105,37 @@ public final class DeliveryPolicy {
         if (!type.supports(channel)) {
             return DeliveryMode.OFF;
         }
-        if (type.category().isMandatory()) {
+        return resolveFor(type.category(), channel, stored);
+    }
+
+    /**
+     * The same resolution, asked about a category rather than a type — rules two to four.
+     *
+     * <p>This is what {@code GET /v1/me/notification-preferences} shows and what
+     * {@code PATCH} answers with, because a preference is stored per (category, channel)
+     * and a settings page has no type to ask about. The first of {@link #resolve}'s four
+     * rules is deliberately not here: "a channel the type does not have" is a statement
+     * about one row of §4.10, and a category has a channel when any of its types does —
+     * {@code NotificationType.channelsOf} is that union, and it is what decides which
+     * switches the page has at all.
+     *
+     * <p><strong>The same three rules, applied by the same code, is the point.</strong> A
+     * settings page that resolved a stored value differently from the fan-out would show
+     * somebody a switch that does not describe what they receive.
+     *
+     * @param stored what the recipient asked for, or null when they have never said
+     */
+    public static DeliveryMode resolveFor(
+            NotificationCategory category, NotificationChannel channel, DeliveryMode stored) {
+
+        Objects.requireNonNull(category, "A resolution is about some category");
+        Objects.requireNonNull(channel, "A resolution is about some channel");
+
+        if (category.isMandatory()) {
             return DeliveryMode.IMMEDIATE;
         }
         if (stored == null) {
-            return defaultFor(type, channel);
+            return defaultFor(category, channel);
         }
         if (stored == DeliveryMode.DIGEST && !channel.isDigestible()) {
             return DeliveryMode.IMMEDIATE;
