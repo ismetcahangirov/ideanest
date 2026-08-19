@@ -3,6 +3,10 @@ import { Suspense } from 'react';
 import { DiscoverySkeleton } from '../../components/discovery/DiscoverySkeleton';
 import { DiscoveryView } from '../../components/discovery/DiscoveryView';
 import { StructuredData } from '../../components/seo/StructuredData';
+import { fetchDiscoveryFeed } from '../../lib/api/server';
+import { feedQuery } from '../../lib/discovery/api';
+import { filterKey, parseFilters } from '../../lib/discovery/filters';
+import type { SeededFeed } from '../../lib/discovery/useDiscoveryFeed';
 import { publicPageMetadata } from '../../lib/seo/metadata';
 import { discoverPageGraph } from '../../lib/seo/structured-data/graphs';
 
@@ -10,16 +14,17 @@ import { discoverPageGraph } from '../../lib/seo/structured-data/graphs';
  * `/discover`, and every filtered variant of it, is one canonical URL.
  *
  * **A STATIC `metadata`, NOT `generateMetadata`.** Reading `searchParams` in
- * `generateMetadata` would let this page emit a per-filter canonical — and it opts
- * the route out of static rendering. That was measured rather than assumed: with
- * it, `next build` prints `/discover` as `ƒ (Dynamic)` instead of `○ (Static)`, so
- * the front door would be server-rendered on every request in exchange for a
- * canonical tag.
+ * `generateMetadata` would let this page emit a per-filter canonical, and one canonical is
+ * what is wanted: the filters select a subset of one corpus, so `?category=games` is the
+ * same set of campaigns in a different arrangement rather than a page of its own. Indexing
+ * every combination would spend the crawl budget for the whole site on permutations of one
+ * list.
  *
- * It would also be the wrong tag. The filters live in the query string and the
- * feed they select is fetched in the browser (`DiscoveryView`), so every filter
- * combination is served the SAME document; one canonical is what actually
- * happened, and `canonicalUrl` explains the rest.
+ * **What changed with #119, and what did not.** This route used to be statically rendered,
+ * and the comment here used to give that as the second reason for a static `metadata`.
+ * Server-rendering the feed makes the route dynamic — `searchParams` is read below — so
+ * that argument no longer applies and is not being kept as though it did. The canonical
+ * decision stands on its own, for the reason above.
  */
 export const metadata: Metadata = publicPageMetadata({
   title: 'Discover',
@@ -28,29 +33,69 @@ export const metadata: Metadata = publicPageMetadata({
 });
 
 /**
- * `/discover` — docs/architecture.md §4.3.
+ * `/discover` — docs/architecture.md §4.3, server-rendered since #119.
  *
- * THE `Suspense` BOUNDARY IS NOT DECORATION. `DiscoveryView` reads the query
- * string with `useSearchParams`, which Next cannot know at build time; without
- * a boundary the whole route opts out of static rendering and `next build`
- * fails the page outright. The fallback is the same skeleton grid the view
- * shows while its first request is in flight, so the transition between the two
- * is invisible rather than a second, different loading state.
+ * <h2>The first page of the feed is in the HTML</h2>
  *
- * NOTHING FROM `@ideanest/ui` IS IMPORTED HERE. It is a barrel, and several of
- * its members consume `createContext`; reaching it from a Server Component
- * pulls client-only modules into the server graph and the build refuses the
- * route. Both children below carry their own `'use client'`.
+ * This route is the platform's front door and it used to ship an empty grid: `DiscoveryView`
+ * fetched page one from the browser, so a crawler, a link unfurler, and anybody on a slow
+ * connection were served a skeleton. #119's requirement is that the content is present in
+ * the initial HTML, and the fetch below is what makes that true — for the filters the
+ * visitor actually asked for, not just for the unfiltered feed.
  *
- * **THE SITE'S IDENTITY IS CLAIMED HERE**, outside the `Suspense` boundary.
- * `/discover` is the front door — `app/page.tsx` does not exist yet — and
- * `lib/seo/structured-data/identity.ts` explains why the `Organization` and
- * `WebSite` nodes belong on the entry page rather than in the root layout. It
- * sits outside the boundary because it depends on nothing the query string
- * decides, so it must be in the first byte a crawler is served rather than in a
- * streamed chunk that arrives after the fallback.
+ * **The URL is still the state.** `DiscoveryView` reads it with `useSearchParams` and this
+ * page reads it from `searchParams`; both go through `parseFilters`, so there is one parser
+ * and no second opinion about what `?status=live&sort=ending_soon` means. The seeded page
+ * carries the filter key it was fetched for, and the hook shows it only while it answers
+ * the question being asked.
+ *
+ * **A failed read is not a failed page.** `fetchDiscoveryFeed` answers `null` when the
+ * service refuses or cannot be reached, and this passes nothing — at which point the view
+ * behaves exactly as it did before #119 and fetches page one itself. A visitor whose first
+ * request arrives during a restart sees the skeleton and then the feed, rather than an
+ * error.
+ *
+ * <h2>What is deliberately still fetched in the browser</h2>
+ *
+ * The facet counts beside the filter controls. They are a control panel rather than
+ * content: no crawler reads "Games (12)", the numbers move continuously, and putting them in
+ * the server render would double the work of the most requested page on the platform to fill
+ * in a rail that is off-screen on a phone.
+ *
+ * <h2>Boundaries</h2>
+ *
+ * THE `Suspense` BOUNDARY STAYS. `DiscoveryView` reads the query string with
+ * `useSearchParams`, and the boundary is what a static render of this route would need; it
+ * costs nothing now that the route is dynamic and it is what stops a future change from
+ * failing the build. The fallback is the same skeleton the view shows while a client-side
+ * page is in flight, so the two are indistinguishable.
+ *
+ * NOTHING FROM `@ideanest/ui` IS IMPORTED HERE. It is a barrel and several of its members
+ * consume `createContext`; reaching it from a Server Component pulls client-only modules
+ * into the server graph and the build refuses the route. Both children below carry their own
+ * `'use client'`.
+ *
+ * **THE SITE'S IDENTITY IS CLAIMED HERE**, outside the boundary. `/discover` is the front
+ * door — `app/page.tsx` does not exist yet — and `lib/seo/structured-data/identity.ts`
+ * explains why the `Organization` and `WebSite` nodes belong on the entry page rather than in
+ * the root layout.
  */
-export default function DiscoverPage() {
+export default async function DiscoverPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const filters = parseFilters(searchParamsOf(await searchParams));
+
+  /*
+   * `feedQuery` is the one place that turns filters into the service's parameter names, and
+   * it is what the browser sends. Using it here is what makes the server render and the
+   * client's own refetch two requests for the same thing rather than two spellings of it.
+   */
+  const feed = await fetchDiscoveryFeed(feedQuery(filters));
+  const seeded: SeededFeed | undefined =
+    feed === null ? undefined : { key: filterKey(filters), feed };
+
   return (
     <>
       <StructuredData nodes={discoverPageGraph()} />
@@ -61,8 +106,29 @@ export default function DiscoverPage() {
           </div>
         }
       >
-        <DiscoveryView />
+        <DiscoveryView {...(seeded === undefined ? {} : { seeded })} />
       </Suspense>
     </>
   );
+}
+
+/**
+ * Next's `searchParams` object as the `URLSearchParams` every parser here takes.
+ *
+ * A repeated parameter arrives as an array and has to stay repeated: `?tag=a&tag=b` is two
+ * tags to `parseFilters` and to `DiscoveryQueryBinder` alike, and flattening it would
+ * silently drop every filter but the first.
+ */
+function searchParamsOf(source: Record<string, string | string[] | undefined>): URLSearchParams {
+  const params = new URLSearchParams();
+
+  for (const [name, value] of Object.entries(source)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      for (const item of value) params.append(name, item);
+      continue;
+    }
+    params.append(name, value);
+  }
+  return params;
 }

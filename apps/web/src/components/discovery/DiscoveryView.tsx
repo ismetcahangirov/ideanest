@@ -18,7 +18,7 @@ import {
   type DiscoveryFilters,
 } from '../../lib/discovery/filters';
 import { useDiscoveryFacets } from '../../lib/discovery/useDiscoveryFacets';
-import { useDiscoveryFeed } from '../../lib/discovery/useDiscoveryFeed';
+import { useDiscoveryFeed, type SeededFeed } from '../../lib/discovery/useDiscoveryFeed';
 import { ActiveFilters } from './ActiveFilters';
 import { DiscoverySkeleton } from './DiscoverySkeleton';
 import { FilterRail } from './FilterRail';
@@ -87,7 +87,22 @@ function describeProblem(error: ApiError | null): { title: string; detail: strin
   };
 }
 
-export function DiscoveryView() {
+export interface DiscoveryViewProps {
+  /**
+   * The first page of the feed, already fetched by the Server Component — #119.
+   *
+   * **Absent is a supported state, not a degraded one.** The page passes nothing when the
+   * service refused the read, and this view then fetches page one in the browser exactly as
+   * it always did: the server render is what puts the cards in the HTML, and it is not what
+   * makes the feed work. A visitor whose first request landed while the service was
+   * restarting sees the skeleton and then the feed, rather than an error page.
+   *
+   * It carries the filter key it was fetched for. See `SeededFeed`.
+   */
+  readonly seeded?: SeededFeed;
+}
+
+export function DiscoveryView({ seeded }: DiscoveryViewProps = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -101,7 +116,7 @@ export function DiscoveryView() {
   const filters = useMemo(() => parseFilters(new URLSearchParams(searchParams.toString())), [searchParams]);
 
   const facets = useDiscoveryFacets(filters);
-  const feed = useDiscoveryFeed(filters);
+  const feed = useDiscoveryFeed(filters, seeded);
 
   const names = useMemo(() => slugNames(facets), [facets]);
   const active = useMemo(() => activeFilters(filters, names), [filters, names]);

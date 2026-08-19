@@ -126,12 +126,16 @@ const PREVIEW_REVALIDATE_SECONDS = 300;
 /**
  * The public projection of one campaign, or `null` — see the module comment.
  *
- * `GET /v1/projects/{id}/prelaunch` is the only public campaign read this
- * application has today: it is `permitAll` and it 404s for a campaign in any
- * state but `PRELAUNCH` or `SCHEDULED`. `GET /v1/projects/{creatorSlug}/{projectSlug}`
- * — the campaign page's own projection, docs/architecture.md §10.2 — is #119's,
- * and the day it exists this function grows a second branch rather than a second
- * copy of itself.
+ * `GET /v1/projects/{id}/prelaunch` is `permitAll` and 404s for a campaign in any
+ * state but `PRELAUNCH` or `SCHEDULED`, which is exactly the pre-launch route's
+ * audience and all this function serves.
+ *
+ * **The campaign page does not come through here.** #119 built
+ * `GET /v1/projects/{creatorSlug}/{projectSlug}` — the projection
+ * docs/architecture.md §10.2 describes — and its page reads it directly through
+ * `lib/api/server.ts`, then hands `previewOf` the same campaign it renders. A
+ * second branch here would have meant the `<head>` and the `<body>` reading two
+ * different endpoints about one campaign; what they share instead is one response.
  */
 export async function fetchPublicProjectPreview(
   id: string,

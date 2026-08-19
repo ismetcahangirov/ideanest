@@ -142,8 +142,7 @@ export function ProjectCard({ card, priority = false }: ProjectCardProps) {
   /*
    * The public campaign page mirrors the API's own addressing —
    * `GET /v1/projects/{creatorSlug}/{projectSlug}` (§10.2) — which is why the
-   * card carries `creatorSlug` at all. The page itself belongs to §4.4's epic;
-   * this is the link it will answer.
+   * card carries `creatorSlug` at all. #119 built the page this answers.
    */
   const href = `/projects/${encodeURIComponent(card.creatorSlug)}/${encodeURIComponent(card.slug)}`;
 

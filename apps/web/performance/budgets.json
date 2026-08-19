@@ -5,6 +5,7 @@
     "/_not-found": 467,
     "/admin/moderation": 692,
     "/discover": 729,
+    "/projects/[id]/[projectSlug]": 492,
     "/projects/[id]/back": 596,
     "/projects/[id]/edit": 467,
     "/projects/[id]/edit/basics": 601,
