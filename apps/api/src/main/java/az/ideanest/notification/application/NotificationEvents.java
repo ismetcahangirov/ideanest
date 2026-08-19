@@ -125,18 +125,21 @@ public final class NotificationEvents {
     /**
      * §4.3's funding progress crossing its goal.
      *
-     * <p>Recipient: <strong>the creator, and only the creator.</strong> §4.10's row
-     * covers the backers too and §12.1 broadcasts it to everybody on the page, and
-     * neither is expressible from here: the backers of a campaign are rows in
-     * {@code pledges}, which belongs to the pledge module, and reading them from this
-     * one is exactly the coupling {@code ModuleBoundaryTests} forbids. Telling the
-     * backers needs either a producer that carries the audience — an event with ten
-     * thousand identifiers in it, which is the wrong shape for an event — or an audience
-     * port the pledge module publishes. That port is not built and #85 does not build
-     * it; it is named in the pull request as an outstanding gap rather than approximated
-     * here.
+     * <p>Recipient: <strong>the creator and the campaign's backers.</strong> §4.10's row covers
+     * both, and #85 could only express the first: the backers of a campaign are rows in
+     * {@code pledges}, which belongs to the pledge module, and reading them from this one is
+     * exactly the coupling {@code ModuleBoundaryTests} forbids. The two ways out were a producer
+     * that carries the audience — an event with ten thousand identifiers in it, which is the
+     * wrong shape for an event — and a port the pledge module publishes. #245 built the port, so
+     * this payload still carries one identifier and the rest of the audience is asked for at
+     * translation time. See {@code NotificationEventListener.backersOf}.
      *
-     * @param creatorId who to tell
+     * <p>§12.1 also broadcasts this to everybody on the page over a WebSocket. That is a
+     * different mechanism with no notification row behind it, there is no gateway in the service
+     * yet, and it is not this module's.
+     *
+     * @param creatorId who to tell first. The one recipient the payload carries, and the one the
+     *     audience bound never drops
      * @param goal the target that was reached, for the message. Money
      */
     @JsonIgnoreProperties(ignoreUnknown = true)

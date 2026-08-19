@@ -19,11 +19,17 @@ public enum NotificationState {
     /**
      * Waiting to be combined into a digest — {@link DeliveryMode#DIGEST}.
      *
-     * <p><strong>Nothing drains this yet.</strong> V26's header and {@code DeliveryMode}
-     * both say so, and it is the largest thing #85 leaves undone: a person who selects
-     * digest mode accumulates rows here and receives nothing, because combining them
-     * means rendering one message and handing it to a transport that does not exist
-     * (#86, #87).
+     * <p>Drained by {@code notification-digest}, which is #244's work: once a day at a fixed
+     * local hour it groups every held row per recipient and channel, hands one message to the
+     * channel's sender, and moves the whole group to {@link #SENT}.
+     * {@code notifications_held_idx} is the index it claims by, and {@code DigestWindow} is
+     * where "once a day at a fixed local hour" is decided.
+     *
+     * <p><strong>A third starting state rather than a step on the way.</strong> A digest is
+     * held from the moment it is written; nothing moves {@code PENDING} to here.
+     *
+     * <p>{@code next_attempt_at} is written on a held row and is not decoration: a digest that
+     * a channel refuses backs off, and every row in it carries the same next attempt.
      */
     HELD,
 

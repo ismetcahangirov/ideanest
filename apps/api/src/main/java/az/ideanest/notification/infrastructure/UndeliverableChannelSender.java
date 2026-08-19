@@ -1,6 +1,7 @@
 package az.ideanest.notification.infrastructure;
 
 import az.ideanest.notification.application.ChannelSender;
+import az.ideanest.notification.application.NotificationDigest;
 import az.ideanest.notification.application.NotificationMessage;
 import az.ideanest.notification.domain.NotificationChannel;
 import java.util.Objects;
@@ -70,5 +71,30 @@ public class UndeliverableChannelSender implements ChannelSender {
     @Override
     public void send(NotificationMessage message) {
         log.warn("{} was not sent: there is no {} transport configured ({}).", message, channel, issue);
+    }
+
+    /**
+     * The same answer for a digest, and it is the same answer on purpose.
+     *
+     * <p>Returning rather than throwing, for the reason above: a digest that threw would
+     * burn its members' attempts and eventually dead-letter every one of them, which would
+     * fill {@code notifications_dead_idx} with a missing feature rather than with incidents.
+     *
+     * <p><strong>The consequence is worth naming rather than leaving to be discovered.</strong>
+     * The combining job is now real — held rows are grouped, marked sent, and their period
+     * closes — and on a deployment with no transport the message they were combined into
+     * still reaches a log file. That is strictly better than what #244 describes, where the
+     * rows accumulated for ever and nothing anywhere said so, and it is strictly worse than a
+     * digest somebody receives. The count is in the line, so an operator can see that
+     * fourteen notifications went into a message nobody got.
+     */
+    @Override
+    public void send(NotificationDigest digest) {
+        log.warn(
+                "{} combining {} notifications was not sent: there is no {} transport configured ({}).",
+                digest,
+                digest.size(),
+                channel,
+                issue);
     }
 }

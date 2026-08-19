@@ -1,6 +1,7 @@
 package az.ideanest.notification.infrastructure;
 
 import az.ideanest.notification.application.ChannelSender;
+import az.ideanest.notification.application.NotificationDigest;
 import az.ideanest.notification.application.NotificationMessage;
 import az.ideanest.notification.domain.NotificationChannel;
 import org.slf4j.Logger;
@@ -53,5 +54,21 @@ public class InAppChannelSender implements ChannelSender {
         // Debug, not info: this runs once per in-app notification on the platform, and
         // it records nothing that is not already a row somebody can query.
         log.debug("{} is in the inbox", message);
+    }
+
+    /**
+     * Refuses, because an in-app digest cannot exist.
+     *
+     * <p>Not a no-op like the method above it, and not a loop over the members. Two
+     * constraints forbid the combination outright —
+     * {@code notification_preferences_in_app_does_not_digest} refuses the preference and
+     * {@code notifications_in_app_is_not_held} refuses the row — and {@code Notification.held}
+     * refuses to construct one, so there is no path on which this can be called. A body that
+     * did something plausible would be a body that made the unreachable case behave, which
+     * is how an unreachable case becomes reachable without anybody noticing.
+     */
+    @Override
+    public void send(NotificationDigest digest) {
+        throw new IllegalStateException("An inbox is already a list; " + digest + " should not exist");
     }
 }

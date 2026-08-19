@@ -1,5 +1,8 @@
 package az.ideanest.notification.domain;
 
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -157,5 +160,32 @@ public enum NotificationType {
     /** Whether §4.10 gives this type that column. */
     public boolean supports(NotificationChannel channel) {
         return channels.contains(channel);
+    }
+
+    /**
+     * Every channel any type in this category has: the switches a settings page draws.
+     *
+     * <p><strong>A union rather than an intersection, and the choice matters.</strong>
+     * §4.10 gives "pledge confirmed" a push column and "pledge edited" none, and both are
+     * {@code PLEDGES}. An intersection would drop the push switch from that category
+     * altogether, which would leave somebody unable to turn off a push notification they
+     * demonstrably receive. The union means the switch exists and governs the types that
+     * have the column; the ones that do not are unaffected, because the fan-out iterates
+     * {@link #channels()} and never considers a channel a type does not have.
+     *
+     * <p>Computed rather than tabulated, so that adding a row to §4.10 cannot leave the
+     * preference page describing the previous version of the table.
+     *
+     * @return the channels, in enum order, so that a page's rows do not depend on a hash
+     */
+    public static Set<NotificationChannel> channelsOf(NotificationCategory category) {
+        Objects.requireNonNull(category, "A category has some channels");
+        EnumSet<NotificationChannel> union = EnumSet.noneOf(NotificationChannel.class);
+        for (NotificationType type : values()) {
+            if (type.category == category) {
+                union.addAll(type.channels);
+            }
+        }
+        return Collections.unmodifiableSet(union);
     }
 }

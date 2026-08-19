@@ -15,14 +15,13 @@ import java.util.UUID;
  * standing instructions say what to do on each, and {@code DeliveryPolicy} answers for
  * the ones they have never said anything about.
  *
- * <p><strong>The recipient comes from the event, and that is a real constraint on what
- * this module can do.</strong> A translation may not look up who ought to be told: the
- * backers of a campaign are in {@code pledges} and its followers are in
- * {@code project_reminders}, both of which belong to other modules, and reading them
- * from here is precisely the coupling {@code ModuleBoundaryTests} exists to prevent.
- * So an event whose audience is a list the platform has to compute cannot be translated
- * until either the producer carries the list or somebody publishes an audience port —
- * and {@code NotificationEventListener} says which events those are.
+ * <p><strong>The recipient comes from the event, or from a port whoever owns the audience
+ * publishes.</strong> A translation may not look up who ought to be told by reading another
+ * module's tables — the backers of a campaign are in {@code pledges} and its followers will be
+ * the discovery module's — which is precisely the coupling {@code ModuleBoundaryTests} exists to
+ * prevent. {@code shared.audience.ProjectAudiences} is how an audience the platform has to
+ * compute is asked for instead of read, and {@code NotificationEventListener} is where it is
+ * asked. An audience nobody publishes yet is still not expressible; that class says which.
  *
  * @param recipientId who is being told. One person: a request is not a broadcast, and
  *     an event with several recipients is several requests

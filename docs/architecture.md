@@ -1960,6 +1960,7 @@ load profile).
 | `idempotency-key-cleaner` | Hourly | Remove idempotency keys past §17.2's 24-hour retention |
 | `outbox-relay` | Every second | Publish recorded events, in order within an aggregate |
 | `notification-sender` | Every second | Send what §12.2's fan-out queued, one row per transaction |
+| `notification-digest` | Hourly | Combine what §12.2's fan-out held, one message per recipient and channel |
 
 > **The scheduler underneath all of them is built (#134).** Every trigger in this
 > table now claims a lease in `scheduled_jobs` before it runs, so a job fires once
@@ -2313,6 +2314,8 @@ GET    /v1/me/backed
 GET    /v1/me/created
 GET    /v1/me/saved
 GET    /v1/me/notifications
+POST   /v1/me/notifications/{id}/read
+GET    /v1/me/notification-preferences
 PATCH  /v1/me/notification-preferences
 GET    /v1/me/export
 POST   /v1/me/deletion
@@ -3080,17 +3083,52 @@ to every listener in one transaction — so failing would dead-letter an event t
 other modules also consume, and no number of retries makes an account exist. A
 payload that cannot be read, or that omits a field, still fails loudly.
 
-> **What is not built.** Digest mode is stored, resolved and written — a
-> notification in a digest is `HELD` rather than `PENDING`, and
-> `notification-sender` will not claim it — but **the job that combines held rows
-> into one message does not exist**, so a user who selects digest currently
-> receives nothing on that channel. Email (#86) and push (#87) have no transport:
-> both are registered as `UndeliverableChannelSender`, which logs at `WARN` and
-> returns, so their rows say `SENT` for messages that reached a log file. In-app
-> is real. §4.10's audiences that are a list the platform computes — a campaign's
-> backers, its followers — cannot be translated yet, because the recipient comes
-> from the event and reading `pledges` from this module is the coupling the module
-> boundary exists to prevent; "goal reached" therefore notifies the creator only.
+**Digest mode is built at both ends.** A notification whose resolved mode is
+`DIGEST` is written `HELD`; `notification-sender` will not claim it, and
+`notification-digest` does — once a day, at a fixed local hour, it groups every
+held row per recipient and channel, hands one combined message to that channel's
+sender, and marks the group `SENT`. The cadence is a product decision and
+`DigestWindow` is where it is argued: **08:00 in `Asia/Baku`, configured as
+`ideanest.notification.digest.at-hour` and `.zone`.** The job's cron is hourly
+rather than daily and that is not a contradiction — what it sends is everything
+held from before the most recently *closed* digest period, so the cron decides how
+promptly a due digest goes out and never whether it goes out at all. A tick lost
+to a deployment costs an hour, not a day.
+
+A digest's claim is two statements rather than one, because rows behind a
+`GROUP BY` cannot be locked, so `notification-digest` **needs its lease** in a way
+most of §8.4's jobs do not — the same declaration `analytics-aggregator` makes.
+It fails as one message too: a refused digest charges one attempt against every
+member and retries the group, because a policy that split it would produce a
+digest that silently shrank on each attempt.
+
+**The API surface is two endpoints in §10.2 and two more that block on nothing
+else.** `GET /v1/me/notifications` is the in-app inbox — `SENT`, in-app, keyset
+paged on `(occurred_at, id)`, with the unread count for the badge — and
+`PATCH /v1/me/notification-preferences` sets switches one at a time. Added with
+them, because #88 and #89 cannot be built without them: `GET` on the same
+preferences path, since the common case is an account with no stored rows and a
+settings page cannot be rendered from a write, and
+`POST /v1/me/notifications/{id}/read`, since an inbox that reports an unread count
+and offers no way to stop being unread describes something the platform will not
+do. Both endpoints and the fan-out resolve a stored preference through the same
+`DeliveryPolicy`: a settings page that disagreed with delivery would look right and
+change nothing.
+
+> **What is not built.** Email (#86) and push (#87) have no transport: both are
+> registered as `UndeliverableChannelSender`, which logs at `WARN` and returns, so
+> their rows say `SENT` for messages that reached a log file — and a digest on
+> those channels reaches the same log file, with its member count in the line.
+> That is a missing transport rather than a missing digest. In-app is real.
+> §4.10's audiences that are a list the platform computes are **half** built:
+> `shared.audience.ProjectAudiences` is the port #245 asked for, the pledge module
+> publishes `BACKERS` from `pledges`, and "goal reached" now reaches a campaign's
+> backers as well as its creator. Followers are not in it — #90 owns saving and
+> following, and there is nothing to enumerate until it lands — so
+> `FOLLOWED_CREATOR_LAUNCHED` and `SAVED_PROJECT_ENDING_SOON` still have no
+> audience. The port is bounded at `ideanest.notification.audience.max-recipients`
+> and logs at `ERROR` when a campaign exceeds it; a fan-out chunked across several
+> transactions is the follow-up that removes the bound.
 
 ---
 

@@ -26,8 +26,10 @@ import org.hibernate.type.SqlTypes;
  *
  * <p>{@code PENDING → SENT}, or {@code PENDING → DEAD} once the attempts are spent.
  * {@code HELD} is a third starting state rather than a step on the way: a digest is
- * held from the moment it is written, and nothing drains it yet —
- * {@link NotificationState#HELD} says so.
+ * held from the moment it is written, and {@code notification-digest} moves it —
+ * {@code HELD → SENT} for a group that was combined and sent, {@code HELD → DEAD} once its
+ * attempts are spent. {@link NotificationState#HELD} and {@code DigestAssembly} carry the
+ * detail.
  *
  * <h2>What is mutable, and what is not</h2>
  *
@@ -163,10 +165,10 @@ public class Notification {
     /**
      * A notification held for a digest.
      *
-     * <p>{@code next_attempt_at} is still written, and still to now: it is the column a
-     * combining job would order by, and a held row with no eligibility instant would be
-     * one that job could not sort. Nothing claims it today — see
-     * {@link NotificationState#HELD}.
+     * <p>{@code next_attempt_at} is still written, and still to now. V26 called it "the column
+     * a combining job would order by"; what {@code DigestAssembly} actually needs it for is the
+     * backoff — a digest a channel refuses moves every row in it to the same next attempt — and
+     * a held row with no eligibility instant would be one that job could not judge.
      */
     public static Notification held(
             UUID recipientId,
