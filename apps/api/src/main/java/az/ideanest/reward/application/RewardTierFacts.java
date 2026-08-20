@@ -5,6 +5,7 @@ import az.ideanest.reward.domain.RewardTier;
 import az.ideanest.reward.domain.ShippingRule;
 import az.ideanest.reward.infrastructure.RewardTierRepository;
 import az.ideanest.reward.infrastructure.ShippingRuleRepository;
+import az.ideanest.shared.money.Money;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Collection;
@@ -49,7 +50,7 @@ import org.springframework.transaction.annotation.Transactional;
  * question {@code ProjectAccess} exists to answer once.
  */
 @Service
-public class RewardTierFacts implements RewardFacts, RewardStock {
+public class RewardTierFacts implements RewardFacts, RewardStock, RewardTitles {
 
     private final RewardTierRepository rewards;
     private final ShippingRuleRepository shippingRules;
@@ -65,6 +66,26 @@ public class RewardTierFacts implements RewardFacts, RewardStock {
         return rewards.findByProjectIdOrderBySortOrderAscCreatedAtAsc(projectId).stream()
                 .map(RewardTier::getAmount)
                 .toList();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>The same query {@link #pricesOf} runs, projected differently. Two callers asking
+     * the campaign's tiers two questions is one read each rather than a shared cache: a
+     * cache here would be a second answer to "what is this tier called" with its own
+     * staleness, and the campaign editor renames tiers.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Map<UUID, RewardTitle> titlesOf(UUID projectId) {
+        Map<UUID, RewardTitle> titles = new HashMap<>();
+        for (RewardTier tier : rewards.findByProjectIdOrderBySortOrderAscCreatedAtAsc(projectId)) {
+            titles.put(
+                    tier.getId(),
+                    new RewardTitle(tier.getId(), tier.getTitle(), Money.of(tier.getAmount(), tier.getCurrency())));
+        }
+        return Map.copyOf(titles);
     }
 
     /**

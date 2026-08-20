@@ -9,16 +9,17 @@ import { DashboardNav } from '../../../../components/dashboard/DashboardNav';
  * <h2>What a shell is here</h2>
  *
  * A frame and a way between its panels, and nothing else. The panels are separate issues:
- * the overview below is CD-01, the pledge trend is #96, the backer list is #97, the
- * financial summary is #99. This layout is what they will appear inside, and it exists
- * now so that each of them is a route rather than a rewrite of a page that grew.
+ * the overview is CD-01 (#93), the charts are CD-02, CD-07 and CD-08 (#96), the backer
+ * report and its export are CD-10 and CD-11 (#97, #79), and the financial summary is #99.
+ * This layout is what they appear inside, and it exists so that each of them is a route
+ * rather than a rewrite of a page that grew.
  *
  * <h2>The navigation lists only what exists</h2>
  *
- * One item today. Adding "Backers" and "Finance" now — greyed out, or linked to a 404 —
- * would be an interface advertising a product the platform does not have; a creator who
- * clicks either learns that the dashboard is unfinished, which is exactly what a shell is
- * supposed to hide. Each issue adds its own entry when it adds its own route.
+ * Three items today, and "Finance" is not one of them: #99 needs a ledger that epic #59 has
+ * not built, and an entry greyed out or linked to a 404 would be an interface advertising a
+ * product the platform does not have. Each issue adds its own entry when it adds its own
+ * route.
  *
  * <h2>Not indexed, and not a gate</h2>
  *

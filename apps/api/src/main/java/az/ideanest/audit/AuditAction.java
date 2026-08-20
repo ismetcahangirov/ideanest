@@ -96,6 +96,22 @@ public enum AuditAction {
      */
     ACCOUNT_EXPORTED("account.exported", "account"),
 
+    /**
+     * A campaign's backer report left the platform as a file (#79). §4.7's CD-11.
+     *
+     * <p>Privileged despite changing nothing, for {@link #ACCOUNT_EXPORTED}'s reason and
+     * with the subject the other way round: one request copies out the name and email
+     * address of <em>every person who backed the campaign</em>. It is the most valuable
+     * request a stolen collaborator token can make on the creator dashboard, and "who
+     * exported this campaign's backers, when, and from where" is a question only this row
+     * can answer.
+     *
+     * <p>The entity is the campaign rather than the export, because there is no export
+     * object: §10.2 answers the route with a file rather than with a job somebody later
+     * fetches. How many rows left, and under which filter, is in the detail.
+     */
+    PROJECT_BACKERS_EXPORTED("project.backers_exported", "project"),
+
     /** A second factor was confirmed and is now required to sign in. */
     TWO_FACTOR_ENABLED("two_factor.enabled", "account"),
 

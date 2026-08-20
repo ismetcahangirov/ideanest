@@ -7,12 +7,16 @@ import { cn } from '@ideanest/ui/server';
 /**
  * The way between the dashboard's panels.
  *
- * <h2>It lists one item, and that is not a placeholder</h2>
+ * <h2>It lists what exists, and nothing else</h2>
  *
- * §4.7 describes nineteen capabilities and this shell has the first. The other panels are
- * #96, #97 and #99, and each adds its entry here when it adds its route. A navigation
- * that offered them now — disabled, or pointing at a 404 — would tell a creator the
+ * §4.7 describes nineteen capabilities and this shell has three panels: the overview
+ * (CD-01, #93), the charts (CD-02, CD-07 and CD-08, #96), and the backers (CD-10 and
+ * CD-11, #97 and #79). The financial summary is #99 and is not here, because it is not
+ * built — an entry that was disabled, or pointing at a 404, would tell a creator the
  * dashboard is unfinished, which is the one thing a shell exists to avoid saying.
+ *
+ * <p>The order is the order a creator reads them in: what the campaign has raised, then
+ * how it raised it, then who the people are. Not the order the issues landed in.
  *
  * <h2>A client component for one reason</h2>
  *
@@ -34,7 +38,11 @@ interface Panel {
 
 function panelsFor(projectId: string): readonly Panel[] {
   const base = `/projects/${encodeURIComponent(projectId)}/dashboard`;
-  return [{ href: base, label: 'Overview' }];
+  return [
+    { href: base, label: 'Overview' },
+    { href: `${base}/charts`, label: 'Funding and backers' },
+    { href: `${base}/backers`, label: 'Backers' },
+  ];
 }
 
 export interface DashboardNavProps {

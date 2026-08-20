@@ -310,6 +310,67 @@ class CapabilityContractApiTests extends AbstractIntegrationTest {
     }
 
     // ------------------------------------------------------------------
+    // pledge — VIEW_FINANCES, and the one read that returns personal data
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("a collaborator granted only EDIT_REWARDS may not read the backer report")
+    void onlyEditingRewardsDoesNotReadTheBackerReport() {
+        Account creator = account("contract-creator");
+        UUID project = draft(creator);
+        Account pricer = collaborator(project, creator, "EDIT_REWARDS");
+
+        // The sharpest case in this file: shaping what a campaign offers is a long way
+        // from reading every backer's email address, and until #97 there was no report to
+        // be refused. All three routes, because one of them answering would be the whole
+        // of the defect.
+        assertThat(getRaw("/v1/projects/" + project + "/backers", pricer.accessToken())
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(getRaw("/v1/projects/" + project + "/backers/breakdown", pricer.accessToken())
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+
+        ResponseEntity<Map<String, Object>> refusedExport =
+                post("/v1/projects/" + project + "/backers/export", pricer.accessToken(), Map.of());
+        assertThat(refusedExport.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(refusedExport.getBody()).containsEntry("code", "CAPABILITY_NOT_GRANTED");
+    }
+
+    @Test
+    @DisplayName("a collaborator granted VIEW_FINANCES reads the backer report and exports it")
+    void viewFinancesReadsTheBackerReport() {
+        Account creator = account("contract-creator");
+        UUID project = draft(creator);
+        Account analyst = collaborator(project, creator, "VIEW_FINANCES");
+
+        ResponseEntity<Map<String, Object>> listed = get("/v1/projects/" + project + "/backers", analyst.accessToken());
+        assertThat(listed.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // A real body rather than merely a status: nobody has backed a draft campaign, so
+        // the count is zero and the currency is absent rather than null — the shape
+        // BackerReportApiTests fixes.
+        assertThat(((Number) listed.getBody().get("matched")).longValue()).isZero();
+        assertThat(listed.getBody()).doesNotContainKey("currency");
+
+        ResponseEntity<String> exported = rest.exchange(
+                "/v1/projects/" + project + "/backers/export",
+                HttpMethod.POST,
+                new HttpEntity<>(Map.of(), bearer(analyst.accessToken())),
+                String.class);
+        assertThat(exported.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(exported.getHeaders().getFirst("X-Export-Rows")).isEqualTo("0");
+
+        // The export is audited under the narrower check too. An export that stopped
+        // being recorded while the permission was tightened would trade one defect for a
+        // quieter one — the note this file already makes about published updates.
+        var recorded = auditEntries.findByEntityTypeAndEntityIdOrderByOccurredAtDesc(
+                AuditAction.PROJECT_BACKERS_EXPORTED.entityType(), project);
+        assertThat(recorded).isNotEmpty();
+        assertThat(recorded.getFirst().getActorId()).isEqualTo(analyst.id());
+        assertThat(recorded.getFirst().getDetail()).contains("rows=0");
+    }
+
+    // ------------------------------------------------------------------
     // reward — EDIT_REWARDS
     // ------------------------------------------------------------------
 
