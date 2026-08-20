@@ -2764,6 +2764,296 @@
         "tags" : [ "analytics-controller" ]
       }
     },
+    "/v1/projects/{projectId}/backer-segments" : {
+      "get" : {
+        "operationId" : "backerSegmentSegments",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/BackerSegmentResponse"
+                  }
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "backer-segment-controller" ]
+      },
+      "post" : {
+        "operationId" : "backerSegmentSave",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SaveBackerSegmentRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BackerSegmentResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "backer-segment-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/backer-segments/{segmentId}" : {
+      "delete" : {
+        "operationId" : "backerSegmentDelete",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "path",
+          "name" : "segmentId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "backer-segment-controller" ]
+      },
+      "put" : {
+        "operationId" : "backerSegmentReplace",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "path",
+          "name" : "segmentId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SaveBackerSegmentRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BackerSegmentResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "backer-segment-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/backers" : {
+      "get" : {
+        "operationId" : "backerReportBackers",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "segment",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "state",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "DRAFT", "CONFIRMED", "EXPIRED", "CANCELED_BY_BACKER", "CANCELED_BY_PROJECT", "CHARGE_PENDING", "COLLECTED", "CHARGE_FAILED", "DROPPED", "REFUNDED", "CHARGEBACK", "FULFILLED" ]
+            }
+          }
+        }, {
+          "in" : "query",
+          "name" : "rewardTier",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid"
+            }
+          }
+        }, {
+          "in" : "query",
+          "name" : "country",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "cursor",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BackerListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "backer-report-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/backers/breakdown" : {
+      "get" : {
+        "operationId" : "backerReportBreakdown",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BackerBreakdownResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "backer-report-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/backers/export" : {
+      "post" : {
+        "operationId" : "backerReportExport",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ExportBackersRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "backer-report-controller" ]
+      }
+    },
     "/v1/projects/{projectId}/backers/public" : {
       "get" : {
         "operationId" : "publicBackerCounts",
@@ -3922,6 +4212,156 @@
           }
         }
       },
+      "Backer" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "anonymous" : {
+            "type" : "boolean"
+          },
+          "backedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "country" : {
+            "type" : "string"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "pledgeId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "rewardTierId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "rewardTitle" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          }
+        }
+      },
+      "BackerBreakdownResponse" : {
+        "type" : "object",
+        "properties" : {
+          "backerCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "countries" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CountrySlice"
+            }
+          },
+          "currency" : {
+            "type" : "string"
+          },
+          "rewards" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/RewardSlice"
+            }
+          },
+          "total" : {
+            "$ref" : "#/components/schemas/Money"
+          }
+        }
+      },
+      "BackerFilterBody" : {
+        "type" : "object",
+        "properties" : {
+          "countries" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            },
+            "maxItems" : 250,
+            "minItems" : 0
+          },
+          "rewardTierIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid"
+            },
+            "maxItems" : 200,
+            "minItems" : 0
+          },
+          "states" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "DRAFT", "CONFIRMED", "EXPIRED", "CANCELED_BY_BACKER", "CANCELED_BY_PROJECT", "CHARGE_PENDING", "COLLECTED", "CHARGE_FAILED", "DROPPED", "REFUNDED", "CHARGEBACK", "FULFILLED" ]
+            },
+            "maxItems" : 5,
+            "minItems" : 0
+          },
+          "term" : {
+            "type" : "string",
+            "maxLength" : 120,
+            "minLength" : 0
+          }
+        }
+      },
+      "BackerListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "backers" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Backer"
+            }
+          },
+          "currency" : {
+            "type" : "string"
+          },
+          "matched" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "nextCursor" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }
+      },
+      "BackerSegmentResponse" : {
+        "type" : "object",
+        "properties" : {
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "createdBy" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "filter" : {
+            "$ref" : "#/components/schemas/BackerFilterBody"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
       "CancelProjectRequest" : {
         "type" : "object",
         "properties" : {
@@ -4375,6 +4815,21 @@
           }
         }
       },
+      "CountrySlice" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "backerCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "country" : {
+            "type" : "string"
+          }
+        }
+      },
       "CoverBody" : {
         "type" : "object",
         "properties" : {
@@ -4732,6 +5187,18 @@
           },
           "weightsVersion" : {
             "type" : "string"
+          }
+        }
+      },
+      "ExportBackersRequest" : {
+        "type" : "object",
+        "properties" : {
+          "filter" : {
+            "$ref" : "#/components/schemas/BackerFilterBody"
+          },
+          "segmentId" : {
+            "type" : "string",
+            "format" : "uuid"
           }
         }
       },
@@ -6211,6 +6678,28 @@
           }
         }
       },
+      "RewardSlice" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "backerCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "price" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "rewardTierId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
+      },
       "RewardTierCountBody" : {
         "type" : "object",
         "properties" : {
@@ -6223,6 +6712,20 @@
             "format" : "uuid"
           }
         }
+      },
+      "SaveBackerSegmentRequest" : {
+        "type" : "object",
+        "properties" : {
+          "filter" : {
+            "$ref" : "#/components/schemas/BackerFilterBody"
+          },
+          "name" : {
+            "type" : "string",
+            "maxLength" : 80,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "name" ]
       },
       "SessionRecord" : {
         "type" : "object",

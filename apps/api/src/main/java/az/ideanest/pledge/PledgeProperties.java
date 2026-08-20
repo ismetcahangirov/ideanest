@@ -9,9 +9,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param reservation how long a checkout may hold a limited reward's place, and
  *     how the places are given back
  * @param rateLimit §17.3's bound on how often one account may pledge
+ * @param report the bounds on §4.7's backer report and its export
  */
 @ConfigurationProperties(prefix = "ideanest.pledge")
-public record PledgeProperties(Reservation reservation, RateLimit rateLimit) {
+public record PledgeProperties(Reservation reservation, RateLimit rateLimit, Report report) {
 
     public PledgeProperties {
         // A deployment that configures nothing still starts, for the reason
@@ -20,6 +21,76 @@ public record PledgeProperties(Reservation reservation, RateLimit rateLimit) {
         // first checkout rather than a configuration error at start-up.
         reservation = reservation == null ? Reservation.defaults() : reservation;
         rateLimit = rateLimit == null ? RateLimit.defaults() : rateLimit;
+        report = report == null ? Report.defaults() : report;
+    }
+
+    /**
+     * §4.7's CD-10 and CD-11: what the backer report will hand out, and how often.
+     *
+     * <p>Configuration rather than constants because every number here is a judgement
+     * about somebody else's campaign. A platform whose largest campaign has four hundred
+     * backers and one whose largest has forty thousand want different answers, and finding
+     * that out should not need a release.
+     *
+     * @param pageSize how many backers a page holds when the caller asks for no size.
+     *     Fifty, which is what fits a screen a creator scrolls rather than pages through
+     * @param maxPageSize the largest page the report will build. A bound on the response
+     *     rather than a preference: every row carries a name and an email address, so an
+     *     unbounded page is an unbounded amount of personal data in one body
+     * @param exportRowCap how many rows one export may contain. <strong>Fifty thousand
+     *     is far beyond any campaign this platform has run</strong>, and the point of it is
+     *     not the size — it is that the export knows when it hit the ceiling and says so in
+     *     the response, rather than handing back a file that is quietly short
+     * @param exportsPerAccount how many exports one account may take a window. Low, because
+     *     an export is the single most valuable request a stolen token can make on this
+     *     surface: it is every backer's name and email address in one file
+     * @param exportWindow the period {@link #exportsPerAccount()} is counted over
+     */
+    public record Report(
+            int pageSize, int maxPageSize, int exportRowCap, int exportsPerAccount, Duration exportWindow) {
+
+        private static final int DEFAULT_PAGE_SIZE = 50;
+
+        private static final int DEFAULT_MAX_PAGE_SIZE = 200;
+
+        private static final int DEFAULT_EXPORT_ROW_CAP = 50_000;
+
+        private static final int DEFAULT_EXPORTS_PER_ACCOUNT = 5;
+
+        private static final Duration DEFAULT_EXPORT_WINDOW = Duration.ofMinutes(1);
+
+        static Report defaults() {
+            return new Report(
+                    DEFAULT_PAGE_SIZE,
+                    DEFAULT_MAX_PAGE_SIZE,
+                    DEFAULT_EXPORT_ROW_CAP,
+                    DEFAULT_EXPORTS_PER_ACCOUNT,
+                    DEFAULT_EXPORT_WINDOW);
+        }
+
+        public Report {
+            // Binding leaves an omitted property at zero, and every zero here is a
+            // report nobody can read. The documented default is the fallback rather
+            // than "unlimited", for RateLimit's reason.
+            pageSize = pageSize == 0 ? DEFAULT_PAGE_SIZE : pageSize;
+            maxPageSize = maxPageSize == 0 ? DEFAULT_MAX_PAGE_SIZE : maxPageSize;
+            exportRowCap = exportRowCap == 0 ? DEFAULT_EXPORT_ROW_CAP : exportRowCap;
+            exportsPerAccount = exportsPerAccount == 0 ? DEFAULT_EXPORTS_PER_ACCOUNT : exportsPerAccount;
+            exportWindow = exportWindow == null ? DEFAULT_EXPORT_WINDOW : exportWindow;
+
+            if (pageSize < 1 || maxPageSize < 1 || exportRowCap < 1 || exportsPerAccount < 1) {
+                throw new IllegalArgumentException("A backer report returns at least one row, and one export");
+            }
+            if (pageSize > maxPageSize) {
+                // Otherwise a caller that asked for nothing would be refused the
+                // default, which is the one page size that must always work.
+                throw new IllegalArgumentException(
+                        "The default page size (" + pageSize + ") is within the maximum (" + maxPageSize + ")");
+            }
+            if (!exportWindow.isPositive()) {
+                throw new IllegalArgumentException("A rate-limit window is a positive duration");
+            }
+        }
     }
 
     /**

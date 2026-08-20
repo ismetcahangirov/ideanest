@@ -1092,6 +1092,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{projectId}/backer-segments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["backerSegmentSegments"];
+        put?: never;
+        post: operations["backerSegmentSave"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{projectId}/backer-segments/{segmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["backerSegmentReplace"];
+        post?: never;
+        delete: operations["backerSegmentDelete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{projectId}/backers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["backerReportBackers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{projectId}/backers/breakdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["backerReportBreakdown"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{projectId}/backers/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["backerReportExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{projectId}/backers/public": {
         parameters: {
             query?: never;
@@ -1425,6 +1505,55 @@ export interface components {
             tax?: components["schemas"]["Money"];
             total?: components["schemas"]["Money"];
         };
+        Backer: {
+            amount?: components["schemas"]["Money"];
+            anonymous?: boolean;
+            /** Format: date-time */
+            backedAt?: string;
+            country?: string;
+            email?: string;
+            name?: string;
+            /** Format: uuid */
+            pledgeId?: string;
+            /** Format: uuid */
+            rewardTierId?: string;
+            rewardTitle?: string;
+            state?: string;
+        };
+        BackerBreakdownResponse: {
+            /** Format: int64 */
+            backerCount?: number;
+            countries?: components["schemas"]["CountrySlice"][];
+            currency?: string;
+            rewards?: components["schemas"]["RewardSlice"][];
+            total?: components["schemas"]["Money"];
+        };
+        BackerFilterBody: {
+            countries?: string[];
+            rewardTierIds?: string[];
+            states?: ("DRAFT" | "CONFIRMED" | "EXPIRED" | "CANCELED_BY_BACKER" | "CANCELED_BY_PROJECT" | "CHARGE_PENDING" | "COLLECTED" | "CHARGE_FAILED" | "DROPPED" | "REFUNDED" | "CHARGEBACK" | "FULFILLED")[];
+            term?: string;
+        };
+        BackerListResponse: {
+            backers?: components["schemas"]["Backer"][];
+            currency?: string;
+            /** Format: int64 */
+            matched?: number;
+            /** Format: uuid */
+            nextCursor?: string;
+        };
+        BackerSegmentResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: uuid */
+            createdBy?: string;
+            filter?: components["schemas"]["BackerFilterBody"];
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
         CancelProjectRequest: {
             reason: string;
         };
@@ -1591,6 +1720,12 @@ export interface components {
             description?: string;
             title?: string;
         };
+        CountrySlice: {
+            amount?: components["schemas"]["Money"];
+            /** Format: int64 */
+            backerCount?: number;
+            country?: string;
+        };
         CoverBody: {
             /** Format: int32 */
             height?: number;
@@ -1715,6 +1850,11 @@ export interface components {
             title?: string;
             total?: number;
             weightsVersion?: string;
+        };
+        ExportBackersRequest: {
+            filter?: components["schemas"]["BackerFilterBody"];
+            /** Format: uuid */
+            segmentId?: string;
         };
         Facets: {
             amountRaised?: components["schemas"]["ValueCount"][];
@@ -2254,11 +2394,24 @@ export interface components {
             /** Format: int64 */
             version?: number;
         };
+        RewardSlice: {
+            amount?: components["schemas"]["Money"];
+            /** Format: int64 */
+            backerCount?: number;
+            price?: components["schemas"]["Money"];
+            /** Format: uuid */
+            rewardTierId?: string;
+            title?: string;
+        };
         RewardTierCountBody: {
             /** Format: int64 */
             backerCount?: number;
             /** Format: uuid */
             rewardTierId?: string;
+        };
+        SaveBackerSegmentRequest: {
+            filter?: components["schemas"]["BackerFilterBody"];
+            name: string;
         };
         SessionRecord: {
             /** Format: date-time */
@@ -2457,6 +2610,11 @@ export type SchemaAdminCollectionIndex = components['schemas']['AdminCollectionI
 export type SchemaAdminCollectionResponse = components['schemas']['AdminCollectionResponse'];
 export type SchemaAdminMember = components['schemas']['AdminMember'];
 export type SchemaAmounts = components['schemas']['Amounts'];
+export type SchemaBacker = components['schemas']['Backer'];
+export type SchemaBackerBreakdownResponse = components['schemas']['BackerBreakdownResponse'];
+export type SchemaBackerFilterBody = components['schemas']['BackerFilterBody'];
+export type SchemaBackerListResponse = components['schemas']['BackerListResponse'];
+export type SchemaBackerSegmentResponse = components['schemas']['BackerSegmentResponse'];
 export type SchemaCancelProjectRequest = components['schemas']['CancelProjectRequest'];
 export type SchemaCaptureVisitRequest = components['schemas']['CaptureVisitRequest'];
 export type SchemaCard = components['schemas']['Card'];
@@ -2476,6 +2634,7 @@ export type SchemaCommentResponse = components['schemas']['CommentResponse'];
 export type SchemaConfirmPledgeRequest = components['schemas']['ConfirmPledgeRequest'];
 export type SchemaConfirmTwoFactorRequest = components['schemas']['ConfirmTwoFactorRequest'];
 export type SchemaCopyBody = components['schemas']['CopyBody'];
+export type SchemaCountrySlice = components['schemas']['CountrySlice'];
 export type SchemaCoverBody = components['schemas']['CoverBody'];
 export type SchemaCoverImageBody = components['schemas']['CoverImageBody'];
 export type SchemaCreateCollection = components['schemas']['CreateCollection'];
@@ -2492,6 +2651,7 @@ export type SchemaDraftPledgeRequest = components['schemas']['DraftPledgeRequest
 export type SchemaEmailTemplateListResponse = components['schemas']['EmailTemplateListResponse'];
 export type SchemaEnableTwoFactorRequest = components['schemas']['EnableTwoFactorRequest'];
 export type SchemaExplanationResponse = components['schemas']['ExplanationResponse'];
+export type SchemaExportBackersRequest = components['schemas']['ExportBackersRequest'];
 export type SchemaFacets = components['schemas']['Facets'];
 export type SchemaFeed = components['schemas']['Feed'];
 export type SchemaImage = components['schemas']['Image'];
@@ -2548,7 +2708,9 @@ export type SchemaResolution = components['schemas']['Resolution'];
 export type SchemaRewardItemBody = components['schemas']['RewardItemBody'];
 export type SchemaRewardPatchRequest = components['schemas']['RewardPatchRequest'];
 export type SchemaRewardResponse = components['schemas']['RewardResponse'];
+export type SchemaRewardSlice = components['schemas']['RewardSlice'];
 export type SchemaRewardTierCountBody = components['schemas']['RewardTierCountBody'];
+export type SchemaSaveBackerSegmentRequest = components['schemas']['SaveBackerSegmentRequest'];
 export type SchemaSessionRecord = components['schemas']['SessionRecord'];
 export type SchemaSessionSummary = components['schemas']['SessionSummary'];
 export type SchemaSetWeight = components['schemas']['SetWeight'];
@@ -4490,6 +4652,180 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectAnalyticsResponse"];
+                };
+            };
+        };
+    };
+    backerSegmentSegments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackerSegmentResponse"][];
+                };
+            };
+        };
+    };
+    backerSegmentSave: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveBackerSegmentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackerSegmentResponse"];
+                };
+            };
+        };
+    };
+    backerSegmentReplace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+                segmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveBackerSegmentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackerSegmentResponse"];
+                };
+            };
+        };
+    };
+    backerSegmentDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+                segmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    backerReportBackers: {
+        parameters: {
+            query?: {
+                segment?: string;
+                state?: ("DRAFT" | "CONFIRMED" | "EXPIRED" | "CANCELED_BY_BACKER" | "CANCELED_BY_PROJECT" | "CHARGE_PENDING" | "COLLECTED" | "CHARGE_FAILED" | "DROPPED" | "REFUNDED" | "CHARGEBACK" | "FULFILLED")[];
+                rewardTier?: string[];
+                country?: string[];
+                q?: string;
+                cursor?: string;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackerListResponse"];
+                };
+            };
+        };
+    };
+    backerReportBreakdown: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackerBreakdownResponse"];
+                };
+            };
+        };
+    };
+    backerReportExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ExportBackersRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
                 };
             };
         };
