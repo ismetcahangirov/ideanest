@@ -64,6 +64,8 @@ the browser half of the auth flow work at all.
 | `/projects/[id]/[projectSlug]` | **Public.** The campaign page, server-rendered — §10.2's `/projects/{creatorSlug}/{projectSlug}` (#119) |
 | `/projects/[id]/back` | Reward selection, add-ons, destination, and confirmation (#54) |
 | `/projects/[id]/dashboard` | The creator dashboard shell and its overview panel -- CD-01's live totals (#93) |
+| `/projects/[id]/dashboard/charts` | CD-02's funding trend, CD-07's reward mix and CD-08's destinations (#96) |
+| `/projects/[id]/dashboard/backers` | CD-10's backer report with saved segments, and CD-11's CSV export (#97, #79) |
 | `/discover` | **Public.** The filter rail, sort, chips, and the cursor-paginated feed (#45) |
 | `/robots.txt` | **Public.** Crawl directives, and the pointer to the sitemap index (#122) |
 | `/sitemap_index.xml` | **Public.** The index over the sitemap segments (#122) |
