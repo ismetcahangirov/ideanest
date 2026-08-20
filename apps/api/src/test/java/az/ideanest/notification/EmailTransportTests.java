@@ -87,6 +87,16 @@ class EmailTransportTests extends AbstractIntegrationTest {
     /** §4.10 gives {@code PLEDGE_CONFIRMED} email, push and in-app. */
     private static final int PLEDGE_CONFIRMED_CHANNELS = 3;
 
+    /**
+     * The campaign the messages here are about.
+     *
+     * <p>Named rather than left as the seed's default, which is the slug: since #249 the
+     * subject line carries the title, so a fixture whose campaign is called
+     * {@code email-4} produces assertions that read as though something were wrong with
+     * them.
+     */
+    private static final String CAMPAIGN = "Xari Bulbul Ceramics";
+
     @Autowired
     private NotificationSender sender;
 
@@ -122,7 +132,10 @@ class EmailTransportTests extends AbstractIntegrationTest {
         now = Instant.now().truncatedTo(ChronoUnit.MICROS);
         handle = "email-" + SEQUENCE.incrementAndGet();
         backerId = Campaigns.creator(dataSource, handle);
-        projectId = Campaigns.seed(dataSource, backerId, handle).state("LIVE").insert();
+        projectId = Campaigns.seed(dataSource, backerId, handle)
+                .state("LIVE")
+                .title(CAMPAIGN)
+                .insert();
     }
 
     @AfterEach
@@ -149,7 +162,7 @@ class EmailTransportTests extends AbstractIntegrationTest {
         drain();
 
         MimeMessage received = MailServerStub.awaitOne();
-        assertThat(received.getSubject()).isEqualTo("Your pledge is confirmed");
+        assertThat(received.getSubject()).isEqualTo("Your pledge to " + CAMPAIGN + " is confirmed");
         // The header carries the display name too -- "Creator email-4
         // <email-4@example.com>" -- which is the point of encoding it, so the assertion
         // is on both rather than on a bare address.
@@ -227,7 +240,7 @@ class EmailTransportTests extends AbstractIntegrationTest {
 
         assertThat(deliveryColumn("outcome", String.class)).isEqualTo("ACCEPTED");
         assertThat(deliveryColumn("accepted_at", Instant.class)).isNotNull();
-        assertThat(deliveryColumn("subject", String.class)).isEqualTo("Your pledge is confirmed");
+        assertThat(deliveryColumn("subject", String.class)).isEqualTo("Your pledge to " + CAMPAIGN + " is confirmed");
         assertThat(deliveryColumn("type", String.class)).isEqualTo("PLEDGE_CONFIRMED");
         assertThat(deliveryColumn("attempt", Integer.class)).isEqualTo(1);
         assertThat(deliveryColumn("detail", String.class))
@@ -327,7 +340,7 @@ class EmailTransportTests extends AbstractIntegrationTest {
         assertThat(deliveryColumn("detail", String.class)).isNotBlank();
         assertThat(deliveryColumn("subject", String.class))
                 .as("it was rendered before it was refused, so the record knows what did not go")
-                .isEqualTo("Your pledge is confirmed");
+                .isEqualTo("Your pledge to " + CAMPAIGN + " is confirmed");
     }
 
     // ------------------------------------------------------------------
@@ -362,7 +375,7 @@ class EmailTransportTests extends AbstractIntegrationTest {
         assertThat(partsOf(received).get(0))
                 .as("one message, and both things in it")
                 .contains("There are 2")
-                .contains("Your pledge of 50.00 AZN was confirmed");
+                .contains("Your pledge of 50.00 AZN to " + CAMPAIGN + " was confirmed");
 
         assertThat(deliveryColumn("outcome", String.class)).isEqualTo("ACCEPTED");
         assertThat(deliveryColumn("member_count", Integer.class)).isEqualTo(2);

@@ -12,6 +12,8 @@ import az.ideanest.notification.domain.NotificationType;
 import az.ideanest.shared.audience.ProjectAudience;
 import az.ideanest.shared.audience.ProjectAudiences;
 import az.ideanest.shared.outbox.OutboxMessage;
+import az.ideanest.shared.project.ProjectSummaries;
+import az.ideanest.shared.project.ProjectSummary;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -70,6 +72,12 @@ import tools.jackson.databind.ObjectMapper;
  * read. {@link #backersOf} is the one call site, and it is where the bound on a computed
  * audience is applied and logged.
  *
+ * <p>#249 is the second port and the same shape again. A translation may not read
+ * {@code projects} to find out what a campaign is called, so {@code shared.project.ProjectSummaries}
+ * publishes the question; {@link #about} is the one call site, and what it puts in the
+ * document is the title <em>as it was when the event happened</em> rather than as it is when
+ * somebody opens the message.
+ *
  * <p><strong>Followers are still not expressible</strong>, and that is a missing table rather
  * than a missing port: #90 owns saving and following, so {@code ProjectAudience} has no
  * {@code FOLLOWERS} constant to ask for — that enum says why adding one now would be worse than
@@ -112,17 +120,20 @@ public class NotificationEventListener {
 
     private final NotificationFanOut fanOut;
     private final ProjectAudiences audiences;
+    private final ProjectSummaries campaigns;
     private final NotificationProperties properties;
     private final ObjectMapper json;
 
     public NotificationEventListener(
             NotificationFanOut fanOut,
             ProjectAudiences audiences,
+            ProjectSummaries campaigns,
             NotificationProperties properties,
             ObjectMapper json) {
 
         this.fanOut = fanOut;
         this.audiences = audiences;
+        this.campaigns = campaigns;
         this.properties = properties;
         this.json = json;
     }
@@ -168,7 +179,7 @@ public class NotificationEventListener {
                         NotificationType.PLEDGE_CONFIRMED,
                         PLEDGE,
                         required(event.pledgeId(), "pledgeId", message),
-                        params("projectId", event.projectId(), "total", event.total()),
+                        about(event.projectId(), "total", event.total()),
                         at(event.confirmedAt(), message)));
             }
             case PledgeEdited.EVENT_TYPE -> {
@@ -178,7 +189,7 @@ public class NotificationEventListener {
                         NotificationType.PLEDGE_EDITED,
                         PLEDGE,
                         required(event.pledgeId(), "pledgeId", message),
-                        params("projectId", event.projectId(), "total", event.total()),
+                        about(event.projectId(), "total", event.total()),
                         at(event.editedAt(), message)));
             }
             case PaymentFailed.EVENT_TYPE -> {
@@ -188,10 +199,7 @@ public class NotificationEventListener {
                         NotificationType.PAYMENT_FAILED,
                         PLEDGE,
                         required(event.pledgeId(), "pledgeId", message),
-                        params(
-                                "projectId", event.projectId(),
-                                "amount", event.amount(),
-                                "attempt", event.attempt()),
+                        about(event.projectId(), "amount", event.amount(), "attempt", event.attempt()),
                         at(event.failedAt(), message)));
             }
             case GoalReached.EVENT_TYPE -> {
@@ -205,7 +213,7 @@ public class NotificationEventListener {
                         concat(creatorId, backersOf(projectId, message)),
                         NotificationType.GOAL_REACHED,
                         projectId,
-                        params("goal", event.goal()),
+                        about(projectId, "goal", event.goal()),
                         at(event.reachedAt(), message));
             }
             case CampaignSucceeded.EVENT_TYPE -> {
@@ -239,7 +247,7 @@ public class NotificationEventListener {
                         NotificationType.PROJECT_APPROVED,
                         PROJECT,
                         required(event.projectId(), "projectId", message),
-                        params(),
+                        about(event.projectId()),
                         at(event.approvedAt(), message)));
             }
             default -> null;
@@ -304,7 +312,7 @@ public class NotificationEventListener {
                 concat(creatorId, backersOf(projectId, message)),
                 type,
                 projectId,
-                params("goal", goal, "pledged", pledged, "backersCount", backersCount),
+                about(projectId, "goal", goal, "pledged", pledged, "backersCount", backersCount),
                 finalisedAt);
     }
 
@@ -396,6 +404,57 @@ public class NotificationEventListener {
     /** The instant the event reports, which every type of event must carry. */
     private static Instant at(Instant occurredAt, OutboxMessage message) {
         return required(occurredAt, "occurrence instant", message);
+    }
+
+    /**
+     * The rendering document for a message about a campaign: what the campaign is, then
+     * whatever else this type carries.
+     *
+     * <p>#249. Every notification about a campaign used to call it "this campaign", because
+     * {@code params} had no title in it and the events behind these translations carry
+     * identifiers and money and no title. {@code shared.project.ProjectSummaries} is the port
+     * that supplies one, in the same shape as {@code ProjectAudiences} beside it: a question
+     * the project module answers about its own rows, so the name is <em>asked for</em> rather
+     * than read.
+     *
+     * <p><strong>Asked here, at translation time, and stored.</strong> The alternative —
+     * looking the title up when the message is sent — is argued against in full on the port:
+     * the short version is that it would render the title as it is now rather than as it was
+     * when the thing happened, and it would put a cross-module read inside the delivery loop
+     * for every recipient of every attempt.
+     *
+     * <p><strong>The public path goes in beside the title.</strong> §10.2's campaign page is
+     * {@code /projects/{creatorSlug}/{projectSlug}}, so an identifier alone addresses no page
+     * — which is what {@code EmailComposer} was building links out of. Both slugs or neither;
+     * {@code ProjectSummary.hasPublicPath} decides.
+     *
+     * <p><strong>A campaign that cannot be found contributes nothing and is not an
+     * error.</strong> The keys are simply absent, every reader falls back to the copy that
+     * needs no title, and the notification is still written — which is the only acceptable
+     * outcome for a lookup that exists to improve wording.
+     *
+     * @param projectId the campaign, which is also written into the document as
+     *     {@code projectId} — including on the types whose subject is already the campaign,
+     *     so that every reader finds the campaign in one place rather than in two depending
+     *     on the type
+     */
+    private Map<String, Object> about(UUID projectId, Object... facts) {
+        Map<String, Object> params = new LinkedHashMap<>();
+        if (projectId != null) {
+            params.put("projectId", projectId);
+        }
+
+        ProjectSummary campaign = campaigns.summaryOf(projectId).orElse(null);
+        if (campaign != null) {
+            params.put("projectTitle", campaign.title());
+            if (campaign.hasPublicPath()) {
+                params.put("creatorSlug", campaign.creatorSlug());
+                params.put("projectSlug", campaign.slug());
+            }
+        }
+
+        params.putAll(params(facts));
+        return params;
     }
 
     /**

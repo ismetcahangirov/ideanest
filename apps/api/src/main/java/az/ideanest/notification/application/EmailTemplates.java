@@ -72,11 +72,19 @@ public class EmailTemplates {
      * <p>The identifier is fixed rather than random so that two previews of the same
      * template are the same bytes — which is what makes a diff between them meaningful
      * when somebody is reviewing a change to the copy.
+     *
+     * <p><strong>It carries a campaign name and both slugs</strong>, because since #249 the
+     * platform's messages do. A sample without them would preview the fallback copy — the
+     * wording reserved for rows written before that change — so a reviewer would be checking
+     * the sentences the platform has stopped sending.
      */
     private static final String SAMPLE_PARAMS =
             """
             {
               "projectId": "01890000-0000-7000-8000-000000000001",
+              "projectTitle": "Xari Bulbul Ceramics",
+              "creatorSlug": "aysel-studio",
+              "projectSlug": "xari-bulbul-ceramics",
               "total": {"amount": "120.00", "currency": "AZN"},
               "amount": {"amount": "120.00", "currency": "AZN"},
               "goal": {"amount": "5000.00", "currency": "AZN"},

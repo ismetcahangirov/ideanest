@@ -126,7 +126,11 @@ class EmailTemplateApiTests extends AbstractIntegrationTest {
 
         assertThat(html.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(html.getHeaders().getContentType().isCompatibleWith(MediaType.TEXT_HTML)).isTrue();
-        assertThat(html.getHeaders().getFirst("X-Email-Subject")).isEqualTo("Your pledge is confirmed");
+        // Named, because the sample document carries a title -- which is what the platform
+        // sends since #249, and previewing the fallback wording would show a reviewer the
+        // sentences it has stopped sending.
+        assertThat(html.getHeaders().getFirst("X-Email-Subject"))
+                .isEqualTo("Your pledge to Xari Bulbul Ceramics is confirmed");
         assertThat(html.getHeaders().getCacheControl()).isEqualTo("no-store");
         assertThat(html.getBody()).contains("<table").contains("120.00 AZN");
     }
@@ -187,7 +191,7 @@ class EmailTemplateApiTests extends AbstractIntegrationTest {
                 .contains(MODERATOR_EMAIL);
         assertThat(received.getSubject())
                 .as("and it is the real message for that type, not a placeholder")
-                .isEqualTo("Your payment did not go through");
+                .isEqualTo("Your payment for Xari Bulbul Ceramics did not go through");
     }
 
     @Test

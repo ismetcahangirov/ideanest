@@ -52,6 +52,12 @@ class ModuleBoundaryTests {
      */
     private static final String PROJECT_AUDIENCES = "az.ideanest.shared.audience.ProjectAudiences";
 
+    /**
+     * The one #249 is about: what a campaign is called, when the answer is a row another
+     * module owns.
+     */
+    private static final String PROJECT_SUMMARIES = "az.ideanest.shared.project.ProjectSummaries";
+
     private static final JavaClasses PRODUCTION_CLASSES = new ClassFileImporter()
             .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
             .importPackages(ROOT);
@@ -147,6 +153,26 @@ class ModuleBoundaryTests {
         // And the implementation is the pledge module's, because `pledges` is its table.
         // If `shared` ever answered this itself, `shared` would have acquired a feature.
         assertThat(modulesNaming(PROJECT_AUDIENCES)).contains("pledge");
+    }
+
+    @Test
+    @DisplayName("a campaign's name crosses only through the shared contract")
+    void campaignNamesCrossOnlyThroughTheSharedContract() {
+        // #249's shape, and the third instance of #236's. Every notification about a
+        // campaign called it "this campaign", because a translation may not read `projects`
+        // to find out what it is called. The wrong answers were the same two as before:
+        // reach into the project module, or look the title up when the message is sent --
+        // which would render the title as it is now rather than as it was when the thing
+        // happened, and would do it inside the delivery loop for every recipient.
+        assertThat(modulesNaming(PROJECT_SUMMARIES))
+                .withFailMessage(
+                        "The notification module stopped asking for a published campaign summary. Expected it"
+                                + " to name %s; found %s.",
+                        PROJECT_SUMMARIES, modulesNaming(PROJECT_SUMMARIES))
+                .contains("notification");
+
+        // And the implementation is the project module's, because `projects` is its table.
+        assertThat(modulesNaming(PROJECT_SUMMARIES)).contains("project");
     }
 
     @Test

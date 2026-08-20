@@ -227,6 +227,21 @@ knows nothing of `infrastructure` or `api`, and the absence of cycles between
 modules. A rule that lives only in a comment survives until the first afternoon
 somebody is in a hurry.
 
+**Where a question crosses that boundary, it crosses as a port in `shared`.**
+Three so far, each one interface, each implemented by the module that owns the
+rows, and each named in `ModuleBoundaryTests` so the route is checked rather than
+merely available:
+
+| Port | The question | Answered by |
+|---|---|---|
+| `shared.access.ProjectAuthorisation` | May this account do this on this campaign? (#236) | `project` |
+| `shared.audience.ProjectAudiences` | Who are these people on this campaign? (#245) | `pledge` |
+| `shared.project.ProjectSummaries` | What is this campaign called, and where does it live? (#249) | `project` |
+
+The alternative each replaced was a method per question on the owning module's
+service — a published surface that grows without bound — or reaching into another
+module's tables, which is the coupling the boundary exists to prevent.
+
 An entity in one module therefore refers to another module's aggregate by its
 identifier, not by a JPA association: `Session` holds a `userId`, not a `User`.
 The foreign key still exists in the database, because referential integrity is
@@ -538,7 +553,6 @@ other way would be a cycle. The dependency is inverted instead.
 | Push notifications. Email is real since #86; push is still `UndeliverableChannelSender`, which writes a log line and returns | [#87](https://github.com/ismetcahangirov/ideanest/issues/87) |
 | Verification links, collaborator invitations, and launch reminders as **email**. Each still reaches its own port and a logging adapter rather than the notification queue, so #86's transport does not carry them -- they are not `NotificationType` rows | no issue yet |
 | Bounce handling, a suppression list, and open tracking. All three need a provider webhook, and §16 chose an SMTP relay | no issue yet |
-| A campaign's title in an email. `notifications.params` carries `projectId` and no title, so the copy reads "this campaign"; supplying one is a shared port plus a change to seven translations | no issue yet |
 | Existing announcements moved onto the outbox. The table, the relay, and the guarantee are built (#135), and nothing routes through them yet: `AuthEvents`, `ProjectEvents`, and `LaunchReminderDelivery` still publish from after-commit listeners, so a crash between the commit and the send still loses the message | no issue yet |
 | Structured logging with redaction | [#137](https://github.com/ismetcahangirov/ideanest/issues/137) |
 | Metrics, tracing, alerting | [#138](https://github.com/ismetcahangirov/ideanest/issues/138) |
