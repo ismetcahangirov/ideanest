@@ -124,19 +124,89 @@ class CampaignOutcomeNotificationTests extends AbstractIntegrationTest {
 
         close();
 
-        String params = new JdbcTemplate(dataSource)
-                .queryForObject(
-                        "SELECT params::text FROM notifications WHERE type = 'CAMPAIGN_UNSUCCESSFUL' LIMIT 1",
-                        String.class);
-        assertThat(params)
+        assertThat(paramsOf("CAMPAIGN_UNSUCCESSFUL"))
                 .contains("\"amount\": \"8400.00\"")
                 .contains("\"amount\": \"10000.00\"")
                 .contains("\"backersCount\": 21");
     }
 
+    /**
+     * The message can say which campaign it is about — #249.
+     *
+     * <p>Before the port existed, every notification the platform sent called it "this
+     * campaign", because the event carries identifiers and money and no title. What is
+     * asserted here is the whole chain: the listener asked {@code ProjectSummaries}, the
+     * project module answered from its own table, and the answer reached
+     * {@code notifications.params} — where a template can read it.
+     *
+     * <p>Both slugs too, and they matter more than they look. §10.2's campaign page is
+     * {@code /projects/{creatorSlug}/{projectSlug}}, so an email whose button was built from
+     * the identifier pointed at no route at all.
+     */
+    @Test
+    @DisplayName("the notification names the campaign and carries its public path")
+    void theNotificationNamesTheCampaign() {
+        String projectSlug = named("Xari Bulbul Ceramics");
+
+        close();
+
+        assertThat(paramsOf("CAMPAIGN_SUCCEEDED"))
+                .contains("\"projectTitle\": \"Xari Bulbul Ceramics\"")
+                .contains("\"creatorSlug\": \"" + handle + "\"")
+                .contains("\"projectSlug\": \"" + projectSlug + "\"");
+    }
+
+    /**
+     * The title stored is the title as it was, not as it is.
+     *
+     * <p>The reason {@code ProjectSummaries} is asked at translation time rather than at send
+     * time, asserted rather than only argued: a campaign renamed after it closed does not
+     * rewrite the message that went out about it closing. A reader who is told "Xari Bulbul
+     * Ceramics was funded" and later sees the campaign under another name has a record of
+     * what they were told; the other way round, the record silently changes.
+     */
+    @Test
+    @DisplayName("a campaign renamed after the event does not rewrite the message about it")
+    void theStoredTitleIsTheTitleAsItWas() {
+        named("Xari Bulbul Ceramics");
+
+        close();
+        new JdbcTemplate(dataSource)
+                .update("UPDATE projects SET title = ? WHERE creator_id = ?", "Something Else", creatorId);
+
+        assertThat(paramsOf("CAMPAIGN_SUCCEEDED"))
+                .contains("\"projectTitle\": \"Xari Bulbul Ceramics\"")
+                .doesNotContain("Something Else");
+    }
+
     // ------------------------------------------------------------------
     // Fixtures
     // ------------------------------------------------------------------
+
+    /** A closed, funded campaign with a title worth printing. Answers its slug. */
+    private String named(String title) {
+        Instant deadline = Instant.now().minus(Duration.ofDays(1));
+        String projectSlug = handle + "-" + SEQUENCE.incrementAndGet();
+
+        Campaigns.seed(dataSource, creatorId, projectSlug)
+                .state("LIVE")
+                .title(title)
+                .goal("10000.00")
+                .pledged("12500.00")
+                .backers(1)
+                .launchedAt(deadline.minus(CAMPAIGN_LENGTH))
+                .deadline(deadline)
+                .insert();
+
+        return projectSlug;
+    }
+
+    /** The rendering document of one notification of this type, as PostgreSQL prints it. */
+    private String paramsOf(String type) {
+        return new JdbcTemplate(dataSource)
+                .queryForObject(
+                        "SELECT params::text FROM notifications WHERE type = ? LIMIT 1", String.class, type);
+    }
 
     /** Closes every campaign past its deadline and delivers what that produced. */
     private void close() {

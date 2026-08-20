@@ -78,59 +78,17 @@ export function deviceNameOf(
   return browser ?? platform ?? 'Unknown device';
 }
 
-const RELATIVE = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
-
-const DIVISIONS: ReadonlyArray<readonly [amount: number, unit: Intl.RelativeTimeFormatUnit]> = [
-  [60, 'second'],
-  [60, 'minute'],
-  [24, 'hour'],
-  [7, 'day'],
-  [4.34524, 'week'],
-  [12, 'month'],
-  [Number.POSITIVE_INFINITY, 'year'],
-];
-
 /**
- * "3 hours ago", "yesterday", "just now".
+ * "3 hours ago", and the exact timestamp behind it.
  *
- * `now` is a parameter rather than a call to `Date.now()` so that the function
- * is pure and the tests do not have to freeze the clock.
+ * Both now live in `lib/time.ts`, because the notification inbox (#88) needs the
+ * same two functions and nothing about them is about a session. Re-exported
+ * rather than moved outright so that this module stays the one place a session
+ * row is described from — `lastSeenAt` only advances when the session
+ * refreshes, so "3 hours ago" here is coarser than the words imply, and that is
+ * a fact about sessions rather than about the formatter.
  */
-export function formatRelativeTime(iso: string, now: Date): string {
-  const then = new Date(iso);
-  if (Number.isNaN(then.getTime())) return 'Unknown';
-
-  let duration = (then.getTime() - now.getTime()) / 1000;
-
-  // Under a minute, a rounded figure is noise. `lastSeenAt` only advances when
-  // the session refreshes, so it is never as precise as seconds imply anyway.
-  // Lower case, because every string this returns is read inside a sentence:
-  // "Last active just now", "Last active 3 hours ago".
-  if (Math.abs(duration) < 45) return 'just now';
-
-  for (const [amount, unit] of DIVISIONS) {
-    if (Math.abs(duration) < amount) return RELATIVE.format(Math.round(duration), unit);
-    duration /= amount;
-  }
-
-  return RELATIVE.format(Math.round(duration), 'year');
-}
-
-/**
- * The exact timestamp, for the `title` of the relative one.
- *
- * The locale is pinned until internationalised routing lands (#123); the point
- * here is that a relative string is never the only record of when something
- * happened on a security screen.
- */
-const EXACT = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
-
-export function formatExactTime(iso: string): string {
-  const at = new Date(iso);
-  if (Number.isNaN(at.getTime())) return 'Unknown';
-
-  return EXACT.format(at);
-}
+export { formatRelativeTime, formatExactTime } from '../time';
 
 /**
  * The second line of a row: where the session is signed in from.

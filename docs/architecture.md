@@ -906,6 +906,30 @@ Preferences are per category and per channel, with a digest option.
 > email says. The one row that has copy and can never be sent is "24 hours
 > remaining", which this table gives no email column: it renders, and the preview
 > endpoint refuses it.
+>
+> **The two screens this table describes exist since #88 and #89.**
+> `/notifications` is the in-app inbox: rows grouped by calendar day, an unread
+> marker that is a word as well as a dot, opening one marks it read, and the badge
+> is the service's whole-inbox `unreadCount` rather than a count of the loaded
+> page. `/settings/notifications` is this table as a grid — one row per category,
+> one control per channel, each offering *as it happens*, *daily digest* where
+> `digestOffered` says the channel can batch, and *off*. Every one of those
+> answers comes from the response rather than from a rule the client restates: a
+> client that decided which categories are mandatory would drift from this table
+> and offer a choice the service then refuses.
+>
+> Two limits are stated rather than hidden. **The inbox filters what has
+> loaded**, because `GET /v1/me/notifications` takes a cursor and nothing else, so
+> "nothing here" says *in what has loaded* and keeps the button that fetches more;
+> server-side filtering is a change to the endpoint and its index. And **there is
+> no "mark all as read"**, because there is no bulk endpoint and one request per
+> row would be a button whose cost is the size of somebody's backlog.
+>
+> Both screens render the campaign's name, from the `projectTitle` #249 put in
+> `notifications.params`, and link to `/projects/{creatorSlug}/{projectSlug}`. A
+> row whose document names no campaign is plain text rather than a link: the
+> reader is already inside the application, so a link to the home page is not a way
+> back to anything.
 
 ### 4.11 Administration `[A]`
 
@@ -3267,6 +3291,14 @@ change nothing.
 > and logs at `ERROR` when a campaign exceeds it; a fan-out chunked across several
 > transactions is the follow-up that removes the bound.
 >
+> **Notifications can name the campaign they are about since #249.**
+> `shared.project.ProjectSummaries` is the second port of the same shape:
+> `NotificationEventListener` asks it while it translates, and puts `projectTitle`,
+> `creatorSlug` and `projectSlug` in `notifications.params`. Every channel benefits
+> — the email copy in §12.3, the in-app inbox in §4.10's third column, and push
+> when #87 gives it a transport. The rows written before it keep the wording that
+> needs no title, correctly.
+>
 > **`CAMPAIGN_SUCCEEDED` and `CAMPAIGN_UNSUCCESSFUL` have producers since #63.**
 > §8.4's `campaign-finalizer` records `project.succeeded` or
 > `project.unsuccessful` in the same transaction as the decision, and this module
@@ -3329,14 +3361,30 @@ rejected: they are forty places to change one footer, and two versions of one ty
 that drift apart send plain-text readers something different. The copy lives in
 `messages.properties`, which is where #123 adds languages.
 
-Two limits are worth stating rather than discovering. **No email names a
-campaign:** `notifications.params` carries `projectId` and no title, because the
-events behind it have no title field, so supplying one means a shared port in the
-shape of `ProjectAudiences` plus a change to seven translations across three
-modules. The copy is written to read correctly without one and the field has a
-home the day it arrives. And **every message renders in one language**, because
-the sender runs on a background job with no reader attached; `users.locale`
-exists and is not read yet.
+**Emails name the campaign, and the copy comes in pairs (#249).**
+`notifications.params` carries `projectTitle` and both halves of the campaign's
+public path, put there at translation time by `NotificationEventListener` through
+`shared.project.ProjectSummaries` — the port the project module implements, in the
+shape `ProjectAudiences` established. Asked when the event is translated rather
+than when the message is sent, so what is stored is *the title as it was*: a
+campaign renamed afterwards does not rewrite the message that went out about it.
+
+A key may therefore have a `.named` twin, and `EmailComposer` prefers it when the
+document carries a title. Two plain sentences rather than one with a conditional
+inside it: rows written before #249, and rows whose campaign has since been
+deleted, have no title, and a sentence built around `{1}` renders with a hole in
+it when `{1}` is empty. Every `.named` key has a plain counterpart, and
+`EmailCopyTests` fails the build if one does not.
+
+The same two slugs fixed the button. §10.2's campaign page is
+`/projects/{creatorSlug}/{projectSlug}`, so the `/projects/{uuid}` the composer
+used to build matched no route and answered 404 — on every email about a campaign.
+Rows written before #249 hold no slugs and keep the old link, because nothing at
+send time can invent them.
+
+One limit is left, and it is worth stating rather than discovering: **every
+message renders in one language**, because the sender runs on a background job
+with no reader attached; `users.locale` exists and is not read yet.
 
 **Colours in the HTML layout are hex literals**, which CLAUDE.md §2 forbids in
 source. The rule cannot be honoured in a medium where Gmail, Outlook and Apple

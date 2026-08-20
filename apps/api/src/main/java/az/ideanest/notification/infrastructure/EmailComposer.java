@@ -5,12 +5,14 @@ import az.ideanest.notification.application.NotificationDigest;
 import az.ideanest.notification.application.NotificationMessage;
 import az.ideanest.notification.domain.NotificationType;
 import az.ideanest.shared.money.Money;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriUtils;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -38,12 +40,24 @@ import tools.jackson.databind.ObjectMapper;
  * already resolves it, and a type whose email is written the day its event lands is a
  * type whose email is written in a hurry.
  *
- * <h2>What it cannot say</h2>
+ * <h2>Naming the campaign — #249, and why there are two keys</h2>
  *
- * <p>No campaign is named, on any type. {@link EmailFacts#projectTitle()} carries the
- * argument in full; the short version is that {@code params} has no title in it and
- * putting one there is a change to three modules. The copy is written to read correctly
- * without one.
+ * <p>{@code params} now carries {@code projectTitle} on every notification about a
+ * campaign, so the copy can say which one. It cannot simply say it, because the rows
+ * written before #249 have no title in them and neither will a row whose campaign was
+ * deleted between the event and the send — and a sentence built around {@code {1}} renders
+ * with a hole in it when {@code {1}} is empty.
+ *
+ * <p>So a key may have a {@code .named} variant, and {@link #copy} prefers it when there is
+ * a title to put in it. Two plain sentences rather than one sentence with a conditional
+ * inside it: {@code MessageFormat}'s {@code choice} would express the same thing in a form
+ * no translator can read, and a single sentence with a generic fallback substituted for the
+ * title reads wrongly in at least one of the two cases whatever wording is chosen — "your
+ * pledge to this campaign is confirmed" is not English anybody writes.
+ *
+ * <p>A type with no {@code .named} variant is a type whose copy reads the same either way.
+ * That is the common case for the button and for the paragraphs that are about money rather
+ * than about which campaign it was.
  */
 @Component
 public class EmailComposer {
@@ -56,6 +70,14 @@ public class EmailComposer {
      * several types at once.
      */
     private static final String DIGEST = PREFIX + "digest.";
+
+    /**
+     * The suffix on the variant of a key that names the campaign — #249.
+     *
+     * <p>Optional on every key. Its absence means the sentence reads the same whether the
+     * campaign is named or not, which is the majority of them.
+     */
+    private static final String NAMED = ".named";
 
     private final MessageSource messages;
     private final ObjectMapper json;
@@ -132,7 +154,12 @@ public class EmailComposer {
      * than a guess about the shape of a payload nobody has written.
      */
     private EmailFacts factsFor(NotificationType type, JsonNode params, String recipientName) {
-        EmailFacts facts = EmailFacts.of(recipientName);
+        // Read for every type rather than per branch, because it is not a fact any one type
+        // carries -- it is what the message is about, and the branch below is only about
+        // which further facts the copy may mention. Absent on a row written before #249, on
+        // a message that is not about a campaign at all, and on one whose campaign could not
+        // be found; in all three the `.named` copy is simply not used.
+        EmailFacts facts = EmailFacts.of(recipientName).about(text(params, "projectTitle"));
 
         return switch (type) {
             // Produced today. The params are NotificationEventListener's, and the
@@ -182,12 +209,15 @@ public class EmailComposer {
     /**
      * Where the button goes.
      *
-     * <p>Four sources, in this order, and the order is the point:
+     * <p>Five sources, in this order, and the order is the point:
      *
      * <ol>
      *   <li>The type, when the message is not about a campaign at all. Only
      *       {@code NEW_DEVICE_SIGN_IN} is: it is about the account, and what a person who
      *       did not recognise that sign-in needs is the session list.
+     *   <li>The campaign's public path, {@code /projects/{creatorSlug}/{projectSlug}}, from
+     *       the two slugs #249 puts in {@code params}. <strong>This is the only one of
+     *       these that addresses the campaign page</strong> — see below.
      *   <li>{@code params.projectId}, which the pledge-shaped types carry — a message
      *       about a pledge is best answered by the campaign page, and a pledge has no
      *       page of its own on the web application yet.
@@ -195,6 +225,15 @@ public class EmailComposer {
      *   <li>The site. A message with nowhere specific to go still gives the reader
      *       somewhere to go, and a button pointing at nothing is worse than the home page.
      * </ol>
+     *
+     * <p><strong>The third and fourth are kept, and they are wrong.</strong> §10.2's
+     * campaign page takes two slugs, so {@code /projects/{uuid}} matches no route and
+     * answers 404 — which is what every email the platform had sent did, and what the rows
+     * written before #249 will keep doing, because their documents hold no slugs and
+     * nothing here can invent them. Removing them would send those readers to the home page
+     * instead; that is arguably better and it is a change to what old messages do, so it is
+     * left to whoever decides that rather than taken quietly here. Every row written from
+     * now on takes the second branch.
      *
      * <p><strong>Every destination here is a route that exists.</strong> That is a
      * constraint on the copy as much as on this method: a button labelled "update your
@@ -210,6 +249,16 @@ public class EmailComposer {
 
         if (type == NotificationType.NEW_DEVICE_SIGN_IN) {
             return base + "/settings/sessions";
+        }
+
+        String creatorSlug = text(params, "creatorSlug");
+        String projectSlug = text(params, "projectSlug");
+        if (!creatorSlug.isEmpty() && !projectSlug.isEmpty()) {
+            // Encoded although the shape check on both columns already restricts them to
+            // lowercase, digits and hyphens. The value reaches here through a jsonb
+            // document, and a link built by concatenation is the wrong place to rely on a
+            // constraint several tables away.
+            return base + "/projects/" + encode(creatorSlug) + "/" + encode(projectSlug);
         }
 
         UUID projectId = uuid(params);
@@ -230,7 +279,15 @@ public class EmailComposer {
      * needing three would add {@code .body3} here; none does.
      */
     private List<String> paragraphs(String base, EmailFacts facts) {
-        String second = optional(base + "body2", facts);
+        // Through the same `.named` preference as everything else, so that a second
+        // paragraph is not the one place in the file where naming the campaign silently
+        // does nothing. `.body2.named` without `.body2` would drop the paragraph for a row
+        // that has no title; `EmailCopyTests` holds that every `.named` key has its plain
+        // counterpart, which is the property that makes this safe.
+        String second = facts.projectTitle().isEmpty() ? null : optional(base + "body2" + NAMED, facts);
+        if (second == null) {
+            second = optional(base + "body2", facts);
+        }
         return second == null ? List.of(copy(base + "body", facts)) : List.of(copy(base + "body", facts), second);
     }
 
@@ -248,6 +305,12 @@ public class EmailComposer {
      * that goes out with a placeholder in it.
      */
     private String copy(String key, EmailFacts facts) {
+        if (!facts.projectTitle().isEmpty()) {
+            String named = optional(key + NAMED, facts);
+            if (named != null) {
+                return named;
+            }
+        }
         return messages.getMessage(key, facts.arguments(), Locale.ROOT);
     }
 
@@ -282,6 +345,16 @@ public class EmailComposer {
             // document is on the notification row for whoever investigates.
             return "";
         }
+    }
+
+    /**
+     * One path segment, safe to concatenate.
+     *
+     * <p>{@link java.net.URLEncoder} is not used: it is written for form bodies, so it
+     * encodes a space as {@code +}, which in a path is a plus sign rather than a space.
+     */
+    private static String encode(String segment) {
+        return UriUtils.encodePathSegment(segment, StandardCharsets.UTF_8);
     }
 
     /** A scalar from the document as text, or empty when it is not there. */

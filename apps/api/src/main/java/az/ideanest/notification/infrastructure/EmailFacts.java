@@ -16,16 +16,18 @@ package az.ideanest.notification.infrastructure;
  *
  * @param recipientName {@code {0}} — who is being written to, by the name on their
  *     account
- * @param projectTitle {@code {1}} — the campaign this is about.
- *     <p><strong>Empty today, on every type.</strong> {@code notifications.params} does
- *     not carry a title: {@code NotificationEventListener} puts {@code projectId} in and
- *     the events behind it — {@code PledgeConfirmedEvent},
- *     {@code CampaignFinalisedEvent} — have no title field to put. Supplying it means a
- *     shared port the project module implements, in the shape of
- *     {@code shared.audience.ProjectAudiences}, and changing seven translations to ask
- *     it; that is three modules and it is not #86. The copy therefore reads as
- *     "your campaign" wherever a title would go, and the day the field arrives this
- *     record is where it lands and the keys stop needing the fallback
+ * @param projectTitle {@code {1}} — the campaign this is about, as it was called when the
+ *     event happened.
+ *     <p><strong>Filled since #249</strong>, from {@code notifications.params}, which
+ *     {@code NotificationEventListener} now populates through
+ *     {@code shared.project.ProjectSummaries} — the port that lets the notification module
+ *     ask the project module for a name without reading {@code projects}.
+ *     <p><strong>Still empty on three kinds of row, and the copy has to survive it.</strong>
+ *     A notification written before #249 has no title in its document; neither has one
+ *     whose campaign was deleted between the event and the send; and neither has a message
+ *     that is not about a campaign at all. That is why a key naming the campaign is a
+ *     {@code .named} twin rather than a rewritten key — {@code EmailComposer} chooses
+ *     between them on whether this slot is empty
  * @param amount {@code {2}} — the money the message is about, already formatted for
  *     reading. A string, because §10.3's rule does not stop at the API boundary: an
  *     amount that became a double to be rendered is an amount that may render wrongly
