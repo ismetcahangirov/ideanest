@@ -5,6 +5,7 @@
     "/_not-found": 467,
     "/admin/moderation": 692,
     "/discover": 732,
+    "/notifications": 586,
     "/projects/[id]/[projectSlug]": 492,
     "/projects/[id]/back": 596,
     "/projects/[id]/dashboard": 598,
@@ -16,6 +17,7 @@
     "/projects/[id]/edit/story": 713,
     "/projects/[id]/prelaunch": 674,
     "/projects/new": 576,
+    "/settings/notifications": 584,
     "/settings/sessions": 665
   }
 }

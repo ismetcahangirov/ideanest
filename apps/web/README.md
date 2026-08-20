@@ -53,6 +53,8 @@ the browser half of the auth flow work at all.
 | Route | Issue |
 |---|---|
 | `/settings/sessions` | Session management (#27) |
+| `/settings/notifications` | §4.10's table as a grid — per category, per channel, with a digest option (#89) |
+| `/notifications` | The in-app inbox: read state, grouping by day, and filtering (#88) |
 | `/projects/new` | Name a campaign and create the draft (#33) |
 | `/projects/[id]/edit` | Redirects to the first tab (#33) |
 | `/projects/[id]/edit/basics` | Title, summary, category, goal, duration, cover (#33) |
@@ -198,7 +200,8 @@ are visible in every shared link forever.
 
 **Two shapes, because there are two kinds of page.** A public page gets a
 canonical, a full Open Graph block, and a large X card. A private one —
-`/projects/[id]/back`, `/projects/new`, `/settings/sessions`, every editor tab —
+`/projects/[id]/back`, `/projects/new`, `/settings/sessions`, `/notifications`,
+`/settings/notifications`, every editor tab —
 gets `noindex, nofollow`, no canonical, and no card at all. `nofollow` as well as
 `noindex` on all of them: they are shells around client boundaries, so the markup
 a crawler receives has no links in it, and `follow` would be a promise of crawl
