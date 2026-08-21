@@ -3,9 +3,9 @@ package az.ideanest.notification;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import az.ideanest.notification.NotificationProperties;
 import az.ideanest.notification.application.NotificationEvents.GoalReached;
 import az.ideanest.shared.Identifiers;
+import az.ideanest.shared.audience.AudienceProperties;
 import az.ideanest.shared.audience.ProjectAudience;
 import az.ideanest.shared.audience.ProjectAudiences;
 import az.ideanest.shared.money.Money;
@@ -72,7 +72,7 @@ class NotificationAudienceTests extends AbstractIntegrationTest {
     private ProjectAudiences audiences;
 
     @Autowired
-    private NotificationProperties properties;
+    private AudienceProperties properties;
 
     @Autowired
     private Outbox outbox;
@@ -216,7 +216,7 @@ class NotificationAudienceTests extends AbstractIntegrationTest {
     @Test
     @DisplayName("an audience over the bound is truncated, and the creator survives it")
     void anAudienceOverTheBoundIsTruncatedAndTheCreatorSurvives() {
-        int ceiling = properties.audience().maxRecipients();
+        int ceiling = properties.maxRecipients();
         for (int backer = 0; backer < ceiling + 2; backer++) {
             backer("CONFIRMED");
         }

@@ -182,6 +182,38 @@ public class BackerListRepository {
     }
 
     /**
+     * The accounts a filter matches, and nothing else about them — #98's audience.
+     *
+     * <p><strong>Identifiers rather than {@code BackerPage.Backer} rows, which is not an
+     * optimisation.</strong> {@link #all} selects a name, an address and an amount because a
+     * creator is about to read them; this answers a question the notification module asks while
+     * translating an event, and that module has no business receiving a list of backers' email
+     * addresses in order to work out who to tell. The narrow projection is the boundary.
+     *
+     * <p>{@code DISTINCT} because a segment's states can span more than one pledge per person in
+     * principle — {@code pledges_project_backer_active_key} makes that impossible today, and
+     * {@code PledgeProjectAudiences} explains why that index is a decision about checkout rather
+     * than a promise to this query. Ordered by the identifier so the answer is <em>stable</em>,
+     * which is the property {@code SegmentAudience} promises: a truncated audience that returned
+     * a different subset on every call would mean a redelivered event telling a different set of
+     * people.
+     */
+    public List<UUID> backerIds(UUID projectId, BackerFilter filter, int limit) {
+        MapSqlParameterSource parameters = parametersFor(projectId, filter);
+        parameters.addValue("limit", limit);
+
+        // The join to `users` only when the search term needs it, exactly as `count` does: an
+        // audience selects no name, so joining unconditionally would be one index lookup per
+        // matching row for a column nothing reads.
+        String join = filter.term() == null ? "" : " JOIN users u ON u.id = p.backer_id";
+        return jdbc.queryForList(
+                "SELECT DISTINCT p.backer_id FROM pledges p" + join + where(filter)
+                        + " ORDER BY p.backer_id LIMIT :limit",
+                parameters,
+                UUID.class);
+    }
+
+    /**
      * CD-07 and CD-08: the campaign's totals, its reward mix and its destinations.
      *
      * <p>Three statements, all over the report's five states and none of them narrowed by a

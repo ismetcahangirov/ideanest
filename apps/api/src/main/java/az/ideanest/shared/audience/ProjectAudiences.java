@@ -31,8 +31,10 @@ import java.util.UUID;
  * — which is one transaction whose size is decided by how well a campaign did.
  *
  * <p>The bound is the caller's rather than the implementation's, because only the caller knows
- * what it can do with the answer. The notification module's is
- * {@code ideanest.notification.audience.max-recipients}.
+ * what it can do with the answer. Since #98 there is more than one caller and they have to agree
+ * — a creator is shown one number for "who did this message reach" — so the ceiling is
+ * {@link AudienceProperties}, {@code ideanest.audience.max-recipients}, and that class says why it
+ * stopped belonging to the notification module.
  *
  * <p><strong>Truncation is detectable, and detecting it is the caller's job.</strong> This method
  * returns at most {@code limit} members and says nothing about whether there were more; a caller

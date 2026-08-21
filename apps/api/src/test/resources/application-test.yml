@@ -226,12 +226,17 @@ ideanest:
       # the remainder stays held and due would otherwise need two hundred and one
       # notifications to see it.
       max-notifications-per-message: 3
-    audience:
-      # Deliberately tiny, so that the bound on a computed audience is observable at
-      # all. The production five thousand is above every campaign the platform has,
-      # which is the point of it and would also mean a test proving the bound exists
-      # had to insert five thousand and one pledges.
-      max-recipients: 3
+
+  # The bound on a computed audience. Moved out of `ideanest.notification` by #98,
+  # which added a second caller: a message reports how many backers it reached, and
+  # two independently configured ceilings would be a response that disagrees with the
+  # delivery.
+  audience:
+    # Deliberately tiny, so that the bound on a computed audience is observable at
+    # all. The production five thousand is above every campaign the platform has,
+    # which is the point of it and would also mean a test proving the bound exists
+    # had to insert five thousand and one pledges.
+    max-recipients: 3
 
   user:
     # Disabled. `-` is Spring's own value for "do not schedule this". The suite

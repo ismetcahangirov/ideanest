@@ -278,4 +278,51 @@ public final class NotificationEvents {
 
         public static final String EVENT_TYPE = "project.ending_soon";
     }
+
+    /**
+     * A creator messaged their backers, or a saved segment of them — §4.7's CD-13 (#98).
+     *
+     * <p>Recipients: <strong>the segment, or every backer of the campaign.</strong> Resolved
+     * here rather than carried in the payload, for the reason every audience on this path is:
+     * five thousand identifiers in a message is the wrong shape for an event.
+     *
+     * <p>The two are asked of two different ports, because they are two different questions.
+     * "Who backed this campaign" is a standing group named by a word and comes from
+     * {@code ProjectAudiences}; "who is in this saved filter" is identified by a row and comes
+     * from {@code SegmentAudience}. {@code SegmentAudience} argues why one interface could not
+     * express both.
+     *
+     * <p><strong>It renders as {@code DIRECT_MESSAGE}, and that is a reading of §4.10 rather
+     * than a new row in it.</strong> The table has "direct message", which §4.9's C-12 describes
+     * as messages between a creator and a backer. CD-13 is the creator's half of exactly that,
+     * sent to many people at once — from the recipient's side it is a message from the campaign,
+     * which is what that row already means. The half that is not built is the reply: there is no
+     * conversation, and a backer cannot answer one of these. Inventing a §4.10 row for the same
+     * message would have meant a second preference switch for a distinction only the sender can
+     * see.
+     *
+     * <p><strong>The body travels in the payload and therefore into every recipient's
+     * rendering document.</strong> That is what bounds it at 2,000 characters, and {@code V34}
+     * argues the bound is a product decision as much as a technical one: long-form belongs in a
+     * project update, which is stored once and served from a page.
+     *
+     * @param messageId the message. Becomes the notification's subject, so a reader can be shown
+     *     it again from their inbox
+     * @param segmentId which saved segment, or <strong>null for every backer</strong>
+     * @param sentBy who sent it. <strong>Never rendered</strong> — a message is from the
+     *     campaign and not from a collaborator's personal account — and read only when a support
+     *     question has to be answered from the event
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record CampaignMessageSent(
+            UUID messageId,
+            UUID projectId,
+            UUID segmentId,
+            UUID sentBy,
+            String subject,
+            String body,
+            Instant sentAt) {
+
+        public static final String EVENT_TYPE = "project.message_sent";
+    }
 }

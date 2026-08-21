@@ -1,6 +1,7 @@
 package az.ideanest.notification.application;
 
 import az.ideanest.notification.application.NotificationEvents.CampaignEndingSoon;
+import az.ideanest.notification.application.NotificationEvents.CampaignMessageSent;
 import az.ideanest.notification.application.NotificationEvents.CampaignSucceeded;
 import az.ideanest.notification.application.NotificationEvents.CampaignUnsuccessful;
 import az.ideanest.notification.application.NotificationEvents.GoalReached;
@@ -9,10 +10,11 @@ import az.ideanest.notification.application.NotificationEvents.PledgeConfirmed;
 import az.ideanest.notification.application.NotificationEvents.PledgeEdited;
 import az.ideanest.notification.application.NotificationEvents.ProjectApproved;
 import az.ideanest.notification.application.NotificationEvents.ProjectLaunched;
-import az.ideanest.notification.NotificationProperties;
 import az.ideanest.notification.domain.NotificationType;
+import az.ideanest.shared.audience.AudienceProperties;
 import az.ideanest.shared.audience.ProjectAudience;
 import az.ideanest.shared.audience.ProjectAudiences;
+import az.ideanest.shared.audience.SegmentAudience;
 import az.ideanest.shared.outbox.OutboxMessage;
 import az.ideanest.shared.project.ProjectSummaries;
 import az.ideanest.shared.project.ProjectSummary;
@@ -128,19 +130,22 @@ public class NotificationEventListener {
 
     private final NotificationFanOut fanOut;
     private final ProjectAudiences audiences;
+    private final SegmentAudience segments;
     private final ProjectSummaries campaigns;
-    private final NotificationProperties properties;
+    private final AudienceProperties properties;
     private final ObjectMapper json;
 
     public NotificationEventListener(
             NotificationFanOut fanOut,
             ProjectAudiences audiences,
+            SegmentAudience segments,
             ProjectSummaries campaigns,
-            NotificationProperties properties,
+            AudienceProperties properties,
             ObjectMapper json) {
 
         this.fanOut = fanOut;
         this.audiences = audiences;
+        this.segments = segments;
         this.campaigns = campaigns;
         this.properties = properties;
         this.json = json;
@@ -274,6 +279,35 @@ public class NotificationEventListener {
             case CampaignEndingSoon.EVENT_TYPE -> {
                 CampaignEndingSoon event = read(message, CampaignEndingSoon.class);
                 yield endingSoon(message, event);
+            }
+            case CampaignMessageSent.EVENT_TYPE -> {
+                CampaignMessageSent event = read(message, CampaignMessageSent.class);
+                UUID projectId = required(event.projectId(), "projectId", message);
+                UUID messageId = required(event.messageId(), "messageId", message);
+                // The segment or every backer, which is the whole of the branching here. The
+                // sender is not added: they chose the audience, and a creator receiving their
+                // own message would look like the platform had misunderstood the request.
+                List<UUID> recipients = event.segmentId() == null
+                        ? audienceOf(projectId, ProjectAudience.BACKERS, message)
+                        : segmentAudienceOf(projectId, event.segmentId(), message);
+
+                yield recipients.stream()
+                        .map(recipientId -> NotificationRequest.about(
+                                recipientId,
+                                NotificationType.DIRECT_MESSAGE,
+                                // The subject is the message rather than the campaign, unlike
+                                // every other type here, and it is what lets an inbox link a
+                                // reader back to what they were sent.
+                                "message",
+                                messageId,
+                                about(
+                                        projectId,
+                                        "subject",
+                                        required(event.subject(), "subject", message),
+                                        "body",
+                                        required(event.body(), "body", message)),
+                                at(event.sentAt(), message)))
+                        .toList();
             }
             default -> null;
         };
@@ -446,7 +480,7 @@ public class NotificationEventListener {
      * is asked for, so "there were more" is a fact this method knows rather than one it infers
      * from a full page; when there were, it logs at {@code ERROR} naming the campaign and the
      * count, because the notifications that fall off the end are people the platform decided not
-     * to tell. {@code NotificationProperties.Audience} argues the number and says what removes
+     * to tell. {@code AudienceProperties} argues the number and says what removes
      * the bound rather than raising it.
      *
      * <p>Not a failure, for {@code NotificationFanOut}'s reason: this listener shares the dispatch
@@ -460,7 +494,7 @@ public class NotificationEventListener {
      * events that have two.
      */
     private List<UUID> audienceOf(UUID projectId, ProjectAudience audience, OutboxMessage message) {
-        int ceiling = properties.audience().maxRecipients();
+        int ceiling = properties.maxRecipients();
         List<UUID> members = audiences.membersOf(projectId, audience, ceiling + 1);
 
         if (members.size() <= ceiling) {
@@ -473,6 +507,37 @@ public class NotificationEventListener {
                 projectId,
                 ceiling,
                 audience,
+                message.id(),
+                ceiling);
+        return members.subList(0, ceiling);
+    }
+
+    /**
+     * The backers a saved segment matches, from the port the pledge module publishes — #98.
+     *
+     * <p>The same bound and the same {@code ERROR} as {@link #audienceOf}, through a different
+     * port because a segment is identified by a row rather than named by a word;
+     * {@code SegmentAudience} argues why one interface could not carry both questions.
+     *
+     * <p><strong>A segment deleted between the send and the delivery reaches nobody</strong>,
+     * and this is not treated as a failure — {@code PledgeSegmentAudience} makes the argument.
+     * It is also why {@code campaign_messages} freezes its recipient count when the message is
+     * sent rather than leaving "who did this reach" to be recovered from here afterwards.
+     */
+    private List<UUID> segmentAudienceOf(UUID projectId, UUID segmentId, OutboxMessage message) {
+        int ceiling = properties.maxRecipients();
+        List<UUID> members = segments.membersOf(projectId, segmentId, ceiling + 1);
+
+        if (members.size() <= ceiling) {
+            return members;
+        }
+        log.error(
+                "Segment {} on campaign {} matches more than {} backers, so the message from event {} reaches the"
+                        + " first {} of them and the rest are not told; the fan-out has to be chunked to remove this"
+                        + " bound",
+                segmentId,
+                projectId,
+                ceiling,
                 message.id(),
                 ceiling);
         return members.subList(0, ceiling);
