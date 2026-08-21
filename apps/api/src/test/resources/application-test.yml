@@ -109,6 +109,12 @@ ideanest:
       # Small enough that the sweep's batching is exercised rather than described:
       # a campaign with four followers takes two passes.
       send-batch-size: 3
+      # Disabled for the reason above, and with one of its own: DeadlineReminderJob
+      # acts on every LIVE campaign inside its last two days, and the suite creates
+      # campaigns with short deadlines all over the place. A sweep firing in the
+      # background would announce them and fill `notifications` under tests that
+      # have nothing to do with deadlines.
+      deadline-schedule: "-"
 
     finalisation:
       # Disabled, for the reason every schedule in this file is, and with one of its
@@ -220,12 +226,27 @@ ideanest:
       # the remainder stays held and due would otherwise need two hundred and one
       # notifications to see it.
       max-notifications-per-message: 3
-    audience:
-      # Deliberately tiny, so that the bound on a computed audience is observable at
-      # all. The production five thousand is above every campaign the platform has,
-      # which is the point of it and would also mean a test proving the bound exists
-      # had to insert five thousand and one pledges.
-      max-recipients: 3
+
+  # The bound on a computed audience. Moved out of `ideanest.notification` by #98,
+  # which added a second caller: a message reports how many backers it reached, and
+  # two independently configured ceilings would be a response that disagrees with the
+  # delivery.
+  audience:
+    # Deliberately tiny, so that the bound on a computed audience is observable at
+    # all. The production five thousand is above every campaign the platform has,
+    # which is the point of it and would also mean a test proving the bound exists
+    # had to insert five thousand and one pledges.
+    max-recipients: 3
+
+  realtime:
+    # Disabled, exactly as every schedule in this file is: `-` is Spring's own value
+    # for "do not schedule this". A flush firing every second in the background of a
+    # suite would push the very window a test is about to assert on.
+    #
+    # The module itself stays ON -- `enabled: false` would stop the accumulation as
+    # well, and a suite asserting on a buffer nothing ever filled asserts nothing.
+    # RealtimeWindowTests drives RealtimeFlusher#flush directly.
+    flush-schedule: "-"
 
   user:
     # Disabled. `-` is Spring's own value for "do not schedule this". The suite

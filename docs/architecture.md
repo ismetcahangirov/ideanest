@@ -694,7 +694,7 @@ moderation outcome, launch (scheduled or immediate).
 | CD-10 | **Backer report with filtering and segmentation.** Built (#97). `GET /backers`, guarded by `VIEW_FINANCES` — **the one dashboard read that returns personal data**, which is what makes that capability worth granting narrowly. Four axes: state, reward tier, destination, and a search over name and email. **A saved segment stores the question and never the answer**: `backer_segments` holds the filter, membership is re-evaluated on every read, and no backer identifier is copied into it — a stored list would be wrong the moment somebody pledged and would be personal data with a second retention rule. §4.5's PL-12 hides an anonymous backer from the *public* page; the creator sees the name, flagged, because a parcel cannot be addressed to a number. Only the five states that are a backing are selectable — a reservation is not a backer and a cancelled pledge is no longer one, and what a creator needs about the terminal states is CD-17, which is not built |
 | CD-11 | **Export in fulfilment-partner formats.** Built (#79). `POST /backers/export` answers `text/csv`: a POST because the filter is a nested body and because the export is audited, and a GET that writes an audit row is one a browser may prefetch. Bounded by `ideanest.pledge.report.export-row-cap` and **the response says when the cap was reached**, in a header rather than in the file — a truncated fulfilment list looks exactly like a complete one. Cells beginning `=`, `+`, `-` or `@` are prefixed, because a display name is the most attacker-controlled string on the platform and the person who opens the file is the creator; the document leads with a byte order mark so Excel reads it as UTF-8. **It carries no postal address**, which is a gap and not a decision: §4.8's PM-07 collects one and #75 is the issue that builds it. A column of blanks would look like the backers declined to give one |
 | CD-12 | Publish updates, public or backers-only, scheduled |
-| CD-13 | Bulk message a segment |
+| CD-13 | **Bulk message a segment.** Built (#98). `POST /messages` sends to a saved segment or to every backer, and which capability it needs depends on which: `PUBLISH_UPDATES` always, because it speaks in the campaign's name; **plus `VIEW_FINANCES` only when a segment is named**, because choosing one is an act of CD-10's report — it selects people by state, tier, country or a search over their names, and a collaborator who may not read that report should not be able to interrogate it by sending messages and watching the recipient counts. Messaging everybody reveals nothing and needs neither. Rate limited **per campaign, not per account** (the harm is to the campaign's backers, so four collaborators must not get four allowances for reaching the same people), audited as the act and never the content, and bounded at 2,000 characters — long-form is CD-12's update, which stores the text once |
 | CD-14 | Comment moderation |
 | CD-15 | FAQ management |
 | CD-16 | Financial summary: gross, fees, tax, net |
@@ -757,8 +757,21 @@ The most valuable and most complex module. It begins when funding closes.
 > backers-only, with scheduling — behind §10.2's two endpoints; and C-01, C-02,
 > C-03 and CD-14 behind the community module's four comment endpoints, with
 > C-07 behind the moderation module's fifth. C-04 reactions,
-> C-05 comments *on* an update, C-08 blocking, C-09 saving, C-10 following, C-11
-> reminders, C-12 direct messages and C-13/C-14 sharing are not built.
+> **C-09, C-10 and C-11 are built.** Saving a campaign and following an account
+> are #90's, behind four writes and two lists; launch reminders are #39's and live
+> in the project module rather than the community one, because a reminder is
+> collected by a pre-launch page and is the one signal of the three that can come
+> from somebody with no account. What those rows are *for*, beyond a reader's own
+> two lists, is #245: the community module publishes `SAVERS` and `FOLLOWERS`
+> through `shared.audience`, which is what finally gives §4.10's "followed creator
+> launched" and "saved project ending soon" an audience.
+>
+> **C-12 is half built.** #98 sends a creator's message to a segment of backers and
+> it renders as §4.10's "direct message"; the reply half — a conversation a backer
+> can answer in — is not built.
+>
+> C-04 reactions, C-05 comments *on* an update, C-08 blocking and C-13/C-14
+> sharing are not built.
 >
 > **A comment thread is two levels deep, and the bound is structural.** A reply
 > answers a root; a reply to a reply is a 422 naming the bound. Not a preference:
@@ -897,6 +910,16 @@ Preferences are per category and per channel, with a digest option.
 > service (#85) is what fans one event out to email, push, and the in-app inbox,
 > and transactional email itself is #86 — until then the adapter writes a log line
 > saying what would have been sent.
+>
+> **Five more rows have a producer since #90 and #98.** "48 hours remaining" and
+> "24 hours remaining" come from §8.4's `deadline-reminder`, to the creator and the
+> campaign's backers; "saved project ending soon" comes out of the same event at
+> the 48-hour threshold, to the savers who are not backers; "followed creator
+> launched" comes from `project.launched`, to the creator's followers and
+> deliberately not to the creator, who pressed the button; and "direct message" is
+> CD-13's bulk message to a segment. The remaining rows without a producer belong
+> to features that are not built — payments, the pledge manager, and §17.1's
+> device history.
 >
 > **Two of the three columns are now real.** #86 built the email transport (§12.3)
 > and the in-app inbox was #85's; push is still #87, and still a log line. Every
@@ -1803,8 +1826,10 @@ by a database constraint and verified by a nightly reconciliation job.
 | `project_updates` | Numbered updates (#83). One row per post: a `number` allocated on insert as `max + 1` per campaign and never recomputed — it is what a link and a support conversation name — a `title` and a prose `body`, a `visibility` of `PUBLIC` or `BACKERS_ONLY`, the `author_id`, and a `published_at`. **`published_at` in the future is the whole of "scheduled"**: the public read filters on it, so there is no state column to fall out of step with it and no §8.4 job to be late. `body` is `text` rather than `jsonb` because nothing in §4.7's CD-12 gives an update the story's block editor, and storing an unvalidated document on a public page is the one thing §10.4 says not to do with creator content; the day updates gain that editor it becomes `jsonb` by an expand-then-contract pair. No `deleted_at` yet, deliberately — see §4.9 |
 | `comments` | The conversation under a campaign (#84). Two levels and no more: a root and its replies, `parent_id` null on a root, a denormalised `thread_id` and a `depth` of 0 or 1. **The bound is a foreign key, not a check.** `parent_depth` is `GENERATED ALWAYS AS (depth - 1)`, and `(parent_id, parent_depth, thread_id)` references `(id, depth, thread_id)` — so a reply's parent must be the row one level above it *in the same thread*, which is "replies attach to roots and to nothing else" with no way to write around it from a support script. A depth check alone would still accept a reply hanging under a reply that had claimed depth 1. `thread_id` is a column rather than `coalesce(parent_id, id)` because one page of roots then costs one further query for all of their replies, keyset on `(thread_id, id)`. `by_creator` is C-02's highlight, **decided at write time** from the authorisation then in force: derived on read it would change on a year-old comment the day somebody left the campaign's team, and accepted from the client it would be a claim of authority taken from the side making it. **Deletion is a tombstone** — `deleted_at`/`deleted_by`, both or neither — and the row and its body stay: a removed root still heads its thread so its replies are not orphaned, and an open report in `content_reports` still resolves to something a moderator can read. `CommentResponse` is the single place a tombstone becomes `body: null`, `authorId: null`. Cascades on the campaign, like `project_updates`; no `ON DELETE` on `author_id`, since §17.4 anonymises in place |
 | `faqs` | Question and answer pairs |
-| `saves`, `follows` | Backer signals |
+| `saves`, `follows` | §4.9's C-09 and C-10 (#90): the two signals a backer leaves without spending anything. **Two tables and not one with a discriminator**, because the referents differ -- a save points at a campaign and a follow at a person -- so both foreign keys stay real, unlike `audit_logs` and `content_reports` where the referent genuinely varies at runtime and the row has to outlive it. **Withdrawal deletes the row**, the same departure from §7.3 that `reminders` makes and for the same reason: soft delete is for audit and recovery, and a record of what somebody *used to* be interested in is retention §17.4 refuses -- it would also make the unique constraints partial, which is the shape that lets one person accumulate a hundred tombstoned saves of one campaign. Neither gains a counter column on `projects` or `users`: no screen shows a save count yet, and a cached number is a second thing that can be wrong plus an hourly job to correct it. `follows_is_not_self` is a constraint rather than tidiness -- a self-follow would put a creator in their own `FOLLOWERS` audience, so launching would notify them that somebody they follow had launched their own campaign |
 | `reminders` | Who asked to be told when a campaign opens, and whether they were |
+| `deadline_notices` | Which of §4.10's deadline thresholds a campaign has already been announced at (#90). **The row is the claim**: it is inserted in the same transaction as the `project.ending_soon` outbox event it authorises, so a crash either leaves the threshold unclaimed and unannounced or claimed and announced. It has to exist because the sweep's question -- "which live campaigns are within 48 hours of closing" -- is true for the whole of a campaign's last two days, so without it every closing campaign would be announced once a minute for two days and each announcement is a message to every backer. **A row per threshold rather than two columns on `projects`**: that table is the platform's widest and its hottest row, so a background sweep writing to it would contend with every edit and every pledge on precisely the campaigns that are busiest, and a third threshold would be a migration over every campaign ever created rather than one value in a check |
+| `campaign_messages` | §4.7's CD-13 (#98): a message a creator sent to their backers, or to a saved segment of them. The **act**; the notifications it produced are the delivery. It exists because `audit_logs` records that somebody messaged a segment and cannot record what they said -- §17.4 keeps content out of the one table with no retention rule -- and because reconstructing "what did we send, to whom" from `notifications` means reading five thousand rows to recover one subject line. **The segment is a snapshot, not a join**: `segment_id` has no foreign key and `segment_name` is copied beside it, for V21's and V23's reason plus one of this feature's own -- a segment's definition is editable, so a live join would report a message as having gone to a set it did not go to. `recipient_count` is frozen at send time for the same reason. The body is bounded at 2,000 characters, which is a product decision as much as a technical one: long-form belongs in a project update, which stores the text once and serves it from a page, where a message is copied into the rendering document of every notification it produces |
 | `collaborators` | Scoped grants |
 | `surveys`, `survey_questions`, `survey_responses` | Pledge manager |
 | `shipping_addresses` | Encrypted at rest |
@@ -2043,7 +2068,8 @@ load profile).
 | `reservation-cleaner` | Every minute | Release expired stock reservations |
 | `search-indexer` | Event-driven plus nightly full | Keep the index current |
 | `analytics-aggregator` | Hourly | Populate daily rollups |
-| `reminder-sender` | Every minute | Launch and deadline reminders |
+| `reminder-sender` | Every minute | Launch reminders (#39) |
+| `deadline-reminder` | Every 5 minutes | Deadline reminders: §4.10's 48- and 24-hour thresholds (#90) |
 | `survey-nudge` | Daily | Chase non-responders |
 | `ledger-reconciliation` | Daily | Verify the balance invariant, compare to settlement |
 | `token-cleaner` | Daily | Purge tokens from unsuccessful campaigns |
@@ -2078,13 +2104,33 @@ load profile).
 > already claimed its own rows. What they gained is the retry accounting and the
 > end of N replicas doing the same reads to find the same nothing.
 
-> **`reminder-sender` is half built.** #39 implemented the launch half: it sweeps
-> every campaign that is `LIVE` and still owes somebody the notice they asked for,
-> claiming each row with a conditional update inside the transaction that sends,
-> so a crash mid-launch neither drops the rest nor tells anybody twice. Deadline
-> reminders — the "48 hours remaining" and "24 hours remaining" rows of §4.10 —
-> are not here: they need a notification preference model that does not exist, and
-> half a job that looks finished is worse than a job that says what it does.
+> **`reminder-sender` is the launch half, and it is finished.** #39 built it: it
+> sweeps every campaign that is `LIVE` and still owes somebody the notice they
+> asked for, claiming each row with a conditional update inside the transaction
+> that sends, so a crash mid-launch neither drops the rest nor tells anybody
+> twice.
+>
+> **The deadline half is `deadline-reminder`, and #90 built it as a second job
+> rather than as a second responsibility on the first.** This row used to be one
+> line reading "launch and deadline reminders"; the split is the lease. `JobRunner`
+> counts failures per job name and backs a failing job off to a ten-minute cap and
+> then `DEAD`, so one job doing both would mean a database problem in the deadline
+> sweep backing off launch notices too — and the launch sweep is the one sweep on
+> the platform that is *not* indifferent to running late. Two names, two lease
+> rows, two failure budgets.
+>
+> **Five minutes rather than a minute**, because the thresholds are measured in
+> hours: nobody can tell a "48 hours remaining" notice sent at 48:00 from one sent
+> at 47:56. What makes lateness safe is that the candidate window has a *lower*
+> bound as well as an upper one — a campaign stays `LIVE` between its deadline and
+> `campaign-finalizer`'s next pass, and "24 hours remaining" about a campaign that
+> has closed is the one message this sweep must never send.
+>
+> **The claim is `deadline_notices`, not a column.** The sweep's question is true
+> for the whole of a campaign's last two days, so the row is what stops it
+> announcing the same campaign every tick — and it is written in the same
+> transaction as the outbox event it authorises, because a claim with no event is a
+> campaign whose backers are never told, permanently.
 >
 > A domain event published when a campaign goes live starts the same sweep
 > immediately, so a creator does not watch their followers be told a minute later.
@@ -2465,7 +2511,8 @@ GET    /v1/me
 PATCH  /v1/me
 GET    /v1/me/backed
 GET    /v1/me/created
-GET    /v1/me/saved
+GET    /v1/me/saved                         # C-09 (#90); the caller's saved campaigns
+GET    /v1/me/following                     # C-10 (#90); not in the original list -- see below
 GET    /v1/me/notifications
 POST   /v1/me/notifications/{id}/read
 GET    /v1/me/notification-preferences
@@ -2474,6 +2521,8 @@ GET    /v1/me/export
 POST   /v1/me/deletion
 DELETE /v1/me/deletion
 GET    /v1/users/{slug}
+POST   /v1/users/{slug}/follow              # C-10 (#90)
+DELETE /v1/users/{slug}/follow
 
 # Discovery
 GET    /v1/discover
@@ -2494,7 +2543,7 @@ GET    /v1/projects/{id}/faqs
 GET    /v1/projects/{id}/community
 GET    /v1/projects/{id}/similar
 GET    /v1/projects/{id}/prelaunch
-POST   /v1/projects/{id}/save
+POST   /v1/projects/{id}/save               # C-09 (#90); requires a token despite the block
 DELETE /v1/projects/{id}/save
 POST   /v1/projects/{id}/remind
 DELETE /v1/projects/{id}/remind
@@ -2555,6 +2604,8 @@ POST   /v1/projects/{id}/backer-segments
 PUT    /v1/projects/{id}/backer-segments/{segmentId}
 DELETE /v1/projects/{id}/backer-segments/{segmentId}
 GET    /v1/projects/{id}/finance
+POST   /v1/projects/{id}/messages           # CD-13 (#98); PUBLISH_UPDATES, audited, rate limited
+GET    /v1/projects/{id}/messages           # what has been sent; no-store
 
 # Pledge manager
 POST   /v1/projects/{id}/surveys
@@ -3191,6 +3242,65 @@ Scaling uses a Redis-backed pub/sub adapter. On high-traffic projects the pledge
 counter is **aggregated into one-second windows** before broadcast, rather than
 emitting an event per pledge.
 
+> **Two of those six channels are built (#91), and both are the public ones.**
+> `project:{id}` carries the pledge counter and `project:{id}:comments` carries
+> that somebody has commented. `user:{id}` and `project:{id}:dashboard` carry a
+> person's own notifications and a creator's live metrics, and neither can be
+> served until the socket authenticates — which is why `RealtimeChannel` has no
+> constant for either rather than a constant that is refused: a value in a
+> published vocabulary is one a caller writes code against.
+>
+> **The endpoint is `GET /v1/realtime?channel=…`, unauthenticated, and the parse
+> is the access control.** There is no subscribe frame and no STOMP: a page
+> watches one campaign, so putting the channel in the handshake makes a connection
+> either valid or closed, decided once, before anything is registered. Inbound
+> messages are ignored entirely — not parsed, not logged — because there is
+> nothing a viewer of a public page can usefully say over a socket that the API
+> does not already accept with a token and a rate limit.
+>
+> **A WebSocket handshake is not subject to CORS**, so the origin check has to be
+> the server's own: `ideanest.realtime.allowed-origins`, empty by default, which
+> leaves Spring's same-origin rule in force.
+>
+> **The aggregation is the feature and it is where the module's weight is.** A
+> campaign taking forty pledges a second is forty frames per viewer per second
+> without it, and a counter changing at that rate is not one anybody can read.
+> Events are accumulated on the relay's thread — one map update, nothing more,
+> because that thread is inside a dispatch transaction shared with every other
+> consumer — and broadcast on a separate tick after the commit, which is also the
+> only ordering in which a viewer cannot be told about a pledge that then rolls
+> back.
+>
+> **What goes out is a delta, never a total**: "40.50 arrived since I last spoke".
+> The module owns no tables and may not read `projects`, so it cannot state the
+> campaign's new total; a client renders the server's number and adds to it, which
+> means a reader who missed a window is *behind* rather than wrong. Money crosses
+> as a string, §10.3, and it matters more here than anywhere — this is the one
+> value on the platform accumulated repeatedly in a browser.
+>
+> **No comment body is ever broadcast.** A comment can be removed by its author,
+> by the campaign's team (CD-14) or by moderation (AD-09) seconds after it is
+> posted, and a socket has no way to take a message back — so pushing the text
+> would be publishing content past every control the platform has for removing it.
+> What goes out is a count and the newest identifier; the client fetches through
+> the endpoint that honours the tombstone.
+>
+> **There is no Redis relay, and the bound is stated rather than hidden.** A
+> broadcast reaches the sessions the receiving process holds, so on N replicas a
+> reader is told about roughly one event in N. That is a degraded counter and not
+> a wrong page — the numbers in the server-rendered document are correct and
+> refresh on navigation — and nothing on the platform reads state from this
+> module. The follow-up is one class: a publish to Redis instead of a loop, and a
+> subscriber that calls the loop.
+>
+> **On the browser side it is opt-in and unset by default.** The web application's
+> `next.config.mjs` states that the browser never learns the API's real origin — it
+> talks to the application, and `/v1` is rewritten server-side — and a WebSocket
+> cannot use that rewrite, because Next does not proxy an upgrade. So
+> `IDEANEST_REALTIME_ORIGIN` is absent unless a deployment has somewhere to point
+> it, and with nothing configured the campaign page behaves exactly as it did
+> before #91.
+
 ### 12.2 Delivery
 
 ```mermaid
@@ -3287,15 +3397,53 @@ change nothing.
 > `notifications.id`, which is what makes the at-least-once queue's duplicates
 > collapsible by a mail client.
 >
-> §4.10's audiences that are a list the platform computes are **half** built:
-> `shared.audience.ProjectAudiences` is the port #245 asked for, the pledge module
-> publishes `BACKERS` from `pledges`, and "goal reached" now reaches a campaign's
-> backers as well as its creator. Followers are not in it — #90 owns saving and
-> following, and there is nothing to enumerate until it lands — so
-> `FOLLOWED_CREATOR_LAUNCHED` and `SAVED_PROJECT_ENDING_SOON` still have no
-> audience. The port is bounded at `ideanest.notification.audience.max-recipients`
-> and logs at `ERROR` when a campaign exceeds it; a fan-out chunked across several
-> transactions is the follow-up that removes the bound.
+> §4.10's audiences that are a list the platform computes are **finished (#245)**,
+> and #90 is what finished them. `shared.audience.ProjectAudiences` is the port
+> #245 asked for; the pledge module publishes `BACKERS` from `pledges` and the
+> community module publishes `SAVERS` and `FOLLOWERS` from `saves` and `follows`.
+> `FOLLOWED_CREATOR_LAUNCHED` and `SAVED_PROJECT_ENDING_SOON` had copy, channels
+> and a preference category and no audience at all until those rows existed.
+>
+> **The port became a routed one in the process.** It shipped as one interface with
+> one implementation because the pledge module owned every audience there was; two
+> owning modules would be an injection failure rather than a design. Each module
+> now claims the audiences whose rows it owns and `RoutedProjectAudiences` joins
+> them up — which also turns `ProjectAudience`'s standing rule into something the
+> application checks, since an audience nobody claims refuses to start.
+>
+> **The bound moved out of the notification module (#98).**
+> `ideanest.notification.audience.max-recipients` is now
+> `ideanest.audience.max-recipients`, because there are two callers resolving the
+> same audience for different reasons — a bulk message freezes how many people it
+> reached, the fan-out writes the rows — and two independently configured ceilings
+> would be a response that disagrees with the delivery on precisely the campaigns
+> large enough to hit either. Exceeding it still logs at `ERROR`; a fan-out chunked
+> across several transactions is the follow-up that removes the bound.
+>
+> **Saved segments are a second port and not a fourth constant (#98).** Every
+> audience in that vocabulary is a standing group named by a word, and
+> `membersOf` takes a campaign and a name; a segment is a saved filter identified
+> by a row, so `shared.audience.SegmentAudience` asks for one. A `SEGMENT`
+> constant would have meant a parameter meaningful for one value and ignored for
+> the other three.
+>
+> **The two deadline rows have a producer since #90.** §8.4's `deadline-reminder`
+> records `project.ending_soon` when a live campaign crosses 48 or 24 hours, and
+> this module translates it to the creator and the campaign's backers.
+> "Saved project ending soon" comes out of the same event, at the 48-hour
+> threshold only, addressed to **the savers who are not backers** — §4.10 gives it
+> a separate row because it is a separate message: one tells somebody who has
+> committed that their campaign is closing, the other invites somebody who has
+> not, and sending the invitation to a backer reads as though their pledge had not
+> been noticed.
+>
+> **A creator messaging a segment renders as "direct message" (#98).** §4.9's C-12
+> describes direct messages between a creator and a backer, and CD-13 is the
+> creator's half of exactly that sent to many people at once — from the
+> recipient's side it is a message from the campaign, which is what that row
+> already means. The half that is not built is the reply: there is no
+> conversation. A new §4.10 row would have been a second preference switch for a
+> distinction only the sender can see.
 >
 > **Notifications can name the campaign they are about since #249.**
 > `shared.project.ProjectSummaries` is the second port of the same shape:
@@ -3508,7 +3656,7 @@ product. Public read surfaces — discovery, prelaunch — go through it.
 | Password hashing | **Argon2id** | Memory-hard |
 | Job queue | **Spring Scheduler** plus a durable queue | Retries, backoff, distributed locking |
 | Caching | **Redis** via Spring Cache | |
-| Real-time | **Spring WebSocket** with a Redis relay | |
+| Real-time | **Spring WebSocket** with a Redis relay | The starter is on the path since #91 and the relay is not. Plain handlers rather than STOMP, which the starter also enables and which nothing registers: STOMP is a messaging protocol with destinations, subscriptions and acknowledgements, and what §12.1 describes is a page receiving a counter — a frame format on top of the protocol would mean a client library on the route with the tightest First Load JS budget on the platform. No SockJS fallback either: it exists for browsers without WebSocket, §21 names none, and a reader whose network refuses one keeps the numbers the server rendered |
 | Email | **Spring Mail** with typed templates | Built (#86, §12.3). SMTP, so what the platform can record is acceptance by a relay and never delivery. Thymeleaf is the engine on its own rather than `thymeleaf-spring6`: `spring-boot-mail` brings Spring Framework 7, and an email template rendered from a `Map` needs none of that integration |
 | Object storage | **AWS SDK v2** | S3-compatible |
 | Money | **`BigDecimal`** | Exact decimal arithmetic |
@@ -3546,7 +3694,7 @@ product. Public read surfaces — discovery, prelaunch — go through it.
 | Dates | **date-fns** with timezone support |
 | Money | **decimal.js** |
 | Internationalisation | **next-intl** |
-| Real-time | WebSocket client |
+| Real-time | WebSocket client | The platform's own `WebSocket`, no library (#91). Opt-in and unset by default — `lib/realtime/updates.ts` explains why a socket cannot use the `/v1` rewrite every other browser call goes through |
 | Analytics | Product analytics with feature flags |
 | Errors | Error tracking with source maps |
 

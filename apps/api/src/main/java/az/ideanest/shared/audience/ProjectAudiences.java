@@ -11,9 +11,16 @@ import java.util.UUID;
  * costs one enum and answers every question at once, where a method per audience is a published
  * surface that grows without bound.
  *
- * <p><strong>It decides nothing.</strong> The implementation lives in the module that owns the
- * rows — the pledge module for {@link ProjectAudience#BACKERS} — and this interface exists so
- * that the notification module depends on the question rather than on {@code pledges}.
+ * <p><strong>It decides nothing.</strong> The answers live in the modules that own the rows —
+ * the pledge module for {@link ProjectAudience#BACKERS}, the community module for
+ * {@link ProjectAudience#SAVERS} and {@link ProjectAudience#FOLLOWERS} — and this interface
+ * exists so that the notification module depends on the question rather than on their tables.
+ *
+ * <p><strong>There is one bean of this type and it owns no rows.</strong> Since #90 there is
+ * more than one module with an audience to publish, so the answers are
+ * {@link ProjectAudienceSource}s and {@link RoutedProjectAudiences} is what a caller gets.
+ * Nothing about the question changed; what changed is that "the implementation" is now several,
+ * and a caller still names one interface.
  *
  * <h2>The bound is a parameter, and it has to be</h2>
  *
@@ -24,8 +31,10 @@ import java.util.UUID;
  * — which is one transaction whose size is decided by how well a campaign did.
  *
  * <p>The bound is the caller's rather than the implementation's, because only the caller knows
- * what it can do with the answer. The notification module's is
- * {@code ideanest.notification.audience.max-recipients}.
+ * what it can do with the answer. Since #98 there is more than one caller and they have to agree
+ * — a creator is shown one number for "who did this message reach" — so the ceiling is
+ * {@link AudienceProperties}, {@code ideanest.audience.max-recipients}, and that class says why it
+ * stopped belonging to the notification module.
  *
  * <p><strong>Truncation is detectable, and detecting it is the caller's job.</strong> This method
  * returns at most {@code limit} members and says nothing about whether there were more; a caller

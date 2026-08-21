@@ -16,7 +16,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *
  * @param delivery the outbound queue — the second half of §12.2's diagram
  * @param digest §12.2's combining job: when a held notification stops being held
- * @param audience how much of a computed audience one event may fan out to
  * @param inbox §10.2's {@code GET /v1/me/notifications}
  * @param rateLimit §17.3's shape applied to the one write this module exposes
  * @param email #86's transport: who the mail is from and what its links point at. The
@@ -26,7 +25,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  */
 @ConfigurationProperties(prefix = "ideanest.notification")
 public record NotificationProperties(
-        Delivery delivery, Digest digest, Audience audience, Inbox inbox, RateLimit rateLimit, Email email) {
+        Delivery delivery, Digest digest, Inbox inbox, RateLimit rateLimit, Email email) {
 
     public NotificationProperties {
         // A nested record binds to null when its whole block is absent, and a null here
@@ -34,7 +33,6 @@ public record NotificationProperties(
         // configuration error at start-up.
         delivery = delivery == null ? Delivery.defaults() : delivery;
         digest = digest == null ? Digest.defaults() : digest;
-        audience = audience == null ? Audience.defaults() : audience;
         inbox = inbox == null ? Inbox.defaults() : inbox;
         rateLimit = rateLimit == null ? RateLimit.defaults() : rateLimit;
         email = email == null ? Email.defaults() : email;
@@ -220,43 +218,6 @@ public record NotificationProperties(
         /** The decision {@code DigestWindow} makes, as the value the job asks. */
         public DigestWindow window() {
             return DigestWindow.at(zone, atHour);
-        }
-    }
-
-    /**
-     * The bound on an audience the platform computes — §4.10's "a campaign's backers".
-     *
-     * @param maxRecipients how many people one event may fan out to.
-     *     <strong>A limit on one transaction, and the reason there is one at all is that the
-     *     fan-out runs inside the outbox dispatch.</strong> "Goal reached" on a campaign with
-     *     twenty thousand backers is sixty thousand rows written by the transaction that also
-     *     marks the event delivered, plus an {@code IN} list of twenty thousand identifiers to
-     *     check they are accounts — one transaction whose size is decided by how well a campaign
-     *     did, holding locks for as long as it takes.
-     *     <p><strong>Exceeding it is logged at {@code ERROR} and never silent.</strong>
-     *     {@code NotificationEventListener} asks the audience port for one more than this and
-     *     compares, so truncation is a fact it knows rather than infers, and it says which
-     *     campaign and how many people were not told. A fan-out chunked across several
-     *     transactions is what removes the bound rather than raising it, and it is not this
-     *     change.
-     *     <p>Five thousand: comfortably above every campaign the platform has, and small enough
-     *     that the transaction above is one an operator would not notice. It is a ceiling rather
-     *     than a target
-     */
-    public record Audience(int maxRecipients) {
-
-        private static final int DEFAULT_MAX_RECIPIENTS = 5_000;
-
-        static Audience defaults() {
-            return new Audience(DEFAULT_MAX_RECIPIENTS);
-        }
-
-        public Audience {
-            maxRecipients = maxRecipients == 0 ? DEFAULT_MAX_RECIPIENTS : maxRecipients;
-
-            if (maxRecipients < 1) {
-                throw new IllegalArgumentException("An event tells at least one person");
-            }
         }
     }
 

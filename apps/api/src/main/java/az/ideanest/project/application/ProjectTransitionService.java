@@ -13,6 +13,7 @@ import az.ideanest.project.domain.ProjectStateMachine;
 import az.ideanest.project.domain.ProjectStateTransition;
 import az.ideanest.project.infrastructure.ProjectRepository;
 import az.ideanest.project.infrastructure.ProjectStateTransitionRepository;
+import az.ideanest.shared.outbox.Outbox;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -67,6 +68,7 @@ public class ProjectTransitionService {
     private final ProjectStateTransitionRepository transitions;
     private final ProjectChecklistService checklist;
     private final ApplicationEventPublisher events;
+    private final Outbox outbox;
     private final AuditLog audit;
     private final Clock clock;
 
@@ -76,6 +78,7 @@ public class ProjectTransitionService {
             ProjectStateTransitionRepository transitions,
             ProjectChecklistService checklist,
             ApplicationEventPublisher events,
+            Outbox outbox,
             AuditLog audit,
             Clock clock) {
         this.access = access;
@@ -83,6 +86,7 @@ public class ProjectTransitionService {
         this.transitions = transitions;
         this.checklist = checklist;
         this.events = events;
+        this.outbox = outbox;
         this.audit = audit;
         this.clock = clock;
     }
@@ -181,12 +185,27 @@ public class ProjectTransitionService {
      * total against its goal at its deadline, and neither exists on a campaign
      * that was approved without them.
      *
-     * <p>It is also the one transition anybody outside this service is told
-     * about. Everybody holding a launch reminder (§4.9 C-11) is owed the message
-     * they asked for, and the event below is what starts that — after the commit,
-     * because a follower cannot be un-told. See
-     * {@link ProjectEvents.ProjectLaunched} for why the event is a latency
-     * improvement rather than the delivery guarantee.
+     * <p>It is also the transition most of the platform is told about, and it is
+     * announced <strong>twice, on purpose</strong>:
+     *
+     * <ul>
+     *   <li>{@link ProjectEvents.ProjectLaunched} in process, after the commit.
+     *       Everybody holding a launch reminder (§4.9 C-11) is owed the message
+     *       they asked for, and this is what starts that sweep immediately. Its
+     *       own comment explains that it is a latency improvement rather than the
+     *       delivery guarantee — losing it costs a minute, because the sweep asks
+     *       the database the same question on its next tick.
+     *   <li>{@link ProjectLaunchedEvent} through §8.3's outbox, inside this
+     *       transaction. #245's "followed creator launched" goes to the creator's
+     *       followers, and that audience has <em>no</em> sweep behind it: a follow
+     *       is a standing relationship, not an outstanding obligation, so there is
+     *       no {@code notified_at} to resume from. The announcement therefore has
+     *       to be the thing that cannot be lost.
+     * </ul>
+     *
+     * <p>Two mechanisms for one fact is worth the duplication precisely because
+     * they fail differently: one is prompt and losable, the other is durable and a
+     * second behind the relay.
      */
     @Transactional
     public Project launch(UUID projectId, UUID accountId) {
@@ -199,6 +218,13 @@ public class ProjectTransitionService {
         requireLaunchable(project);
 
         Project launched = apply(project, ProjectState.LIVE, access.roleOf(project, accountId), accountId, null);
+        // Recorded from the row rather than from anything this method computed, so the
+        // event's instants are the ones the campaign now carries.
+        outbox.record(
+                ProjectLaunchedEvent.AGGREGATE_TYPE,
+                launched.getId(),
+                ProjectLaunchedEvent.EVENT_TYPE,
+                ProjectLaunchedEvent.of(launched));
         events.publishEvent(new ProjectEvents.ProjectLaunched(launched.getId()));
         return launched;
     }

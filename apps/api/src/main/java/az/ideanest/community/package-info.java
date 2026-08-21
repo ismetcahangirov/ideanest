@@ -11,8 +11,26 @@
  * served by the moderation module through {@code PublicComments}: this module answers
  * whether a comment is there to be complained about, and #102 owns the queue.
  *
- * <p>C-04 (reactions), C-05 (comments on an update), C-08 (blocking), C-09, C-10 and
- * the rest of §4.9 are not built, and each is its own issue.
+ * <p><strong>Saving and following are built (#90)</strong>: §4.9's C-09 and C-10, behind
+ * {@code BackerSignalController}'s four writes and two lists. Two link tables, no states,
+ * withdrawal by deletion — {@code V32} argues the shape. What they are <em>for</em>, beyond
+ * the reader's own two lists, is {@code CommunityProjectAudiences}: the module publishes
+ * {@code SAVERS} and {@code FOLLOWERS} through {@code shared.audience}, which is the half of
+ * #245 that could not be written until these rows existed, and it is what finally gives
+ * §4.10's "followed creator launched" and "saved project ending soon" an audience.
+ *
+ * <p><strong>Bulk messaging is built (#98)</strong>: §4.7's CD-13, behind
+ * {@code CampaignMessageController}. A creator writes to every backer of a campaign or to a
+ * saved segment of them, rate limited per campaign and audited. It renders as §4.10's "direct
+ * message" rather than as a new row in that table — {@code NotificationEvents.CampaignMessageSent}
+ * argues that reading — so C-12's other half, a backer replying, remains unbuilt: there is no
+ * conversation here, only the creator's direction of one.
+ *
+ * <p>C-04 (reactions), C-05 (comments on an update), C-08 (blocking), the reply half of C-12,
+ * and the rest of §4.9 are not built, and each is its own issue. C-11, launch reminders, is
+ * built and lives in the project module rather than here — a reminder is collected by a
+ * pre-launch page and is the one signal of the three that can come from somebody with no
+ * account, which is what ties it to the campaign's lifecycle instead of to a reader's list.
  *
  * <p>Who may publish is asked through {@code shared.access.ProjectAuthorisation} for
  * {@code PUBLISH_UPDATES} — the published contract, so that the capability can be named

@@ -740,6 +740,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/following": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["backerSignalFollowing"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/notification-preferences": {
         parameters: {
             query?: never;
@@ -782,6 +798,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["notificationInboxRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/saved": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["backerSignalSaved"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1236,6 +1268,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{projectId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["campaignMessageSent"];
+        put?: never;
+        post: operations["campaignMessageSend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{projectId}/referral-visits": {
         parameters: {
             query?: never;
@@ -1314,6 +1362,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["rewardReorder"];
+        trace?: never;
+    };
+    "/v1/projects/{projectId}/save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["backerSignalSave"];
+        delete: operations["backerSignalUnsave"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/projects/{projectId}/updates": {
@@ -1423,6 +1487,22 @@ export interface paths {
         put?: never;
         post: operations["contentReportReportUser"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/users/{slug}/follow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["backerSignalFollow"];
+        delete: operations["backerSignalUnfollow"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1553,6 +1633,24 @@ export interface components {
             name?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        CampaignMessageListResponse: {
+            items?: components["schemas"]["CampaignMessageResponse"][];
+            nextCursor?: string;
+        };
+        CampaignMessageResponse: {
+            body?: string;
+            /** Format: uuid */
+            id?: string;
+            /** Format: int32 */
+            recipientCount?: number;
+            /** Format: uuid */
+            segmentId?: string;
+            segmentName?: string;
+            /** Format: date-time */
+            sentAt?: string;
+            subject?: string;
+            truncated?: boolean;
         };
         CancelProjectRequest: {
             reason: string;
@@ -1872,6 +1970,13 @@ export interface components {
             items?: components["schemas"]["Card"][];
             nextCursor?: string;
         };
+        FollowStateResponse: {
+            following?: boolean;
+        };
+        FollowingListResponse: {
+            items?: components["schemas"]["Item"][];
+            nextCursor?: string;
+        };
         Image: {
             /** Format: int32 */
             height?: number;
@@ -1883,6 +1988,15 @@ export interface components {
             capabilities: ("EDIT_BASICS" | "EDIT_REWARDS" | "EDIT_STORY" | "SUBMIT_FOR_REVIEW" | "PUBLISH_UPDATES" | "RESPOND_TO_COMMENTS" | "VIEW_FINANCES" | "MANAGE_COLLABORATORS")[];
             /** Format: email */
             email: string;
+        };
+        Item: {
+            creatorSlug?: string;
+            /** Format: uuid */
+            projectId?: string;
+            projectSlug?: string;
+            /** Format: date-time */
+            savedAt?: string;
+            title?: string;
         };
         ItemBody: {
             isDigital?: boolean;
@@ -2413,6 +2527,19 @@ export interface components {
             filter?: components["schemas"]["BackerFilterBody"];
             name: string;
         };
+        SaveStateResponse: {
+            saved?: boolean;
+        };
+        SavedListResponse: {
+            items?: components["schemas"]["Item"][];
+            nextCursor?: string;
+        };
+        SendMessageRequest: {
+            body: string;
+            /** Format: uuid */
+            segmentId?: string;
+            subject: string;
+        };
         SessionRecord: {
             /** Format: date-time */
             createdAt?: string;
@@ -2615,6 +2742,8 @@ export type SchemaBackerBreakdownResponse = components['schemas']['BackerBreakdo
 export type SchemaBackerFilterBody = components['schemas']['BackerFilterBody'];
 export type SchemaBackerListResponse = components['schemas']['BackerListResponse'];
 export type SchemaBackerSegmentResponse = components['schemas']['BackerSegmentResponse'];
+export type SchemaCampaignMessageListResponse = components['schemas']['CampaignMessageListResponse'];
+export type SchemaCampaignMessageResponse = components['schemas']['CampaignMessageResponse'];
 export type SchemaCancelProjectRequest = components['schemas']['CancelProjectRequest'];
 export type SchemaCaptureVisitRequest = components['schemas']['CaptureVisitRequest'];
 export type SchemaCard = components['schemas']['Card'];
@@ -2654,8 +2783,11 @@ export type SchemaExplanationResponse = components['schemas']['ExplanationRespon
 export type SchemaExportBackersRequest = components['schemas']['ExportBackersRequest'];
 export type SchemaFacets = components['schemas']['Facets'];
 export type SchemaFeed = components['schemas']['Feed'];
+export type SchemaFollowStateResponse = components['schemas']['FollowStateResponse'];
+export type SchemaFollowingListResponse = components['schemas']['FollowingListResponse'];
 export type SchemaImage = components['schemas']['Image'];
 export type SchemaInviteCollaboratorRequest = components['schemas']['InviteCollaboratorRequest'];
+export type SchemaItem = components['schemas']['Item'];
 export type SchemaItemBody = components['schemas']['ItemBody'];
 export type SchemaItemPatchRequest = components['schemas']['ItemPatchRequest'];
 export type SchemaItemResponse = components['schemas']['ItemResponse'];
@@ -2711,6 +2843,9 @@ export type SchemaRewardResponse = components['schemas']['RewardResponse'];
 export type SchemaRewardSlice = components['schemas']['RewardSlice'];
 export type SchemaRewardTierCountBody = components['schemas']['RewardTierCountBody'];
 export type SchemaSaveBackerSegmentRequest = components['schemas']['SaveBackerSegmentRequest'];
+export type SchemaSaveStateResponse = components['schemas']['SaveStateResponse'];
+export type SchemaSavedListResponse = components['schemas']['SavedListResponse'];
+export type SchemaSendMessageRequest = components['schemas']['SendMessageRequest'];
 export type SchemaSessionRecord = components['schemas']['SessionRecord'];
 export type SchemaSessionSummary = components['schemas']['SessionSummary'];
 export type SchemaSetWeight = components['schemas']['SetWeight'];
@@ -4018,6 +4153,29 @@ export interface operations {
             };
         };
     };
+    backerSignalFollowing: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowingListResponse"];
+                };
+            };
+        };
+    };
     notificationPreferencePreferences: {
         parameters: {
             query?: never;
@@ -4104,6 +4262,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotificationResponse"];
+                };
+            };
+        };
+    };
+    backerSignalSaved: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedListResponse"];
                 };
             };
         };
@@ -5000,6 +5181,57 @@ export interface operations {
             };
         };
     };
+    campaignMessageSent: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignMessageListResponse"];
+                };
+            };
+        };
+    };
+    campaignMessageSend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignMessageResponse"];
+                };
+            };
+        };
+    };
     referralVisit: {
         parameters: {
             query?: never;
@@ -5142,6 +5374,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RewardResponse"][];
+                };
+            };
+        };
+    };
+    backerSignalSave: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveStateResponse"];
+                };
+            };
+        };
+    };
+    backerSignalUnsave: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveStateResponse"];
                 };
             };
         };
@@ -5403,6 +5679,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReportResponse"];
+                };
+            };
+        };
+    };
+    backerSignalFollow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowStateResponse"];
+                };
+            };
+        };
+    };
+    backerSignalUnfollow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowStateResponse"];
                 };
             };
         };

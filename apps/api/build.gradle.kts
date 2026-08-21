@@ -78,6 +78,21 @@ dependencies {
     // and costs a version constraint. §16 is updated to say this.
     implementation("org.thymeleaf:thymeleaf")
 
+    // #91: §12.1's live counters and comments. The starter brings Spring's
+    // WebSocket support and Tomcat's implementation of the protocol.
+    //
+    // The plain handler API and not STOMP, which the starter also enables and
+    // which nothing here registers. STOMP is a messaging protocol with
+    // destinations, subscriptions, acknowledgements and a broker relay; what
+    // §12.1 describes is a page that receives a counter, and adding a frame
+    // format on top of it would mean a client library on the other side — on the
+    // route with the tightest First Load JS budget on the platform.
+    //
+    // §16 names a Redis relay beside this for scaling across replicas. That is
+    // deliberately not here: no Redis is deployed, and `RealtimeBroadcaster`
+    // states what the single-node bound costs rather than implying it is absent.
+    implementation("org.springframework.boot:spring-boot-starter-websocket")
+
     // UUID v7: time-ordered, so primary keys are generated in the application
     // without giving up index locality the way v4 does. Java has no built-in.
     implementation("com.github.f4b6a3:uuid-creator:6.1.1")

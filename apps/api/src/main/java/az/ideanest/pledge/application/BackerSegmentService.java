@@ -70,10 +70,26 @@ public class BackerSegmentService {
      */
     @Transactional(readOnly = true)
     public BackerFilter filterOf(UUID projectId, UUID accountId, UUID segmentId) {
+        return segmentOf(projectId, accountId, segmentId).filter();
+    }
+
+    /**
+     * The whole saved segment, not only the filter behind it.
+     *
+     * <p>Added by #98, which needs the <em>name</em>: {@code campaign_messages} snapshots it
+     * beside the identifier so that a message sent to "our German backers" still says so after
+     * the segment has been renamed or deleted. {@link #filterOf} stays as the shorthand the
+     * report and the export use, because neither has any business with the name.
+     *
+     * <p>Looked up by campaign and identifier together, which is what stops a segment being
+     * read across campaigns by guessing its identifier.
+     *
+     * @throws BackerSegmentNotFoundException when there is no such segment on this campaign
+     */
+    @Transactional(readOnly = true)
+    public BackerSegment segmentOf(UUID projectId, UUID accountId, UUID segmentId) {
         projects.requireCapability(projectId, accountId, ProjectCapability.VIEW_FINANCES);
-        return segments.find(projectId, segmentId)
-                .map(BackerSegment::filter)
-                .orElseThrow(() -> new BackerSegmentNotFoundException(segmentId));
+        return segments.find(projectId, segmentId).orElseThrow(() -> new BackerSegmentNotFoundException(segmentId));
     }
 
     /**

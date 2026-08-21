@@ -273,6 +273,21 @@ public record ProjectProperties(
      *     <strong>Local development only</strong>, and false by default. There is
      *     no mail transport (#86), so without this a developer cannot exercise the
      *     unsubscribe path at all
+     * @param deadlineSchedule the cron expression §8.4's {@code deadline-reminder}
+     *     runs on (#90). Five minutes rather than the launch sweep's minute, and
+     *     {@code DeadlineReminderJob} argues it: the thresholds are measured in
+     *     hours, so nobody can tell a notice sent at 48:00 from one sent at 47:56
+     * @param deadlineBatchSize how many campaigns one pass announces per
+     *     threshold. A bound on one run rather than a target, exactly as
+     *     {@code sendBatchSize} is — and the candidate query is ordered by
+     *     deadline, so what a small batch leaves behind is always the least urgent
+     *     part of the backlog
+     * @param deadlineThresholdHours which of §4.10's thresholds the sweep acts on,
+     *     largest first. Configurable rather than a constant because an operator
+     *     may need to <em>stop</em> one — a threshold removed here stops being
+     *     announced without a release — but the values it may hold are bounded by
+     *     {@code deadline_notices_threshold_known}, so adding one is still a
+     *     migration and a decision rather than a configuration change
      */
     public record Reminders(
             int signupsPerClient,
@@ -280,7 +295,10 @@ public record ProjectProperties(
             Duration window,
             String sendSchedule,
             int sendBatchSize,
-            boolean logUnsubscribeLinks) {
+            boolean logUnsubscribeLinks,
+            String deadlineSchedule,
+            int deadlineBatchSize,
+            List<Integer> deadlineThresholdHours) {
 
         private static final int DEFAULT_SIGNUPS_PER_CLIENT = 20;
 
@@ -293,6 +311,14 @@ public record ProjectProperties(
 
         private static final int DEFAULT_BATCH_SIZE = 200;
 
+        /** Every five minutes. See {@code DeadlineReminderJob} for why not every minute. */
+        private static final String DEFAULT_DEADLINE_SCHEDULE = "0 */5 * * * *";
+
+        private static final int DEFAULT_DEADLINE_BATCH_SIZE = 200;
+
+        /** §4.10's two deadline rows, largest first. */
+        private static final List<Integer> DEFAULT_DEADLINE_THRESHOLDS = List.of(48, 24);
+
         static Reminders defaults() {
             return new Reminders(
                     DEFAULT_SIGNUPS_PER_CLIENT,
@@ -300,7 +326,10 @@ public record ProjectProperties(
                     DEFAULT_WINDOW,
                     DEFAULT_SCHEDULE,
                     DEFAULT_BATCH_SIZE,
-                    false);
+                    false,
+                    DEFAULT_DEADLINE_SCHEDULE,
+                    DEFAULT_DEADLINE_BATCH_SIZE,
+                    DEFAULT_DEADLINE_THRESHOLDS);
         }
 
         public Reminders {
@@ -312,6 +341,14 @@ public record ProjectProperties(
             window = window == null ? DEFAULT_WINDOW : window;
             sendSchedule = sendSchedule == null || sendSchedule.isBlank() ? DEFAULT_SCHEDULE : sendSchedule;
             sendBatchSize = sendBatchSize == 0 ? DEFAULT_BATCH_SIZE : sendBatchSize;
+            deadlineSchedule = deadlineSchedule == null || deadlineSchedule.isBlank()
+                    ? DEFAULT_DEADLINE_SCHEDULE
+                    : deadlineSchedule;
+            deadlineBatchSize = deadlineBatchSize == 0 ? DEFAULT_DEADLINE_BATCH_SIZE : deadlineBatchSize;
+            // Null is "not configured" and gets the defaults; an explicitly empty list is an
+            // operator switching the sweep off, which is a configuration of it and is kept.
+            deadlineThresholdHours =
+                    deadlineThresholdHours == null ? DEFAULT_DEADLINE_THRESHOLDS : List.copyOf(deadlineThresholdHours);
 
             if (signupsPerClient < 1 || signupsPerAddress < 1) {
                 // A limit of zero is the endpoint switched off, which is not a
@@ -324,6 +361,18 @@ public record ProjectProperties(
             }
             if (sendBatchSize < 1) {
                 throw new IllegalArgumentException("A sweep that claims no reminders never sends any");
+            }
+            if (deadlineBatchSize < 1) {
+                throw new IllegalArgumentException("A sweep that announces no campaigns never announces any");
+            }
+            for (Integer threshold : deadlineThresholdHours) {
+                if (threshold == null || threshold < 1) {
+                    // Refused at start-up rather than at the first sweep, where it would be an
+                    // interval of zero hours -- a window matching every campaign that has
+                    // already closed, which the lower bound then rejects one row at a time.
+                    throw new IllegalArgumentException(
+                            "A deadline threshold is a positive number of hours, not " + threshold);
+                }
             }
         }
     }

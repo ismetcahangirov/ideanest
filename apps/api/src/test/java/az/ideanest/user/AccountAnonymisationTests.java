@@ -235,7 +235,7 @@ class AccountAnonymisationTests extends AbstractIntegrationTest {
         // identifies nobody, and V2 keeps spent tokens so that a replay stays
         // distinguishable from a token that never existed.
         assertThat(sessions.findByUserIdOrderByCreatedAtDesc(userId))
-                .allSatisfy(session -> assertThat(refreshTokens.findBySessionIdOrderByIssuedAtAsc(session.getId()))
+                .allSatisfy(session -> assertThat(refreshTokens.findBySessionIdOrderByIssuedAtAscIdAsc(session.getId()))
                         .isNotEmpty());
     }
 

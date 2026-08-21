@@ -13,16 +13,20 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * symptom until somebody tries to use the feature.
  *
  * @param comments what a comment endpoint allows
+ * @param signals what the saving and following endpoints allow (#90)
+ * @param messages what bulk messaging allows (#98)
  */
 @ConfigurationProperties(prefix = "ideanest.community")
-public record CommunityProperties(Comments comments) {
+public record CommunityProperties(Comments comments, Signals signals, Messages messages) {
 
     public CommunityProperties {
         comments = comments == null ? Comments.defaults() : comments;
+        signals = signals == null ? Signals.defaults() : signals;
+        messages = messages == null ? Messages.defaults() : messages;
     }
 
     public static CommunityProperties defaults() {
-        return new CommunityProperties(Comments.defaults());
+        return new CommunityProperties(Comments.defaults(), Signals.defaults(), Messages.defaults());
     }
 
     /**
@@ -115,6 +119,154 @@ public record CommunityProperties(Comments comments) {
                 // runtime costume.
                 throw new IllegalArgumentException("The default page cannot exceed the maximum");
             }
+        }
+    }
+
+    /**
+     * What the saving and following endpoints allow — §4.9's C-09 and C-10 (#90).
+     *
+     * <p><strong>The limit is much looser than {@link Comments}', and the reason is what the
+     * write does.</strong> A comment is content other people read, so the budget there is set
+     * for somebody having a conversation. A save is a toggle on a page: it produces nothing
+     * anybody else sees, it is idempotent, and the honest upper bound on a real person is
+     * "however fast they can browse". What the limit is defending against is therefore not
+     * abuse of other users but a script walking every campaign on the platform to build a
+     * list — which a number in the hundreds per minute stops without ever being reached by
+     * somebody clicking.
+     *
+     * <p><strong>Per account and not per address.</strong> Both endpoints require a bearer
+     * token, so there is an account to count against and it is the meaningful identity; a
+     * per-address limit would instead refuse the shared NAT that a university or a mobile
+     * carrier puts a hundred real backers behind. That is the opposite of the trade
+     * {@code PrelaunchController} makes, and correctly so: the reminder endpoint is
+     * unauthenticated, so an address is the only identity it has.
+     *
+     * <p>Per replica, like every other limit on the platform (#142).
+     *
+     * @param defaultPageSize how many rows a saved or following list returns when the request
+     *     names no size
+     * @param maxPageSize the ceiling on that
+     * @param writesPerAccount how many saves, un-saves, follows and unfollows one account may
+     *     perform per window, counted together — they are one budget because they are one
+     *     kind of write and separate counters would let a script alternate between them
+     * @param window the period that is measured over
+     */
+    public record Signals(int defaultPageSize, int maxPageSize, int writesPerAccount, Duration window) {
+
+        private static final int DEFAULT_PAGE_SIZE = 20;
+
+        private static final int DEFAULT_MAX_PAGE_SIZE = 100;
+
+        private static final int DEFAULT_WRITES_PER_ACCOUNT = 300;
+
+        private static final Duration DEFAULT_WINDOW = Duration.ofMinutes(1);
+
+        static Signals defaults() {
+            return new Signals(DEFAULT_PAGE_SIZE, DEFAULT_MAX_PAGE_SIZE, DEFAULT_WRITES_PER_ACCOUNT, DEFAULT_WINDOW);
+        }
+
+        public Signals {
+            defaultPageSize = defaultPageSize == 0 ? DEFAULT_PAGE_SIZE : defaultPageSize;
+            maxPageSize = maxPageSize == 0 ? DEFAULT_MAX_PAGE_SIZE : maxPageSize;
+            writesPerAccount = writesPerAccount == 0 ? DEFAULT_WRITES_PER_ACCOUNT : writesPerAccount;
+            window = window == null ? DEFAULT_WINDOW : window;
+
+            if (defaultPageSize < 1 || maxPageSize < 1) {
+                throw new IllegalArgumentException("A page of saved campaigns holds at least one campaign");
+            }
+            if (defaultPageSize > maxPageSize) {
+                throw new IllegalArgumentException("The default page cannot exceed the maximum");
+            }
+            if (writesPerAccount < 1) {
+                throw new IllegalArgumentException("A rate limit has to allow at least one attempt");
+            }
+            if (!window.isPositive()) {
+                throw new IllegalArgumentException("A rate limit window has to be a length of time");
+            }
+        }
+
+        /**
+         * The page size to use for a request that asked for one, or did not.
+         *
+         * <p>Clamped rather than refused. A client asking for more than the ceiling is asking
+         * for a page this endpoint will not build; giving it the largest one that exists is
+         * more useful than a 400, and the size is not part of the contract the way a filter
+         * value would be. A non-positive request is treated as no request at all, for the same
+         * reason: it is a client bug that should not cost the reader their list.
+         */
+        public int pageSize(Integer requested) {
+            if (requested == null || requested < 1) {
+                return defaultPageSize;
+            }
+            return Math.min(requested, maxPageSize);
+        }
+    }
+
+    /**
+     * What bulk messaging allows — §4.7's CD-13 (#98).
+     *
+     * <p><strong>The tightest limit in this file, and the reason is the blast radius.</strong>
+     * A comment reaches whoever opens the page. One message here reaches every backer of the
+     * campaign, on email and in their inbox, and cannot be taken back. So the budget is set for
+     * a creator who is communicating rather than one who is broadcasting: a handful an hour is
+     * more than any campaign has ever needed and far less than an accident costs.
+     *
+     * <p><strong>Per campaign, not per account.</strong> The opposite of {@link Signals}', and
+     * for a reason worth stating: the harm is to the campaign's backers, so the budget belongs
+     * to the campaign. Counting per account would let a campaign with four collaborators send
+     * four times as much to the same people, which is the flood arriving under a different
+     * name — the same argument {@code CommentController} makes about splitting one budget
+     * between posting and replying.
+     *
+     * <p>Per replica, like every other limit on the platform (#142). With three instances the
+     * real ceiling is three times the number below, which matters more here than elsewhere and
+     * is why the number is small enough to absorb it.
+     *
+     * @param perProject how many messages one campaign may send per window
+     * @param window the period that is measured over
+     * @param defaultPageSize how many sent messages a request that names no size gets
+     * @param maxPageSize the ceiling on that
+     */
+    public record Messages(int perProject, Duration window, int defaultPageSize, int maxPageSize) {
+
+        private static final int DEFAULT_PER_PROJECT = 5;
+
+        private static final Duration DEFAULT_WINDOW = Duration.ofHours(1);
+
+        private static final int DEFAULT_PAGE_SIZE = 20;
+
+        private static final int DEFAULT_MAX_PAGE_SIZE = 50;
+
+        static Messages defaults() {
+            return new Messages(DEFAULT_PER_PROJECT, DEFAULT_WINDOW, DEFAULT_PAGE_SIZE, DEFAULT_MAX_PAGE_SIZE);
+        }
+
+        public Messages {
+            perProject = perProject == 0 ? DEFAULT_PER_PROJECT : perProject;
+            window = window == null ? DEFAULT_WINDOW : window;
+            defaultPageSize = defaultPageSize == 0 ? DEFAULT_PAGE_SIZE : defaultPageSize;
+            maxPageSize = maxPageSize == 0 ? DEFAULT_MAX_PAGE_SIZE : maxPageSize;
+
+            if (perProject < 1) {
+                throw new IllegalArgumentException("A rate limit has to allow at least one attempt");
+            }
+            if (!window.isPositive()) {
+                throw new IllegalArgumentException("A rate limit window has to be a length of time");
+            }
+            if (defaultPageSize < 1 || maxPageSize < 1) {
+                throw new IllegalArgumentException("A page of messages holds at least one message");
+            }
+            if (defaultPageSize > maxPageSize) {
+                throw new IllegalArgumentException("The default page cannot exceed the maximum");
+            }
+        }
+
+        /** The page size to use, clamped rather than refused. See {@link Signals#pageSize}. */
+        public int pageSize(Integer requested) {
+            if (requested == null || requested < 1) {
+                return defaultPageSize;
+            }
+            return Math.min(requested, maxPageSize);
         }
     }
 }

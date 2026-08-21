@@ -112,6 +112,26 @@ public enum AuditAction {
      */
     PROJECT_BACKERS_EXPORTED("project.backers_exported", "project"),
 
+    /**
+     * A message was sent to a campaign's backers, or to a saved segment of them — §4.7's CD-13
+     * (#98).
+     *
+     * <p>Audited for the reason the export above is, and for one of its own. The export's is
+     * that it moves personal data out of the platform; this one's is that it puts a message
+     * <em>into</em> several thousand inboxes in the campaign's name, and it cannot be taken
+     * back. "Who sent this, when, to which segment, and how many people got it" is a question
+     * only this row can answer once the segment has been renamed or deleted.
+     *
+     * <p>The entity is the campaign rather than the message, following the export: a caller
+     * asking "what has happened to this campaign" should find it, and the message identifier is
+     * in the detail.
+     *
+     * <p><strong>The detail carries the act and never the content.</strong> This table has no
+     * retention rule and refuses {@code DELETE}, so a creator's prose in it is a decision nobody
+     * can reverse. {@code campaign_messages} is where the text lives.
+     */
+    PROJECT_SEGMENT_MESSAGED("project.segment_messaged", "project"),
+
     /** A second factor was confirmed and is now required to sign in. */
     TWO_FACTOR_ENABLED("two_factor.enabled", "account"),
 

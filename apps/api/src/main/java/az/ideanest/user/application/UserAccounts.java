@@ -63,6 +63,24 @@ public class UserAccounts {
         return users.findByIdAndDeletedAtIsNull(id).map(UserAccounts::toAccount);
     }
 
+    /**
+     * The account behind a public profile path — §10.2's {@code /v1/users/{slug}}.
+     *
+     * <p>Added by #90, which is the first thing outside this module to address an
+     * account by anything other than its identifier: following is done from a
+     * creator's page, and that page is reached by slug. A closed account is not
+     * found, exactly as it is not by {@link #findById} — following somebody who
+     * has left would be a subscription to nothing that the sender then has to
+     * skip on every launch.
+     */
+    @Transactional(readOnly = true)
+    public Optional<UserAccount> findBySlug(String slug) {
+        if (slug == null || slug.isBlank()) {
+            return Optional.empty();
+        }
+        return users.findBySlugAndDeletedAtIsNull(slug).map(UserAccounts::toAccount);
+    }
+
     /** Whether an address is spoken for, including by a closed account. */
     @Transactional(readOnly = true)
     public boolean isEmailTaken(EmailAddress email) {

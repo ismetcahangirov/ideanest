@@ -1907,6 +1907,40 @@
         "tags" : [ "account-export-controller" ]
       }
     },
+    "/v1/me/following" : {
+      "get" : {
+        "operationId" : "backerSignalFollowing",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "cursor",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FollowingListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "backer-signal-controller" ]
+      }
+    },
     "/v1/me/notification-preferences" : {
       "get" : {
         "operationId" : "notificationPreferencePreferences",
@@ -2019,6 +2053,40 @@
           }
         },
         "tags" : [ "notification-inbox-controller" ]
+      }
+    },
+    "/v1/me/saved" : {
+      "get" : {
+        "operationId" : "backerSignalSaved",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "cursor",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SavedListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "backer-signal-controller" ]
       }
     },
     "/v1/pledges/draft" : {
@@ -3297,6 +3365,83 @@
         "tags" : [ "item-controller" ]
       }
     },
+    "/v1/projects/{projectId}/messages" : {
+      "get" : {
+        "operationId" : "campaignMessageSent",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "cursor",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CampaignMessageListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "campaign-message-controller" ]
+      },
+      "post" : {
+        "operationId" : "campaignMessageSend",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SendMessageRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CampaignMessageResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "campaign-message-controller" ]
+      }
+    },
     "/v1/projects/{projectId}/referral-visits" : {
       "post" : {
         "operationId" : "referralVisit",
@@ -3501,6 +3646,58 @@
           }
         },
         "tags" : [ "reward-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/save" : {
+      "delete" : {
+        "operationId" : "backerSignalUnsave",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SaveStateResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "backer-signal-controller" ]
+      },
+      "post" : {
+        "operationId" : "backerSignalSave",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SaveStateResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "backer-signal-controller" ]
       }
     },
     "/v1/projects/{projectId}/updates" : {
@@ -4011,6 +4208,56 @@
         },
         "tags" : [ "content-report-controller" ]
       }
+    },
+    "/v1/users/{slug}/follow" : {
+      "delete" : {
+        "operationId" : "backerSignalUnfollow",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FollowStateResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "backer-signal-controller" ]
+      },
+      "post" : {
+        "operationId" : "backerSignalFollow",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FollowStateResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "backer-signal-controller" ]
+      }
     }
   },
   "components" : {
@@ -4359,6 +4606,53 @@
           "updatedAt" : {
             "type" : "string",
             "format" : "date-time"
+          }
+        }
+      },
+      "CampaignMessageListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CampaignMessageResponse"
+            }
+          },
+          "nextCursor" : {
+            "type" : "string"
+          }
+        }
+      },
+      "CampaignMessageResponse" : {
+        "type" : "object",
+        "properties" : {
+          "body" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "recipientCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "segmentId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "segmentName" : {
+            "type" : "string"
+          },
+          "sentAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "subject" : {
+            "type" : "string"
+          },
+          "truncated" : {
+            "type" : "boolean"
           }
         }
       },
@@ -5281,6 +5575,28 @@
           }
         }
       },
+      "FollowStateResponse" : {
+        "type" : "object",
+        "properties" : {
+          "following" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "FollowingListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Item"
+            }
+          },
+          "nextCursor" : {
+            "type" : "string"
+          }
+        }
+      },
       "Image" : {
         "type" : "object",
         "properties" : {
@@ -5317,6 +5633,28 @@
           }
         },
         "required" : [ "capabilities", "email" ]
+      },
+      "Item" : {
+        "type" : "object",
+        "properties" : {
+          "creatorSlug" : {
+            "type" : "string"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "projectSlug" : {
+            "type" : "string"
+          },
+          "savedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
       },
       "ItemBody" : {
         "type" : "object",
@@ -6726,6 +7064,48 @@
           }
         },
         "required" : [ "name" ]
+      },
+      "SaveStateResponse" : {
+        "type" : "object",
+        "properties" : {
+          "saved" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "SavedListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Item"
+            }
+          },
+          "nextCursor" : {
+            "type" : "string"
+          }
+        }
+      },
+      "SendMessageRequest" : {
+        "type" : "object",
+        "properties" : {
+          "body" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 0
+          },
+          "segmentId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "subject" : {
+            "type" : "string",
+            "maxLength" : 150,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "body", "subject" ]
       },
       "SessionRecord" : {
         "type" : "object",

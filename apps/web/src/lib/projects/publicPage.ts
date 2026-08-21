@@ -1,6 +1,7 @@
 import Decimal from 'decimal.js';
 import type { ProjectPageResponse, PublicRewardListResponse } from '../api/server';
 import type { Money } from '../money';
+import { completionOf } from './completion';
 import type { PublicProjectPreview } from '../seo/metadata';
 import type { PublicRewardTier } from '../seo/structured-data/product';
 import type { ProjectState } from './api';
@@ -334,31 +335,6 @@ function readOutcome(value: unknown): CampaignOutcome | null {
  * The two derived values
  * ---------------------------------------------------------------------- */
 
-/**
- * `pledged / goal × 100`, to two places, rounded down.
- *
- * Rounded DOWN, deliberately and to match the service's own `completionPercent`: a campaign
- * at 99.996% must not be reported as 100%, because 100% is the word "funded" on this
- * platform and it would be a claim about somebody's money.
- *
- * A goal of zero is `null` rather than infinity. §5.3 does not permit one, and a page that
- * divided by it would render `Infinity%`.
- */
-function completionOf(pledged: Money, goal: Money | null): Decimal | null {
-  if (goal === null) return null;
-
-  try {
-    const target = new Decimal(goal.amount);
-    if (target.lessThanOrEqualTo(0)) return null;
-
-    return new Decimal(pledged.amount).dividedBy(target).times(100).toDecimalPlaces(2, Decimal.ROUND_DOWN);
-  } catch {
-    // A malformed amount is a page without a progress bar, not a page that throws. The
-    // amounts come from the service and cannot be malformed today; the branch is what keeps
-    // a future one from taking the route down.
-    return null;
-  }
-}
 
 /**
  * Whole days from now until the deadline, floored at zero.

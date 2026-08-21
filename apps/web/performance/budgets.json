@@ -6,7 +6,7 @@
     "/admin/moderation": 692,
     "/discover": 732,
     "/notifications": 586,
-    "/projects/[id]/[projectSlug]": 492,
+    "/projects/[id]/[projectSlug]": 580,
     "/projects/[id]/back": 596,
     "/projects/[id]/dashboard": 598,
     "/projects/[id]/dashboard/backers": 588,

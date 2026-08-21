@@ -53,6 +53,17 @@ class ModuleBoundaryTests {
     private static final String PROJECT_AUDIENCES = "az.ideanest.shared.audience.ProjectAudiences";
 
     /**
+     * The other half of #245, which arrived with #90: what a module implements when it owns the
+     * rows behind an audience.
+     *
+     * <p>Two types rather than one because there are now two answering modules — the pledge
+     * module for {@code BACKERS}, the community module for {@code SAVERS} and
+     * {@code FOLLOWERS} — and one interface with two implementations is an injection failure
+     * rather than a port.
+     */
+    private static final String PROJECT_AUDIENCE_SOURCE = "az.ideanest.shared.audience.ProjectAudienceSource";
+
+    /**
      * The one #249 is about: what a campaign is called, when the answer is a row another
      * module owns.
      */
@@ -138,11 +149,11 @@ class ModuleBoundaryTests {
     @DisplayName("a computed audience crosses only through the shared contract")
     void audiencesCrossOnlyThroughTheSharedContract() {
         // #245's shape, and the same one #236 arrived at. §4.10 has notifications whose
-        // audience is a list the platform computes -- a campaign's backers -- and the
-        // notification module cannot compute one without reading `pledges`. The wrong
-        // answers were available and both are worse: reach into the pledge module, which
-        // the rule above forbids, or put the whole audience in the event, which is ten
-        // thousand identifiers in a message.
+        // audience is a list the platform computes -- a campaign's backers, a creator's
+        // followers -- and the notification module cannot compute one without reading
+        // `pledges`, `saves` or `follows`. The wrong answers were available and both are
+        // worse: reach into the owning module, which the rule above forbids, or put the whole
+        // audience in the event, which is ten thousand identifiers in a message.
         assertThat(modulesNaming(PROJECT_AUDIENCES))
                 .withFailMessage(
                         "The notification module stopped asking for a published audience. Expected it to name"
@@ -150,9 +161,24 @@ class ModuleBoundaryTests {
                         PROJECT_AUDIENCES, modulesNaming(PROJECT_AUDIENCES))
                 .contains("notification");
 
-        // And the implementation is the pledge module's, because `pledges` is its table.
-        // If `shared` ever answered this itself, `shared` would have acquired a feature.
-        assertThat(modulesNaming(PROJECT_AUDIENCES)).contains("pledge");
+        // And the answers come from the modules that own the rows. Both of them, since #90:
+        // `pledges` is the pledge module's and `saves`/`follows` are the community module's,
+        // so a single implementation could not exist without one of them reading the other's
+        // tables. If `shared` ever answered this itself, `shared` would have acquired a
+        // feature.
+        assertThat(modulesNaming(PROJECT_AUDIENCE_SOURCE))
+                .withFailMessage(
+                        "An audience is answered by the module that owns the rows behind it. Expected the pledge"
+                                + " and community modules to name %s; found %s.",
+                        PROJECT_AUDIENCE_SOURCE, modulesNaming(PROJECT_AUDIENCE_SOURCE))
+                .contains("pledge", "community");
+
+        // The asking side names the question and never a source: a caller that reached for a
+        // ProjectAudienceSource would be picking which module answers, which is the routing
+        // decision RoutedProjectAudiences exists to own.
+        assertThat(modulesNaming(PROJECT_AUDIENCE_SOURCE))
+                .withFailMessage("The notification module should ask the question, not choose an answerer.")
+                .doesNotContain("notification");
     }
 
     @Test

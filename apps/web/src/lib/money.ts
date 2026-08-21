@@ -66,6 +66,22 @@ export const MONEY_MAX_INTEGER_DIGITS = 14 - MONEY_SCALE;
  */
 const AMOUNT = /^\d+(\.\d{1,2})?$/;
 
+/**
+ * Whether a string is an amount this platform would put on the wire.
+ *
+ * The same rule {@link parseAmount} applies, exported since #91 for the one caller that has to
+ * check an amount it did not ask a person for: §12.1's socket carries a delta into a running
+ * total, and what arrives there is whatever was sent to the browser.
+ *
+ * <strong>`Decimal`'s own constructor is not this test.</strong> It accepts `'1e5'`, `'0x10'`
+ * and a leading sign, which are all values that would parse into something and then render as a
+ * number nobody pledged. The regex is the rule; the constructor is what does arithmetic once
+ * the rule has passed.
+ */
+export function isWireAmount(value: string): boolean {
+  return AMOUNT.test(value);
+}
+
 export type AmountRejection =
   | 'empty'
   | 'not-a-number'

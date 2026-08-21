@@ -1,8 +1,9 @@
 package az.ideanest.pledge.infrastructure;
 
 import az.ideanest.shared.audience.ProjectAudience;
-import az.ideanest.shared.audience.ProjectAudiences;
+import az.ideanest.shared.audience.ProjectAudienceSource;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -12,10 +13,17 @@ import org.springframework.stereotype.Component;
  * Who has backed a campaign, published so that other modules need not read {@code pledges}.
  *
  * <p>The pledge module's half of #245. {@code ProjectAudiences} is the question and this is the
- * only class that answers it, because {@code pledges} is this module's table and
+ * only class that answers {@code BACKERS}, because {@code pledges} is this module's table and
  * {@code ModuleBoundaryTests} forbids anybody else from naming it. Before this existed, §4.10's
  * "goal reached" notified the creator and nobody else — the least useful half of that event,
  * since the people who funded the campaign heard nothing.
+ *
+ * <p><strong>It implements {@code ProjectAudienceSource} rather than {@code ProjectAudiences}
+ * itself, and #90 is why.</strong> {@code saves} and {@code follows} live in the community
+ * module, so this is no longer the only module that owns an audience — and one port with two
+ * implementations is an injection failure rather than a design. {@code RoutedProjectAudiences}
+ * is the single bean callers ask, and {@link #answers()} below is this module's claim on the
+ * one audience it can answer.
  *
  * <h2>Which states are backers, and why it is not the active set</h2>
  *
@@ -61,7 +69,7 @@ import org.springframework.stereotype.Component;
  * {@code SELECT} that either works or is an outage.
  */
 @Component
-public class PledgeProjectAudiences implements ProjectAudiences {
+public class PledgeProjectAudiences implements ProjectAudienceSource {
 
     /**
      * §6.2's states in which a pledge is somebody backing this campaign.
@@ -93,6 +101,18 @@ public class PledgeProjectAudiences implements ProjectAudiences {
         this.jdbc = jdbc;
     }
 
+    /**
+     * {@code BACKERS}, and nothing else this module could answer.
+     *
+     * <p>{@code pledges} holds who backed a campaign and that is the whole of what this module
+     * knows about who is interested in one. A saver has no pledge row and a follower has no
+     * relationship to a campaign at all.
+     */
+    @Override
+    public Set<ProjectAudience> answers() {
+        return Set.of(ProjectAudience.BACKERS);
+    }
+
     @Override
     public List<UUID> membersOf(UUID projectId, ProjectAudience audience, int limit) {
         if (projectId == null) {
@@ -110,6 +130,13 @@ public class PledgeProjectAudiences implements ProjectAudiences {
                     BACKERS_OF,
                     new MapSqlParameterSource().addValue("projectId", projectId).addValue("limit", limit),
                     UUID.class);
+            // Unreachable through the router, which only ever asks a source for what it
+            // claimed. It throws rather than returning an empty list because the two are very
+            // different facts: "nobody saved this campaign" is an answer, and "the pledge
+            // module was asked who saved a campaign" is a wiring fault that an empty list
+            // would hide as a quiet audience of nobody.
+            case SAVERS, FOLLOWERS -> throw new IllegalArgumentException(
+                    "The pledge module does not own the " + audience + " audience");
         };
     }
 }

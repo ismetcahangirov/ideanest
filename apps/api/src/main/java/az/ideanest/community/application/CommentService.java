@@ -13,6 +13,7 @@ import az.ideanest.project.application.ModeratorDirectory;
 import az.ideanest.project.application.ProjectAccess;
 import az.ideanest.project.application.ProjectNotFoundException;
 import az.ideanest.project.application.PublicProjects;
+import az.ideanest.shared.outbox.Outbox;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -94,6 +95,7 @@ public class CommentService {
     private final PublicProjects publicProjects;
     private final ModeratorDirectory moderators;
     private final AuditLog audit;
+    private final Outbox outbox;
     private final CommunityProperties properties;
     private final Clock clock;
 
@@ -103,6 +105,7 @@ public class CommentService {
             PublicProjects publicProjects,
             ModeratorDirectory moderators,
             AuditLog audit,
+            Outbox outbox,
             CommunityProperties properties,
             Clock clock) {
 
@@ -111,6 +114,7 @@ public class CommentService {
         this.publicProjects = publicProjects;
         this.moderators = moderators;
         this.audit = audit;
+        this.outbox = outbox;
         this.properties = properties;
         this.clock = clock;
     }
@@ -134,7 +138,7 @@ public class CommentService {
         if (!forTheCampaign) {
             publicProjects.requireVisible(projectId);
         }
-        return comments.saveAndFlush(Comment.root(projectId, authorId, body, forTheCampaign));
+        return announce(comments.saveAndFlush(Comment.root(projectId, authorId, body, forTheCampaign)));
     }
 
     /**
@@ -165,7 +169,7 @@ public class CommentService {
         if (!forTheCampaign) {
             requireVisibleOrNotFound(parent);
         }
-        return comments.saveAndFlush(Comment.replyTo(parent, authorId, body, forTheCampaign));
+        return announce(comments.saveAndFlush(Comment.replyTo(parent, authorId, body, forTheCampaign)));
     }
 
     /**
@@ -334,6 +338,32 @@ public class CommentService {
             threads.add(new CommentThread(root, replies, nextReplyCursor));
         }
         return threads;
+    }
+
+    /**
+     * Records that a comment was posted, in the transaction that wrote it — #91.
+     *
+     * <p>Through §8.3's outbox rather than an in-process event, for {@code Outbox}'s reason: a
+     * comment that rolled back must not be one a page was told about, and a page told about a
+     * comment that then vanished has no way to un-tell itself. The event and the row commit
+     * together or neither does.
+     *
+     * <p><strong>Not audited, and the two are different questions.</strong>
+     * {@link #post} says why a comment is not an audit row — it is the least privileged write on
+     * the platform, and one row per comment would bury the entries an investigation is looking
+     * for. This is not a record of who did what; it is a nudge to a page somebody is looking at,
+     * and its only consumer is the realtime module.
+     *
+     * <p>Called on both write paths, so a reply moves the counter exactly as a root does — see
+     * {@code CommentPostedEvent} for why they are not distinguished.
+     */
+    private Comment announce(Comment comment) {
+        outbox.record(
+                CommentPostedEvent.AGGREGATE_TYPE,
+                comment.getProjectId(),
+                CommentPostedEvent.EVENT_TYPE,
+                CommentPostedEvent.of(comment));
+        return comment;
     }
 
     /**

@@ -197,7 +197,8 @@ az.ideanest
 ├── payout            what a creator is owed, approval, sending
 ├── discovery         browsing, filtering, search, ranking, curation
 ├── pledgemanager     surveys, addresses, upgrades, shipping, tax
-├── community         updates, comments, backer signals
+├── community         updates, comments, backer signals, bulk messages
+├── realtime          §12.1's live counters: no tables, decides nothing
 ├── notification      email, push, in-app, preferences
 ├── media             uploads, validation, transcoding state
 ├── moderation        reports, review queues, suspension
@@ -553,6 +554,10 @@ other way would be a cycle. The dependency is inverted instead.
 | §4.7's CD-16 financial summary. Gross, fees, tax and net cannot be stated: there is no `ledger_entries`, no `transactions`, and no processing fee to subtract until a provider is chosen. A "net payout" computed from the 5% platform fee alone would be a number a creator would plan around and would be wrong by the processing fee | [#99](https://github.com/ismetcahangirov/ideanest/issues/99), [#62](https://github.com/ismetcahangirov/ideanest/issues/62), [#60](https://github.com/ismetcahangirov/ideanest/issues/60) |
 | Job queue and scheduler | [#134](https://github.com/ismetcahangirov/ideanest/issues/134) |
 | Push notifications. Email is real since #86; push is still `UndeliverableChannelSender`, which writes a log line and returns | [#87](https://github.com/ismetcahangirov/ideanest/issues/87) |
+| A Redis relay behind §12.1's socket (#91). A broadcast reaches the sessions the receiving process holds, so on N replicas a reader is told about roughly one event in N. That is a degraded live counter rather than a wrong page -- the server-rendered numbers are correct and refresh on navigation, and nothing on the platform reads state from that module. The follow-up is one class: a publish to Redis instead of a loop, and a subscriber that calls the loop | [#139](https://github.com/ismetcahangirov/ideanest/issues/139) |
+| §12.1's authenticated channels. `user:{id}` carries a person's own notifications and `project:{id}:dashboard` a creator's live metrics; the socket takes no credential, so `RealtimeChannel` has no constant for either -- a value in a published vocabulary is one a caller writes code against | no issue yet |
+| A fan-out chunked across several transactions. Every computed audience is bounded at `ideanest.audience.max-recipients`, and exceeding it logs at `ERROR` naming the campaign and the count. Raising the number is not the fix; chunking is | no issue yet |
+| The reply half of §4.9's C-12. #98 sends a creator's message to a segment and it renders as §4.10's "direct message"; there is no conversation a backer can answer in | no issue yet |
 | Verification links, collaborator invitations, and launch reminders as **email**. Each still reaches its own port and a logging adapter rather than the notification queue, so #86's transport does not carry them -- they are not `NotificationType` rows | no issue yet |
 | Bounce handling, a suppression list, and open tracking. All three need a provider webhook, and §16 chose an SMTP relay | no issue yet |
 | Existing announcements moved onto the outbox. The table, the relay, and the guarantee are built (#135), and nothing routes through them yet: `AuthEvents`, `ProjectEvents`, and `LaunchReminderDelivery` still publish from after-commit listeners, so a crash between the commit and the send still loses the message | no issue yet |
