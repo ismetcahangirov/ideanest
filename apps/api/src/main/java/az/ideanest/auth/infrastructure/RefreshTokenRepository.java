@@ -19,8 +19,23 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID
      */
     Optional<RefreshToken> findByTokenHash(byte[] tokenHash);
 
-    /** The family, for inspection after a reuse detection. */
-    List<RefreshToken> findBySessionIdOrderByIssuedAtAsc(UUID sessionId);
+    /**
+     * The family, for inspection after a reuse detection.
+     *
+     * <p><strong>Tie-broken on the identifier, and the tie is not hypothetical.</strong> Two
+     * tokens issued in the same instant — which a rotation performed inside one transaction
+     * produces, because the clock is read once — order arbitrarily under
+     * {@code ORDER BY issued_at} alone, and PostgreSQL is free to return them in whichever
+     * order the heap happens to hold them. What that produced was a test that passed alone and
+     * failed in a full run, because the rows around it had moved.
+     *
+     * <p>The identifier is a UUID v7 and therefore in creation order (§7.3), so the second key
+     * is the same ordering the first one is reaching for rather than an arbitrary one chosen to
+     * make the result stable. That matters for what this read is <em>for</em>: an incident
+     * review reading a token family after a theft needs the sequence, and a family listed in an
+     * order that changes between two queries is not evidence of anything.
+     */
+    List<RefreshToken> findBySessionIdOrderByIssuedAtAscIdAsc(UUID sessionId);
 
     /**
      * Marks a token as exchanged, if nobody has already exchanged it.

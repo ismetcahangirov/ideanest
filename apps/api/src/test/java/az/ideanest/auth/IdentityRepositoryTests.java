@@ -161,7 +161,7 @@ class IdentityRepositoryTests extends AbstractIntegrationTest {
                 .get()
                 .extracting(RefreshToken::isUsed)
                 .isEqualTo(true);
-        assertThat(refreshTokens.findBySessionIdOrderByIssuedAtAsc(session.getId()))
+        assertThat(refreshTokens.findBySessionIdOrderByIssuedAtAscIdAsc(session.getId()))
                 .containsExactly(first, second);
     }
 

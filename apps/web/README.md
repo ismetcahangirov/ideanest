@@ -148,6 +148,43 @@ The rule is that content a stranger and a crawler need belongs in the first
 byte; content only one signed-in person may see does not, and putting it there
 costs the cacheability that made the rule worth having.
 
+### The one client component beneath the campaign page (#91)
+
+`LiveFunding` is §12.1's counter, and it is the exception that proves the rule
+above rather than a hole in it. **Every number it renders is in the initial
+HTML**, from the server's read — a crawler, a link unfurler and a reader with no
+JavaScript see the campaign's real totals. What hydration adds is arithmetic on
+top of them: the socket carries "40.50 arrived since I last spoke", never a
+total, so the component starts from the server's figure and adds each delta. A
+client component that *fetched* these numbers would break #119; one that starts
+from them does not.
+
+**It is opt-in and unset by default.** `next.config.mjs` says the browser never
+learns the API's real origin — it talks to this application, and `/v1` is
+rewritten server-side — and a WebSocket cannot use that rewrite, because Next
+does not proxy an upgrade. So `IDEANEST_REALTIME_ORIGIN` is absent unless a
+deployment has somewhere to point it, and with nothing configured this page
+behaves exactly as it did before. The API's `ideanest.realtime.allowed-origins`
+is the compensating control on the other side; a handshake is not subject to
+CORS, so the origin check has to be the server's own.
+
+**What it cost, and what that teaches about client components here.** The route
+went 60 KiB over its First Load JS budget, which is now 580 rather than 492.
+Two thirds of the original overage was avoidable and was avoided: a client
+component pulls its **whole import graph** into the browser bundle, so
+`@ideanest/ui` became `@ideanest/ui/server` — the lean entry is the right one
+from a client component too — and `completionOf` moved out of `publicPage.ts`
+into `lib/projects/completion.ts`, a leaf whose only dependency is `decimal.js`.
+What remains is `decimal.js` itself, which is not negotiable: CLAUDE.md forbids
+floating point for money, and this is the one place on the platform where an
+amount is accumulated repeatedly in a browser.
+
+**The backer count is deliberately not live.** A window carries how many pledges
+were confirmed, and a pledge is not always a new backer — somebody raising their
+pledge confirms again. Adding it would make the count drift upwards over a
+campaign's life with no way to correct itself, which is worse than a count that
+is right at page load.
+
 ### The seeded feed
 
 `useDiscoveryFeed` takes an optional first page carrying the filter key it was
