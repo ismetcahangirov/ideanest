@@ -102,9 +102,10 @@ class RealtimeSocketTests extends AbstractIntegrationTest {
     void aReaderNeedsNoCredential() throws Exception {
         Recorder recorder = new Recorder(1);
 
-        try (WebSocketSession session = connect("project:" + projectId, recorder)) {
+        try (WebSocketSession session = watch("project:" + projectId, recorder)) {
+            // `watch` has already asserted that the server registered it; what is left for this
+            // test is that no credential was needed to get there.
             assertThat(session.isOpen()).isTrue();
-            assertThat(broadcaster.subscribers("project:" + projectId)).isEqualTo(1);
         }
     }
 
@@ -121,7 +122,7 @@ class RealtimeSocketTests extends AbstractIntegrationTest {
     void pledgesArriveAsOneMessage() throws Exception {
         Recorder recorder = new Recorder(1);
 
-        try (WebSocketSession session = connect("project:" + projectId, recorder)) {
+        try (WebSocketSession session = watch("project:" + projectId, recorder)) {
             confirmPledge("25.00");
             confirmPledge("15.50");
 
@@ -152,7 +153,7 @@ class RealtimeSocketTests extends AbstractIntegrationTest {
                 .insert();
         Recorder recorder = new Recorder(1);
 
-        try (WebSocketSession watching = connect("project:" + projectId, recorder)) {
+        try (WebSocketSession watching = watch("project:" + projectId, recorder)) {
             confirmPledge(other, "25.00");
             flusher.flush();
 
@@ -187,22 +188,55 @@ class RealtimeSocketTests extends AbstractIntegrationTest {
         String channel = "project:" + projectId;
         Recorder recorder = new Recorder(1);
 
-        WebSocketSession session = connect(channel, recorder);
-        assertThat(broadcaster.subscribers(channel)).isEqualTo(1);
+        WebSocketSession session = watch(channel, recorder);
         session.close();
 
-        // The close is asynchronous on the server side, so this waits for the deregistration
-        // rather than asserting immediately -- a sleep would be the version of this that fails
-        // once a fortnight on a loaded runner.
-        for (int attempt = 0; attempt < 100 && broadcaster.subscribers(channel) > 0; attempt++) {
-            Thread.sleep(20);
-        }
-        assertThat(broadcaster.subscribers(channel)).isZero();
+        // The close is asynchronous on the server side too, so this waits rather than asserting
+        // immediately -- the same race `watch` exists for, in the other direction.
+        awaitSubscribers(channel, 0);
     }
 
     // ------------------------------------------------------------------
     // Fixtures
     // ------------------------------------------------------------------
+
+    /**
+     * Connects, and waits until the server has registered the session.
+     *
+     * <p><strong>The wait is the point.</strong> {@code execute(...).get()} completes when the
+     * handshake succeeds on the <em>client</em> side; the server's
+     * {@code afterConnectionEstablished} runs on a container thread and may not have registered
+     * the session yet. Asserting a subscriber count — or broadcasting to one — immediately after
+     * connecting is therefore a race that a fast machine wins and CI loses, which is exactly how
+     * it was found.
+     *
+     * <p>Polled rather than slept, so it costs a few milliseconds when the registration is
+     * already done and still holds on a loaded runner. The broadcaster's own count is the
+     * signal, because that is the state every assertion in this suite actually depends on.
+     */
+    private WebSocketSession watch(String channel, Recorder recorder) throws Exception {
+        WebSocketSession session = connect(channel, recorder);
+        try {
+            awaitSubscribers(channel, 1);
+        } catch (AssertionError | InterruptedException neverRegistered) {
+            // Closed before the failure propagates. Without this a wait that failed would leave
+            // the socket open and the subscriber registered, and the next test in this class
+            // would see a count it did not create -- a first failure that manufactures a second.
+            session.close();
+            throw neverRegistered;
+        }
+        return session;
+    }
+
+    /** Waits for a channel's subscriber count to settle at {@code expected}. */
+    private void awaitSubscribers(String channel, int expected) throws InterruptedException {
+        for (int attempt = 0; attempt < 250 && broadcaster.subscribers(channel) != expected; attempt++) {
+            Thread.sleep(20);
+        }
+        assertThat(broadcaster.subscribers(channel))
+                .as("the server registered %s subscriber(s) on %s", expected, channel)
+                .isEqualTo(expected);
+    }
 
     private WebSocketSession connect(String channel, Recorder recorder) throws Exception {
         URI uri = URI.create("ws://localhost:" + port + "/v1/realtime?channel="
