@@ -238,6 +238,16 @@ ideanest:
     # had to insert five thousand and one pledges.
     max-recipients: 3
 
+  realtime:
+    # Disabled, exactly as every schedule in this file is: `-` is Spring's own value
+    # for "do not schedule this". A flush firing every second in the background of a
+    # suite would push the very window a test is about to assert on.
+    #
+    # The module itself stays ON -- `enabled: false` would stop the accumulation as
+    # well, and a suite asserting on a buffer nothing ever filled asserts nothing.
+    # RealtimeWindowTests drives RealtimeFlusher#flush directly.
+    flush-schedule: "-"
+
   user:
     # Disabled. `-` is Spring's own value for "do not schedule this". The suite
     # drives AccountAnonymisationJob directly with the instant it wants to test,

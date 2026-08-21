@@ -284,6 +284,26 @@ public class SecurityConfiguration {
                         // would not be an unsubscribe.
                         .requestMatchers(HttpMethod.POST, "/v1/projects/*/remind")
                         .permitAll()
+                        // ---- #91: §12.1's live counters --------------------
+                        // The WebSocket handshake. Unauthenticated because both
+                        // channels it serves are public — a campaign's pledge
+                        // counter and how many comments have arrived, neither of
+                        // which says anything the campaign page does not already
+                        // show. §12.1's `user:{id}` and `project:{id}:dashboard`
+                        // do carry something, and RealtimeChannel deliberately
+                        // has no constant for either: they arrive when the socket
+                        // authenticates, which is its own change.
+                        //
+                        // GET and nothing else, because a handshake is a GET with
+                        // an Upgrade header. What bounds it is not this rule but
+                        // RealtimeProperties' two session ceilings, and what
+                        // decides who may open one is
+                        // `ideanest.realtime.allowed-origins` — a handshake is
+                        // not subject to CORS, so the origin check has to be the
+                        // server's own.
+                        .requestMatchers(HttpMethod.GET, "/v1/realtime")
+                        .permitAll()
+                        // ---- end #91 --------------------------------------
                         // "Somebody arrived here, from there" (#94). Public
                         // because the visits that decide an attribution happen
                         // before anybody signs in: a visitor reads a campaign

@@ -1,13 +1,14 @@
-import { CalendarClock, CircleCheck, CircleDot, CircleSlash, Clock, Hourglass, Users } from 'lucide-react';
+import { CalendarClock, CircleCheck, CircleDot, CircleSlash, Clock, Hourglass } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { MediaFrame, ProgressBar, StatBlock, Tag } from '@ideanest/ui/server';
+import { MediaFrame, Tag } from '@ideanest/ui/server';
 import { PRELAUNCH_COVER_SIZES } from '../../lib/images/sizes';
 import { canOptimise } from '../../lib/images/source';
 import { formatMoney } from '../../lib/money';
 import type { CampaignPage } from '../../lib/projects/publicPage';
 import type { ProjectState } from '../../lib/projects/api';
+import { LiveFunding } from './LiveFunding';
 
 /**
  * §4.4's header: the cover, the title, who made it, and how the funding stands.
@@ -74,12 +75,19 @@ function daysLeftLabel(days: number): string {
 
 export interface CampaignSummaryProps {
   readonly campaign: CampaignPage;
+  /**
+   * Where the browser may open §12.1's socket, or undefined for none — the default.
+   *
+   * Threaded from the page rather than read here, because this is a Server Component and the
+   * value belongs to the client island below it. `lib/realtime/updates.ts` explains why the
+   * feature is opt-in at all: a WebSocket cannot use the `/v1` rewrite this application relies
+   * on, so a live counter needs an address the browser can reach directly.
+   */
+  readonly realtimeOrigin?: string | undefined;
 }
 
-export function CampaignSummary({ campaign }: CampaignSummaryProps) {
+export function CampaignSummary({ campaign, realtimeOrigin }: CampaignSummaryProps) {
   const badge = BADGES[campaign.state];
-  const completion = campaign.completionPercent;
-  const funded = completion !== null && completion.greaterThanOrEqualTo(100);
 
   /*
    * A COUNTDOWN ONLY WHILE THERE IS SOMETHING TO COUNT DOWN TO. `daysLeft` is floored at
@@ -172,42 +180,20 @@ export function CampaignSummary({ campaign }: CampaignSummaryProps) {
 
         {campaign.goal !== null && (
           <div className="flex flex-col gap-3">
-            <ProgressBar
-              value={completion === null ? 0 : completion.toNumber()}
-              size="md"
-              /*
-               * The only place the percentage becomes a JavaScript number, and it is a
-               * geometry rather than an amount: the width of a track in pixels. Everything a
-               * reader is told is rendered from the Decimal below.
-               */
-              label={`Funding: ${completion === null ? 0 : completion.toFixed(0)} percent of the goal`}
+            {/*
+              The numbers, and the only client component beneath this page. They are rendered
+              here on the server exactly as they always were; what hydration adds is §12.1's
+              live counter adding deltas to them. `LiveFunding` argues why that does not break
+              #119's server-rendering, and why a socket is opened only when a deployment has
+              configured somewhere to open one.
+            */}
+            <LiveFunding
+              projectId={campaign.id}
+              goal={campaign.goal}
+              pledged={campaign.pledged}
+              backersCount={campaign.backersCount}
+              realtimeOrigin={realtimeOrigin}
             />
-
-            <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
-              <StatBlock size="md" value={formatMoney(campaign.pledged)} label="pledged" />
-              {completion !== null && (
-                <StatBlock
-                  size="md"
-                  /*
-                   * Text as well as a bar, ui-kit §8.2. `--success` once the goal is
-                   * reached and never lime: reaching a goal is an achievement, and lime on
-                   * this platform means "act now".
-                   */
-                  value={<span className={funded ? 'text-success' : undefined}>{completion.toFixed(0)}%</span>}
-                  label={funded ? 'funded' : 'of goal'}
-                />
-              )}
-              <StatBlock
-                size="md"
-                value={
-                  <span className="inline-flex items-center gap-2">
-                    <Users aria-hidden="true" className="size-5 text-white/48" />
-                    {campaign.backersCount}
-                  </span>
-                }
-                label={campaign.backersCount === 1 ? 'backer' : 'backers'}
-              />
-            </div>
 
             <p className="text-sm text-white/64">
               of {formatMoney(campaign.goal)} goal

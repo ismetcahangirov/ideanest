@@ -9,6 +9,7 @@ import { fetchCampaignPage, fetchPublicRewards } from '../../../../lib/api/serve
 import { previewOf, readCampaignPage, tiersOf } from '../../../../lib/projects/publicPage';
 import { projectPageRobots } from '../../../../lib/seo/indexability';
 import { projectPageMetadata } from '../../../../lib/seo/metadata';
+import { REALTIME_ORIGIN_VARIABLE } from '../../../../lib/realtime/updates';
 import { projectPageGraph } from '../../../../lib/seo/structured-data/graphs';
 
 /**
@@ -156,7 +157,13 @@ export default async function CampaignPage({
         call to action that arrives with the pledge flow. At that point the runtime is being
         paid for anyway.
       */}
-      <CampaignSummary campaign={campaign} />
+      {/*
+        §12.1's live counter is opt-in, and read here so the page decides once. Unset — the
+        default — means no socket is opened and this page behaves exactly as it did before
+        #91. `lib/realtime/updates.ts` explains why it cannot simply use the `/v1` rewrite
+        every other browser call goes through.
+      */}
+      <CampaignSummary campaign={campaign} realtimeOrigin={process.env[REALTIME_ORIGIN_VARIABLE]} />
 
       <div className="mt-12 grid gap-10 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-start">
         <div className="flex flex-col gap-8">
