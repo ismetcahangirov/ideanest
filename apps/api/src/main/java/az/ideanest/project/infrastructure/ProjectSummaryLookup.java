@@ -2,9 +2,13 @@ package az.ideanest.project.infrastructure;
 
 import az.ideanest.shared.project.ProjectSummaries;
 import az.ideanest.shared.project.ProjectSummary;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -55,13 +59,30 @@ import org.springframework.stereotype.Component;
 @Component
 public class ProjectSummaryLookup implements ProjectSummaries {
 
-    private static final String SUMMARY_OF =
-            """
-            SELECT p.id, p.title, p.slug, u.slug AS creator_slug
-              FROM projects p
-              LEFT JOIN users u ON u.id = p.creator_id
-             WHERE p.id = :projectId
-            """;
+    private static final String COLUMNS = "p.id, p.title, p.slug, u.slug AS creator_slug, p.creator_id";
+
+    private static final String SUMMARY_OF = "SELECT " + COLUMNS
+            + " FROM projects p LEFT JOIN users u ON u.id = p.creator_id WHERE p.id = :projectId";
+
+    /**
+     * The batch form.
+     *
+     * <p>An expanded {@code IN} list rather than {@code = ANY} over a bound array. The array
+     * form would be one prepared statement whatever the page size, which is the better shape —
+     * but binding a {@code UUID[]} depends on the driver rather than on the standard, and the
+     * caller's page is bounded at a few dozen identifiers. A statement per distinct page
+     * length is a cost the plan cache absorbs; a driver-specific bind is a cost somebody
+     * discovers during an upgrade.
+     */
+    private static final String SUMMARIES_OF = "SELECT " + COLUMNS
+            + " FROM projects p LEFT JOIN users u ON u.id = p.creator_id WHERE p.id IN (:projectIds)";
+
+    private static final RowMapper<ProjectSummary> SUMMARY = (row, index) -> new ProjectSummary(
+            row.getObject("id", UUID.class),
+            row.getString("title"),
+            row.getString("slug"),
+            row.getString("creator_slug"),
+            row.getObject("creator_id", UUID.class));
 
     private final NamedParameterJdbcTemplate jdbc;
 
@@ -79,19 +100,28 @@ public class ProjectSummaryLookup implements ProjectSummaries {
         }
 
         try {
-            return Optional.ofNullable(jdbc.queryForObject(
-                    SUMMARY_OF,
-                    new MapSqlParameterSource("projectId", projectId),
-                    (row, index) -> new ProjectSummary(
-                            row.getObject("id", UUID.class),
-                            row.getString("title"),
-                            row.getString("slug"),
-                            row.getString("creator_slug"))));
+            return Optional.ofNullable(
+                    jdbc.queryForObject(SUMMARY_OF, new MapSqlParameterSource("projectId", projectId), SUMMARY));
         } catch (EmptyResultDataAccessException noSuchCampaign) {
             // `projects.id` is the primary key, so there is no "more than one" case to
             // distinguish. A campaign that does not exist is an ordinary answer here --
             // an event may outlive its subject.
             return Optional.empty();
         }
+    }
+
+    @Override
+    public List<ProjectSummary> summariesOf(Collection<UUID> projectIds) {
+        if (projectIds == null || projectIds.isEmpty()) {
+            // No statement at all rather than one that can match nothing. Null is an empty
+            // answer here for `summaryOf`'s reason, and an empty collection is a caller with
+            // an empty page, which is ordinary.
+            return List.of();
+        }
+
+        // Deduplicated before the array is built, so that a caller holding the same campaign
+        // twice cannot make the answer carry it twice -- the interface promises it will not.
+        Set<UUID> distinct = Set.copyOf(projectIds);
+        return List.copyOf(jdbc.query(SUMMARIES_OF, new MapSqlParameterSource("projectIds", distinct), SUMMARY));
     }
 }

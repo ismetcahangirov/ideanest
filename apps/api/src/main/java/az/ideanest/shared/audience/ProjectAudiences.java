@@ -11,9 +11,16 @@ import java.util.UUID;
  * costs one enum and answers every question at once, where a method per audience is a published
  * surface that grows without bound.
  *
- * <p><strong>It decides nothing.</strong> The implementation lives in the module that owns the
- * rows — the pledge module for {@link ProjectAudience#BACKERS} — and this interface exists so
- * that the notification module depends on the question rather than on {@code pledges}.
+ * <p><strong>It decides nothing.</strong> The answers live in the modules that own the rows —
+ * the pledge module for {@link ProjectAudience#BACKERS}, the community module for
+ * {@link ProjectAudience#SAVERS} and {@link ProjectAudience#FOLLOWERS} — and this interface
+ * exists so that the notification module depends on the question rather than on their tables.
+ *
+ * <p><strong>There is one bean of this type and it owns no rows.</strong> Since #90 there is
+ * more than one module with an audience to publish, so the answers are
+ * {@link ProjectAudienceSource}s and {@link RoutedProjectAudiences} is what a caller gets.
+ * Nothing about the question changed; what changed is that "the implementation" is now several,
+ * and a caller still names one interface.
  *
  * <h2>The bound is a parameter, and it has to be</h2>
  *

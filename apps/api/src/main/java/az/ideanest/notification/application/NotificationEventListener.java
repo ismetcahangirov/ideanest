@@ -1,5 +1,6 @@
 package az.ideanest.notification.application;
 
+import az.ideanest.notification.application.NotificationEvents.CampaignEndingSoon;
 import az.ideanest.notification.application.NotificationEvents.CampaignSucceeded;
 import az.ideanest.notification.application.NotificationEvents.CampaignUnsuccessful;
 import az.ideanest.notification.application.NotificationEvents.GoalReached;
@@ -7,6 +8,7 @@ import az.ideanest.notification.application.NotificationEvents.PaymentFailed;
 import az.ideanest.notification.application.NotificationEvents.PledgeConfirmed;
 import az.ideanest.notification.application.NotificationEvents.PledgeEdited;
 import az.ideanest.notification.application.NotificationEvents.ProjectApproved;
+import az.ideanest.notification.application.NotificationEvents.ProjectLaunched;
 import az.ideanest.notification.NotificationProperties;
 import az.ideanest.notification.domain.NotificationType;
 import az.ideanest.shared.audience.ProjectAudience;
@@ -15,6 +17,7 @@ import az.ideanest.shared.outbox.OutboxMessage;
 import az.ideanest.shared.project.ProjectSummaries;
 import az.ideanest.shared.project.ProjectSummary;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -46,10 +49,8 @@ import tools.jackson.databind.ObjectMapper;
  * {@code az.ideanest.pledge} or {@code az.ideanest.project}, which is checkable, is
  * checked, and is asserted directly by {@code NotificationBoundaryTests}.
  *
- * <p><strong>Nothing publishes these events yet.</strong> {@link NotificationEvents}
- * says so at length, including what the remaining work is and why it is not in this
- * change. Until a producer lands this listener sees no traffic and {@code notifications}
- * stays empty.
+ * <p>{@link NotificationEvents} says which of §4.10's rows have a producer and which are still
+ * waiting for one, event by event.
  *
  * <h2>Translation, and what this module is allowed to know</h2>
  *
@@ -68,9 +69,16 @@ import tools.jackson.databind.ObjectMapper;
  * <p>#85 stopped there, which meant {@link GoalReached} notified the creator and nobody else —
  * the least useful half of that event, since the people who funded the campaign heard nothing.
  * #245 is the port that fixes it: {@code shared.audience.ProjectAudiences} is a question the
- * pledge module answers about its own rows, so the audience is <em>asked for</em> rather than
- * read. {@link #backersOf} is the one call site, and it is where the bound on a computed
- * audience is applied and logged.
+ * module owning the rows answers, so the audience is <em>asked for</em> rather than read.
+ * {@link #audienceOf} is the one call site, and it is where the bound on a computed audience is
+ * applied and logged.
+ *
+ * <p><strong>#245 is finished here, and #90 is what finished it.</strong> The port shipped with
+ * one audience — {@code BACKERS}, from {@code pledges} — because {@code saves} and
+ * {@code follows} did not exist, so §4.10's "followed creator launched" and "saved project
+ * ending soon" had copy, channels and a preference category and no audience at all. Both are
+ * translated below now, from {@code FOLLOWERS} and {@code SAVERS}, which the community module
+ * answers.
  *
  * <p>#249 is the second port and the same shape again. A translation may not read
  * {@code projects} to find out what a campaign is called, so {@code shared.project.ProjectSummaries}
@@ -78,11 +86,11 @@ import tools.jackson.databind.ObjectMapper;
  * document is the title <em>as it was when the event happened</em> rather than as it is when
  * somebody opens the message.
  *
- * <p><strong>Followers are still not expressible</strong>, and that is a missing table rather
- * than a missing port: #90 owns saving and following, so {@code ProjectAudience} has no
- * {@code FOLLOWERS} constant to ask for — that enum says why adding one now would be worse than
- * leaving it out. §4.10's {@code FOLLOWED_CREATOR_LAUNCHED} and
- * {@code SAVED_PROJECT_ENDING_SOON} therefore have no audience yet.
+ * <p><strong>Set arithmetic across two audiences happens here and nowhere else.</strong>
+ * {@link #endingSoon} sends "saved project ending soon" to the savers who are not backers, and
+ * that subtraction is a decision about what the messages mean rather than a query optimisation
+ * — see the method. It is the one place two audiences of one event meet, and
+ * {@link #concat} states why deduplicating them is load-bearing.
  *
  * <h2>Failure</h2>
  *
@@ -210,7 +218,7 @@ public class NotificationEventListener {
                         // The creator first, and never dropped by the bound below: it is their
                         // campaign, and a truncated audience that lost the one recipient who is
                         // certain to want the message would be the wrong thing to cut.
-                        concat(creatorId, backersOf(projectId, message)),
+                        concat(creatorId, audienceOf(projectId, ProjectAudience.BACKERS, message)),
                         NotificationType.GOAL_REACHED,
                         projectId,
                         about(projectId, "goal", event.goal()),
@@ -249,6 +257,23 @@ public class NotificationEventListener {
                         required(event.projectId(), "projectId", message),
                         about(event.projectId()),
                         at(event.approvedAt(), message)));
+            }
+            case ProjectLaunched.EVENT_TYPE -> {
+                ProjectLaunched event = read(message, ProjectLaunched.class);
+                UUID projectId = required(event.projectId(), "projectId", message);
+                // The creator is deliberately *not* in this audience, unlike GoalReached's:
+                // they pressed the button. `follows_is_not_self` means they cannot be in it
+                // by accident either.
+                yield everybody(
+                        audienceOf(projectId, ProjectAudience.FOLLOWERS, message),
+                        NotificationType.FOLLOWED_CREATOR_LAUNCHED,
+                        projectId,
+                        about(projectId, "deadline", event.deadline()),
+                        at(event.launchedAt(), message));
+            }
+            case CampaignEndingSoon.EVENT_TYPE -> {
+                CampaignEndingSoon event = read(message, CampaignEndingSoon.class);
+                yield endingSoon(message, event);
             }
             default -> null;
         };
@@ -309,7 +334,7 @@ public class NotificationEventListener {
                 // The creator first and never dropped by the bound, for GoalReached's
                 // reason: a truncated audience that lost the one person whose campaign it
                 // is would be the wrong thing to cut.
-                concat(creatorId, backersOf(projectId, message)),
+                concat(creatorId, audienceOf(projectId, ProjectAudience.BACKERS, message)),
                 type,
                 projectId,
                 about(projectId, "goal", goal, "pledged", pledged, "backersCount", backersCount),
@@ -354,7 +379,68 @@ public class NotificationEventListener {
     }
 
     /**
-     * The campaign's backers, from the port the pledge module publishes — #245.
+     * §4.10's deadline thresholds, which are one event and up to three of §4.10's rows.
+     *
+     * <p><strong>The savers are the savers who are not backers</strong>, and the subtraction is
+     * the point rather than an optimisation. §4.10 gives "48 hours remaining" and "saved project
+     * ending soon" separate rows because they are separate messages: one tells somebody who has
+     * committed that their campaign is closing, the other invites somebody who has not. Sending
+     * the invitation to a backer reads as though their pledge had not been noticed — and it
+     * would also put the same person in two audiences of one event, which
+     * {@code notifications_event_recipient_channel_key} does not forbid across different types
+     * but which is two messages about one fact.
+     *
+     * <p><strong>Only at 48 hours.</strong> A saver is being invited, not chased, and §4.10 gives
+     * them one row rather than two. The creator and the backers get both thresholds.
+     */
+    private List<NotificationRequest> endingSoon(OutboxMessage message, CampaignEndingSoon event) {
+        UUID projectId = required(event.projectId(), "projectId", message);
+        UUID creatorId = required(event.creatorId(), "creatorId", message);
+        Integer hoursRemaining = required(event.hoursRemaining(), "hoursRemaining", message);
+        Instant crossedAt = at(event.crossedAt(), message);
+
+        NotificationType type = deadlineTypeFor(hoursRemaining, message);
+        Map<String, Object> params = about(projectId, "hoursRemaining", hoursRemaining, "endsAt", event.endsAt());
+
+        List<UUID> backers = audienceOf(projectId, ProjectAudience.BACKERS, message);
+        List<NotificationRequest> requests = new ArrayList<>(everybody(
+                // The creator first and never dropped by the bound, for GoalReached's reason.
+                concat(creatorId, backers), type, projectId, params, crossedAt));
+
+        if (type == NotificationType.DEADLINE_48H) {
+            Set<UUID> alreadyTold = new LinkedHashSet<>(backers);
+            alreadyTold.add(creatorId);
+            List<UUID> savers = audienceOf(projectId, ProjectAudience.SAVERS, message).stream()
+                    .filter(saver -> !alreadyTold.contains(saver))
+                    .toList();
+            requests.addAll(everybody(
+                    savers, NotificationType.SAVED_PROJECT_ENDING_SOON, projectId, params, crossedAt));
+        }
+        return List.copyOf(requests);
+    }
+
+    /**
+     * Which of §4.10's two deadline rows a threshold is.
+     *
+     * <p>An unrecognised threshold throws, and that is the same decision the class comment makes
+     * about a payload this module cannot read: {@code deadline_notices_threshold_known} bounds
+     * the producer to 48 and 24, so a third value means the producer and this consumer disagree
+     * about the contract — which is a fault somebody has to see, and no redelivery fixes.
+     * Quietly writing nothing would mean an entire campaign's backers not being told, with
+     * nothing anywhere saying so.
+     */
+    private static NotificationType deadlineTypeFor(int hoursRemaining, OutboxMessage message) {
+        return switch (hoursRemaining) {
+            case 48 -> NotificationType.DEADLINE_48H;
+            case 24 -> NotificationType.DEADLINE_24H;
+            default -> throw new IllegalStateException("A " + message.eventType() + " event " + message.id()
+                    + " reports " + hoursRemaining + " hours remaining, which is not one of §4.10's thresholds");
+        };
+    }
+
+    /**
+     * One of a campaign's computed audiences, from the port the module that owns the rows
+     * publishes — #245.
      *
      * <p><strong>The bound is applied here and never silently.</strong> One more than the ceiling
      * is asked for, so "there were more" is a fact this method knows rather than one it infers
@@ -366,23 +452,30 @@ public class NotificationEventListener {
      * <p>Not a failure, for {@code NotificationFanOut}'s reason: this listener shares the dispatch
      * transaction with every other consumer of the event, so throwing would destroy their writes
      * over a condition no redelivery can fix.
+     *
+     * <p><strong>The ceiling is per audience, not per event.</strong> An event that asks for two
+     * audiences may therefore reach twice the ceiling, which is the right reading of a bound whose
+     * purpose is to keep one query and one fan-out loop from becoming unbounded — and it is worth
+     * stating, because the alternative reading would silently halve each audience on exactly the
+     * events that have two.
      */
-    private List<UUID> backersOf(UUID projectId, OutboxMessage message) {
+    private List<UUID> audienceOf(UUID projectId, ProjectAudience audience, OutboxMessage message) {
         int ceiling = properties.audience().maxRecipients();
-        List<UUID> backers = audiences.membersOf(projectId, ProjectAudience.BACKERS, ceiling + 1);
+        List<UUID> members = audiences.membersOf(projectId, audience, ceiling + 1);
 
-        if (backers.size() <= ceiling) {
-            return backers;
+        if (members.size() <= ceiling) {
+            return members;
         }
         log.error(
-                "Campaign {} has more than {} backers, so a {} notification from event {} reaches the first {}"
-                        + " of them and the rest are not told; the fan-out has to be chunked to remove this bound",
+                "Campaign {} has more than {} members in its {} audience, so a notification from event {} reaches"
+                        + " the first {} of them and the rest are not told; the fan-out has to be chunked to remove"
+                        + " this bound",
                 projectId,
                 ceiling,
-                message.eventType(),
+                audience,
                 message.id(),
                 ceiling);
-        return backers.subList(0, ceiling);
+        return members.subList(0, ceiling);
     }
 
     /**

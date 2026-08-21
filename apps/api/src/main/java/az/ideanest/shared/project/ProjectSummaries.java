@@ -1,5 +1,7 @@
 package az.ideanest.shared.project;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -53,4 +55,27 @@ public interface ProjectSummaries {
      * @return the summary, or empty when there is no such campaign. Never null
      */
     Optional<ProjectSummary> summaryOf(UUID projectId);
+
+    /**
+     * The same, for a page of campaigns at once.
+     *
+     * <p><strong>A second method rather than a loop at the call site, and #90 is what made it
+     * necessary.</strong> {@code GET /v1/me/saved} is a page of twenty campaigns the community
+     * module holds identifiers for and nothing else; asking one at a time is twenty round
+     * trips per page view, on a read a signed-in visitor performs often. The one-at-a-time
+     * method stays because event translation genuinely asks about one campaign, and expressing
+     * it as a batch of one there would read as though it might be several.
+     *
+     * <p><strong>Absent campaigns are absent from the answer.</strong> The result is not
+     * positional and is not padded — a caller that needs to know which identifiers resolved
+     * compares the sets, which is the same contract {@code summaryOf} states for one. It is
+     * not an error for the same reason: a saved campaign that has since been hard deleted is
+     * an ordinary thing to find, and a page of saved campaigns must not fail because one of
+     * them is gone.
+     *
+     * @param projectIds the campaigns. Null and empty are both an empty answer
+     * @return one summary per campaign that exists, in no promised order. Never null,
+     *     possibly shorter than what was asked for, never longer and never with a duplicate
+     */
+    List<ProjectSummary> summariesOf(Collection<UUID> projectIds);
 }

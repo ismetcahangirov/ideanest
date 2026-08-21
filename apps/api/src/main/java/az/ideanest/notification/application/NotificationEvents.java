@@ -212,4 +212,70 @@ public final class NotificationEvents {
 
         public static final String EVENT_TYPE = "project.approved";
     }
+
+    /**
+     * A campaign opened — §4.9's C-11 and §4.10's "followed creator launched".
+     *
+     * <p>Recipient: <strong>everybody following the creator</strong>, and nobody else. Not the
+     * creator, who pressed the button; not the campaign's backers, because it has none yet.
+     *
+     * <p>The audience is resolved through {@code shared.audience} exactly as
+     * {@link GoalReached}'s is, and it is the audience #245 could not express until #90 built
+     * {@code follows}. {@code ProjectAudience.FOLLOWERS} is asked for the campaign and answered
+     * by the community module, which joins through the campaign's creator; this payload
+     * therefore carries the creator and not a list.
+     *
+     * <p><strong>Not the launch reminder.</strong> §4.10 has a separate row, "reminder: project
+     * launched", for the people who registered on a pre-launch page — a different audience, a
+     * different table, and a sweep of its own in the project module. A follower and a reminder
+     * are different promises and somebody may hold both; that they then receive two messages is
+     * correct, because they asked twice.
+     *
+     * @param creatorId whose campaign it is, and the account whose followers are the audience
+     * @param deadline when it closes, so the message can say how long there is
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record ProjectLaunched(UUID projectId, UUID creatorId, Instant launchedAt, Instant deadline) {
+
+        public static final String EVENT_TYPE = "project.launched";
+    }
+
+    /**
+     * A live campaign crossed one of §4.10's deadline thresholds.
+     *
+     * <p>Recipients: <strong>three of §4.10's rows come out of this one event</strong>, and the
+     * split is the interesting part.
+     *
+     * <ul>
+     *   <li>"48 hours remaining" and "24 hours remaining" go to the creator and the campaign's
+     *       backers. A backer is somebody with a commitment already made, and what a deadline
+     *       notice offers them is the last chance to change it or to tell somebody else.
+     *   <li>"Saved project ending soon" goes to the people who saved the campaign and have
+     *       <strong>not</strong> backed it — {@code ProjectAudience.SAVERS} minus
+     *       {@code BACKERS}. That subtraction is the whole reason the two are separate rows
+     *       in §4.10: the message to somebody who has not pledged is an invitation, and sending
+     *       an invitation to somebody who already pledged reads as though their pledge was not
+     *       noticed.
+     *   <li>It is sent at the 48-hour threshold only. A saver is being invited, not chased, and
+     *       §4.10 gives them one row rather than two.
+     * </ul>
+     *
+     * <p><strong>One event type carrying the threshold, rather than two event types.</strong>
+     * {@code project.application.CampaignEndingSoonEvent} argues it on the producing side: the
+     * two thresholds are the same message with a different number, where the two campaign
+     * outcomes are genuinely different messages. Where the difference does matter — §4.10 gives
+     * the 48-hour row an email column and the 24-hour row none — it is a property of
+     * {@code NotificationType}, which is where that table lives.
+     *
+     * @param hoursRemaining the threshold crossed: 48 or 24. <strong>The threshold, not a live
+     *     remainder</strong>, so a redelivery hours later still describes the message the
+     *     platform decided to send
+     * @param endsAt when the campaign closes, which is the fact a reader can act on
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record CampaignEndingSoon(
+            UUID projectId, UUID creatorId, Integer hoursRemaining, Instant endsAt, Instant crossedAt) {
+
+        public static final String EVENT_TYPE = "project.ending_soon";
+    }
 }
