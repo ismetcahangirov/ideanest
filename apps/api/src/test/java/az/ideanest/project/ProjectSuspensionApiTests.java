@@ -5,11 +5,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import az.ideanest.audit.AuditAction;
 import az.ideanest.audit.AuditEntry;
 import az.ideanest.audit.AuditEntryRepository;
+import az.ideanest.auth.application.AccessTokenIssuer;
 import az.ideanest.shared.EmailAddress;
 import az.ideanest.shared.outbox.OutboxRelay;
 import az.ideanest.support.AbstractIntegrationTest;
 import az.ideanest.support.Campaigns;
 import az.ideanest.user.infrastructure.UserRepository;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,6 +72,9 @@ class ProjectSuspensionApiTests extends AbstractIntegrationTest {
 
     @Autowired
     private AuditEntryRepository auditEntries;
+
+    @Autowired
+    private AccessTokenIssuer tokens;
 
     @Autowired
     private OutboxRelay relay;
@@ -265,11 +270,45 @@ class ProjectSuspensionApiTests extends AbstractIntegrationTest {
         return signIn(EmailAddress.of(prefix + SEQUENCE.incrementAndGet() + "@example.com"), "Test Person");
     }
 
-    /** The one account this suite's configuration treats as platform staff. */
+    /**
+     * The one account this suite's configuration treats as platform staff.
+     *
+     * <p><strong>Its token is minted rather than signed in for</strong>, exactly as
+     * {@code ContentReportApiTests} does and for the reason that file argues at length:
+     * one address is configured as a moderator, several suites share it, and
+     * {@code sign-ins-per-email} is deliberately left at its real value of five — so a
+     * suite that signs in as that address spends one of those five and makes
+     * <em>somebody else's</em> moderation tests fail with a 401 that has nothing to do
+     * with them. This suite learned that the same way.
+     *
+     * <p>The account is still registered through the endpoint when it is not already
+     * there, so this works whichever suite JUnit happens to run first.
+     */
     private Account moderator() {
-        if (moderator == null) {
-            moderator = signIn(EmailAddress.of(MODERATOR_EMAIL), "Test Moderator");
+        if (moderator != null) {
+            return moderator;
         }
+        EmailAddress email = EmailAddress.of(MODERATOR_EMAIL);
+        if (users.findByEmailAndDeletedAtIsNull(email).isEmpty()) {
+            rest.postForEntity(
+                    "/v1/auth/register",
+                    Map.of("email", email.value(), "password", PASSWORD, "name", "Test Moderator"),
+                    String.class);
+        }
+
+        UUID id = users.findByEmailAndDeletedAtIsNull(email).orElseThrow().getId();
+        // A session identifier of its own, as a real sign-in would have. Nothing reads
+        // it here -- the filter chain is stateless -- and inventing one is still better
+        // than reusing the account's.
+        String accessToken = tokens.issue(
+                        id,
+                        UUID.randomUUID(),
+                        new AccessTokenIssuer.AccountStanding(true, false),
+                        false,
+                        Instant.now())
+                .value();
+
+        moderator = new Account(accessToken, id);
         return moderator;
     }
 

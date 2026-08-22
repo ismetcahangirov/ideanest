@@ -217,6 +217,7 @@ class PublicBackerProjectionTests {
     }
 
     private static UserAccount account(String name, String slug) {
-        return new UserAccount(UUID.randomUUID(), EmailAddress.of(slug + "@example.com"), name, slug, true, null);
+        return new UserAccount(
+                UUID.randomUUID(), EmailAddress.of(slug + "@example.com"), name, slug, true, null, null);
     }
 }

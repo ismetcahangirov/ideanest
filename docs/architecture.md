@@ -1075,7 +1075,7 @@ Preferences are per category and per channel, with a digest option.
 | AD-01 | Project moderation | Queue, approve, reject, request changes, notes, history |
 | AD-02 | Trust and safety | Report queue, fraud signals, suspension. Reporting and the queue are built (#102, §7.2's `content_reports`); **suspension is built (#103)** and fraud signals are not |
 | AD-03 | Curation | Editorial badges, collections, open calls, placement |
-| AD-04 | User management | Search, inspect, ban, verification status, audited impersonation |
+| AD-04 | User management | Search, inspect, ban, verification status, audited impersonation. **Search, inspect and the ban are built (#104)**; impersonation is not |
 | AD-05 | Finance | Payment log, ledger, payout queue, approvals, disputes |
 | AD-06 | Refunds | Full and partial with reason codes |
 | AD-07 | Chargebacks | Notification, evidence, outcome |
@@ -1089,6 +1089,42 @@ Preferences are per category and per channel, with a digest option.
 | AD-15 | Email templates | Edit, preview, test send. **Preview and test send are built (#86, §12.3)** at `GET /v1/admin/email-templates/{type}/preview` and `POST …/test-send`; the test send takes no recipient and goes to the caller's own address, which §12.3 argues. Editing is a schema and a decision about who may rewrite a payment-failure notice, and belongs to this epic |
 | AD-16 | System health | Queue depth, failed jobs, provider status |
 
+> **AD-04, as #104 built it.** `GET /v1/admin/users` searches the accounts by address,
+> display name or profile slug — staff arrive holding whatever the complaint gave them, so
+> matching one of the three would send them to guess which — with a `suspended=true` filter
+> and a keyset cursor. `GET /v1/admin/users/{id}` inspects one. Both are **staff-only and
+> both are audited**, which almost no read on this platform is: it is the one endpoint that
+> hands somebody else's email address to an account with no relationship to them, and "who
+> looked up whom" cannot be asked afterwards of a read nobody recorded. Both answer
+> `no-store`.
+>
+> **The ban is two writes and they are one transaction**: V40's `suspended_at`,
+> `suspended_by` and `suspension_reason` — all three or none, by constraint — and every
+> session the account holds, revoked. Either alone is a hole, because an account marked
+> suspended whose refresh tokens still work is an account that goes on being used. Sign-in
+> then refuses it with **403 and `ACCOUNT_SUSPENDED` rather than the usual 401**: the
+> refusal comes after the password has been verified, so it tells the person nothing they
+> did not know about their own account, and a 401 would put them in a loop with a password
+> that is correct. **An access token already issued is not revoked** — they are signed and
+> short-lived, and a database lookup in the token filter would put a query on the hot path
+> of every endpoint to close a window of minutes.
+>
+> **Reversible, unlike a campaign's suspension**, and `POST …/reinstate` is why the endpoint
+> list above gained a line: a campaign cannot go back to `LIVE` because its funding window
+> has moved on, an account has no window, and a ban with no reversal makes the first
+> mistaken one permanent. Sessions are not restored — the person signs in again.
+>
+> **The columns are orthogonal to V5's deletion lifecycle**, deliberately: an account can be
+> suspended *and* inside its grace period, and a single `state` column would have forced
+> whoever wrote the update to choose which fact to keep. Staff cannot suspend themselves —
+> `users_suspension_has_another_author` — because the row would then answer "who did this"
+> with the person it was done to.
+>
+> **Impersonation is not built**, and it is the half of AD-04 that needs a decision rather
+> than an endpoint: an audited session issued in somebody else's name is a token that can do
+> everything they can do, and what it may *not* do is a policy question §17 does not answer
+> yet.
+>
 > **AD-02's suspension, as #103 built it.** `POST /v1/admin/projects/{id}/suspend`
 > takes §6.1's `LIVE → SUSPENDED`, staff-only through the same configured list the three
 > moderation decisions use, audited as `project.suspended`, and with a reason that is
@@ -1523,8 +1559,20 @@ erDiagram
 #### `users`
 `id` (uuid), `email` (citext, unique), `email_verified_at`, `name`, `slug`,
 `avatar_url`, `bio`, `location_id`, `locale`, `currency`, `kyc_status`,
-`two_factor_enabled`, `banned_at`, `deleted_at`, `deletion_requested_at`,
-`deletion_scheduled_at`, `anonymised_at`, timestamps.
+`two_factor_enabled`, `suspended_at`, `suspended_by`, `suspension_reason`,
+`deleted_at`, `deletion_requested_at`, `deletion_scheduled_at`, `anonymised_at`,
+timestamps.
+
+> **This row used to say `banned_at`, and #104 built three columns instead.** A ban is an
+> instant, an author and a reason, and the reason is not decoration: it is what the person
+> is told, what an appeal is answered from, and what somebody reviewing the decision a year
+> later reads. `users_suspension_is_whole` makes them all-or-none, and
+> `users_suspension_has_another_author` refuses a self-suspension — a row whose author is
+> the person it was done to answers "who did this" with the wrong name. They are
+> **orthogonal to the three deletion columns below**: an account can be suspended *and*
+> inside its grace period, which a single `state` column could not have said. A partial
+> index on `suspended_at` serves the one list that filters on it, because almost nobody is
+> suspended and the index should hold the exceptions.
 
 The three deletion columns are the whole state machine. `deletion_requested_at`
 and `deletion_scheduled_at` are set together and cleared together — a
@@ -2850,8 +2898,10 @@ POST   /v1/admin/moderation/{id}/approve
 POST   /v1/admin/moderation/{id}/reject
 POST   /v1/admin/moderation/{id}/request-changes
 POST   /v1/admin/projects/{id}/suspend   # AD-02 (#103); staff only, audited, ends every pledge
-GET    /v1/admin/users
-POST   /v1/admin/users/{id}/ban
+GET    /v1/admin/users                   # AD-04 (#104); staff only, audited, no-store
+GET    /v1/admin/users/{id}              # AD-04 (#104); one account, audited
+POST   /v1/admin/users/{id}/ban          # AD-04 (#104); suspends and revokes every session
+POST   /v1/admin/users/{id}/reinstate    # the way back; not in this list before #104
 GET    /v1/admin/finance/payouts
 POST   /v1/admin/finance/payouts/{id}/approve
 POST   /v1/admin/finance/refunds

@@ -63,6 +63,23 @@ public class User {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    /**
+     * §4.11's AD-04 (#104): when trust and safety stopped this account.
+     *
+     * <p>Orthogonal to the deletion lifecycle below it, and V40 argues why: deletion is
+     * something a person asks for and §17.4 eventually anonymises, a suspension is
+     * something the platform does to an account and keeps every row readable for. An
+     * account can be both.
+     */
+    @Column(name = "suspended_at")
+    private Instant suspendedAt;
+
+    @Column(name = "suspended_by")
+    private UUID suspendedBy;
+
+    @Column(name = "suspension_reason")
+    private String suspensionReason;
+
     @Column(name = "deletion_requested_at")
     private Instant deletionRequestedAt;
 
@@ -189,6 +206,59 @@ public class User {
         // the unit the retained financial rows are denominated in.
         this.anonymisedAt = at;
         this.deletedAt = at;
+    }
+
+    /**
+     * §4.11's AD-04: stops this account.
+     *
+     * <p><strong>Reversible, unlike a campaign's suspension.</strong> A campaign that was
+     * stopped cannot go back to {@code LIVE} because its funding window has moved on; an
+     * account has no window, and a ban made in error has to be undoable or the mistake is
+     * permanent. {@link #reinstate} is the way back and it clears all three columns
+     * together, because {@code users_suspension_is_whole} refuses any other combination.
+     *
+     * <p><strong>The reason is required and is what the person is told.</strong> An
+     * account that cannot sign in and is not told why produces a support ticket every
+     * time, and an appeal nobody can answer.
+     *
+     * <p>Suspending twice keeps the first decision. The second call would otherwise
+     * rewrite who took it and when, which is exactly what an appeal is read from.
+     *
+     * @param by the staff account taking the decision, never this account itself —
+     *     {@code users_suspension_has_another_author} refuses that, because a
+     *     self-reference makes "who did this" answer with the person it was done to
+     */
+    public void suspend(Instant at, UUID by, String reason) {
+        if (this.suspendedAt != null) {
+            return;
+        }
+        this.suspendedAt = Objects.requireNonNull(at, "A suspension happened at a time");
+        this.suspendedBy = Objects.requireNonNull(by, "A suspension has an author");
+        this.suspensionReason = Objects.requireNonNull(reason, "A suspension has a reason");
+    }
+
+    /** Lets the account back in. All three columns or none — see {@link #suspend}. */
+    public void reinstate() {
+        this.suspendedAt = null;
+        this.suspendedBy = null;
+        this.suspensionReason = null;
+    }
+
+    /** Whether this account is stopped. What sign-in refuses on. */
+    public boolean isSuspended() {
+        return suspendedAt != null;
+    }
+
+    public Instant getSuspendedAt() {
+        return suspendedAt;
+    }
+
+    public UUID getSuspendedBy() {
+        return suspendedBy;
+    }
+
+    public String getSuspensionReason() {
+        return suspensionReason;
     }
 
     public UUID getId() {

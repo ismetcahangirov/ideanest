@@ -194,6 +194,43 @@ public enum AuditAction {
      */
     PROJECT_SUSPENDED("project.suspended", "project"),
 
+    /**
+     * §4.11's AD-04 (#104): staff read the account list.
+     *
+     * <p><strong>A read, audited, which almost none of them are.</strong> It is the one
+     * endpoint on the platform that returns other people's email addresses in bulk to
+     * somebody who has no relationship with them, and §4.7's CD-11 export is audited for
+     * the weaker version of the same reason. "Who looked up whom" is the question an
+     * investigation into a leak starts from, and it cannot be asked afterwards of a read
+     * nobody recorded.
+     *
+     * <p>The detail carries the filters and the count and never a row. The search term is
+     * what staff typed and is frequently an address, so it stays out of the one table with
+     * no retention rule.
+     *
+     * <p>The entity is the staff account rather than a subject, because a search has no
+     * single subject -- which is exactly what makes it worth recording.
+     */
+    ACCOUNTS_SEARCHED("account.searched", "account"),
+
+    /**
+     * §4.11's AD-04 (#104): staff stopped an account.
+     *
+     * <p>The strongest action anybody can take against a person on this platform short of
+     * deleting them: they cannot sign in, and every session they had is revoked in the
+     * same transaction. Reversible, unlike a campaign's suspension, which is why both the
+     * ban and the reinstatement are recorded -- an account that is not suspended today
+     * tells you nothing about whether it ever was.
+     *
+     * <p>The detail carries the edge and the session count, never the reason: that is
+     * prose a moderator wrote about a person, it is on the account where it can be
+     * corrected, and this table cannot be.
+     */
+    ACCOUNT_SUSPENDED("account.suspended", "account"),
+
+    /** §4.11's AD-04 (#104): staff let an account back in. See {@link #ACCOUNT_SUSPENDED}. */
+    ACCOUNT_REINSTATED("account.reinstated", "account"),
+
     /** A second factor was confirmed and is now required to sign in. */
     TWO_FACTOR_ENABLED("two_factor.enabled", "account"),
 

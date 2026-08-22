@@ -116,4 +116,22 @@ public class SessionRevoker {
             case TOKEN_REUSE, PASSWORD_CHANGED, ADMIN_ACTION -> AuditActor.system();
         };
     }
+
+    /**
+     * Ends every session an account holds because trust and safety stopped it —
+     * §4.11's AD-04 (#104).
+     *
+     * <p><strong>A method rather than a reason another module passes in.</strong>
+     * {@link SessionRevocationReason} is this module's domain vocabulary and
+     * {@code ModuleBoundaryTests} keeps it here; the admin module knows it is banning
+     * somebody and has no business choosing which of five enum constants that is
+     * recorded as. Naming the case in the method is also what makes the choice
+     * reviewable in one place — the day a suspension deserves a reason of its own, it
+     * gains one here and nothing else changes.
+     *
+     * @return how many sessions this ended, which the caller records on its audit row
+     */
+    public int revokeForSuspension(UUID userId, Instant at) {
+        return revokeAllFor(userId, SessionRevocationReason.USER_REVOKED, at);
+    }
 }

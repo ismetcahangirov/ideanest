@@ -66,6 +66,45 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     List<UUID> findDueForAnonymisation(@Param("now") Instant now, Pageable batch);
 
     /**
+     * The admin user list — §4.11's AD-04 (#104).
+     *
+     * <p>One query with two optional filters rather than four derived methods, because
+     * the screen has one search box and one checkbox and any combination of them is a
+     * page. A {@code null} term matches everything, which is the list a moderator opens
+     * before they have typed anything.
+     *
+     * <p><strong>The term is matched against three columns and never against a name
+     * alone.</strong> Staff arrive holding whatever the complaint gave them — an
+     * address, a display name, or the slug out of a profile URL — and an endpoint that
+     * matched one of those would send them to guess which.
+     *
+     * <p><strong>Keyset, on the identifier.</strong> {@code Identifiers} mints UUID v7,
+     * so descending by identifier is newest first and the cursor is the last row of the
+     * previous page. An offset would drift as accounts are created underneath the reader,
+     * which on this list means a moderator paging past the account they are looking for.
+     *
+     * <p>Soft-deleted accounts are excluded, like every finder above. An account that has
+     * been anonymised has nothing left to inspect, and suspending one would be a decision
+     * about somebody the platform has finished forgetting.
+     */
+    @Query("""
+            SELECT u FROM User u
+            WHERE u.deletedAt IS NULL
+              AND (:term IS NULL
+                   OR lower(CAST(u.email AS string)) LIKE :term ESCAPE '!'
+                   OR lower(u.name) LIKE :term ESCAPE '!'
+                   OR lower(u.slug) LIKE :term ESCAPE '!')
+              AND (:suspendedOnly = FALSE OR u.suspendedAt IS NOT NULL)
+              AND (:after IS NULL OR u.id < :after)
+            ORDER BY u.id DESC
+            """)
+    List<User> search(
+            @Param("term") String term,
+            @Param("suspendedOnly") boolean suspendedOnly,
+            @Param("after") UUID after,
+            Pageable page);
+
+    /**
      * The row, locked until the transaction ends.
      *
      * <p>The one place a lock is taken. Anonymisation reads the row, decides
