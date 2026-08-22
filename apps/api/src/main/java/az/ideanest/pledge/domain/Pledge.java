@@ -245,6 +245,12 @@ public class Pledge {
         pledge.referrerCode = draft.referrerCode();
         pledge.idempotencyKey = draft.idempotencyKey();
         pledge.reservationExpiresAt = draft.reservationExpiresAt();
+        // §4.5's PL-16 (#81). Decided when the campaign was asked whether it takes
+        // pledges at all, and stamped here rather than later: the campaign's window can
+        // close between this draft and its confirmation, and a pledge that changed
+        // which total it counted towards while the backer was typing their address
+        // would be one nobody could explain.
+        pledge.latePledge = draft.latePledge();
         return pledge;
     }
 

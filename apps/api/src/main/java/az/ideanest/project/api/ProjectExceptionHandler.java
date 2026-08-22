@@ -1,6 +1,7 @@
 package az.ideanest.project.api;
 
 import az.ideanest.project.application.CapabilityNotGrantedException;
+import az.ideanest.project.application.LatePledgesNotEnabledException;
 import az.ideanest.project.application.NotAModeratorException;
 import az.ideanest.project.application.ProjectFieldLockedException;
 import az.ideanest.project.application.ProjectFieldRejectedException;
@@ -223,6 +224,25 @@ public class ProjectExceptionHandler {
         meta.put("state", exception.state().name());
         meta.put("acceptedIn", names(RemindersClosedException.ACCEPTED_IN));
         problem.setProperty("meta", meta);
+        return problem;
+    }
+
+    /**
+     * 409 for opening a late-pledge window on a campaign that does not offer them.
+     *
+     * <p>Not a 400 and not a 403. The request is well formed and the creator is
+     * entitled to make it; what is missing is a decision they have not taken yet, and
+     * the correction is one switch in the campaign editor. The code says which switch,
+     * because "conflict" on its own would send a creator looking at §6.1.
+     */
+    @ExceptionHandler(LatePledgesNotEnabledException.class)
+    public ProblemDetail handleLatePledgesNotEnabled(LatePledgesNotEnabledException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/late-pledges-not-enabled"));
+        problem.setTitle("Late pledges are switched off");
+        problem.setDetail("Turn late pledges on for this campaign before opening a window for them.");
+        problem.setProperty("code", "LATE_PLEDGES_NOT_ENABLED");
+        problem.setProperty("meta", Map.of("field", "latePledgeEnabled"));
         return problem;
     }
 

@@ -49,6 +49,8 @@ public record ProjectPageResponse(
         int backersCount,
         Instant launchedAt,
         Instant deadline,
+        boolean latePledgeEnabled,
+        Instant latePledgeEndsAt,
         JsonNode story,
         String risks,
         Outcome outcome) {
@@ -92,6 +94,8 @@ public record ProjectPageResponse(
                 page.backersCount(),
                 page.launchedAt(),
                 page.deadline(),
+                page.latePledgeEnabled(),
+                page.latePledgeEndsAt(),
                 story,
                 page.risks(),
                 outcome(page.outcome()));

@@ -105,8 +105,11 @@ public class PledgeService {
      */
     @Transactional
     public PledgeDetail draft(DraftPledge command) {
-        acceptance.requireAcceptingPledges(command.projectId());
-        return detailOf(reservations.draft(command));
+        // The answer, not just the refusal: a campaign has two funding windows since
+        // #81, and which one this pledge was taken in is stamped on the row rather
+        // than derived later from a campaign state that will have moved on.
+        PledgeAcceptance.Window window = acceptance.requireAcceptingPledges(command.projectId());
+        return detailOf(reservations.draft(command, window == PledgeAcceptance.Window.LATE));
     }
 
     /**
@@ -355,6 +358,11 @@ public class PledgeService {
             // promised to give back.
             throw new ReservationExpiredException(pledge.getId(), pledge.getReservationExpiresAt());
         }
+        // The window the campaign is in now, and the answer is deliberately discarded.
+        // An edit re-prices a pledge; it does not decide which total the pledge counts
+        // towards, and re-stamping `is_late_pledge` here would move a pledge taken
+        // during the campaign into the late column because its backer changed their
+        // shirt size afterwards.
         acceptance.requireAcceptingPledges(pledge.getProjectId());
     }
 

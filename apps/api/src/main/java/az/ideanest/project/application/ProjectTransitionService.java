@@ -4,6 +4,7 @@ import az.ideanest.audit.AuditAction;
 import az.ideanest.audit.AuditActor;
 import az.ideanest.audit.AuditLog;
 import az.ideanest.audit.AuditOutcome;
+import az.ideanest.project.ProjectProperties;
 import az.ideanest.project.domain.ActorRole;
 import az.ideanest.project.domain.CampaignOutcome;
 import az.ideanest.project.domain.Capability;
@@ -70,6 +71,7 @@ public class ProjectTransitionService {
     private final ApplicationEventPublisher events;
     private final Outbox outbox;
     private final AuditLog audit;
+    private final ProjectProperties properties;
     private final Clock clock;
 
     public ProjectTransitionService(
@@ -80,6 +82,7 @@ public class ProjectTransitionService {
             ApplicationEventPublisher events,
             Outbox outbox,
             AuditLog audit,
+            ProjectProperties properties,
             Clock clock) {
         this.access = access;
         this.projects = projects;
@@ -88,6 +91,7 @@ public class ProjectTransitionService {
         this.events = events;
         this.outbox = outbox;
         this.audit = audit;
+        this.properties = properties;
         this.clock = clock;
     }
 
@@ -244,6 +248,92 @@ public class ProjectTransitionService {
                     "reason", "Backers are told why a campaign was cancelled, so a reason is required.");
         }
         return apply(project, ProjectState.CANCELED, access.roleOf(project, accountId), accountId, reason.trim());
+    }
+
+    /**
+     * §4.5's PL-16 and §4.8's PM-23: opens the late-pledge window.
+     * {@code COLLECTING} → {@code LATE_PLEDGE}.
+     *
+     * <p><strong>The creator alone</strong>, through the two-argument
+     * {@code requireTransitionable} that {@link #launch} and {@link #cancel} use rather
+     * than a capability. It is the same kind of decision as those two: it takes money
+     * from people, and it commits the campaign to manufacturing and posting more of
+     * something than it has counted.
+     *
+     * <p><strong>Two preconditions beyond the edge, and they are different
+     * questions.</strong> The campaign must have <em>enabled</em> late pledges — the
+     * editor's switch, which is the creator saying they offer them at all — and the
+     * window must end in the future and within
+     * {@link az.ideanest.project.ProjectProperties.LatePledges#maxWindow()}. Enabling
+     * is a standing decision and the window is this one; keeping them apart is what
+     * lets a creator who runs out of stock switch the feature off and stop taking
+     * pledges on the next request, without a transition they cannot reverse.
+     *
+     * <p><strong>What is not checked is the campaign's stock</strong>, deliberately. A
+     * limited tier holds its own places and refuses the pledge that would oversell it
+     * — §4.5's PL-13, which does not care whether the campaign is live or late — and a
+     * check here would be a second, weaker copy of that rule evaluated once at the
+     * moment the window opened.
+     *
+     * @param endsAt when the window closes. Required: a late-pledge window with no end
+     *     is a campaign that never stops taking money, and the state machine has no
+     *     edge that would close it automatically
+     * @throws LatePledgesNotEnabledException when the creator has not switched the
+     *     feature on for this campaign
+     * @throws ProjectFieldRejectedException when the window is in the past or beyond
+     *     the platform's bound
+     */
+    @Transactional
+    public Project openLatePledges(UUID projectId, UUID accountId, Instant endsAt) {
+        Project project = access.requireTransitionable(projectId, accountId);
+        requireEdge(project.getState(), ProjectState.LATE_PLEDGE);
+
+        if (!project.isLatePledgeEnabled()) {
+            throw new LatePledgesNotEnabledException(projectId);
+        }
+        Instant now = clock.instant();
+        if (endsAt == null || !endsAt.isAfter(now)) {
+            throw new ProjectFieldRejectedException(
+                    "endsAt", "A late-pledge window has to end in the future.");
+        }
+        Instant furthest = now.plus(properties.latePledges().maxWindow());
+        if (endsAt.isAfter(furthest)) {
+            throw new ProjectFieldRejectedException(
+                    "endsAt",
+                    "A late-pledge window may run for at most "
+                            + properties.latePledges().maxWindow().toDays() + " days.");
+        }
+
+        // The window and the state, in one transaction. A campaign in LATE_PLEDGE with
+        // no window would refuse every pledge -- PledgeAcceptance requires all three
+        // facts -- and would look, to its creator, like a feature that does not work.
+        project.openLatePledgesUntil(endsAt.truncatedTo(ChronoUnit.MICROS));
+        return apply(
+                project,
+                ProjectState.LATE_PLEDGE,
+                access.roleOf(project, accountId),
+                accountId,
+                "Late pledges accepted until " + endsAt);
+    }
+
+    /**
+     * Stops taking late pledges and starts delivering: {@code LATE_PLEDGE} →
+     * {@code FULFILLING}.
+     *
+     * <p>The window is left where it is rather than cleared. It is a true statement
+     * about the period this campaign accepted late pledges in, the state is what
+     * decides whether one is accepted now, and clearing it would also mean clearing
+     * {@code latePledgeEnabled} — {@code projects_late_pledge_window_needs_the_feature}
+     * ties the two — which would erase the fact that this campaign ever offered them.
+     *
+     * <p>Terminal in the direction that matters: §6.1 has no edge back, because
+     * reopening late pledges after fulfilment has begun means shipping a second batch
+     * of something the creator has already counted, packed, and posted.
+     */
+    @Transactional
+    public Project closeLatePledges(UUID projectId, UUID accountId) {
+        Project project = access.requireTransitionable(projectId, accountId);
+        return apply(project, ProjectState.FULFILLING, access.roleOf(project, accountId), accountId, null);
     }
 
     /**

@@ -30,6 +30,11 @@ import java.util.UUID;
  *     request made it
  * @param reservationExpiresAt when the draft stops holding its place. Never null:
  *     {@code pledges_drafts_are_time_bounded} refuses a draft without one
+ * @param latePledge whether this was taken after the campaign closed — §4.5's PL-16
+ *     (#81). <strong>Never sent by a client</strong>: it is what
+ *     {@code PledgeAcceptance} answered when it was asked whether the campaign takes
+ *     pledges at all, and a flag a checkout could set would be a backer deciding which
+ *     of a campaign's two totals their money counts towards
  */
 public record NewPledge(
         UUID projectId,
@@ -40,7 +45,8 @@ public record NewPledge(
         boolean anonymous,
         String referrerCode,
         String idempotencyKey,
-        Instant reservationExpiresAt) {
+        Instant reservationExpiresAt,
+        boolean latePledge) {
 
     public NewPledge {
         Objects.requireNonNull(projectId, "A pledge backs a campaign");

@@ -55,6 +55,7 @@ public record ProjectEdit(
         String risks,
         CoverImageBody coverImage,
         boolean latePledgeEnabled,
+        Instant latePledgeEndsAt,
         List<String> lockedFields,
         Instant createdAt,
         Instant updatedAt) {

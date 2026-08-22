@@ -241,11 +241,16 @@ public class ReservationService {
      *     posted and the destination has no rate
      * @throws RewardSoldOutException when the reward tier, or any add-on, has too few
      *     places left — §10.4's {@code REWARD_SOLD_OUT}, naming whichever it was
+     * @param latePledge what {@code PledgeAcceptance} answered about the campaign's
+     *     funding window -- §4.5's PL-16 (#81). A parameter rather than a field on
+     *     {@code DraftPledge}, because that record is what a client sent and this is
+     *     what the platform decided; a backer must not be able to choose which of a
+     *     campaign's two totals their money counts towards
      * @throws PledgeAlreadyExistsException when this backer already has a live pledge
      *     on this campaign. §7.2: one per backer per project
      */
     @Transactional
-    public Pledge draft(DraftPledge command) {
+    public Pledge draft(DraftPledge command, boolean latePledge) {
         Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
 
         settleAnyExistingPledge(command.projectId(), command.backerId(), now);
@@ -268,7 +273,8 @@ public class ReservationService {
                 command.anonymous(),
                 command.referrerCode(),
                 command.idempotencyKey(),
-                lapsesAt(now))));
+                lapsesAt(now),
+                latePledge)));
 
         if (!command.addons().isEmpty()) {
             addons.saveAll(command.addons().stream()

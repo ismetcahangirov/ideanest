@@ -2583,6 +2583,70 @@
         "tags" : [ "project-controller" ]
       }
     },
+    "/v1/projects/{id}/late-pledges" : {
+      "post" : {
+        "operationId" : "projectOpenLatePledges",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/OpenLatePledgesRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectEdit"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/v1/projects/{id}/late-pledges/close" : {
+      "post" : {
+        "operationId" : "projectCloseLatePledges",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectEdit"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
     "/v1/projects/{id}/launch" : {
       "post" : {
         "operationId" : "projectLaunch",
@@ -6771,6 +6835,16 @@
         },
         "required" : [ "idToken" ]
       },
+      "OpenLatePledgesRequest" : {
+        "type" : "object",
+        "properties" : {
+          "endsAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "endsAt" ]
+      },
       "Outcome" : {
         "type" : "object",
         "properties" : {
@@ -7080,6 +7154,10 @@
           "latePledgeEnabled" : {
             "type" : "boolean"
           },
+          "latePledgeEndsAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
           "launchedAt" : {
             "type" : "string",
             "format" : "date-time"
@@ -7148,6 +7226,13 @@
           "id" : {
             "type" : "string",
             "format" : "uuid"
+          },
+          "latePledgeEnabled" : {
+            "type" : "boolean"
+          },
+          "latePledgeEndsAt" : {
+            "type" : "string",
+            "format" : "date-time"
           },
           "launchedAt" : {
             "type" : "string",

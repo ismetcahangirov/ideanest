@@ -1028,6 +1028,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{id}/late-pledges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["projectOpenLatePledges"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{id}/late-pledges/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["projectCloseLatePledges"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{id}/launch": {
         parameters: {
             query?: never;
@@ -2432,6 +2464,10 @@ export interface components {
             nonce?: string;
             tokenDelivery?: string;
         };
+        OpenLatePledgesRequest: {
+            /** Format: date-time */
+            endsAt: string;
+        };
         Outcome: {
             /** Format: int32 */
             backersCount?: number;
@@ -2553,6 +2589,8 @@ export interface components {
             id?: string;
             latePledgeEnabled?: boolean;
             /** Format: date-time */
+            latePledgeEndsAt?: string;
+            /** Format: date-time */
             launchedAt?: string;
             lockedFields?: string[];
             risks?: string;
@@ -2579,6 +2617,9 @@ export interface components {
             goal?: components["schemas"]["Money"];
             /** Format: uuid */
             id?: string;
+            latePledgeEnabled?: boolean;
+            /** Format: date-time */
+            latePledgeEndsAt?: string;
             /** Format: date-time */
             launchedAt?: string;
             outcome?: components["schemas"]["Outcome"];
@@ -3227,6 +3268,7 @@ export type SchemaNotificationInboxResponse = components['schemas']['Notificatio
 export type SchemaNotificationPreferencesResponse = components['schemas']['NotificationPreferencesResponse'];
 export type SchemaNotificationResponse = components['schemas']['NotificationResponse'];
 export type SchemaOAuthSignInRequest = components['schemas']['OAuthSignInRequest'];
+export type SchemaOpenLatePledgesRequest = components['schemas']['OpenLatePledgesRequest'];
 export type SchemaOutcome = components['schemas']['Outcome'];
 export type SchemaPatchPledgeRequest = components['schemas']['PatchPledgeRequest'];
 export type SchemaPledgeAddonBody = components['schemas']['PledgeAddonBody'];
@@ -5088,6 +5130,54 @@ export interface operations {
         };
     };
     projectForEdit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectEdit"];
+                };
+            };
+        };
+    };
+    projectOpenLatePledges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenLatePledgesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectEdit"];
+                };
+            };
+        };
+    };
+    projectCloseLatePledges: {
         parameters: {
             query?: never;
             header?: never;

@@ -485,7 +485,38 @@ sequenceDiagram
 | PL-13 | Stock reservation | A DRAFT pledge, expiring five minutes after it is made |
 | PL-14 | Idempotency | `Idempotency-Key` prevents duplicates |
 | PL-15 | Secret rewards | Reachable only by a private URL |
-| PL-16 | Late pledge | If the creator enables it |
+| PL-16 | Late pledge | If the creator enables it. Built (#81) |
+
+> **PL-16, as #81 built it.** A campaign takes pledges in two windows and not one:
+> while it is `LIVE` and before its deadline, and again while it is `LATE_PLEDGE` and
+> inside a window its creator opened. **Three facts have to be true**, and each is a
+> different decision — the campaign is in `LATE_PLEDGE`, `late_pledge_enabled` is on,
+> and `late_pledge_ends_at` has not passed. Keeping the switch and the window apart is
+> what gives a creator who has run out of stock a way to stop taking money on the next
+> request; the alternative was a transition, and §6.1 has no edge back out of
+> `FULFILLING`. Switching off clears the window with it, because
+> `projects_late_pledge_window_needs_the_feature` refuses a window without the feature
+> and one checkbox must not become a constraint violation; the window that was
+> announced survives on the `project_state_transitions` row.
+>
+> **A late pledge is stamped as one.** `pledges.is_late_pledge` is written from what
+> `PledgeAcceptance` answered — never from anything a client sent — and it is the whole
+> point of the feature being more than one extra state in a condition: §5.1 judged the
+> campaign against its goal at its deadline, and money taken afterwards must not join
+> the number that decision was made from. An **edit** re-prices a pledge and never
+> re-stamps the flag, so a backer changing their shirt size in the late window does not
+> move their original pledge into the late column.
+>
+> **The window is bounded** by `ideanest.project.late-pledges.max-window`, ninety days.
+> That is a bound on a promise rather than a technical limit: a campaign still taking
+> money nine months after it closed has customers rather than backers, and it has no
+> stock to sell them.
+>
+> **What is not built is the way in.** `COLLECTING → LATE_PLEDGE` is the only edge into
+> the state §6.1 draws, and the edge into `COLLECTING` is the batched collection of
+> epic #59 — blocked on #60. So the feature is complete and unreachable in production
+> until collection lands: a stub that let a creator declare their campaign collected
+> would be the platform claiming cards had been charged.
 
 > **PL-13 used to say "Redis TTL", and #51 changed it after building the
 > feature**, exactly as #47 changed §7.3's PostGIS row. §7.2 had already
@@ -733,9 +764,8 @@ The most valuable and most complex module. It begins when funding closes.
 | PM-23 | Late pledges | Backer |
 | PM-24 | Reminders to non-responders | System |
 
-> **PM-01 to PM-08, PM-11 to PM-13, PM-20 to PM-22 and PM-24 are built; the rest of
-> this section is
-> not.** #73 built the survey builder and #74 its distribution and responses: a
+> **PM-01 to PM-08, PM-11 to PM-13, PM-20 to PM-23 and PM-24 are built; the rest of
+> this section is not.** #73 built the survey builder and #74 its distribution and responses: a
 > creator writes questions of five types (PM-03), makes any of them conditional on a
 > reward tier (PM-02), sends the set once to every backer (PM-04), and reads what came
 > back; a backer answers and may keep editing until a stated cut-off (PM-05, PM-06),
@@ -767,11 +797,20 @@ The most valuable and most complex module. It begins when funding closes.
 > introduce one. **No pledge state moves either** — §6.2's `FULFILLED` is reached from
 > `COLLECTED`, and marking a parcel delivered must not skip the charge.
 >
+> **#81 built late pledges (PM-23).** §4.5's PL-16 carries the design; what belongs
+> here is the shape of the creator's side. `POST /projects/{id}/late-pledges` takes the
+> `COLLECTING → LATE_PLEDGE` edge and names the date the window closes, and
+> `POST …/late-pledges/close` takes `LATE_PLEDGE → FULFILLING` and stops them. The
+> campaign's public page carries `latePledgeEnabled` and `latePledgeEndsAt`, because a
+> visitor arriving after the deadline has to be able to see that there is still a way
+> in — the state alone does not say it, since a campaign can sit in `LATE_PLEDGE` with
+> the switch turned off.
+>
 > **Not built:** PM-09 and PM-10's upgrades and post-campaign add-on store, PM-14 to
 > PM-16's tax and customs (#78, blocked on a decision), PM-17's backer report *for the
 > pledge manager* — §4.7's CD-10 is built and is the same list — PM-18's bulk address
-> editing, PM-19's digital distribution, and PM-23's late pledges. Each has an issue;
-> none of them is implied by what is here.
+> editing, and PM-19's digital distribution. Each has an issue; none of them is implied
+> by what is here.
 >
 > **The one boundary worth naming.** PM-03 lists `address` as an answer type and an
 > ADDRESS question **stores no answer**: it records that the survey asks for a postal
@@ -2647,6 +2686,8 @@ POST   /v1/projects/{id}/prelaunch
 POST   /v1/projects/{id}/submit
 POST   /v1/projects/{id}/launch
 POST   /v1/projects/{id}/cancel
+POST   /v1/projects/{id}/late-pledges        # PL-16 (#81); COLLECTING -> LATE_PLEDGE, names the window
+POST   /v1/projects/{id}/late-pledges/close  # LATE_PLEDGE -> FULFILLING; no edge back
 GET    /v1/projects/{id}/checklist
 GET    /v1/projects/{id}/items
 POST   /v1/projects/{id}/items
