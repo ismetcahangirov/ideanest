@@ -338,6 +338,24 @@ public class SecurityConfiguration {
                         .permitAll()
                         .requestMatchers(HttpMethod.DELETE, "/v1/projects/*/remind")
                         .permitAll()
+                        // §10.2's webhook endpoint (#66). The sender is a payment
+                        // provider: there is no account, no token, and nothing
+                        // for a bearer scheme to check.
+                        //
+                        // What stands in for authentication is stronger than one
+                        // here and is applied a layer down: the body carries an
+                        // HMAC the provider computed with a shared secret, and
+                        // `PaymentProvider#parseWebhook` refuses anything whose
+                        // signature does not verify before a single field is
+                        // read. §17.2 adds a timestamp check against replay and
+                        // V43's unique index makes a redelivery do nothing twice.
+                        //
+                        // POST and one path, not a prefix. A GET here would be a
+                        // way to ask which providers the platform has adapters
+                        // for, and there is no reason for the endpoint to answer
+                        // anything but a delivery.
+                        .requestMatchers(HttpMethod.POST, "/v1/webhooks/psp/*")
+                        .permitAll()
                         // How someone with no credentials gets one, and how a
                         // client whose access token expired gets another. Each
                         // authenticates by its own means — a password, a

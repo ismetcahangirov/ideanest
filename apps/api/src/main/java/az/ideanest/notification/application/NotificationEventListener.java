@@ -215,6 +215,39 @@ public class NotificationEventListener {
                         about(event.projectId(), "amount", event.amount(), "attempt", event.attempt()),
                         at(event.failedAt(), message)));
             }
+            case NotificationEvents.PledgeCollected.EVENT_TYPE -> {
+                NotificationEvents.PledgeCollected event =
+                        read(message, NotificationEvents.PledgeCollected.class);
+                yield List.of(NotificationRequest.about(
+                        required(event.backerId(), "backerId", message),
+                        NotificationType.PAYMENT_COLLECTED,
+                        PLEDGE,
+                        required(event.pledgeId(), "pledgeId", message),
+                        about(event.projectId(), "amount", event.amount()),
+                        at(event.collectedAt(), message)));
+            }
+            case NotificationEvents.FinalPaymentWarning.EVENT_TYPE -> {
+                NotificationEvents.FinalPaymentWarning event =
+                        read(message, NotificationEvents.FinalPaymentWarning.class);
+                yield List.of(NotificationRequest.about(
+                        required(event.backerId(), "backerId", message),
+                        NotificationType.FINAL_PAYMENT_WARNING,
+                        PLEDGE,
+                        required(event.pledgeId(), "pledgeId", message),
+                        // `droppedAt` is what makes this different from the three
+                        // PAYMENT_FAILED messages before it: the backer is told the date
+                        // their pledge stops standing, not merely that something failed
+                        // again.
+                        about(
+                                event.projectId(),
+                                "amount",
+                                event.amount(),
+                                "attempt",
+                                event.attempt(),
+                                "droppedAt",
+                                event.droppedAt()),
+                        at(event.failedAt(), message)));
+            }
             case GoalReached.EVENT_TYPE -> {
                 GoalReached event = read(message, GoalReached.class);
                 UUID projectId = required(event.projectId(), "projectId", message);

@@ -171,16 +171,20 @@ public class EmailComposer {
             case CAMPAIGN_SUCCEEDED, CAMPAIGN_UNSUCCESSFUL -> facts.withAmount(money(params, "pledged"))
                     .withDetail(text(params, "backersCount"));
             case PROJECT_APPROVED -> facts;
-
-            // Not produced yet. #64 owns collection and the payment schedule, #69 the
-            // payout, #74 the surveys, #80 fulfilment, #83 updates, #84 comments, #90
-            // saving and following, and #87 the push half of all of them. Each reads the
-            // amount its future event will carry where an amount is the point of the
-            // message, and nothing where it is not — see the class comment for why these
-            // are written before they are reachable.
+            // Produced since #64 and #65 built the collection. The two lines below did not
+            // change when the producer arrived, which was the point of writing them
+            // against the params the future event was going to carry: `amount` and
+            // `attempt` are what `CollectionEvents` writes, and the copy in
+            // `messages.properties` was already written to read them.
             case PAYMENT_COLLECTED -> facts.withAmount(money(params, "amount"));
             case FINAL_PAYMENT_WARNING -> facts.withAmount(money(params, "amount"))
                     .withDetail(text(params, "attempt"));
+
+            // Not produced yet. #69 owns the payout, #74 the surveys, #80 fulfilment, #83
+            // updates, #84 comments, #90 saving and following, and #87 the push half of
+            // all of them. Each reads the amount its future event will carry where an
+            // amount is the point of the message, and nothing where it is not — see the
+            // class comment for why these are written before they are reachable.
             case PAYOUT_SENT -> facts.withAmount(money(params, "amount"));
             case NEW_UPDATE_PUBLISHED,
                     COMMENT_REPLY,

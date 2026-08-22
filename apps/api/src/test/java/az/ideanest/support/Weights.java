@@ -86,8 +86,14 @@ public final class Weights {
         jdbc.update("DELETE FROM ranking_weight_changes");
         for (Map.Entry<String, String> entry : DEFAULTS.entrySet()) {
             String[] parts = entry.getValue().split(":");
+            // `updated_by` goes back to null with the rest of it, and not as tidiness:
+            // V15 makes it a reference to `users`, so a moderator left named here cannot
+            // be deleted — and the account that made the change is the suite's own
+            // throwaway moderator. What that produced was a failure in whichever suite
+            // happened to run next and clear `users`, which is the worst shape a test
+            // leak can take: a suite failing for something another suite did.
             jdbc.update(
-                    "UPDATE ranking_weights SET weight = ?, active = ? WHERE term = ?",
+                    "UPDATE ranking_weights SET weight = ?, active = ?, updated_by = NULL WHERE term = ?",
                     new BigDecimal(parts[0]),
                     Boolean.parseBoolean(parts[1]),
                     entry.getKey());
