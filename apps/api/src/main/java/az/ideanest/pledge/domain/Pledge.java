@@ -380,6 +380,36 @@ public class Pledge {
         this.canceledAt = Objects.requireNonNull(at, "A cancellation happened at a time");
     }
 
+    /**
+     * §4.8's PM-09 (#76): the pledge is now for a better reward tier.
+     *
+     * <p><strong>The tier moves and none of the amounts do.</strong> That is the whole
+     * difference between this and {@link #edit}, and V39 argues it: §5.1 judged the
+     * campaign by comparing what it raised against its goal at its deadline, and V29
+     * froze that comparison — so rewriting {@code base_amount} months later would change
+     * a number the platform has already reported. What the backer owes for the upgrade
+     * is a {@link PledgeSupplement}, charged separately.
+     *
+     * <p>The consequence is stated rather than discovered: after an upgrade the pledge's
+     * {@code base_amount} is no longer the price of the tier named beside it. The tier
+     * is what will be shipped; the amount is what the campaign raised; and the
+     * difference between them is the supplement.
+     *
+     * <p>No state moves. An upgrade is not a transition on §6.2 — the backer was
+     * committed before it and is committed after it — and the places are moved by
+     * {@code ReservationService}, which owns every statement that touches stock.
+     *
+     * @throws IllegalStateException when this pledge is in a state that cannot buy
+     *     anything more. The service refuses first, with something a client can act on;
+     *     this is the entity holding its own invariant against a caller that did not ask
+     */
+    public void upgradeTo(UUID rewardTierId) {
+        if (state != PledgeState.CONFIRMED && state != PledgeState.CHARGE_PENDING && state != PledgeState.COLLECTED) {
+            throw new IllegalStateException("A pledge in " + state + " cannot be upgraded");
+        }
+        this.rewardTierId = Objects.requireNonNull(rewardTierId, "An upgrade is to some tier");
+    }
+
     /** Whether this pledge is still holding a place. */
     public boolean isDraft() {
         return state == PledgeState.DRAFT;

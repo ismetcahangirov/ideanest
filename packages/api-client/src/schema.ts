@@ -884,6 +884,22 @@ export interface paths {
         patch: operations["pledgeEdit"];
         trace?: never;
     };
+    "/v1/pledges/{id}/addons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["pledgeBuyAddons"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/pledges/{id}/confirm": {
         parameters: {
             query?: never;
@@ -894,6 +910,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["pledgeConfirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/pledges/{id}/upgrade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["pledgeUpgrade"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1911,6 +1943,9 @@ export interface components {
         BackerSurveyListResponse: {
             surveys?: components["schemas"]["BackerSurveyBody"][];
         };
+        BuyAddonsRequest: {
+            addons: components["schemas"]["PledgeAddonBody"][];
+        };
         CampaignMessageListResponse: {
             items?: components["schemas"]["CampaignMessageResponse"][];
             nextCursor?: string;
@@ -2503,6 +2538,7 @@ export interface components {
             /** Format: uuid */
             id?: string;
             isAnonymous?: boolean;
+            latePledge?: boolean;
             /** Format: uuid */
             paymentMethodId?: string;
             /** Format: uuid */
@@ -2513,6 +2549,22 @@ export interface components {
             rewardTierId?: string;
             shippingCountry?: string;
             state?: string;
+            supplements?: components["schemas"]["PledgeSupplementBody"][];
+        };
+        PledgeSupplementBody: {
+            addons?: components["schemas"]["PledgeAddonBody"][];
+            amount?: components["schemas"]["Money"];
+            /** Format: date-time */
+            collectedAt?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: uuid */
+            fromRewardTierId?: string;
+            /** Format: uuid */
+            id?: string;
+            kind?: string;
+            /** Format: uuid */
+            toRewardTierId?: string;
         };
         PostCommentRequest: {
             body?: string;
@@ -3143,6 +3195,10 @@ export interface components {
         UpdateNotificationPreferencesRequest: {
             preferences: components["schemas"]["Change"][];
         };
+        UpgradePledgeRequest: {
+            /** Format: uuid */
+            rewardTierId: string;
+        };
         ValueCount: {
             /** Format: int64 */
             count?: number;
@@ -3203,6 +3259,7 @@ export type SchemaBackerListResponse = components['schemas']['BackerListResponse
 export type SchemaBackerSegmentResponse = components['schemas']['BackerSegmentResponse'];
 export type SchemaBackerSurveyBody = components['schemas']['BackerSurveyBody'];
 export type SchemaBackerSurveyListResponse = components['schemas']['BackerSurveyListResponse'];
+export type SchemaBuyAddonsRequest = components['schemas']['BuyAddonsRequest'];
 export type SchemaCampaignMessageListResponse = components['schemas']['CampaignMessageListResponse'];
 export type SchemaCampaignMessageResponse = components['schemas']['CampaignMessageResponse'];
 export type SchemaCancelProjectRequest = components['schemas']['CancelProjectRequest'];
@@ -3273,6 +3330,7 @@ export type SchemaOutcome = components['schemas']['Outcome'];
 export type SchemaPatchPledgeRequest = components['schemas']['PatchPledgeRequest'];
 export type SchemaPledgeAddonBody = components['schemas']['PledgeAddonBody'];
 export type SchemaPledgeResponse = components['schemas']['PledgeResponse'];
+export type SchemaPledgeSupplementBody = components['schemas']['PledgeSupplementBody'];
 export type SchemaPostCommentRequest = components['schemas']['PostCommentRequest'];
 export type SchemaPostalAddressBody = components['schemas']['PostalAddressBody'];
 export type SchemaPreference = components['schemas']['Preference'];
@@ -3347,6 +3405,7 @@ export type SchemaThread = components['schemas']['Thread'];
 export type SchemaTokenResponse = components['schemas']['TokenResponse'];
 export type SchemaTwoFactorEnrolmentResponse = components['schemas']['TwoFactorEnrolmentResponse'];
 export type SchemaUpdateNotificationPreferencesRequest = components['schemas']['UpdateNotificationPreferencesRequest'];
+export type SchemaUpgradePledgeRequest = components['schemas']['UpgradePledgeRequest'];
 export type SchemaValueCount = components['schemas']['ValueCount'];
 export type SchemaVerificationRecord = components['schemas']['VerificationRecord'];
 export type SchemaVerifyEmailRequest = components['schemas']['VerifyEmailRequest'];
@@ -4908,6 +4967,34 @@ export interface operations {
             };
         };
     };
+    pledgeBuyAddons: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BuyAddonsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
     pledgeConfirm: {
         parameters: {
             query?: never;
@@ -4922,6 +5009,34 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": components["schemas"]["ConfirmPledgeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    pledgeUpgrade: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpgradePledgeRequest"];
             };
         };
         responses: {

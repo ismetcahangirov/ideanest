@@ -72,6 +72,31 @@ public class PledgeAcceptance {
     }
 
     /**
+     * The same question, asked by somebody who has something else to do with the
+     * answer — §4.8's PM-09 and PM-10 (#76).
+     *
+     * <p>The pledge manager's post-campaign purchases are refused <em>while</em> a
+     * campaign is still taking pledges, because §4.5's PL-09 edit is the way to change
+     * a pledge then and two ways to change one thing is how the two come to disagree.
+     * So the one caller of this needs "yes or no" rather than "or else", and catching
+     * {@link ProjectNotAcceptingPledgesException} to invert it would be control flow
+     * through an exception whose whole purpose is to be reported to a client.
+     *
+     * <p>A campaign that does not exist answers {@code false} rather than throwing:
+     * the caller is holding a pledge that names it, so the identifier is real, and the
+     * refusal it would raise belongs to the pledge it loaded rather than to this.
+     */
+    @Transactional(readOnly = true)
+    public boolean isAcceptingPledges(UUID projectId) {
+        try {
+            requireAcceptingPledges(projectId);
+            return true;
+        } catch (ProjectNotAcceptingPledgesException | ProjectNotFoundException closed) {
+            return false;
+        }
+    }
+
+    /**
      * Refuses a pledge on a campaign that will not take one.
      *
      * <p>No lock. The campaign's state can change between this check and the pledge

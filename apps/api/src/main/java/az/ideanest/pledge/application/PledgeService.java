@@ -70,6 +70,7 @@ public class PledgeService {
     private final PledgeAcceptance acceptance;
     private final PledgeRepository pledges;
     private final PledgeAddonRepository addons;
+    private final PledgeDetails details;
     private final Outbox outbox;
     private final Clock clock;
 
@@ -78,12 +79,14 @@ public class PledgeService {
             PledgeAcceptance acceptance,
             PledgeRepository pledges,
             PledgeAddonRepository addons,
+            PledgeDetails details,
             Outbox outbox,
             Clock clock) {
         this.reservations = reservations;
         this.acceptance = acceptance;
         this.pledges = pledges;
         this.addons = addons;
+        this.details = details;
         this.outbox = outbox;
         this.clock = clock;
     }
@@ -226,7 +229,11 @@ public class PledgeService {
         // line about a pledge should not be a record of what somebody spent.
         log.debug("Pledge {} confirmed; recorded outbox event {}.", confirmed.getId(), eventId);
 
-        return new PledgeDetail(confirmed, heldAddons);
+        // Assembled from the lines this method already read rather than through
+        // PledgeDetails, which would read them a second time inside the same
+        // transaction. A confirmation cannot have supplements: they are bought after
+        // the campaign closed and this pledge was a draft a moment ago.
+        return new PledgeDetail(confirmed, heldAddons, List.of(), List.of());
     }
 
     /**
@@ -366,8 +373,16 @@ public class PledgeService {
         acceptance.requireAcceptingPledges(pledge.getProjectId());
     }
 
-    /** The pledge with its add-on lines, read inside the transaction that loaded it. */
+    /**
+     * The pledge with everything hanging off it, read inside the transaction that
+     * loaded it.
+     *
+     * <p>Through {@link PledgeDetails} since #76 rather than assembled here: a pledge
+     * is four tables now, two services answer with the same shape, and two copies of
+     * this method is the arrangement in which one of them quietly stops including the
+     * newest one.
+     */
     private PledgeDetail detailOf(Pledge pledge) {
-        return new PledgeDetail(pledge, addons.findByPledge(pledge.getId()));
+        return details.of(pledge);
     }
 }

@@ -2255,6 +2255,50 @@
         "tags" : [ "pledge-controller" ]
       }
     },
+    "/v1/pledges/{id}/addons" : {
+      "post" : {
+        "operationId" : "pledgeBuyAddons",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BuyAddonsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "pledge-controller" ]
+      }
+    },
     "/v1/pledges/{id}/confirm" : {
       "post" : {
         "operationId" : "pledgeConfirm",
@@ -2282,6 +2326,50 @@
               }
             }
           }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "pledge-controller" ]
+      }
+    },
+    "/v1/pledges/{id}/upgrade" : {
+      "post" : {
+        "operationId" : "pledgeUpgrade",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpgradePledgeRequest"
+              }
+            }
+          },
+          "required" : true
         },
         "responses" : {
           "200" : {
@@ -5300,6 +5388,19 @@
           }
         }
       },
+      "BuyAddonsRequest" : {
+        "type" : "object",
+        "properties" : {
+          "addons" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PledgeAddonBody"
+            },
+            "minItems" : 1
+          }
+        },
+        "required" : [ "addons" ]
+      },
       "CampaignMessageListResponse" : {
         "type" : "object",
         "properties" : {
@@ -6937,6 +7038,9 @@
           "isAnonymous" : {
             "type" : "boolean"
           },
+          "latePledge" : {
+            "type" : "boolean"
+          },
           "paymentMethodId" : {
             "type" : "string",
             "format" : "uuid"
@@ -6958,6 +7062,49 @@
           },
           "state" : {
             "type" : "string"
+          },
+          "supplements" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PledgeSupplementBody"
+            }
+          }
+        }
+      },
+      "PledgeSupplementBody" : {
+        "type" : "object",
+        "properties" : {
+          "addons" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PledgeAddonBody"
+            }
+          },
+          "amount" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "collectedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "fromRewardTierId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "toRewardTierId" : {
+            "type" : "string",
+            "format" : "uuid"
           }
         }
       },
@@ -8662,6 +8809,16 @@
           }
         },
         "required" : [ "preferences" ]
+      },
+      "UpgradePledgeRequest" : {
+        "type" : "object",
+        "properties" : {
+          "rewardTierId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "rewardTierId" ]
       },
       "ValueCount" : {
         "type" : "object",

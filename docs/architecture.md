@@ -764,8 +764,8 @@ The most valuable and most complex module. It begins when funding closes.
 | PM-23 | Late pledges | Backer |
 | PM-24 | Reminders to non-responders | System |
 
-> **PM-01 to PM-08, PM-11 to PM-13, PM-20 to PM-23 and PM-24 are built; the rest of
-> this section is not.** #73 built the survey builder and #74 its distribution and responses: a
+> **PM-01 to PM-13, PM-20 to PM-23 and PM-24 are built; the rest of this section is
+> not.** #73 built the survey builder and #74 its distribution and responses: a
 > creator writes questions of five types (PM-03), makes any of them conditional on a
 > reward tier (PM-02), sends the set once to every backer (PM-04), and reads what came
 > back; a backer answers and may keep editing until a stated cut-off (PM-05, PM-06),
@@ -806,11 +806,39 @@ The most valuable and most complex module. It begins when funding closes.
 > in — the state alone does not say it, since a campaign can sit in `LATE_PLEDGE` with
 > the switch turned off.
 >
-> **Not built:** PM-09 and PM-10's upgrades and post-campaign add-on store, PM-14 to
-> PM-16's tax and customs (#78, blocked on a decision), PM-17's backer report *for the
-> pledge manager* — §4.7's CD-10 is built and is the same list — PM-18's bulk address
-> editing, and PM-19's digital distribution. Each has an issue; none of them is implied
-> by what is here.
+> **#76 built the upgrades and the post-campaign add-on store (PM-09, PM-10), and
+> recorded rather than performed PM-16.** A backer whose campaign has closed can move
+> up a tier at `POST /pledges/{id}/upgrade` or buy more things at
+> `POST /pledges/{id}/addons`, and what they owe for it is a `pledge_supplements` row —
+> **beside the pledge and never inside it**. Two reasons, and V39 argues both: §5.1
+> judged the campaign by comparing what it raised against its goal at its deadline and
+> V29 froze that comparison, so rewriting `base_amount` months later would change a
+> number the platform has already reported; and the issue's own requirement is that an
+> additional purchase is charged as a *separate transaction*, which a total folded back
+> into `pledges` could not express.
+>
+> The consequence is stated rather than discovered: **after an upgrade a pledge's
+> `base_amount` is no longer the price of the tier named beside it.** The tier is what
+> gets shipped, the amount is what the campaign raised, and the difference between them
+> is the supplement. Post-campaign add-ons get their own lines in `supplement_addons`
+> for the same reason — a backer who bought two mugs during the campaign and one after
+> it would otherwise have one `pledge_addons` row of three, with no way to say which
+> part of it `addons_amount` paid for. **What goes in the box is both tables**, which is
+> the one cost of keeping the two purchases apart.
+>
+> Stock is not duplicated: a post-campaign add-on claims its places through the same
+> statements the checkout uses, so a limited add-on cannot be oversold by being bought
+> late. The two endpoints are **refused while the campaign is still taking pledges**,
+> with a code naming §4.5's PL-09 edit — two ways to change one pledge, and the campaign
+> decides which applies. A downgrade is refused rather than recorded as a negative
+> supplement: money that has been collected comes back through #67. And **nothing is
+> charged**: PM-16 is the charge, `collected_at` is null on every row this platform
+> holds, and a stub that marked one collected would tell a creator money had arrived.
+>
+> **Not built:** PM-14 to PM-16's tax and customs (#78, blocked on a decision) and the
+> charge PM-16 asks for (epic #59), PM-17's backer report *for the pledge manager* —
+> §4.7's CD-10 is built and is the same list — PM-18's bulk address editing, and PM-19's
+> digital distribution. Each has an issue; none of them is implied by what is here.
 >
 > **The one boundary worth naming.** PM-03 lists `address` as an answer type and an
 > ADDRESS question **stores no answer**: it records that the survey asks for a postal
@@ -1962,6 +1990,7 @@ by a database constraint and verified by a nightly reconciliation job.
 | `collaborators` | Scoped grants |
 | `surveys`, `survey_questions`, `survey_answers`, `survey_responses`, `survey_nudges` | §4.8's PM-01 to PM-06 and PM-24 (#73, #74). **This row used to name three tables; there are five.** `survey_answers` is separate from `survey_responses` because the read that matters is "what size did each backer choose" over four thousand pledges, exported to a factory -- with rows that is a join and an index, and with one `jsonb` document per response it is a scan that unpacks every answer and then trusts that every one of them spells the question the same way. `survey_nudges` is the fifth and is not a survey at all: it is the claim that somebody was reminded, written in the same transaction as the outbox event, exactly as `deadline_notices` is. **`sent_at` is the whole of "draft" and "sent"**, following V22's `project_updates.published_at`: a state column beside a timestamp is two facts that can disagree, and the one a support script updates is never the one the reads filter on. Once it is set the questions freeze -- `survey_answers` has no `ON DELETE` on its reference to a question, so the database refuses the tidy-up that would discard four hundred answers -- while the covering note and `respond_by` stay editable, because the first is prose nobody answered and the second is the thing creators most often need to change. **The cut-off is a comparison, never a sweep**: a job that closed surveys is a job that can be late, and late here means accepting an answer after the creator placed the order. An answer is `text[]` whatever the type, so every reader has one shape, and it stores **the option text rather than an index** -- an index would break silently the moment a creator reordered the options, turning every "Medium" into a "Large" |
 | `shipping_addresses` | §4.8's PM-07 and PM-08 (#75). Encrypted at rest with an application-managed key: one AES-256-GCM ciphertext over the whole structured address, a 12-byte nonce beside it, and a `key_id` that is the whole of key rotation. **The key never goes near PostgreSQL** -- `pgcrypto` was rejected for that reason and not for its cryptography, since `pgp_sym_encrypt` puts the passphrase in the query text, which lands in `pg_stat_statements`, in the slow query log, and in any statement log an operator turns on during an incident. What it costs is stated rather than discovered: **nothing in this table can be searched, sorted or filtered by the database**, so there is no index on postcode and no "backers in Berlin" query; the destination country stays outside the envelope on `pledges.shipping_country`, where §4.5's PL-05 already priced the parcel from it. **One row per pledge and not per account**: a backer who moves house between two campaigns has two addresses, and the earlier campaign ships to where they lived when they answered -- an address on the account would silently rewrite an answer a creator has already printed a label from. PM-08's lock is `locked_at`/`locked_by`, per address rather than a flag on the campaign, so a creator can reopen one backer who wrote in |
+| `pledge_supplements`, `supplement_addons` | §4.8's PM-09, PM-10 and PM-16 (#76): what a backer bought after the campaign closed, and its lines. **Beside `pledges`, not inside it.** V39 carries the argument: §5.1's decision was taken against the pledge's amounts and V29 froze it, so a purchase months later must not move them -- and the money is a separate transaction, which a total folded back into `pledges` could not express. An `UPGRADE` names both tiers, because the pledge's own `reward_tier_id` moves and nothing else would record what it moved from; an `ADDONS` purchase names neither and has lines instead. The **lines are not `pledge_addons` rows**, and that is the whole reason the second table exists: that one is keyed `(pledge_id, reward_tier_id)`, so a backer who bought two mugs during the campaign and one after it would have a single row of three with no way to say which part `addons_amount` paid for -- either the sum stops matching the lines or somebody is charged twice. The cost is that **fulfilment reads both tables**, which is said here, in V39, and in §4.8. `amount` is positive by constraint: a downgrade is a refund (#67), and a negative row would be a payment sitting in a table a collection run reads. `collected_at` is null on every row the platform holds, because PM-16's charge is epic #59's |
 | `fulfilments` | §4.8's PM-20 to PM-22 (#80): one parcel per pledge — a status, a carrier, a tracking number, and a link. **Keyed by the pledge**, like `shipping_addresses` and for the same reason: there is one of these per pledge and every read arrives holding the pledge, so a surrogate key would only create the possibility of two. A **split shipment is therefore not representable**, deliberately — PM-22 is one status, nothing in §4.8 asks for parcels plural, and a table shaped for the campaign nobody has run would make the case everybody has into a fold over rows. `project_id` is denormalised from the pledge because "every parcel on my campaign" is the read this table exists for, and its foreign key is **composite** — `(pledge_id, project_id)` against `pledges` — so the copy cannot name a campaign the pledge does not. Four statuses: `PREPARING`, `SHIPPED`, `DELIVERED`, `RETURNED`. The last is not a failed delivery folded into the third: it is the one outcome a backer has to act on. **The two timestamps are facts about the status, not a second opinion about it** — `shipped_at` present exactly when the status is not `PREPARING`, `delivered_at` exactly when it is `DELIVERED`, both as check constraints — because the row those refuse says a parcel is still being packed and arrived on Tuesday, which a backer reads as a delivery that did not happen. The cost is that a correction erases the earlier claim, and `audit_logs` is where the claim survives. A tracking number **requires a carrier**: a bare number is a string nobody can look up, and a backer shown one spends an evening pasting it into the wrong carrier's website. The link is `https` only |
 | `notifications`, `notification_preferences` | Delivery and settings |
 | `email_deliveries` | What the email transport did, one row per attempt, append only (#86, §12.3). **`accepted_at`, never `delivered_at`**: SMTP reports acceptance by a relay and nothing further, and a column named for delivery would be read as delivery by everybody who ever queried it. Outcomes are `ACCEPTED`, `REFUSED` and `SUPPRESSED`; bounces and opens need a provider webhook and are follow-up work rather than columns nothing writes. **There is no address column** — §17.4 anonymises `users.email`, and an address copied here would survive that in a table the anonymiser does not know about, so `recipient_id` is the join and it correctly stops resolving when there is no longer a person |
@@ -2754,8 +2783,8 @@ GET    /v1/pledges/{id}/shipping-address   # PM-07 (#75); 204 when none has been
 PATCH  /v1/pledges/{id}/shipping-address
 POST   /v1/projects/{id}/shipping-addresses/lock      # PM-08 (#75); VIEW_FINANCES, audited
 GET    /v1/projects/{id}/shipping-addresses/progress  # counts only; decrypts nothing
-POST   /v1/pledges/{id}/upgrade
-POST   /v1/pledges/{id}/addons
+POST   /v1/pledges/{id}/upgrade    # PM-09 (#76); after the campaign closed, owes the difference
+POST   /v1/pledges/{id}/addons     # PM-10 (#76); new lines, charged separately
 POST   /v1/projects/{id}/shipping-rules
 POST   /v1/projects/{id}/fulfilments/import  # PM-20 (#80); text/csv, VIEW_FINANCES, audited
 GET    /v1/projects/{id}/fulfilments         # PM-22 (#80); VIEW_FINANCES, no-store, with counts

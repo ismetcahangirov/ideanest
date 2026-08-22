@@ -690,19 +690,7 @@ public class ReservationService {
         }
         addonSelections.stream().map(DraftPledge.AddonSelection::rewardTierId).forEach(selected::add);
 
-        Map<UUID, RewardStock.SelectableTier> tiers = new LinkedHashMap<>();
-        for (RewardStock.SelectableTier tier : stock.selectionOf(projectId, selected, shippingCountry)) {
-            tiers.put(tier.rewardTierId(), tier);
-        }
-        for (UUID selectedTierId : selected) {
-            if (!tiers.containsKey(selectedTierId)) {
-                // Absent from the answer means "not this campaign's" — see
-                // RewardStock.selectionOf, which leaves this distinction to the
-                // caller because only the caller can say which selection went
-                // missing.
-                throw new UnknownRewardTierException(projectId, selectedTierId);
-            }
-        }
+        Map<UUID, RewardStock.SelectableTier> tiers = tiersFor(projectId, selected, shippingCountry);
 
         String currency = currencyOf(tiers.values());
         if (!currency.equals(contribution.currency())) {
@@ -732,6 +720,139 @@ public class ReservationService {
         }
 
         return new PledgeSelection(currency, shippingCountry, reward, addonLines, contribution.amount());
+    }
+
+    /**
+     * The campaign's tiers, with the rate for the destination already resolved.
+     *
+     * <p>One read of the reward module for every line at once, and the check that
+     * every identifier the caller named belongs to this campaign. Extracted from
+     * {@link #selectionFor} by #76 so that the post-campaign purchases can ask the
+     * same question without going through a whole selection — a second copy of the
+     * lookup would be a second place for "is this tier on this campaign" to be
+     * answered, which is the check that keeps one campaign's backer from buying
+     * another campaign's stock.
+     *
+     * @throws UnknownRewardTierException naming the first identifier that is not this
+     *     campaign's. Absent from {@code RewardStock.selectionOf}'s answer means "not
+     *     this campaign's", and that class leaves the distinction to the caller
+     *     because only the caller knows which selection went missing
+     */
+    private Map<UUID, RewardStock.SelectableTier> tiersFor(
+            UUID projectId, List<UUID> selected, String shippingCountry) {
+
+        Map<UUID, RewardStock.SelectableTier> tiers = new LinkedHashMap<>();
+        for (RewardStock.SelectableTier tier : stock.selectionOf(projectId, selected, shippingCountry)) {
+            tiers.put(tier.rewardTierId(), tier);
+        }
+        for (UUID selectedTierId : selected) {
+            if (!tiers.containsKey(selectedTierId)) {
+                throw new UnknownRewardTierException(projectId, selectedTierId);
+            }
+        }
+        return tiers;
+    }
+
+    /**
+     * §4.8's PM-09: what one reward tier costs today, delivered to this destination.
+     *
+     * <p>Both sides of an upgrade are priced through this, at the same moment, so the
+     * difference between them is a real difference rather than one measured against a
+     * rate that no longer exists. A tier's <em>price</em> cannot move after launch —
+     * §5.3 freezes it, and {@code LockedField.REWARD_PRICE} is what refuses the edit —
+     * but a shipping rate can, and a heavier tier posted to Berlin is what an upgrade
+     * usually changes.
+     *
+     * @throws UnknownRewardTierException when the tier is not this campaign's
+     * @throws ShippingDestinationUnpricedException when the tier ships and the
+     *     destination has no rate
+     */
+    @Transactional(readOnly = true)
+    public PledgeQuote priceOfTier(UUID projectId, UUID rewardTierId, String destination) {
+        RewardStock.SelectableTier tier =
+                tiersFor(projectId, List.of(rewardTierId), destination).get(rewardTierId);
+
+        return PledgeQuote.of(new PledgeSelection(
+                tier.currency(), destination, lineFor(tier, 1, destination), List.of(), tier.amount()));
+    }
+
+    /**
+     * §4.8's PM-10: what a set of add-ons costs today, delivered to this destination.
+     *
+     * <p>The contribution is zero and that is the whole trick: with no reward line,
+     * {@link PledgeQuote} treats what the backer chose to give as the base — §4.5's
+     * PL-02 — so a zero contribution prices exactly the add-ons and their postage, with
+     * no bonus and nothing of the original pledge in it. That is precisely what a
+     * post-campaign purchase costs.
+     *
+     * @throws UnknownRewardTierException when a tier is not this campaign's
+     * @throws ShippingDestinationUnpricedException when a line ships and the
+     *     destination has no rate
+     */
+    @Transactional(readOnly = true)
+    public PledgeQuote priceOfAddons(
+            UUID projectId, List<DraftPledge.AddonSelection> selections, String destination) {
+
+        List<UUID> selected =
+                selections.stream().map(DraftPledge.AddonSelection::rewardTierId).toList();
+        Map<UUID, RewardStock.SelectableTier> tiers = tiersFor(projectId, selected, destination);
+
+        String currency = currencyOf(tiers.values());
+        List<QuotedLine> lines = new ArrayList<>(selections.size());
+        for (DraftPledge.AddonSelection selection : selections) {
+            lines.add(lineFor(tiers.get(selection.rewardTierId()), selection.quantity(), destination));
+        }
+        return PledgeQuote.of(new PledgeSelection(currency, destination, null, lines, BigDecimal.ZERO));
+    }
+
+    /**
+     * §4.8's PM-09: moves the pledge's claimed place from one tier to the other.
+     *
+     * <p><strong>Take before release, exactly as {@link #edit} does</strong>, and for
+     * the reason that method's javadoc gives: a backer whose upgrade is refused because
+     * the better tier sold out while they were reading the page must still be holding
+     * the tier they already had. Releasing first would leave them with neither on the
+     * one path where the refusal is ordinary.
+     *
+     * <p>Claimed rather than reserved on both sides. A supplement is only ever bought
+     * against a pledge that has been confirmed, so its places are in
+     * {@code claimed_quantity} — there is no five-minute window here, because there is
+     * no checkout to abandon: the purchase is complete when this returns.
+     *
+     * @throws RewardSoldOutException when the tier the backer is upgrading to has no
+     *     places left, leaving the pledge exactly as it was
+     */
+    @Transactional
+    public void moveClaimedPlace(Pledge pledge, UUID fromTierId, UUID toTierId) {
+        if (!stock.claimPlaces(toTierId, 1)) {
+            throw new RewardSoldOutException(pledge.getProjectId(), toTierId);
+        }
+        if (fromTierId != null && !stock.releaseClaimedPlaces(fromTierId, 1)) {
+            // Logged rather than refused, for releaseTheHeldPlaces' reason: this
+            // transaction owns the pledge, so a mismatch is an invariant violation
+            // rather than a race, and refusing would strand a backer who has already
+            // been given the tier they asked for.
+            log.error(
+                    "Pledge {} held a claimed place on reward tier {} that the tier had no record of.",
+                    pledge.getId(),
+                    fromTierId);
+        }
+    }
+
+    /**
+     * §4.8's PM-10: claims the places a post-campaign purchase takes.
+     *
+     * <p>The same statements as every other stock path in this class, against the
+     * claimed column for {@link #moveClaimedPlace}'s reason. Sorted, for the deadlock
+     * reason {@link HeldPlaces} carries: two backers buying the same two add-ons in
+     * opposite orders would each hold the row the other wanted.
+     *
+     * @throws RewardSoldOutException naming the first add-on that refused. The
+     *     transaction rolls back, so the ones before it give their places straight back
+     */
+    @Transactional
+    public void claimPurchasedPlaces(UUID projectId, List<DraftPledge.AddonSelection> selections) {
+        takeThePlaces(projectId, HeldPlaces.of(null, selections), true);
     }
 
     /**

@@ -44,6 +44,13 @@ import java.util.UUID;
  *     that no money moves at confirmation and no ledger entry is written under any
  *     circumstances; collection is phase 2, at the close of a successful campaign,
  *     and belongs to epic #59
+ * @param supplements §4.8's PM-09 and PM-10 (#76): what this backer bought after the
+ *     campaign closed, each of them charged separately from the pledge and none of
+ *     them charged yet. Empty on every pledge until somebody upgrades
+ * @param latePledge §4.5's PL-16 (#81): whether this pledge was taken after the
+ *     campaign closed, in a window its creator reopened. Read from the row rather than
+ *     derived from the campaign's state, which will have moved on by the time anybody
+ *     looks
  */
 @JsonInclude(JsonInclude.Include.ALWAYS)
 public record PledgeResponse(
@@ -59,7 +66,9 @@ public record PledgeResponse(
         Instant confirmedAt,
         Instant canceledAt,
         UUID paymentMethodId,
-        boolean cardVerified) {
+        boolean cardVerified,
+        boolean latePledge,
+        List<PledgeSupplementBody> supplements) {
 
     /**
      * §4.5's PL-06, broken out: what the backer is charged, and what it is made of.
@@ -109,6 +118,8 @@ public record PledgeResponse(
                 pledge.getPaymentMethodId(),
                 // Never true yet, and it is a field rather than a constant in the
                 // client so that #55 changes one expression here and nothing there.
-                false);
+                false,
+                pledge.isLatePledge(),
+                PledgeSupplementBody.of(detail));
     }
 }
