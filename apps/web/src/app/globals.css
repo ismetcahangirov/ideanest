@@ -11,3 +11,39 @@
  * this one covers this application's routes and components.
  */
 @source "../";
+
+/**
+ * The mobile navigation drawer's entry — docs/motion-system.md §4.11 and §4.11.1.
+ *
+ * HERE RATHER THAN IN `@ideanest/ui`, because the component is here: the kit's `Drawer`
+ * animates through `motion`, and the shell cannot pay 116 kB of animation runtime on every
+ * route to slide one panel (`packages/ui/src/motion.ts` has the measurement). What §4.11.1
+ * actually specifies is 200ms, `translateX(100%)` on the panel and a fade on the backdrop —
+ * all of it `transform` and `opacity`, and none of it needing a library.
+ *
+ * THERE IS NO EXIT ANIMATION, which §4.11.1 states as a rule rather than an omission: a
+ * dialog that lingers after it was dismissed reads as an unresponsive interface. The panel
+ * is unmounted.
+ *
+ * The `motion-safe:` prefix on the elements is belt and braces. The token file already
+ * collapses every animation to 0.01ms under `prefers-reduced-motion` (docs/ui-kit.md §9.4),
+ * and this keeps the drawer from mounting mid-travel for anybody who reads that preference
+ * through the variant instead.
+ */
+@keyframes nav-panel {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes nav-backdrop {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

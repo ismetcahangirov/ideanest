@@ -82,6 +82,22 @@ present in every route's first load, and it exists because a dependency landing
 in the shared graph breaks all twelve route budgets at once without any of them
 saying why. The shared line names the cause.
 
+**It has done that once, and the episode is worth keeping.** The public web
+shell (#258) added `app/not-found.tsx` and `app/error.tsx`, and the first
+version of both rendered the full site header. A file at the *root* of the route
+tree has its client components pulled into every route's first load — Next has
+to have them ready, because any route can 404 or throw — so the shared line went
+from 464.4 KiB to 547.7 KiB and every one of the twenty-three route budgets
+broke at once. The 83 KiB was not the header's markup: `SiteHeader` reaches
+`@ideanest/ui`'s root barrel for `TopBar` and the overlay hooks, and a barrel in
+a `transpilePackages` source package lands in one shared chunk, which is the
+mechanism `packages/ui/src/motion.ts` documents.
+
+The fix was to split the failure states in two — `MinimalShell` at the root,
+the full shell in `app/(site)` where it is already paid for — and the shared
+line is what made the cost visible at all. Without it the reading would have
+been "twenty-three routes each got slightly heavier for no reason".
+
 **Sizes are uncompressed**, which is the unit `next build` records. Transfer
 size is the number a user actually pays, and it would be the better budget if
 it were stable — but gzip output shifts by a handful of bytes between zlib

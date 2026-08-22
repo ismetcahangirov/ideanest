@@ -1,5 +1,7 @@
 import type { MetadataRoute } from 'next';
 
+import { fetchCategories } from '../../api/server';
+import { categoryPath, subcategoryPath } from '../../categories/api';
 import { isIndexableProjectState } from '../indexability';
 import { absoluteUrl } from './config';
 import type { SitemapProject } from './projects';
@@ -19,32 +21,36 @@ type ChangeFrequency = NonNullable<SitemapEntry['changeFrequency']>;
 /**
  * The static pages.
  *
- * `/` IS LISTED AND DOES NOT EXIST YET — `apps/web` has no root route, and the
- * server-rendered home and project pages are #119. This list is the platform's
- * public URL contract (§4.4, §10.2) rather than an inventory of the routes that
- * happen to be built, because a sitemap that has to be rewritten by whoever
- * ships the page is a sitemap that gets shipped without it. The gap is named in
- * `apps/web/README.md` and in the pull request rather than hidden.
+ * `/` WAS LISTED BEFORE IT EXISTED, on the argument that this list is the platform's public
+ * URL contract (§4.4, §10.2) rather than an inventory of the routes that happen to be built.
+ * #264 built it. `/categories` joins it as WS-05's index — the page every category landing
+ * page hangs from, and the one a crawler walks to find them.
  *
  * Nothing here claims a `lastModified`: these pages are code, their content
  * changes when this application is deployed, and this module has no honest way
  * to know when that was. An invented date — `new Date()`, say — tells a crawler
  * that every page changed on every crawl, which is the fastest way to have
  * `<lastmod>` ignored altogether.
+ *
+ * `/search` IS DELIBERATELY ABSENT and `/maintenance` with it. Both are `noindex` and both are
+ * in `PRIVATE_PATH_PREFIXES`, and a sitemap must never advertise a URL robots.txt blocks —
+ * the contradiction is reported in Search Console and resolved in the crawler's favour, which
+ * means the whole file is trusted less.
  */
-export const PAGE_PATHS: readonly string[] = Object.freeze(['/']);
+export const PAGE_PATHS: readonly string[] = Object.freeze(['/', '/categories']);
 
 /**
  * Discovery.
  *
- * ONE URL, AND THAT IS THE HONEST ANSWER TODAY. §4.3's taxonomy — fifteen
- * categories and about a hundred subcategories — would make excellent landing
- * pages, but the only URL that reaches one is `/discover?category=games`, and
- * the filters compose into a combinatorial set of query strings describing the
- * same campaigns. robots.txt disallows `/discover?` wholesale for that reason,
- * and a sitemap must never advertise a URL robots.txt blocks. A path-based
- * category route is what makes those pages indexable, and it belongs with the
- * server-rendered discovery pages in #119.
+ * ONE STATIC URL, AND THEN THE TAXONOMY. This constant used to be `['/discover']` alone, with
+ * a comment explaining that §4.3's fifteen categories and hundred-odd subcategories "would
+ * make excellent landing pages" and that the only URL reaching one was
+ * `/discover?category=games` — which robots.txt disallows, and which a sitemap therefore must
+ * not advertise.
+ *
+ * #265 built the path-based routes. They are not in this constant because they are not
+ * constant: the taxonomy is data, editable without a deployment (§4.3), so the segment reads
+ * it at request time — see `discoveryEntries`.
  */
 export const DISCOVERY_PATHS: readonly string[] = Object.freeze(['/discover']);
 
@@ -157,7 +163,37 @@ export function pageEntries(baseUrl: string): MetadataRoute.Sitemap {
   return pathEntries(PAGE_PATHS, baseUrl);
 }
 
-/** The `discovery` segment. */
-export function discoveryEntries(baseUrl: string): MetadataRoute.Sitemap {
-  return pathEntries(DISCOVERY_PATHS, baseUrl);
+/**
+ * The `discovery` segment: the feed, plus one entry per category and subcategory.
+ *
+ * <h2>Why the taxonomy is read here rather than listed above</h2>
+ *
+ * §4.3 requires the taxonomy to be editable without a deployment, so a frozen array of a
+ * hundred paths would be a sitemap that is wrong the first time an administrator renames
+ * anything. The segment is already `force-dynamic` (`app/sitemap.ts` explains why), and
+ * `fetchCategories` caches the read for an hour, so a crawl of several segments costs one
+ * request to the service.
+ *
+ * <h2>A failed read is the feed alone, never an exception</h2>
+ *
+ * `fetchCategories` answers `null` when the service refuses or cannot be reached. A sitemap
+ * that 500s is a sitemap Search Console reports as an error against the whole site; one that
+ * is briefly shorter is a sitemap. `/discover` is always in it, so the segment is never empty.
+ *
+ * <h2>`daily`, like the feed</h2>
+ *
+ * `pathEntries` claims `daily` for every path it writes, and that is as true of a category
+ * landing page as of the feed: what changes on one is which campaigns are listed and how far
+ * along they are, and both move every day. No `lastModified`, for the reason `PAGE_PATHS`
+ * gives — nothing here knows when the page last actually changed.
+ */
+export async function discoveryEntries(baseUrl: string): Promise<MetadataRoute.Sitemap> {
+  const categories = (await fetchCategories()) ?? [];
+
+  const taxonomyPaths = categories.flatMap((category) => [
+    categoryPath(category.slug),
+    ...category.subcategories.map((subcategory) => subcategoryPath(category.slug, subcategory.slug)),
+  ]);
+
+  return pathEntries([...DISCOVERY_PATHS, ...taxonomyPaths], baseUrl);
 }

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { WebVitals } from '../components/rum/WebVitals';
+import { SessionProvider } from '../components/session/SessionProvider';
 import { SITE_LANGUAGE, rootMetadata } from '../lib/seo/metadata';
 import './globals.css';
 
@@ -78,13 +79,24 @@ export const metadata: Metadata = rootMetadata();
  * because a field measurement of one route is not a measurement; see
  * `docs/observability/real-user-monitoring.md`. It sits before `{children}` so
  * that the boundary is established before anything that could throw inside it.
+ *
+ * `<SessionProvider>` IS HERE AND NOT IN `app/(site)/layout.tsx`, which is the decision #267
+ * turns on. Three groups of routes need to know who is reading — the public shell, the
+ * authentication screens, and every private route the guard covers — and they do not share a
+ * layout below this one. A provider per group would mean the session is bootstrapped again on
+ * every navigation between them, which is a `/v1/auth/refresh` per crossing, and refresh
+ * tokens rotate: two of those racing is precisely what the single-flight in
+ * `lib/api/access-token.ts` exists to prevent. One provider, at the root, read once.
+ *
+ * It renders `{children}` unchanged and adds no element of its own. What it costs every route
+ * is a context and one effect; what it buys is that no page has to remember to guard itself.
  */
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang={SITE_LANGUAGE} className={inter.variable}>
       <body className="min-h-dvh bg-surface-1">
         <WebVitals />
-        {children}
+        <SessionProvider>{children}</SessionProvider>
       </body>
     </html>
   );

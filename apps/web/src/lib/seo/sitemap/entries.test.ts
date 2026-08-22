@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { fetchCategories } from '../../api/server';
 import type { SitemapProject } from './projects';
 import {
   DISCOVERY_PATHS,
@@ -11,8 +12,35 @@ import {
   projectPath,
 } from './entries';
 
+/**
+ * `discoveryEntries` reads the taxonomy since #265, because §4.3 makes it data rather than
+ * code. The read is stubbed here: what is under test is which URLs a tree becomes, not whether
+ * the service answers.
+ */
+vi.mock('../../api/server', () => ({ fetchCategories: vi.fn() }));
+
+const categoriesMock = vi.mocked(fetchCategories);
+
 const BASE = 'https://ideanest.az';
 const NOW = new Date('2026-08-17T12:00:00.000Z');
+
+const TAXONOMY = [
+  {
+    id: '1',
+    slug: 'games',
+    name: 'Games',
+    subcategories: [
+      { id: '1a', slug: 'tabletop', name: 'Tabletop' },
+      { id: '1b', slug: 'video', name: 'Video games' },
+    ],
+  },
+  { id: '2', slug: 'crafts', name: 'Crafts', subcategories: [] },
+];
+
+beforeEach(() => {
+  categoriesMock.mockReset();
+  categoriesMock.mockResolvedValue(TAXONOMY);
+});
 
 function project(overrides: Partial<SitemapProject> = {}): SitemapProject {
   return {
@@ -106,11 +134,11 @@ describe('projectEntries', () => {
     expect(done[0]?.changeFrequency).toBe('yearly');
   });
 
-  it('states no priority at all, because there is no honest number to state', () => {
+  it('states no priority at all, because there is no honest number to state', async () => {
     for (const entry of [
       ...projectEntries([project()], BASE, NOW),
       ...pageEntries(BASE),
-      ...discoveryEntries(BASE),
+      ...(await discoveryEntries(BASE)),
     ]) {
       expect(entry.priority).toBeUndefined();
     }
@@ -153,16 +181,43 @@ describe('the content-type segments', () => {
     );
   });
 
-  it('lists the unfiltered feed and nothing with a query string', () => {
-    const urls = discoveryEntries(BASE).map((entry) => entry.url);
+  it('lists the unfiltered feed and nothing with a query string', async () => {
+    const urls = (await discoveryEntries(BASE)).map((entry) => entry.url);
 
-    expect(urls).toEqual(DISCOVERY_PATHS.map((path) => `https://ideanest.az${path}`));
     expect(urls).toContain('https://ideanest.az/discover');
+    for (const path of DISCOVERY_PATHS) expect(urls).toContain(`https://ideanest.az${path}`);
+
+    /*
+     * The whole reason WS-05's routes exist: a category reachable only as `?category=games` is
+     * a URL robots.txt disallows, and a sitemap must never advertise one of those.
+     */
     for (const url of urls) expect(url).not.toContain('?');
   });
 
-  it('claims no lastModified for a page whose content it cannot date', () => {
-    for (const entry of [...pageEntries(BASE), ...discoveryEntries(BASE)]) {
+  it('lists a page per category and per subcategory', async () => {
+    const urls = (await discoveryEntries(BASE)).map((entry) => entry.url);
+
+    expect(urls).toEqual([
+      'https://ideanest.az/discover',
+      'https://ideanest.az/categories/games',
+      'https://ideanest.az/categories/games/tabletop',
+      'https://ideanest.az/categories/games/video',
+      'https://ideanest.az/categories/crafts',
+    ]);
+  });
+
+  it('is the feed alone when the taxonomy cannot be read', async () => {
+    categoriesMock.mockResolvedValue(null);
+
+    // A briefly shorter sitemap is a sitemap; one that throws is an error reported against the
+    // whole site.
+    expect((await discoveryEntries(BASE)).map((entry) => entry.url)).toEqual([
+      'https://ideanest.az/discover',
+    ]);
+  });
+
+  it('claims no lastModified for a page whose content it cannot date', async () => {
+    for (const entry of [...pageEntries(BASE), ...(await discoveryEntries(BASE))]) {
       expect(entry.lastModified).toBeUndefined();
     }
   });

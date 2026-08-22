@@ -1141,7 +1141,37 @@ stop, not a destination.
 first focusable element in the document, it is visually hidden until focused,
 and when focused it obeys §9.3 like every other control. A shell without one
 makes every page on the platform start with the same twelve links for anybody
-navigating by keyboard.
+navigating by keyboard. Visually hidden means moved off-screen, never
+`display: none` — a hidden element is not focusable, so a skip link built that
+way cannot be reached by the one input device it exists for.
+
+#### The minimal frame
+
+**Two screens must not have the header above, and they are not the same two.**
+
+| Screen | Why |
+|---|---|
+| Sign in, register, verify email (§4.1) | A screen with one job, and the header's job is to offer eleven others — including a Register button beside the form somebody is already using. §8.5 makes the same argument about the checkout |
+| Not found and error, at the root of the route tree | A cost, not a preference. Those files answer a request that matched no route, so they sit above every route group and their code is loaded by every page in the application. The full header there put 83 KiB onto the checkout and the admin console, which never render it |
+
+What they get instead is a wordmark that goes home, the skip link, the page, and
+one line at the bottom. It is still a way out, which is the one thing chrome has
+to be — and the failure state inside it carries its own links to the feed, the
+categories and search, so no page is a dead end.
+
+| Element | Surface | Text |
+|---|---|---|
+| Wordmark | transparent | `--text-primary` |
+| Footer line | transparent | `--text-tertiary` |
+
+The failure states inside the site shell — a 404 from a category page, an error
+on the home page — keep the full header, because those routes already carry it.
+Same words, two frames.
+
+**A failure state takes no lime and no `--danger`.** §2.4: lime means urgent and
+`--danger` means something failed destructively, and neither is true of a
+mistyped URL. A 404 that shouts makes an ordinary mistake read as a broken
+platform; the heading carries the meaning, which §9.2 requires of it in any case.
 
 **Motion: the collapse and nothing else.** `docs/motion-system.md` §4.7 owns the
 header's transition — `max-width`, `background-color`, `border-color` and

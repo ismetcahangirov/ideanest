@@ -1,14 +1,14 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { DiscoverySkeleton } from '../../components/discovery/DiscoverySkeleton';
-import { DiscoveryView } from '../../components/discovery/DiscoveryView';
-import { StructuredData } from '../../components/seo/StructuredData';
-import { fetchDiscoveryFeed } from '../../lib/api/server';
-import { feedQuery } from '../../lib/discovery/api';
-import { filterKey, parseFilters } from '../../lib/discovery/filters';
-import type { SeededFeed } from '../../lib/discovery/useDiscoveryFeed';
-import { publicPageMetadata } from '../../lib/seo/metadata';
-import { discoverPageGraph } from '../../lib/seo/structured-data/graphs';
+import { DiscoverySkeleton } from '../../../components/discovery/DiscoverySkeleton';
+import { DiscoveryView } from '../../../components/discovery/DiscoveryView';
+import { StructuredData } from '../../../components/seo/StructuredData';
+import { fetchDiscoveryFeed } from '../../../lib/api/server';
+import { feedQuery } from '../../../lib/discovery/api';
+import { filterKey, parseFilters } from '../../../lib/discovery/filters';
+import type { SeededFeed } from '../../../lib/discovery/useDiscoveryFeed';
+import { publicPageMetadata } from '../../../lib/seo/metadata';
+import { discoverPageGraph } from '../../../lib/seo/structured-data/graphs';
 
 /**
  * `/discover`, and every filtered variant of it, is one canonical URL.
@@ -75,10 +75,11 @@ export const metadata: Metadata = publicPageMetadata({
  * into the server graph and the build refuses the route. Both children below carry their own
  * `'use client'`.
  *
- * **THE SITE'S IDENTITY IS CLAIMED HERE**, outside the boundary. `/discover` is the front
- * door — `app/page.tsx` does not exist yet — and `lib/seo/structured-data/identity.ts`
- * explains why the `Organization` and `WebSite` nodes belong on the entry page rather than in
- * the root layout.
+ * **THE SITE'S IDENTITY IS NO LONGER CLAIMED HERE.** It was, while this route was the front
+ * door in the literal sense: the application answered its own origin with a 404. #264 built
+ * `/`, the `Organization` and `WebSite` nodes moved there, and what is left in this page's
+ * graph is the trail. Two `Organization` nodes for one organisation across a crawl is exactly
+ * what `lib/seo/structured-data/identity.ts` argues against.
  */
 export default async function DiscoverPage({
   searchParams,

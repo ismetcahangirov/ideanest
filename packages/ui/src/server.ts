@@ -36,6 +36,13 @@ export { Card, CardTitle, CardSubtitle, CardFooter, type CardProps } from './com
 export { Pill, type PillProps } from './components/Pill/Pill';
 export { Tag, type TagProps } from './components/Tag/Tag';
 export { ProgressBar, type ProgressBarProps } from './components/ProgressBar/ProgressBar';
+/* Stateless, and needed by the server-rendered browse pages the public web epic added — the
+   home page, the category landing pages and the search results all have a "nothing here"
+   branch, and the alternative was three hand-written ones that would drift from the kit's.
+
+   (The epic is deliberately not cited by number here: the design-token test reads a `#` and
+   three digits in this package as a colour literal and fails the build for it.) */
+export { EmptyState, type EmptyStateProps } from './components/data/EmptyState';
 export { StatBlock, StatRow, type StatBlockProps } from './components/StatBlock/StatBlock';
 export {
   Media,

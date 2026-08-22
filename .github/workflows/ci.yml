@@ -209,7 +209,7 @@ jobs:
         run: |
           pnpm --filter @ideanest/web start > "$LOG" 2>&1 &
           for _ in $(seq 1 30); do
-            if curl -sfo /dev/null http://localhost:3000/discover; then
+            if curl -sfo /dev/null http://localhost:3000/; then
               exit 0
             fi
             sleep 1
@@ -218,12 +218,15 @@ jobs:
           cat "$LOG"
           exit 1
 
-      # Discovery is the surface with the most on screen and the editor the one
-      # with the most form (motion-system.md §5.1); the application has no root
-      # route to measure. Lighthouse is fetched with `pnpm dlx` at a pinned
-      # version rather than installed, because a tool that runs twice a day in
-      # CI does not belong in the dependency graph of an application nobody
-      # installs it with.
+      # The home page is the platform's front door and the one route whose motion
+      # budget is Full (motion-system.md §5); discovery is the surface with the most
+      # on screen, and the editor the one with the most form. The root route was
+      # absent from this list with a comment saying it did not exist -- #264 built
+      # it, and the page a first-time visitor meets is the one worth watching most.
+      #
+      # Lighthouse is fetched with `pnpm dlx` at a pinned version rather than
+      # installed, because a tool that runs twice a day in CI does not belong in
+      # the dependency graph of an application nobody installs it with.
       #
       # Three runs each. A single Lighthouse run on a shared runner is a sample,
       # not a measurement, and one that fails is one missing sample rather than
@@ -233,15 +236,22 @@ jobs:
           REPORTS: ${{ runner.temp }}/lighthouse
         run: |
           mkdir -p "$REPORTS"
-          for route in discover projects/new; do
+          # An empty entry is the home page. Quoted, so the shell keeps it as an
+          # argument rather than dropping it from the list.
+          for route in "" discover projects/new; do
+            # The report file name: the home page is `home`, and a nested route
+            # flattens its slashes, because a report written to a directory that
+            # does not exist is a run that silently produced nothing.
+            name="${route:-home}"
+            name="${name//\//-}"
             for run in 1 2 3; do
               pnpm dlx lighthouse@13.4.1 "http://localhost:3000/${route}" \
                 --only-categories=performance \
                 --output=json \
-                --output-path="${REPORTS}/${route//\//-}-${run}.json" \
+                --output-path="${REPORTS}/${name}-${run}.json" \
                 --chrome-flags='--headless=new --no-sandbox' \
                 --quiet \
-                || echo "::warning title=Lighthouse::${route} run ${run} did not complete."
+                || echo "::warning title=Lighthouse::${name} run ${run} did not complete."
             done
           done
 

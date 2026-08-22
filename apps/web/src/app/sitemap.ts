@@ -65,7 +65,7 @@ export default async function sitemap({
   const baseUrl = siteUrl();
 
   if (segment.kind === 'pages') return pageEntries(baseUrl);
-  if (segment.kind === 'discovery') return discoveryEntries(baseUrl);
+  if (segment.kind === 'discovery') return await discoveryEntries(baseUrl);
 
   const projects = await indexableProjects();
   return projectEntries(projectSlice(projects, segment.index), baseUrl, new Date());

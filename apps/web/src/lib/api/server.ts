@@ -1,4 +1,5 @@
 import { ApiError, createApiClient, type ApiClient, type components } from '@ideanest/api-client';
+import type { Category } from '../categories/api';
 import type { DiscoveryFeed } from '../discovery/api';
 import type { EnvSource } from '../seo/metadata';
 import { apiOrigin } from '../seo/metadata-source';
@@ -165,6 +166,98 @@ export async function fetchDiscoveryFeed(
   } catch (cause) {
     return refusalOrRethrow(cause);
   }
+}
+
+/**
+ * A page of search results — `GET /v1/search`, §4.13's WS-06.
+ *
+ * THE SAME FEED SHAPE AS `/v1/discover`, and deliberately the same reader. `SearchController`
+ * answers with `DiscoveryResponses.Feed`, so the results page renders the same
+ * `ProjectCard` as the feed does; a second card component for the same JSON would be two
+ * places for the progress bar to be wrong.
+ *
+ * IT IS NOT THE SAME ENDPOINT, though, which is why this is not a parameter on the function
+ * above. `/v1/search` refuses a request with no `q` (`requireQuery`), and the caller's
+ * handling of that refusal — a results page with an empty search box, rather than an error —
+ * belongs at the call site.
+ */
+export async function fetchSearchResults(
+  query: string,
+  options: ServerReadOptions = {},
+): Promise<DiscoveryFeed | null> {
+  try {
+    const feed = await client(options).get('/v1/search', {
+      query: parametersOf(query),
+      ...readOptions(options),
+    });
+    // Cast for the reason the discovery reader gives: `lib/discovery/api.ts` owns the wire
+    // shape, and the generated schema marks every field of it optional.
+    return feed as unknown as DiscoveryFeed;
+  } catch (cause) {
+    return refusalOrRethrow(cause);
+  }
+}
+
+/**
+ * §4.3's taxonomy — `GET /v1/categories`.
+ *
+ * <h2>An hour, not a minute</h2>
+ *
+ * Every other read in this module revalidates after sixty seconds, matching the
+ * `Cache-Control` the service puts on a feed whose ordering and totals move continuously. A
+ * taxonomy does not: §4.3 requires it to be editable without a deployment, which is a human
+ * editing a row perhaps twice a year, and this tree is read by the header, the footer, the
+ * home page and every category landing page — on every request. Sixty seconds there is a
+ * request per minute per surface for an answer that has not changed since the platform
+ * launched.
+ *
+ * An hour is the cost of an administrator waiting for a rename to appear. That is a bounded
+ * and explainable wait; the alternative is the taxonomy being the most requested endpoint on
+ * the platform.
+ *
+ * `null` on failure, like everything else here — a header whose Categories menu is empty is
+ * a header, and a header that threw is a site that is down.
+ */
+export async function fetchCategories(options: ServerReadOptions = {}): Promise<readonly Category[] | null> {
+  /*
+   * The default is spread FIRST so a caller's own `revalidateSeconds` still wins. `client`
+   * needs the origin and the fetch, `readOptions` the locale and the window, and both read
+   * the same object rather than two that could disagree.
+   */
+  const withWindow: ServerReadOptions = { revalidateSeconds: TAXONOMY_REVALIDATE_SECONDS, ...options };
+
+  try {
+    const tree = await client(withWindow).get('/v1/categories', readOptions(withWindow));
+    /*
+     * Narrowed to the three fields the browse pages use, rather than cast wholesale.
+     * `CategoryResponse` also carries `names`, `nameAz` and `nameEn`, which the controller
+     * marks interim; copying them here would spread an interim shape through every consumer
+     * and make removing it a change to all of them.
+     */
+    return (tree as readonly RawCategory[]).map((category) => ({
+      id: category.id ?? '',
+      slug: category.slug ?? '',
+      name: category.name ?? category.slug ?? '',
+      subcategories: (category.subcategories ?? []).map((subcategory) => ({
+        id: subcategory.id ?? '',
+        slug: subcategory.slug ?? '',
+        name: subcategory.name ?? subcategory.slug ?? '',
+      })),
+    }));
+  } catch (cause) {
+    return refusalOrRethrow(cause);
+  }
+}
+
+/** One hour. See `fetchCategories`. */
+const TAXONOMY_REVALIDATE_SECONDS = 60 * 60;
+
+/** Just the fields read above, as the generated schema types them — every one optional. */
+interface RawCategory {
+  id?: string;
+  slug?: string;
+  name?: string;
+  subcategories?: readonly { id?: string; slug?: string; name?: string }[];
 }
 
 /**

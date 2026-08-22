@@ -8,10 +8,11 @@ import type { JsonLdNode } from './document';
  * to be a page that exists and a link that would have been followed. That rules
  * out the two shapes this markup is usually written in: a trail invented from
  * the URL segments (`/projects/ayan/studio` is not three pages), and a trail
- * that names a category the campaign happens to be in but that has no address
- * on this platform — `lib/seo/sitemap/entries.ts` explains why there is no
- * path-based category route yet, and a crumb pointing at `/discover?category=…`
- * would point at a URL robots.txt disallows.
+ * that names a category the campaign happens to be in without knowing which one it is. #265
+ * built the path-based category routes this comment used to say did not exist, so a trail
+ * through one is now possible — `categoryPageGraph` uses it. The campaign page's trail still
+ * does not, because the campaign projection does not carry the campaign's taxonomy and a
+ * crumb guessed from anything else would be a claim about a page nobody linked from.
  *
  * So the trail is short and true: the site, the feed, and the page itself.
  *
@@ -31,17 +32,23 @@ export interface Crumb {
 /**
  * The site itself.
  *
- * `/` DOES NOT EXIST YET and is named anyway, which is the same decision
- * `PAGE_PATHS` takes in the sitemap and for the same reason: this is the
- * platform's public URL contract rather than an inventory of the routes that
- * happen to be built, and a trail that had to be rewritten by whoever ships the
- * home page is a trail that gets shipped without it. The two files must agree,
- * because a crawler reads both.
+ * It was named here before the route existed, on the argument that this file states the
+ * platform's public URL contract rather than an inventory of the routes that happen to be
+ * built. #264 built it, so the crumb now points at a page rather than at a promise.
  */
 export const HOME_CRUMB: Crumb = Object.freeze({ name: 'Home', path: '/' });
 
 /** The feed. The one discovery URL that is indexable — see `DISCOVERY_PATHS`. */
 export const DISCOVER_CRUMB: Crumb = Object.freeze({ name: 'Discover', path: '/discover' });
+
+/**
+ * The taxonomy's index — §4.13 WS-05, issue #265.
+ *
+ * The intermediate step the module comment above was waiting for. It could not exist while
+ * the only address for a category was `/discover?category=…`, which robots.txt disallows;
+ * `/categories/games` is a page, so a trail through it is a claim that is true.
+ */
+export const CATEGORIES_CRUMB: Crumb = Object.freeze({ name: 'Categories', path: '/categories' });
 
 /**
  * Whitespace collapsed and trimmed.
