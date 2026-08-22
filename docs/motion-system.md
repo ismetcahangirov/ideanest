@@ -444,11 +444,27 @@ decisions.
 > **The rule:** when the user is **spending money** or **doing work**, motion
 > decreases. When the user is **exploring**, motion increases.
 
-> **"Marketing home" is `/` and it did not exist when this table was written.**
-> The row was aspirational — the application answered its own root with a 404 —
-> and #264 is what makes it a real surface. It keeps **Full**: it is the one
-> screen whose entire job is to make an impression, and it is the furthest any
-> visitor is from spending money.
+> **"Marketing home" is `/`, which #264 built.** The row was aspirational when
+> this table was written — the application answered its own root with a 404 — and
+> it keeps **Full**: it is the one screen whose entire job is to make an
+> impression, and it is the furthest any visitor is from spending money.
+>
+> **Full, spent with restraint, is what the page actually does.** `FadeUp` on the
+> hero and on each section heading, which is this table's own line ("first screen
+> and section headings"), and nothing on the campaign cards, which §5.1 forbids
+> outright. No counters: the platform publishes no aggregate figure the page could
+> honestly count up to, and a counter animating to a number nobody promised is
+> decoration wearing a data label. No marquee and no page transition, for the same
+> reason — motion added because the budget allows it rather than because it says
+> anything.
+
+> **The site shell's one animation is §4.7's, and the mobile drawer is not a
+> second one.** WS-03's off-canvas panel is an overlay and takes §4.11.1's
+> drawer entry: 200ms, `translateX(100%)`, a fade on the backdrop, no exit. It is
+> written as a CSS keyframe rather than through `motion` because the shell is on
+> every route in the site and `@ideanest/ui/motion` is 116 kB — §8's own argument,
+> applied to the one component that would have paid it everywhere. `transform`
+> and `opacity` only, so nothing is given up by writing it by hand.
 
 ### 5.1 What "minimal" buys Discovery, exactly
 

@@ -5,10 +5,11 @@ Primitive, layout, and motion components for the IdeaNest design system.
 Design decisions live in [`docs/ui-kit.md`](../../docs/ui-kit.md).
 Motion decisions live in [`docs/motion-system.md`](../../docs/motion-system.md).
 
-## Two entry points
+## Three entry points
 
 ```ts
 import { Card, Pill, TextInput } from '@ideanest/ui';        // costs no motion
+import { Card, Pill, ProgressBar } from '@ideanest/ui/server'; // safe in an RSC
 import { FadeUp, Modal, Drawer } from '@ideanest/ui/motion'; // pulls in motion
 ```
 
@@ -31,6 +32,30 @@ Two members that look like they belong behind `/motion` are deliberately not.
 imports `motion`, so neither costs anything. **The split is by dependency, not
 by theme** — a component added here that imports `motion/react` belongs in
 `src/motion.ts`, and one that does not belongs on the root.
+
+### `/server`
+
+The subset a React Server Component may import: components with no hook, no
+context and no event handler, so each is a function of its props that renders
+identically on a server and in a browser. The root barrel is not that — several
+of the members behind it consume `createContext`, and reaching for it from a
+Server Component fails `next build` with a message naming a component the page
+never used.
+
+Everything in it is re-exported from the same module the barrel exports it from,
+so a component never exists in two versions; what differs is only which
+consumers may reach it. **`src/server.test.ts` is what keeps the promise true**,
+transitively, and it fails in this package rather than in an application — with
+the name of the component that broke it. A component that acquires state is
+removed from the entry point, never marked `'use client'` in place: the directive
+would make it a client boundary for every Server Component that imports it,
+silently, and the first symptom would be a page whose First Load JS grew for no
+visible reason.
+
+It is the entry to use **even from a client component**, when a component is in
+both graphs. `ProjectCard` in `apps/web` is the example: it renders in the
+client-side discovery feed and in three server-rendered browse pages, and it
+imports from here.
 
 ## Getting started
 

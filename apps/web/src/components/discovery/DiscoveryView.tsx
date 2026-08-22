@@ -185,7 +185,13 @@ export function DiscoveryView({ seeded }: DiscoveryViewProps = {}) {
           <FilterRail filters={filters} facets={facets} onChange={apply} />
         </aside>
 
-        <main className="min-w-0 flex-1">
+        {/*
+          A `div`, not a `main`. The site shell renders the page's one `<main>` and it is the
+          skip link's target (§4.13 WS-01); a second landmark here would make "jump to main"
+          a question with two answers. This is the feed column, and it is named by the
+          heading above it.
+        */}
+        <div className="min-w-0 flex-1">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <p className="text-sm text-white/64 tabular-nums">
@@ -382,7 +388,7 @@ export function DiscoveryView({ seeded }: DiscoveryViewProps = {}) {
               </>
             )}
           </div>
-        </main>
+        </div>
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ import {
   OG_IMAGE_SIZE,
   OG_SITE_ALT,
   siteSocialCard,
-} from '../../lib/seo/metadata-card';
+} from '../../../lib/seo/metadata-card';
 
 /**
  * `/discover`'s social preview image — the site card again.

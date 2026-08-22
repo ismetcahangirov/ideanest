@@ -1,5 +1,5 @@
 import { canonicalUrl, isPubliclyVisible, type EnvSource, type PublicProjectPreview } from '../metadata';
-import { DISCOVER_CRUMB, HOME_CRUMB, breadcrumbNode } from './breadcrumb';
+import { CATEGORIES_CRUMB, DISCOVER_CRUMB, HOME_CRUMB, breadcrumbNode, type Crumb } from './breadcrumb';
 import type { JsonLdNode } from './document';
 import { faqPageNode, type FaqEntry } from './faq';
 import { siteIdentityNodes } from './identity';
@@ -17,14 +17,57 @@ import { rewardProductNodes, type PublicRewardTier } from './product';
  */
 
 /**
- * `/discover`, the entry page — and therefore where the site's identity lives.
+ * `/`, the home page — and therefore where the site's identity lives.
  *
- * See `identity.ts` for why this is not in the root layout.
+ * **IT MOVED HERE FROM `/discover`, and that is the whole of the change #264 makes to this
+ * file.** `identity.ts` explains the rule: Google reads site-level identity from the entry
+ * page and asks for it on the home page or on one page describing the organisation, not on
+ * every page. While there was no route at `/`, discovery was the entry page and the nodes
+ * went there, with a comment saying so. There is one now.
+ *
+ * No breadcrumb. A trail on the page the trail starts from would be a single-item
+ * `BreadcrumbList`, which `breadcrumbNode` refuses for the reason it gives — "you got here
+ * from here" is not navigation.
+ */
+export function homePageGraph(env: EnvSource = process.env): readonly JsonLdNode[] {
+  return [...siteIdentityNodes(env)];
+}
+
+/**
+ * `/discover`.
+ *
+ * THE IDENTITY NODES ARE NO LONGER HERE. They are on `/`, which exists as of #264, and two
+ * `Organization` nodes for one organisation across a crawl is exactly what `identity.ts`
+ * argues against. What is left is the trail, which is what this page actually has to say
+ * about itself.
  */
 export function discoverPageGraph(env: EnvSource = process.env): readonly JsonLdNode[] {
   const breadcrumb = breadcrumbNode([HOME_CRUMB, DISCOVER_CRUMB], env);
 
-  return [...siteIdentityNodes(env), ...(breadcrumb === null ? [] : [breadcrumb])];
+  return breadcrumb === null ? [] : [breadcrumb];
+}
+
+/**
+ * A category or subcategory landing page — §4.13 WS-05.
+ *
+ * A TRAIL AND NOTHING ELSE. There is no schema.org type that describes "a list of
+ * crowdfunding campaigns filed under Games" without overclaiming: `CollectionPage` says the
+ * page is *about* a collection, `ItemList` invites a rich result this platform has no
+ * eligibility for, and both would be markup emitted because it exists rather than because a
+ * consumer acts on it. The trail is the one true statement — these pages genuinely do sit
+ * under `/categories`, and a subcategory genuinely does sit under its category.
+ *
+ * This is the first trail on the platform with a real intermediate step. The campaign page's
+ * is `Home → Discover → campaign` and `breadcrumb.ts` says why it stops there: a crumb
+ * naming a category had nowhere to point, because `/discover?category=…` is a URL robots.txt
+ * disallows. These routes are what that comment was waiting for.
+ */
+export function categoryPageGraph(input: {
+  readonly trail: readonly Crumb[];
+  readonly env?: EnvSource;
+}): readonly JsonLdNode[] {
+  const breadcrumb = breadcrumbNode([HOME_CRUMB, CATEGORIES_CRUMB, ...input.trail], input.env ?? process.env);
+  return breadcrumb === null ? [] : [breadcrumb];
 }
 
 export interface ProjectPageGraphInput {

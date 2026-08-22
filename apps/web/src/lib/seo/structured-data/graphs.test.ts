@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { PublicProjectPreview } from '../metadata';
 import type { JsonLdNode } from './document';
 import type { PublicRewardTier } from './product';
-import { discoverPageGraph, projectPageGraph } from './graphs';
+import { categoryPageGraph, discoverPageGraph, homePageGraph, projectPageGraph } from './graphs';
 
 const env = { IDEANEST_SITE_URL: 'https://ideanest.az' } as const;
 const now = new Date('2026-08-18T09:00:00Z');
@@ -34,11 +34,62 @@ const tier: PublicRewardTier = {
   imageUrl: null,
 };
 
-describe('discoverPageGraph', () => {
-  it('carries the site identity and the trail that reaches the feed', () => {
-    expect(types(discoverPageGraph(env))).toEqual(['Organization', 'WebSite', 'BreadcrumbList']);
+describe('homePageGraph', () => {
+  it('carries the site identity, because the home page is the entry page', () => {
+    expect(types(homePageGraph(env))).toEqual(['Organization', 'WebSite']);
+  });
+
+  it('claims no trail, because a single-item one says "you got here from here"', () => {
+    expect(types(homePageGraph(env))).not.toContain('BreadcrumbList');
   });
 });
+
+describe('discoverPageGraph', () => {
+  /*
+   * The identity nodes MOVED to `/` when #264 built it. Two `Organization` nodes for one
+   * organisation across a crawl is what `identity.ts` argues against, and it named this page
+   * as a stand-in only while there was no route at the origin.
+   */
+  it('carries the trail and no longer the site identity', () => {
+    expect(types(discoverPageGraph(env))).toEqual(['BreadcrumbList']);
+  });
+});
+
+describe('categoryPageGraph', () => {
+  it('is a trail through the categories index and nothing else', () => {
+    const [breadcrumb] = categoryPageGraph({
+      trail: [{ name: 'Games', path: '/categories/games' }],
+      env,
+    });
+
+    expect(breadcrumb?.['@type']).toBe('BreadcrumbList');
+    expect(names(breadcrumb)).toEqual(['Home', 'Categories', 'Games']);
+  });
+
+  it('carries the parent category on a subcategory page', () => {
+    const [breadcrumb] = categoryPageGraph({
+      trail: [
+        { name: 'Games', path: '/categories/games' },
+        { name: 'Tabletop', path: '/categories/games/tabletop' },
+      ],
+      env,
+    });
+
+    expect(names(breadcrumb)).toEqual(['Home', 'Categories', 'Games', 'Tabletop']);
+  });
+
+  it('is still a trail on the index itself, where there is nothing below Categories', () => {
+    const [breadcrumb] = categoryPageGraph({ trail: [], env });
+
+    expect(names(breadcrumb)).toEqual(['Home', 'Categories']);
+  });
+});
+
+/** The `name` of every step of a `BreadcrumbList`, in order. */
+function names(node: JsonLdNode | undefined): readonly unknown[] {
+  const items = (node?.['itemListElement'] ?? []) as readonly Record<string, unknown>[];
+  return items.map((item) => item['name']);
+}
 
 describe('projectPageGraph', () => {
   function graph(overrides: Partial<Parameters<typeof projectPageGraph>[0]> = {}) {

@@ -11,7 +11,7 @@ import {
   Users,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { MediaFrame, ProgressBar, Tag } from '@ideanest/ui';
+import { MediaFrame, ProgressBar, Tag } from '@ideanest/ui/server';
 import { DISCOVERY_CARD_SIZES } from '../../lib/images/sizes';
 import { canOptimise } from '../../lib/images/source';
 import { formatMoney } from '../../lib/money';
@@ -49,6 +49,13 @@ import type { DiscoveryStatus } from '../../lib/discovery/vocabulary';
  * each breakpoint, which is what stops a 440-pixel box downloading a
  * 3840-pixel photograph. Both are derived rather than typed here —
  * `lib/images/sizes.ts` reads them off this grid's own Tailwind classes.
+ *
+ * `@ideanest/ui/server`, NOT THE ROOT BARREL. All three of these render identically on a
+ * server and in a browser, and this card is now used from Server Components — the home page,
+ * the category landing pages and the search results — as well as from the client-rendered
+ * feed. The barrel reaches `createContext`, and importing it into a Server Component is a
+ * build error naming a component the page never used; `packages/ui/src/server.ts` explains
+ * the split, and says the lean entry is the one to use even from a client component.
  *
  * NO ENTRY ANIMATION ON THE CARD ITSELF. Discovery's motion budget is "skeleton
  * to content crossfade only" (docs/motion-system.md §5) and §8 forbids animation

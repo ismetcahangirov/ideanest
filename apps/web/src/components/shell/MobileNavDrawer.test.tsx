@@ -1,0 +1,180 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { fetchSession } from '../../lib/session/session';
+import { SessionProvider } from '../session/SessionProvider';
+import { MobileNavDrawer } from './MobileNavDrawer';
+
+/**
+ * The mobile navigation drawer — §4.13 WS-03, issue #261.
+ *
+ * WHAT THESE COVER, and none of it is visible in a screenshot:
+ *
+ *   - **it is not in the DOM until it is opened.** Every link inside it is a tab stop, and a
+ *     permanently mounted panel with `opacity: 0` would put nine of them into the tab order of
+ *     every page on the site for anybody who never opens it.
+ *   - focus moves into the panel on open and returns to the trigger on close, by every route
+ *     out: the close button, Escape, and the backdrop.
+ *   - it is a modal dialog with an accessible name, and its trigger says whether it is open.
+ *   - it carries the search field, which is the only one a phone gets — the header's is
+ *     `hidden lg:block`.
+ *   - the signed-in and signed-out branches differ, and the lime element is spent once.
+ */
+
+let pathname = '/discover';
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => pathname,
+  useRouter: () => ({
+    push: () => {},
+    replace: () => {},
+    prefetch: () => {},
+    back: () => {},
+    forward: () => {},
+    refresh: () => {},
+  }),
+}));
+
+vi.mock('../../lib/session/session', () => ({ fetchSession: vi.fn() }));
+vi.mock('../../lib/api/access-token', () => ({ signOut: vi.fn().mockResolvedValue(undefined) }));
+
+const sessionMock = vi.mocked(fetchSession);
+
+const ACCOUNT = {
+  id: 'ffa5a1e2-0000-7000-8000-000000000000',
+  email: 'aysel@example.com',
+  name: 'Aysel',
+  slug: 'aysel',
+  emailVerified: true,
+};
+
+function renderDrawer() {
+  return render(
+    <SessionProvider>
+      <MobileNavDrawer />
+    </SessionProvider>,
+  );
+}
+
+const open = () => screen.getByRole('button', { name: 'Open navigation' });
+
+beforeEach(() => {
+  pathname = '/discover';
+  sessionMock.mockReset();
+  sessionMock.mockResolvedValue(null);
+});
+
+afterEach(cleanup);
+
+describe('before it is opened', () => {
+  it('is not in the document at all', () => {
+    renderDrawer();
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Discover' })).toBeNull();
+  });
+
+  it('says it is closed', () => {
+    renderDrawer();
+    expect(open()).toHaveAttribute('aria-expanded', 'false');
+  });
+});
+
+describe('once open', () => {
+  it('is a modal dialog with a name', async () => {
+    const user = userEvent.setup();
+    renderDrawer();
+
+    await user.click(open());
+
+    const dialog = screen.getByRole('dialog', { name: 'Navigation' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+  });
+
+  it('carries the primary navigation and marks the current page', async () => {
+    const user = userEvent.setup();
+    renderDrawer();
+    await user.click(open());
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('link', { name: 'Discover' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(within(dialog).getByRole('link', { name: 'Categories' })).not.toHaveAttribute(
+      'aria-current',
+    );
+  });
+
+  it('carries the search field, which is the only one a phone gets', async () => {
+    const user = userEvent.setup();
+    renderDrawer();
+    await user.click(open());
+
+    const dialog = screen.getByRole('dialog');
+    expect(
+      within(dialog).getByRole('searchbox', { name: 'Search campaigns' }),
+    ).toBeInTheDocument();
+  });
+
+  it('moves focus into the panel', async () => {
+    const user = userEvent.setup();
+    renderDrawer();
+    await user.click(open());
+
+    const dialog = screen.getByRole('dialog');
+    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+  });
+});
+
+describe('closing it', () => {
+  it('returns focus to the trigger, by the close button', async () => {
+    const user = userEvent.setup();
+    renderDrawer();
+    await user.click(open());
+
+    await user.click(screen.getByRole('button', { name: 'Close navigation' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(open()));
+  });
+
+  it('returns focus to the trigger, by Escape', async () => {
+    const user = userEvent.setup();
+    renderDrawer();
+    await user.click(open());
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(open()));
+  });
+});
+
+describe('the actions inside it', () => {
+  it('offers register and sign in when signed out, with one lime element', async () => {
+    const user = userEvent.setup();
+    renderDrawer();
+    await user.click(open());
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('link', { name: 'Register' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('link', { name: 'Sign in' })).toBeInTheDocument();
+    expect(dialog.querySelectorAll('[data-on-lime]')).toHaveLength(1);
+  });
+
+  it('offers the account rows and a sign-out when signed in', async () => {
+    const user = userEvent.setup();
+    sessionMock.mockResolvedValue(ACCOUNT);
+    renderDrawer();
+
+    await waitFor(() => expect(sessionMock).toHaveBeenCalled());
+    await user.click(open());
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('link', { name: 'Notifications' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    expect(within(dialog).queryByRole('link', { name: 'Register' })).toBeNull();
+    expect(dialog.querySelectorAll('[data-on-lime]')).toHaveLength(0);
+  });
+});

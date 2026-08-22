@@ -21,12 +21,14 @@ import { withoutAbsent, type JsonLdNode } from './document';
  *
  * Google reads site-level identity from the entry page and explicitly does not
  * want it on every page ("We recommend placing this information on your home
- * page, or a single page that describes your organization"). `/discover` is the
- * front door of this application — `app/page.tsx` does not exist yet, and
- * `lib/seo/sitemap/entries.ts` says why it is listed in the sitemap anyway — so
- * that is where it goes. Mounting it in the root layout would repeat the same
- * two nodes inside every campaign page, every editor tab and every checkout,
- * which is bytes on every response in exchange for nothing.
+ * page, or a single page that describes your organization"). That is `/`, which
+ * #264 built. Until then these nodes lived on `/discover`, which was the front
+ * door in the literal sense — the application answered its own origin with a 404
+ * — and `graphs.ts` records the move.
+ *
+ * Mounting them in the root layout would repeat the same two nodes inside every
+ * campaign page, every editor tab and every checkout, which is bytes on every
+ * response in exchange for nothing.
  *
  * <h2>What is deliberately absent</h2>
  *

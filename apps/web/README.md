@@ -50,40 +50,84 @@ the browser half of the auth flow work at all.
 
 ## Routes
 
-| Route | Issue |
-|---|---|
-| `/settings/sessions` | Session management (#27) |
-| `/settings/notifications` | §4.10's table as a grid — per category, per channel, with a digest option (#89) |
-| `/notifications` | The in-app inbox: read state, grouping by day, and filtering (#88) |
-| `/projects/new` | Name a campaign and create the draft (#33) |
-| `/projects/[id]/edit` | Redirects to the first tab (#33) |
-| `/projects/[id]/edit/basics` | Title, summary, category, goal, duration, cover (#33) |
-| `/projects/[id]/edit/story` | Rich text story, risks, and version history (#35) |
-| `/projects/[id]/edit/prelaunch` | Open the pre-launch page, share the link, see who is waiting (#39) |
-| `/projects/[id]/prelaunch` | **Public.** The pre-launch page itself, and the reminder signup (#39) |
-| `/projects/[id]/[projectSlug]` | **Public.** The campaign page, server-rendered — §10.2's `/projects/{creatorSlug}/{projectSlug}` (#119) |
-| `/projects/[id]/back` | Reward selection, add-ons, destination, and confirmation (#54) |
-| `/projects/[id]/dashboard` | The creator dashboard shell and its overview panel -- CD-01's live totals (#93) |
-| `/projects/[id]/dashboard/charts` | CD-02's funding trend, CD-07's reward mix and CD-08's destinations (#96) |
-| `/projects/[id]/dashboard/backers` | CD-10's backer report with saved segments, and CD-11's CSV export (#97, #79) |
-| `/discover` | **Public.** The filter rail, sort, chips, and the cursor-paginated feed (#45) |
-| `/admin/moderation` | **Staff only.** The submission queue: approve, reject, request changes (#101) |
-| `/admin/users` | **Staff only.** Search, inspect, suspend and reinstate an account (#104) |
-| `/robots.txt` | **Public.** Crawl directives, and the pointer to the sitemap index (#122) |
-| `/sitemap_index.xml` | **Public.** The index over the sitemap segments (#122) |
-| `/sitemap/[segment].xml` | **Public.** One sitemap segment — `pages`, `discovery`, `projects-N` (#122) |
-| `/api/rum` | **Public**, unauthenticated. The Core Web Vitals collection endpoint (#128) |
+| Route | Shell | Issue |
+|---|---|---|
+| `/` | Site | **Public.** The home page: featured campaigns, what is ending soon, and the categories (#264) |
+| `/discover` | Site | **Public.** The filter rail, sort, chips, and the cursor-paginated feed (#45) |
+| `/search` | Site | **Public**, `noindex`. WS-06's dedicated results route, behind the header's search field (#262) |
+| `/categories` | Site | **Public.** Every category and subcategory, and the crawl path to their pages (#265) |
+| `/categories/[category]` | Site | **Public.** A category's indexable landing page (#265) |
+| `/categories/[category]/[subcategory]` | Site | **Public.** A subcategory's, resolved inside its own parent (#265) |
+| `/maintenance` | Site | **Public**, `noindex`. WS-09's planned-outage page. Nothing routes to it — see below (#263) |
+| `/sign-in` | Minimal | **Public**, `noindex`. Email and password, with the suspension and the rate limit surfaced (#268) |
+| `/register` | Minimal | **Public**, `noindex`. Account creation and the "check your email" state (#269) |
+| `/verify-email` | Minimal | **Public**, `noindex`. Where the verification link lands, and the expired-token path (#270) |
+| `/settings/sessions` | — | Session management (#27) |
+| `/settings/notifications` | — | §4.10's table as a grid — per category, per channel, with a digest option (#89) |
+| `/notifications` | — | The in-app inbox: read state, grouping by day, and filtering (#88) |
+| `/projects/new` | — | Name a campaign and create the draft (#33) |
+| `/projects/[id]/edit` | — | Redirects to the first tab (#33) |
+| `/projects/[id]/edit/basics` | — | Title, summary, category, goal, duration, cover (#33) |
+| `/projects/[id]/edit/story` | — | Rich text story, risks, and version history (#35) |
+| `/projects/[id]/edit/prelaunch` | — | Open the pre-launch page, share the link, see who is waiting (#39) |
+| `/projects/[id]/prelaunch` | — | **Public.** The pre-launch page itself, and the reminder signup (#39) |
+| `/projects/[id]/[projectSlug]` | — | **Public.** The campaign page, server-rendered — §10.2's `/projects/{creatorSlug}/{projectSlug}` (#119) |
+| `/projects/[id]/back` | — | Reward selection, add-ons, destination, and confirmation (#54) |
+| `/projects/[id]/dashboard` | — | The creator dashboard shell and its overview panel -- CD-01's live totals (#93) |
+| `/projects/[id]/dashboard/charts` | — | CD-02's funding trend, CD-07's reward mix and CD-08's destinations (#96) |
+| `/projects/[id]/dashboard/backers` | — | CD-10's backer report with saved segments, and CD-11's CSV export (#97, #79) |
+| `/projects/[id]/dashboard/surveys` | — | §4.8's survey manager — PM-01 to PM-04 (#73) |
+| `/admin/moderation` | — | **Staff only.** The submission queue: approve, reject, request changes (#101) |
+| `/admin/users` | — | **Staff only.** Search, inspect, suspend and reinstate an account (#104) |
+| `/robots.txt` | — | **Public.** Crawl directives, and the pointer to the sitemap index (#122) |
+| `/sitemap_index.xml` | — | **Public.** The index over the sitemap segments (#122) |
+| `/sitemap/[segment].xml` | — | **Public.** One sitemap segment — `pages`, `discovery`, `projects-N` (#122) |
+| `/api/rum` | — | **Public**, unauthenticated. The Core Web Vitals collection endpoint (#128) |
 
-**There is no route at `/`, and no route above shares a shell with any other.**
-The root segment carries the site's default metadata and its `opengraph-image`,
-which every route inherits, but it has no page: the application answers its own
-origin with a 404, and there is no global header, no footer, and no
-authentication screen anywhere in the table. That is the gap
-`docs/architecture.md` §4.13 now names and epic #258 covers — the home page is
-#264 and the shell every route will render inside is #260.
+### The two shells, and the routes that have neither yet
+
+The **Shell** column is what §4.13 WS-01 and WS-02 describe. Three values:
+
+| Value | What it is | Where |
+|---|---|---|
+| **Site** | Global header, collapsing navigation, search, footer | `app/(site)/layout.tsx` → `SiteShell` |
+| **Minimal** | A wordmark that goes home, and a one-line footer | `MinimalShell`, used by `app/(auth)` and by the root failure states |
+| **—** | No shared chrome. The page draws its own | — |
+
+**Not every route that should carry the site shell does yet, and the gap is
+deliberate rather than forgotten.** #260 built the group; moving a route into it
+is that route's own issue, because each has a reason of its own:
+
+- `/projects/[id]/[projectSlug]` and `/projects/[id]/prelaunch` sit under a
+  dynamic segment that also carries `/edit`, `/dashboard` and `/back`. Next
+  allows one slug name per level, so the public half cannot be lifted into the
+  group without restructuring the private half with it. #281 rebuilds the
+  campaign page's header and owns the move.
+- `/projects/[id]/back` should **not** get the site header. `docs/ui-kit.md`
+  §8.5 makes the checkout the one screen a white panel dominates and
+  `docs/motion-system.md` §5 gives it a motion budget of near zero; a collapsing
+  navigation bar offering a trip to Discover, on the screen where somebody is
+  about to pledge, is the opposite of both.
+- The two `/admin` routes get their own shell, which is #294.
 
 The two `/admin` routes are the whole of the console today; the other fourteen
 modules in §4.11 are epic #259.
+
+**`/maintenance` has no switch in front of it.** It is a page an edge or a load
+balancer can be pointed at during a planned outage, and nothing in this
+application redirects to it. Whatever performs the switch is a deployment
+concern and belongs with #139's environments work; the honest scope of #263 was
+to ship the page.
+
+**Two failure states, two frames.** `app/not-found.tsx` and `app/error.tsx` sit
+at the root of the route tree, because Next serves them for a request that
+matched nothing and for a throw anywhere — and a root file's client components
+land in **every** route's first load. Rendering the full site header there cost
+83.3 KiB on the checkout, on every editor tab and on the admin console, none of
+which use it; `apps/web/performance/README.md` records the measurement. So the
+root pair uses `MinimalShell`, and `app/(site)/not-found.tsx` and
+`app/(site)/error.tsx` render the same failure state inside the full shell,
+where it is already paid for.
 
 **The first segment of the campaign page is a creator's slug, and the folder is
 called `[id]` anyway.** Next allows exactly one slug name per dynamic level, and
@@ -96,14 +140,72 @@ under `/projects`.
 Every route above declares its metadata through `src/lib/seo/metadata.ts` — see
 [Metadata and social previews](#metadata-and-social-previews).
 
-`/projects/[id]/prelaunch` and `/discover` are the routes that work with no
-session at all. `/projects/[id]/back` is the half-way case: its reward list is
+## The session, and where it is read
+
+`SessionProvider` is mounted on the **root** layout and bootstraps once per page
+load: it spends the `HttpOnly` refresh cookie against `POST /v1/auth/refresh`,
+holds the fifteen-minute access token in a module variable, and reads
+`GET /v1/me`. Everything under it — the header, the drawer, and the route guard
+— asks that one provider rather than fetching for itself.
+
+**Issue #267 asked for the session to be read on the server, and it cannot be
+read there.** The refresh cookie is issued on `Path=/v1/auth`
+(`ideanest.auth.refresh-cookie.path` in `apps/api`), and a browser sends a
+cookie only to paths under its own — so a request for `/`, or for any page in
+this application, carries nothing for `cookies()` to read. There is no session
+on the server to expose, whatever this application does.
+
+That scope is not an accident to route around: `AuthProperties.RefreshCookie`
+narrows it deliberately, so a thirty-day credential is not attached to every
+request to the API. Widening it is a change to the service and belongs to
+whoever owns §17, not to an epic whose stated scope is "the web client only".
+**What it costs today** is one round trip after hydration before the header
+knows who is reading, which is why the header renders a neutral placeholder
+rather than guessing. #267 is left open for the server half.
+
+The guard lives in the same provider, so no private route has to remember to
+guard itself. `src/lib/session/private-routes.ts` is the list it uses, and it is
+deliberately **not** `PRIVATE_PATH_PREFIXES` from the SEO module — "must not be
+indexed" and "requires a session" are different questions, and the pre-launch
+page and the checkout are in one list and not the other.
+
+Every route in the site shell — `/`, `/discover`, `/search`, `/categories` and
+its landing pages — works with no session at all, and so do the three
+authentication screens and `/projects/[id]/prelaunch`. `/projects/[id]/back` is the half-way case: its reward list is
 `permitAll` and reads through `publicFetch`, so the prices render for a visitor
 who has not registered, and only the two mutations need a session. For the pre-launch page the reason is the followers it exists to
 collect, who have not registered; for discovery it is that a visitor who has not
 registered is the entire audience — requiring a token would mean the front door
 could not render. Both read through `publicFetch`, which sends a bearer token
 only when one is already in memory and never fetches one.
+
+## The verification link
+
+`POST /v1/auth/register` issues a token and the service sends the message that
+carries it (`RegistrationService` publishes `EmailVerificationRequested`). The
+link in that message resolves against
+`ideanest.notification.email.base-url`, which is this application's origin, and
+it must point at:
+
+```
+{WEB_BASE_URL}/verify-email?token={token}
+```
+
+That path and that parameter name are the whole contract between the two halves,
+which is why they are written down here as well as in the page's own comment.
+The page reads the token out of its own URL and sends it in a **body** —
+`VerifyEmailRequest` gives the reason: a query string is written to access logs,
+kept in browser history, and forwarded in the `Referer` header of whatever the
+page loads next, and this value is a credential until it is spent.
+
+**There is no resend.** `RegistrationService` answers a second registration for
+an existing address by publishing `RegistrationAttemptedOnExistingAccount` and
+returning; it issues no new token, and the service has no
+`POST /v1/auth/forgot-password` either. So the expired-link page offers no
+resend button that would do nothing, and says what does work instead — signing
+in, which `SignInService` deliberately allows before an address is verified. The
+account menu carries the unverified state from there.
+
 
 ## Server rendering
 
@@ -366,9 +468,17 @@ change without a redeployment.
 
 | Segment | Holds |
 |---|---|
-| `pages` | Static pages |
-| `discovery` | The unfiltered feed |
+| `pages` | `/` and `/categories` |
+| `discovery` | The unfiltered feed, plus one URL per category and subcategory |
 | `projects-N` | Indexable campaigns, 45,000 per shard |
+
+**`discovery` reads the taxonomy at request time** rather than listing it. §4.3
+requires the taxonomy to be editable without a deployment, so a frozen array of a
+hundred paths is a sitemap that is wrong the first time an administrator renames
+anything. `fetchCategories` caches the read for an hour, so a crawl of several
+segments costs one request; a read that fails leaves the feed alone in the
+segment, because a sitemap that 500s is an error reported against the whole site
+and one that is briefly shorter is a sitemap.
 
 **45,000 and not 50,000.** The limit is 50,000 URLs and 50 MB uncompressed, and a
 file that breaches either is rejected whole rather than truncated. There is
@@ -423,19 +533,25 @@ each is crawl budget spent on a page that already exists. That includes `?q=`,
 where the URL set is whatever anybody types. `/discover` itself, with no query,
 is allowed and is in the sitemap.
 
+`Disallow: /search` blocks WS-06's results route for the same sentence: a
+different endpoint with the same property, that the URL space is written by
+whoever types in the box. The bare `/search` is disallowed with it rather than
+carved out — it holds a form and no content of its own.
+
+`/sign-in`, `/register` and `/verify-email` join the list too. Nothing on them is
+worth a crawl, and `/verify-email` carries a single-use credential in its query
+string.
+
 ### Named gaps
 
-- **The sitemap still emits `/`, which does not resolve.** The campaign URLs it
-  emits do, since #119. The sitemap encodes the platform's public URL contract
-  (§4.4, §10.2) rather than an inventory of the routes that happen to be built,
-  because a sitemap that has to be rewritten by whoever ships the page is one
-  that gets shipped without it — which is exactly why the campaign entries
-  needed no change when the page landed.
-- **No category landing pages.** §4.3's fifteen categories and hundred
-  subcategories would make good landing pages, but the only URL reaching one is
-  `/discover?category=games`, which `Disallow: /discover?` blocks — and a sitemap
-  must never advertise a URL robots.txt blocks. A path-based category route is
-  what makes them indexable, and it is still to be built.
+- **`/` resolves now**, and so do the category landing pages. Both were named as
+  gaps here: the sitemap emitted `/` before it existed, on the argument that it
+  encodes the platform's public URL contract (§4.4, §10.2) rather than an
+  inventory of the routes that happen to be built — which is exactly why neither
+  the campaign entries (#119) nor this one needed changing when the page landed.
+  The category gap read "the only URL reaching one is `/discover?category=games`,
+  which `Disallow: /discover?` blocks, and a sitemap must never advertise a URL
+  robots.txt blocks"; #265 built the path-based route that closes it.
 - **The campaign list is walked, not counted.** There is no endpoint that returns
   a count or a bare list of public project URLs, so the sitemap pages through
   `GET /v1/discover` at `limit=100` — bounded at 500 pages, or 50,000 campaigns —

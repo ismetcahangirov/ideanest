@@ -347,6 +347,37 @@ export function publicPageMetadata(input: PublicPageInput): Metadata {
 }
 
 /**
+ * `/` — the one page whose title is not run through the template.
+ *
+ * `TITLE_TEMPLATE` is `%s · IdeaNest`, which is right for every page that has a subject and
+ * wrong for the one whose subject IS the site: "IdeaNest · IdeaNest" in a browser tab, in a
+ * bookmark, and in a search result. Next's metadata API has `title.absolute` for exactly
+ * this, and this is the only caller of it.
+ *
+ * A SEPARATE FUNCTION RATHER THAN A FLAG ON `publicPageMetadata`. There is one page in the
+ * application this applies to and there will be one page in the application this applies to;
+ * a boolean parameter would be an invitation for a second caller to decide its title is
+ * special too, and the site name would then be missing from a tab where somebody needed it.
+ *
+ * Everything else is `publicPageMetadata`'s: the canonical, the Open Graph block, the X card,
+ * and the site-wide description, which is what the home page would have written for itself in
+ * any case.
+ */
+export function homePageMetadata(env: EnvSource = process.env): Metadata {
+  const base = publicPageMetadata({
+    title: `${SITE_NAME} — reward-based crowdfunding`,
+    description: SITE_DESCRIPTION,
+    path: '/',
+    env,
+  });
+
+  return {
+    ...base,
+    title: { absolute: `${SITE_NAME} — reward-based crowdfunding` },
+  };
+}
+
+/**
  * The metadata for a page that is nobody's business but its reader's.
  *
  * `index: false, follow: false`, no canonical, and no Open Graph block at all.

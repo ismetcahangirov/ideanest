@@ -1,0 +1,106 @@
+import Link from 'next/link';
+import { FOOTER_GROUPS } from './navigation';
+
+/**
+ * The global footer — §4.13 WS-02, docs/ui-kit.md §8.6.
+ *
+ * <h2>A Server Component, and it has to stay one</h2>
+ *
+ * No state, no handler, no hook. It is on every page in the site shell, so anything that
+ * made it a client boundary would ship its markup twice — once as HTML and once as the
+ * JavaScript to rebuild it — on every route in the application. Nothing here is imported
+ * from `@ideanest/ui`'s root barrel for the same reason `app/discover/page.tsx` gives: the
+ * barrel reaches `createContext` and the build refuses the route.
+ *
+ * <h2>The page ground, not a card</h2>
+ *
+ * §8.6: `--surface-1` with a `--divider` rule above it. A `--surface-2` footer reads as a
+ * panel with content in it and pulls the eye down at the end of every page — and the footer
+ * is a place to stop, not a destination. Headings are `--text-secondary`, links are
+ * `--text-tertiary` and lift to white on hover, which is 4.9:1 at rest and is why they are
+ * set at 16px or above (§9.1).
+ *
+ * <h2>Language and currency are stated, not offered</h2>
+ *
+ * WS-02 lists them, and #280 — the preferences themselves — is blocked on the localisation
+ * work in §21.1. A `<select>` here that changed nothing would be the worst of the three
+ * options available: a control that lies. So the footer says what this build actually serves
+ * — English, and amounts in Azerbaijani manat — as a plain statement of fact. It becomes a
+ * control when there is a second value to choose.
+ *
+ * <h2>There is no Legal column</h2>
+ *
+ * §8.6's sketch draws one and it is deliberately absent. §22 owns that copy, #293 is
+ * `status: needs-decision`, and a Terms link resolving to a 404 is a promise about a
+ * document that does not exist. `navigation.ts` records the same decision beside the data.
+ */
+
+/** What this build actually serves. `lib/seo/metadata.ts` owns the language constant. */
+const CURRENCY_LABEL = 'Azerbaijani manat (AZN)';
+const LANGUAGE_LABEL = 'English';
+
+export function SiteFooter() {
+  return (
+    <footer className="mt-24 border-t border-white/6 bg-surface-1">
+      <div className="mx-auto w-full max-w-[1400px] px-5 py-14 sm:px-6">
+        <div className="flex flex-col gap-12 lg:flex-row lg:justify-between">
+          {/*
+            The platform's own statement of what it is (WS-02). It says the funding model,
+            because all-or-nothing is the single fact a first-time visitor most needs and
+            most often assumes wrongly — §5.1 is the rule it describes.
+          */}
+          <div className="max-w-[38ch]">
+            <p className="text-lg font-medium tracking-[-0.02em] text-white">IdeaNest</p>
+            <p className="mt-3 text-[15px] leading-relaxed text-white/64">
+              Reward-based crowdfunding. Creators publish campaigns, backers pledge, and
+              nobody is charged unless a campaign reaches its goal by its deadline.
+            </p>
+          </div>
+
+          <nav aria-label="Footer" className="grid grid-cols-2 gap-x-10 gap-y-10 sm:grid-cols-3">
+            {FOOTER_GROUPS.map((group) => (
+              <div key={group.heading}>
+                <h2 className="text-sm font-medium tracking-[-0.01em] text-white/64">
+                  {group.heading}
+                </h2>
+                <ul className="mt-4 flex list-none flex-col gap-3">
+                  {group.links.map((link) => (
+                    <li key={link.href}>
+                      <Link
+                        href={link.href}
+                        className="text-base text-white/40 transition-colors duration-150 ease-in-out hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
+                      >
+                        {link.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </nav>
+        </div>
+
+        <div className="mt-14 flex flex-col gap-4 border-t border-white/6 pt-8 text-sm text-white/40 sm:flex-row sm:items-center sm:justify-between">
+          {/*
+            No year. A copyright line built from `new Date()` is a value that differs between
+            the server render and the browser, which React reports as a hydration mismatch —
+            and it is also the kind of date that quietly goes stale on a statically rendered
+            page. The claim is true without one.
+          */}
+          <p>© IdeaNest</p>
+
+          <dl className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <div className="flex items-center gap-2">
+              <dt>Language</dt>
+              <dd className="text-white/64">{LANGUAGE_LABEL}</dd>
+            </div>
+            <div className="flex items-center gap-2">
+              <dt>Currency</dt>
+              <dd className="text-white/64">{CURRENCY_LABEL}</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </footer>
+  );
+}

@@ -171,6 +171,20 @@ Marked `[W]` web, `[M]` mobile, `[A]` admin.
 | A-13 | Password change | W, M | Requires the current password |
 | A-14 | Biometric unlock | M | Refresh token in secure device storage |
 
+> **The web client cannot read a session on the server, and that is a property
+> of the cookie rather than of the client.** The refresh token is issued on
+> `Path=/v1/auth` (§17, `ideanest.auth.refresh-cookie.path`), deliberately, so a
+> thirty-day credential is not attached to every request to the API. A browser
+> sends a cookie only to paths under its own, so a request for `/` carries
+> nothing a Server Component could read.
+>
+> So the web session is bootstrapped once per page load in the browser: the
+> cookie is spent against `POST /v1/auth/refresh`, the fifteen-minute access
+> token is held in memory, and `GET /v1/me` answers who is reading. It costs one
+> round trip after hydration, and the shell renders a neutral state until it
+> lands rather than guessing. Reading it on the server would mean widening the
+> cookie's path, which is a decision for §17 and not for the client.
+
 ### 4.2 Profile
 
 | # | Capability | Platform |
@@ -1240,14 +1254,17 @@ Preferences are per category and per channel, with a digest option.
 
 ### 4.13 Web shell and site-level surfaces `[W]`
 
-> **This section is late, and its absence is why the surfaces in it were never
+> **This section was late, and its absence is why the surfaces in it were never
 > built.** Sections 4.1 to 4.11 enumerate what a *feature* does. None of them
 > owns the frame those features render inside, so the frame was specified
 > nowhere, appeared in no epic, and did not exist: twenty routes shipped with no
 > shared header, no footer, and no route at `/` — the application answered its
 > own root with a 404. A capability that belongs to every screen belongs to no
 > feature, and that is exactly the kind of gap an inventory has to be told to
-> look for. Epic #258 works from this table.
+> look for. Epic #258 works from this table, and the first pull request under it
+> built WS-01 through WS-06 and WS-09. WS-07 (#292) and WS-08 (#293, blocked on a
+> legal deliverable) are still to come, and `apps/web/README.md`'s route table is
+> the inventory of what actually exists.
 
 | # | Capability | Note |
 |---|---|---|
@@ -1256,16 +1273,27 @@ Preferences are per category and per channel, with a digest option.
 | WS-03 | Mobile navigation | Off-canvas drawer carrying WS-01's navigation and search below the layout's breakpoint |
 | WS-04 | Home page | The route at `/`. Featured campaigns, categories, and what is ending soon. It is the only page whose content is entirely editorial, so AD-03 decides most of it |
 | WS-05 | Category browse | An indexable landing page per category and subcategory, distinct from §4.3's filter panel because a crawler cannot operate a filter |
-| WS-06 | Search results | A dedicated route behind WS-01's search field. §4.3's panel is a refinement surface; this is an entry point with its own URL |
+| WS-06 | Search results | A dedicated route behind WS-01's search field. §4.3's panel is a refinement surface; this is an entry point with its own URL. `noindex`: the URL space is written by whoever types in the box |
 | WS-07 | Static content | About, how it works, and trust and safety |
 | WS-08 | Legal | Terms, privacy, and cookie policy. The copy is a legal deliverable and §22 owns it |
-| WS-09 | Failure states | Not found, error, and maintenance, all of them inside the shell rather than replacing it |
+| WS-09 | Failure states | Not found, error, and maintenance, all of them inside a shell rather than replacing it. Which shell is a performance decision — see the note below |
 
 > **WS-01 and WS-02 are the accessibility and performance surface of every other
 > page in this document.** A skip link, the focus order of the navigation, and
 > the header's contribution to Largest Contentful Paint are paid once and
 > inherited everywhere, which is the argument for treating them as one
 > capability rather than as part of whichever page is built first.
+>
+> **That cuts both ways, and the first build of WS-09 proved it.** A failure
+> state has to live at the root of the route tree, because a request that matched
+> nothing is not inside any route group — and a root file's client components are
+> pulled into every route's first load. Rendering the full header there put 83 KiB
+> onto the checkout, every campaign-editor tab and the admin console, none of
+> which use it. So there are **two frames**: the site shell, and a minimal one
+> that is a wordmark and a footer line. The minimal frame carries the failure
+> states at the root and the §4.1 screens, which want it anyway — a sign-in page
+> should not offer eleven other things to do. `apps/web/README.md` records which
+> route has which.
 >
 > **WS-04 and WS-05 are indexable; the rest of §4.3 mostly is not.** A filtered
 > discovery URL is a query string a crawler will not enumerate. These two are
