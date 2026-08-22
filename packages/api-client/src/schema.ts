@@ -276,6 +276,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/projects/{id}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["projectSuspensionSuspend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/ranking/explain/{slug}": {
         parameters: {
             query?: never;
@@ -3148,6 +3164,9 @@ export interface components {
             /** Format: int64 */
             total?: number;
         };
+        SuspendProjectRequest: {
+            reason: string;
+        };
         Target: {
             /** Format: uuid */
             id?: string;
@@ -3397,6 +3416,7 @@ export type SchemaSurveyQuestionBody = components['schemas']['SurveyQuestionBody
 export type SchemaSurveyRequest = components['schemas']['SurveyRequest'];
 export type SchemaSurveyResponseBody = components['schemas']['SurveyResponseBody'];
 export type SchemaSurveyResponseListResponse = components['schemas']['SurveyResponseListResponse'];
+export type SchemaSuspendProjectRequest = components['schemas']['SuspendProjectRequest'];
 export type SchemaTarget = components['schemas']['Target'];
 export type SchemaTaxon = components['schemas']['Taxon'];
 export type SchemaTemplate = components['schemas']['Template'];
@@ -3864,6 +3884,32 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ModerationDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectEdit"];
+                };
+            };
+        };
+    };
+    projectSuspensionSuspend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuspendProjectRequest"];
             };
         };
         responses: {

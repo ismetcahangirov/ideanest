@@ -478,6 +478,33 @@ public class ReservationService {
     }
 
     /**
+     * The same release, when it is the campaign that stopped rather than the backer —
+     * #103.
+     *
+     * <p>Here beside {@link #cancel} because it moves stock, which is what every method
+     * in this class has in common: the places a halted campaign's pledges were holding go
+     * back through the same statements, from whichever column was holding them. What
+     * differs is one state name, and it differs because "I changed my mind" and "the
+     * campaign was taken down" are different facts on every screen that reports why a
+     * place came back.
+     *
+     * @param pledge a {@code DRAFT} or a {@code CONFIRMED} pledge, already established to
+     *     be one by {@code PledgeCancellationService} — which skips the states a halt
+     *     does not end rather than refusing them
+     */
+    @Transactional
+    public void cancelByProject(Pledge pledge, List<PledgeAddon> heldAddons, Instant now) {
+        SortedMap<UUID, Integer> held = HeldPlaces.heldBy(pledge, heldAddons);
+        // Read before the transition, because it is the old state that says which column
+        // the places are counted in.
+        boolean committed = pledge.isConfirmed();
+
+        pledge.cancelByProject(now);
+        releaseTheHeldPlaces(pledge, held, committed);
+        pledges.saveAndFlush(pledge);
+    }
+
+    /**
      * The add-on selection after the edit: the one that was sent, or the one already
      * stored.
      *

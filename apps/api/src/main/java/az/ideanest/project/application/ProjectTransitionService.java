@@ -243,11 +243,74 @@ public class ProjectTransitionService {
     @Transactional
     public Project cancel(UUID projectId, UUID accountId, String reason) {
         Project project = access.requireTransitionable(projectId, accountId);
+        String note = requireHaltReason(reason);
+        Project canceled =
+                apply(project, ProjectState.CANCELED, access.roleOf(project, accountId), accountId, note);
+        return announceHalt(canceled, note);
+    }
+
+    /**
+     * Trust and safety stops a campaign: {@code LIVE} → {@code SUSPENDED}, which is
+     * terminal — §4.11's AD-02 (#103).
+     *
+     * <p><strong>Terminal by design, and {@link ProjectState#SUSPENDED} says why:</strong>
+     * a suspension that could be lifted back into {@code LIVE} would restart a funding
+     * window whose deadline has moved on, so a campaign cleared after an investigation
+     * starts again as a campaign rather than resuming one whose backers have been told it
+     * was stopped.
+     *
+     * <p><strong>Staff only, through {@code requireModeratable}</strong> — the same
+     * configured list the three moderation decisions use, for the reason §10.2 gives:
+     * two lists that can disagree about who is staff is worse than one dependency that
+     * epic #100 deletes. It is audited for the same reason those are, and the reason is
+     * required because it is the only thing anybody — the creator, a backer, a
+     * regulator — is ever told about why.
+     *
+     * <p><strong>What happens to the money is not decided here.</strong> Every pledge on
+     * the campaign has to stop being a pledge and give its place back, and that is the
+     * pledge module's; this announces the halt through the outbox and
+     * {@code CampaignHaltedEvent} explains why an event rather than a call.
+     */
+    @Transactional
+    public Project suspend(UUID projectId, UUID moderatorId, String reason) {
+        Project project = access.requireModeratable(projectId, moderatorId);
+        String note = requireHaltReason(reason);
+        Project suspended =
+                moderate(project, ProjectState.SUSPENDED, AuditAction.PROJECT_SUSPENDED, moderatorId, note);
+        return announceHalt(suspended, note);
+    }
+
+    /**
+     * Records the halt through §8.3's outbox, in the transaction that performed it.
+     *
+     * <p>One place for both edges, because the consumer's work is identical: the pledges
+     * on a campaign that was cancelled and on one that was suspended both stop and both
+     * give their places back. What differs is the event type, which is what lets a
+     * consumer that does care — a message to backers — tell the two apart.
+     */
+    private Project announceHalt(Project project, String reason) {
+        outbox.record(
+                CampaignHaltedEvent.AGGREGATE_TYPE,
+                project.getId(),
+                CampaignHaltedEvent.eventTypeFor(project.getState()),
+                CampaignHaltedEvent.of(project, reason));
+        return project;
+    }
+
+    /**
+     * A campaign does not stop without somebody saying why.
+     *
+     * <p>Both halts require it and neither is a formality: a cancellation abandons
+     * commitments people made with their card details on file, and a suspension is the
+     * platform taking somebody's funding down. §5.5 says backers are told, and the note
+     * on the transition row is what they are told from.
+     */
+    private static String requireHaltReason(String reason) {
         if (reason == null || reason.isBlank()) {
             throw new ProjectFieldRejectedException(
-                    "reason", "Backers are told why a campaign was cancelled, so a reason is required.");
+                    "reason", "Backers are told why a campaign was stopped, so a reason is required.");
         }
-        return apply(project, ProjectState.CANCELED, access.roleOf(project, accountId), accountId, reason.trim());
+        return reason.trim();
     }
 
     /**

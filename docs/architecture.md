@@ -1073,7 +1073,7 @@ Preferences are per category and per channel, with a digest option.
 | # | Module | Capabilities |
 |---|---|---|
 | AD-01 | Project moderation | Queue, approve, reject, request changes, notes, history |
-| AD-02 | Trust and safety | Report queue, fraud signals, suspension. Reporting and the queue are built (#102, §7.2's `content_reports`); fraud signals and suspension are not |
+| AD-02 | Trust and safety | Report queue, fraud signals, suspension. Reporting and the queue are built (#102, §7.2's `content_reports`); **suspension is built (#103)** and fraud signals are not |
 | AD-03 | Curation | Editorial badges, collections, open calls, placement |
 | AD-04 | User management | Search, inspect, ban, verification status, audited impersonation |
 | AD-05 | Finance | Payment log, ledger, payout queue, approvals, disputes |
@@ -1089,6 +1089,38 @@ Preferences are per category and per channel, with a digest option.
 | AD-15 | Email templates | Edit, preview, test send. **Preview and test send are built (#86, §12.3)** at `GET /v1/admin/email-templates/{type}/preview` and `POST …/test-send`; the test send takes no recipient and goes to the caller's own address, which §12.3 argues. Editing is a schema and a decision about who may rewrite a payment-failure notice, and belongs to this epic |
 | AD-16 | System health | Queue depth, failed jobs, provider status |
 
+> **AD-02's suspension, as #103 built it.** `POST /v1/admin/projects/{id}/suspend`
+> takes §6.1's `LIVE → SUSPENDED`, staff-only through the same configured list the three
+> moderation decisions use, audited as `project.suspended`, and with a reason that is
+> required because it is the only thing anybody is ever told about why. **It is
+> terminal**: a suspension that could be lifted back into `LIVE` would restart a funding
+> window whose deadline has moved on.
+>
+> **The half that matters is what happens to the pledges**, and the creator's own
+> cancellation had exactly the same gap until this issue. Both halts record a
+> `project.suspended` / `project.canceled` event through §8.3's outbox in the transaction
+> that performs the transition, and the pledge module's listener ends every `DRAFT` and
+> `CONFIRMED` pledge as `CANCELED_BY_PROJECT` and gives every place they hold back to the
+> tier. Without it a campaign taken down while holding four hundred places would hold
+> them for ever, on a campaign nobody can back.
+>
+> **An event rather than a call, and that is not indirection.** `pledges` is the pledge
+> module's table and the project module may not read it; the pledge module already
+> depends on the project module through `PledgeAcceptance`, so a call the other way would
+> be a cycle `ModuleBoundaryTests` fails the build over. The outbox is what makes the
+> halt and the release one commit and still leaves them in two modules.
+>
+> **A pledge whose money has moved is left alone** — `CHARGE_PENDING`, `CHARGE_FAILED`,
+> `COLLECTED`. Marking one `CANCELED_BY_PROJECT` would say the money was never taken;
+> §6.2 gives the honest edge a different name, `COLLECTED → REFUNDED`, which is #67's and
+> needs a provider behind it. None of those states can exist today, so the release counts
+> them and logs a warning naming the campaign rather than acting on them.
+>
+> **Nobody is notified yet.** §4.10 has no notification type for a campaign that was
+> stopped, and inventing one inside this issue would be a fan-out to every backer written
+> in passing. The event carries the reason precisely so that the type, when it exists, has
+> something to say.
+>
 > **AD-02's intake and queue, as #102 built them.** Reporting is
 > `POST /v1/projects/{id}/report` (§10.2, C-06) and `POST /v1/users/{id}/report`
 > — the second is not in §10.2's list and is what AD-09's "profiles" and AD-04's
@@ -1435,6 +1467,15 @@ stateDiagram-v2
 > Both edges release the same reserved place and both stamp `canceled_at`, which
 > is why V17 gave that column to "the pledge stopped being active" rather than to
 > one cause of it. The `state` column is what distinguishes them.
+>
+> **`DRAFT --> CANCELED_BY_PROJECT` is new too, and #103 added it** while building the
+> halt. The diagram draws `CONFIRMED --> CANCELED_BY_PROJECT` and stops there, which
+> leaves a checkout in progress on a campaign that has just been suspended with nowhere
+> to go: it would sit as a `DRAFT` holding a limited tier's place for the rest of its
+> five minutes, on a campaign nobody can back. Recording it as `EXPIRED` would say a
+> timer ran out, and as `CANCELED_BY_BACKER` that the backer decided something. The
+> release walks the same two states either way -- see §4.11's AD-02 for what it
+> deliberately does *not* touch.
 >
 > **An edit is not on this diagram, deliberately.** PL-09 changes what a pledge is
 > for, not what state it is in: a draft that is edited is still a draft and a
@@ -2579,8 +2620,8 @@ expired cards, limits, and issuer declines.
 | Scenario | Outcome |
 |---|---|
 | Campaign unsuccessful | Nothing was collected |
-| Creator cancels | Full refund of collected pledges |
-| Moderator suspends | Full refund |
+| Creator cancels | Full refund of collected pledges. **The halt itself is built (#103)**: every `DRAFT` and `CONFIRMED` pledge becomes `CANCELED_BY_PROJECT` and gives its place back. A *collected* pledge is deliberately left alone, because reversing one is a refund and refunds are #67's |
+| Moderator suspends | Full refund. The same release, from the same event — §4.11's AD-02 |
 | Creator cannot deliver | Creator offers a refund; the platform mediates |
 | Backer changes their mind while live | Cancel — nothing was collected (built: #56) |
 | Backer changes their mind after collection | Creator's decision; not compelled |
@@ -2808,7 +2849,7 @@ GET    /v1/admin/moderation/queue
 POST   /v1/admin/moderation/{id}/approve
 POST   /v1/admin/moderation/{id}/reject
 POST   /v1/admin/moderation/{id}/request-changes
-POST   /v1/admin/projects/{id}/suspend
+POST   /v1/admin/projects/{id}/suspend   # AD-02 (#103); staff only, audited, ends every pledge
 GET    /v1/admin/users
 POST   /v1/admin/users/{id}/ban
 GET    /v1/admin/finance/payouts

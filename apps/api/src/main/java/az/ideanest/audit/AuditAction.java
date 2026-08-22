@@ -179,6 +179,21 @@ public enum AuditAction {
      */
     PROJECT_FULFILMENTS_IMPORTED("project.fulfilments_imported", "project"),
 
+    /**
+     * §4.11's AD-02 (#103): trust and safety stopped a live campaign.
+     *
+     * <p>The most consequential privileged action on the platform: it is terminal, it ends
+     * every pledge on the campaign, and the creator cannot undo it or appeal it into the
+     * state it was in. "Who suspended this campaign, when, and under what reason" is the
+     * first question of every conversation that follows, and the three moderation
+     * decisions are already recorded here for a weaker version of the same reason.
+     *
+     * <p>The detail carries the edge and not the reason. The reason is prose a moderator
+     * wrote about somebody's campaign and it is already on the transition row, which can
+     * be corrected; this table cannot.
+     */
+    PROJECT_SUSPENDED("project.suspended", "project"),
+
     /** A second factor was confirmed and is now required to sign in. */
     TWO_FACTOR_ENABLED("two_factor.enabled", "account"),
 

@@ -37,6 +37,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
         assignableTypes = {
             ProjectController.class,
             ProjectModerationController.class,
+            // And the suspension endpoint (#103), which raises three of the failures
+            // below: a campaign that does not exist, a caller who is not staff, and a
+            // move §6.1 does not allow -- a campaign that has already closed cannot be
+            // suspended, and the client is told which state it is actually in.
+            ProjectSuspensionController.class,
             // The public pre-launch endpoints raise four of the five failures
             // below unchanged — a campaign that does not exist, a field that is not
             // an address, a value type that refused its input. Listing the

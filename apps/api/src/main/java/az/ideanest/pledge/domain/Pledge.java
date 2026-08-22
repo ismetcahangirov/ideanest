@@ -48,10 +48,11 @@ import org.hibernate.generator.EventType;
  * ones that are built. #51 owns nothing to {@link PledgeState#DRAFT} and
  * {@code DRAFT} to {@link PledgeState#EXPIRED}; #52 adds {@link #confirm}, which is
  * §6.2's {@code DRAFT --> CONFIRMED}; #56 adds {@link #edit}, which moves no state at
- * all, and {@link #cancelByBacker}, which is {@code CANCELED_BY_BACKER}. Collection
- * (epic #59), the refund of an already-collected pledge (#67) and
- * {@code CANCELED_BY_PROJECT} (#103) are not here, and setters that let any caller
- * move the state would be a state machine with no rules in it.
+ * all, and {@link #cancelByBacker}, which is {@code CANCELED_BY_BACKER}; #103 adds
+ * {@link #cancelByProject}, which is what a halted campaign does to every pledge on
+ * it; #76 adds {@link #upgradeTo}, which moves no state at all. Collection (epic #59)
+ * and the refund of an already-collected pledge (#67) are not here, and setters that
+ * let any caller move the state would be a state machine with no rules in it.
  */
 @Entity
 @Table(name = "pledges")
@@ -408,6 +409,42 @@ public class Pledge {
             throw new IllegalStateException("A pledge in " + state + " cannot be upgraded");
         }
         this.rewardTierId = Objects.requireNonNull(rewardTierId, "An upgrade is to some tier");
+    }
+
+    /**
+     * §6.2's {@code CONFIRMED --> CANCELED_BY_PROJECT}, and the same edge from a
+     * {@code DRAFT} — #103.
+     *
+     * <p>What happens to every pledge on a campaign the creator cancelled or trust and
+     * safety suspended. The backer did nothing; the campaign stopped, and the state
+     * column is the only place that difference survives — "I changed my mind" and "the
+     * campaign was taken down" are the same absence of a pledge and completely different
+     * things to be told.
+     *
+     * <p><strong>Nothing is refunded, because nothing was collected.</strong> §9.2 puts
+     * the only collection at the close of a successful campaign, and a campaign that was
+     * stopped never reached one. Reversing a pledge that really was collected is
+     * {@code COLLECTED --> REFUNDED}, which is #67's;
+     * {@code PledgeCancellationService} refuses to take this edge from those states for
+     * exactly that reason.
+     *
+     * <p><strong>A draft may be cancelled this way too, and §6.2 did not draw that
+     * edge</strong> — the same amendment #56 made for {@code CANCELED_BY_BACKER}, for the
+     * same reason: a checkout in progress on a campaign that has just been suspended is
+     * not going to be finished, and leaving it to expire would hold a limited tier's
+     * place for another five minutes on a campaign nobody can back.
+     * {@code docs/architecture.md} §6.2 is amended in the same change.
+     *
+     * @throws IllegalStateException when this pledge is in a state a halt does not end.
+     *     The service decides first, and skips rather than refusing; this is the entity
+     *     holding its own invariant against a caller that did not ask
+     */
+    public void cancelByProject(Instant at) {
+        if (state != PledgeState.DRAFT && state != PledgeState.CONFIRMED) {
+            throw new IllegalStateException("A pledge in " + state + " cannot be canceled by its campaign");
+        }
+        this.state = PledgeState.CANCELED_BY_PROJECT;
+        this.canceledAt = Objects.requireNonNull(at, "A cancellation happened at a time");
     }
 
     /** Whether this pledge is still holding a place. */

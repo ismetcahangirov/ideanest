@@ -639,6 +639,43 @@
         "tags" : [ "project-moderation-controller" ]
       }
     },
+    "/v1/admin/projects/{id}/suspend" : {
+      "post" : {
+        "operationId" : "projectSuspensionSuspend",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SuspendProjectRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectEdit"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-suspension-controller" ]
+      }
+    },
     "/v1/admin/ranking/explain/{slug}" : {
       "get" : {
         "operationId" : "adminRankingExplain",
@@ -8679,6 +8716,17 @@
             "format" : "int64"
           }
         }
+      },
+      "SuspendProjectRequest" : {
+        "type" : "object",
+        "properties" : {
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "reason" ]
       },
       "Target" : {
         "type" : "object",
