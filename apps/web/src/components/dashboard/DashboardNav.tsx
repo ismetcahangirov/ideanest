@@ -9,14 +9,17 @@ import { cn } from '@ideanest/ui/server';
  *
  * <h2>It lists what exists, and nothing else</h2>
  *
- * §4.7 describes nineteen capabilities and this shell has three panels: the overview
- * (CD-01, #93), the charts (CD-02, CD-07 and CD-08, #96), and the backers (CD-10 and
- * CD-11, #97 and #79). The financial summary is #99 and is not here, because it is not
- * built — an entry that was disabled, or pointing at a 404, would tell a creator the
- * dashboard is unfinished, which is the one thing a shell exists to avoid saying.
+ * §4.7 describes nineteen capabilities and this shell has four panels: the overview
+ * (CD-01, #93), the charts (CD-02, CD-07 and CD-08, #96), the backers (CD-10 and CD-11,
+ * #97 and #79), and §4.8's surveys (PM-01 to PM-04, #73). The financial summary is #99
+ * and is not here, because it is not built — an entry that was disabled, or pointing at a
+ * 404, would tell a creator the dashboard is unfinished, which is the one thing a shell
+ * exists to avoid saying.
  *
  * <p>The order is the order a creator reads them in: what the campaign has raised, then
- * how it raised it, then who the people are. Not the order the issues landed in.
+ * how it raised it, then who the people are, then what those people still have to tell
+ * them. Not the order the issues landed in — and surveys go last for a reason of their
+ * own, since §4.8 begins when funding closes and everything above it does not.
  *
  * <h2>A client component for one reason</h2>
  *
@@ -42,6 +45,7 @@ function panelsFor(projectId: string): readonly Panel[] {
     { href: base, label: 'Overview' },
     { href: `${base}/charts`, label: 'Funding and backers' },
     { href: `${base}/backers`, label: 'Backers' },
+    { href: `${base}/surveys`, label: 'Surveys' },
   ];
 }
 

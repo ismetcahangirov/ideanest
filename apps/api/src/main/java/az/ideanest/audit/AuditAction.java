@@ -132,6 +132,38 @@ public enum AuditAction {
      */
     PROJECT_SEGMENT_MESSAGED("project.segment_messaged", "project"),
 
+    /**
+     * §4.8's PM-08 (#75): a creator froze their campaign's shipping addresses.
+     *
+     * <p>Audited although the backer's own write of an address is not, and the asymmetry is
+     * the rule rather than an omission. A backer editing their own address is somebody
+     * changing their own data; a lock is a privileged action taken over several thousand
+     * other people's, by somebody who is not any of them, and after it they cannot correct a
+     * mistake without asking. "Who stopped them, and when" is precisely what an append-only
+     * table is for.
+     *
+     * <p>The entity is the campaign, following {@link #PROJECT_SEGMENT_MESSAGED}: the
+     * question somebody asks is "what has happened to this campaign".
+     *
+     * <p><strong>The detail carries counts and no address.</strong> This table has no
+     * retention rule and refuses {@code DELETE}, so a postal address in it would outlive
+     * §17.4's erasure — which is the one thing V36's encryption cannot protect against.
+     */
+    PROJECT_ADDRESSES_LOCKED("project.addresses_locked", "project"),
+
+    /**
+     * §4.8's PM-04 (#74): a survey went out to a campaign's backers.
+     *
+     * <p>Audited for {@link #PROJECT_SEGMENT_MESSAGED}'s reason and one of its own: it is a
+     * message several thousand people receive in the campaign's name and it cannot be taken
+     * back, and it is the moment the survey's questions freeze. "Who sent it, when, and how
+     * many people did it reach" is the first question after a survey asks the wrong thing.
+     *
+     * <p>The detail carries the counts and never a question. {@code surveys} is where the text
+     * lives, and it can be deleted; this table cannot.
+     */
+    PROJECT_SURVEY_SENT("project.survey_sent", "project"),
+
     /** A second factor was confirmed and is now required to sign in. */
     TWO_FACTOR_ENABLED("two_factor.enabled", "account"),
 

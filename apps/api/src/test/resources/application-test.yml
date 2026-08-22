@@ -128,6 +128,26 @@ ideanest:
       # rather than merely documented as bounded.
       batch-size: 2
 
+  pledge-manager:
+    surveys:
+      # Disabled, for the reason every schedule in this file is: the suite drives
+      # SurveyNudgeJob directly with the instant it wants to test. A daily sweep
+      # firing in the background would chase the non-responders of a survey a test
+      # is in the middle of asserting has had no reminders.
+      nudge-schedule: "-"
+      # Small enough that the audience ceiling is exercised rather than described:
+      # a campaign with three backers is truncated at two, which is what proves the
+      # frozen count is honest rather than merely documented as being.
+      max-recipients: 2
+    addresses:
+      # A key that exists only here, so that §17.2's encryption is exercised by the
+      # suite rather than skipped by it. Thirty-two bytes of base64, and deliberately
+      # not a value anything would mistake for a real one -- a plausible-looking test
+      # key is one somebody eventually copies into an environment file.
+      primary-key-id: test
+      keys:
+        test: "dGVzdC1vbmx5LWFkZHJlc3Mta2V5LTMyLWJ5dGVzISE="
+
   pledge:
     reservation:
       # Disabled, exactly as the two schedules below are: `-` is Spring's own value

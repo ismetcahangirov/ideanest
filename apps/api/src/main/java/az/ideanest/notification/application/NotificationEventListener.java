@@ -309,6 +309,53 @@ public class NotificationEventListener {
                                 at(event.sentAt(), message)))
                         .toList();
             }
+            case NotificationEvents.SurveySent.EVENT_TYPE -> {
+                NotificationEvents.SurveySent event = read(message, NotificationEvents.SurveySent.class);
+                UUID projectId = required(event.projectId(), "projectId", message);
+                UUID surveyId = required(event.surveyId(), "surveyId", message);
+
+                // The audience is resolved here rather than carried, exactly as a bulk
+                // message's is: the platform stores no list of who a survey went to, and
+                // SurveySentEvent argues why storing one would be worse than the drift.
+                yield audienceOf(projectId, ProjectAudience.BACKERS, message).stream()
+                        .map(recipientId -> NotificationRequest.about(
+                                recipientId,
+                                NotificationType.SURVEY_AVAILABLE,
+                                // The subject is the survey, so an inbox can link a reader
+                                // straight to the form rather than to the campaign page.
+                                "survey",
+                                surveyId,
+                                about(
+                                        projectId,
+                                        "surveyTitle",
+                                        required(event.title(), "title", message),
+                                        "respondBy",
+                                        event.respondBy() == null ? "" : event.respondBy().toString()),
+                                at(event.sentAt(), message)))
+                        .toList();
+            }
+            case NotificationEvents.SurveyNudged.EVENT_TYPE -> {
+                NotificationEvents.SurveyNudged event = read(message, NotificationEvents.SurveyNudged.class);
+                UUID projectId = required(event.projectId(), "projectId", message);
+                UUID surveyId = required(event.surveyId(), "surveyId", message);
+                UUID backerId = required(event.backerId(), "backerId", message);
+
+                // One recipient, named in the payload. The sweep already decided who has
+                // not answered, and resolving the audience again here would chase the
+                // people who answered since.
+                yield List.of(NotificationRequest.about(
+                        backerId,
+                        NotificationType.SURVEY_OVERDUE,
+                        "survey",
+                        surveyId,
+                        about(
+                                projectId,
+                                "surveyTitle",
+                                required(event.title(), "title", message),
+                                "respondBy",
+                                event.respondBy() == null ? "" : event.respondBy().toString()),
+                        at(event.sentAt(), message)));
+            }
             default -> null;
         };
     }
