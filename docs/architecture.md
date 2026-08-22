@@ -733,6 +733,31 @@ The most valuable and most complex module. It begins when funding closes.
 | PM-23 | Late pledges | Backer |
 | PM-24 | Reminders to non-responders | System |
 
+> **PM-01 to PM-08, PM-11 to PM-13 and PM-24 are built; the rest of this section is
+> not.** #73 built the survey builder and #74 its distribution and responses: a
+> creator writes questions of five types (PM-03), makes any of them conditional on a
+> reward tier (PM-02), sends the set once to every backer (PM-04), and reads what came
+> back; a backer answers and may keep editing until a stated cut-off (PM-05, PM-06),
+> and §8.4's `survey-nudge` chases the ones who have not (PM-24). #75 built address
+> collection and the creator's lock (PM-07, PM-08) — `shipping_addresses` is encrypted
+> at rest with an application-managed key, and V36 states what that costs. #77 built
+> the shipping calculation: regions a creator names (PM-13), rates by weight as well as
+> flat (PM-11, PM-12), and a resolution order in which a named country always beats the
+> region it falls in.
+>
+> **Not built:** PM-09 and PM-10's upgrades and post-campaign add-on store, PM-14 to
+> PM-16's tax and customs (#78, blocked on a decision), PM-17's backer report *for the
+> pledge manager* — §4.7's CD-10 is built and is the same list — PM-18's bulk address
+> editing, PM-19's digital distribution, PM-20 to PM-22's fulfilment tracking, and
+> PM-23's late pledges. Each has an issue; none of them is implied by what is here.
+>
+> **The one boundary worth naming.** PM-03 lists `address` as an answer type and an
+> ADDRESS question **stores no answer**: it records that the survey asks for a postal
+> address, and the answer is the pledge's `shipping_addresses` row. Copying it into
+> `survey_answers` would give the platform two addresses per backer that can disagree,
+> in a table with none of #75's encryption, and would put a home address somewhere
+> §17.4's erasure does not know to look.
+
 ### 4.9 Community `[W] [M]`
 
 | # | Capability |
@@ -1705,11 +1730,54 @@ Atomic units: `id`, `project_id`, `name`, `description`, `image_id`,
 `reward_tier_id`, `country_code`, `amount`, `additional_item_amount`.
 
 > No currency column: shipping is charged in the campaign's currency, which the tier
-> already carries. Both amounts are `numeric(14,2)` and cross the wire as strings, as
+> already carries. All three amounts are `numeric(14,2)` and cross the wire as strings, as
 > all money does. One row per destination per tier, and the whole table for a tier is
 > replaced by `PUT /v1/rewards/{id}/shipping-rules` — a rate table is read as a whole
 > by whatever quotes from it, and merging would leave a creator shipping to a country
 > they believe they removed.
+>
+> **`per_kilogram_amount` arrived with #77** and is PM-12's weight half: added to
+> `amount` rather than replacing it, because that is the shape of every carrier tariff —
+> a handling charge plus a rate by weight. Zero is the default and means "this tier is
+> not priced by weight", which is what almost every campaign means. The weight itself is
+> summed from `items.weight_grams` over the tier's contents; V7 put that column on the
+> item and said a tier's weight would be a query rather than a column somebody
+> maintains, and #77 is where that query is finally run. **A tier whose items carry no
+> weight weighs zero and is charged only the flat amount** — refusing to quote would turn
+> an incomplete catalogue into a checkout nobody can complete.
+
+#### `shipping_zones`, `shipping_zone_countries`, `shipping_zone_rules`
+§4.8's PM-13 (#77): a creator-named group of destinations, and what a tier costs to ship
+to it.
+
+> **V7's table was not widened, and that is a rolling-deployment decision.** Making
+> `shipping_rules.country_code` nullable and adding a `zone_id` would mean dropping and
+> recreating the primary key of the table the checkout quotes from, while the previous
+> build is still selecting from it with `country_code NOT NULL` in its mapping. Expand and
+> contract would need three releases to do what a separate table does in one, and would
+> leave the checkout quoting from a half-migrated rate table in the middle release. So
+> `shipping_rules` keeps its meaning — the rate for a **named** country — and these add the
+> rate for a *group* beside it.
+>
+> **Zones are per campaign, not per platform.** A platform list would be the platform
+> deciding whether "Europe" includes Turkey on behalf of a creator whose carrier has
+> already decided otherwise, with no way for them to say so. A region is a property of the
+> tariff somebody negotiated.
+>
+> **A named country always beats the zone it falls in**, and that is a rule rather than a
+> tie-break. A creator who prices the EU at 12 and then writes a row for Germany at 8 has
+> said something specific about Germany; "cheapest wins" would let them lose money on every
+> German parcel by adding a region, and "last written wins" would make the amount a backer
+> is charged depend on the order somebody typed things in months ago.
+>
+> **`shipping_zone_countries` is keyed on `(project_id, country_code)`**, not on the zone,
+> which is what keeps precedence a two-way question: a destination falls into at most one
+> zone, so resolving it finds one zone or none and never two that disagree. Overlapping
+> zones would need a priority column, and a priority column is a thing creators get wrong
+> in a way they discover from a carrier invoice. Zone names are folded and trimmed like
+> `backer_segments` names, and a zone is matched to an existing one **by its folded name**
+> when the set is replaced — deleting and recreating "EU" on every edit would silently
+> discard every rate every tier charges to it.
 
 #### `pledges`
 `id`, `project_id`, `backer_id`, `reward_tier_id` (nullable), `state`,
@@ -1831,8 +1899,8 @@ by a database constraint and verified by a nightly reconciliation job.
 | `deadline_notices` | Which of §4.10's deadline thresholds a campaign has already been announced at (#90). **The row is the claim**: it is inserted in the same transaction as the `project.ending_soon` outbox event it authorises, so a crash either leaves the threshold unclaimed and unannounced or claimed and announced. It has to exist because the sweep's question -- "which live campaigns are within 48 hours of closing" -- is true for the whole of a campaign's last two days, so without it every closing campaign would be announced once a minute for two days and each announcement is a message to every backer. **A row per threshold rather than two columns on `projects`**: that table is the platform's widest and its hottest row, so a background sweep writing to it would contend with every edit and every pledge on precisely the campaigns that are busiest, and a third threshold would be a migration over every campaign ever created rather than one value in a check |
 | `campaign_messages` | §4.7's CD-13 (#98): a message a creator sent to their backers, or to a saved segment of them. The **act**; the notifications it produced are the delivery. It exists because `audit_logs` records that somebody messaged a segment and cannot record what they said -- §17.4 keeps content out of the one table with no retention rule -- and because reconstructing "what did we send, to whom" from `notifications` means reading five thousand rows to recover one subject line. **The segment is a snapshot, not a join**: `segment_id` has no foreign key and `segment_name` is copied beside it, for V21's and V23's reason plus one of this feature's own -- a segment's definition is editable, so a live join would report a message as having gone to a set it did not go to. `recipient_count` is frozen at send time for the same reason. The body is bounded at 2,000 characters, which is a product decision as much as a technical one: long-form belongs in a project update, which stores the text once and serves it from a page, where a message is copied into the rendering document of every notification it produces |
 | `collaborators` | Scoped grants |
-| `surveys`, `survey_questions`, `survey_responses` | Pledge manager |
-| `shipping_addresses` | Encrypted at rest |
+| `surveys`, `survey_questions`, `survey_answers`, `survey_responses`, `survey_nudges` | §4.8's PM-01 to PM-06 and PM-24 (#73, #74). **This row used to name three tables; there are five.** `survey_answers` is separate from `survey_responses` because the read that matters is "what size did each backer choose" over four thousand pledges, exported to a factory -- with rows that is a join and an index, and with one `jsonb` document per response it is a scan that unpacks every answer and then trusts that every one of them spells the question the same way. `survey_nudges` is the fifth and is not a survey at all: it is the claim that somebody was reminded, written in the same transaction as the outbox event, exactly as `deadline_notices` is. **`sent_at` is the whole of "draft" and "sent"**, following V22's `project_updates.published_at`: a state column beside a timestamp is two facts that can disagree, and the one a support script updates is never the one the reads filter on. Once it is set the questions freeze -- `survey_answers` has no `ON DELETE` on its reference to a question, so the database refuses the tidy-up that would discard four hundred answers -- while the covering note and `respond_by` stay editable, because the first is prose nobody answered and the second is the thing creators most often need to change. **The cut-off is a comparison, never a sweep**: a job that closed surveys is a job that can be late, and late here means accepting an answer after the creator placed the order. An answer is `text[]` whatever the type, so every reader has one shape, and it stores **the option text rather than an index** -- an index would break silently the moment a creator reordered the options, turning every "Medium" into a "Large" |
+| `shipping_addresses` | §4.8's PM-07 and PM-08 (#75). Encrypted at rest with an application-managed key: one AES-256-GCM ciphertext over the whole structured address, a 12-byte nonce beside it, and a `key_id` that is the whole of key rotation. **The key never goes near PostgreSQL** -- `pgcrypto` was rejected for that reason and not for its cryptography, since `pgp_sym_encrypt` puts the passphrase in the query text, which lands in `pg_stat_statements`, in the slow query log, and in any statement log an operator turns on during an incident. What it costs is stated rather than discovered: **nothing in this table can be searched, sorted or filtered by the database**, so there is no index on postcode and no "backers in Berlin" query; the destination country stays outside the envelope on `pledges.shipping_country`, where §4.5's PL-05 already priced the parcel from it. **One row per pledge and not per account**: a backer who moves house between two campaigns has two addresses, and the earlier campaign ships to where they lived when they answered -- an address on the account would silently rewrite an answer a creator has already printed a label from. PM-08's lock is `locked_at`/`locked_by`, per address rather than a flag on the campaign, so a creator can reopen one backer who wrote in |
 | `fulfilments` | Tracking and status |
 | `notifications`, `notification_preferences` | Delivery and settings |
 | `email_deliveries` | What the email transport did, one row per attempt, append only (#86, §12.3). **`accepted_at`, never `delivered_at`**: SMTP reports acceptance by a relay and nothing further, and a column named for delivery would be read as delivery by everybody who ever queried it. Outcomes are `ACCEPTED`, `REFUSED` and `SUPPRESSED`; bounces and opens need a provider webhook and are follow-up work rather than columns nothing writes. **There is no address column** — §17.4 anonymises `users.email`, and an address copied here would survive that in a table the anonymiser does not know about, so `recipient_id` is the join and it correctly stops resolving when there is no longer a person |
@@ -2070,7 +2138,7 @@ load profile).
 | `analytics-aggregator` | Hourly | Populate daily rollups |
 | `reminder-sender` | Every minute | Launch reminders (#39) |
 | `deadline-reminder` | Every 5 minutes | Deadline reminders: §4.10's 48- and 24-hour thresholds (#90) |
-| `survey-nudge` | Daily | Chase non-responders |
+| `survey-nudge` | Daily | Chase non-responders (#74). The `survey_nudges` row is the claim -- written in the same transaction as the outbox event, so a crash leaves somebody either unchased and unclaimed or chased and claimed. Without it the sweep's question is true for as long as they have not answered, and every pass is another email. Bounded per pass and by a configured number of attempts: one is a reminder and five is a campaign of its own |
 | `ledger-reconciliation` | Daily | Verify the balance invariant, compare to settlement |
 | `token-cleaner` | Daily | Purge tokens from unsuccessful campaigns |
 | `denormalization-sync` | Hourly | Correct cached counters |
@@ -2568,7 +2636,9 @@ PATCH  /v1/rewards/{id}
 DELETE /v1/rewards/{id}
 POST   /v1/rewards/{id}/duplicate
 PATCH  /v1/projects/{id}/rewards/reorder
-PUT    /v1/rewards/{id}/shipping-rules
+PUT    /v1/rewards/{id}/shipping-rules   # per-country and per-zone rates, replaced together (#77)
+GET    /v1/projects/{id}/shipping-zones  # PM-13's regions (#77); EDIT_REWARDS, no-store
+PUT    /v1/projects/{id}/shipping-zones  # replaced wholesale, like the rate tables they price
 POST   /v1/projects/{id}/updates
 POST   /v1/projects/{id}/faqs
 GET    /v1/projects/{id}/collaborators
@@ -2608,12 +2678,19 @@ POST   /v1/projects/{id}/messages           # CD-13 (#98); PUBLISH_UPDATES, audi
 GET    /v1/projects/{id}/messages           # what has been sent; no-store
 
 # Pledge manager
+GET    /v1/projects/{id}/surveys           # PM-01 (#73); PUBLISH_UPDATES, no-store
 POST   /v1/projects/{id}/surveys
-POST   /v1/surveys/{id}/send
-GET    /v1/surveys/{id}/responses
-GET    /v1/me/surveys
-POST   /v1/surveys/{id}/respond
+GET    /v1/surveys/{id}                    # on the survey, not the campaign: the identifier is unique
+PUT    /v1/surveys/{id}                    # the whole thing; questions freeze once sent
+DELETE /v1/surveys/{id}                    # drafts only -- a sent survey's answers are what a creator ships from
+POST   /v1/surveys/{id}/send               # PM-04 (#74); one way, audited
+GET    /v1/surveys/{id}/responses          # PM-05 (#74); VIEW_FINANCES, no-store
+GET    /v1/me/surveys                      # built from the caller's backings, not a stored recipient list
+POST   /v1/surveys/{id}/respond            # PM-05, PM-06; names the pledge, never the backer
+GET    /v1/pledges/{id}/shipping-address   # PM-07 (#75); 204 when none has been given
 PATCH  /v1/pledges/{id}/shipping-address
+POST   /v1/projects/{id}/shipping-addresses/lock      # PM-08 (#75); VIEW_FINANCES, audited
+GET    /v1/projects/{id}/shipping-addresses/progress  # counts only; decrypts nothing
 POST   /v1/pledges/{id}/upgrade
 POST   /v1/pledges/{id}/addons
 POST   /v1/projects/{id}/shipping-rules
@@ -4103,7 +4180,7 @@ Apple requires to revoke the token.
 
 | Data | Control |
 |---|---|
-| Shipping addresses | Encrypted at rest with application-managed keys |
+| Shipping addresses | Encrypted at rest with application-managed keys. **Built (#75).** One AES-256-GCM ciphertext per pledge over the whole structured address, with a 12-byte nonce and a `key_id` beside it; the key is configuration and never reaches PostgreSQL, which is why `pgcrypto` was rejected -- its passphrase travels in the query text and lands in `pg_stat_statements` and in every statement log. Rotation is two deploys: publish the new key, then move `primary-key-id`; rows re-seal as they are rewritten. **A deployment with no key configured starts normally and refuses the first address with a 503**, rather than failing to start or -- much worse -- storing one in the clear. The cost is stated in V36: nothing inside the envelope is queryable, so the destination country stays outside it on `pledges.shipping_country` |
 | Identity documents | Separate bucket, restricted access, automatic deletion after a retention period |
 | Bank details | Encrypted; only the last four digits are ever displayed |
 | Personal data in logs | Redacted: email, phone, address, card, token, password |

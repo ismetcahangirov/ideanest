@@ -820,6 +820,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/surveys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["backerSurveyMine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/pledges/draft": {
         parameters: {
             query?: never;
@@ -866,6 +882,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/pledges/{pledgeId}/shipping-address": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["shippingAddressRead"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["shippingAddressSave"];
         trace?: never;
     };
     "/v1/projects": {
@@ -1380,6 +1412,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{projectId}/shipping-addresses/lock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["shippingAddressLock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{projectId}/shipping-addresses/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["shippingAddressProgress"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{projectId}/shipping-zones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["shippingZoneList"];
+        put: operations["shippingZoneReplace"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{projectId}/surveys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["surveyList"];
+        put?: never;
+        post: operations["surveyCreate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{projectId}/updates": {
         parameters: {
             query?: never;
@@ -1476,6 +1572,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/surveys/{surveyId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["surveyRead"];
+        put: operations["surveyUpdate"];
+        post?: never;
+        delete: operations["surveyDelete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/surveys/{surveyId}/respond": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["backerSurveyRespond"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/surveys/{surveyId}/responses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["surveyCollected"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/surveys/{surveyId}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["surveySend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/users/{id}/report": {
         parameters: {
             query?: never;
@@ -1546,6 +1706,14 @@ export interface components {
             /** Format: uuid */
             projectId: string;
         };
+        AddressProgressResponse: {
+            /** Format: int64 */
+            editable?: number;
+            /** Format: int64 */
+            given?: number;
+            /** Format: int64 */
+            locked?: number;
+        };
         AdminCollectionIndex: {
             items?: components["schemas"]["AdminCollectionResponse"][];
         };
@@ -1584,6 +1752,11 @@ export interface components {
             shipping?: components["schemas"]["Money"];
             tax?: components["schemas"]["Money"];
             total?: components["schemas"]["Money"];
+        };
+        AnswerBody: {
+            /** Format: uuid */
+            questionId?: string;
+            value?: string[];
         };
         Backer: {
             amount?: components["schemas"]["Money"];
@@ -1633,6 +1806,27 @@ export interface components {
             name?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        BackerSurveyBody: {
+            answered?: boolean;
+            answers?: components["schemas"]["AnswerBody"][];
+            message?: string;
+            open?: boolean;
+            /** Format: uuid */
+            pledgeId?: string;
+            /** Format: uuid */
+            projectId?: string;
+            questions?: components["schemas"]["SurveyQuestionBody"][];
+            /** Format: date-time */
+            respondBy?: string;
+            /** Format: date-time */
+            submittedAt?: string;
+            /** Format: uuid */
+            surveyId?: string;
+            title?: string;
+        };
+        BackerSurveyListResponse: {
+            surveys?: components["schemas"]["BackerSurveyBody"][];
         };
         CampaignMessageListResponse: {
             items?: components["schemas"]["CampaignMessageResponse"][];
@@ -1942,6 +2136,15 @@ export interface components {
         EnableTwoFactorRequest: {
             password: string;
         };
+        Entry: {
+            answers?: components["schemas"]["AnswerBody"][];
+            /** Format: uuid */
+            backerId?: string;
+            /** Format: uuid */
+            pledgeId?: string;
+            /** Format: date-time */
+            submittedAt?: string;
+        };
         ExplanationResponse: {
             slug?: string;
             terms?: components["schemas"]["TermResponse"][];
@@ -2057,6 +2260,12 @@ export interface components {
             /** @deprecated */
             textual?: boolean;
             valueNode?: boolean;
+        };
+        LockAddressesResponse: {
+            /** Format: int32 */
+            locked?: number;
+            /** Format: int64 */
+            stillEditable?: number;
         };
         MeResponse: {
             /** Format: date-time */
@@ -2175,6 +2384,16 @@ export interface components {
         };
         PostCommentRequest: {
             body?: string;
+        };
+        PostalAddressBody: {
+            countryCode?: string;
+            line1?: string;
+            line2?: string;
+            locality?: string;
+            phone?: string;
+            postcode?: string;
+            recipient?: string;
+            region?: string;
         };
         Preference: {
             /** @enum {string} */
@@ -2443,6 +2662,11 @@ export interface components {
             moderatorId?: string;
             note?: string;
         };
+        RespondRequest: {
+            answers?: components["schemas"]["AnswerBody"][];
+            /** Format: uuid */
+            pledgeId?: string;
+        };
         RewardItemBody: {
             /** Format: uuid */
             itemId?: string;
@@ -2500,6 +2724,7 @@ export interface components {
             secretToken?: string;
             shippingRules?: components["schemas"]["ShippingRuleBody"][];
             shippingType?: string;
+            shippingZoneRates?: components["schemas"]["ShippingZoneRateBody"][];
             /** Format: int32 */
             sortOrder?: number;
             title?: string;
@@ -2575,13 +2800,44 @@ export interface components {
             note: string;
             weight: number;
         };
+        ShippingAddressResponse: {
+            address?: components["schemas"]["PostalAddressBody"];
+            locked?: boolean;
+            /** Format: date-time */
+            lockedAt?: string;
+            /** Format: uuid */
+            pledgeId?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
         ShippingRuleBody: {
             additionalItemAmount?: number;
             amount?: number;
             countryCode?: string;
+            perKilogramAmount?: number;
         };
         ShippingRulesRequest: {
             rules?: components["schemas"]["ShippingRuleBody"][];
+            zoneRates?: components["schemas"]["ShippingZoneRateBody"][];
+        };
+        ShippingZoneBody: {
+            countryCodes?: string[];
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+        };
+        ShippingZoneListResponse: {
+            zones?: components["schemas"]["ShippingZoneBody"][];
+        };
+        ShippingZoneRateBody: {
+            additionalItemAmount?: number;
+            amount?: number;
+            perKilogramAmount?: number;
+            /** Format: uuid */
+            zoneId?: string;
+        };
+        ShippingZonesRequest: {
+            zones?: components["schemas"]["ShippingZoneBody"][];
         };
         SignInRequest: {
             deviceLabel?: string;
@@ -2639,6 +2895,62 @@ export interface components {
         };
         Suggestions: {
             items?: components["schemas"]["SuggestionItem"][];
+        };
+        SurveyListResponse: {
+            surveys?: components["schemas"]["SurveyResponseBody"][];
+        };
+        SurveyQuestionBody: {
+            choices?: string[];
+            helpText?: string;
+            /** Format: uuid */
+            id?: string;
+            /** Format: int32 */
+            position?: number;
+            prompt?: string;
+            required?: boolean;
+            /** Format: uuid */
+            rewardTierId?: string;
+            type?: string;
+        };
+        SurveyRequest: {
+            message?: string;
+            questions?: components["schemas"]["SurveyQuestionBody"][];
+            /** Format: date-time */
+            respondBy?: string;
+            title?: string;
+        };
+        SurveyResponseBody: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: uuid */
+            id?: string;
+            message?: string;
+            /** Format: uuid */
+            projectId?: string;
+            questions?: components["schemas"]["SurveyQuestionBody"][];
+            /** Format: date-time */
+            respondBy?: string;
+            /** Format: int64 */
+            responseCount?: number;
+            sent?: boolean;
+            /** Format: date-time */
+            sentAt?: string;
+            /** Format: int32 */
+            sentTo?: number;
+            title?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        SurveyResponseListResponse: {
+            questions?: components["schemas"]["SurveyQuestionBody"][];
+            responses?: components["schemas"]["Entry"][];
+            /** Format: int32 */
+            sentTo?: number;
+            /** Format: uuid */
+            surveyId?: string;
+            title?: string;
+            /** Format: int64 */
+            total?: number;
         };
         Target: {
             /** Format: uuid */
@@ -2733,15 +3045,19 @@ export interface components {
 export type SchemaAccount = components['schemas']['Account'];
 export type SchemaAccountExport = components['schemas']['AccountExport'];
 export type SchemaAddProject = components['schemas']['AddProject'];
+export type SchemaAddressProgressResponse = components['schemas']['AddressProgressResponse'];
 export type SchemaAdminCollectionIndex = components['schemas']['AdminCollectionIndex'];
 export type SchemaAdminCollectionResponse = components['schemas']['AdminCollectionResponse'];
 export type SchemaAdminMember = components['schemas']['AdminMember'];
 export type SchemaAmounts = components['schemas']['Amounts'];
+export type SchemaAnswerBody = components['schemas']['AnswerBody'];
 export type SchemaBacker = components['schemas']['Backer'];
 export type SchemaBackerBreakdownResponse = components['schemas']['BackerBreakdownResponse'];
 export type SchemaBackerFilterBody = components['schemas']['BackerFilterBody'];
 export type SchemaBackerListResponse = components['schemas']['BackerListResponse'];
 export type SchemaBackerSegmentResponse = components['schemas']['BackerSegmentResponse'];
+export type SchemaBackerSurveyBody = components['schemas']['BackerSurveyBody'];
+export type SchemaBackerSurveyListResponse = components['schemas']['BackerSurveyListResponse'];
 export type SchemaCampaignMessageListResponse = components['schemas']['CampaignMessageListResponse'];
 export type SchemaCampaignMessageResponse = components['schemas']['CampaignMessageResponse'];
 export type SchemaCancelProjectRequest = components['schemas']['CancelProjectRequest'];
@@ -2779,6 +3095,7 @@ export type SchemaDisableTwoFactorRequest = components['schemas']['DisableTwoFac
 export type SchemaDraftPledgeRequest = components['schemas']['DraftPledgeRequest'];
 export type SchemaEmailTemplateListResponse = components['schemas']['EmailTemplateListResponse'];
 export type SchemaEnableTwoFactorRequest = components['schemas']['EnableTwoFactorRequest'];
+export type SchemaEntry = components['schemas']['Entry'];
 export type SchemaExplanationResponse = components['schemas']['ExplanationResponse'];
 export type SchemaExportBackersRequest = components['schemas']['ExportBackersRequest'];
 export type SchemaFacets = components['schemas']['Facets'];
@@ -2792,6 +3109,7 @@ export type SchemaItemBody = components['schemas']['ItemBody'];
 export type SchemaItemPatchRequest = components['schemas']['ItemPatchRequest'];
 export type SchemaItemResponse = components['schemas']['ItemResponse'];
 export type SchemaJsonNode = components['schemas']['JsonNode'];
+export type SchemaLockAddressesResponse = components['schemas']['LockAddressesResponse'];
 export type SchemaMeResponse = components['schemas']['MeResponse'];
 export type SchemaModerationDecisionRequest = components['schemas']['ModerationDecisionRequest'];
 export type SchemaModerationOutcomeBody = components['schemas']['ModerationOutcomeBody'];
@@ -2806,6 +3124,7 @@ export type SchemaPatchPledgeRequest = components['schemas']['PatchPledgeRequest
 export type SchemaPledgeAddonBody = components['schemas']['PledgeAddonBody'];
 export type SchemaPledgeResponse = components['schemas']['PledgeResponse'];
 export type SchemaPostCommentRequest = components['schemas']['PostCommentRequest'];
+export type SchemaPostalAddressBody = components['schemas']['PostalAddressBody'];
 export type SchemaPreference = components['schemas']['Preference'];
 export type SchemaPrelaunchPageResponse = components['schemas']['PrelaunchPageResponse'];
 export type SchemaProjectAnalyticsResponse = components['schemas']['ProjectAnalyticsResponse'];
@@ -2837,6 +3156,7 @@ export type SchemaReportRequest = components['schemas']['ReportRequest'];
 export type SchemaReportResolutionRequest = components['schemas']['ReportResolutionRequest'];
 export type SchemaReportResponse = components['schemas']['ReportResponse'];
 export type SchemaResolution = components['schemas']['Resolution'];
+export type SchemaRespondRequest = components['schemas']['RespondRequest'];
 export type SchemaRewardItemBody = components['schemas']['RewardItemBody'];
 export type SchemaRewardPatchRequest = components['schemas']['RewardPatchRequest'];
 export type SchemaRewardResponse = components['schemas']['RewardResponse'];
@@ -2849,8 +3169,13 @@ export type SchemaSendMessageRequest = components['schemas']['SendMessageRequest
 export type SchemaSessionRecord = components['schemas']['SessionRecord'];
 export type SchemaSessionSummary = components['schemas']['SessionSummary'];
 export type SchemaSetWeight = components['schemas']['SetWeight'];
+export type SchemaShippingAddressResponse = components['schemas']['ShippingAddressResponse'];
 export type SchemaShippingRuleBody = components['schemas']['ShippingRuleBody'];
 export type SchemaShippingRulesRequest = components['schemas']['ShippingRulesRequest'];
+export type SchemaShippingZoneBody = components['schemas']['ShippingZoneBody'];
+export type SchemaShippingZoneListResponse = components['schemas']['ShippingZoneListResponse'];
+export type SchemaShippingZoneRateBody = components['schemas']['ShippingZoneRateBody'];
+export type SchemaShippingZonesRequest = components['schemas']['ShippingZonesRequest'];
 export type SchemaSignInRequest = components['schemas']['SignInRequest'];
 export type SchemaSource = components['schemas']['Source'];
 export type SchemaStoryVersionDetail = components['schemas']['StoryVersionDetail'];
@@ -2858,6 +3183,11 @@ export type SchemaStoryVersionSummary = components['schemas']['StoryVersionSumma
 export type SchemaSubcategoryResponse = components['schemas']['SubcategoryResponse'];
 export type SchemaSuggestionItem = components['schemas']['SuggestionItem'];
 export type SchemaSuggestions = components['schemas']['Suggestions'];
+export type SchemaSurveyListResponse = components['schemas']['SurveyListResponse'];
+export type SchemaSurveyQuestionBody = components['schemas']['SurveyQuestionBody'];
+export type SchemaSurveyRequest = components['schemas']['SurveyRequest'];
+export type SchemaSurveyResponseBody = components['schemas']['SurveyResponseBody'];
+export type SchemaSurveyResponseListResponse = components['schemas']['SurveyResponseListResponse'];
 export type SchemaTarget = components['schemas']['Target'];
 export type SchemaTaxon = components['schemas']['Taxon'];
 export type SchemaTemplate = components['schemas']['Template'];
@@ -4289,6 +4619,26 @@ export interface operations {
             };
         };
     };
+    backerSurveyMine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackerSurveyListResponse"];
+                };
+            };
+        };
+    };
     pledgeDraft: {
         parameters: {
             query?: never;
@@ -4411,6 +4761,54 @@ export interface operations {
                 };
                 content: {
                     "application/json": string;
+                };
+            };
+        };
+    };
+    shippingAddressRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pledgeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShippingAddressResponse"];
+                };
+            };
+        };
+    };
+    shippingAddressSave: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pledgeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PostalAddressBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShippingAddressResponse"];
                 };
             };
         };
@@ -5422,6 +5820,146 @@ export interface operations {
             };
         };
     };
+    shippingAddressLock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LockAddressesResponse"];
+                };
+            };
+        };
+    };
+    shippingAddressProgress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddressProgressResponse"];
+                };
+            };
+        };
+    };
+    shippingZoneList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShippingZoneListResponse"];
+                };
+            };
+        };
+    };
+    shippingZoneReplace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShippingZonesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShippingZoneListResponse"];
+                };
+            };
+        };
+    };
+    surveyList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SurveyListResponse"];
+                };
+            };
+        };
+    };
+    surveyCreate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SurveyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SurveyResponseBody"];
+                };
+            };
+        };
+    };
     publicProjectUpdateList: {
         parameters: {
             query?: {
@@ -5653,6 +6191,146 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Suggestions"];
+                };
+            };
+        };
+    };
+    surveyRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                surveyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SurveyResponseBody"];
+                };
+            };
+        };
+    };
+    surveyUpdate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                surveyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SurveyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SurveyResponseBody"];
+                };
+            };
+        };
+    };
+    surveyDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                surveyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    backerSurveyRespond: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                surveyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RespondRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackerSurveyBody"];
+                };
+            };
+        };
+    };
+    surveyCollected: {
+        parameters: {
+            query?: {
+                size?: number;
+            };
+            header?: never;
+            path: {
+                surveyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SurveyResponseListResponse"];
+                };
+            };
+        };
+    };
+    surveySend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                surveyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SurveyResponseBody"];
                 };
             };
         };
