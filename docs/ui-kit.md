@@ -1088,6 +1088,71 @@ A white panel with near-black text serves both legibility and trust here.
 The confirm button is the only lime element on the screen, so attention lands
 exactly where it should.
 
+### 8.6 Site shell
+
+**The chrome every other screen in this section sits inside.** §8.2 to §8.5
+describe pages; this describes the frame around them, which until #258 did not
+exist — twenty routes shipped with no shared header and no footer.
+
+```
+┌─────────────────────────────────────────────────┐
+│  ideanest  ( Discover  Categories  About )   ⬤  │  ← header transparent,
+├─────────────────────────────────────────────────┤     nav is the pill
+│                                                 │
+│              page content, --surface-1          │
+│                                                 │
+├─────────────────────────────────────────────────┤
+│  Explore     Creators     Company     Legal     │  ← footer, --surface-1
+│  ───────────────────────────────────  --divider │
+│  © IdeaNest        Language ▾   Currency ▾      │
+└─────────────────────────────────────────────────┘
+```
+
+**The header never takes a surface; the nav pill does.** `TopBar` is
+`bg-transparent` and stays that way at every scroll position — what changes is
+the pill in the middle of it, which narrows to `445px` and picks up
+`--white-surface` with `--text-on-white`. That is §2.5's rule applied to
+navigation: white is what floats above the system, and a collapsed bar is
+floating over content that is scrolling underneath it. A header that took
+`--surface-2` instead would read as a second page ground stacked on the first.
+
+**Chrome does not compete with content.** §7.10 already states the rule for the
+navigation rail — a lime icon, not a lime fill — and it holds here for the same
+reason. The header's only lime element is the primary action a signed-out
+visitor is being asked to take, and there is at most one of them. §2.5's last
+line forbids the rest: the pill is already white, so a second lime link beside
+it says "this matters" and "this is happening now" in the same 40 pixels.
+
+**The footer is the page ground, not a card.** `--surface-1` with a
+`--divider` rule above it. A `--surface-2` footer reads as a panel with content
+in it and pulls the eye down at the end of every page; the footer is a place to
+stop, not a destination.
+
+| Element | Surface | Text |
+|---|---|---|
+| Header wrapper, any state | transparent | inherited |
+| Nav pill, at rest | transparent, transparent border | `--text-primary` |
+| Nav pill, collapsed | `--white-surface`, `--radius-full`, `--border` | `--text-on-white` |
+| Header primary action | `--lime-500` | `--text-on-lime` |
+| Footer | `--surface-1` | `--text-tertiary`, headings `--text-secondary` |
+| Footer rule | `--divider` | — |
+
+**The skip link is not optional and it is part of this component.** It is the
+first focusable element in the document, it is visually hidden until focused,
+and when focused it obeys §9.3 like every other control. A shell without one
+makes every page on the platform start with the same twelve links for anybody
+navigating by keyboard.
+
+**Motion: the collapse and nothing else.** `docs/motion-system.md` §4.7 owns the
+header's transition — `max-width`, `background-color`, `border-color` and
+`padding`, on one 300ms curve. Those are not `transform` and `opacity`, and this
+is the one place in the system that animates anything else: the pill's width is
+the effect, and a `scaleX` would stretch the words inside it. It is bounded to a
+single element that changes once per scroll direction, which is why it does not
+cost what §8 of `docs/motion-system.md` warns about. The footer does not animate,
+and neither does the navigation on hover beyond a colour change. Chrome that
+moves is chrome being noticed.
+
 ---
 
 ## 9. Accessibility rules

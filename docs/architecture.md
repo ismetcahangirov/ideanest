@@ -1089,6 +1089,20 @@ Preferences are per category and per channel, with a digest option.
 | AD-15 | Email templates | Edit, preview, test send. **Preview and test send are built (#86, §12.3)** at `GET /v1/admin/email-templates/{type}/preview` and `POST …/test-send`; the test send takes no recipient and goes to the caller's own address, which §12.3 argues. Editing is a schema and a decision about who may rewrite a payment-failure notice, and belongs to this epic |
 | AD-16 | System health | Queue depth, failed jobs, provider status |
 
+> **Two of these sixteen have a screen. The console that reads the other
+> fourteen is #259.** The distinction that table hides is between a capability's
+> *record* and its *console*: #107 built the audit log and nothing displays it,
+> #86 built email preview and test send and nothing edits a template, #102 and
+> #103 built reporting and suspension and only the queue has a page. Where a
+> module has no endpoint at all, #259 still carries an issue for the screen,
+> labelled `status: blocked` and naming what it waits on — a backlog in which
+> the missing fourteen are simply absent reads as a console that is nearly
+> finished.
+>
+> **The console lives in `apps/web` under an `(admin)` route group**, not in a
+> separate application; §16 has the argument and the condition under which it
+> reverses.
+
 > **AD-04, as #104 built it.** `GET /v1/admin/users` searches the accounts by address,
 > display name or profile slug — staff arrive holding whatever the complaint gave them, so
 > matching one of the three would send them to guess which — with a `suspended=true` filter
@@ -1223,6 +1237,40 @@ Preferences are per category and per channel, with a digest option.
 | MB-14 | Dark mode |
 | MB-15 | Dynamic type and accessibility sizing |
 | MB-16 | Proximity search |
+
+### 4.13 Web shell and site-level surfaces `[W]`
+
+> **This section is late, and its absence is why the surfaces in it were never
+> built.** Sections 4.1 to 4.11 enumerate what a *feature* does. None of them
+> owns the frame those features render inside, so the frame was specified
+> nowhere, appeared in no epic, and did not exist: twenty routes shipped with no
+> shared header, no footer, and no route at `/` — the application answered its
+> own root with a 404. A capability that belongs to every screen belongs to no
+> feature, and that is exactly the kind of gap an inventory has to be told to
+> look for. Epic #258 works from this table.
+
+| # | Capability | Note |
+|---|---|---|
+| WS-01 | Global header | Wordmark, primary navigation, search entry, and the signed-in or signed-out action pair. `packages/ui`'s `layout/TopBar` is the primitive; §8.6 of `docs/ui-kit.md` governs its surfaces and §4.7 of `docs/motion-system.md` its collapse |
+| WS-02 | Global footer | Navigation, legal links, language and currency, and the platform's own statement of what it is |
+| WS-03 | Mobile navigation | Off-canvas drawer carrying WS-01's navigation and search below the layout's breakpoint |
+| WS-04 | Home page | The route at `/`. Featured campaigns, categories, and what is ending soon. It is the only page whose content is entirely editorial, so AD-03 decides most of it |
+| WS-05 | Category browse | An indexable landing page per category and subcategory, distinct from §4.3's filter panel because a crawler cannot operate a filter |
+| WS-06 | Search results | A dedicated route behind WS-01's search field. §4.3's panel is a refinement surface; this is an entry point with its own URL |
+| WS-07 | Static content | About, how it works, and trust and safety |
+| WS-08 | Legal | Terms, privacy, and cookie policy. The copy is a legal deliverable and §22 owns it |
+| WS-09 | Failure states | Not found, error, and maintenance, all of them inside the shell rather than replacing it |
+
+> **WS-01 and WS-02 are the accessibility and performance surface of every other
+> page in this document.** A skip link, the focus order of the navigation, and
+> the header's contribution to Largest Contentful Paint are paid once and
+> inherited everywhere, which is the argument for treating them as one
+> capability rather than as part of whichever page is built first.
+>
+> **WS-04 and WS-05 are indexable; the rest of §4.3 mostly is not.** A filtered
+> discovery URL is a query string a crawler will not enumerate. These two are
+> the pages §11 and the SEO epic (#118) actually have to rank, and that is why
+> they are named separately rather than folded into "discovery".
 
 ---
 
@@ -4275,9 +4323,11 @@ ideanest/
 │   │   │       └── access/           the cross-module permission contract (§16.1)
 │   │   └── src/main/resources/db/migration/
 │   │
-│   ├── web/                          Next.js
-│   ├── mobile/                       Expo
-│   └── admin/                        Internal console
+│   ├── web/                          Next.js — public site and admin console
+│   │   └── src/app/
+│   │       ├── (public)/             the shell in §4.13: header, footer, home
+│   │       └── (admin)/admin/        the internal console in §4.11
+│   └── mobile/                       Expo
 │
 ├── packages/
 │   ├── design-tokens/
@@ -4296,6 +4346,27 @@ ideanest/
 Package-by-feature, not layer-by-layer. Everything about pledging lives under
 `pledge/`, which keeps the extraction boundary visible if a module ever needs to
 become a service.
+
+> **The admin console is a route group in `apps/web`, not a fourth application,
+> and this used to say otherwise.** It listed `apps/admin/ Internal console`
+> while the two screens that exist — `/admin/moderation` (#101) and
+> `/admin/users` (#104) — had already been built inside `apps/web`. The document
+> was wrong rather than the code, and it is corrected here rather than by moving
+> working screens.
+>
+> **What a separate application would buy is one thing: no admin code in the
+> bundle a stranger downloads.** What it costs is a second session model against
+> the same cookie, a second copy of the UI kit's consumers, a second deployment
+> and CI matrix, and a second set of performance budgets — paid now, for a
+> console with two screens. The route group gets the layout separation without
+> any of that, and the server-side staff check is what actually keeps a
+> non-staff request out; a separate origin never was.
+>
+> **The condition under which this decision reverses is written down**: it is
+> #295, the role model. Once there are roles rather than one configured list of
+> addresses, there is something an origin boundary can enforce that a route group
+> cannot, and the move becomes worth its price. Until then a second application
+> would be a boundary with nothing behind it.
 
 ### 16.1 Crossing a module boundary
 
@@ -4894,14 +4965,22 @@ Monorepo and CI. Database schema and migrations. Authentication. Profiles. Media
 upload. Design system and component library. **Provider negotiation and sandbox
 integration**, running in parallel from day one.
 
+> **"Authentication" and "profiles" here meant the service, and that reading
+> cost the project a phase.** Both shipped with no page a person can open —
+> there is no sign-in route, and nine of §4.2's ten capabilities have no screen.
+> Every line in this roadmap names a capability, and a capability is not
+> delivered until the surface in §4.13 that reaches it exists.
+
 ### Phase 1 — Minimum viable product (10–14 weeks)
 
-Campaign creation (basics, rewards, story). Moderation and a minimal admin
-console. Project page. Discovery with database-backed search. Pledge flow with
-card tokenisation. All-or-nothing finalisation. Collection with retry. The
-double-entry ledger. Payout with manual approval. Email notifications. A basic
-creator dashboard. **Mobile version one** — discovery, project view, pledging,
-notifications.
+**The web shell and the pages that reach it** — global header and footer, the
+home page, and the authentication and account screens (§4.13, #258). Campaign
+creation (basics, rewards, story). Moderation and a minimal admin console.
+Project page, including the tabs §4.4 lists. Discovery with database-backed
+search. Pledge flow with card tokenisation. All-or-nothing finalisation.
+Collection with retry. The double-entry ledger. Payout with manual approval.
+Email notifications. A basic creator dashboard. **Mobile version one** —
+discovery, project view, pledging, notifications.
 
 ### Phase 2 — Growth (10–12 weeks)
 
