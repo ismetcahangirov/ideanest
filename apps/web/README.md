@@ -67,14 +67,23 @@ the browser half of the auth flow work at all.
 | `/projects/[id]/dashboard/charts` | CD-02's funding trend, CD-07's reward mix and CD-08's destinations (#96) |
 | `/projects/[id]/dashboard/backers` | CD-10's backer report with saved segments, and CD-11's CSV export (#97, #79) |
 | `/discover` | **Public.** The filter rail, sort, chips, and the cursor-paginated feed (#45) |
+| `/admin/moderation` | **Staff only.** The submission queue: approve, reject, request changes (#101) |
+| `/admin/users` | **Staff only.** Search, inspect, suspend and reinstate an account (#104) |
 | `/robots.txt` | **Public.** Crawl directives, and the pointer to the sitemap index (#122) |
 | `/sitemap_index.xml` | **Public.** The index over the sitemap segments (#122) |
 | `/sitemap/[segment].xml` | **Public.** One sitemap segment — `pages`, `discovery`, `projects-N` (#122) |
 | `/api/rum` | **Public**, unauthenticated. The Core Web Vitals collection endpoint (#128) |
 
-There is no route at `/` yet. The root segment still carries the site's default
-metadata and its `opengraph-image`, both of which every route below inherits, and
-both of which work without a page of their own.
+**There is no route at `/`, and no route above shares a shell with any other.**
+The root segment carries the site's default metadata and its `opengraph-image`,
+which every route inherits, but it has no page: the application answers its own
+origin with a 404, and there is no global header, no footer, and no
+authentication screen anywhere in the table. That is the gap
+`docs/architecture.md` §4.13 now names and epic #258 covers — the home page is
+#264 and the shell every route will render inside is #260.
+
+The two `/admin` routes are the whole of the console today; the other fourteen
+modules in §4.11 are epic #259.
 
 **The first segment of the campaign page is a creator's slug, and the folder is
 called `[id]` anyway.** Next allows exactly one slug name per dynamic level, and
@@ -401,10 +410,11 @@ built the other way round quietly stops indexing every page added after it was
 written. The exception list is `PRIVATE_PATH_PREFIXES`, beside the predicate, and
 it covers the pledge flow, the campaign editor, the pre-launch teaser, the
 account, the creator dashboard, the pledge manager, administration, and the
-proxied `/v1` API. **The dashboard, pledge manager and administration are not
-built**, and are disallowed anyway: a private surface has to be disallowed on the
-deploy that introduces it, and a robots.txt updated afterwards is updated too
-late.
+proxied `/v1` API. **Several of those had no route when the list was written** —
+the dashboard and the two admin screens have one now, the account settings shell
+(#275) does not yet — and all of them were disallowed from the start anyway: a
+private surface has to be disallowed on the deploy that introduces it, and a
+robots.txt updated afterwards is updated too late.
 
 `Disallow: /discover?` blocks **every filtered permutation of the feed**. §4.3's
 filters are query parameters, they compose, and several are comma-separated

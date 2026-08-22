@@ -437,9 +437,18 @@ decisions.
 | **Pledge and checkout** | **Near zero** — 150ms step change and a loading indicator | Every animation here reads as hesitation |
 | Creator dashboard | **Minimal** — chart draw-in | A working tool, not a showcase |
 | Campaign editor | **None** — autosave indicator only | Creators spend hours in it |
+| Site shell — header, footer | **One** — §4.7's collapse, and nothing else | It is on every route in the table below it, so its budget is paid on all of them at once |
+| Authentication, account settings | **None** — 150ms colour on controls | Signing in is work with a wrong-password branch at the end of it. §9.4 of `docs/ui-kit.md` also puts an error message here, and an animated error is one that arrives after it was needed |
+| Admin console | **None** — the campaign editor's rule, for the campaign editor's reason | Staff spend hours in it, and a moderator waiting out an entry animation is a queue moving more slowly |
 
 > **The rule:** when the user is **spending money** or **doing work**, motion
 > decreases. When the user is **exploring**, motion increases.
+
+> **"Marketing home" is `/` and it did not exist when this table was written.**
+> The row was aspirational — the application answered its own root with a 404 —
+> and #264 is what makes it a real surface. It keeps **Full**: it is the one
+> screen whose entire job is to make an impression, and it is the furthest any
+> visitor is from spending money.
 
 ### 5.1 What "minimal" buys Discovery, exactly
 

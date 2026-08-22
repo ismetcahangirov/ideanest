@@ -2,7 +2,7 @@ import { useEffect, useState, type ComponentPropsWithoutRef, type ReactNode } fr
 import { cn } from '../lib/cn';
 
 /**
- * Collapsing top navigation. See docs/ui-kit.md §7.7 and docs/motion-system.md §4.7.
+ * Collapsing top navigation. See docs/ui-kit.md §8.6 and docs/motion-system.md §4.7.
  *
  * Three things change together on scroll — width narrows, the pill picks up a
  * white surface, padding tightens — all on the same 300ms curve. The effect is

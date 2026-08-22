@@ -93,9 +93,8 @@ need appears.
 ideanest/
 ├── apps/
 │   ├── api/                  Spring Boot service
-│   ├── web/                  Next.js application
-│   ├── mobile/               Expo application               (not yet created)
-│   └── admin/                Internal tooling               (not yet created)
+│   ├── web/                  Next.js — public site and admin console
+│   └── mobile/               Expo application               (not yet created)
 ├── packages/
 │   ├── api-client/           Typed API surface, generated from apps/api/openapi.json
 │   ├── design-tokens/        Colour, radius, motion — the source of truth
