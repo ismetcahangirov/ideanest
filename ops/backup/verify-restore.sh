@@ -51,7 +51,6 @@ WITNESS_BEFORE=""
 WITNESS_AFTER=""
 ATOMIC_WITNESS=""
 TARGET_TIME=""
-LEDGER_MODE="required"
 REPORT=""
 
 while [ $# -gt 0 ]; do
@@ -66,17 +65,11 @@ while [ $# -gt 0 ]; do
     --witness-after)      WITNESS_AFTER="${2:?}"; shift 2 ;;
     --atomic-witness)     ATOMIC_WITNESS="${2:?}"; shift 2 ;;
     --target-time)        TARGET_TIME="${2:?}"; shift 2 ;;
-    --ledger-mode)        LEDGER_MODE="${2:?}"; shift 2 ;;
     --report)             REPORT="${2:?}"; shift 2 ;;
     -h|--help) sed -n '2,40p' "$0"; exit 0 ;;
     *) die "unknown argument: $1" ;;
   esac
 done
-
-case "$LEDGER_MODE" in
-  required|absent-ok) ;;
-  *) die "--ledger-mode must be 'required' or 'absent-ok', got: $LEDGER_MODE" ;;
-esac
 
 require_cmd psql
 
@@ -244,15 +237,16 @@ fi
 
 check "ledger-balance"
 if [ "$(q "SELECT to_regclass('public.ledger_entries') IS NULL")" = "t" ]; then
-  # §7.2 specifies `transactions` and `ledger_entries`; no migration creates
-  # them yet, because §9.2's phase 2 — the only thing that writes a ledger entry
-  # — is epic #59 and is not built. `absent-ok` is how the drill passes today,
-  # and it is a deliberate, visible exception rather than a silent one: the flag
-  # is spelled out at every call site and comes out the day the migration lands.
-  case "$LEDGER_MODE" in
-    absent-ok) check_skip "ledger_entries is not in the schema (§7.2 specifies it; no migration creates it yet). Running with --ledger-mode absent-ok" ;;
-    required)  check_fail "ledger_entries does not exist and --ledger-mode is 'required'" ;;
-  esac
+  # Unconditional since V41 created the table (#62). Until then this branch was
+  # reachable in a `--ledger-mode absent-ok` run, because §7.2 specified the table
+  # and no migration created it; the flag and the negative case that asserted it
+  # came out together with the migration, exactly as the runbook said they would.
+  #
+  # A restored database with no `ledger_entries` is now a restore of the wrong
+  # cluster, or one whose migrations did not finish. Either way the strongest check
+  # in this file cannot run, and a verification that skipped it would be reporting
+  # a clean restore of the platform's books without having looked at them.
+  check_fail "ledger_entries does not exist; §7.2 requires it and V41 creates it"
 else
   IMBALANCED="$(psql -qAtX -v ON_ERROR_STOP=1 -v tbl=ledger_entries \
       -h "$HOST" -p "$PORT" -d "$DBNAME" -f "$SCRIPT_DIR/sql/ledger-imbalance.sql")"
@@ -373,7 +367,6 @@ if [ -n "$REPORT" ]; then
     printf 'database=%s\n' "$DBNAME"
     printf 'server_version=%s\n' "$SERVER_VERSION"
     printf 'recovery_target_time=%s\n' "${TARGET_TIME:-none}"
-    printf 'ledger_mode=%s\n' "$LEDGER_MODE"
     printf '%s' "$RESULTS"
     printf 'passed=%s\nfailed=%s\nskipped=%s\nwarnings=%s\n' "$PASSED" "$FAILED" "$SKIPPED" "$WARNED"
     printf 'outcome=%s\n' "$([ "$FAILED" -eq 0 ] && printf 'PASS' || printf 'FAIL')"

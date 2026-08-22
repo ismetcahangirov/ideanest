@@ -619,19 +619,26 @@ A server that starts is not a restore that worked, which is why
 ### 12.2 The negative cases
 
 A verification nobody has watched fail is a verification nobody has tested. CI
-runs three restores that **must** fail:
+runs two restores that **must** fail:
 
 ```sh
 ./ops/backup/drill/run-drill.sh --negative late-target      # replay overshoots
 ./ops/backup/drill/run-drill.sh --negative schema-history   # history incomplete
-./ops/backup/drill/run-drill.sh --negative require-ledger   # ledger tables demanded
 ```
 
-The third is the drill asserting its own exception: §7.2 specifies
-`transactions` and `ledger_entries` and no migration creates them yet, so the
-drill runs with `--ledger-mode absent-ok`. The day the migration lands, that
-case starts passing — which is the signal to delete both the flag in
-`run-drill.sh` and the case in the workflow.
+**There was a third, and #62 removed it.** `require-ledger` demanded the ledger
+tables §7.2 specified and no migration created, so that the drill's one exception
+was asserted rather than assumed — the verification had to *fail* when the tables
+were required, and CI watched it fail. V41 creates `transactions` and
+`ledger_entries`, so the case started passing, which is precisely the signal this
+paragraph used to describe. The case, the `--ledger-mode` flag in
+`verify-restore.sh`, and the `absent-ok` default in `run-drill.sh` came out
+together with the migration.
+
+`ledger-balance` is therefore an ordinary check now: a restored database with no
+`ledger_entries` fails the verification, because the strongest check in it cannot
+run and a restore of the platform's books that never looked at them is not a
+verified restore.
 
 ---
 
@@ -645,6 +652,5 @@ Named here rather than left to be discovered during an incident.
 | **No deployed environment** | Everything here is rehearsed against a container, not against infrastructure. There is no Terraform in this repository and §19.1's environments are a plan | The infrastructure epic |
 | **The drill's database is schema-only** | The measured restore time proves the procedure, not the 25-minute budget | Run the quarterly drill against a staging snapshot of production size |
 | **No standby, so no failover** | Recovery is restore-and-promote, and the RTO has a full restore inside it. There is no "promote the replica" path | A streaming replica, which also gives the read replica §7.3 assumes |
-| **`ledger_entries` and `transactions` do not exist** | The strongest check in the verification cannot run. It is skipped loudly and asserted by a negative case, never silently passed | The migration that lands with epic #59 |
 | **Object storage and the search index are not backed up** | Media loss is permanent; the index is rebuildable and not backed up on purpose | The media pipeline epic (§13) |
 | **`prune-archive.sh` is not scheduled** | Retention is enforced by running it. Until it is scheduled, that is a manual step | A scheduled job on the archive host |

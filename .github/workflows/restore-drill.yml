@@ -57,8 +57,8 @@ jobs:
             | tee evidence/drill-positive.log
         shell: bash
 
-      # Three restores that must fail. A verification nobody has watched fail is
-      # a verification nobody has tested, and every one of these is a shape of
+      # Restores that must fail. A verification nobody has watched fail is a
+      # verification nobody has tested, and every one of these is a shape of
       # broken restore that a server which merely starts would hide.
       - name: Negative case — recovery overshoots its target
         run: |
@@ -72,16 +72,11 @@ jobs:
             --report evidence/drill-schema-history.txt | tee evidence/drill-schema-history.log
         shell: bash
 
-      # The exception the drill currently runs with, asserted rather than
-      # trusted: with --ledger-mode required the verification must fail, because
-      # §7.2's ledger tables are specified and not yet created by any migration.
-      # The day that migration lands, this case starts passing and must be
-      # deleted along with `absent-ok` in run-drill.sh.
-      - name: Negative case — the ledger tables are demanded
-        run: |
-          ./ops/backup/drill/run-drill.sh --negative require-ledger \
-            --report evidence/drill-require-ledger.txt | tee evidence/drill-require-ledger.log
-        shell: bash
+      # There was a third case here, `require-ledger`, and #62 removed it. It
+      # asserted the drill's own exception -- that with the ledger tables demanded
+      # the verification must fail, because §7.2 specified them and no migration
+      # created them. V41 creates them, so the case started passing, which the
+      # runbook named as the signal to delete it along with `--ledger-mode`.
 
       - name: Summarise
         if: always()

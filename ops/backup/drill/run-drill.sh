@@ -20,8 +20,12 @@
 #                   The recovery succeeds; the verification must not.
 #   schema-history  remove a row from flyway_schema_history after recovery, the
 #                   shape of a base backup taken against a different release.
-#   require-ledger  demand the ledger tables §7.2 specifies and no migration
-#                   creates yet. This is the drill's own exception, asserted.
+#
+# There was a third, `require-ledger`, and it is gone on purpose. It demanded the
+# ledger tables §7.2 specified and no migration created, so that the drill's one
+# exception was asserted rather than assumed. V41 creates them (#62), so the case
+# started passing — which the runbook named as the signal to delete it, along with
+# `--ledger-mode` in verify-restore.sh. The tables are required now, always.
 #
 # Requirements: docker, and network access the first time (two images).
 # Everything else — PostgreSQL, age, Flyway — is in a container.
@@ -53,7 +57,7 @@ while [ $# -gt 0 ]; do
 done
 
 case "$NEGATIVE" in
-  ''|late-target|schema-history|require-ledger) ;;
+  ''|late-target|schema-history) ;;
   *) printf 'unknown negative case: %s\n' "$NEGATIVE" >&2; exit 2 ;;
 esac
 
@@ -375,12 +379,6 @@ if [ "$NEGATIVE" = "schema-history" ]; then
     -c "DELETE FROM flyway_schema_history WHERE version = '$EXPECT_VERSION'" >&2
 fi
 
-LEDGER_MODE="absent-ok"
-if [ "$NEGATIVE" = "require-ledger" ]; then
-  say "negative case: demanding the ledger tables"
-  LEDGER_MODE="required"
-fi
-
 # --------------------------------------------------------------------------
 say "verifying the restore"
 # --------------------------------------------------------------------------
@@ -397,7 +395,6 @@ docker exec -u postgres -e PGDATABASE="$DB_NAME" "$TARGET" /opt/ideanest/verify-
   --witness-after "$WITNESS_AFTER" \
   --atomic-witness "$ATOMIC_WITNESS" \
   --target-time "$TARGET_TIME" \
-  --ledger-mode "$LEDGER_MODE" \
   --report /restore/report.txt
 VERIFY_STATUS=$?
 set -e
