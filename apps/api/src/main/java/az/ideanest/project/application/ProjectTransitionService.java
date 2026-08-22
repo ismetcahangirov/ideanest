@@ -475,6 +475,48 @@ public class ProjectTransitionService {
     }
 
     /**
+     * §6.1's {@code SUCCESSFUL → COLLECTING}: the campaign's cards start being charged
+     * (#64).
+     *
+     * <p><strong>Two states and not one, and this method is why they are worth
+     * having.</strong> §5.1's successful branch says "collect every confirmed pledge",
+     * and a platform that decided and charged in one transaction could not tell you,
+     * after a crash, which of the two it had done. {@code CampaignFinalizer} writes the
+     * decision and stops; this reads it and starts the money moving, and the durable
+     * record between them is the state itself.
+     *
+     * <p>Claimed the way {@link #finalise} claims: the row is locked and the state
+     * re-read under the lock, so a second replica arriving mid-pass finds
+     * {@code COLLECTING} and does nothing. That matters as much here as it does there —
+     * opening a collection twice would queue a campaign's pledges twice, and the second
+     * queuing would reset every backer's attempt count to zero and hand them four fresh
+     * attempts at a card that had already been refused four times.
+     *
+     * <p><strong>It does not queue the pledges.</strong> Those are the pledge module's
+     * rows and §16.1 forbids reaching for them from here; {@code CampaignCollection}
+     * composes the two inside one transaction, which is where the requirement that they
+     * commit together is stated.
+     *
+     * @param projectId a campaign {@link ProjectRepository#findAwaitingCollection} selected
+     * @param now the pass's instant, stamped on the transition row
+     * @return the campaign, or empty when it was no longer this pass's to open
+     */
+    @Transactional
+    public Optional<Project> beginCollection(UUID projectId, Instant now) {
+        Project project =
+                projects.findByIdForUpdate(projectId).orElseThrow(() -> new ProjectNotFoundException(projectId));
+
+        if (project.getState() != ProjectState.SUCCESSFUL) {
+            log.debug("Campaign {} is in {} and is not this pass's to collect.", projectId, project.getState());
+            return Optional.empty();
+        }
+
+        apply(project, ProjectState.COLLECTING, ActorRole.SYSTEM, null, "Collection opened at " + now + ".");
+        log.info("Campaign {} moved to COLLECTING.", projectId);
+        return Optional.of(project);
+    }
+
+    /**
      * What the transition row says about a decision nobody made.
      *
      * <p>Every other transition's note is either absent or something a person wrote. This
