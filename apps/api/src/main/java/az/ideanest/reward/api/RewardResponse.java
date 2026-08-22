@@ -79,6 +79,7 @@ public record RewardResponse(
         Instant availableUntil,
         List<RewardItemBody> items,
         List<ShippingRuleBody> shippingRules,
+        List<ShippingZoneRateBody> shippingZoneRates,
         long version,
         boolean pricingLocked,
         Instant createdAt,
@@ -109,6 +110,9 @@ public record RewardResponse(
                 tier.getAvailableUntil(),
                 detail.contents().stream().map(RewardItemBody::of).toList(),
                 detail.shippingRules().stream().map(ShippingRuleBody::of).toList(),
+                detail.shippingZoneRules().stream()
+                        .map(ShippingZoneRateBody::of)
+                        .toList(),
                 tier.getVersion(),
                 detail.locks().rewardPriceLocked(),
                 tier.getCreatedAt(),

@@ -225,11 +225,23 @@ public interface RewardStock {
      *     belongs to this module and a second copy of it there would be free to
      *     disagree about what {@code DIGITAL} means
      * @param shippingRate the rate for the destination the pledge named, or null
-     *     when the creator has priced no such row. <strong>Null on a shipped line is
-     *     a refusal and not a zero</strong>, and it is refused where the destination
-     *     can be named — see {@code PledgeQuote}
+     *     when the creator has priced no such row — by name or through a zone it
+     *     falls into (#77). <strong>Null on a shipped line is a refusal and not a
+     *     zero</strong>, and it is refused where the destination can be named — see
+     *     {@code PledgeQuote}
+     * @param unitWeightGrams what one of these weighs: the sum of its items'
+     *     {@code weight_grams} times their quantities, which V7 said would be a query
+     *     rather than a column and #77 is where that query runs. Zero when the
+     *     creator recorded no weights, which is most campaigns and is not an error —
+     *     a per-kilogram rate then contributes nothing and only the flat amount is
+     *     charged
      */
     record SelectableTier(
-            UUID rewardTierId, BigDecimal amount, String currency, boolean shipped, ShippingRate shippingRate) {
+            UUID rewardTierId,
+            BigDecimal amount,
+            String currency,
+            boolean shipped,
+            ShippingRate shippingRate,
+            long unitWeightGrams) {
     }
 }

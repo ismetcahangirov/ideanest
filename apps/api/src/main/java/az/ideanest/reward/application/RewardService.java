@@ -5,10 +5,13 @@ import az.ideanest.reward.domain.RewardTier;
 import az.ideanest.reward.domain.RewardTierItem;
 import az.ideanest.reward.domain.ShippingRule;
 import az.ideanest.reward.domain.ShippingType;
+import az.ideanest.reward.domain.ShippingZoneRule;
 import az.ideanest.reward.infrastructure.ItemRepository;
 import az.ideanest.reward.infrastructure.RewardTierItemRepository;
 import az.ideanest.reward.infrastructure.RewardTierRepository;
 import az.ideanest.reward.infrastructure.ShippingRuleRepository;
+import az.ideanest.reward.infrastructure.ShippingZoneRepository;
+import az.ideanest.reward.infrastructure.ShippingZoneRuleRepository;
 import az.ideanest.shared.money.Money;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -83,6 +86,8 @@ public class RewardService {
     private final RewardTierRepository rewards;
     private final RewardTierItemRepository compositions;
     private final ShippingRuleRepository shippingRules;
+    private final ShippingZoneRuleRepository shippingZoneRules;
+    private final ShippingZoneRepository shippingZones;
     private final ItemRepository items;
     private final RewardAccess access;
 
@@ -90,11 +95,15 @@ public class RewardService {
             RewardTierRepository rewards,
             RewardTierItemRepository compositions,
             ShippingRuleRepository shippingRules,
+            ShippingZoneRuleRepository shippingZoneRules,
+            ShippingZoneRepository shippingZones,
             ItemRepository items,
             RewardAccess access) {
         this.rewards = rewards;
         this.compositions = compositions;
         this.shippingRules = shippingRules;
+        this.shippingZoneRules = shippingZoneRules;
+        this.shippingZones = shippingZones;
         this.items = items;
         this.access = access;
     }
@@ -245,11 +254,31 @@ public class RewardService {
 
         List<ShippingRule> copiedRules = shippingRules.findByRewardTier(rewardId).stream()
                 .map(rule -> ShippingRule.of(
-                        copy.getId(), rule.getCountryCode(), rule.getAmount(), rule.getAdditionalItemAmount()))
+                        copy.getId(),
+                        rule.getCountryCode(),
+                        rule.getAmount(),
+                        rule.getAdditionalItemAmount(),
+                        rule.getPerKilogramAmount()))
                 .toList();
         shippingRules.saveAll(copiedRules);
 
-        return new RewardDetail(copy, copiedContents, copiedRules, authorised.locks());
+        // The zone rates are copied too, for the reason the country rates are: a
+        // duplicated tier that priced nowhere would look like a tier the creator had
+        // finished, and the first sign otherwise would be a backer unable to check
+        // out. The zones themselves are the campaign's, so there is nothing to copy
+        // on that side.
+        List<ShippingZoneRule> copiedZoneRules = shippingZoneRules.findByRewardTier(rewardId).stream()
+                .map(rule -> ShippingZoneRule.of(
+                        copy.getId(),
+                        rule.getZoneId(),
+                        copy.getProjectId(),
+                        rule.getAmount(),
+                        rule.getAdditionalItemAmount(),
+                        rule.getPerKilogramAmount()))
+                .toList();
+        shippingZoneRules.saveAll(copiedZoneRules);
+
+        return new RewardDetail(copy, copiedContents, copiedRules, copiedZoneRules, authorised.locks());
     }
 
     /**
@@ -312,9 +341,19 @@ public class RewardService {
      * repriced. Deleting and reinserting it would be the same result in one more
      * statement, and would have to be flushed between the halves — Hibernate orders
      * inserts before deletes.
+     *
+     * <p><strong>Both tables at once, since #77.</strong> A tier's rate table is now
+     * per-country rows and per-zone rows, and they are replaced in one request
+     * because they are one table as far as a quote is concerned: what a backer in
+     * Germany is charged depends on the presence of a German row <em>and</em> on
+     * whether a zone containing Germany is priced. Two endpoints would let a creator
+     * commit half of a rate change, and the half they committed would be quoting to
+     * backers while they went to find the other one.
      */
     @Transactional
-    public RewardDetail replaceShippingRules(UUID rewardId, UUID accountId, List<ShippingRate> rates) {
+    public RewardDetail replaceShippingRules(
+            UUID rewardId, UUID accountId, List<ShippingRate> rates, List<ZoneRate> zoneRates) {
+
         RewardAccess.AuthorisedReward authorised = access.requireEditableReward(rewardId, accountId);
         RewardTier tier = authorised.tier();
 
@@ -344,7 +383,10 @@ public class RewardService {
             if (stored == null) {
                 result.add(shippingRules.save(candidate));
             } else {
-                stored.reprice(candidate.getAmount(), candidate.getAdditionalItemAmount());
+                stored.reprice(
+                        candidate.getAmount(),
+                        candidate.getAdditionalItemAmount(),
+                        candidate.getPerKilogramAmount());
                 result.add(stored);
             }
         }
@@ -355,7 +397,84 @@ public class RewardService {
             }
         });
 
-        return new RewardDetail(tier, compositions.findByRewardTier(rewardId), List.copyOf(result), authorised.locks());
+        return new RewardDetail(
+                tier,
+                compositions.findByRewardTier(rewardId),
+                List.copyOf(result),
+                replaceZoneRates(tier, zoneRates),
+                authorised.locks());
+    }
+
+    /**
+     * The zone half of the same replacement — §4.8's PM-13 (#77).
+     *
+     * <p>The same diff the country half does, keyed by zone instead of by country
+     * and for the same reason: a zone present in both tables keeps its row, so
+     * repricing the EU does not delete and reinsert a row inside one flush.
+     *
+     * <p>Every zone named is checked against <em>this campaign</em> before anything
+     * is written. The composite foreign key refuses another campaign's zone anyway,
+     * which is what actually makes it impossible; this is what makes the refusal a
+     * sentence naming the zone rather than a constraint violation.
+     */
+    private List<ShippingZoneRule> replaceZoneRates(RewardTier tier, List<ZoneRate> zoneRates) {
+        Map<UUID, ShippingZoneRule> existing = shippingZoneRules.findByRewardTier(tier.getId()).stream()
+                .collect(Collectors.toMap(ShippingZoneRule::getZoneId, Function.identity()));
+
+        List<ShippingZoneRule> result = new ArrayList<>();
+        Set<UUID> requested = new LinkedHashSet<>();
+        for (ZoneRate rate : zoneRates == null ? List.<ZoneRate>of() : zoneRates) {
+            if (rate == null || rate.zoneId() == null || rate.amount() == null) {
+                throw new RewardFieldRejectedException("zoneRates", "Each zone rate names a zone and an amount.");
+            }
+            if (!requested.add(rate.zoneId())) {
+                throw new RewardFieldRejectedException(
+                        "zoneRates", "Each zone appears once: " + rate.zoneId() + " is listed twice.");
+            }
+            if (shippingZones
+                    .findOnProject(tier.getProjectId(), rate.zoneId())
+                    .isEmpty()) {
+                throw new RewardFieldRejectedException(
+                        "zoneRates", "This campaign has no shipping zone " + rate.zoneId() + ".");
+            }
+
+            ShippingZoneRule stored = existing.get(rate.zoneId());
+            try {
+                if (stored == null) {
+                    result.add(shippingZoneRules.save(ShippingZoneRule.of(
+                            tier.getId(),
+                            rate.zoneId(),
+                            tier.getProjectId(),
+                            rate.amount(),
+                            orZero(rate.additionalItemAmount()),
+                            orZero(rate.perKilogramAmount()))));
+                } else {
+                    stored.reprice(
+                            rate.amount(),
+                            orZero(rate.additionalItemAmount()),
+                            orZero(rate.perKilogramAmount()));
+                    result.add(stored);
+                }
+            } catch (IllegalArgumentException rejected) {
+                // The value object refuses a negative rate and a third decimal
+                // place. Both are the client's mistake and both should name the
+                // field the editor can highlight.
+                throw new RewardFieldRejectedException("zoneRates", rejected.getMessage());
+            }
+        }
+
+        existing.forEach((zoneId, stored) -> {
+            if (!requested.contains(zoneId)) {
+                shippingZoneRules.delete(stored);
+            }
+        });
+
+        return List.copyOf(result);
+    }
+
+    /** An omitted rate is free rather than unspecified. See {@code ShippingRate}. */
+    private static BigDecimal orZero(BigDecimal amount) {
+        return amount == null ? BigDecimal.ZERO : amount;
     }
 
     // ------------------------------------------------------------------
@@ -433,11 +552,12 @@ public class RewardService {
                 tier,
                 compositions.findByRewardTier(tier.getId()),
                 shippingRules.findByRewardTier(tier.getId()),
+                shippingZoneRules.findByRewardTier(tier.getId()),
                 locks);
     }
 
     /**
-     * A whole reward list with its compositions and rates, in three queries.
+     * A whole reward list with its compositions and rates, in four queries.
      *
      * <p>Not one query per tier. A campaign with forty tiers is eighty extra round
      * trips on every load of the rewards tab, and an N+1 over a list this central is
@@ -453,12 +573,15 @@ public class RewardService {
                 .collect(Collectors.groupingBy(RewardTierItem::getRewardTierId));
         Map<UUID, List<ShippingRule>> rules = shippingRules.findByRewardTiers(ids).stream()
                 .collect(Collectors.groupingBy(ShippingRule::getRewardTierId));
+        Map<UUID, List<ShippingZoneRule>> zoneRules = shippingZoneRules.findByRewardTiers(ids).stream()
+                .collect(Collectors.groupingBy(ShippingZoneRule::getRewardTierId));
 
         return tiers.stream()
                 .map(tier -> new RewardDetail(
                         tier,
                         contents.getOrDefault(tier.getId(), List.of()),
                         rules.getOrDefault(tier.getId(), List.of()),
+                        zoneRules.getOrDefault(tier.getId(), List.of()),
                         locks))
                 .toList();
     }
@@ -618,10 +741,13 @@ public class RewardService {
         }
         try {
             // An omitted additional-item rate is free, not unspecified. See
-            // ShippingRate.
+            // ShippingRate. An omitted per-kilogram rate says the same thing about
+            // weight: the tier is priced flat, which is what almost every tier is.
             BigDecimal additional =
                     rate.additionalItemAmount() == null ? BigDecimal.ZERO : rate.additionalItemAmount();
-            return ShippingRule.of(rewardId, rate.countryCode(), rate.amount(), additional);
+            BigDecimal perKilogram =
+                    rate.perKilogramAmount() == null ? BigDecimal.ZERO : rate.perKilogramAmount();
+            return ShippingRule.of(rewardId, rate.countryCode(), rate.amount(), additional, perKilogram);
         } catch (IllegalArgumentException e) {
             // The value object refuses a code that is not a country and a rate that is
             // negative. Both are the client's mistake, and both should name the field

@@ -271,7 +271,12 @@ class PublicRewardApiTests extends AbstractIntegrationTest {
         // PL-05: the destination drives the charge, so the client cannot quote a
         // total without these.
         assertThat(listOf(tier, "shippingRates"))
-                .containsExactly(Map.of("countryCode", "AZ", "amount", "5.00", "additionalItemAmount", "2.00"));
+                // `perKilogramAmount` arrived with #77 and is zero for a tier priced flat.
+                .containsExactly(Map.of(
+                        "countryCode", "AZ",
+                        "amount", "5.00",
+                        "additionalItemAmount", "2.00",
+                        "perKilogramAmount", "0.00"));
     }
 
     @Test

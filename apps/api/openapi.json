@@ -2089,6 +2089,24 @@
         "tags" : [ "backer-signal-controller" ]
       }
     },
+    "/v1/me/surveys" : {
+      "get" : {
+        "operationId" : "backerSurveyMine",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BackerSurveyListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "backer-survey-controller" ]
+      }
+    },
     "/v1/pledges/draft" : {
       "post" : {
         "operationId" : "pledgeDraft",
@@ -2260,6 +2278,68 @@
           }
         },
         "tags" : [ "pledge-controller" ]
+      }
+    },
+    "/v1/pledges/{pledgeId}/shipping-address" : {
+      "get" : {
+        "operationId" : "shippingAddressRead",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "pledgeId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ShippingAddressResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "shipping-address-controller" ]
+      },
+      "patch" : {
+        "operationId" : "shippingAddressSave",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "pledgeId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PostalAddressBody"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ShippingAddressResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "shipping-address-controller" ]
       }
     },
     "/v1/projects" : {
@@ -3700,6 +3780,184 @@
         "tags" : [ "backer-signal-controller" ]
       }
     },
+    "/v1/projects/{projectId}/shipping-addresses/lock" : {
+      "post" : {
+        "operationId" : "shippingAddressLock",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LockAddressesResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "shipping-address-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/shipping-addresses/progress" : {
+      "get" : {
+        "operationId" : "shippingAddressProgress",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AddressProgressResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "shipping-address-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/shipping-zones" : {
+      "get" : {
+        "operationId" : "shippingZoneList",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ShippingZoneListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "shipping-zone-controller" ]
+      },
+      "put" : {
+        "operationId" : "shippingZoneReplace",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ShippingZonesRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ShippingZoneListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "shipping-zone-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/surveys" : {
+      "get" : {
+        "operationId" : "surveyList",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SurveyListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "survey-controller" ]
+      },
+      "post" : {
+        "operationId" : "surveyCreate",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SurveyRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SurveyResponseBody"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "survey-controller" ]
+      }
+    },
     "/v1/projects/{projectId}/updates" : {
       "get" : {
         "operationId" : "publicProjectUpdateList",
@@ -4172,6 +4430,185 @@
         "tags" : [ "search-controller" ]
       }
     },
+    "/v1/surveys/{surveyId}" : {
+      "delete" : {
+        "operationId" : "surveyDelete",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "surveyId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "survey-controller" ]
+      },
+      "get" : {
+        "operationId" : "surveyRead",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "surveyId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SurveyResponseBody"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "survey-controller" ]
+      },
+      "put" : {
+        "operationId" : "surveyUpdate",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "surveyId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SurveyRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SurveyResponseBody"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "survey-controller" ]
+      }
+    },
+    "/v1/surveys/{surveyId}/respond" : {
+      "post" : {
+        "operationId" : "backerSurveyRespond",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "surveyId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RespondRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BackerSurveyBody"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "backer-survey-controller" ]
+      }
+    },
+    "/v1/surveys/{surveyId}/responses" : {
+      "get" : {
+        "operationId" : "surveyCollected",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "surveyId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SurveyResponseListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "survey-controller" ]
+      }
+    },
+    "/v1/surveys/{surveyId}/send" : {
+      "post" : {
+        "operationId" : "surveySend",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "surveyId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SurveyResponseBody"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "survey-controller" ]
+      }
+    },
     "/v1/users/{id}/report" : {
       "post" : {
         "operationId" : "contentReportReportUser",
@@ -4353,6 +4790,23 @@
         },
         "required" : [ "note", "projectId" ]
       },
+      "AddressProgressResponse" : {
+        "type" : "object",
+        "properties" : {
+          "editable" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "given" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "locked" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
       "AdminCollectionIndex" : {
         "type" : "object",
         "properties" : {
@@ -4456,6 +4910,21 @@
           },
           "total" : {
             "$ref" : "#/components/schemas/Money"
+          }
+        }
+      },
+      "AnswerBody" : {
+        "type" : "object",
+        "properties" : {
+          "questionId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "value" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
           }
         }
       },
@@ -4606,6 +5075,66 @@
           "updatedAt" : {
             "type" : "string",
             "format" : "date-time"
+          }
+        }
+      },
+      "BackerSurveyBody" : {
+        "type" : "object",
+        "properties" : {
+          "answered" : {
+            "type" : "boolean"
+          },
+          "answers" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AnswerBody"
+            }
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "open" : {
+            "type" : "boolean"
+          },
+          "pledgeId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "questions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SurveyQuestionBody"
+            }
+          },
+          "respondBy" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "submittedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "surveyId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
+      },
+      "BackerSurveyListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "surveys" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/BackerSurveyBody"
+            }
           }
         }
       },
@@ -5461,6 +5990,29 @@
         },
         "required" : [ "password" ]
       },
+      "Entry" : {
+        "type" : "object",
+        "properties" : {
+          "answers" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AnswerBody"
+            }
+          },
+          "backerId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "pledgeId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "submittedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
       "ExplanationResponse" : {
         "type" : "object",
         "properties" : {
@@ -5814,6 +6366,19 @@
           }
         }
       },
+      "LockAddressesResponse" : {
+        "type" : "object",
+        "properties" : {
+          "locked" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "stillEditable" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
       "MeResponse" : {
         "type" : "object",
         "properties" : {
@@ -6121,6 +6686,35 @@
         "type" : "object",
         "properties" : {
           "body" : {
+            "type" : "string"
+          }
+        }
+      },
+      "PostalAddressBody" : {
+        "type" : "object",
+        "properties" : {
+          "countryCode" : {
+            "type" : "string"
+          },
+          "line1" : {
+            "type" : "string"
+          },
+          "line2" : {
+            "type" : "string"
+          },
+          "locality" : {
+            "type" : "string"
+          },
+          "phone" : {
+            "type" : "string"
+          },
+          "postcode" : {
+            "type" : "string"
+          },
+          "recipient" : {
+            "type" : "string"
+          },
+          "region" : {
             "type" : "string"
           }
         }
@@ -6853,6 +7447,21 @@
           }
         }
       },
+      "RespondRequest" : {
+        "type" : "object",
+        "properties" : {
+          "answers" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AnswerBody"
+            }
+          },
+          "pledgeId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }
+      },
       "RewardItemBody" : {
         "type" : "object",
         "properties" : {
@@ -6998,6 +7607,12 @@
           },
           "shippingType" : {
             "type" : "string"
+          },
+          "shippingZoneRates" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ShippingZoneRateBody"
+            }
           },
           "sortOrder" : {
             "type" : "integer",
@@ -7193,6 +7808,29 @@
         },
         "required" : [ "active", "note", "weight" ]
       },
+      "ShippingAddressResponse" : {
+        "type" : "object",
+        "properties" : {
+          "address" : {
+            "$ref" : "#/components/schemas/PostalAddressBody"
+          },
+          "locked" : {
+            "type" : "boolean"
+          },
+          "lockedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "pledgeId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
       "ShippingRuleBody" : {
         "type" : "object",
         "properties" : {
@@ -7204,6 +7842,9 @@
           },
           "countryCode" : {
             "type" : "string"
+          },
+          "perKilogramAmount" : {
+            "type" : "number"
           }
         }
       },
@@ -7214,6 +7855,70 @@
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/ShippingRuleBody"
+            }
+          },
+          "zoneRates" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ShippingZoneRateBody"
+            }
+          }
+        }
+      },
+      "ShippingZoneBody" : {
+        "type" : "object",
+        "properties" : {
+          "countryCodes" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ShippingZoneListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "zones" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ShippingZoneBody"
+            }
+          }
+        }
+      },
+      "ShippingZoneRateBody" : {
+        "type" : "object",
+        "properties" : {
+          "additionalItemAmount" : {
+            "type" : "number"
+          },
+          "amount" : {
+            "type" : "number"
+          },
+          "perKilogramAmount" : {
+            "type" : "number"
+          },
+          "zoneId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }
+      },
+      "ShippingZonesRequest" : {
+        "type" : "object",
+        "properties" : {
+          "zones" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ShippingZoneBody"
             }
           }
         }
@@ -7366,6 +8071,157 @@
             "items" : {
               "$ref" : "#/components/schemas/SuggestionItem"
             }
+          }
+        }
+      },
+      "SurveyListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "surveys" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SurveyResponseBody"
+            }
+          }
+        }
+      },
+      "SurveyQuestionBody" : {
+        "type" : "object",
+        "properties" : {
+          "choices" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "helpText" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "position" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "prompt" : {
+            "type" : "string"
+          },
+          "required" : {
+            "type" : "boolean"
+          },
+          "rewardTierId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        }
+      },
+      "SurveyRequest" : {
+        "type" : "object",
+        "properties" : {
+          "message" : {
+            "type" : "string"
+          },
+          "questions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SurveyQuestionBody"
+            }
+          },
+          "respondBy" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
+      },
+      "SurveyResponseBody" : {
+        "type" : "object",
+        "properties" : {
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "questions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SurveyQuestionBody"
+            }
+          },
+          "respondBy" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "responseCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "sent" : {
+            "type" : "boolean"
+          },
+          "sentAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "sentTo" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "SurveyResponseListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "questions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SurveyQuestionBody"
+            }
+          },
+          "responses" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Entry"
+            }
+          },
+          "sentTo" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "surveyId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int64"
           }
         }
       },

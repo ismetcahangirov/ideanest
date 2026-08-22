@@ -743,7 +743,11 @@ public class ReservationService {
         if (destination == null || tier.shippingRate() == null) {
             throw new ShippingDestinationUnpricedException(tier.rewardTierId(), destination);
         }
-        return QuotedLine.shipped(tier.amount(), tier.currency(), quantity, tier.shippingRate());
+        // The weight comes with the tier because the items that carry it are the
+        // reward module's, and it is passed on rather than defaulted so that a
+        // per-kilogram rate (#77) prices the parcel the backer is actually getting.
+        return QuotedLine.shipped(
+                tier.amount(), tier.currency(), quantity, tier.shippingRate(), tier.unitWeightGrams());
     }
 
     /**

@@ -313,6 +313,42 @@ ideanest:
       # trail, so it is pruned; see V8.
       versions-kept: ${STORY_VERSIONS_KEPT:50}
 
+  # §4.8's pledge manager (#73, #74, #75). Only what an operator has to see is
+  # here; the bounds on a survey are defaulted in PledgeManagerProperties and
+  # argued there, for the reason AnalyticsProperties gives about a deployment that
+  # configures none of it still having to start.
+  pledge-manager:
+    surveys:
+      # §8.4's `survey-nudge`, daily. Daily rather than hourly because nothing about
+      # a reminder is judged on promptness -- the difference between chasing
+      # somebody at nine and at ten is not a difference anybody can perceive -- and
+      # because each pass is a read over every open survey's backer list.
+      nudge-schedule: ${SURVEY_NUDGE_SCHEDULE:0 0 9 * * *}
+    addresses:
+      # §17.2: postal addresses are encrypted at rest with application-managed keys.
+      #
+      # **There is no default, deliberately.** A generated key would change on the
+      # next deploy and make every stored address unreadable, discovered by a creator
+      # trying to ship; a key committed here would be a published key, which is not
+      # encryption. So an unconfigured deployment starts, serves everything else, and
+      # refuses the first address with a 503 naming this property --
+      # PledgeManagerProperties.Addresses argues why that is better than failing to
+      # start.
+      #
+      # Rotation is two deploys: add the new key to `keys`, deploy so every instance
+      # can read it, then move `primary-key-id`. Old keys stay listed, and rows
+      # migrate to the new one as they are rewritten.
+      #
+      # Nothing is bound here, and that is not an omission. Both the label and the
+      # material are per environment, and a placeholder with an empty default would
+      # bind an empty key under an empty label -- which is a deployment that looks
+      # configured and refuses every write. A deployment sets, in its own
+      # environment:
+      #
+      #   IDEANEST_PLEDGEMANAGER_ADDRESSES_PRIMARYKEYID=2026-08
+      #   IDEANEST_PLEDGEMANAGER_ADDRESSES_KEYS_2026-08=<32 bytes, base64>
+      primary-key-id: ~
+
   pledge:
     reservation:
       # §4.5's sequence diagram: "Reserve stock (5 min TTL)". A DRAFT pledge holds

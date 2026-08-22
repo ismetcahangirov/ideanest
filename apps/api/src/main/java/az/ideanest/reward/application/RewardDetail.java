@@ -4,6 +4,7 @@ import az.ideanest.project.application.EditLocks;
 import az.ideanest.reward.domain.RewardTier;
 import az.ideanest.reward.domain.RewardTierItem;
 import az.ideanest.reward.domain.ShippingRule;
+import az.ideanest.reward.domain.ShippingZoneRule;
 import java.util.List;
 
 /**
@@ -11,9 +12,17 @@ import java.util.List;
  *
  * <p>Composition and shipping rates are separate tables and separate entities —
  * see {@code RewardTier} for why they are not mapped as associations — so something
- * has to carry the three together from the service to the response. This does, and
- * it is assembled with one query per collection for a whole reward list rather than
- * one per tier.
+ * has to carry them together from the service to the response. This does, and it is
+ * assembled with one query per collection for a whole reward list rather than one
+ * per tier.
+ *
+ * <p><strong>Two rate tables since #77</strong>, and both are carried: the
+ * per-country rates V7 has always had, and the per-zone rates V37 added. They are
+ * separate collections rather than one merged list because they are edited as two —
+ * a creator removes Germany from the named list without touching what the EU zone
+ * charges — and because merging them would have to decide the precedence in the
+ * response, which is {@code ShippingRates}' decision and belongs where a quote is
+ * built rather than where an editor is rendered.
  *
  * <p>Every endpoint in this module that returns a tier returns this, so a client
  * applies the same update to its state after a create, a patch, a duplicate, and a
@@ -28,10 +37,15 @@ import java.util.List;
  *     #183 for what happened when there was nothing to do it with
  */
 public record RewardDetail(
-        RewardTier tier, List<RewardTierItem> contents, List<ShippingRule> shippingRules, EditLocks locks) {
+        RewardTier tier,
+        List<RewardTierItem> contents,
+        List<ShippingRule> shippingRules,
+        List<ShippingZoneRule> shippingZoneRules,
+        EditLocks locks) {
 
     public RewardDetail {
         contents = List.copyOf(contents);
         shippingRules = List.copyOf(shippingRules);
+        shippingZoneRules = List.copyOf(shippingZoneRules);
     }
 }

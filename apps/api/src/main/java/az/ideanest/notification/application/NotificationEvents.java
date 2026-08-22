@@ -325,4 +325,69 @@ public final class NotificationEvents {
 
         public static final String EVENT_TYPE = "project.message_sent";
     }
+
+    /**
+     * §4.8's PM-04 (#74): a survey went out to a campaign's backers.
+     *
+     * <p>Renders as {@code SURVEY_AVAILABLE}, which §4.10 has had a row for since #85 and which
+     * nothing had ever raised. The audience is {@code BACKERS} and is resolved here rather than
+     * carried, exactly as {@code CampaignMessageSent}'s is — the platform stores no list of who
+     * a survey was sent to, and {@code SurveySentEvent} argues why storing one would be worse
+     * than the drift it would remove.
+     *
+     * <p><strong>The questions do not travel.</strong> The notification says a survey is
+     * waiting and links to it; the form is behind {@code GET /v1/me/surveys}, which filters the
+     * questions to the ones this backer's tier is actually asked (PM-02). A copy of the
+     * questions in the payload would be a copy that could not do that filtering, multiplied by
+     * every recipient and every redelivery.
+     *
+     * @param respondBy PM-06's cut-off, or null. Rendered in the message, because "answer by"
+     *     is the only thing that makes a survey notice actionable rather than another update
+     * @param recipients how many it reached, frozen at the send. Carried for the log and not
+     *     rendered — a backer has no use for how many other people were asked
+     * @param truncated whether the campaign was above the platform's audience ceiling, so the
+     *     delivery side can log the same fact the creator was shown
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record SurveySent(
+            UUID surveyId,
+            UUID projectId,
+            String title,
+            Instant respondBy,
+            int recipients,
+            boolean truncated,
+            Instant sentAt) {
+
+        public static final String EVENT_TYPE = "survey.sent";
+    }
+
+    /**
+     * §4.8's PM-24 (#74): one backer was reminded about one survey.
+     *
+     * <p>Renders as {@code SURVEY_OVERDUE}, the second §4.10 row that nothing had ever raised.
+     *
+     * <p><strong>Per recipient, unlike every other event here.</strong> That is not an
+     * inconsistency: a reminder is already the result of a fan-out — {@code SurveyNudgeJob}
+     * worked out exactly who has not answered — and re-resolving the audience at delivery would
+     * chase the people who answered in the meantime. It is also what lets {@code survey_nudges}
+     * be the claim: one row, one event, one message, in one transaction.
+     *
+     * @param backerId who to tell. Present because the audience is not derivable here, which is
+     *     the whole point of the per-recipient shape
+     * @param attempt which reminder this is, so the copy could differ on the third and so a
+     *     support conversation about "I have had four of these" has something to check
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record SurveyNudged(
+            UUID surveyId,
+            UUID projectId,
+            UUID pledgeId,
+            UUID backerId,
+            String title,
+            Instant respondBy,
+            int attempt,
+            Instant sentAt) {
+
+        public static final String EVENT_TYPE = "survey.nudged";
+    }
 }

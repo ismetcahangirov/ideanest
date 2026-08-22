@@ -31,10 +31,15 @@ import java.util.Objects;
  * than two decimal places instead of rounding them — the rule is stated there, once,
  * and reused here rather than restated. Everything this then does is exact at two
  * decimal places: a price times a whole quantity, and additions. So no result ever
- * needs rounding, and {@code setScale} is never called with a mode that could
- * discard anything. The one place a rate could produce a third decimal place is
- * tax, and {@link TaxPolicy} says why that decision is #78's rather than this
- * class's.
+ * needs rounding here, and {@code setScale} is never called in this class with a
+ * mode that could discard anything.
+ *
+ * <p>Two amounts arrive already rounded, and both say so where they are computed
+ * rather than here. A weight-based shipping rate (#77) divides grams by a thousand
+ * and multiplies by a rate, which is the one calculation on the platform that
+ * cannot come out exact — {@code ShippingRate.costFor} rounds it, once, half-up,
+ * and argues why. Tax is the other, and {@link TaxPolicy} says why that decision is
+ * #78's rather than this class's.
  *
  * <h2>What is deliberately not here</h2>
  *
@@ -200,7 +205,9 @@ public record PledgeQuote(
         if (rate == null) {
             // "Anywhere the creator has priced", per ShippingType.INTERNATIONAL. A
             // destination with no rule is one nobody costed, and quoting it at zero
-            // makes the creator pay the carrier out of their own funding.
+            // makes the creator pay the carrier out of their own funding. Since #77
+            // "priced" includes a zone the destination falls into, which is the
+            // resolver's business and not this class's.
             throw new IllegalArgumentException("The creator has not priced shipping to " + destination);
         }
         String priced = rate.countryCode() == null ? null : rate.countryCode().trim().toUpperCase(Locale.ROOT);
@@ -212,17 +219,14 @@ public record PledgeQuote(
                     "A rate for " + rate.countryCode() + " cannot price a pledge going to " + destination);
         }
 
-        BigDecimal first = Money.of(rate.amount(), currency).amount();
-        // Null is a flat rate however many are ordered — see ShippingRate, which
-        // says an omitted additional amount is deliberate rather than missing.
-        BigDecimal additional = rate.additionalItemAmount() == null
-                ? BigDecimal.ZERO.setScale(Money.SCALE)
-                : Money.of(rate.additionalItemAmount(), currency).amount();
-        if (first.signum() < 0 || additional.signum() < 0) {
-            throw new IllegalArgumentException("Shipping to " + destination + " cannot cost less than nothing");
-        }
-
-        return first.add(additional.multiply(BigDecimal.valueOf(line.quantity() - 1L)));
+        // The arithmetic is the rate's own, because since #77 it has a weight
+        // component and weight is the one thing on this platform that does not
+        // divide exactly. ShippingRate.costFor states that rounding rule once; a
+        // copy of it here would be a second one, free to disagree the day either
+        // is edited. This class's promise -- that it never rounds -- is kept by
+        // delegating rather than by pretending the problem is not there.
+        return Money.of(rate.costFor(line.quantity(), line.unitWeightGrams(), currency), currency)
+                .amount();
     }
 
     /** The policy's answer, held to the same two decimal places as everything else. */
