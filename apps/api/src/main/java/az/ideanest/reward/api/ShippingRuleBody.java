@@ -22,17 +22,27 @@ import java.math.BigDecimal;
  *
  * @param additionalItemAmount what each unit after the first costs. Omitted means
  *     free: a flat rate however many are ordered is an offer creators make on purpose
+ * @param perKilogramAmount §4.8's PM-12 (#77): what each kilogram costs, added to
+ *     {@code amount} rather than replacing it, because that is the shape of every
+ *     carrier tariff. Omitted means this tier is not priced by weight, which is what
+ *     almost every campaign means and is why the field is optional rather than
+ *     required with a zero
  */
 public record ShippingRuleBody(
         String countryCode,
         @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal amount,
-        @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal additionalItemAmount) {
+        @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal additionalItemAmount,
+        @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal perKilogramAmount) {
 
     public static ShippingRuleBody of(ShippingRule rule) {
-        return new ShippingRuleBody(rule.getCountryCode(), rule.getAmount(), rule.getAdditionalItemAmount());
+        return new ShippingRuleBody(
+                rule.getCountryCode(),
+                rule.getAmount(),
+                rule.getAdditionalItemAmount(),
+                rule.getPerKilogramAmount());
     }
 
     public ShippingRate toRate() {
-        return new ShippingRate(countryCode, amount, additionalItemAmount);
+        return new ShippingRate(countryCode, amount, additionalItemAmount, perKilogramAmount);
     }
 }

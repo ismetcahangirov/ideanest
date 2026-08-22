@@ -41,9 +41,19 @@ import java.util.Objects;
  *     destination is known and can be named. On a line that is not shipped the
  *     rate is ignored rather than refused: a tier switched to {@code DIGITAL}
  *     keeps whatever rules it had, and §7.2 is explicit that no rule applies to it
+ * @param unitWeightGrams what one of these weighs, summed by the caller from the
+ *     tier's items and their quantities — V7 put the weight on the item and said
+ *     that a tier's weight is a query rather than a column, and #77 is where that
+ *     query is finally run. Zero when the creator recorded no weights, which is
+ *     the majority of campaigns and is not an error: see {@link ShippingRate#costFor}
  */
 public record QuotedLine(
-        BigDecimal unitAmount, String currency, int quantity, boolean shipped, ShippingRate shippingRate) {
+        BigDecimal unitAmount,
+        String currency,
+        int quantity,
+        boolean shipped,
+        ShippingRate shippingRate,
+        long unitWeightGrams) {
 
     public QuotedLine {
         Objects.requireNonNull(unitAmount, "A line has a price");
@@ -62,15 +72,20 @@ public record QuotedLine(
         if (quantity < 1) {
             throw new IllegalArgumentException("A selected line has a quantity of at least 1, not " + quantity);
         }
+        if (unitWeightGrams < 0) {
+            throw new IllegalArgumentException("A line cannot weigh less than nothing");
+        }
     }
 
     /** Something a backer keeps, not something posted: a digital file, a credit, a collection in person. */
     public static QuotedLine notShipped(BigDecimal unitAmount, String currency, int quantity) {
-        return new QuotedLine(unitAmount, currency, quantity, false, null);
+        // Weightless by construction rather than by omission: nothing that is not
+        // posted has a shipping weight, whatever its items say they weigh.
+        return new QuotedLine(unitAmount, currency, quantity, false, null, 0L);
     }
 
     /**
-     * Something posted to the destination the pledge names.
+     * Something posted to the destination the pledge names, priced by a flat rate.
      *
      * @param shippingRate the rate for <em>that</em> destination, or null when the
      *     creator has not priced it. Resolving it is the caller's job because the
@@ -78,7 +93,20 @@ public record QuotedLine(
      *     for the right country is {@link PledgeQuote}'s, and it does
      */
     public static QuotedLine shipped(BigDecimal unitAmount, String currency, int quantity, ShippingRate shippingRate) {
-        return new QuotedLine(unitAmount, currency, quantity, true, shippingRate);
+        return new QuotedLine(unitAmount, currency, quantity, true, shippingRate, 0L);
+    }
+
+    /**
+     * The same, for a tier whose items carry recorded weights.
+     *
+     * <p>A separate factory rather than a fifth argument on the one above, so that
+     * a caller which has not summed the tier's item weights cannot accidentally
+     * claim it did by passing a zero.
+     */
+    public static QuotedLine shipped(
+            BigDecimal unitAmount, String currency, int quantity, ShippingRate shippingRate, long unitWeightGrams) {
+
+        return new QuotedLine(unitAmount, currency, quantity, true, shippingRate, unitWeightGrams);
     }
 
     /**

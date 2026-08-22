@@ -103,6 +103,20 @@ public class ShippingRule {
     @Column(name = "additional_item_amount", nullable = false)
     private BigDecimal additionalItemAmount;
 
+    /**
+     * §4.8's PM-12, added by V37: what each kilogram costs, <strong>added to</strong>
+     * {@link #amount} rather than replacing it, because that is the shape every
+     * carrier tariff has — a handling charge plus a rate by weight.
+     *
+     * <p>Zero is the default and means "this tier is not priced by weight", which is
+     * what almost every campaign means. The weight itself is summed from
+     * {@code items.weight_grams} over the tier's contents; V7 put that column on the
+     * item and said a tier's weight is a query rather than a column somebody
+     * maintains, and #77 is where that query is finally run.
+     */
+    @Column(name = "per_kilogram_amount", nullable = false)
+    private BigDecimal perKilogramAmount;
+
     protected ShippingRule() {
         // JPA.
     }
@@ -117,7 +131,11 @@ public class ShippingRule {
      *     unexplainable
      */
     public static ShippingRule of(
-            UUID rewardTierId, String countryCode, BigDecimal amount, BigDecimal additionalItemAmount) {
+            UUID rewardTierId,
+            String countryCode,
+            BigDecimal amount,
+            BigDecimal additionalItemAmount,
+            BigDecimal perKilogramAmount) {
 
         String normalised = countryCode == null ? "" : countryCode.trim().toUpperCase(Locale.ROOT);
         if (normalised.length() != COUNTRY_CODE_LENGTH || !normalised.chars().allMatch(Character::isLetter)) {
@@ -127,6 +145,7 @@ public class ShippingRule {
         rule.id = new Key(rewardTierId, normalised);
         rule.amount = exact(amount, "A shipping rate");
         rule.additionalItemAmount = exact(additionalItemAmount, "An additional-item rate");
+        rule.perKilogramAmount = exact(perKilogramAmount, "A per-kilogram rate");
         return rule;
     }
 
@@ -173,10 +192,15 @@ public class ShippingRule {
         return additionalItemAmount;
     }
 
+    public BigDecimal getPerKilogramAmount() {
+        return perKilogramAmount;
+    }
+
     /** The same destination at new rates. See the class comment for why this exists. */
-    public void reprice(BigDecimal amount, BigDecimal additionalItemAmount) {
+    public void reprice(BigDecimal amount, BigDecimal additionalItemAmount, BigDecimal perKilogramAmount) {
         this.amount = exact(amount, "A shipping rate");
         this.additionalItemAmount = exact(additionalItemAmount, "An additional-item rate");
+        this.perKilogramAmount = exact(perKilogramAmount, "A per-kilogram rate");
     }
 
     @Override

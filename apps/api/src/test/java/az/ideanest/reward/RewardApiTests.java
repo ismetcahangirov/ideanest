@@ -886,7 +886,13 @@ class RewardApiTests extends AbstractIntegrationTest {
                         Map.of("rules", List.of(Map.of("countryCode", "AZ", "amount", "7.50"))))
                 .getBody();
         assertThat(listOf(narrowed, "shippingRules"))
-                .containsExactly(Map.of("countryCode", "AZ", "amount", "7.50", "additionalItemAmount", "0.00"));
+                // `perKilogramAmount` arrived with #77 and is zero for a tier priced flat,
+                // which is what almost every tier is.
+                .containsExactly(Map.of(
+                        "countryCode", "AZ",
+                        "amount", "7.50",
+                        "additionalItemAmount", "0.00",
+                        "perKilogramAmount", "0.00"));
 
         // Two rates for one destination would be two answers to one question.
         ResponseEntity<Map<String, Object>> twice = put(

@@ -2,16 +2,14 @@ package az.ideanest.reward.application;
 
 import az.ideanest.project.application.RewardFacts;
 import az.ideanest.reward.domain.RewardTier;
-import az.ideanest.reward.domain.ShippingRule;
+import az.ideanest.reward.infrastructure.RewardTierItemRepository;
 import az.ideanest.reward.infrastructure.RewardTierRepository;
-import az.ideanest.reward.infrastructure.ShippingRuleRepository;
 import az.ideanest.shared.money.Money;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -53,11 +51,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class RewardTierFacts implements RewardFacts, RewardStock, RewardTitles {
 
     private final RewardTierRepository rewards;
-    private final ShippingRuleRepository shippingRules;
+    private final RewardTierItemRepository contents;
+    private final ShippingRates shippingRates;
 
-    public RewardTierFacts(RewardTierRepository rewards, ShippingRuleRepository shippingRules) {
+    public RewardTierFacts(
+            RewardTierRepository rewards, RewardTierItemRepository contents, ShippingRates shippingRates) {
+
         this.rewards = rewards;
-        this.shippingRules = shippingRules;
+        this.contents = contents;
+        this.shippingRates = shippingRates;
     }
 
     @Override
@@ -207,7 +209,9 @@ public class RewardTierFacts implements RewardFacts, RewardStock, RewardTitles {
         }
 
         List<RewardTier> tiers = rewards.findSelected(projectId, rewardTierIds);
-        Map<UUID, ShippingRate> rates = ratesTo(tiers, destinationCountry);
+        List<UUID> tierIds = tiers.stream().map(RewardTier::getId).toList();
+        Map<UUID, ShippingRate> rates = shippingRates.ratesTo(projectId, tierIds, destinationCountry);
+        Map<UUID, Long> weights = weightsOf(tierIds);
 
         return tiers.stream()
                 .map(tier -> new SelectableTier(
@@ -215,8 +219,31 @@ public class RewardTierFacts implements RewardFacts, RewardStock, RewardTitles {
                         tier.getAmount(),
                         tier.getCurrency(),
                         tier.getShippingType().isShipped(),
-                        rates.get(tier.getId())))
+                        rates.get(tier.getId()),
+                        weights.getOrDefault(tier.getId(), 0L)))
                 .toList();
+    }
+
+    /**
+     * What each of these tiers weighs, for #77's per-kilogram rates.
+     *
+     * <p>One query however many tiers were selected, and it is skipped entirely when
+     * nothing was: {@code IN ()} is not valid SQL, and a pledge with no reward and no
+     * add-ons is §4.5's PL-02 rather than a mistake.
+     *
+     * <p>A tier absent from the result weighs zero — it has no items, or none of its
+     * items has a recorded weight — and both mean the same thing to a quote. See
+     * {@code ShippingRate.costFor} for why that is not an error.
+     */
+    private Map<UUID, Long> weightsOf(Collection<UUID> rewardTierIds) {
+        if (rewardTierIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, Long> weights = new HashMap<>();
+        for (Object[] row : contents.weighTiers(rewardTierIds)) {
+            weights.put((UUID) row[0], ((Number) row[1]).longValue());
+        }
+        return weights;
     }
 
     /** {@inheritDoc} */
@@ -226,36 +253,4 @@ public class RewardTierFacts implements RewardFacts, RewardStock, RewardTitles {
         return rewards.findAvailableAlternatives(projectId, rewardTierId, at);
     }
 
-    /**
-     * The rate each tier charges to one destination, for the tiers that priced it.
-     *
-     * <p>A tier with no rule for the destination is absent rather than present with
-     * a zero. The distinction is the whole of §7.2's "anywhere the creator has
-     * priced": a missing rate on a shipped line is a refusal, and a zero would make
-     * the creator pay the carrier out of their funding without either party
-     * noticing.
-     *
-     * <p>No destination means no rates at all. That is not the same as a destination
-     * nobody priced — a backer who has not said where it goes has not chosen
-     * anything wrong — but both come out of the quote as the same refusal, because
-     * both are "this cannot be posted yet".
-     */
-    private Map<UUID, ShippingRate> ratesTo(List<RewardTier> tiers, String destinationCountry) {
-        if (destinationCountry == null || tiers.isEmpty()) {
-            return Map.of();
-        }
-        String destination = destinationCountry.trim().toUpperCase(Locale.ROOT);
-
-        Map<UUID, ShippingRate> rates = new HashMap<>();
-        for (ShippingRule rule : shippingRules.findByRewardTiers(tiers.stream()
-                .map(RewardTier::getId)
-                .toList())) {
-            if (destination.equals(rule.getCountryCode())) {
-                rates.put(
-                        rule.getRewardTierId(),
-                        new ShippingRate(rule.getCountryCode(), rule.getAmount(), rule.getAdditionalItemAmount()));
-            }
-        }
-        return rates;
-    }
 }

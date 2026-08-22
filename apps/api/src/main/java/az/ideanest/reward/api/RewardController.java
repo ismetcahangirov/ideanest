@@ -146,7 +146,8 @@ public class RewardController {
             @PathVariable UUID id,
             @RequestBody ShippingRulesRequest request) {
 
-        return RewardResponse.of(rewards.replaceShippingRules(id, callerOf(accessToken), request.toRates()));
+        return RewardResponse.of(rewards.replaceShippingRules(
+                id, callerOf(accessToken), request.toRates(), request.toZoneRates()));
     }
 
     private static List<RewardResponse> responses(List<RewardDetail> details) {

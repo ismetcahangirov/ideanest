@@ -117,7 +117,7 @@ class PledgeQuoteTests {
     @Test
     @DisplayName("PL-05: the first unit at the rate, every unit after it at the additional rate")
     void shippingChargesTheFirstUnitAndThenTheRest() {
-        ShippingRate poster = new ShippingRate("AZ", new BigDecimal("5.00"), new BigDecimal("1.50"));
+        ShippingRate poster = ShippingRate.flat("AZ", new BigDecimal("5.00"), new BigDecimal("1.50"));
 
         PledgeQuote quote = PledgeQuote.of(new PledgeSelection(
                 AZN,
@@ -136,7 +136,7 @@ class PledgeQuoteTests {
     @Test
     @DisplayName("PL-05: an omitted additional-item amount is a flat rate, not a missing one")
     void anAbsentAdditionalRateIsFlat() {
-        ShippingRate flat = new ShippingRate("AZ", new BigDecimal("9.00"), null);
+        ShippingRate flat = ShippingRate.flat("AZ", new BigDecimal("9.00"), null);
 
         PledgeQuote quote = PledgeQuote.of(new PledgeSelection(
                 AZN,
@@ -186,7 +186,7 @@ class PledgeQuoteTests {
     @Test
     @DisplayName("PL-05: a rate resolved for another country cannot price this pledge")
     void aRateForTheWrongCountryIsRefused() {
-        ShippingRate elsewhere = new ShippingRate("AZ", new BigDecimal("5.00"), new BigDecimal("1.50"));
+        ShippingRate elsewhere = ShippingRate.flat("AZ", new BigDecimal("5.00"), new BigDecimal("1.50"));
         PledgeSelection wrong = new PledgeSelection(
                 AZN,
                 "GE",
@@ -204,7 +204,7 @@ class PledgeQuoteTests {
     @Test
     @DisplayName("PL-05: something to post needs somewhere to post it to")
     void aShippedLineWithoutADestinationIsRefused() {
-        ShippingRate rate = new ShippingRate("AZ", new BigDecimal("5.00"), BigDecimal.ZERO);
+        ShippingRate rate = ShippingRate.flat("AZ", new BigDecimal("5.00"), BigDecimal.ZERO);
         PledgeSelection nowhere = new PledgeSelection(
                 AZN,
                 null,
@@ -228,7 +228,7 @@ class PledgeQuoteTests {
                 AZN,
                 "AZ",
                 QuotedLine.shipped(
-                        new BigDecimal("80.00"), AZN, 1, new ShippingRate("AZ", new BigDecimal("5.00"), null)),
+                        new BigDecimal("80.00"), AZN, 1, ShippingRate.flat("AZ", new BigDecimal("5.00"), null)),
                 List.of(),
                 new BigDecimal("100.00")));
 
@@ -242,7 +242,7 @@ class PledgeQuoteTests {
     @Test
     @DisplayName("a tax policy is given the net and the shipping separately")
     void aTaxPolicySeesNetAndShippingApart() {
-        ShippingRate rate = new ShippingRate("AZ", new BigDecimal("5.00"), null);
+        ShippingRate rate = ShippingRate.flat("AZ", new BigDecimal("5.00"), null);
         PledgeSelection selection = new PledgeSelection(
                 AZN,
                 "AZ",
