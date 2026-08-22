@@ -2038,20 +2038,59 @@ number**), `scheme_transaction_id`, `brand`, `last4`, `exp_month`, `exp_year`,
 `is_default`, `verified_at`.
 
 #### `transactions` — insert only
-`id`, `pledge_id`, `type` (verification, charge, refund, chargeback,
-chargeback_reversal, payout), `status`, `amount`, `currency`, `provider`,
-`provider_transaction_id` (unique), `provider_response` (jsonb), `failure_code`,
-`failure_message`, `attempt_number`, `idempotency_key` (unique), `created_at`.
+`id`, `pledge_id`, `project_id`, `type` (verification, charge, refund,
+chargeback, chargeback_reversal, payout), `status`, `amount`, `currency`,
+`provider`, `provider_transaction_id`, `provider_response` (jsonb),
+`failure_code`, `failure_message`, `attempt_number`, `idempotency_key`,
+`created_at`.
 
-> This table is **never updated or deleted**. Corrections are new rows.
+> This table is **never updated or deleted**. Corrections are new rows, and V41
+> makes that a statement-level trigger rather than a convention — the same
+> mechanism `audit_logs` uses, for the same reason.
+>
+> **Built by #61 and #64**, with two departures from the paragraph above and one
+> addition, all of them consequences of the append-only rule. `project_id` is
+> added, denormalised from the pledge, because "everything that moved on this
+> campaign" is the read the payout run and reconciliation both make and because a
+> payout has no pledge to reach it through — which is also why `pledge_id` is
+> nullable and paired to `type` by a check.
+>
+> The two uniqueness rules are **partial rather than absolute**. A charge the
+> provider accepted and has not decided is a `PENDING` row, and the row that later
+> settles it cannot be an update — so the two share both a
+> `provider_transaction_id` and an `idempotency_key`. What must not happen twice is
+> a *settled* outcome, so both indexes are partial over `SUCCEEDED` and `FAILED`.
+> Two `PENDING` rows for one key are prevented by the pledge row lock instead: every
+> charge on a pledge is serialised, so the application's check is correct there in a
+> way a read-then-write usually is not.
 
 #### `ledger_entries` — double entry
 `id` (bigserial), `transaction_id`, `account` (escrow, `creator:{id}`,
 platform_fee, psp_fee, tax_payable, refunds), `direction` (debit/credit),
-`amount`, `currency`, `project_id`, `created_at`.
+`amount`, `signed_amount` (generated), `currency`, `project_id`, `created_at`.
 
 **Invariant:** for every `transaction_id`, `SUM(debit) = SUM(credit)`. Enforced
 by a database constraint and verified by a nightly reconciliation job.
+
+> **Built by #62.** The constraint is a `CONSTRAINT TRIGGER ... DEFERRABLE INITIALLY
+> DEFERRED`, and it has to be: a `CHECK` sees one row while the invariant is about a
+> set of them, and an ordinary `AFTER INSERT` trigger would refuse every posting that
+> writes its entries one at a time, because the first entry of a balanced pair is
+> unbalanced on its own. Deferring it to commit lets a transaction pass through any
+> number of unbalanced intermediate states and refuses one that *ends* in one.
+>
+> It groups by **currency as well as by transaction**. §21.2 has no rate at which one
+> currency balances another for anything that moves money, so a posting of 100 AZN of
+> debits against 100 USD of credits is two unbalanced postings that a currency-blind
+> sum would report as correct.
+>
+> The cost is that the failure surfaces at `COMMIT` rather than at the offending
+> `INSERT`, naming no line anybody wrote — which is why `Posting` refuses an
+> unbalanced set in Java first. The Java check protects callers that go through
+> `Ledger`; the trigger protects the table from a support script that does not.
+>
+> The table is append-only on the same terms as `transactions`. A correction is a
+> reversing posting, never an edit.
 
 #### `payouts`
 `id`, `project_id`, `creator_id`, `gross_amount`, `platform_fee`, `psp_fee`,
@@ -2089,9 +2128,10 @@ by a database constraint and verified by a nightly reconciliation job.
 | `backer_segments` | §4.7's CD-10 (#97): a named filter over a campaign's backers. **It stores the question and never the answer.** One row per saved filter, holding four axes — `states`, `reward_tier_ids`, `countries`, `term` — and no backer identifier at all; membership is re-evaluated against `pledges` on every read. A stored membership list was the obvious alternative and is wrong twice over: it is out of date the moment somebody pledges, which nobody notices until a bulk message reaches the wrong set, and it is personal data with a second retention rule in a table §17.4 has no mechanism to reach. **Columns rather than one `jsonb` filter**, so the database can say what a filter *is*: `states` is checked against the five states that are a backing, `countries` is checked element-wise against ISO 3166-1 alpha-2, and a filter that will not parse cannot be stored. The cost is a migration when the report gains an axis, which is the right cost — a new axis is a change to the screen and to the API contract, so it was never free. **NULL means "any", not "none"**, and an empty array is refused so that one fact has one representation. Names are unique per campaign, folded and trimmed: "Germany" and "germany " are the same segment named twice, and the second is somebody who forgot they made the first. The segment belongs to the campaign rather than to the person who saved it — a private filter would mean a collaborator messaging a segment nobody else can see — and `created_by` is for the support conversation that starts "who set this up" |
 | `content_reports` | Trust and safety (#102). **This row used to say `moderation_cases`, `reports`, and #102 renamed the second and did not build the first.** "Reports" already means something else three times over in this specification — CD-10's and PM-17's backer report, and §3.1's "view the backer report" — none of which is a moderation object, so a table called `reports` beside a backer report yet to be built is a table the first support query gets wrong. One row per complaint: what was reported as a `target_type`/`target_id` pair with **no foreign key**, for V19's and V21's reason about `aggregate_id` and `entity_id` — it names `projects` and `users` today and `comments` and `project_updates` when §4.9 exists, no single reference can point at four tables, and the consequence is the right one here: a report outlives what it was about, so a campaign hard deleted during an investigation cannot take the complaint with it. The reporter is never null, which is what makes duplicate suppression expressible at all; that suppression is a **unique index partial on `state = 'OPEN'`** rather than a service check, because a read-then-write loses the race between two taps and the open-report count is the queue's only triage signal. Partial rather than absolute so that a reporter whose complaint was dismissed in March can report the same campaign again in June — dropping that while showing them a success is the worst failure a safety feature has. `OPEN → UPHELD` or `DISMISSED`, both terminal, both audited. `moderation_cases` — grouping many reports about one target into one case — is **not built**: the queue answers the same question with a count per target, and a case table that nothing opens or closes is a join nobody needs yet |
 | `audit_logs` | Privileged actions (#107). Append-only in PostgreSQL rather than by convention: a statement-level `BEFORE UPDATE OR DELETE OR TRUNCATE` trigger raises `restrict_violation`, chosen over a rewrite rule — which would succeed silently — and over a revoked grant, which names a role the migration does not know, does not bind the owner, and does not survive a restore. Carries the actor and, for an impersonated action, whom they acted for; the entity, the outcome, the source address and user agent, and the correlation identifiers. The write is `Propagation.MANDATORY`, so the row and the change it describes are one commit and a failed audit takes the action with it. Deliberately **not** partitioned yet: a statement trigger on a partitioned parent does not fire for a statement aimed at a partition directly, so partitioning today would weaken the guarantee the table exists for |
-| `fee_schedules` | Configurable rates |
+| `fee_schedules` | Configurable rates. **Not built.** #64 collects without needing them: the collection posts escrow against the creator's account and §9.5's split happens at payout, so the first thing that has to know a rate is #69 — see §9.2's note on which of the two diagrams the platform implements |
 | `outbox_events` | Transactional outbox (#135). One row per recorded event, written by the same transaction as the business change it describes — which is the whole of the guarantee: the commit that creates the pledge is the commit that creates the event, so neither can exist without the other. Carries the stable `id` a consumer deduplicates on, an `aggregate_type`/`aggregate_id` that is the ordering key and deliberately not a foreign key (an event stays true after its aggregate is deleted, and no single reference can point at four tables), the serialised `payload` as `text` rather than `jsonb` so a consumer receives the bytes the transaction committed, a database-assigned `sequence_no` that decides dispatch order, and `PENDING → PUBLISHED` or `PENDING → DEAD` with `attempts`, `next_attempt_at`, and `last_error`. A relay claims one row at a time with `FOR UPDATE SKIP LOCKED`, so replicas divide the queue rather than double-publishing, and will not dispatch an event while an earlier `PENDING` one for the same aggregate exists. Published rows are not swept yet |
 | `idempotency_keys` | Replay protection (#52). One row per `(account_id, idempotency_key)`, carrying the operation, a SHA-256 fingerprint of the request, and the status and exact bytes of the response the first attempt answered with. The row is inserted *before* the work as a claim — the unique index is what makes two identical requests arriving at once resolve to one — and completed with the response afterwards, in the same transaction as the work. Only successes are recorded; a refusal releases the key so that a client can retry it. Swept after §17.2's 24 hours |
+| `provider_webhook_events` | §9.3's R-07 and §17.2 (#66): one row per verified provider delivery, written in the **same transaction as the effect it caused**. The unique index over `(provider, provider_event_id)` is the whole of the exactly-once guarantee, and it is the only one of §17.2's three controls that survives a restart — a signature and a timestamp both still verify on a genuine redelivery. **There is no `PENDING` state and no `FAILED` one**, which is the opposite shape to `outbox_events` and for a stated reason: the provider is the sender and every provider in §9.3 retries a delivery it did not get a 2xx for, so a handler that throws leaves no row, gets a 500, and is sent the event again — nothing is half-done because "the effect" and "we have seen this" are one commit. A row committed before its handler ran would make the next redelivery look like a duplicate of work that never happened, which is the one failure mode a deduplication table must not have. `IGNORED` is not an error: a provider emits every event type it has and answering 200 while doing nothing is the correct handling of the ones nobody asked for. The payload is `text` and not `jsonb`, unlike `transactions.provider_response` — in a dispute it is the bytes that were signed, and `jsonb` re-serialises them into a document the signature no longer verifies against. There is no `signature_verified` column: a `false` in it would describe a row that should not exist |
 
 ### 7.3 Data decisions
 
@@ -2309,8 +2349,8 @@ load profile).
 |---|---|---|
 | `campaign-launcher` | Every minute | Scheduled to live |
 | `campaign-finalizer` | Every minute | Determine success at the deadline |
-| `charge-processor` | Every minute | Process pending collections in rate-limited batches |
-| `charge-retry` | Every 6 hours | Retry failures within the window |
+| `charge-processor` | Every minute | Opens the collection of campaigns that closed above goal, and makes §9.6's first attempt against the pledges it queues. **Built (#64).** The rate limit is §9.3's R-09 expressed as a batch per tick — a hundred charges a minute is roughly 1.7 requests a second, a figure a provider can be told in advance rather than one discovered by being throttled at a campaign's close. There is deliberately no sleeping inside a pass to smooth it further: a sleep would hold the job's lease, and a pass that outlasts its lease is joined by a second replica |
+| `charge-retry` | Every 6 hours | Retries failures within the window and drops what has run out of it. **Built (#65).** Six hours rather than a minute because §9.6's slots are at +24h, +72h and +5 days — nobody can tell an attempt made at 24:00 from one at 27:00. **Two jobs and not one**, for the reason §8.4 gives about splitting `reminder-sender` from `deadline-reminder`: `JobRunner` counts failures per job name, so one job doing both queues would let a database problem in the retry sweep back off the initial collection too. The drop is here rather than in a third job — it is the last row of the same table, at the same granularity, and it runs after the retries so a pledge whose final attempt is due in the same pass gets it |
 | `payout-scheduler` | Daily | Prepare payouts once the hold elapses |
 | `reservation-cleaner` | Every minute | Release expired stock reservations |
 | `search-indexer` | Event-driven plus nightly full | Keep the index current |
@@ -2554,6 +2594,23 @@ sequenceDiagram
 > `paymentMethodId` on the response, so the day #55 lands the screen stops making
 > a claim nobody was told to go and correct.
 
+> **Phase 2 is built (#64), and one line of this diagram is not what the platform
+> does.** The approval branch says "debit escrow, credit creator and fees", and §9.5
+> says the fees are split out of escrow *after* the fourteen-day hold. They cannot both
+> be right, and §9.5 is the one implemented: a collection posts two entries — escrow is
+> debited and the creator's account is credited with the whole amount — and the split
+> into the platform fee, the processing fee and tax is the payout's (#69).
+>
+> The reason is not only that §9.5's diagram is more specific. §5.2 puts the rates in a
+> `fee_schedules` table, which is not built; posting the split at collection would have
+> meant inventing those rates as configuration inside the issue about batching charges,
+> and then #69 re-deriving them. The books come out in the same place either way — at
+> payout the creator's account is debited for the gross and escrow is credited with the
+> net beside the fee accounts, so escrow ends holding exactly the fees.
+>
+> The rest of the branch is as drawn: the pledge becomes `COLLECTED`, the decline path
+> becomes `CHARGE_FAILED`, and §9.6's four retries follow.
+
 ### 9.3 Provider requirements
 
 **Confirm each of these in writing before signing.** Without them the design
@@ -2628,6 +2685,35 @@ Every request and result type carries an idempotency key. No provider SDK is
 called anywhere except behind this interface — changing provider must be a
 single-file change.
 
+> **Built (#61), and nothing implements it.** #60 has not chosen a provider, and §9.2
+> already says why no stub ships in the meantime: one that returned an approval "would
+> make this path look finished". So `PaymentProviders` finds no adapters in a deployed
+> environment, `CollectionRun` refuses to collect when it finds none, and that single
+> refusal is what keeps the batching, the circuit breaker, §9.6's schedule and the
+> ledger posting inert until there is something real behind them.
+> `PaymentProviderBoundaryTests` asserts both halves — that no adapter is on the
+> production classpath, and that no module outside `payment` names a request or result
+> type, which is the checkable form of "changing provider is a single-file change".
+>
+> Two departures from the sketch above, both small. `ProviderCapabilities` gains
+> `schemeChaining`, because R-03 is one of the three the design cannot work without and
+> the record had no field for it; `preAuthHoldDays` stays, as the number that records
+> why §9.1 rejected authorisation holds. And the four calls share one
+> `ProviderOutcome` — approved, declined, or accepted and not yet decided — rather than
+> having an outcome type each: it is one idea, and two vocabularies for one idea is one
+> too many.
+>
+> **The three required capabilities are checked at start-up**, not at the first charge.
+> The first charge is at a funded campaign's close, in front of every backer who has
+> just been told it succeeded; an adapter whose provider cannot do R-01, R-02 and R-03
+> stops the service from starting instead.
+>
+> **A decline is a value and an unreachable provider is a throw.** §9.6 puts collection
+> failure at 5–15% of pledges, so a decline is the ordinary case rather than an error —
+> and the difference matters beyond style: the platform knows nothing moved on a
+> decline, and does not know on a timeout, which is why only the second counts towards
+> the circuit breaker and why neither costs a backer one of §9.6's four attempts.
+
 ### 9.5 Money flow
 
 ```mermaid
@@ -2662,6 +2748,33 @@ expired cards, limits, and issuer declines.
 > pledges, and never revisited. Later failures reduce the payout; they do not
 > retroactively fail the campaign. Anything else would let a campaign flip to
 > failure days after backers were told it succeeded.
+
+> **This table is built (#65), and three things about it needed deciding.**
+>
+> **The timings are measured from the campaign's close, not from the previous attempt.**
+> That is what "+24 hours", "+72 hours", "+5 days" say, and it is the only reading that
+> fits inside seven days — as intervals the fourth attempt would fall on day nine, past
+> the window, so the last two attempts would never happen and this would silently be a
+> two-attempt schedule.
+>
+> **The channel column is honoured, which means attempt 1's failure is not announced —
+> and §9.2's diagram disagrees.** That diagram shows "notify — update your card"
+> immediately after the first decline and *then* four retries. This table is followed,
+> because it is the more specific artefact and the one carrying the timings, and because
+> attempt 2 is twenty-four hours behind attempt 1: the backer is told, and told once
+> rather than twice about one card in a day. If that trade is wrong, it is a product
+> decision and the table is where to change it — `RetrySchedule#notifiesBacker` is the
+> single place the code reads it.
+>
+> **Four attempts is the length of the configured list, not the number four.** Adding a
+> fifth is one entry in `ideanest.payment.collection.attempt-delays`, and the final
+> warning follows the list rather than staying on the fourth.
+>
+> **What is *not* one of the four**: a charge the provider accepted and has not decided,
+> and a provider that could not be reached at all. Neither is a card being refused, so
+> neither costs a backer an attempt; both are asked about again under the *same*
+> idempotency key, which is what makes the retry a question about the existing charge
+> rather than a second one.
 
 ### 9.7 Refund policy
 
@@ -3103,6 +3216,35 @@ PUT    /v1/admin/collections/{slug}/projects/order
 > plus one row per reward tier, and §5.3 caps a campaign's tiers. If #209 decides a
 > public list should exist, pagination and the ordering a cursor commits this API to
 > are questions for whoever builds it.
+
+> **`POST /v1/webhooks/psp/{provider}` is the only unauthenticated write on the
+> platform (#66)**, and everything about it is arranged around that. There is no
+> session, no token, and no account: the sender is a payment provider, and what
+> distinguishes it from anybody who has guessed the URL is an HMAC over the body. The
+> controller therefore does almost nothing — it hands the raw bytes and the lower-cased
+> headers to the adapter that can verify them, and makes no decision reachable without
+> a valid signature.
+>
+> It takes a `byte[]` rather than a bound request type, which is a departure from every
+> other endpoint here: **a signature is over the bytes**, and a body parsed into objects
+> and serialised again is a different sequence of them. It also means a body the
+> platform cannot parse is still verifiable, and therefore still recordable, rather than
+> being refused by the JSON binder before anything has established who sent it. There is
+> no `consumes`, because several providers post form-encoded bodies and a 415 answered
+> before verification would be refusing a delivery for a reason nobody configured.
+>
+> **Processed, ignored, and already-seen are all 200 with an empty body.** A provider
+> retries anything that is not a 2xx, so the status is an instruction about retrying
+> rather than a description — and a body distinguishing the three would tell whoever has
+> the URL which events the platform acts on. A delivery that fails verification is a
+> **400** and not a 5xx, so the provider does not spend its retry budget on something
+> that cannot succeed; an unknown or undeployed provider is a **404**, the same answer
+> for both, so the endpoint publishes nothing about which providers the platform uses.
+>
+> **No rate limiting and no source allowlist here.** An unsigned body is refused before
+> anything is read, and a limiter would instead throttle a provider delivering a genuine
+> backlog after an outage. §17.2's allowlist belongs to §19.1's network: the address a
+> servlet sees is whatever proxy terminated the connection.
 
 ### 10.3 Conventions
 

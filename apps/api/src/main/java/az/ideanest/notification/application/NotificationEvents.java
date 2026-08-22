@@ -123,6 +123,64 @@ public final class NotificationEvents {
     }
 
     /**
+     * §6.2's {@code CHARGE_PENDING → COLLECTED} (#64): the card was charged.
+     *
+     * <p>Recipient: the backer. §4.10's {@code PAYMENT_COLLECTED} row, and the one
+     * notification on the platform that is a receipt rather than news — for most backers
+     * the charge arrives thirty to sixty days after they pledged, which is long enough
+     * that an unexplained line on a statement is a dispute waiting to happen.
+     *
+     * <p>Recorded by the payment module through §8.3's outbox, in the same transaction as
+     * the state change, the {@code transactions} row and the ledger posting.
+     * {@code CollectionEvents.PledgeCollected} is the producing side; neither imports the
+     * other, so the field names below are the contract.
+     *
+     * @param amount what was taken, as §10.3's {@code {"amount", "currency"}} object.
+     *     <strong>Never a JSON number</strong>: a receipt that rounds somebody's charge is
+     *     worse than no receipt
+     * @param collectedAt when the charge was approved. Not when this was delivered
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record PledgeCollected(
+            UUID pledgeId, UUID projectId, UUID backerId, Money amount, Instant collectedAt) {
+
+        public static final String EVENT_TYPE = "pledge.collected";
+    }
+
+    /**
+     * §9.6's fourth row (#65): the last attempt was refused, and the pledge will be
+     * dropped.
+     *
+     * <p>Recipient: the backer. §4.10's {@code FINAL_PAYMENT_WARNING} row, which exists
+     * separately from {@code PAYMENT_FAILED} because the message is different in kind:
+     * the three before it say "we will try again", and this one says when the pledge
+     * stops standing.
+     *
+     * <p>{@link PaymentFailed} already explained why this is a separate event and not a
+     * flag — "its producer is whoever knows the schedule", and the schedule is
+     * {@code RetrySchedule} in the payment module. This is the type that arrived when one
+     * did.
+     *
+     * @param attempt which attempt this was — the last one. §12.3's copy for this type
+     *     already reads it, which is why the payload carries it
+     * @param droppedAt when the pledge will be dropped if nothing changes: the end of
+     *     §9.6's seven days. The one fact that makes this message different from the
+     *     three before it, and the reason it can be acted on
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record FinalPaymentWarning(
+            UUID pledgeId,
+            UUID projectId,
+            UUID backerId,
+            Money amount,
+            Integer attempt,
+            Instant droppedAt,
+            Instant failedAt) {
+
+        public static final String EVENT_TYPE = "pledge.payment_final_warning";
+    }
+
+    /**
      * §4.3's funding progress crossing its goal.
      *
      * <p>Recipient: <strong>the creator and the campaign's backers.</strong> §4.10's row covers

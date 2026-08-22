@@ -86,4 +86,30 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
             ORDER BY p.deadline ASC
             """)
     List<UUID> findClosedCampaigns(@Param("now") Instant now, Pageable page);
+
+    /**
+     * Campaigns §5.1 decided in favour of and whose collection has not started — §8.4's
+     * {@code charge-processor}, one page at a time.
+     *
+     * <p>{@code SUCCESSFUL} is by construction the "decided but not collecting" state:
+     * {@code CampaignFinalizer} writes it and nothing else does, and the only edge out of
+     * it is into {@code COLLECTING}. So this query needs no second predicate and no
+     * timestamp column of its own — §6.1's state machine is the flag, which is the
+     * arrangement §6.1 says the two states exist for. A campaign that has been through
+     * here is not in {@code SUCCESSFUL} any more and cannot be selected twice.
+     *
+     * <p>Identifiers and no lock, exactly as above: the collection opens a transaction per
+     * campaign, and a lock taken here would be held across the batch.
+     *
+     * <p>Oldest first, by the deadline that produced the state. A backlog after an outage
+     * therefore starts with the campaign whose backers have been waiting longest, and a
+     * campaign that closed on Tuesday is never held behind one that closed on Thursday.
+     */
+    @Query(
+            """
+            SELECT p.id FROM Project p
+            WHERE p.state = az.ideanest.project.domain.ProjectState.SUCCESSFUL
+            ORDER BY p.deadline ASC
+            """)
+    List<UUID> findAwaitingCollection(Pageable page);
 }

@@ -317,12 +317,20 @@ class NotificationAudienceTests extends AbstractIntegrationTest {
         new JdbcTemplate(dataSource)
                 .update(
                         """
-                        INSERT INTO pledges (id, project_id, backer_id, state, base_amount)
-                        VALUES (?, ?, ?, ?, 25.00)
+                        INSERT INTO pledges (id, project_id, backer_id, state, base_amount,
+                                             next_charge_attempt_at, charge_window_ends_at)
+                        VALUES (?, ?, ?, ?, 25.00,
+                                CASE WHEN ? IN ('CHARGE_PENDING', 'CHARGE_FAILED') THEN now() END,
+                                CASE WHEN ? IN ('CHARGE_PENDING', 'CHARGE_FAILED') THEN now() + interval '7 days' END)
                         """,
                         Identifiers.newIdentifier(),
                         projectId,
                         backerId,
+                        state,
+                        // V42's pledges_collection_schedule_is_whole: a pledge queued for
+                        // collection has §9.6's schedule on it, because one without is a
+                        // pledge no sweep will ever pick up.
+                        state,
                         state);
     }
 

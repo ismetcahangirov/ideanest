@@ -137,7 +137,24 @@ class PledgeSchemaTests extends AbstractIntegrationTest {
      * DRAFT, which is a rule this fixture is not the place to argue with.
      */
     private void setState(UUID pledgeId, PledgeState state) {
-        jdbc().update("UPDATE pledges SET state = ? WHERE id = ?", state.name(), pledgeId);
+        // V42's pledges_collection_schedule_is_whole pairs the two collecting states with
+        // §9.6's schedule, in both directions: a queued pledge with no next attempt is one
+        // no sweep will ever pick up, and a collected pledge that kept its schedule would
+        // be charged again. The fixture therefore writes the schedule with the state
+        // rather than leaving the constraint to be argued with here.
+        boolean collecting = state == PledgeState.CHARGE_PENDING || state == PledgeState.CHARGE_FAILED;
+        jdbc().update(
+                        """
+                        UPDATE pledges
+                           SET state = ?,
+                               next_charge_attempt_at = CASE WHEN ? THEN now() END,
+                               charge_window_ends_at = CASE WHEN ? THEN now() + interval '7 days' END
+                         WHERE id = ?
+                        """,
+                        state.name(),
+                        collecting,
+                        collecting,
+                        pledgeId);
     }
 
     private int count(String table, String column, UUID value) {

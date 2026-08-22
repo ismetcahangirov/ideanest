@@ -62,4 +62,47 @@ public class TestDoublesConfiguration {
     AdjustableClock adjustableClock() {
         return new AdjustableClock();
     }
+
+    /**
+     * A payment provider whose answers a test writes.
+     *
+     * <p><strong>The only implementation of {@code PaymentProvider} anywhere</strong>, and
+     * it is here rather than in {@code src/main} because §9.2 refuses a stub in a
+     * deployed environment: an adapter returning approvals would make the collection path
+     * look finished and would tell clients cards had been verified. In the suite nobody is
+     * told anything, and a scripted provider is the only way to exercise §9.6's schedule,
+     * the circuit breaker and the ledger posting before #60 is answered.
+     * {@code PaymentProviderBoundaryTests} asserts that {@code src/main} still contains
+     * none.
+     *
+     * <p>Not {@code @Primary}: nothing else supplies one, and {@code PaymentProviders}
+     * takes every {@code PaymentProvider} bean rather than one, so marking it primary
+     * would say something untrue about a list.
+     *
+     * <p>The suite shares one context, so this bean is shared too. A test that scripts it
+     * calls {@code reset()} first — see {@code AbstractIntegrationTest}.
+     */
+    @Bean
+    ScriptedPaymentProvider scriptedPaymentProvider() {
+        return new ScriptedPaymentProvider();
+    }
+
+    /**
+     * A stored card for every pledge, because {@code payment_methods} does not exist.
+     *
+     * <p>Replaces {@code UnavailableStoredCards}, which answers "there is no card on file"
+     * — true of the platform and fatal to any test of collection, since every attempt
+     * would fail with {@code payment_method_missing} before a provider was asked. #55 is
+     * what replaces it for real.
+     *
+     * <p>{@code @Primary} because {@code PaymentConfiguration} registers its own only
+     * {@code @ConditionalOnMissingBean}, and the condition is evaluated against the
+     * application context rather than this test configuration — so both can exist and the
+     * primary is what gets injected.
+     */
+    @Bean
+    @Primary
+    ScriptedStoredCards scriptedStoredCards() {
+        return new ScriptedStoredCards();
+    }
 }
