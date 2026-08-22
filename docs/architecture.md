@@ -733,7 +733,8 @@ The most valuable and most complex module. It begins when funding closes.
 | PM-23 | Late pledges | Backer |
 | PM-24 | Reminders to non-responders | System |
 
-> **PM-01 to PM-08, PM-11 to PM-13 and PM-24 are built; the rest of this section is
+> **PM-01 to PM-08, PM-11 to PM-13, PM-20 to PM-22 and PM-24 are built; the rest of
+> this section is
 > not.** #73 built the survey builder and #74 its distribution and responses: a
 > creator writes questions of five types (PM-03), makes any of them conditional on a
 > reward tier (PM-02), sends the set once to every backer (PM-04), and reads what came
@@ -745,11 +746,32 @@ The most valuable and most complex module. It begins when funding closes.
 > flat (PM-11, PM-12), and a resolution order in which a named country always beats the
 > region it falls in.
 >
+> **#80 built fulfilment tracking (PM-20 to PM-22).** A creator uploads the file their
+> carrier or fulfilment partner sent back — `text/csv`, keyed on `pledge_id`, which is
+> the first column of §4.7's CD-11 export, so the round trip is export, forward, fill
+> in, upload. Each row is applied on its own and **a row that cannot be applied is
+> reported with its line number while the rest of the file still lands**: refusing a
+> four-thousand-row file over three typos sends a creator away with nothing, twice,
+> because the second attempt fails on the typo they had not found. `fulfilments` holds
+> one parcel per pledge in one of four statuses, and V38 constrains its two timestamps
+> to agree with that status rather than to be a second opinion about it — so a
+> correction from `DELIVERED` back to `SHIPPED` clears the delivery instant, and
+> `audit_logs` is what keeps the history of the claim. There is deliberately **no
+> transition table**: a fulfilment status is a claim about the physical world, imported
+> from somebody else's file, and a creator who scanned the wrong box has to be able to
+> take it back. Both sides read it — the creator at `GET /projects/{id}/fulfilments`
+> with counts including the backings nobody has said anything about, the backer at
+> `GET /me/fulfilments` across every campaign they have backed. **Nobody is notified**:
+> "your reward has shipped" is a notification type §4.10 does not have, and a bulk
+> import fanning out four thousand emails from inside a request is not the way to
+> introduce one. **No pledge state moves either** — §6.2's `FULFILLED` is reached from
+> `COLLECTED`, and marking a parcel delivered must not skip the charge.
+>
 > **Not built:** PM-09 and PM-10's upgrades and post-campaign add-on store, PM-14 to
 > PM-16's tax and customs (#78, blocked on a decision), PM-17's backer report *for the
 > pledge manager* — §4.7's CD-10 is built and is the same list — PM-18's bulk address
-> editing, PM-19's digital distribution, PM-20 to PM-22's fulfilment tracking, and
-> PM-23's late pledges. Each has an issue; none of them is implied by what is here.
+> editing, PM-19's digital distribution, and PM-23's late pledges. Each has an issue;
+> none of them is implied by what is here.
 >
 > **The one boundary worth naming.** PM-03 lists `address` as an answer type and an
 > ADDRESS question **stores no answer**: it records that the survey asks for a postal
@@ -1901,7 +1923,7 @@ by a database constraint and verified by a nightly reconciliation job.
 | `collaborators` | Scoped grants |
 | `surveys`, `survey_questions`, `survey_answers`, `survey_responses`, `survey_nudges` | §4.8's PM-01 to PM-06 and PM-24 (#73, #74). **This row used to name three tables; there are five.** `survey_answers` is separate from `survey_responses` because the read that matters is "what size did each backer choose" over four thousand pledges, exported to a factory -- with rows that is a join and an index, and with one `jsonb` document per response it is a scan that unpacks every answer and then trusts that every one of them spells the question the same way. `survey_nudges` is the fifth and is not a survey at all: it is the claim that somebody was reminded, written in the same transaction as the outbox event, exactly as `deadline_notices` is. **`sent_at` is the whole of "draft" and "sent"**, following V22's `project_updates.published_at`: a state column beside a timestamp is two facts that can disagree, and the one a support script updates is never the one the reads filter on. Once it is set the questions freeze -- `survey_answers` has no `ON DELETE` on its reference to a question, so the database refuses the tidy-up that would discard four hundred answers -- while the covering note and `respond_by` stay editable, because the first is prose nobody answered and the second is the thing creators most often need to change. **The cut-off is a comparison, never a sweep**: a job that closed surveys is a job that can be late, and late here means accepting an answer after the creator placed the order. An answer is `text[]` whatever the type, so every reader has one shape, and it stores **the option text rather than an index** -- an index would break silently the moment a creator reordered the options, turning every "Medium" into a "Large" |
 | `shipping_addresses` | §4.8's PM-07 and PM-08 (#75). Encrypted at rest with an application-managed key: one AES-256-GCM ciphertext over the whole structured address, a 12-byte nonce beside it, and a `key_id` that is the whole of key rotation. **The key never goes near PostgreSQL** -- `pgcrypto` was rejected for that reason and not for its cryptography, since `pgp_sym_encrypt` puts the passphrase in the query text, which lands in `pg_stat_statements`, in the slow query log, and in any statement log an operator turns on during an incident. What it costs is stated rather than discovered: **nothing in this table can be searched, sorted or filtered by the database**, so there is no index on postcode and no "backers in Berlin" query; the destination country stays outside the envelope on `pledges.shipping_country`, where §4.5's PL-05 already priced the parcel from it. **One row per pledge and not per account**: a backer who moves house between two campaigns has two addresses, and the earlier campaign ships to where they lived when they answered -- an address on the account would silently rewrite an answer a creator has already printed a label from. PM-08's lock is `locked_at`/`locked_by`, per address rather than a flag on the campaign, so a creator can reopen one backer who wrote in |
-| `fulfilments` | Tracking and status |
+| `fulfilments` | §4.8's PM-20 to PM-22 (#80): one parcel per pledge — a status, a carrier, a tracking number, and a link. **Keyed by the pledge**, like `shipping_addresses` and for the same reason: there is one of these per pledge and every read arrives holding the pledge, so a surrogate key would only create the possibility of two. A **split shipment is therefore not representable**, deliberately — PM-22 is one status, nothing in §4.8 asks for parcels plural, and a table shaped for the campaign nobody has run would make the case everybody has into a fold over rows. `project_id` is denormalised from the pledge because "every parcel on my campaign" is the read this table exists for, and its foreign key is **composite** — `(pledge_id, project_id)` against `pledges` — so the copy cannot name a campaign the pledge does not. Four statuses: `PREPARING`, `SHIPPED`, `DELIVERED`, `RETURNED`. The last is not a failed delivery folded into the third: it is the one outcome a backer has to act on. **The two timestamps are facts about the status, not a second opinion about it** — `shipped_at` present exactly when the status is not `PREPARING`, `delivered_at` exactly when it is `DELIVERED`, both as check constraints — because the row those refuse says a parcel is still being packed and arrived on Tuesday, which a backer reads as a delivery that did not happen. The cost is that a correction erases the earlier claim, and `audit_logs` is where the claim survives. A tracking number **requires a carrier**: a bare number is a string nobody can look up, and a backer shown one spends an evening pasting it into the wrong carrier's website. The link is `https` only |
 | `notifications`, `notification_preferences` | Delivery and settings |
 | `email_deliveries` | What the email transport did, one row per attempt, append only (#86, §12.3). **`accepted_at`, never `delivered_at`**: SMTP reports acceptance by a relay and nothing further, and a column named for delivery would be read as delivery by everybody who ever queried it. Outcomes are `ACCEPTED`, `REFUSED` and `SUPPRESSED`; bounces and opens need a provider webhook and are follow-up work rather than columns nothing writes. **There is no address column** — §17.4 anonymises `users.email`, and an address copied here would survive that in a table the anonymiser does not know about, so `recipient_id` is the join and it correctly stops resolving when there is no longer a person |
 | `media` | Metadata and transcoding state |
@@ -2694,8 +2716,9 @@ GET    /v1/projects/{id}/shipping-addresses/progress  # counts only; decrypts no
 POST   /v1/pledges/{id}/upgrade
 POST   /v1/pledges/{id}/addons
 POST   /v1/projects/{id}/shipping-rules
-POST   /v1/projects/{id}/fulfilments/import
-GET    /v1/me/fulfilments
+POST   /v1/projects/{id}/fulfilments/import  # PM-20 (#80); text/csv, VIEW_FINANCES, audited
+GET    /v1/projects/{id}/fulfilments         # PM-22 (#80); VIEW_FINANCES, no-store, with counts
+GET    /v1/me/fulfilments                    # PM-21 (#80); the caller's own parcels, no-store
 
 # Community
 POST   /v1/projects/{id}/comments

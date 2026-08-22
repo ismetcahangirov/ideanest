@@ -756,6 +756,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/fulfilments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["fulfilmentMine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/notification-preferences": {
         parameters: {
             query?: never;
@@ -1284,6 +1300,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{projectId}/fulfilments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["fulfilmentOfCampaign"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{projectId}/fulfilments/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["fulfilmentImportTracking"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{projectId}/items": {
         parameters: {
             query?: never;
@@ -1787,6 +1835,9 @@ export interface components {
             states?: ("DRAFT" | "CONFIRMED" | "EXPIRED" | "CANCELED_BY_BACKER" | "CANCELED_BY_PROJECT" | "CHARGE_PENDING" | "COLLECTED" | "CHARGE_FAILED" | "DROPPED" | "REFUNDED" | "CHARGEBACK" | "FULFILLED")[];
             term?: string;
         };
+        BackerFulfilmentResponse: {
+            fulfilments?: components["schemas"]["Item"][];
+        };
         BackerListResponse: {
             backers?: components["schemas"]["Backer"][];
             currency?: string;
@@ -2179,6 +2230,51 @@ export interface components {
         FollowingListResponse: {
             items?: components["schemas"]["Item"][];
             nextCursor?: string;
+        };
+        FulfilmentImportResponse: {
+            /** Format: int32 */
+            changed?: number;
+            errors?: components["schemas"]["RowFailureBody"][];
+            /** Format: int32 */
+            failed?: number;
+            /** Format: int32 */
+            rows?: number;
+            truncated?: boolean;
+            /** Format: int32 */
+            unchanged?: number;
+        };
+        FulfilmentListResponse: {
+            fulfilments?: components["schemas"]["FulfilmentResponse"][];
+            progress?: components["schemas"]["FulfilmentProgressResponse"];
+        };
+        FulfilmentProgressResponse: {
+            /** Format: int64 */
+            backings?: number;
+            /** Format: int64 */
+            delivered?: number;
+            /** Format: int64 */
+            preparing?: number;
+            /** Format: int64 */
+            returned?: number;
+            /** Format: int64 */
+            shipped?: number;
+            /** Format: int64 */
+            untouched?: number;
+        };
+        FulfilmentResponse: {
+            carrier?: string;
+            /** Format: date-time */
+            deliveredAt?: string;
+            /** Format: uuid */
+            pledgeId?: string;
+            /** Format: date-time */
+            shippedAt?: string;
+            /** @enum {string} */
+            status?: "PREPARING" | "SHIPPED" | "DELIVERED" | "RETURNED";
+            trackingNumber?: string;
+            trackingUrl?: string;
+            /** Format: date-time */
+            updatedAt?: string;
         };
         Image: {
             /** Format: int32 */
@@ -2748,6 +2844,13 @@ export interface components {
             /** Format: uuid */
             rewardTierId?: string;
         };
+        RowFailureBody: {
+            code?: string;
+            /** Format: int32 */
+            line?: number;
+            message?: string;
+            pledgeId?: string;
+        };
         SaveBackerSegmentRequest: {
             filter?: components["schemas"]["BackerFilterBody"];
             name: string;
@@ -3054,6 +3157,7 @@ export type SchemaAnswerBody = components['schemas']['AnswerBody'];
 export type SchemaBacker = components['schemas']['Backer'];
 export type SchemaBackerBreakdownResponse = components['schemas']['BackerBreakdownResponse'];
 export type SchemaBackerFilterBody = components['schemas']['BackerFilterBody'];
+export type SchemaBackerFulfilmentResponse = components['schemas']['BackerFulfilmentResponse'];
 export type SchemaBackerListResponse = components['schemas']['BackerListResponse'];
 export type SchemaBackerSegmentResponse = components['schemas']['BackerSegmentResponse'];
 export type SchemaBackerSurveyBody = components['schemas']['BackerSurveyBody'];
@@ -3102,6 +3206,10 @@ export type SchemaFacets = components['schemas']['Facets'];
 export type SchemaFeed = components['schemas']['Feed'];
 export type SchemaFollowStateResponse = components['schemas']['FollowStateResponse'];
 export type SchemaFollowingListResponse = components['schemas']['FollowingListResponse'];
+export type SchemaFulfilmentImportResponse = components['schemas']['FulfilmentImportResponse'];
+export type SchemaFulfilmentListResponse = components['schemas']['FulfilmentListResponse'];
+export type SchemaFulfilmentProgressResponse = components['schemas']['FulfilmentProgressResponse'];
+export type SchemaFulfilmentResponse = components['schemas']['FulfilmentResponse'];
 export type SchemaImage = components['schemas']['Image'];
 export type SchemaInviteCollaboratorRequest = components['schemas']['InviteCollaboratorRequest'];
 export type SchemaItem = components['schemas']['Item'];
@@ -3162,6 +3270,7 @@ export type SchemaRewardPatchRequest = components['schemas']['RewardPatchRequest
 export type SchemaRewardResponse = components['schemas']['RewardResponse'];
 export type SchemaRewardSlice = components['schemas']['RewardSlice'];
 export type SchemaRewardTierCountBody = components['schemas']['RewardTierCountBody'];
+export type SchemaRowFailureBody = components['schemas']['RowFailureBody'];
 export type SchemaSaveBackerSegmentRequest = components['schemas']['SaveBackerSegmentRequest'];
 export type SchemaSaveStateResponse = components['schemas']['SaveStateResponse'];
 export type SchemaSavedListResponse = components['schemas']['SavedListResponse'];
@@ -4506,6 +4615,26 @@ export interface operations {
             };
         };
     };
+    fulfilmentMine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackerFulfilmentResponse"];
+                };
+            };
+        };
+    };
     notificationPreferencePreferences: {
         parameters: {
             query?: never;
@@ -5527,6 +5656,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CommentResponse"];
+                };
+            };
+        };
+    };
+    fulfilmentOfCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FulfilmentListResponse"];
+                };
+            };
+        };
+    };
+    fulfilmentImportTracking: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "text/csv": string;
+                "text/plain": string;
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FulfilmentImportResponse"];
                 };
             };
         };

@@ -1941,6 +1941,24 @@
         "tags" : [ "backer-signal-controller" ]
       }
     },
+    "/v1/me/fulfilments" : {
+      "get" : {
+        "operationId" : "fulfilmentMine",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BackerFulfilmentResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "fulfilment-controller" ]
+      }
+    },
     "/v1/me/notification-preferences" : {
       "get" : {
         "operationId" : "notificationPreferencePreferences",
@@ -3378,6 +3396,75 @@
           }
         },
         "tags" : [ "comment-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/fulfilments" : {
+      "get" : {
+        "operationId" : "fulfilmentOfCampaign",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FulfilmentListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "fulfilment-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/fulfilments/import" : {
+      "post" : {
+        "operationId" : "fulfilmentImportTracking",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "text/csv" : {
+              "schema" : {
+                "type" : "string"
+              }
+            },
+            "text/plain" : {
+              "schema" : {
+                "type" : "string"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FulfilmentImportResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "fulfilment-controller" ]
       }
     },
     "/v1/projects/{projectId}/items" : {
@@ -5029,6 +5116,17 @@
           }
         }
       },
+      "BackerFulfilmentResponse" : {
+        "type" : "object",
+        "properties" : {
+          "fulfilments" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Item"
+            }
+          }
+        }
+      },
       "BackerListResponse" : {
         "type" : "object",
         "properties" : {
@@ -6146,6 +6244,113 @@
           },
           "nextCursor" : {
             "type" : "string"
+          }
+        }
+      },
+      "FulfilmentImportResponse" : {
+        "type" : "object",
+        "properties" : {
+          "changed" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "errors" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/RowFailureBody"
+            }
+          },
+          "failed" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "rows" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "truncated" : {
+            "type" : "boolean"
+          },
+          "unchanged" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "FulfilmentListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "fulfilments" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FulfilmentResponse"
+            }
+          },
+          "progress" : {
+            "$ref" : "#/components/schemas/FulfilmentProgressResponse"
+          }
+        }
+      },
+      "FulfilmentProgressResponse" : {
+        "type" : "object",
+        "properties" : {
+          "backings" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "delivered" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "preparing" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "returned" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "shipped" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "untouched" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "FulfilmentResponse" : {
+        "type" : "object",
+        "properties" : {
+          "carrier" : {
+            "type" : "string"
+          },
+          "deliveredAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "pledgeId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "shippedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "PREPARING", "SHIPPED", "DELIVERED", "RETURNED" ]
+          },
+          "trackingNumber" : {
+            "type" : "string"
+          },
+          "trackingUrl" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
           }
         }
       },
@@ -7663,6 +7868,24 @@
           "rewardTierId" : {
             "type" : "string",
             "format" : "uuid"
+          }
+        }
+      },
+      "RowFailureBody" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "line" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "pledgeId" : {
+            "type" : "string"
           }
         }
       },

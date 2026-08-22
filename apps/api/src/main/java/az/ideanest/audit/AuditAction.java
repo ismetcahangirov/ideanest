@@ -164,6 +164,21 @@ public enum AuditAction {
      */
     PROJECT_SURVEY_SENT("project.survey_sent", "project"),
 
+    /**
+     * §4.8's PM-20 (#80): a tracking file was applied to a campaign's parcels.
+     *
+     * <p>Audited because one upload rewrites what several thousand backers are told about
+     * where their reward is, and because it is the only write on the platform that can put a
+     * parcel back from delivered to shipped — {@code Fulfilment} deliberately has no state
+     * machine, so this table is the whole of the history of a correction.
+     *
+     * <p>The detail carries counts and never a tracking number. This table has no retention
+     * rule and refuses {@code DELETE}; where somebody's parcel went is not a fact to put in
+     * it. The refused rows are counted here and named in the response, which is where the
+     * creator can act on them.
+     */
+    PROJECT_FULFILMENTS_IMPORTED("project.fulfilments_imported", "project"),
+
     /** A second factor was confirmed and is now required to sign in. */
     TWO_FACTOR_ENABLED("two_factor.enabled", "account"),
 
