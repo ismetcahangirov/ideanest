@@ -164,6 +164,73 @@ public enum AuditAction {
      */
     PROJECT_SURVEY_SENT("project.survey_sent", "project"),
 
+    /**
+     * §4.8's PM-20 (#80): a tracking file was applied to a campaign's parcels.
+     *
+     * <p>Audited because one upload rewrites what several thousand backers are told about
+     * where their reward is, and because it is the only write on the platform that can put a
+     * parcel back from delivered to shipped — {@code Fulfilment} deliberately has no state
+     * machine, so this table is the whole of the history of a correction.
+     *
+     * <p>The detail carries counts and never a tracking number. This table has no retention
+     * rule and refuses {@code DELETE}; where somebody's parcel went is not a fact to put in
+     * it. The refused rows are counted here and named in the response, which is where the
+     * creator can act on them.
+     */
+    PROJECT_FULFILMENTS_IMPORTED("project.fulfilments_imported", "project"),
+
+    /**
+     * §4.11's AD-02 (#103): trust and safety stopped a live campaign.
+     *
+     * <p>The most consequential privileged action on the platform: it is terminal, it ends
+     * every pledge on the campaign, and the creator cannot undo it or appeal it into the
+     * state it was in. "Who suspended this campaign, when, and under what reason" is the
+     * first question of every conversation that follows, and the three moderation
+     * decisions are already recorded here for a weaker version of the same reason.
+     *
+     * <p>The detail carries the edge and not the reason. The reason is prose a moderator
+     * wrote about somebody's campaign and it is already on the transition row, which can
+     * be corrected; this table cannot.
+     */
+    PROJECT_SUSPENDED("project.suspended", "project"),
+
+    /**
+     * §4.11's AD-04 (#104): staff read the account list.
+     *
+     * <p><strong>A read, audited, which almost none of them are.</strong> It is the one
+     * endpoint on the platform that returns other people's email addresses in bulk to
+     * somebody who has no relationship with them, and §4.7's CD-11 export is audited for
+     * the weaker version of the same reason. "Who looked up whom" is the question an
+     * investigation into a leak starts from, and it cannot be asked afterwards of a read
+     * nobody recorded.
+     *
+     * <p>The detail carries the filters and the count and never a row. The search term is
+     * what staff typed and is frequently an address, so it stays out of the one table with
+     * no retention rule.
+     *
+     * <p>The entity is the staff account rather than a subject, because a search has no
+     * single subject -- which is exactly what makes it worth recording.
+     */
+    ACCOUNTS_SEARCHED("account.searched", "account"),
+
+    /**
+     * §4.11's AD-04 (#104): staff stopped an account.
+     *
+     * <p>The strongest action anybody can take against a person on this platform short of
+     * deleting them: they cannot sign in, and every session they had is revoked in the
+     * same transaction. Reversible, unlike a campaign's suspension, which is why both the
+     * ban and the reinstatement are recorded -- an account that is not suspended today
+     * tells you nothing about whether it ever was.
+     *
+     * <p>The detail carries the edge and the session count, never the reason: that is
+     * prose a moderator wrote about a person, it is on the account where it can be
+     * corrected, and this table cannot be.
+     */
+    ACCOUNT_SUSPENDED("account.suspended", "account"),
+
+    /** §4.11's AD-04 (#104): staff let an account back in. See {@link #ACCOUNT_SUSPENDED}. */
+    ACCOUNT_REINSTATED("account.reinstated", "account"),
+
     /** A second factor was confirmed and is now required to sign in. */
     TWO_FACTOR_ENABLED("two_factor.enabled", "account"),
 

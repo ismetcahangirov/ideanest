@@ -98,6 +98,16 @@ public class SignInService {
 
         UserAccount user = account.orElseThrow();
 
+        // §4.11's AD-04 (#104). After the password and before anything that issues
+        // anything: a suspended account gets no session, no tokens, and no two-factor
+        // challenge. Checked here rather than at the token filter because the ban revokes
+        // every session in the same transaction, so this is the one way back in that is
+        // left -- and refusing it with the usual "those details are wrong" would send
+        // somebody round a password reset that cannot help them.
+        if (user.suspended()) {
+            throw new AccountSuspendedException();
+        }
+
         // A confirmed enrolment, not merely a row: somebody who scanned a code
         // and never entered one has not proved they can, and demanding a code
         // from them would be a lockout rather than a control.

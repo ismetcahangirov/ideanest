@@ -4,6 +4,7 @@
   "routes": {
     "/_not-found": 467,
     "/admin/moderation": 692,
+    "/admin/users": 663,
     "/discover": 732,
     "/notifications": 586,
     "/projects/[id]/[projectSlug]": 580,

@@ -2,6 +2,7 @@ package az.ideanest.pledge.api;
 
 import az.ideanest.pledge.PledgeProperties;
 import az.ideanest.pledge.application.PledgeService;
+import az.ideanest.pledge.application.PledgeSupplementService;
 import az.ideanest.shared.idempotency.IdempotencyKey;
 import az.ideanest.shared.idempotency.IdempotentRequests;
 import az.ideanest.shared.idempotency.RecordedResponse;
@@ -28,15 +29,16 @@ import org.springframework.web.bind.annotation.RestController;
  * A backer's pledge: making one, reading it, confirming it, changing it, and
  * withdrawing it.
  *
- * <p>Five of §10.2's six pledge endpoints. {@code GET /receipt} waits on there being
- * a collection to receipt, which is epic #59's.
+ * <p>Seven of §10.2's eight pledge endpoints, the two purchases of §4.8's PM-09 and
+ * PM-10 included (#76). {@code GET /receipt} waits on there being a collection to
+ * receipt, which is epic #59's.
  *
- * <p><strong>All four mutations require {@code Idempotency-Key}</strong> (§10.3), and
+ * <p><strong>All six mutations require {@code Idempotency-Key}</strong> (§10.3), and
  * the requirement is enforced before anything else about the request is considered. A
  * missing or malformed key is a refusal rather than a request that quietly runs
  * without protection — see {@link IdempotencyKey}.
  *
- * <p><strong>They answer with recorded bytes, not with an object.</strong> The three
+ * <p><strong>They answer with recorded bytes, not with an object.</strong> The five
  * that have a body return {@code ResponseEntity<String>} carrying JSON that
  * {@link IdempotentRequests} produced and stored, so that a replay is byte-identical
  * to the response it replays. Serialising the result twice — once now, once from a
@@ -82,6 +84,11 @@ public class PledgeController {
 
     private static final String CANCEL = "pledge.cancel";
 
+    /** §4.8's PM-09 and PM-10 (#76). Beside the four above for the same reason. */
+    private static final String UPGRADE = "pledge.upgrade";
+
+    private static final String BUY_ADDONS = "pledge.buy_addons";
+
     /**
      * The request a {@code DELETE} fingerprints, which is nothing.
      *
@@ -93,16 +100,19 @@ public class PledgeController {
     private static final Object NO_BODY = Map.of();
 
     private final PledgeService pledges;
+    private final PledgeSupplementService supplements;
     private final IdempotentRequests idempotency;
     private final RateLimiter rateLimiter;
     private final PledgeProperties properties;
 
     public PledgeController(
             PledgeService pledges,
+            PledgeSupplementService supplements,
             IdempotentRequests idempotency,
             RateLimiter rateLimiter,
             PledgeProperties properties) {
         this.pledges = pledges;
+        this.supplements = supplements;
         this.idempotency = idempotency;
         this.rateLimiter = rateLimiter;
         this.properties = properties;
@@ -252,6 +262,73 @@ public class PledgeController {
                 () -> pledges.cancel(id, backerId));
 
         return ResponseEntity.status(response.status()).build();
+    }
+
+    /**
+     * §4.8's PM-09: the backer moves up to a better reward tier after the campaign has
+     * closed, and owes the difference.
+     *
+     * <p><strong>Not the same thing as {@code PATCH /v1/pledges/{id}}</strong>, and the
+     * two are refused in each other's window: while the campaign runs, an edit
+     * re-quotes the whole pledge and nothing has been charged; afterwards, §5.1's
+     * decision has been frozen against those numbers and the difference is a separate
+     * transaction. {@code PledgeSupplementService} carries the argument, and a client
+     * that calls the wrong one is told which is the right one.
+     *
+     * <p>Idempotent through the same machinery as every other mutation here, with the
+     * pledge in the operation for {@link #confirm}'s reason: one key must not be able to
+     * upgrade two pledges and have the second replayed with the first one's body.
+     *
+     * <p><strong>Nothing is charged.</strong> The supplement is recorded with
+     * {@code collectedAt: null}, and PM-16's charge is epic #59's.
+     */
+    @PostMapping(path = "/v1/pledges/{id}/upgrade", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> upgrade(
+            @AuthenticationPrincipal Jwt accessToken,
+            @PathVariable UUID id,
+            @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
+            @Valid @RequestBody UpgradePledgeRequest request) {
+
+        UUID backerId = callerOf(accessToken);
+        enforcePledgeRateLimit(backerId);
+
+        IdempotencyKey key = IdempotencyKey.of(idempotencyKey);
+        return recorded(idempotency.execute(
+                backerId,
+                UPGRADE + ":" + id,
+                key,
+                request,
+                HttpStatus.OK.value(),
+                () -> PledgeResponse.of(supplements.upgrade(id, backerId, request.rewardTierId()))));
+    }
+
+    /**
+     * §4.8's PM-10: the pledge manager's add-on store.
+     *
+     * <p>The body says what to add rather than what the pledge should end up with —
+     * {@link BuyAddonsRequest} says why the difference matters — and the lines are
+     * recorded against the purchase rather than merged into the campaign's own
+     * {@code pledge_addons}, which V39 argues at length. The places are claimed either
+     * way, so a limited add-on cannot be oversold by being bought late.
+     */
+    @PostMapping(path = "/v1/pledges/{id}/addons", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> buyAddons(
+            @AuthenticationPrincipal Jwt accessToken,
+            @PathVariable UUID id,
+            @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
+            @Valid @RequestBody BuyAddonsRequest request) {
+
+        UUID backerId = callerOf(accessToken);
+        enforcePledgeRateLimit(backerId);
+
+        IdempotencyKey key = IdempotencyKey.of(idempotencyKey);
+        return recorded(idempotency.execute(
+                backerId,
+                BUY_ADDONS + ":" + id,
+                key,
+                request,
+                HttpStatus.OK.value(),
+                () -> PledgeResponse.of(supplements.buyAddons(id, backerId, request.selections()))));
     }
 
     /**

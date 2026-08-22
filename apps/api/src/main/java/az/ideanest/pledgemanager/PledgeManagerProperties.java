@@ -24,17 +24,59 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *
  * @param surveys what the survey endpoints allow
  * @param addresses how postal addresses are encrypted at rest
+ * @param fulfilment what one tracking import may carry
  */
 @ConfigurationProperties(prefix = "ideanest.pledge-manager")
-public record PledgeManagerProperties(Surveys surveys, Addresses addresses) {
+public record PledgeManagerProperties(Surveys surveys, Addresses addresses, Fulfilment fulfilment) {
 
     public PledgeManagerProperties {
         surveys = surveys == null ? Surveys.defaults() : surveys;
         addresses = addresses == null ? Addresses.unconfigured() : addresses;
+        fulfilment = fulfilment == null ? Fulfilment.defaults() : fulfilment;
     }
 
     public static PledgeManagerProperties defaults() {
-        return new PledgeManagerProperties(Surveys.defaults(), Addresses.unconfigured());
+        return new PledgeManagerProperties(Surveys.defaults(), Addresses.unconfigured(), Fulfilment.defaults());
+    }
+
+    /**
+     * What one tracking import may carry — §4.8's PM-20 (#80).
+     *
+     * @param importRowCap how many parcels one file may describe. It bounds two things
+     *     at once and deliberately: the rows read from the document, and the campaign's
+     *     backings loaded to check them against. Ten thousand is above every campaign
+     *     this platform has run and below the number at which one request holds a
+     *     spreadsheet in memory long enough to matter. A file longer than this is not
+     *     silently shortened — the response says it was truncated, which is §4.7's
+     *     CD-11's rule about a fulfilment list that looks complete and is not
+     * @param maxReportedErrors how many refused rows the response names. A creator who
+     *     exported the wrong column has four thousand identical failures, and a
+     *     response listing all of them is a response the size of the file they sent.
+     *     The count is always exact; this bounds only the list
+     */
+    public record Fulfilment(int importRowCap, int maxReportedErrors) {
+
+        private static final int DEFAULT_IMPORT_ROW_CAP = 10_000;
+
+        private static final int DEFAULT_MAX_REPORTED_ERRORS = 50;
+
+        public static Fulfilment defaults() {
+            return new Fulfilment(DEFAULT_IMPORT_ROW_CAP, DEFAULT_MAX_REPORTED_ERRORS);
+        }
+
+        public Fulfilment {
+            importRowCap = importRowCap == 0 ? DEFAULT_IMPORT_ROW_CAP : importRowCap;
+            maxReportedErrors = maxReportedErrors == 0 ? DEFAULT_MAX_REPORTED_ERRORS : maxReportedErrors;
+
+            if (importRowCap < 1) {
+                throw new IllegalArgumentException("A tracking import carries at least one parcel");
+            }
+            if (maxReportedErrors < 1) {
+                // Zero would mean an import that refused every row and said which of
+                // them only in a log line the creator cannot read.
+                throw new IllegalArgumentException("A refused import names at least one of its bad rows");
+            }
+        }
     }
 
     /**

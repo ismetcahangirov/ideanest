@@ -452,12 +452,72 @@ public class Project {
         return latePledgeEnabled;
     }
 
+    /**
+     * §4.5's PL-16: whether this creator offers late pledges at all.
+     *
+     * <p>Set from the campaign editor, at any point in the campaign's life —
+     * {@link ProjectEditLocks} deliberately does not freeze it at launch, because the
+     * decision is usually taken after the campaign has closed and the creator is
+     * counting what they can still manufacture.
+     *
+     * <p><strong>Switching it off closes any open window immediately</strong>, without
+     * moving the campaign's state: {@code PledgeAcceptance} requires all three facts, so
+     * a creator who has run out of stock has a switch that takes effect on the next
+     * request rather than a transition they have to make and cannot undo. The campaign
+     * stays in {@link ProjectState#LATE_PLEDGE} until they decide to start delivering.
+     *
+     * <p><strong>The window is cleared with it, and it has to be.</strong>
+     * {@code projects_late_pledge_window_needs_the_feature} refuses a window on a
+     * campaign that does not offer late pledges, so leaving the instant behind would
+     * turn one checkbox into a constraint violation — a 500 for a creator doing
+     * something entirely reasonable. What is lost is the date they had planned to stop
+     * on; what keeps it is {@code project_state_transitions}, where the note on the
+     * edge into {@code LATE_PLEDGE} records the window that was announced.
+     */
     public void setLatePledgeEnabled(boolean latePledgeEnabled) {
         this.latePledgeEnabled = latePledgeEnabled;
+        if (!latePledgeEnabled) {
+            this.latePledgeEndsAt = null;
+        }
     }
 
     public Instant getLatePledgeEndsAt() {
         return latePledgeEndsAt;
+    }
+
+    /**
+     * §4.8's PM-23: when late pledging stops.
+     *
+     * <p>Only ever written beside the edge into {@link ProjectState#LATE_PLEDGE} —
+     * {@code ProjectTransitionService.openLatePledges} is the one caller, and it is
+     * the one place that checks the window is in the future and inside the platform's
+     * bound. A setter reachable from the editor would let a creator extend a window
+     * after it had closed, which is a campaign that stopped taking pledges and started
+     * again with nothing recorded about either moment.
+     *
+     * <p>{@code projects_late_pledge_window_needs_the_feature} refuses a window on a
+     * campaign that has not enabled the feature, which is why the caller checks that
+     * first and answers with something a client can act on.
+     */
+    public void openLatePledgesUntil(Instant endsAt) {
+        this.latePledgeEndsAt = Objects.requireNonNull(endsAt, "A late-pledge window ends at some point");
+    }
+
+    /**
+     * Whether this campaign is taking a late pledge at {@code now}.
+     *
+     * <p>All three conditions, and each is a different fact: the campaign is in the
+     * state that accepts them, the creator still offers them, and the window has not
+     * run out. {@code PledgeAcceptance} is the only caller — the rule lives on the
+     * entity because it is a statement about this row and nothing else, and it is
+     * asked through the application layer because the pledge module may not read
+     * {@code projects}.
+     */
+    public boolean isTakingLatePledges(Instant now) {
+        return state == ProjectState.LATE_PLEDGE
+                && latePledgeEnabled
+                && latePledgeEndsAt != null
+                && latePledgeEndsAt.isAfter(now);
     }
 
     public Instant getFinalizedAt() {

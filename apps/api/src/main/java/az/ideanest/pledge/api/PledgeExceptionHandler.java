@@ -1,13 +1,16 @@
 package az.ideanest.pledge.api;
 
+import az.ideanest.pledge.application.CampaignStillTakingPledgesException;
 import az.ideanest.pledge.application.ContributionBelowRewardPriceException;
 import az.ideanest.pledge.application.PledgeAlreadyExistsException;
 import az.ideanest.pledge.application.PledgeNotDraftException;
 import az.ideanest.pledge.application.PledgeNotEditableException;
 import az.ideanest.pledge.application.PledgeNotFoundException;
+import az.ideanest.pledge.application.PledgeNotSupplementableException;
 import az.ideanest.pledge.application.ReservationExpiredException;
 import az.ideanest.pledge.application.RewardSoldOutException;
 import az.ideanest.pledge.application.ShippingDestinationUnpricedException;
+import az.ideanest.pledge.application.SupplementNotAnIncreaseException;
 import az.ideanest.pledge.application.UnknownRewardTierException;
 import az.ideanest.project.application.ProjectNotAcceptingPledgesException;
 import az.ideanest.project.application.ProjectNotFoundException;
@@ -265,6 +268,64 @@ public class PledgeExceptionHandler {
         problem.setDetail("This pledge is " + exception.state() + " and can no longer be changed.");
         problem.setProperty("code", "PLEDGE_NOT_EDITABLE");
         problem.setProperty("meta", Map.of("state", exception.state().name()));
+        return problem;
+    }
+
+    /**
+     * 409 for a pledge that cannot buy anything more — §4.8's PM-09 and PM-10.
+     *
+     * <p>A different set of states from {@link PledgeNotEditableException}'s, and a
+     * different code for that reason: a {@code DRAFT} may be edited and may not buy a
+     * supplement, and a {@code COLLECTED} pledge is the other way round. A client
+     * showing one message for both would tell a backer they cannot do the thing they
+     * can.
+     */
+    @ExceptionHandler(PledgeNotSupplementableException.class)
+    public ProblemDetail handleNotSupplementable(PledgeNotSupplementableException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/pledge-not-supplementable"));
+        problem.setTitle("Nothing more can be added to this pledge");
+        problem.setDetail("This pledge is " + exception.state() + ", so nothing further can be bought against it.");
+        problem.setProperty("code", "PLEDGE_NOT_SUPPLEMENTABLE");
+        problem.setProperty("meta", Map.of("state", exception.state().name()));
+        return problem;
+    }
+
+    /**
+     * 409 while the campaign is still taking pledges — §4.8's PM-09 and PM-10.
+     *
+     * <p><strong>The refusal names the alternative.</strong> Until the deadline, §4.5's
+     * PL-09 edit is how a backer changes a pledge, and it re-quotes the whole thing
+     * because nothing has been charged. A client that could only read "409" would hide
+     * the upgrade button and never learn that the edit is the same feature under
+     * another name.
+     */
+    @ExceptionHandler(CampaignStillTakingPledgesException.class)
+    public ProblemDetail handleStillTakingPledges(CampaignStillTakingPledgesException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/campaign-still-taking-pledges"));
+        problem.setTitle("The campaign is still running");
+        problem.setDetail("While this campaign is taking pledges, change your pledge instead of buying an upgrade.");
+        problem.setProperty("code", "CAMPAIGN_STILL_TAKING_PLEDGES");
+        problem.setProperty("meta", Map.of("use", "PATCH /v1/pledges/{id}"));
+        return problem;
+    }
+
+    /**
+     * 422 for a purchase that would cost nothing more — §4.8's PM-09 and PM-10.
+     *
+     * <p>The body is well formed and the tier exists; what is wrong is the relationship
+     * between the two, which is what 422 is for. A downgrade is a refund and refunds are
+     * #67's, so this is a refusal rather than a negative supplement — V39's
+     * {@code pledge_supplements_amount_is_positive} would refuse the row anyway.
+     */
+    @ExceptionHandler(SupplementNotAnIncreaseException.class)
+    public ProblemDetail handleNotAnIncrease(SupplementNotAnIncreaseException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_CONTENT);
+        problem.setType(URI.create("https://ideanest.az/problems/supplement-not-an-increase"));
+        problem.setTitle("That is not an upgrade");
+        problem.setDetail("This costs no more than what the pledge already has. A refund is a separate request.");
+        problem.setProperty("code", "SUPPLEMENT_NOT_AN_INCREASE");
         return problem;
     }
 

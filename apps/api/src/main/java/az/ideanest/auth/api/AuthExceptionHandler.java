@@ -1,6 +1,7 @@
 package az.ideanest.auth.api;
 
 import az.ideanest.auth.application.AccountLinkRefusedException;
+import az.ideanest.auth.application.AccountSuspendedException;
 import az.ideanest.auth.application.AuthenticationFailedException;
 import az.ideanest.auth.application.TwoFactorRejectedException;
 import az.ideanest.auth.application.ProviderNotConfiguredException;
@@ -26,6 +27,29 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice(
         assignableTypes = {AuthController.class, TokenController.class, TwoFactorController.class})
 public class AuthExceptionHandler {
+
+    /**
+     * 403 for an account trust and safety has stopped — §4.11's AD-04 (#104).
+     *
+     * <p><strong>403 and not 401</strong>, which is the whole difference: the caller has
+     * proved who they are and is not permitted, so a client must stop offering to sign
+     * them in again. A 401 would put them in a loop with a password that is correct.
+     *
+     * <p>The code is what a client branches on to show the one sentence that helps, which
+     * is "contact support" — {@link AccountSuspendedException} argues why saying so is not
+     * an oracle.
+     */
+    @ExceptionHandler(AccountSuspendedException.class)
+    public ResponseEntity<ProblemDetail> handleSuspended(AccountSuspendedException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+        problem.setType(URI.create("https://ideanest.az/problems/account-suspended"));
+        problem.setTitle("Account suspended");
+        problem.setDetail(exception.getMessage());
+        problem.setProperty("code", "ACCOUNT_SUSPENDED");
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .cacheControl(CacheControl.noStore())
+                .body(problem);
+    }
 
     /**
      * Every way of failing to authenticate, with one status and one message.

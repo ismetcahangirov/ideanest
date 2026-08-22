@@ -276,6 +276,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/projects/{id}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["projectSuspensionSuspend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/ranking/explain/{slug}": {
         parameters: {
             query?: never;
@@ -318,6 +334,70 @@ export interface paths {
         get?: never;
         put: operations["adminRankingSetWeight"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminUserSearch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/users/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminUserInspect"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/users/{id}/ban": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminUserBan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/users/{id}/reinstate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminUserReinstate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -756,6 +836,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/fulfilments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["fulfilmentMine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/notification-preferences": {
         parameters: {
             query?: never;
@@ -868,6 +964,22 @@ export interface paths {
         patch: operations["pledgeEdit"];
         trace?: never;
     };
+    "/v1/pledges/{id}/addons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["pledgeBuyAddons"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/pledges/{id}/confirm": {
         parameters: {
             query?: never;
@@ -878,6 +990,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["pledgeConfirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/pledges/{id}/upgrade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["pledgeUpgrade"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1006,6 +1134,38 @@ export interface paths {
         get: operations["projectForEdit"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{id}/late-pledges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["projectOpenLatePledges"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{id}/late-pledges/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["projectCloseLatePledges"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1278,6 +1438,38 @@ export interface paths {
         get: operations["publicCommentList"];
         put?: never;
         post: operations["commentPost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{projectId}/fulfilments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["fulfilmentOfCampaign"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{projectId}/fulfilments/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["fulfilmentImportTracking"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1745,6 +1937,31 @@ export interface components {
             state?: string;
             title?: string;
         };
+        AdminUserListResponse: {
+            /** Format: uuid */
+            nextCursor?: string;
+            users?: components["schemas"]["AdminUserResponse"][];
+        };
+        AdminUserResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            deletionScheduledAt?: string;
+            email?: string;
+            emailVerified?: boolean;
+            /** Format: date-time */
+            emailVerifiedAt?: string;
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            slug?: string;
+            suspended?: boolean;
+            /** Format: date-time */
+            suspendedAt?: string;
+            /** Format: uuid */
+            suspendedBy?: string;
+            suspensionReason?: string;
+        };
         Amounts: {
             addons?: components["schemas"]["Money"];
             base?: components["schemas"]["Money"];
@@ -1787,6 +2004,9 @@ export interface components {
             states?: ("DRAFT" | "CONFIRMED" | "EXPIRED" | "CANCELED_BY_BACKER" | "CANCELED_BY_PROJECT" | "CHARGE_PENDING" | "COLLECTED" | "CHARGE_FAILED" | "DROPPED" | "REFUNDED" | "CHARGEBACK" | "FULFILLED")[];
             term?: string;
         };
+        BackerFulfilmentResponse: {
+            fulfilments?: components["schemas"]["Item"][];
+        };
         BackerListResponse: {
             backers?: components["schemas"]["Backer"][];
             currency?: string;
@@ -1827,6 +2047,9 @@ export interface components {
         };
         BackerSurveyListResponse: {
             surveys?: components["schemas"]["BackerSurveyBody"][];
+        };
+        BuyAddonsRequest: {
+            addons: components["schemas"]["PledgeAddonBody"][];
         };
         CampaignMessageListResponse: {
             items?: components["schemas"]["CampaignMessageResponse"][];
@@ -2180,6 +2403,51 @@ export interface components {
             items?: components["schemas"]["Item"][];
             nextCursor?: string;
         };
+        FulfilmentImportResponse: {
+            /** Format: int32 */
+            changed?: number;
+            errors?: components["schemas"]["RowFailureBody"][];
+            /** Format: int32 */
+            failed?: number;
+            /** Format: int32 */
+            rows?: number;
+            truncated?: boolean;
+            /** Format: int32 */
+            unchanged?: number;
+        };
+        FulfilmentListResponse: {
+            fulfilments?: components["schemas"]["FulfilmentResponse"][];
+            progress?: components["schemas"]["FulfilmentProgressResponse"];
+        };
+        FulfilmentProgressResponse: {
+            /** Format: int64 */
+            backings?: number;
+            /** Format: int64 */
+            delivered?: number;
+            /** Format: int64 */
+            preparing?: number;
+            /** Format: int64 */
+            returned?: number;
+            /** Format: int64 */
+            shipped?: number;
+            /** Format: int64 */
+            untouched?: number;
+        };
+        FulfilmentResponse: {
+            carrier?: string;
+            /** Format: date-time */
+            deliveredAt?: string;
+            /** Format: uuid */
+            pledgeId?: string;
+            /** Format: date-time */
+            shippedAt?: string;
+            /** @enum {string} */
+            status?: "PREPARING" | "SHIPPED" | "DELIVERED" | "RETURNED";
+            trackingNumber?: string;
+            trackingUrl?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
         Image: {
             /** Format: int32 */
             height?: number;
@@ -2336,6 +2604,10 @@ export interface components {
             nonce?: string;
             tokenDelivery?: string;
         };
+        OpenLatePledgesRequest: {
+            /** Format: date-time */
+            endsAt: string;
+        };
         Outcome: {
             /** Format: int32 */
             backersCount?: number;
@@ -2371,6 +2643,7 @@ export interface components {
             /** Format: uuid */
             id?: string;
             isAnonymous?: boolean;
+            latePledge?: boolean;
             /** Format: uuid */
             paymentMethodId?: string;
             /** Format: uuid */
@@ -2381,6 +2654,22 @@ export interface components {
             rewardTierId?: string;
             shippingCountry?: string;
             state?: string;
+            supplements?: components["schemas"]["PledgeSupplementBody"][];
+        };
+        PledgeSupplementBody: {
+            addons?: components["schemas"]["PledgeAddonBody"][];
+            amount?: components["schemas"]["Money"];
+            /** Format: date-time */
+            collectedAt?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: uuid */
+            fromRewardTierId?: string;
+            /** Format: uuid */
+            id?: string;
+            kind?: string;
+            /** Format: uuid */
+            toRewardTierId?: string;
         };
         PostCommentRequest: {
             body?: string;
@@ -2457,6 +2746,8 @@ export interface components {
             id?: string;
             latePledgeEnabled?: boolean;
             /** Format: date-time */
+            latePledgeEndsAt?: string;
+            /** Format: date-time */
             launchedAt?: string;
             lockedFields?: string[];
             risks?: string;
@@ -2483,6 +2774,9 @@ export interface components {
             goal?: components["schemas"]["Money"];
             /** Format: uuid */
             id?: string;
+            latePledgeEnabled?: boolean;
+            /** Format: date-time */
+            latePledgeEndsAt?: string;
             /** Format: date-time */
             launchedAt?: string;
             outcome?: components["schemas"]["Outcome"];
@@ -2748,6 +3042,13 @@ export interface components {
             /** Format: uuid */
             rewardTierId?: string;
         };
+        RowFailureBody: {
+            code?: string;
+            /** Format: int32 */
+            line?: number;
+            message?: string;
+            pledgeId?: string;
+        };
         SaveBackerSegmentRequest: {
             filter?: components["schemas"]["BackerFilterBody"];
             name: string;
@@ -2952,6 +3253,12 @@ export interface components {
             /** Format: int64 */
             total?: number;
         };
+        SuspendAccountRequest: {
+            reason: string;
+        };
+        SuspendProjectRequest: {
+            reason: string;
+        };
         Target: {
             /** Format: uuid */
             id?: string;
@@ -2998,6 +3305,10 @@ export interface components {
         };
         UpdateNotificationPreferencesRequest: {
             preferences: components["schemas"]["Change"][];
+        };
+        UpgradePledgeRequest: {
+            /** Format: uuid */
+            rewardTierId: string;
         };
         ValueCount: {
             /** Format: int64 */
@@ -3049,15 +3360,19 @@ export type SchemaAddressProgressResponse = components['schemas']['AddressProgre
 export type SchemaAdminCollectionIndex = components['schemas']['AdminCollectionIndex'];
 export type SchemaAdminCollectionResponse = components['schemas']['AdminCollectionResponse'];
 export type SchemaAdminMember = components['schemas']['AdminMember'];
+export type SchemaAdminUserListResponse = components['schemas']['AdminUserListResponse'];
+export type SchemaAdminUserResponse = components['schemas']['AdminUserResponse'];
 export type SchemaAmounts = components['schemas']['Amounts'];
 export type SchemaAnswerBody = components['schemas']['AnswerBody'];
 export type SchemaBacker = components['schemas']['Backer'];
 export type SchemaBackerBreakdownResponse = components['schemas']['BackerBreakdownResponse'];
 export type SchemaBackerFilterBody = components['schemas']['BackerFilterBody'];
+export type SchemaBackerFulfilmentResponse = components['schemas']['BackerFulfilmentResponse'];
 export type SchemaBackerListResponse = components['schemas']['BackerListResponse'];
 export type SchemaBackerSegmentResponse = components['schemas']['BackerSegmentResponse'];
 export type SchemaBackerSurveyBody = components['schemas']['BackerSurveyBody'];
 export type SchemaBackerSurveyListResponse = components['schemas']['BackerSurveyListResponse'];
+export type SchemaBuyAddonsRequest = components['schemas']['BuyAddonsRequest'];
 export type SchemaCampaignMessageListResponse = components['schemas']['CampaignMessageListResponse'];
 export type SchemaCampaignMessageResponse = components['schemas']['CampaignMessageResponse'];
 export type SchemaCancelProjectRequest = components['schemas']['CancelProjectRequest'];
@@ -3102,6 +3417,10 @@ export type SchemaFacets = components['schemas']['Facets'];
 export type SchemaFeed = components['schemas']['Feed'];
 export type SchemaFollowStateResponse = components['schemas']['FollowStateResponse'];
 export type SchemaFollowingListResponse = components['schemas']['FollowingListResponse'];
+export type SchemaFulfilmentImportResponse = components['schemas']['FulfilmentImportResponse'];
+export type SchemaFulfilmentListResponse = components['schemas']['FulfilmentListResponse'];
+export type SchemaFulfilmentProgressResponse = components['schemas']['FulfilmentProgressResponse'];
+export type SchemaFulfilmentResponse = components['schemas']['FulfilmentResponse'];
 export type SchemaImage = components['schemas']['Image'];
 export type SchemaInviteCollaboratorRequest = components['schemas']['InviteCollaboratorRequest'];
 export type SchemaItem = components['schemas']['Item'];
@@ -3119,10 +3438,12 @@ export type SchemaNotificationInboxResponse = components['schemas']['Notificatio
 export type SchemaNotificationPreferencesResponse = components['schemas']['NotificationPreferencesResponse'];
 export type SchemaNotificationResponse = components['schemas']['NotificationResponse'];
 export type SchemaOAuthSignInRequest = components['schemas']['OAuthSignInRequest'];
+export type SchemaOpenLatePledgesRequest = components['schemas']['OpenLatePledgesRequest'];
 export type SchemaOutcome = components['schemas']['Outcome'];
 export type SchemaPatchPledgeRequest = components['schemas']['PatchPledgeRequest'];
 export type SchemaPledgeAddonBody = components['schemas']['PledgeAddonBody'];
 export type SchemaPledgeResponse = components['schemas']['PledgeResponse'];
+export type SchemaPledgeSupplementBody = components['schemas']['PledgeSupplementBody'];
 export type SchemaPostCommentRequest = components['schemas']['PostCommentRequest'];
 export type SchemaPostalAddressBody = components['schemas']['PostalAddressBody'];
 export type SchemaPreference = components['schemas']['Preference'];
@@ -3162,6 +3483,7 @@ export type SchemaRewardPatchRequest = components['schemas']['RewardPatchRequest
 export type SchemaRewardResponse = components['schemas']['RewardResponse'];
 export type SchemaRewardSlice = components['schemas']['RewardSlice'];
 export type SchemaRewardTierCountBody = components['schemas']['RewardTierCountBody'];
+export type SchemaRowFailureBody = components['schemas']['RowFailureBody'];
 export type SchemaSaveBackerSegmentRequest = components['schemas']['SaveBackerSegmentRequest'];
 export type SchemaSaveStateResponse = components['schemas']['SaveStateResponse'];
 export type SchemaSavedListResponse = components['schemas']['SavedListResponse'];
@@ -3188,6 +3510,8 @@ export type SchemaSurveyQuestionBody = components['schemas']['SurveyQuestionBody
 export type SchemaSurveyRequest = components['schemas']['SurveyRequest'];
 export type SchemaSurveyResponseBody = components['schemas']['SurveyResponseBody'];
 export type SchemaSurveyResponseListResponse = components['schemas']['SurveyResponseListResponse'];
+export type SchemaSuspendAccountRequest = components['schemas']['SuspendAccountRequest'];
+export type SchemaSuspendProjectRequest = components['schemas']['SuspendProjectRequest'];
 export type SchemaTarget = components['schemas']['Target'];
 export type SchemaTaxon = components['schemas']['Taxon'];
 export type SchemaTemplate = components['schemas']['Template'];
@@ -3196,6 +3520,7 @@ export type SchemaThread = components['schemas']['Thread'];
 export type SchemaTokenResponse = components['schemas']['TokenResponse'];
 export type SchemaTwoFactorEnrolmentResponse = components['schemas']['TwoFactorEnrolmentResponse'];
 export type SchemaUpdateNotificationPreferencesRequest = components['schemas']['UpdateNotificationPreferencesRequest'];
+export type SchemaUpgradePledgeRequest = components['schemas']['UpgradePledgeRequest'];
 export type SchemaValueCount = components['schemas']['ValueCount'];
 export type SchemaVerificationRecord = components['schemas']['VerificationRecord'];
 export type SchemaVerifyEmailRequest = components['schemas']['VerifyEmailRequest'];
@@ -3668,6 +3993,32 @@ export interface operations {
             };
         };
     };
+    projectSuspensionSuspend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuspendProjectRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectEdit"];
+                };
+            };
+        };
+    };
     adminRankingExplain: {
         parameters: {
             query?: {
@@ -3734,6 +4085,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WeightsResponse"];
+                };
+            };
+        };
+    };
+    adminUserSearch: {
+        parameters: {
+            query?: {
+                query?: string;
+                suspended?: boolean;
+                after?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserListResponse"];
+                };
+            };
+        };
+    };
+    adminUserInspect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserResponse"];
+                };
+            };
+        };
+    };
+    adminUserBan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuspendAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserResponse"];
+                };
+            };
+        };
+    };
+    adminUserReinstate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserResponse"];
                 };
             };
         };
@@ -4506,6 +4952,26 @@ export interface operations {
             };
         };
     };
+    fulfilmentMine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackerFulfilmentResponse"];
+                };
+            };
+        };
+    };
     notificationPreferencePreferences: {
         parameters: {
             query?: never;
@@ -4737,6 +5203,34 @@ export interface operations {
             };
         };
     };
+    pledgeBuyAddons: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BuyAddonsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
     pledgeConfirm: {
         parameters: {
             query?: never;
@@ -4751,6 +5245,34 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": components["schemas"]["ConfirmPledgeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    pledgeUpgrade: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpgradePledgeRequest"];
             };
         };
         responses: {
@@ -4959,6 +5481,54 @@ export interface operations {
         };
     };
     projectForEdit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectEdit"];
+                };
+            };
+        };
+    };
+    projectOpenLatePledges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenLatePledgesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectEdit"];
+                };
+            };
+        };
+    };
+    projectCloseLatePledges: {
         parameters: {
             query?: never;
             header?: never;
@@ -5527,6 +6097,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CommentResponse"];
+                };
+            };
+        };
+    };
+    fulfilmentOfCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FulfilmentListResponse"];
+                };
+            };
+        };
+    };
+    fulfilmentImportTracking: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "text/csv": string;
+                "text/plain": string;
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FulfilmentImportResponse"];
                 };
             };
         };

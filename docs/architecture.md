@@ -485,7 +485,38 @@ sequenceDiagram
 | PL-13 | Stock reservation | A DRAFT pledge, expiring five minutes after it is made |
 | PL-14 | Idempotency | `Idempotency-Key` prevents duplicates |
 | PL-15 | Secret rewards | Reachable only by a private URL |
-| PL-16 | Late pledge | If the creator enables it |
+| PL-16 | Late pledge | If the creator enables it. Built (#81) |
+
+> **PL-16, as #81 built it.** A campaign takes pledges in two windows and not one:
+> while it is `LIVE` and before its deadline, and again while it is `LATE_PLEDGE` and
+> inside a window its creator opened. **Three facts have to be true**, and each is a
+> different decision — the campaign is in `LATE_PLEDGE`, `late_pledge_enabled` is on,
+> and `late_pledge_ends_at` has not passed. Keeping the switch and the window apart is
+> what gives a creator who has run out of stock a way to stop taking money on the next
+> request; the alternative was a transition, and §6.1 has no edge back out of
+> `FULFILLING`. Switching off clears the window with it, because
+> `projects_late_pledge_window_needs_the_feature` refuses a window without the feature
+> and one checkbox must not become a constraint violation; the window that was
+> announced survives on the `project_state_transitions` row.
+>
+> **A late pledge is stamped as one.** `pledges.is_late_pledge` is written from what
+> `PledgeAcceptance` answered — never from anything a client sent — and it is the whole
+> point of the feature being more than one extra state in a condition: §5.1 judged the
+> campaign against its goal at its deadline, and money taken afterwards must not join
+> the number that decision was made from. An **edit** re-prices a pledge and never
+> re-stamps the flag, so a backer changing their shirt size in the late window does not
+> move their original pledge into the late column.
+>
+> **The window is bounded** by `ideanest.project.late-pledges.max-window`, ninety days.
+> That is a bound on a promise rather than a technical limit: a campaign still taking
+> money nine months after it closed has customers rather than backers, and it has no
+> stock to sell them.
+>
+> **What is not built is the way in.** `COLLECTING → LATE_PLEDGE` is the only edge into
+> the state §6.1 draws, and the edge into `COLLECTING` is the batched collection of
+> epic #59 — blocked on #60. So the feature is complete and unreachable in production
+> until collection lands: a stub that let a creator declare their campaign collected
+> would be the platform claiming cards had been charged.
 
 > **PL-13 used to say "Redis TTL", and #51 changed it after building the
 > feature**, exactly as #47 changed §7.3's PostGIS row. §7.2 had already
@@ -733,7 +764,7 @@ The most valuable and most complex module. It begins when funding closes.
 | PM-23 | Late pledges | Backer |
 | PM-24 | Reminders to non-responders | System |
 
-> **PM-01 to PM-08, PM-11 to PM-13 and PM-24 are built; the rest of this section is
+> **PM-01 to PM-13, PM-20 to PM-23 and PM-24 are built; the rest of this section is
 > not.** #73 built the survey builder and #74 its distribution and responses: a
 > creator writes questions of five types (PM-03), makes any of them conditional on a
 > reward tier (PM-02), sends the set once to every backer (PM-04), and reads what came
@@ -745,11 +776,69 @@ The most valuable and most complex module. It begins when funding closes.
 > flat (PM-11, PM-12), and a resolution order in which a named country always beats the
 > region it falls in.
 >
-> **Not built:** PM-09 and PM-10's upgrades and post-campaign add-on store, PM-14 to
-> PM-16's tax and customs (#78, blocked on a decision), PM-17's backer report *for the
-> pledge manager* — §4.7's CD-10 is built and is the same list — PM-18's bulk address
-> editing, PM-19's digital distribution, PM-20 to PM-22's fulfilment tracking, and
-> PM-23's late pledges. Each has an issue; none of them is implied by what is here.
+> **#80 built fulfilment tracking (PM-20 to PM-22).** A creator uploads the file their
+> carrier or fulfilment partner sent back — `text/csv`, keyed on `pledge_id`, which is
+> the first column of §4.7's CD-11 export, so the round trip is export, forward, fill
+> in, upload. Each row is applied on its own and **a row that cannot be applied is
+> reported with its line number while the rest of the file still lands**: refusing a
+> four-thousand-row file over three typos sends a creator away with nothing, twice,
+> because the second attempt fails on the typo they had not found. `fulfilments` holds
+> one parcel per pledge in one of four statuses, and V38 constrains its two timestamps
+> to agree with that status rather than to be a second opinion about it — so a
+> correction from `DELIVERED` back to `SHIPPED` clears the delivery instant, and
+> `audit_logs` is what keeps the history of the claim. There is deliberately **no
+> transition table**: a fulfilment status is a claim about the physical world, imported
+> from somebody else's file, and a creator who scanned the wrong box has to be able to
+> take it back. Both sides read it — the creator at `GET /projects/{id}/fulfilments`
+> with counts including the backings nobody has said anything about, the backer at
+> `GET /me/fulfilments` across every campaign they have backed. **Nobody is notified**:
+> "your reward has shipped" is a notification type §4.10 does not have, and a bulk
+> import fanning out four thousand emails from inside a request is not the way to
+> introduce one. **No pledge state moves either** — §6.2's `FULFILLED` is reached from
+> `COLLECTED`, and marking a parcel delivered must not skip the charge.
+>
+> **#81 built late pledges (PM-23).** §4.5's PL-16 carries the design; what belongs
+> here is the shape of the creator's side. `POST /projects/{id}/late-pledges` takes the
+> `COLLECTING → LATE_PLEDGE` edge and names the date the window closes, and
+> `POST …/late-pledges/close` takes `LATE_PLEDGE → FULFILLING` and stops them. The
+> campaign's public page carries `latePledgeEnabled` and `latePledgeEndsAt`, because a
+> visitor arriving after the deadline has to be able to see that there is still a way
+> in — the state alone does not say it, since a campaign can sit in `LATE_PLEDGE` with
+> the switch turned off.
+>
+> **#76 built the upgrades and the post-campaign add-on store (PM-09, PM-10), and
+> recorded rather than performed PM-16.** A backer whose campaign has closed can move
+> up a tier at `POST /pledges/{id}/upgrade` or buy more things at
+> `POST /pledges/{id}/addons`, and what they owe for it is a `pledge_supplements` row —
+> **beside the pledge and never inside it**. Two reasons, and V39 argues both: §5.1
+> judged the campaign by comparing what it raised against its goal at its deadline and
+> V29 froze that comparison, so rewriting `base_amount` months later would change a
+> number the platform has already reported; and the issue's own requirement is that an
+> additional purchase is charged as a *separate transaction*, which a total folded back
+> into `pledges` could not express.
+>
+> The consequence is stated rather than discovered: **after an upgrade a pledge's
+> `base_amount` is no longer the price of the tier named beside it.** The tier is what
+> gets shipped, the amount is what the campaign raised, and the difference between them
+> is the supplement. Post-campaign add-ons get their own lines in `supplement_addons`
+> for the same reason — a backer who bought two mugs during the campaign and one after
+> it would otherwise have one `pledge_addons` row of three, with no way to say which
+> part of it `addons_amount` paid for. **What goes in the box is both tables**, which is
+> the one cost of keeping the two purchases apart.
+>
+> Stock is not duplicated: a post-campaign add-on claims its places through the same
+> statements the checkout uses, so a limited add-on cannot be oversold by being bought
+> late. The two endpoints are **refused while the campaign is still taking pledges**,
+> with a code naming §4.5's PL-09 edit — two ways to change one pledge, and the campaign
+> decides which applies. A downgrade is refused rather than recorded as a negative
+> supplement: money that has been collected comes back through #67. And **nothing is
+> charged**: PM-16 is the charge, `collected_at` is null on every row this platform
+> holds, and a stub that marked one collected would tell a creator money had arrived.
+>
+> **Not built:** PM-14 to PM-16's tax and customs (#78, blocked on a decision) and the
+> charge PM-16 asks for (epic #59), PM-17's backer report *for the pledge manager* —
+> §4.7's CD-10 is built and is the same list — PM-18's bulk address editing, and PM-19's
+> digital distribution. Each has an issue; none of them is implied by what is here.
 >
 > **The one boundary worth naming.** PM-03 lists `address` as an answer type and an
 > ADDRESS question **stores no answer**: it records that the survey asks for a postal
@@ -984,9 +1073,9 @@ Preferences are per category and per channel, with a digest option.
 | # | Module | Capabilities |
 |---|---|---|
 | AD-01 | Project moderation | Queue, approve, reject, request changes, notes, history |
-| AD-02 | Trust and safety | Report queue, fraud signals, suspension. Reporting and the queue are built (#102, §7.2's `content_reports`); fraud signals and suspension are not |
+| AD-02 | Trust and safety | Report queue, fraud signals, suspension. Reporting and the queue are built (#102, §7.2's `content_reports`); **suspension is built (#103)** and fraud signals are not |
 | AD-03 | Curation | Editorial badges, collections, open calls, placement |
-| AD-04 | User management | Search, inspect, ban, verification status, audited impersonation |
+| AD-04 | User management | Search, inspect, ban, verification status, audited impersonation. **Search, inspect and the ban are built (#104)**; impersonation is not |
 | AD-05 | Finance | Payment log, ledger, payout queue, approvals, disputes |
 | AD-06 | Refunds | Full and partial with reason codes |
 | AD-07 | Chargebacks | Notification, evidence, outcome |
@@ -1000,6 +1089,74 @@ Preferences are per category and per channel, with a digest option.
 | AD-15 | Email templates | Edit, preview, test send. **Preview and test send are built (#86, §12.3)** at `GET /v1/admin/email-templates/{type}/preview` and `POST …/test-send`; the test send takes no recipient and goes to the caller's own address, which §12.3 argues. Editing is a schema and a decision about who may rewrite a payment-failure notice, and belongs to this epic |
 | AD-16 | System health | Queue depth, failed jobs, provider status |
 
+> **AD-04, as #104 built it.** `GET /v1/admin/users` searches the accounts by address,
+> display name or profile slug — staff arrive holding whatever the complaint gave them, so
+> matching one of the three would send them to guess which — with a `suspended=true` filter
+> and a keyset cursor. `GET /v1/admin/users/{id}` inspects one. Both are **staff-only and
+> both are audited**, which almost no read on this platform is: it is the one endpoint that
+> hands somebody else's email address to an account with no relationship to them, and "who
+> looked up whom" cannot be asked afterwards of a read nobody recorded. Both answer
+> `no-store`.
+>
+> **The ban is two writes and they are one transaction**: V40's `suspended_at`,
+> `suspended_by` and `suspension_reason` — all three or none, by constraint — and every
+> session the account holds, revoked. Either alone is a hole, because an account marked
+> suspended whose refresh tokens still work is an account that goes on being used. Sign-in
+> then refuses it with **403 and `ACCOUNT_SUSPENDED` rather than the usual 401**: the
+> refusal comes after the password has been verified, so it tells the person nothing they
+> did not know about their own account, and a 401 would put them in a loop with a password
+> that is correct. **An access token already issued is not revoked** — they are signed and
+> short-lived, and a database lookup in the token filter would put a query on the hot path
+> of every endpoint to close a window of minutes.
+>
+> **Reversible, unlike a campaign's suspension**, and `POST …/reinstate` is why the endpoint
+> list above gained a line: a campaign cannot go back to `LIVE` because its funding window
+> has moved on, an account has no window, and a ban with no reversal makes the first
+> mistaken one permanent. Sessions are not restored — the person signs in again.
+>
+> **The columns are orthogonal to V5's deletion lifecycle**, deliberately: an account can be
+> suspended *and* inside its grace period, and a single `state` column would have forced
+> whoever wrote the update to choose which fact to keep. Staff cannot suspend themselves —
+> `users_suspension_has_another_author` — because the row would then answer "who did this"
+> with the person it was done to.
+>
+> **Impersonation is not built**, and it is the half of AD-04 that needs a decision rather
+> than an endpoint: an audited session issued in somebody else's name is a token that can do
+> everything they can do, and what it may *not* do is a policy question §17 does not answer
+> yet.
+>
+> **AD-02's suspension, as #103 built it.** `POST /v1/admin/projects/{id}/suspend`
+> takes §6.1's `LIVE → SUSPENDED`, staff-only through the same configured list the three
+> moderation decisions use, audited as `project.suspended`, and with a reason that is
+> required because it is the only thing anybody is ever told about why. **It is
+> terminal**: a suspension that could be lifted back into `LIVE` would restart a funding
+> window whose deadline has moved on.
+>
+> **The half that matters is what happens to the pledges**, and the creator's own
+> cancellation had exactly the same gap until this issue. Both halts record a
+> `project.suspended` / `project.canceled` event through §8.3's outbox in the transaction
+> that performs the transition, and the pledge module's listener ends every `DRAFT` and
+> `CONFIRMED` pledge as `CANCELED_BY_PROJECT` and gives every place they hold back to the
+> tier. Without it a campaign taken down while holding four hundred places would hold
+> them for ever, on a campaign nobody can back.
+>
+> **An event rather than a call, and that is not indirection.** `pledges` is the pledge
+> module's table and the project module may not read it; the pledge module already
+> depends on the project module through `PledgeAcceptance`, so a call the other way would
+> be a cycle `ModuleBoundaryTests` fails the build over. The outbox is what makes the
+> halt and the release one commit and still leaves them in two modules.
+>
+> **A pledge whose money has moved is left alone** — `CHARGE_PENDING`, `CHARGE_FAILED`,
+> `COLLECTED`. Marking one `CANCELED_BY_PROJECT` would say the money was never taken;
+> §6.2 gives the honest edge a different name, `COLLECTED → REFUNDED`, which is #67's and
+> needs a provider behind it. None of those states can exist today, so the release counts
+> them and logs a warning naming the campaign rather than acting on them.
+>
+> **Nobody is notified yet.** §4.10 has no notification type for a campaign that was
+> stopped, and inventing one inside this issue would be a fan-out to every backer written
+> in passing. The event carries the reason precisely so that the type, when it exists, has
+> something to say.
+>
 > **AD-02's intake and queue, as #102 built them.** Reporting is
 > `POST /v1/projects/{id}/report` (§10.2, C-06) and `POST /v1/users/{id}/report`
 > — the second is not in §10.2's list and is what AD-09's "profiles" and AD-04's
@@ -1347,6 +1504,15 @@ stateDiagram-v2
 > is why V17 gave that column to "the pledge stopped being active" rather than to
 > one cause of it. The `state` column is what distinguishes them.
 >
+> **`DRAFT --> CANCELED_BY_PROJECT` is new too, and #103 added it** while building the
+> halt. The diagram draws `CONFIRMED --> CANCELED_BY_PROJECT` and stops there, which
+> leaves a checkout in progress on a campaign that has just been suspended with nowhere
+> to go: it would sit as a `DRAFT` holding a limited tier's place for the rest of its
+> five minutes, on a campaign nobody can back. Recording it as `EXPIRED` would say a
+> timer ran out, and as `CANCELED_BY_BACKER` that the backer decided something. The
+> release walks the same two states either way -- see §4.11's AD-02 for what it
+> deliberately does *not* touch.
+>
 > **An edit is not on this diagram, deliberately.** PL-09 changes what a pledge is
 > for, not what state it is in: a draft that is edited is still a draft and a
 > confirmed pledge that is edited is still confirmed. Sending a confirmed pledge
@@ -1393,8 +1559,20 @@ erDiagram
 #### `users`
 `id` (uuid), `email` (citext, unique), `email_verified_at`, `name`, `slug`,
 `avatar_url`, `bio`, `location_id`, `locale`, `currency`, `kyc_status`,
-`two_factor_enabled`, `banned_at`, `deleted_at`, `deletion_requested_at`,
-`deletion_scheduled_at`, `anonymised_at`, timestamps.
+`two_factor_enabled`, `suspended_at`, `suspended_by`, `suspension_reason`,
+`deleted_at`, `deletion_requested_at`, `deletion_scheduled_at`, `anonymised_at`,
+timestamps.
+
+> **This row used to say `banned_at`, and #104 built three columns instead.** A ban is an
+> instant, an author and a reason, and the reason is not decoration: it is what the person
+> is told, what an appeal is answered from, and what somebody reviewing the decision a year
+> later reads. `users_suspension_is_whole` makes them all-or-none, and
+> `users_suspension_has_another_author` refuses a self-suspension — a row whose author is
+> the person it was done to answers "who did this" with the wrong name. They are
+> **orthogonal to the three deletion columns below**: an account can be suspended *and*
+> inside its grace period, which a single `state` column could not have said. A partial
+> index on `suspended_at` serves the one list that filters on it, because almost nobody is
+> suspended and the index should hold the exceptions.
 
 The three deletion columns are the whole state machine. `deletion_requested_at`
 and `deletion_scheduled_at` are set together and cleared together — a
@@ -1901,7 +2079,8 @@ by a database constraint and verified by a nightly reconciliation job.
 | `collaborators` | Scoped grants |
 | `surveys`, `survey_questions`, `survey_answers`, `survey_responses`, `survey_nudges` | §4.8's PM-01 to PM-06 and PM-24 (#73, #74). **This row used to name three tables; there are five.** `survey_answers` is separate from `survey_responses` because the read that matters is "what size did each backer choose" over four thousand pledges, exported to a factory -- with rows that is a join and an index, and with one `jsonb` document per response it is a scan that unpacks every answer and then trusts that every one of them spells the question the same way. `survey_nudges` is the fifth and is not a survey at all: it is the claim that somebody was reminded, written in the same transaction as the outbox event, exactly as `deadline_notices` is. **`sent_at` is the whole of "draft" and "sent"**, following V22's `project_updates.published_at`: a state column beside a timestamp is two facts that can disagree, and the one a support script updates is never the one the reads filter on. Once it is set the questions freeze -- `survey_answers` has no `ON DELETE` on its reference to a question, so the database refuses the tidy-up that would discard four hundred answers -- while the covering note and `respond_by` stay editable, because the first is prose nobody answered and the second is the thing creators most often need to change. **The cut-off is a comparison, never a sweep**: a job that closed surveys is a job that can be late, and late here means accepting an answer after the creator placed the order. An answer is `text[]` whatever the type, so every reader has one shape, and it stores **the option text rather than an index** -- an index would break silently the moment a creator reordered the options, turning every "Medium" into a "Large" |
 | `shipping_addresses` | §4.8's PM-07 and PM-08 (#75). Encrypted at rest with an application-managed key: one AES-256-GCM ciphertext over the whole structured address, a 12-byte nonce beside it, and a `key_id` that is the whole of key rotation. **The key never goes near PostgreSQL** -- `pgcrypto` was rejected for that reason and not for its cryptography, since `pgp_sym_encrypt` puts the passphrase in the query text, which lands in `pg_stat_statements`, in the slow query log, and in any statement log an operator turns on during an incident. What it costs is stated rather than discovered: **nothing in this table can be searched, sorted or filtered by the database**, so there is no index on postcode and no "backers in Berlin" query; the destination country stays outside the envelope on `pledges.shipping_country`, where §4.5's PL-05 already priced the parcel from it. **One row per pledge and not per account**: a backer who moves house between two campaigns has two addresses, and the earlier campaign ships to where they lived when they answered -- an address on the account would silently rewrite an answer a creator has already printed a label from. PM-08's lock is `locked_at`/`locked_by`, per address rather than a flag on the campaign, so a creator can reopen one backer who wrote in |
-| `fulfilments` | Tracking and status |
+| `pledge_supplements`, `supplement_addons` | §4.8's PM-09, PM-10 and PM-16 (#76): what a backer bought after the campaign closed, and its lines. **Beside `pledges`, not inside it.** V39 carries the argument: §5.1's decision was taken against the pledge's amounts and V29 froze it, so a purchase months later must not move them -- and the money is a separate transaction, which a total folded back into `pledges` could not express. An `UPGRADE` names both tiers, because the pledge's own `reward_tier_id` moves and nothing else would record what it moved from; an `ADDONS` purchase names neither and has lines instead. The **lines are not `pledge_addons` rows**, and that is the whole reason the second table exists: that one is keyed `(pledge_id, reward_tier_id)`, so a backer who bought two mugs during the campaign and one after it would have a single row of three with no way to say which part `addons_amount` paid for -- either the sum stops matching the lines or somebody is charged twice. The cost is that **fulfilment reads both tables**, which is said here, in V39, and in §4.8. `amount` is positive by constraint: a downgrade is a refund (#67), and a negative row would be a payment sitting in a table a collection run reads. `collected_at` is null on every row the platform holds, because PM-16's charge is epic #59's |
+| `fulfilments` | §4.8's PM-20 to PM-22 (#80): one parcel per pledge — a status, a carrier, a tracking number, and a link. **Keyed by the pledge**, like `shipping_addresses` and for the same reason: there is one of these per pledge and every read arrives holding the pledge, so a surrogate key would only create the possibility of two. A **split shipment is therefore not representable**, deliberately — PM-22 is one status, nothing in §4.8 asks for parcels plural, and a table shaped for the campaign nobody has run would make the case everybody has into a fold over rows. `project_id` is denormalised from the pledge because "every parcel on my campaign" is the read this table exists for, and its foreign key is **composite** — `(pledge_id, project_id)` against `pledges` — so the copy cannot name a campaign the pledge does not. Four statuses: `PREPARING`, `SHIPPED`, `DELIVERED`, `RETURNED`. The last is not a failed delivery folded into the third: it is the one outcome a backer has to act on. **The two timestamps are facts about the status, not a second opinion about it** — `shipped_at` present exactly when the status is not `PREPARING`, `delivered_at` exactly when it is `DELIVERED`, both as check constraints — because the row those refuse says a parcel is still being packed and arrived on Tuesday, which a backer reads as a delivery that did not happen. The cost is that a correction erases the earlier claim, and `audit_logs` is where the claim survives. A tracking number **requires a carrier**: a bare number is a string nobody can look up, and a backer shown one spends an evening pasting it into the wrong carrier's website. The link is `https` only |
 | `notifications`, `notification_preferences` | Delivery and settings |
 | `email_deliveries` | What the email transport did, one row per attempt, append only (#86, §12.3). **`accepted_at`, never `delivered_at`**: SMTP reports acceptance by a relay and nothing further, and a column named for delivery would be read as delivery by everybody who ever queried it. Outcomes are `ACCEPTED`, `REFUSED` and `SUPPRESSED`; bounces and opens need a provider webhook and are follow-up work rather than columns nothing writes. **There is no address column** — §17.4 anonymises `users.email`, and an address copied here would survive that in a table the anonymiser does not know about, so `recipient_id` is the join and it correctly stops resolving when there is no longer a person |
 | `media` | Metadata and transcoding state |
@@ -2489,8 +2668,8 @@ expired cards, limits, and issuer declines.
 | Scenario | Outcome |
 |---|---|
 | Campaign unsuccessful | Nothing was collected |
-| Creator cancels | Full refund of collected pledges |
-| Moderator suspends | Full refund |
+| Creator cancels | Full refund of collected pledges. **The halt itself is built (#103)**: every `DRAFT` and `CONFIRMED` pledge becomes `CANCELED_BY_PROJECT` and gives its place back. A *collected* pledge is deliberately left alone, because reversing one is a refund and refunds are #67's |
+| Moderator suspends | Full refund. The same release, from the same event — §4.11's AD-02 |
 | Creator cannot deliver | Creator offers a refund; the platform mediates |
 | Backer changes their mind while live | Cancel — nothing was collected (built: #56) |
 | Backer changes their mind after collection | Creator's decision; not compelled |
@@ -2625,6 +2804,8 @@ POST   /v1/projects/{id}/prelaunch
 POST   /v1/projects/{id}/submit
 POST   /v1/projects/{id}/launch
 POST   /v1/projects/{id}/cancel
+POST   /v1/projects/{id}/late-pledges        # PL-16 (#81); COLLECTING -> LATE_PLEDGE, names the window
+POST   /v1/projects/{id}/late-pledges/close  # LATE_PLEDGE -> FULFILLING; no edge back
 GET    /v1/projects/{id}/checklist
 GET    /v1/projects/{id}/items
 POST   /v1/projects/{id}/items
@@ -2691,11 +2872,12 @@ GET    /v1/pledges/{id}/shipping-address   # PM-07 (#75); 204 when none has been
 PATCH  /v1/pledges/{id}/shipping-address
 POST   /v1/projects/{id}/shipping-addresses/lock      # PM-08 (#75); VIEW_FINANCES, audited
 GET    /v1/projects/{id}/shipping-addresses/progress  # counts only; decrypts nothing
-POST   /v1/pledges/{id}/upgrade
-POST   /v1/pledges/{id}/addons
+POST   /v1/pledges/{id}/upgrade    # PM-09 (#76); after the campaign closed, owes the difference
+POST   /v1/pledges/{id}/addons     # PM-10 (#76); new lines, charged separately
 POST   /v1/projects/{id}/shipping-rules
-POST   /v1/projects/{id}/fulfilments/import
-GET    /v1/me/fulfilments
+POST   /v1/projects/{id}/fulfilments/import  # PM-20 (#80); text/csv, VIEW_FINANCES, audited
+GET    /v1/projects/{id}/fulfilments         # PM-22 (#80); VIEW_FINANCES, no-store, with counts
+GET    /v1/me/fulfilments                    # PM-21 (#80); the caller's own parcels, no-store
 
 # Community
 POST   /v1/projects/{id}/comments
@@ -2715,9 +2897,11 @@ GET    /v1/admin/moderation/queue
 POST   /v1/admin/moderation/{id}/approve
 POST   /v1/admin/moderation/{id}/reject
 POST   /v1/admin/moderation/{id}/request-changes
-POST   /v1/admin/projects/{id}/suspend
-GET    /v1/admin/users
-POST   /v1/admin/users/{id}/ban
+POST   /v1/admin/projects/{id}/suspend   # AD-02 (#103); staff only, audited, ends every pledge
+GET    /v1/admin/users                   # AD-04 (#104); staff only, audited, no-store
+GET    /v1/admin/users/{id}              # AD-04 (#104); one account, audited
+POST   /v1/admin/users/{id}/ban          # AD-04 (#104); suspends and revokes every session
+POST   /v1/admin/users/{id}/reinstate    # the way back; not in this list before #104
 GET    /v1/admin/finance/payouts
 POST   /v1/admin/finance/payouts/{id}/approve
 POST   /v1/admin/finance/refunds

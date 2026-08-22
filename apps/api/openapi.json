@@ -639,6 +639,43 @@
         "tags" : [ "project-moderation-controller" ]
       }
     },
+    "/v1/admin/projects/{id}/suspend" : {
+      "post" : {
+        "operationId" : "projectSuspensionSuspend",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SuspendProjectRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectEdit"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-suspension-controller" ]
+      }
+    },
     "/v1/admin/ranking/explain/{slug}" : {
       "get" : {
         "operationId" : "adminRankingExplain",
@@ -724,6 +761,147 @@
           }
         },
         "tags" : [ "admin-ranking-controller" ]
+      }
+    },
+    "/v1/admin/users" : {
+      "get" : {
+        "operationId" : "adminUserSearch",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "suspended",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "in" : "query",
+          "name" : "after",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminUserListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-user-controller" ]
+      }
+    },
+    "/v1/admin/users/{id}" : {
+      "get" : {
+        "operationId" : "adminUserInspect",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminUserResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-user-controller" ]
+      }
+    },
+    "/v1/admin/users/{id}/ban" : {
+      "post" : {
+        "operationId" : "adminUserBan",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SuspendAccountRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminUserResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-user-controller" ]
+      }
+    },
+    "/v1/admin/users/{id}/reinstate" : {
+      "post" : {
+        "operationId" : "adminUserReinstate",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminUserResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-user-controller" ]
       }
     },
     "/v1/auth/2fa/confirm" : {
@@ -1941,6 +2119,24 @@
         "tags" : [ "backer-signal-controller" ]
       }
     },
+    "/v1/me/fulfilments" : {
+      "get" : {
+        "operationId" : "fulfilmentMine",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BackerFulfilmentResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "fulfilment-controller" ]
+      }
+    },
     "/v1/me/notification-preferences" : {
       "get" : {
         "operationId" : "notificationPreferencePreferences",
@@ -2237,6 +2433,50 @@
         "tags" : [ "pledge-controller" ]
       }
     },
+    "/v1/pledges/{id}/addons" : {
+      "post" : {
+        "operationId" : "pledgeBuyAddons",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BuyAddonsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "pledge-controller" ]
+      }
+    },
     "/v1/pledges/{id}/confirm" : {
       "post" : {
         "operationId" : "pledgeConfirm",
@@ -2264,6 +2504,50 @@
               }
             }
           }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "pledge-controller" ]
+      }
+    },
+    "/v1/pledges/{id}/upgrade" : {
+      "post" : {
+        "operationId" : "pledgeUpgrade",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpgradePledgeRequest"
+              }
+            }
+          },
+          "required" : true
         },
         "responses" : {
           "200" : {
@@ -2541,6 +2825,70 @@
     "/v1/projects/{id}/edit" : {
       "get" : {
         "operationId" : "projectForEdit",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectEdit"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/v1/projects/{id}/late-pledges" : {
+      "post" : {
+        "operationId" : "projectOpenLatePledges",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/OpenLatePledgesRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectEdit"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/v1/projects/{id}/late-pledges/close" : {
+      "post" : {
+        "operationId" : "projectCloseLatePledges",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -3378,6 +3726,75 @@
           }
         },
         "tags" : [ "comment-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/fulfilments" : {
+      "get" : {
+        "operationId" : "fulfilmentOfCampaign",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FulfilmentListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "fulfilment-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/fulfilments/import" : {
+      "post" : {
+        "operationId" : "fulfilmentImportTracking",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "text/csv" : {
+              "schema" : {
+                "type" : "string"
+              }
+            },
+            "text/plain" : {
+              "schema" : {
+                "type" : "string"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FulfilmentImportResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "fulfilment-controller" ]
       }
     },
     "/v1/projects/{projectId}/items" : {
@@ -4890,6 +5307,68 @@
           }
         }
       },
+      "AdminUserListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "nextCursor" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "users" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AdminUserResponse"
+            }
+          }
+        }
+      },
+      "AdminUserResponse" : {
+        "type" : "object",
+        "properties" : {
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "deletionScheduledAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "emailVerified" : {
+            "type" : "boolean"
+          },
+          "emailVerifiedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "suspended" : {
+            "type" : "boolean"
+          },
+          "suspendedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "suspendedBy" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "suspensionReason" : {
+            "type" : "string"
+          }
+        }
+      },
       "Amounts" : {
         "type" : "object",
         "properties" : {
@@ -5029,6 +5508,17 @@
           }
         }
       },
+      "BackerFulfilmentResponse" : {
+        "type" : "object",
+        "properties" : {
+          "fulfilments" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Item"
+            }
+          }
+        }
+      },
       "BackerListResponse" : {
         "type" : "object",
         "properties" : {
@@ -5137,6 +5627,19 @@
             }
           }
         }
+      },
+      "BuyAddonsRequest" : {
+        "type" : "object",
+        "properties" : {
+          "addons" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PledgeAddonBody"
+            },
+            "minItems" : 1
+          }
+        },
+        "required" : [ "addons" ]
       },
       "CampaignMessageListResponse" : {
         "type" : "object",
@@ -6149,6 +6652,113 @@
           }
         }
       },
+      "FulfilmentImportResponse" : {
+        "type" : "object",
+        "properties" : {
+          "changed" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "errors" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/RowFailureBody"
+            }
+          },
+          "failed" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "rows" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "truncated" : {
+            "type" : "boolean"
+          },
+          "unchanged" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "FulfilmentListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "fulfilments" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FulfilmentResponse"
+            }
+          },
+          "progress" : {
+            "$ref" : "#/components/schemas/FulfilmentProgressResponse"
+          }
+        }
+      },
+      "FulfilmentProgressResponse" : {
+        "type" : "object",
+        "properties" : {
+          "backings" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "delivered" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "preparing" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "returned" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "shipped" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "untouched" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "FulfilmentResponse" : {
+        "type" : "object",
+        "properties" : {
+          "carrier" : {
+            "type" : "string"
+          },
+          "deliveredAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "pledgeId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "shippedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "PREPARING", "SHIPPED", "DELIVERED", "RETURNED" ]
+          },
+          "trackingNumber" : {
+            "type" : "string"
+          },
+          "trackingUrl" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
       "Image" : {
         "type" : "object",
         "properties" : {
@@ -6566,6 +7176,16 @@
         },
         "required" : [ "idToken" ]
       },
+      "OpenLatePledgesRequest" : {
+        "type" : "object",
+        "properties" : {
+          "endsAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "endsAt" ]
+      },
       "Outcome" : {
         "type" : "object",
         "properties" : {
@@ -6658,6 +7278,9 @@
           "isAnonymous" : {
             "type" : "boolean"
           },
+          "latePledge" : {
+            "type" : "boolean"
+          },
           "paymentMethodId" : {
             "type" : "string",
             "format" : "uuid"
@@ -6679,6 +7302,49 @@
           },
           "state" : {
             "type" : "string"
+          },
+          "supplements" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PledgeSupplementBody"
+            }
+          }
+        }
+      },
+      "PledgeSupplementBody" : {
+        "type" : "object",
+        "properties" : {
+          "addons" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PledgeAddonBody"
+            }
+          },
+          "amount" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "collectedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "fromRewardTierId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "toRewardTierId" : {
+            "type" : "string",
+            "format" : "uuid"
           }
         }
       },
@@ -6875,6 +7541,10 @@
           "latePledgeEnabled" : {
             "type" : "boolean"
           },
+          "latePledgeEndsAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
           "launchedAt" : {
             "type" : "string",
             "format" : "date-time"
@@ -6943,6 +7613,13 @@
           "id" : {
             "type" : "string",
             "format" : "uuid"
+          },
+          "latePledgeEnabled" : {
+            "type" : "boolean"
+          },
+          "latePledgeEndsAt" : {
+            "type" : "string",
+            "format" : "date-time"
           },
           "launchedAt" : {
             "type" : "string",
@@ -7666,6 +8343,24 @@
           }
         }
       },
+      "RowFailureBody" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "line" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "pledgeId" : {
+            "type" : "string"
+          }
+        }
+      },
       "SaveBackerSegmentRequest" : {
         "type" : "object",
         "properties" : {
@@ -8225,6 +8920,28 @@
           }
         }
       },
+      "SuspendAccountRequest" : {
+        "type" : "object",
+        "properties" : {
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "reason" ]
+      },
+      "SuspendProjectRequest" : {
+        "type" : "object",
+        "properties" : {
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "reason" ]
+      },
       "Target" : {
         "type" : "object",
         "properties" : {
@@ -8354,6 +9071,16 @@
           }
         },
         "required" : [ "preferences" ]
+      },
+      "UpgradePledgeRequest" : {
+        "type" : "object",
+        "properties" : {
+          "rewardTierId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "rewardTierId" ]
       },
       "ValueCount" : {
         "type" : "object",

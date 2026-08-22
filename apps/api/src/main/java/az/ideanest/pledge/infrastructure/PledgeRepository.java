@@ -66,6 +66,26 @@ public interface PledgeRepository extends JpaRepository<Pledge, UUID> {
             @Param("states") Collection<PledgeState> states);
 
     /**
+     * Every pledge on one campaign in any of these states — #103.
+     *
+     * <p>What a halted campaign's release walks. Entities rather than identifiers, unlike
+     * the sweeps below, because the whole set is ended in one transaction: the listener
+     * runs inside the outbox dispatch, and half a release is the one outcome nobody can
+     * repair from the outside.
+     *
+     * <p>Unbounded, deliberately. It is bounded by the campaign — a campaign has as many
+     * pledges as it has backers — and a batch here would mean a suspension that released
+     * the first two hundred places and left the rest held on a campaign nobody can back.
+     *
+     * <p>Ordered by identifier, which is a UUID v7 and therefore the order the pledges
+     * were made in: the reward tier's places come back in the order they were taken,
+     * which is at least explicable to a creator watching the count move.
+     */
+    @Query("SELECT p FROM Pledge p WHERE p.projectId = :projectId AND p.state IN :states ORDER BY p.id")
+    List<Pledge> findByProjectAndStates(
+            @Param("projectId") UUID projectId, @Param("states") Collection<PledgeState> states);
+
+    /**
      * The next batch of drafts whose reservation has run out.
      *
      * <p>§8.4's {@code reservation-cleaner}. Identifiers rather than entities,

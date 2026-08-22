@@ -1,6 +1,7 @@
 package az.ideanest.project.api;
 
 import az.ideanest.project.application.CapabilityNotGrantedException;
+import az.ideanest.project.application.LatePledgesNotEnabledException;
 import az.ideanest.project.application.NotAModeratorException;
 import az.ideanest.project.application.ProjectFieldLockedException;
 import az.ideanest.project.application.ProjectFieldRejectedException;
@@ -36,6 +37,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
         assignableTypes = {
             ProjectController.class,
             ProjectModerationController.class,
+            // And the suspension endpoint (#103), which raises three of the failures
+            // below: a campaign that does not exist, a caller who is not staff, and a
+            // move §6.1 does not allow -- a campaign that has already closed cannot be
+            // suspended, and the client is told which state it is actually in.
+            ProjectSuspensionController.class,
             // The public pre-launch endpoints raise four of the five failures
             // below unchanged — a campaign that does not exist, a field that is not
             // an address, a value type that refused its input. Listing the
@@ -223,6 +229,25 @@ public class ProjectExceptionHandler {
         meta.put("state", exception.state().name());
         meta.put("acceptedIn", names(RemindersClosedException.ACCEPTED_IN));
         problem.setProperty("meta", meta);
+        return problem;
+    }
+
+    /**
+     * 409 for opening a late-pledge window on a campaign that does not offer them.
+     *
+     * <p>Not a 400 and not a 403. The request is well formed and the creator is
+     * entitled to make it; what is missing is a decision they have not taken yet, and
+     * the correction is one switch in the campaign editor. The code says which switch,
+     * because "conflict" on its own would send a creator looking at §6.1.
+     */
+    @ExceptionHandler(LatePledgesNotEnabledException.class)
+    public ProblemDetail handleLatePledgesNotEnabled(LatePledgesNotEnabledException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/late-pledges-not-enabled"));
+        problem.setTitle("Late pledges are switched off");
+        problem.setDetail("Turn late pledges on for this campaign before opening a window for them.");
+        problem.setProperty("code", "LATE_PLEDGES_NOT_ENABLED");
+        problem.setProperty("meta", Map.of("field", "latePledgeEnabled"));
         return problem;
     }
 

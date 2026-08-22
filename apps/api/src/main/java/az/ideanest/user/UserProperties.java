@@ -19,13 +19,50 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     anonymiser directly instead of waiting for a tick.
  * @param rateLimit how often an account may ask for its data or for its own
  *     deletion.
+ * @param administration what §4.11's AD-04 admin list may ask for at once (#104).
  */
 @ConfigurationProperties(prefix = "ideanest.user")
 public record UserProperties(
         Duration deletionGracePeriod,
         int anonymisationBatchSize,
         String anonymisationSchedule,
-        RateLimit rateLimit) {
+        RateLimit rateLimit,
+        Administration administration) {
+
+    public UserProperties {
+        administration = administration == null ? Administration.defaults() : administration;
+    }
+
+    /**
+     * The admin user list — §4.11's AD-04 (#104).
+     *
+     * @param defaultPageSize how many accounts a page holds when the request names no
+     *     size. Twenty-five, because the list is read by a person looking for one
+     *     account rather than by a script walking the platform
+     * @param maxPageSize the ceiling on that. <strong>A bound on an endpoint that
+     *     returns other people's email addresses</strong>, which is what makes it worth
+     *     more than a preference: without one, "give me every account" is one query
+     *     parameter away, and the audit row would record a single read
+     */
+    public record Administration(int defaultPageSize, int maxPageSize) {
+
+        private static final int DEFAULT_PAGE_SIZE = 25;
+
+        private static final int DEFAULT_MAX_PAGE_SIZE = 100;
+
+        public static Administration defaults() {
+            return new Administration(DEFAULT_PAGE_SIZE, DEFAULT_MAX_PAGE_SIZE);
+        }
+
+        public Administration {
+            defaultPageSize = defaultPageSize == 0 ? DEFAULT_PAGE_SIZE : defaultPageSize;
+            maxPageSize = maxPageSize == 0 ? DEFAULT_MAX_PAGE_SIZE : maxPageSize;
+
+            if (defaultPageSize < 1 || maxPageSize < defaultPageSize) {
+                throw new IllegalArgumentException("An admin page holds between one account and the maximum");
+            }
+        }
+    }
 
     /**
      * @param exportsPerAccount data exports one account may request per window.

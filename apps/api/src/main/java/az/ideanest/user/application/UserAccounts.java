@@ -137,6 +137,7 @@ public class UserAccounts {
                 user.getName(),
                 user.getSlug(),
                 user.isEmailVerified(),
-                user.getDeletionScheduledAt());
+                user.getDeletionScheduledAt(),
+                user.getSuspendedAt());
     }
 }

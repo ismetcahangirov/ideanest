@@ -70,6 +70,7 @@ public class PledgeService {
     private final PledgeAcceptance acceptance;
     private final PledgeRepository pledges;
     private final PledgeAddonRepository addons;
+    private final PledgeDetails details;
     private final Outbox outbox;
     private final Clock clock;
 
@@ -78,12 +79,14 @@ public class PledgeService {
             PledgeAcceptance acceptance,
             PledgeRepository pledges,
             PledgeAddonRepository addons,
+            PledgeDetails details,
             Outbox outbox,
             Clock clock) {
         this.reservations = reservations;
         this.acceptance = acceptance;
         this.pledges = pledges;
         this.addons = addons;
+        this.details = details;
         this.outbox = outbox;
         this.clock = clock;
     }
@@ -105,8 +108,11 @@ public class PledgeService {
      */
     @Transactional
     public PledgeDetail draft(DraftPledge command) {
-        acceptance.requireAcceptingPledges(command.projectId());
-        return detailOf(reservations.draft(command));
+        // The answer, not just the refusal: a campaign has two funding windows since
+        // #81, and which one this pledge was taken in is stamped on the row rather
+        // than derived later from a campaign state that will have moved on.
+        PledgeAcceptance.Window window = acceptance.requireAcceptingPledges(command.projectId());
+        return detailOf(reservations.draft(command, window == PledgeAcceptance.Window.LATE));
     }
 
     /**
@@ -223,7 +229,11 @@ public class PledgeService {
         // line about a pledge should not be a record of what somebody spent.
         log.debug("Pledge {} confirmed; recorded outbox event {}.", confirmed.getId(), eventId);
 
-        return new PledgeDetail(confirmed, heldAddons);
+        // Assembled from the lines this method already read rather than through
+        // PledgeDetails, which would read them a second time inside the same
+        // transaction. A confirmation cannot have supplements: they are bought after
+        // the campaign closed and this pledge was a draft a moment ago.
+        return new PledgeDetail(confirmed, heldAddons, List.of(), List.of());
     }
 
     /**
@@ -355,11 +365,24 @@ public class PledgeService {
             // promised to give back.
             throw new ReservationExpiredException(pledge.getId(), pledge.getReservationExpiresAt());
         }
+        // The window the campaign is in now, and the answer is deliberately discarded.
+        // An edit re-prices a pledge; it does not decide which total the pledge counts
+        // towards, and re-stamping `is_late_pledge` here would move a pledge taken
+        // during the campaign into the late column because its backer changed their
+        // shirt size afterwards.
         acceptance.requireAcceptingPledges(pledge.getProjectId());
     }
 
-    /** The pledge with its add-on lines, read inside the transaction that loaded it. */
+    /**
+     * The pledge with everything hanging off it, read inside the transaction that
+     * loaded it.
+     *
+     * <p>Through {@link PledgeDetails} since #76 rather than assembled here: a pledge
+     * is four tables now, two services answer with the same shape, and two copies of
+     * this method is the arrangement in which one of them quietly stops including the
+     * newest one.
+     */
     private PledgeDetail detailOf(Pledge pledge) {
-        return new PledgeDetail(pledge, addons.findByPledge(pledge.getId()));
+        return details.of(pledge);
     }
 }

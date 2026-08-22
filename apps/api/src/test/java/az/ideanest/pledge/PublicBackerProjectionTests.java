@@ -210,12 +210,14 @@ class PublicBackerProjectionTests {
                 anonymous,
                 null,
                 null,
-                CONFIRMED_AT.minus(Duration.ofMinutes(5))));
+                CONFIRMED_AT.minus(Duration.ofMinutes(5)),
+                false));
         pledge.confirm(CONFIRMED_AT, null);
         return pledge;
     }
 
     private static UserAccount account(String name, String slug) {
-        return new UserAccount(UUID.randomUUID(), EmailAddress.of(slug + "@example.com"), name, slug, true, null);
+        return new UserAccount(
+                UUID.randomUUID(), EmailAddress.of(slug + "@example.com"), name, slug, true, null, null);
     }
 }
