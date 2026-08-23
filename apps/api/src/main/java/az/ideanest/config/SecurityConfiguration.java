@@ -379,7 +379,46 @@ public class SecurityConfiguration {
                                 // deliberately absent: enrolling, confirming,
                                 // and disabling all require a bearer token, and
                                 // fall through to the rule below.
-                                "/v1/auth/2fa/verify")
+                                "/v1/auth/2fa/verify",
+                                // ---- #271: §4.1's A-06, password reset -------
+                                // Both halves are unauthenticated by necessity:
+                                // somebody who needs a reset is by definition
+                                // somebody who cannot sign in, so requiring a
+                                // token here would be circular in exactly the
+                                // way the paragraph above describes.
+                                //
+                                // What authorises each is its own credential.
+                                // `forgot-password` authorises nothing at all — it is a
+                                // request to send mail, it answers 202 whether
+                                // or not the address has an account, and it is
+                                // bounded per source address and per email
+                                // address by CredentialController. `reset-password`
+                                // carries a single-use 256-bit token that was
+                                // sent to the account's own address and expires
+                                // in an hour.
+                                "/v1/auth/forgot-password",
+                                "/v1/auth/reset-password",
+                                // `/v1/auth/change-password` is deliberately
+                                // absent and falls through to the rule at the
+                                // bottom: changing a password you know is not
+                                // recovering one you do not, and it requires a
+                                // bearer token as well as the current password.
+                                // ---- end #271 -------------------------------
+                                // ---- #277: §4.1's A-12, address change -------
+                                // The CONFIRMATION only. The credential is the
+                                // token in the message sent to the new address,
+                                // exactly as it is for `/v1/auth/verify-email`,
+                                // and requiring a session as well would mean the
+                                // link only works in the browser that asked for
+                                // it — which is the browser least likely to be
+                                // signed in to the new mailbox.
+                                //
+                                // `/v1/auth/change-email` — the ask — is not
+                                // here. It needs a bearer token and the current
+                                // password, because the address on an account is
+                                // what a reset is sent to, and moving it is the
+                                // last step of taking the account over.
+                                "/v1/auth/confirm-email-change")
                         .permitAll()
                         // What an account inside its deletion grace period may
                         // still do: look at itself, take its data with it, and

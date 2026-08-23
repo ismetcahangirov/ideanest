@@ -13,6 +13,15 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param verificationTokenTtl how long an email verification link works. Long
  *     enough to survive a mail queue and a night's sleep, short enough that a
  *     forwarded message is not a standing key to the account.
+ * @param passwordResetTokenTtl how long §4.1's A-06 reset link works. One hour,
+ *     and deliberately not the verification link's twenty-four: that link proves
+ *     an address, this one replaces a credential, and it should stop being a key
+ *     to the account long before it stops being a proof of the mailbox.
+ * @param emailChangeTokenTtl how long §4.1's A-12 confirmation link works. Longer
+ *     than a reset, because the person following it has to reach a mailbox they
+ *     may not have configured on the device they are holding — and shorter than a
+ *     verification, because until it is spent the account is in two minds about
+ *     where it lives.
  * @param passwordMinLength minimum password length. Length is the only property
  *     that reliably resists guessing; composition rules mostly produce
  *     {@code Password1!} and a written-down note.
@@ -30,6 +39,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "ideanest.auth")
 public record AuthProperties(
         Duration verificationTokenTtl,
+        Duration passwordResetTokenTtl,
+        Duration emailChangeTokenTtl,
         int passwordMinLength,
         int passwordMaxLength,
         Argon2 argon2,
@@ -71,6 +82,18 @@ public record AuthProperties(
      * @param verificationsPerAddress verification attempts from one IP address.
      *     A verification token is 256 bits, so this is not about guessing it; it
      *     is about not letting one client spend our database on the attempt
+     * @param passwordResetsPerAddress reset requests from one IP address. The form
+     *     is unauthenticated and every accepted request sends mail, so this is the
+     *     control that keeps it from being a way to spend our mail reputation
+     * @param passwordResetsPerEmail reset requests for one address, counted
+     *     separately for the reason the registration pair gives: an attacker with
+     *     many source addresses is otherwise unbounded against one account, and
+     *     what they are buying is a mailbox full of reset links, which is a
+     *     credible way to make somebody stop reading them
+     * @param credentialChangesPerUser password and address changes attempted by one
+     *     account in a window. Each costs an Argon2 verification, so this bounds
+     *     what a stolen access token can spend as well as what it can guess — the
+     *     same argument {@code twoFactorChangesPerUser} makes
      * @param twoFactorCodesPerChallenge how many codes may be offered against
      *     one sign-in challenge. This is <em>the</em> control on a six-digit
      *     secret: with one step of skew either side, three codes are valid at
@@ -90,6 +113,9 @@ public record AuthProperties(
             int registrationsPerAddress,
             int registrationsPerEmail,
             int verificationsPerAddress,
+            int passwordResetsPerAddress,
+            int passwordResetsPerEmail,
+            int credentialChangesPerUser,
             int signInsPerAddress,
             int signInsPerEmail,
             int twoFactorCodesPerChallenge,

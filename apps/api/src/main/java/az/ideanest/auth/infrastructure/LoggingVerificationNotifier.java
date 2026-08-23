@@ -46,4 +46,44 @@ public class LoggingVerificationNotifier implements VerificationNotifier {
     public void sendRegistrationAttemptOnExistingAccount(EmailAddress email, String locale) {
         log.info("Registration attempted on the existing account {} ({}).", email, locale);
     }
+
+    @Override
+    public void sendPasswordReset(EmailAddress email, String token, String locale) {
+        if (logLinks) {
+            log.info("Password reset token for {} ({}): {}", email, locale, token);
+        } else {
+            log.info("Password reset email queued for {} ({}). No mail transport is configured (#86).", email, locale);
+        }
+    }
+
+    @Override
+    public void sendPasswordChanged(EmailAddress email, String locale) {
+        // Never gated on `logLinks`: there is no link in it. The line is worth
+        // having in every environment, because "the password changed and nobody
+        // was told" is the failure this message exists to make visible.
+        log.info("Password change notice queued for {} ({}). No mail transport is configured (#86).", email, locale);
+    }
+
+    @Override
+    public void sendEmailChangeConfirmation(EmailAddress newEmail, String token, String locale) {
+        if (logLinks) {
+            log.info("Email change token for {} ({}): {}", newEmail, locale, token);
+        } else {
+            log.info(
+                    "Email change confirmation queued for {} ({}). No mail transport is configured (#86).",
+                    newEmail,
+                    locale);
+        }
+    }
+
+    @Override
+    public void sendEmailChangeNotice(EmailAddress previousEmail, EmailAddress newEmail, String locale) {
+        // Both addresses masked by EmailAddress.toString, which is the whole
+        // reason this line can name them at all.
+        log.info(
+                "Email change notice queued for {} (moving to {}, {}). No mail transport is configured (#86).",
+                previousEmail,
+                newEmail,
+                locale);
+    }
 }

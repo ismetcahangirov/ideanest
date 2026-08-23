@@ -624,6 +624,16 @@ ideanest:
     # a forwarded message is not a standing key to the account.
     verification-token-ttl: PT24H
 
+    # §4.1's A-06. One hour, and deliberately not the twenty-four above: that
+    # link proves an address, this one replaces a credential.
+    password-reset-token-ttl: PT1H
+
+    # §4.1's A-12. Longer than a reset -- the person following it has to reach a
+    # mailbox they may not have set up on the device in their hand -- and shorter
+    # than a verification, because until it is spent the account is in two minds
+    # about where it lives.
+    email-change-token-ttl: PT6H
+
     # Length, and almost nothing else. Composition rules produce Password1! and
     # a note on a monitor; NIST dropped them for that reason.
     password-min-length: 12
@@ -654,6 +664,17 @@ ideanest:
       # Not about guessing a 256-bit token. About not letting one client spend
       # the database on the attempt.
       verifications-per-address: 20
+      # §4.1's A-06. Every accepted request sends mail from an unauthenticated
+      # form, so what this bounds is our mail reputation rather than a guess.
+      password-resets-per-address: 5
+      # Counted separately, as registration is: an attacker with many source
+      # addresses is otherwise unbounded against one mailbox, and a mailbox full
+      # of reset links is a workable way to make somebody stop reading them.
+      password-resets-per-email: 3
+      # §4.1's A-12 and A-13, together. Each attempt costs an Argon2 verification
+      # of the current password, so this bounds what a stolen access token can
+      # spend as well as what it can guess.
+      credential-changes-per-user: 10
       # §17.3: five sign-in attempts per address per fifteen minutes.
       sign-ins-per-address: 5
       sign-ins-per-email: 5

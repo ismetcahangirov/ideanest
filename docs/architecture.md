@@ -195,6 +195,48 @@ Marked `[W]` web, `[M]` mobile, `[A]` admin.
 > `VerifyEmailRequest` makes about the verification token. #272 built the step;
 > there is no `/two-factor` path to look for.
 >
+> **A-06's reset does not say whether the address has an account, and #271 kept
+> it that way.** `POST /v1/auth/forgot-password` answers 202 either way, for the
+> reason registration answers 202 either way: an endpoint that says "no such
+> account" turns a breach list into the subset of those people who are here, and
+> that subset is what somebody wants before writing a phishing email. What differs
+> is invisible from outside — an address with no account receives **nothing**.
+> Registration writes to an already-registered address because its owner deserves
+> to know somebody is probing it; the reset form takes whatever was typed into it,
+> so mailing that would make this platform a delivery service for strangers.
+>
+> The link is single-use, lasts **one hour** rather than the verification link's
+> twenty-four, and issuing a second one retires the first. The password policy is
+> checked **before** the link is spent, so a rejected password leaves the link
+> usable — burning it on the way to a 400 is the reset flow's most common
+> self-inflicted support ticket. Every session dies when it succeeds.
+>
+> **An account with no password can still reset one.** Somebody who registered
+> through Google or Apple has no `user_credentials` row and the reset creates one.
+> That is the documented way back for a person who has lost the provider account
+> they signed up with; the proof required is control of the mailbox, which is what
+> would recover the provider account too.
+
+> **A-12 does not move the address until the new one answers, and V44 is written
+> about why (#277).** Writing `users.email` immediately and clearing the verified
+> flag is the obvious alternative and it fails on one typo: sign-in is by address,
+> and so is the reset that would fix it, so the account would already be behind a
+> mailbox nobody can read. The request is held in `email_change_requests` and the
+> address moves in a single statement when the link is spent.
+>
+> **Both addresses are written to**, which is what the capability asks for. The new
+> one gets the link. The old one gets a notice with no link at all — it cannot
+> approve the change and does not need to; what it does is make an address takeover
+> visible to the person losing the account, at the address they still hold.
+>
+> **A-13 revokes every session including the caller's; A-12 revokes none.** A
+> password is changed precisely when somebody believes the old one is known, and
+> leaving the sessions it issued alive makes the change ceremonial. An address
+> change alters no credential: the same password still opens the same sessions.
+> Both require the current password, because a stolen access token is fifteen
+> minutes of somebody else's session and neither of these should be what makes it
+> permanent.
+
 > **`GET /v1/me` does not say whether two-factor is on, and #278's screen cannot
 > ask.** Its six fields carry no `twoFactorEnabled`, and no other read answers it
 > either. The enrolment screen therefore offers both directions and lets
@@ -2966,8 +3008,11 @@ POST   /v1/auth/login
 POST   /v1/auth/refresh
 POST   /v1/auth/logout
 POST   /v1/auth/verify-email
-POST   /v1/auth/forgot-password
-POST   /v1/auth/reset-password
+POST   /v1/auth/forgot-password        # A-06 (#271); always 202, account or no account
+POST   /v1/auth/reset-password         # A-06 (#271); single-use link, one hour
+POST   /v1/auth/change-password        # A-13 (#277); current password, revokes every session
+POST   /v1/auth/change-email           # A-12 (#277); 202 -- the address has not moved yet
+POST   /v1/auth/confirm-email-change   # A-12 (#277); unauthenticated, the link is the credential
 POST   /v1/auth/2fa/enable      # starts an enrolment; does not switch it on
 POST   /v1/auth/2fa/confirm     # a current code switches it on, returns recovery codes
 POST   /v1/auth/2fa/verify      # second half of a sign-in: challenge + code

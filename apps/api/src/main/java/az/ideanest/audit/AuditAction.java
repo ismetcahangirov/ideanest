@@ -261,7 +261,37 @@ public enum AuditAction {
     REPORT_UPHELD("report.upheld", "report"),
 
     /** Moderation did not agree with a report. */
-    REPORT_DISMISSED("report.dismissed", "report");
+    REPORT_DISMISSED("report.dismissed", "report"),
+
+    // ------------------------------------------------------------------
+    // §4.1's A-06, A-12 and A-13 (#271, #277). What happened to a credential,
+    // recorded whether or not the person who caused it was signed in.
+    //
+    // The entity is the account rather than the credential row: a credential has
+    // no identifier anybody outside `auth` can name, and the question these rows
+    // answer -- "what has been done to this account's ability to sign in" -- is
+    // asked about the account.
+    //
+    // NOTHING HERE CARRIES AN ADDRESS OR A TOKEN. `detail` says which way the
+    // change went and never what it went to; an audit table is the wrong place
+    // to accumulate a history of somebody's mailboxes, and §17.4's erasure does
+    // not reach into it.
+    // ------------------------------------------------------------------
+
+    /** The password was changed by somebody who knew the old one — A-13. */
+    PASSWORD_CHANGED("account.password_changed", "account"),
+
+    /** A reset link was asked for. Recorded even when no account matched — A-06. */
+    PASSWORD_RESET_REQUESTED("account.password_reset_requested", "account"),
+
+    /** A reset link was spent and a new password set without the old one — A-06. */
+    PASSWORD_RESET("account.password_reset", "account"),
+
+    /** An address change was asked for and is waiting on the new address — A-12. */
+    EMAIL_CHANGE_REQUESTED("account.email_change_requested", "account"),
+
+    /** The new address proved itself and {@code users.email} moved — A-12. */
+    EMAIL_CHANGED("account.email_changed", "account");
 
     private final String action;
     private final String entityType;
