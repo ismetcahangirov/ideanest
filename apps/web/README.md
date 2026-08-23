@@ -29,6 +29,8 @@ cd apps/api && ./gradlew bootRun       # http://localhost:8080
 | `IDEANEST_SITE_URL` | `http://localhost:3000` | This application's public origin. **Must be set in any deployed environment** — every `robots.txt` entry, sitemap URL, canonical URL, `og:url`, and absolute social-image URL is written against it. Server-only, and read at build time by the statically rendered pages, so changing it means rebuilding. A value that is set but is not an absolute `http(s)` URL is refused rather than fallen back on |
 | `NEXT_PUBLIC_IDEANEST_RUM_SAMPLE_RATE` | `1` | Fraction of sessions whose Core Web Vitals are reported. `0` collects nothing at all. `NEXT_PUBLIC_`, so it is inlined at build time and changing it means rebuilding. See [Real user monitoring](#real-user-monitoring) |
 | `IDEANEST_RUM_LOCAL_SINK` | on outside production | The in-memory buffer behind `GET /api/rum`. `next start` runs as production on a laptop too, so set `true` to keep the table there |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | unset | Google's OAuth client identifier (§4.1 A-04). **Unset means the Google button is not rendered at all** — the service answers 501 for a provider it has no configuration for, and a button that always fails is worst of all on the sign-in screen. A client identifier is public by construction; the client *secret* is the service's and neither of these flows uses one |
+| `NEXT_PUBLIC_APPLE_CLIENT_ID` | unset | Apple's services identifier (§4.1 A-05), on the same terms. The popup flow still needs a redirect URI registered with Apple; this application sends its own `/sign-in` |
 
 ### Why the API is proxied rather than called directly
 
@@ -62,8 +64,20 @@ the browser half of the auth flow work at all.
 | `/sign-in` | Minimal | **Public**, `noindex`. Email and password, with the suspension and the rate limit surfaced (#268) |
 | `/register` | Minimal | **Public**, `noindex`. Account creation and the "check your email" state (#269) |
 | `/verify-email` | Minimal | **Public**, `noindex`. Where the verification link lands, and the expired-token path (#270) |
-| `/settings/sessions` | — | Session management (#27) |
-| `/settings/notifications` | — | §4.10's table as a grid — per category, per channel, with a digest option (#89) |
+| `/about` | Site | **Public.** WS-07: what the platform is, all-or-nothing, and what it costs (#292) |
+| `/how-it-works` | Site | **Public.** WS-07: backing a campaign, running one, and what happens between a pledge and a parcel (#292) |
+| `/trust-safety` | Site | **Public.** WS-07: what is reviewed, how to report, and what happens to money and data (#292) |
+| `/settings` | Site | Redirects to `/settings/notifications` (#275) |
+| `/settings/sessions` | Site | Session management (#27), moved into the account area by #275 |
+| `/settings/notifications` | Site | §4.10's table as a grid — per category, per channel, with a digest option (#89), moved by #275 |
+| `/settings/security` | Site | §4.1 A-07: enrol in two-factor, see the recovery codes once, disable (#278) |
+| `/settings/privacy` | Site | §4.1 A-10 and A-11: the data export, and the thirty-day closure (#279) |
+| `/account` | Site | Redirects to `/account/saved` (#275) |
+| `/account/saved` | Site | §4.9 C-10: the campaigns this account saved (#288) |
+| `/account/following` | Site | §4.9 C-10: the creators it follows (#288) |
+| `/account/surveys` | Site | §4.8 PM-05 and PM-06: the surveys a backer owes an answer to (#289) |
+| `/account/deliveries` | Site | §4.8 PM-09 and PM-10: where each reward is (#290) |
+| `/pledges/[pledgeId]/address` | Site | §4.8 PM-07: where one pledge's reward goes (#290) |
 | `/notifications` | — | The in-app inbox: read state, grouping by day, and filtering (#88) |
 | `/projects/new` | — | Name a campaign and create the draft (#33) |
 | `/projects/[id]/edit` | — | Redirects to the first tab (#33) |
@@ -109,6 +123,20 @@ is that route's own issue, because each has a reason of its own:
   navigation bar offering a trip to Discover, on the screen where somebody is
   about to pledge, is the opposite of both.
 - The two `/admin` routes get their own shell, which is #294.
+
+**The account area moved into the site shell with #275.** `/settings/*`, `/account/*` and
+`/pledges/*` share `AccountArea` — the site header and footer, plus a navigation over the
+eight screens somebody manages about themselves. The authentication screens keep the minimal
+shell for the opposite reason: a sign-in page is a screen with one job, and somebody already
+signed in and changing a notification setting is not mid-transaction. `/settings/sessions` and
+`/settings/notifications` each lost a `<main>` of their own in the move, because `SiteShell`
+owns the only one on the page.
+
+**There is no route for the two-factor challenge (#272).** It is a state of the sign-in form.
+The challenge `POST /v1/auth/login` returns is a credential for the next few minutes — the
+service marks the response `no-store` — and a URL is where a credential must not go: query
+strings are written to access logs, kept in history, and forwarded in the `Referer` header of
+whatever loads next. `TwoFactorChallenge` carries the full argument.
 
 The two `/admin` routes are the whole of the console today; the other fourteen
 modules in §4.11 are epic #259.
@@ -731,6 +759,36 @@ list is `private, no-cache` — so an unchanged list is answered `304` with no b
 instead of re-sending every tier, item and shipping rule on each poll of a live
 stock count. `no-store` here would make that `304` unreachable, which is what
 #200 fixed.
+
+### The second factor, and the two provider buttons
+
+`POST /v1/auth/login` and `POST /v1/auth/oauth/{provider}` are answered by the same
+`respondTo` on the service, so **either can return a two-factor challenge instead of a
+session**. `useSignInOutcome` is the one place that branch is taken, shared by the password
+form and both provider buttons on both `/sign-in` and `/register`; a component that handled it
+in one place and forgot it in another would not fail loudly, it would call `refresh()`, find no
+session, and leave somebody on a form that appeared to do nothing.
+
+The provider SDKs are fetched **on the first interaction**, not on render: together they are a
+couple of hundred kilobytes of third-party JavaScript that most visitors to a sign-in page
+never use, and the two screens they sit on take the minimal shell for the same reason.
+`src/lib/auth/script.ts` owns the loading.
+
+Google's own button is rendered rather than one of ours, and the asymmetry is theirs: Google
+Identity Services no longer offers a reliable way to raise a credential prompt from a click —
+One Tap is browser-arbitrated through FedCM and is suppressed after a dismissal — so
+`renderButton` is the supported path for a custom sign-in surface. Apple exposes
+`AppleID.auth.signIn()`, a promise a click can call, so Apple gets an ordinary `Pill`.
+
+### Named gaps in the account area
+
+| Gap | What it costs | Whose it is |
+|---|---|---|
+| `GET /v1/me` carries no `twoFactorEnabled` | `/settings/security` cannot say whether two-factor is already on. It offers both paths and lets `POST /2fa/enable` answer — the service refuses an enrolled account with a sentence written for its owner, and the panel moves to the off-path on it | §17, not this epic |
+| No `GET /v1/users/{slug}` | The public profile (#274) cannot be built, so `/account/following` lists creators as text rather than as links, and a creator's account cannot be reported from a campaign page — `POST /v1/users/{id}/report` needs an identifier the campaign response does not carry | The user module |
+| No `POST /v1/auth/forgot-password` | Password reset (#271) has no page and no link from the sign-in form | §17 |
+| No `PATCH /v1/me` | The profile editor (#276) has nowhere to save, so there is no entry for it in the account navigation | The user module |
+| No `GET /v1/me/pledges` | The backer's pledge list (#287) cannot be built. `/account/deliveries` is per-parcel and `/pledges/{id}/address` is reached from there and from a survey | The pledge module |
 
 ## Real user monitoring
 

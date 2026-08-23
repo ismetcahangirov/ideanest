@@ -5,10 +5,10 @@
  *
  * The rule `DashboardNav` already states, and it matters more here because this is on every
  * page: an entry pointing at a 404 tells a visitor the site is broken, and one that is
- * disabled tells them it is unfinished. §4.13 names nine capabilities and this epic builds
- * six of them; About, How it works, Trust and safety (WS-07, issue #292) and the legal pages
- * (WS-08, #293, which is blocked on a legal deliverable) are **not** in these lists. They
- * arrive with their pages.
+ * disabled tells them it is unfinished. §4.13 names nine capabilities. About, How it works and
+ * Trust and safety (WS-07) were absent until #292 built them and are in the footer now; the
+ * legal pages (WS-08, #293) are still **not**, because that issue is blocked on a legal
+ * deliverable §22 owns. They arrive with their pages.
  *
  * `apps/web/README.md` carries the route table this is derived from. When a route lands, it
  * is added here — one file, both surfaces, no chance of the footer knowing about a page the
@@ -51,10 +51,16 @@ export interface FooterGroup {
 /**
  * The footer's columns.
  *
- * Three, not the four §8.6's sketch draws. The fourth is Legal, and it is deliberately empty
- * rather than present with placeholder links: §22 owns that copy, #293 is `status:
- * needs-decision` on it, and a Terms link that resolves to nothing is worse than no Terms
- * link at all — it is a promise about a document that does not exist.
+ * Four, not the three there were before #292 and not the four §8.6's sketch draws. The fourth
+ * here is **About** — WS-07's three static pages — and the column §8.6 draws is Legal, which
+ * is still deliberately absent: §22 owns that copy, #293 is `status: needs-decision` on it,
+ * and a Terms link that resolves to nothing is worse than no Terms link at all — it is a
+ * promise about a document that does not exist.
+ *
+ * The account column gained the four screens #288, #289, #290 and #279 built. The footer is
+ * where somebody looks for the thing that was not worth a slot in the header, and an account
+ * area with eight destinations and no entry point outside its own navigation is an account
+ * area reachable only by people who already know where it is.
  */
 export const FOOTER_GROUPS: readonly FooterGroup[] = Object.freeze([
   {
@@ -73,8 +79,18 @@ export const FOOTER_GROUPS: readonly FooterGroup[] = Object.freeze([
     heading: 'Your account',
     links: [
       { href: '/notifications', label: 'Notifications' },
-      { href: '/settings/notifications', label: 'Notification settings' },
-      { href: '/settings/sessions', label: 'Devices and sessions' },
+      { href: '/account/saved', label: 'Saved projects' },
+      { href: '/account/surveys', label: 'Surveys' },
+      { href: '/account/deliveries', label: 'Deliveries' },
+      { href: '/settings/notifications', label: 'Settings' },
+    ],
+  },
+  {
+    heading: 'About',
+    links: [
+      { href: '/about', label: 'About IdeaNest' },
+      { href: '/how-it-works', label: 'How it works' },
+      { href: '/trust-safety', label: 'Trust and safety' },
     ],
   },
 ]);

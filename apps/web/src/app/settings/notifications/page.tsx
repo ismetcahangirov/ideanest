@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { AccountPageHeader } from '../../../components/account/AccountPageHeader';
 import { PreferencesPanel } from '../../../components/notifications/PreferencesPanel';
 import { privatePageMetadata } from '../../../lib/seo/metadata';
 
@@ -18,29 +19,27 @@ export const metadata: Metadata = privatePageMetadata({
  * digest is once a day rather than never, and that in-app delivery is what fills the inbox
  * — because both are otherwise learned by turning something off and waiting to find out
  * what stopped arriving.
+ *
+ * **It lost its own `<main>` and its own page padding in #275**, for the reason
+ * `/settings/sessions` states: the account area's layout owns both, and `SiteShell` owns the
+ * single `<main>` on the page.
  */
 export default function NotificationSettingsPage() {
   return (
-    <main className="mx-auto w-full max-w-[720px] px-5 py-10 sm:px-6 sm:py-14">
-      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
-        Notification settings
-      </h1>
-      <p className="mt-2 max-w-[56ch] text-sm text-white/64">
+    <>
+      <AccountPageHeader title="Notifications">
         Choose what you are told and how it reaches you. <strong>As it happens</strong> sends
-        each one on its own; <strong>daily digest</strong> collects them into one message a
-        day, where the channel supports it. <strong>In app</strong> is what fills your{' '}
+        each one on its own; <strong>daily digest</strong> collects them into one message a day,
+        where the channel supports it. <strong>In app</strong> is what fills your{' '}
         <Link href="/notifications" className="text-white underline underline-offset-4">
           notifications
         </Link>
-        .
-      </p>
-      <p className="mt-2 max-w-[56ch] text-sm text-white/56">
-        Changes save as you make them.
-      </p>
+        . Changes save as you make them.
+      </AccountPageHeader>
 
       <div className="mt-8">
         <PreferencesPanel />
       </div>
-    </main>
+    </>
   );
 }

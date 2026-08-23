@@ -47,3 +47,44 @@
     opacity: 1;
   }
 }
+
+/**
+ * The report dialog's entry — docs/motion-system.md §4.11 and §4.11.1.
+ *
+ * HERE FOR THE MOBILE DRAWER'S REASON, applied to a different surface. The kit's `Modal`
+ * animates through `motion`, and `@ideanest/ui/motion` is 116 kB (`packages/ui/src/motion.ts`
+ * has the measurement). The report control (#286) belongs on the public campaign page, which
+ * today ships **no** animation runtime at all — every component beneath it renders on the
+ * server. Importing the kit's modal to raise one dialog would put the whole library into the
+ * first load of the most-visited route on the platform.
+ *
+ * §4.11 specifies the animation exactly — 200ms, backdrop fades, panel fades and rises 24px —
+ * and every property in it is `opacity` or `transform`. There is nothing a library is needed
+ * for, and nothing is given up by writing it here.
+ *
+ * NO EXIT, which §4.11.1 states as a rule: "a dialog that lingers after it was dismissed reads
+ * as an unresponsive interface". The panel is unmounted.
+ *
+ * The `motion-safe:` variant on the elements is the second lock. The token file already
+ * collapses every animation to 0.01ms under `prefers-reduced-motion` (docs/ui-kit.md §9.4),
+ * and §4.11.1 wants the overlay to mount in its final state rather than travelling quickly.
+ */
+@keyframes dialog-panel {
+  from {
+    opacity: 0;
+    transform: translateY(1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dialog-backdrop {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

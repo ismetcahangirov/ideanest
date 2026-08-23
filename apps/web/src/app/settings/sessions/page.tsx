@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { AccountPageHeader } from '../../../components/account/AccountPageHeader';
 import { SessionsPanel } from '../../../components/sessions/SessionsPanel';
 import { privatePageMetadata } from '../../../lib/seo/metadata';
 
@@ -11,21 +12,22 @@ export const metadata: Metadata = privatePageMetadata({
  * The list is per-account and authenticated with a bearer token held in memory,
  * so there is nothing here a server render could produce — the page is a shell
  * and `SessionsPanel` is the client boundary.
+ *
+ * **It lost its own `<main>` and its own page padding in #275.** Both belong to the account
+ * area's layout now: `SiteShell` owns the single `<main>` on the page, and a second one would
+ * leave assistive technology with two answers to "jump to main".
  */
 export default function SessionsPage() {
   return (
-    <main className="mx-auto w-full max-w-[720px] px-5 py-10 sm:px-6 sm:py-14">
-      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
-        Active sessions
-      </h1>
-      <p className="mt-2 max-w-[52ch] text-sm text-white/64">
-        Every device currently signed in to your account. If you do not recognise one, sign it out —
-        it stops being able to refresh within fifteen minutes.
-      </p>
+    <>
+      <AccountPageHeader title="Devices">
+        Every device currently signed in to your account. If you do not recognise one, sign it
+        out — it stops being able to refresh within fifteen minutes.
+      </AccountPageHeader>
 
       <div className="mt-8">
         <SessionsPanel />
       </div>
-    </main>
+    </>
   );
 }
