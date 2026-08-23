@@ -1,8 +1,10 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import type { CampaignPage } from '../../lib/projects/publicPage';
 import { readCampaignPage } from '../../lib/projects/publicPage';
 import type { ProjectPageResponse } from '../../lib/api/server';
+import { fetchSession } from '../../lib/session/session';
+import { SessionProvider } from '../session/SessionProvider';
 import { CampaignSummary } from './CampaignSummary';
 import { CampaignOutcomeNotice } from './CampaignOutcomeNotice';
 import { CampaignRewards } from './CampaignRewards';
@@ -18,7 +20,39 @@ import { CampaignRewards } from './CampaignRewards';
  *   - a closed campaign shows what it raised at the deadline beside what has been
  *     collected since — #63's rule, and the one number a backer would misread;
  *   - a sold-out tier is shown and says so in words, never merely greyed (PL-01, §9.2).
+ *
+ * THE HEADER NEEDS A SESSION PROVIDER SINCE #281, because `CampaignActions` reads one. The
+ * session is stubbed rather than the component mocked away: the save and share controls are
+ * part of what §4.4 asks this header for, and a test that rendered the header without them
+ * would stop noticing the day they disappeared.
  */
+
+vi.mock('../../lib/session/session', () => ({ fetchSession: vi.fn() }));
+vi.mock('../../lib/api/access-token', () => ({ signOut: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/projects/ayan/coffee-table-book',
+  useRouter: () => ({
+    push: () => {},
+    replace: () => {},
+    prefetch: () => {},
+    back: () => {},
+    forward: () => {},
+    refresh: () => {},
+  }),
+}));
+
+const sessionMock = vi.mocked(fetchSession);
+
+const PATH = '/projects/ayan/coffee-table-book';
+
+/** The header, with the session provider it needs and the clock a countdown is measured on. */
+function renderSummary(page: CampaignPage) {
+  return render(
+    <SessionProvider>
+      <CampaignSummary campaign={page} path={PATH} now={NOW} />
+    </SessionProvider>,
+  );
+}
 
 const NOW = new Date('2026-08-19T12:00:00Z');
 
@@ -46,11 +80,16 @@ function campaign(overrides: Partial<ProjectPageResponse> = {}): CampaignPage {
   return page;
 }
 
+beforeEach(() => {
+  vi.clearAllMocks();
+  sessionMock.mockResolvedValue(null);
+});
+
 afterEach(cleanup);
 
 describe('the campaign summary', () => {
   it('puts the campaign in the markup rather than in a request', () => {
-    render(<CampaignSummary campaign={campaign()} />);
+    renderSummary(campaign());
 
     expect(screen.getByRole('heading', { level: 1, name: 'A coffee table book' })).toBeInTheDocument();
     expect(screen.getByText('Two hundred photographs of Baku.')).toBeInTheDocument();
@@ -64,7 +103,7 @@ describe('the campaign summary', () => {
    * reader, so the figure is printed and the bar carries an accessible name.
    */
   it('states the completion as words as well as a bar', () => {
-    render(<CampaignSummary campaign={campaign()} />);
+    renderSummary(campaign());
 
     expect(screen.getByText('125%')).toBeInTheDocument();
     expect(screen.getByText('funded')).toBeInTheDocument();
@@ -79,7 +118,7 @@ describe('the campaign summary', () => {
    * finished.
    */
   it('does not put a lime countdown on a campaign with ten days left', () => {
-    const { container } = render(<CampaignSummary campaign={campaign()} />);
+    const { container } = renderSummary(campaign());
 
     // The days remaining are still stated in prose beside the goal — that is information.
     // What must not be there is the lime surface, which is the word "hurry".
@@ -88,9 +127,7 @@ describe('the campaign summary', () => {
   });
 
   it('puts a lime countdown on a campaign closing within 48 hours', () => {
-    const { container } = render(
-      <CampaignSummary campaign={campaign({ deadline: '2026-08-20T18:00:00Z' })} />,
-    );
+    const { container } = renderSummary(campaign({ deadline: '2026-08-20T18:00:00Z' }));
 
     const urgent = container.querySelector('[data-on-lime]');
     expect(urgent).not.toBeNull();
@@ -105,22 +142,14 @@ describe('the campaign summary', () => {
    * same number as one closing tonight. "Last day" on the former is a lie.
    */
   it('does not count down a campaign that has already closed', () => {
-    render(
-      <CampaignSummary
-        campaign={campaign({ state: 'SUCCESSFUL', deadline: '2026-08-01T00:00:00Z' })}
-      />,
-    );
+    renderSummary(campaign({ state: 'SUCCESSFUL', deadline: '2026-08-01T00:00:00Z' }));
 
     expect(screen.queryByText('Last day')).not.toBeInTheDocument();
     expect(screen.getByText('Funded')).toBeInTheDocument();
   });
 
   it('renders a pre-launch campaign that has no goal, without inventing a percentage', () => {
-    render(
-      <CampaignSummary
-        campaign={campaign({ state: 'PRELAUNCH', goal: undefined, deadline: undefined })}
-      />,
-    );
+    renderSummary(campaign({ state: 'PRELAUNCH', goal: undefined, deadline: undefined }));
 
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();

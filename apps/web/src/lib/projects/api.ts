@@ -579,6 +579,47 @@ export async function forgetMe(id: string, token?: string, signal?: AbortSignal)
 }
 
 /* -------------------------------------------------------------------------
+ * Saving a campaign — §4.9's C-09, from the campaign page (#281)
+ *
+ * THE DELETE IS NOT HERE, AND THAT IS THE POINT. `unsaveCampaign` already exists in
+ * `lib/community/signals.ts`, written for the saved-list screen, and the campaign page's
+ * save control imports that one rather than growing a second copy. Two implementations of
+ * one path is how a screen ends up calling an endpoint that moved.
+ *
+ * The POST had no caller until this page, because the only surface that could save a
+ * campaign was the list of campaigns already saved.
+ * ---------------------------------------------------------------------- */
+
+/** Whether the caller has this campaign saved, after the call they just made. */
+export interface SaveState {
+  saved: boolean;
+}
+
+/**
+ * Saves a campaign — `POST /v1/projects/{projectId}/save`.
+ *
+ * <strong>Idempotent, and the response is what the control renders from.</strong> The
+ * service's own note says "saved" and "already saved" are the same success and that a
+ * response distinguishing them would answer a question nobody asked; so a second press
+ * changes nothing and the returned `saved` flag is the truth the button shows afterwards
+ * rather than a value this side guessed.
+ *
+ * <strong>There is no read of "have I saved this one".</strong> §10.2 publishes
+ * `GET /v1/me/saved` — a paginated list — and no per-campaign check, so a page cannot know
+ * the initial state without walking every page of somebody's saved campaigns. The control
+ * therefore offers the action rather than reflecting the state until it is pressed, and
+ * `CampaignActions` says what that looks like and why it is harmless.
+ */
+export async function saveCampaign(projectId: string, signal?: AbortSignal): Promise<SaveState> {
+  const response = await authorizedFetch(`/v1/projects/${encodeURIComponent(projectId)}/save`, {
+    method: 'POST',
+    signal,
+  });
+  if (!response.ok) throw await errorFrom(response);
+  return (await response.json()) as SaveState;
+}
+
+/* -------------------------------------------------------------------------
  * Items — docs/architecture.md §10.2 (#32, #34)
  *
  * The atomic things a campaign produces. Items come BEFORE tiers, which is the
