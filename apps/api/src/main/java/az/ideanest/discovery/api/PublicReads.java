@@ -138,6 +138,22 @@ final class PublicReads {
         return canonical.toString();
     }
 
+    /**
+     * The gazetteer, both fields of every row.
+     *
+     * <p>The name is hashed as well as the slug, even though the slug alone identifies the
+     * row. A translation being corrected changes only the name, and that is exactly the
+     * edit a digest over identifiers would miss — it would serve the old spelling for an
+     * hour, which is this response's whole cache window.
+     */
+    static String canonical(LocationResponses.LocationIndex index) {
+        StringBuilder canonical = new StringBuilder();
+        for (LocationResponses.Location location : index.items()) {
+            append(canonical, location.slug(), location.name());
+        }
+        return canonical.toString();
+    }
+
     /** The landing page: its header, then its cards, then where the next page starts. */
     static String canonical(CollectionResponses.CollectionPage page) {
         StringBuilder canonical = new StringBuilder();

@@ -107,6 +107,30 @@ export const PRELAUNCH_COVER_SIZES = sizesFor([
   { size: 'calc(100vw - 40px)' },
 ]);
 
+/**
+ * A collection's cover on its own landing page — D-08, §4.13 WS-04.
+ *
+ * `CollectionHeader`: the page is `mx-auto w-full max-w-[1400px] px-5 sm:px-6`, and the header
+ * is `lg:grid-cols-[minmax(0,1fr)_minmax(0,560px)] lg:gap-10`. Tailwind's `lg` is 1024px, so
+ * the cover column is 560 CSS pixels at every width the two-column layout applies at — the
+ * `1fr` track absorbs everything the `minmax` does not take — and below it the cover is the
+ * full content width.
+ *
+ *   ≥1024: the right-hand column — 560px
+ *    ≥640: one column, `px-6`    — 100vw − 48
+ *    else: one column, `px-5`    — 100vw − 40
+ *
+ * THE INDEX'S CARDS ARE NOT HERE. `CollectionCard` sits in the same three-column grid as the
+ * discovery feed's, at the same container width and the same gap, so it takes
+ * `DISCOVERY_CARD_SIZES` rather than a second constant describing the identical layout — two
+ * strings for one grid is one string that stops matching it.
+ */
+export const COLLECTION_COVER_SIZES = sizesFor([
+  { minWidth: 1024, size: '560px' },
+  { minWidth: 640, size: 'calc(100vw - 48px)' },
+  { size: 'calc(100vw - 40px)' },
+]);
+
 /*
  * THERE IS NO EDITOR ENTRY, deliberately. The campaign editor's previews render
  * a plain `<img>` rather than `next/image` — `CoverImageField` says why — so

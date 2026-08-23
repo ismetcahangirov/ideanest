@@ -35,6 +35,7 @@ const ROUTES_THAT_EXIST = new Set([
   '/account/following',
   '/account/surveys',
   '/account/deliveries',
+  '/settings/profile',
   '/settings/notifications',
   '/settings/sessions',
   '/settings/email',
@@ -79,10 +80,20 @@ describe('the account navigation', () => {
     }
   });
 
-  it('offers no profile editor, because there is no endpoint to save one to', () => {
-    // #276 is blocked: the service has no `PATCH /v1/me`. An entry here would be a form with
-    // nowhere to save.
-    expect(ACCOUNT_LINKS.map((link) => link.href)).not.toContain('/settings/profile');
+  it('offers the profile editor, which #276 gave an endpoint to save to', () => {
+    /*
+     * This assertion used to be its own inverse, and the comment under it said the service
+     * had no `PATCH /v1/me`, so an entry here would be a form with nowhere to save. #276 built
+     * `GET /v1/me/profile` and `PATCH /v1/me/profile` — a named pair rather than the account
+     * patch that was asked for, for the reason `OwnProfileController` gives — so the entry is
+     * now the correct one and its absence would be the defect.
+     */
+    expect(ACCOUNT_LINKS.map((link) => link.href)).toContain('/settings/profile');
+  });
+
+  it('puts the profile first among the settings, as the only one about what strangers see', () => {
+    const settings = ACCOUNT_GROUPS.find((group) => group.heading === 'Settings');
+    expect(settings?.links[0]?.href).toBe('/settings/profile');
   });
 
   it('groups them by the question being asked rather than by URL prefix', () => {

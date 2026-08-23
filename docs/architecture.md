@@ -268,11 +268,41 @@ Marked `[W]` web, `[M]` mobile, `[A]` admin.
 > every notification email the platform has sent, and moving it under `/account`
 > to buy a tidier tree would break links this repository does not own.
 >
-> **P-01 to P-03 and P-10 are absent from that navigation on purpose.** The
-> profile editor has no write to save to — there is no `PATCH /v1/me` — and the
-> language and currency preferences are blocked on §21.1. An entry pointing at a
-> page that cannot work is worse than no entry, which is the rule the site header
-> already follows.
+> **P-02 and P-03 joined that navigation with #276, and P-10 still has not.** The
+> profile editor had no write to save to, and now it does: `GET` and
+> `PATCH /v1/me/profile`, beside P-07's switch rather than folded into a general
+> `PATCH /v1/me`, for the reason `ProfileVisibilityController` gives — a PATCH over
+> the whole account is a surface every future column joins by default, and the first
+> one added without thinking becomes writable by anybody holding a token. The write
+> covers the name, the biography, a website, a location from V16's gazetteer, and up
+> to five social links, all of them **https only**: a profile link is a spam vector
+> and a `javascript:` scheme is an XSS one, so the scheme is refused at the column,
+> at the domain and at the request.
+>
+> **P-01 is half-served and the half that is missing is the half the capability
+> names.** `users.avatar_url` is writable now — as an address of an image that is
+> already published, which is exactly what `projects.cover_image_url` has always
+> been and is stated in the same words in `OwnProfileResponse` as in `CoverImage`.
+> The server has never seen the bytes. **Upload and crop wait on §13.1**, and until
+> that pipeline exists an uploader here would be a control with nowhere to write.
+>
+> **P-10 is still absent, and its blocker was misattributed until #324.** The
+> language and currency preferences are blocked on §21.1's message catalogue — every
+> string in `apps/web` is an inline English literal — and, for the currency half,
+> on there being no rate source in the service and one currency in the system, so
+> the approximation §21.2 describes would convert AZN to AZN. #123's locale-prefixed
+> URLs are an indexing decision and were never the dependency. An entry pointing at
+> a page that cannot work is worse than no entry, which is the rule the site header
+> already follows, and `SiteFooter` follows it too by stating both values as facts
+> rather than offering them as controls.
+>
+> **The location is a slug from a closed vocabulary, and that vocabulary is
+> published now (`GET /v1/locations`).** V16 seeded eighteen places for §4.3's
+> `?city=` filter and gave them no index, which left a form two bad options: a
+> free-text box that refuses every spelling but one, or the list copied into the
+> client — the thing §4.3 forbids in its second sentence. The endpoint is on
+> `GET /v1/categories`' terms: public, an hour, `Vary: Accept-Language`, and a
+> requested-locale → `az` → slug fallback so a name is never empty.
 >
 > **P-04 to P-07 are a third surface and not part of that navigation either
 > (#274).** `/u/{slug}` is somebody else's page: it is read by strangers, it is
@@ -495,12 +525,35 @@ and each entry needs a translation per supported locale.
 > them in would produce one response whose cost is decided by the longest comment
 > thread on the platform, cached for as long as its least cacheable part.
 >
-> **The rest arrived with #281, #282, #284 and #285, and the split above is why
-> the tab is a query parameter.** `?tab=` keeps one canonical URL for one
+> **The rest arrived with #281, #282, #283, #284 and #285, and the split above is
+> why the tab is a query parameter.** `?tab=` keeps one canonical URL for one
 > campaign — a route per tab would be five, four of them thin — while still being
 > a link somebody can send and a crawler can follow, which local state is not.
 > Only the active tab is fetched, so the second read is paid for by the reader who
 > asked for it.
+>
+> **The FAQ tab needed a schema before it could need a design (#283).** §4.4 has
+> always listed it and nothing on the platform stored a question: a tab that always
+> said "no questions yet" would have been a claim about the campaign rather than
+> about the platform, which is why it was the one tab left out of the four above.
+> `project_faqs` is a table rather than a `jsonb` column on `projects`, because
+> §10.2 addresses single entries — an entry needs an identifier that survives a
+> reorder, and a jsonb array is read-mutate-write whole, so two editors silently
+> lose one of the edits. Ordering is `sort_order` and a reorder rewrites the whole
+> list from zero, the rule `reward_tiers` already follows and for its reason: two
+> concurrent reorders then produce one of the two orders rather than a blend of
+> both. The list is capped at fifty entries and unpaged, and the cap is what makes
+> the absent cursor honest — if fifty stops being enough the answer is a cursor,
+> never a bigger cap, because the failure mode of the alternative is silent
+> truncation.
+>
+> **Managing it is its own grant, `MANAGE_FAQ`, and not `EDIT_BASICS`.** §16.1's
+> argument about coarse questions is the whole reason `shared/access` exists, and
+> a hatch wide enough to be convenient on a published surface is one that gets
+> taken. Reading stays coarse, so a collaborator writing the story can still see
+> the campaign's own FAQ. V9's `collaborator_capabilities_known` check constraint
+> is widened in the same migration — an enum value the database refuses is a grant
+> that fails at the moment a creator issues it.
 >
 > **The tab strip is a list of links and deliberately not an ARIA tab widget.**
 > `role="tab"` promises arrow-key movement, a single tab stop, and a panel that
@@ -1440,6 +1493,18 @@ Preferences are per category and per channel, with a digest option.
 > discovery URL is a query string a crawler will not enumerate. These two are
 > the pages §11 and the SEO epic (#118) actually have to rank, and that is why
 > they are named separately rather than folded into "discovery".
+>
+> **D-08's `/collections` and `/collections/{slug}` joined them with #266**, on the
+> same argument: a curated list is a path a crawler can follow and `?programme=` is
+> not, and the pages carry editorial copy that exists nowhere else on the platform.
+> They are in the sitemap — the index as a fixed route beside `/categories`, and one
+> URL per collection alongside the taxonomy, because a collection is data a curator
+> publishes rather than a page somebody deployed. **Only what `GET /v1/collections`
+> actually lists reaches the file**: an unpublished collection in a sitemap would be
+> a 404 counted against the whole document *and* an announcement of exactly the fact
+> the 404-not-403 rule exists to withhold. The index is linked from the footer's
+> Explore column and deliberately not from the header, which §8.6 keeps at two
+> entries.
 
 ---
 
@@ -1775,7 +1840,7 @@ erDiagram
 
 #### `users`
 `id` (uuid), `email` (citext, unique), `email_verified_at`, `name`, `slug`,
-`avatar_url`, `bio`, `location_id`, `locale`, `currency`, `kyc_status`,
+`avatar_url`, `bio`, `website_url`, `location_id`, `locale`, `currency`, `kyc_status`,
 `two_factor_enabled`, `suspended_at`, `suspended_by`, `suspension_reason`,
 `deleted_at`, `deletion_requested_at`, `deletion_scheduled_at`, `anonymised_at`,
 timestamps.
@@ -2327,7 +2392,8 @@ by a database constraint and verified by a nightly reconciliation job.
 | `project_editorial_badges` *(view)* | The only definition of "editorially featured" (§3.2, §4.4, D-05). One row per campaign per badge-granting collection currently in force; read by `showOnly=featured`, by the card, and by §11.2's `w4` |
 | `project_updates` | Numbered updates (#83). One row per post: a `number` allocated on insert as `max + 1` per campaign and never recomputed — it is what a link and a support conversation name — a `title` and a prose `body`, a `visibility` of `PUBLIC` or `BACKERS_ONLY`, the `author_id`, and a `published_at`. **`published_at` in the future is the whole of "scheduled"**: the public read filters on it, so there is no state column to fall out of step with it and no §8.4 job to be late. `body` is `text` rather than `jsonb` because nothing in §4.7's CD-12 gives an update the story's block editor, and storing an unvalidated document on a public page is the one thing §10.4 says not to do with creator content; the day updates gain that editor it becomes `jsonb` by an expand-then-contract pair. No `deleted_at` yet, deliberately — see §4.9 |
 | `comments` | The conversation under a campaign (#84). Two levels and no more: a root and its replies, `parent_id` null on a root, a denormalised `thread_id` and a `depth` of 0 or 1. **The bound is a foreign key, not a check.** `parent_depth` is `GENERATED ALWAYS AS (depth - 1)`, and `(parent_id, parent_depth, thread_id)` references `(id, depth, thread_id)` — so a reply's parent must be the row one level above it *in the same thread*, which is "replies attach to roots and to nothing else" with no way to write around it from a support script. A depth check alone would still accept a reply hanging under a reply that had claimed depth 1. `thread_id` is a column rather than `coalesce(parent_id, id)` because one page of roots then costs one further query for all of their replies, keyset on `(thread_id, id)`. `by_creator` is C-02's highlight, **decided at write time** from the authorisation then in force: derived on read it would change on a year-old comment the day somebody left the campaign's team, and accepted from the client it would be a claim of authority taken from the side making it. **Deletion is a tombstone** — `deleted_at`/`deleted_by`, both or neither — and the row and its body stay: a removed root still heads its thread so its replies are not orphaned, and an open report in `content_reports` still resolves to something a moderator can read. `CommentResponse` is the single place a tombstone becomes `body: null`, `authorId: null`. Cascades on the campaign, like `project_updates`; no `ON DELETE` on `author_id`, since §17.4 anonymises in place |
-| `faqs` | Question and answer pairs |
+| `project_faqs` | §4.4's FAQ tab (#283). One row per question and answer, cascading on the campaign as `project_updates` does. **A table rather than a `jsonb` column on `projects`**, because §10.2 addresses single entries — an entry needs an identifier that survives a reorder — and because a jsonb array is read-mutate-write whole, so two editors silently lose one of the edits; `projects` is also the platform's hottest row. Ordering is `sort_order`, not unique and tiebroken on `created_at`, exactly as `reward_tiers` is: a **reorder rewrites the list from zero** rather than adjusting positions, so two concurrent reorders produce one of the two orders rather than a blend, and a unique constraint would refuse the rewrite mid-flight. Blankness is checked with `!~ '^\s*$'` and never `btrim`, which removes spaces only and would accept a body of two newlines. Capped at fifty entries per campaign, which is what makes the unpaged read honest — if fifty stops being enough the answer is a cursor and never a bigger cap, because the alternative fails by truncating silently. Writes need the `MANAGE_FAQ` grant V47 adds to V9's capability check; reading stays coarse, so a collaborator writing the story can still see the campaign's own list |
+| `user_social_links` | §4.2's P-03 (#276). Up to five links per account, one per platform by unique index over `(user_id, platform)`, ordered by `position`. **A table rather than columns on `users` or a `jsonb` blob**: the platform vocabulary and the per-row URL rule are then constraints rather than conventions, and `users` does not grow a column per website that becomes fashionable. `url` is **https only** by check — a profile link is a spam vector and a `javascript:` scheme is an XSS one — and the rows cascade on the account so §17.4's erasure cannot leave somebody's Instagram behind. The list is written whole rather than merged, which is why the service deletes and reinserts in one transaction |
 | `saves`, `follows` | §4.9's C-09 and C-10 (#90): the two signals a backer leaves without spending anything. **Two tables and not one with a discriminator**, because the referents differ -- a save points at a campaign and a follow at a person -- so both foreign keys stay real, unlike `audit_logs` and `content_reports` where the referent genuinely varies at runtime and the row has to outlive it. **Withdrawal deletes the row**, the same departure from §7.3 that `reminders` makes and for the same reason: soft delete is for audit and recovery, and a record of what somebody *used to* be interested in is retention §17.4 refuses -- it would also make the unique constraints partial, which is the shape that lets one person accumulate a hundred tombstoned saves of one campaign. Neither gains a counter column on `projects` or `users`: no screen shows a save count yet, and a cached number is a second thing that can be wrong plus an hourly job to correct it. `follows_is_not_self` is a constraint rather than tidiness -- a self-follow would put a creator in their own `FOLLOWERS` audience, so launching would notify them that somebody they follow had launched their own campaign |
 | `reminders` | Who asked to be told when a campaign opens, and whether they were |
 | `deadline_notices` | Which of §4.10's deadline thresholds a campaign has already been announced at (#90). **The row is the claim**: it is inserted in the same transaction as the `project.ending_soon` outbox event it authorises, so a crash either leaves the threshold unclaimed and unannounced or claimed and announced. It has to exist because the sweep's question -- "which live campaigns are within 48 hours of closing" -- is true for the whole of a campaign's last two days, so without it every closing campaign would be announced once a minute for two days and each announcement is a message to every backer. **A row per threshold rather than two columns on `projects`**: that table is the platform's widest and its hottest row, so a background sweep writing to it would contend with every edit and every pledge on precisely the campaigns that are busiest, and a third threshold would be a migration over every campaign ever created rather than one value in a check |
@@ -3101,6 +3167,8 @@ GET    /v1/me/export
 POST   /v1/me/deletion
 DELETE /v1/me/deletion
 GET    /v1/me/pledges                       # PL-09/PL-10 (#287); the caller's own pledges
+GET    /v1/me/profile                       # P-01..P-03 (#276); the owner's editable projection
+PATCH  /v1/me/profile                       # P-01..P-03 (#276); named, not a general PATCH /v1/me
 PATCH  /v1/me/profile-visibility            # P-07 (#274); the profile page's one switch
 GET    /v1/users/{slug}                     # P-06 (#274); 404 for a private profile, never 403
 GET    /v1/users/{slug}/projects            # P-05 (#274); public states only
@@ -3114,6 +3182,7 @@ GET    /v1/discover/facets
 GET    /v1/search
 GET    /v1/search/suggest
 GET    /v1/categories
+GET    /v1/locations                        # V16's gazetteer (#276); ?city= and locationSlug's vocabulary
 GET    /v1/collections
 GET    /v1/collections/{slug}
 
@@ -3158,7 +3227,10 @@ PUT    /v1/rewards/{id}/shipping-rules   # per-country and per-zone rates, repla
 GET    /v1/projects/{id}/shipping-zones  # PM-13's regions (#77); EDIT_REWARDS, no-store
 PUT    /v1/projects/{id}/shipping-zones  # replaced wholesale, like the rate tables they price
 POST   /v1/projects/{id}/updates
-POST   /v1/projects/{id}/faqs
+POST   /v1/projects/{id}/faqs               # #283; MANAGE_FAQ
+PATCH  /v1/faqs/{id}                        # #283; merge-patch, one entry
+DELETE /v1/faqs/{id}                        # #283
+PATCH  /v1/projects/{id}/faqs/reorder       # #283; every entry exactly once, or nothing
 GET    /v1/projects/{id}/collaborators
 POST   /v1/projects/{id}/collaborators
 PATCH  /v1/collaborators/{id}
@@ -3308,6 +3380,20 @@ PUT    /v1/admin/collections/{slug}/projects/order
 > no cache. The faceted, counted version discovery needs replaces this; the
 > campaign editor cannot ask a creator to choose from a list nothing will send
 > them, so it does not wait for that.
+>
+> **`GET /v1/locations` publishes V16's gazetteer, on exactly the terms above**
+> (#276). The eighteen places have been filterable through `?city=` since #47 and
+> listable by nobody, which was survivable while the only consumer was a facet panel
+> handing a slug back to the endpoint it came from. It stopped being when §4.2's
+> profile editor needed to offer a person the list before they could choose from it:
+> the alternatives were a free-text box refusing every spelling but one, or eighteen
+> names hard-coded in `apps/web` — which is the thing §4.3 forbids in its second
+> sentence. An hour, `Vary: Accept-Language`, and a requested-locale → `az` endonym →
+> slug fallback, in that order, so that a reader of a language with no row is given a
+> name somebody wrote rather than a handle. Coordinates are deliberately not in the
+> body: they exist to answer proximity inside a query, no caller of this list needs
+> them, and V16 argues that their precision is a privacy decision rather than a
+> storage one.
 >
 > **`GET /v1/collections` and `GET /v1/collections/{slug}` are public, and an
 > unpublished collection answers `404` rather than `403`** (#48). Which campaigns the
@@ -4565,7 +4651,7 @@ the **vocabulary and nothing else**:
 
 | Type | What it is |
 |---|---|
-| `ProjectCapability` | the eight names, one-for-one with `project.domain.Capability` |
+| `ProjectCapability` | the grant names, one-for-one with `project.domain.Capability` |
 | `ProjectAuthorisation` | `requireCapability(projectId, accountId, capability)` |
 | `PlatformStaff` | `isStaff` / `requireStaff`, until epic #100 replaces it |
 

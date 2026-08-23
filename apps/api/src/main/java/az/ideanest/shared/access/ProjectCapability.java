@@ -55,6 +55,17 @@ public enum ProjectCapability {
     RESPOND_TO_COMMENTS,
 
     /**
+     * Write, edit, reorder and remove the campaign's FAQ entries — §4.4's FAQ tab.
+     *
+     * <p>Its own capability rather than a corner of {@code EDIT_BASICS}, for the reason
+     * {@code ProjectAccess} records about coarse checks on published surfaces: the one
+     * that is offered is the one that gets taken. An FAQ entry is text published in the
+     * campaign's name to everybody reading its page, which is nearer to
+     * {@link #PUBLISH_UPDATES} than to the funding goal.
+     */
+    MANAGE_FAQ,
+
+    /**
      * See the backer report, the referral report, and the money in both.
      *
      * <p>The one capability here that is about reading rather than writing, and the one

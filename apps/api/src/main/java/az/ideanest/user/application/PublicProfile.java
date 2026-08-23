@@ -1,6 +1,7 @@
 package az.ideanest.user.application;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -46,6 +47,28 @@ import java.util.UUID;
  *     creator's word for it. It is a date to a day rather than a moment, as far as anybody
  *     reading it is concerned, and it is served as an instant because §10.3 makes every
  *     timestamp in this API one
+ * @param websiteUrl §4.2's P-02, null until somebody sets one. Public because that is the
+ *     field's entire purpose: a link only its owner could see would be a bookmark
+ * @param location one of V16's eighteen places, or null. Public for the reason it is a
+ *     foreign key rather than a string — it is the same vocabulary discovery's {@code ?city=}
+ *     filter takes, so a client can render the name and link to {@code /discover?city={slug}}
+ *     and land on the campaigns that are actually there
+ * @param socialLinks §4.2's P-03, in the order their owner put them. Never null: an account
+ *     with no links has an empty list, so a client can tell "this person listed none" from
+ *     "the key I expected is missing"
  */
-public record PublicProfile(UUID id, String slug, String name, String avatarUrl, String bio, Instant joinedAt) {
+public record PublicProfile(
+        UUID id,
+        String slug,
+        String name,
+        String avatarUrl,
+        String bio,
+        Instant joinedAt,
+        String websiteUrl,
+        ProfileLocation location,
+        List<ProfileSocialLink> socialLinks) {
+
+    public PublicProfile {
+        socialLinks = socialLinks == null ? List.of() : List.copyOf(socialLinks);
+    }
 }

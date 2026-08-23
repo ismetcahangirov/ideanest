@@ -1014,6 +1014,178 @@ export async function replaceShippingRules(
 }
 
 /* -------------------------------------------------------------------------
+ * FAQ — docs/architecture.md §4.4 and §10.2 (#283)
+ * ---------------------------------------------------------------------- */
+
+/**
+ * One entry of the campaign's question and answer list.
+ *
+ * Three fields and no timestamps, because that is the whole of what the service
+ * publishes: `ProjectFaqResponse` carries an identifier, a question and an
+ * answer. The order is not on the entry either — `sort_order` is a column the
+ * service reads and the list is returned in it, so position is a property of
+ * the list rather than of the row, exactly as it is for a reward tier.
+ */
+export interface ProjectFaq {
+  id: string;
+  question: string;
+  answer: string;
+}
+
+/** What a new entry needs. Both halves are required — the service refuses a blank. */
+export interface NewProjectFaq {
+  question: string;
+  answer: string;
+}
+
+/**
+ * A partial edit. Merge-patch semantics: an absent field is left alone.
+ *
+ * Not `Partial<NewProjectFaq>`, for the reason this module's header gives about
+ * writing shapes out — a patch type derived from a creation type silently gains
+ * every field the creation type gains, including ones the service will not
+ * accept in a patch.
+ */
+export interface ProjectFaqPatch {
+  question?: string;
+  answer?: string;
+}
+
+/** §4.4's bounds. Refused by the service; shown to the creator before it is. */
+export const FAQ_QUESTION_MAX_CHARACTERS = 200;
+export const FAQ_ANSWER_MAX_CHARACTERS = 4000;
+
+/**
+ * §4.4's server-side cap on how many entries one campaign may publish.
+ *
+ * Restated so the editor can say "this campaign is at the limit" before a
+ * creator types an entry the service will refuse. The service is still the
+ * thing that enforces it.
+ */
+export const MAX_PROJECT_FAQS = 50;
+
+async function readFaq(response: Response): Promise<ProjectFaq> {
+  if (!response.ok) throw await errorFrom(response);
+  return (await response.json()) as ProjectFaq;
+}
+
+/**
+ * The list, unwrapped from its envelope.
+ *
+ * `ProjectFaqListResponse` is `{ faqs: [...] }` rather than a bare array — the
+ * envelope is what lets the service add a cursor later without breaking every
+ * client, which §4.4 says is the answer if fifty entries stops being enough.
+ * `??` rather than a cast, because springdoc marks the property optional.
+ */
+async function readFaqs(response: Response): Promise<readonly ProjectFaq[]> {
+  if (!response.ok) throw await errorFrom(response);
+  const body = (await response.json()) as { faqs?: readonly ProjectFaq[] };
+  return body.faqs ?? [];
+}
+
+/**
+ * The campaign's FAQ list, in the creator's order.
+ *
+ * <h3>THE SAME ENDPOINT THE PUBLIC TAB READS, WITH A TOKEN</h3>
+ *
+ * `GET /v1/projects/{projectId}/faqs` is `permitAll`, and the campaign page
+ * reads it anonymously from the server (`lib/community/faqs.ts`). The editor
+ * reads it with the account's bearer token, and the difference is not cosmetic:
+ * a campaign that is not in a public state answers 404 to a stranger, and the
+ * team can read its own unlaunched campaign's list. A creator writing the FAQ
+ * of a draft is exactly that case, so the anonymous reader would answer 404 for
+ * every campaign this editor is used on before launch.
+ */
+export async function listFaqs(
+  projectId: string,
+  signal?: AbortSignal,
+): Promise<readonly ProjectFaq[]> {
+  const path = `/v1/projects/${encodeURIComponent(projectId)}/faqs`;
+  return readFaqs(await authorizedFetch(path, { signal }));
+}
+
+/** Adds an entry to the end of the list. Refused past {@link MAX_PROJECT_FAQS}. */
+export async function createFaq(
+  projectId: string,
+  input: NewProjectFaq,
+  signal?: AbortSignal,
+): Promise<ProjectFaq> {
+  const path = `/v1/projects/${encodeURIComponent(projectId)}/faqs`;
+  return readFaq(
+    await authorizedFetch(path, {
+      method: 'POST',
+      headers: JSON_HEADERS,
+      body: JSON.stringify(input),
+      signal,
+    }),
+  );
+}
+
+/**
+ * Edits one entry and answers it as it now stands.
+ *
+ * Merge-patch semantics sent as `application/json`, for the reason
+ * `patchProject` gives at length: the semantics are the service's contract, and
+ * declaring `application/merge-patch+json` to a controller that consumes the
+ * default type turns every save into a 415.
+ */
+export async function patchFaq(
+  id: string,
+  patch: ProjectFaqPatch,
+  signal?: AbortSignal,
+): Promise<ProjectFaq> {
+  return readFaq(
+    await authorizedFetch(`/v1/faqs/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: JSON_HEADERS,
+      body: JSON.stringify(patch),
+      signal,
+    }),
+  );
+}
+
+/**
+ * Removes one entry.
+ *
+ * Nothing is owed against an FAQ entry — unlike a reward tier, which is why
+ * `deleteReward` has a `REWARD_HAS_BACKERS` branch and this does not — so the
+ * deletion is unconditional and the confirmation is the interface's business.
+ */
+export async function deleteFaq(id: string, signal?: AbortSignal): Promise<void> {
+  const response = await authorizedFetch(`/v1/faqs/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    signal,
+  });
+  if (!response.ok) throw await errorFrom(response);
+}
+
+/**
+ * Puts the entries in the order given, and answers the list in that order.
+ *
+ * EVERY ENTRY, EXACTLY ONCE, or the service answers `400 FAQ_ORDER_INCOMPLETE`
+ * with `meta.missing` and `meta.unexpected` naming what was wrong. The rule and
+ * the reason are `reorderRewards`'s: a partial list would leave the entries it
+ * omits where they were, interleaved with the ones that moved, and a reorder
+ * that rewrites the whole list from zero means two concurrent reorders produce
+ * one of the two orders rather than a blend of both.
+ */
+export async function reorderFaqs(
+  projectId: string,
+  faqIds: readonly string[],
+  signal?: AbortSignal,
+): Promise<readonly ProjectFaq[]> {
+  const path = `/v1/projects/${encodeURIComponent(projectId)}/faqs/reorder`;
+  return readFaqs(
+    await authorizedFetch(path, {
+      method: 'PATCH',
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ faqIds }),
+      signal,
+    }),
+  );
+}
+
+/* -------------------------------------------------------------------------
  * Still to come. Each of these is a function in THIS module, not a new client.
  *
  *   #31 launch and cancel        POST /v1/projects/{id}/launch | cancel

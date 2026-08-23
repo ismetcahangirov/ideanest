@@ -2062,6 +2062,61 @@
         "tags" : [ "discovery-controller" ]
       }
     },
+    "/v1/faqs/{id}" : {
+      "delete" : {
+        "operationId" : "projectFaqDelete",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "project-faq-controller" ]
+      },
+      "patch" : {
+        "operationId" : "projectFaqEdit",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/FaqPatchRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectFaqResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-faq-controller" ]
+      }
+    },
     "/v1/items/{id}" : {
       "delete" : {
         "operationId" : "itemDelete",
@@ -2115,6 +2170,32 @@
           }
         },
         "tags" : [ "item-controller" ]
+      }
+    },
+    "/v1/locations" : {
+      "get" : {
+        "operationId" : "locationLocations",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "Accept-Language",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LocationIndex"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "location-controller" ]
       }
     },
     "/v1/me" : {
@@ -2388,6 +2469,50 @@
           }
         },
         "tags" : [ "backer-archive-controller" ]
+      }
+    },
+    "/v1/me/profile" : {
+      "get" : {
+        "operationId" : "ownProfileProfile",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OwnProfileResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "own-profile-controller" ]
+      },
+      "patch" : {
+        "operationId" : "ownProfileEdit",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ProfilePatchRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OwnProfileResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "own-profile-controller" ]
       }
     },
     "/v1/me/profile-visibility" : {
@@ -3886,6 +4011,105 @@
           }
         },
         "tags" : [ "comment-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/faqs" : {
+      "get" : {
+        "operationId" : "publicProjectFaqList",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectFaqListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "public-project-faq-controller" ]
+      },
+      "post" : {
+        "operationId" : "projectFaqCreate",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateFaqRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectFaqResponse"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "tags" : [ "project-faq-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/faqs/reorder" : {
+      "patch" : {
+        "operationId" : "projectFaqReorder",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReorderFaqsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectFaqListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-faq-controller" ]
       }
     },
     "/v1/projects/{projectId}/fulfilments" : {
@@ -5451,15 +5675,27 @@
           "locale" : {
             "type" : "string"
           },
+          "location" : {
+            "type" : "string"
+          },
           "name" : {
             "type" : "string"
           },
           "slug" : {
             "type" : "string"
           },
+          "socialLinks" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SocialLink"
+            }
+          },
           "updatedAt" : {
             "type" : "string",
             "format" : "date-time"
+          },
+          "websiteUrl" : {
+            "type" : "string"
           }
         }
       },
@@ -6307,7 +6543,7 @@
             "type" : "array",
             "items" : {
               "type" : "string",
-              "enum" : [ "EDIT_BASICS", "EDIT_REWARDS", "EDIT_STORY", "SUBMIT_FOR_REVIEW", "PUBLISH_UPDATES", "RESPOND_TO_COMMENTS", "VIEW_FINANCES", "MANAGE_COLLABORATORS" ]
+              "enum" : [ "EDIT_BASICS", "EDIT_REWARDS", "EDIT_STORY", "SUBMIT_FOR_REVIEW", "PUBLISH_UPDATES", "RESPOND_TO_COMMENTS", "MANAGE_FAQ", "VIEW_FINANCES", "MANAGE_COLLABORATORS" ]
             },
             "minItems" : 1,
             "uniqueItems" : true
@@ -6624,6 +6860,17 @@
           }
         },
         "required" : [ "collection", "slug" ]
+      },
+      "CreateFaqRequest" : {
+        "type" : "object",
+        "properties" : {
+          "answer" : {
+            "type" : "string"
+          },
+          "question" : {
+            "type" : "string"
+          }
+        }
       },
       "CreateItemRequest" : {
         "type" : "object",
@@ -7038,6 +7285,17 @@
           }
         }
       },
+      "FaqPatchRequest" : {
+        "type" : "object",
+        "properties" : {
+          "answer" : {
+            "type" : "string"
+          },
+          "question" : {
+            "type" : "string"
+          }
+        }
+      },
       "Feed" : {
         "type" : "object",
         "properties" : {
@@ -7216,7 +7474,7 @@
             "type" : "array",
             "items" : {
               "type" : "string",
-              "enum" : [ "EDIT_BASICS", "EDIT_REWARDS", "EDIT_STORY", "SUBMIT_FOR_REVIEW", "PUBLISH_UPDATES", "RESPOND_TO_COMMENTS", "VIEW_FINANCES", "MANAGE_COLLABORATORS" ]
+              "enum" : [ "EDIT_BASICS", "EDIT_REWARDS", "EDIT_STORY", "SUBMIT_FOR_REVIEW", "PUBLISH_UPDATES", "RESPOND_TO_COMMENTS", "MANAGE_FAQ", "VIEW_FINANCES", "MANAGE_COLLABORATORS" ]
             },
             "minItems" : 1,
             "uniqueItems" : true
@@ -7407,6 +7665,39 @@
           },
           "valueNode" : {
             "type" : "boolean"
+          }
+        }
+      },
+      "Location" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "slug" : {
+            "type" : "string"
+          }
+        }
+      },
+      "LocationBody" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "slug" : {
+            "type" : "string"
+          }
+        }
+      },
+      "LocationIndex" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Location"
+            }
           }
         }
       },
@@ -7636,6 +7927,35 @@
           },
           "pledged" : {
             "$ref" : "#/components/schemas/Money"
+          }
+        }
+      },
+      "OwnProfileResponse" : {
+        "type" : "object",
+        "properties" : {
+          "avatarUrl" : {
+            "type" : "string"
+          },
+          "bio" : {
+            "type" : "string"
+          },
+          "location" : {
+            "$ref" : "#/components/schemas/LocationBody"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "socialLinks" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SocialLinkBody"
+            }
+          },
+          "websiteUrl" : {
+            "type" : "string"
           }
         }
       },
@@ -7877,6 +8197,32 @@
           }
         }
       },
+      "ProfilePatchRequest" : {
+        "type" : "object",
+        "properties" : {
+          "avatarUrl" : {
+            "type" : "string"
+          },
+          "bio" : {
+            "type" : "string"
+          },
+          "locationSlug" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "socialLinks" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SocialLinkBody"
+            }
+          },
+          "websiteUrl" : {
+            "type" : "string"
+          }
+        }
+      },
       "ProfileProjectCard" : {
         "type" : "object",
         "properties" : {
@@ -8087,6 +8433,32 @@
           }
         }
       },
+      "ProjectFaqListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "faqs" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ProjectFaqResponse"
+            }
+          }
+        }
+      },
+      "ProjectFaqResponse" : {
+        "type" : "object",
+        "properties" : {
+          "answer" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "question" : {
+            "type" : "string"
+          }
+        }
+      },
       "ProjectPageResponse" : {
         "type" : "object",
         "properties" : {
@@ -8265,10 +8637,22 @@
             "type" : "string",
             "format" : "date-time"
           },
+          "location" : {
+            "$ref" : "#/components/schemas/LocationBody"
+          },
           "name" : {
             "type" : "string"
           },
           "slug" : {
+            "type" : "string"
+          },
+          "socialLinks" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SocialLinkBody"
+            }
+          },
+          "websiteUrl" : {
             "type" : "string"
           }
         }
@@ -8540,6 +8924,18 @@
           }
         },
         "required" : [ "note" ]
+      },
+      "ReorderFaqsRequest" : {
+        "type" : "object",
+        "properties" : {
+          "faqIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid"
+            }
+          }
+        }
       },
       "ReorderProjects" : {
         "type" : "object",
@@ -9182,6 +9578,29 @@
           }
         },
         "required" : [ "email", "password" ]
+      },
+      "SocialLink" : {
+        "type" : "object",
+        "properties" : {
+          "platform" : {
+            "type" : "string"
+          },
+          "url" : {
+            "type" : "string"
+          }
+        }
+      },
+      "SocialLinkBody" : {
+        "type" : "object",
+        "properties" : {
+          "platform" : {
+            "type" : "string",
+            "enum" : [ "INSTAGRAM", "FACEBOOK", "X", "YOUTUBE", "TIKTOK", "LINKEDIN", "TELEGRAM", "GITHUB", "BEHANCE" ]
+          },
+          "url" : {
+            "type" : "string"
+          }
+        }
       },
       "Source" : {
         "type" : "object",

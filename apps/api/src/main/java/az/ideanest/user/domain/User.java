@@ -56,6 +56,30 @@ public class User {
     @Column(name = "bio")
     private String bio;
 
+    /**
+     * §4.2's P-02 (#276): the person's own site.
+     *
+     * <p>https only, and {@code users_website_url_is_https} says so one layer down.
+     * {@code ProfileEditing} refuses anything else with a 400 that names the field, because
+     * a {@code javascript:} scheme rendered into an {@code href} on a public page is stored
+     * cross-site scripting and the scheme is the whole of the exploit.
+     */
+    @Column(name = "website_url")
+    private String websiteUrl;
+
+    /**
+     * §4.2's P-02 and §7.2's column: which of V16's eighteen places this person is in.
+     *
+     * <p><strong>A raw identifier rather than a mapped association</strong>, exactly as
+     * {@code projects.location_id} is read. {@code locations} is a closed vocabulary
+     * created by V16 for discovery and owned by no module's entity model; mapping it here
+     * would give the user module a JPA type for another module's reference table, and the
+     * only thing this row needs is the key. The slug and the name are resolved by
+     * {@code ProfileLocations}, which reads the vocabulary and nothing else.
+     */
+    @Column(name = "location_id")
+    private UUID locationId;
+
     @Column(name = "locale", nullable = false)
     private String locale;
 
@@ -226,6 +250,13 @@ public class User {
      * {@code NOT NULL} and unique, and because a public profile URL that still
      * reads the person's name is not anonymised.
      *
+     * <p><strong>Every field #276 added goes with the rest of the profile.</strong> The
+     * site, the location and — through {@code AccountAnonymiser}, which owns the rows this
+     * entity does not — the social links. §17.4 is not satisfied by a row whose name reads
+     * "Deleted account" and whose Instagram address is still on it: a link to somebody's
+     * account elsewhere identifies them more directly than the name it sits under, and a
+     * location narrows a person down whether or not anything beside it does.
+     *
      * <p>Doing this twice is a no-op, which is what makes the job that calls it
      * safe to run again after a crash.
      */
@@ -239,6 +270,12 @@ public class User {
         this.slug = "deleted-" + marker;
         this.avatarUrl = null;
         this.bio = null;
+        // #276's three. The links are rows rather than columns and are deleted by
+        // AccountAnonymiser in the same transaction -- an entity cannot delete rows it
+        // does not own, and leaving them would be an erasure that kept the most
+        // identifying half of the profile.
+        this.websiteUrl = null;
+        this.locationId = null;
         // Cleared with the address it referred to. Kept, it would say that some
         // address we no longer hold was once proven, which is a fact about a
         // person we have just finished forgetting.
@@ -347,6 +384,22 @@ public class User {
 
     public void setBio(String bio) {
         this.bio = bio;
+    }
+
+    public String getWebsiteUrl() {
+        return websiteUrl;
+    }
+
+    public void setWebsiteUrl(String websiteUrl) {
+        this.websiteUrl = websiteUrl;
+    }
+
+    public UUID getLocationId() {
+        return locationId;
+    }
+
+    public void setLocationId(UUID locationId) {
+        this.locationId = locationId;
     }
 
     public String getLocale() {

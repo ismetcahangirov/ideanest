@@ -35,14 +35,31 @@
  * none. One entry called "Sign-in details" would put one warning over both, and the warning is
  * either wrong for half the page or absent where it is needed.
  *
- * Two §4.2 capabilities are deliberately absent:
+ * **Profile arrived with #276, and it is the entry this comment used to argue against.** The
+ * argument was that the service had no write to save a name or a biography to, so an editor
+ * would be a form with nowhere to send anything — and it was correct while it held. It does
+ * not any more: `GET /v1/me/profile` and `PATCH /v1/me/profile` are §4.2's P-01 to P-03, and
+ * `/settings/profile` is a page rather than a promise.
  *
- *   - **Profile** (P-01 to P-03, #276) — the service has no write for it. There is no
- *     `PATCH /v1/me`, so an editor would be a form with nowhere to save.
+ * It is **not** `PATCH /v1/me`, which is what that paragraph asked for and what
+ * `OwnProfileController` declines to build: a patch over the whole account is a surface every
+ * future column joins by default, and the first one added without thinking becomes writable
+ * by anybody holding a token. The endpoint names one thing and can only ever change that
+ * thing. The entry sits above **Notifications** because it is the only one in this group
+ * about what other people see; everything under it is about what the account is told, who is
+ * signed in to it, and what happens to its data.
+ *
+ * P-01's **upload and crop** are still absent from that page and the page says so: there is
+ * no object storage and no media table, so the picture is the address of something already
+ * published (§13.1). That is a missing half of one field rather than a page that cannot work,
+ * which is the line this list draws.
+ *
+ * One §4.2 capability is still deliberately absent:
+ *
  *   - **Language and currency** (P-10, #280) — blocked on §21.1's localisation work, and
  *     `SiteFooter` already refuses to draw a control that would change nothing.
  *
- * They arrive with their pages.
+ * It arrives with its page.
  */
 
 export interface AccountLink {
@@ -104,6 +121,17 @@ export const ACCOUNT_GROUPS: readonly AccountGroup[] = Object.freeze([
   {
     heading: 'Settings',
     links: [
+      /*
+       * FIRST IN THE GROUP — #276. It is the only entry here about what strangers see; the
+       * five below it are about what the account is told, which devices are in, and what
+       * happens to its data. The visibility switch that decides whether the profile answers
+       * at all stays on "Data and closure" and `ProfileVisibilityPanel` explains why.
+       */
+      {
+        href: '/settings/profile',
+        label: 'Profile',
+        summary: 'Your name, picture, biography and links, as everybody else sees them.',
+      },
       {
         href: '/settings/notifications',
         label: 'Notifications',

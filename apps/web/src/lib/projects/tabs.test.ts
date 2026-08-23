@@ -24,6 +24,13 @@ import {
  *   - **the cursor is carried, not interpreted.** An update cursor is an integer and a
  *     comment cursor is a UUID; this module is told to read neither, and the test is what
  *     stops somebody adding a "sensible" format check that refuses the next encoding.
+ *   - **the FAQ tab exists, is fifth, and sits where §4.4's table puts it (#283).** It was
+ *     the one tab of the table left out of the four above, because nothing on the platform
+ *     stored a question and a tab that always said "no questions yet" would have been a claim
+ *     about every campaign rather than about the software. `project_faqs` exists now. The
+ *     position is tested rather than commented because it is the reading order: the answers a
+ *     creator has already written are what a reader with a question should meet before the
+ *     comment box.
  */
 
 const PATH = '/projects/ayan/coffee-table-book';
@@ -50,6 +57,35 @@ describe('reading the tab from the address', () => {
   it('takes the first of a repeated parameter rather than refusing the page', () => {
     expect(campaignTabFrom(['updates', 'comments'])).toBe('updates');
   });
+
+  /** #283. The tab that had no endpoint until the service published one. */
+  it('resolves ?tab=faq', () => {
+    expect(campaignTabFrom('faq')).toBe('faq');
+    expect(campaignTabFrom('FAQ')).toBe('faq');
+  });
+});
+
+describe('which tabs the page publishes', () => {
+  it('lists FAQ after Creator and before Updates, where §4.4 puts it', () => {
+    expect(CAMPAIGN_TABS.map((tab) => tab.id)).toEqual([
+      'campaign',
+      'creator',
+      'faq',
+      'updates',
+      'comments',
+    ]);
+  });
+
+  /**
+   * §4.4's table has seven rows. Rewards is the column beside the story rather than a tab,
+   * and Community is blocked on #209 — a backer-statistics bucket below a minimum cell size
+   * identifies the person in it, and the minimum is a product and legal answer.
+   */
+  it('publishes neither Rewards nor Community, and the module says why', () => {
+    const ids = CAMPAIGN_TABS.map((tab) => tab.id);
+    expect(ids).not.toContain('rewards');
+    expect(ids).not.toContain('community');
+  });
 });
 
 describe('building a tab address', () => {
@@ -59,6 +95,7 @@ describe('building a tab address', () => {
 
   it('names every other tab in the query string', () => {
     expect(campaignTabHref(PATH, 'comments')).toBe(`${PATH}?tab=comments`);
+    expect(campaignTabHref(PATH, 'faq')).toBe(`${PATH}?tab=faq`);
   });
 
   it('carries a cursor beside the tab', () => {

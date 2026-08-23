@@ -24,7 +24,7 @@
  * exists and is not yet available, which is more useful than a control that
  * cannot be reached at all.
  */
-export type EditorTabKey = 'basics' | 'rewards' | 'story' | 'prelaunch' | 'review';
+export type EditorTabKey = 'basics' | 'rewards' | 'story' | 'faq' | 'prelaunch' | 'review';
 
 export interface EditorTab {
   key: EditorTabKey;
@@ -41,6 +41,14 @@ export const EDITOR_TABS: readonly EditorTab[] = [
   { key: 'basics', label: 'Basics', segment: 'basics', available: true, issue: 33 },
   { key: 'rewards', label: 'Rewards', segment: 'rewards', available: true, issue: 34 },
   { key: 'story', label: 'Story', segment: 'story', available: true, issue: 35 },
+  /*
+   * AFTER STORY, BEFORE PRE-LAUNCH, because that is when a creator writes it.
+   * The questions are answered once the campaign says what it is and before it
+   * is shown to anybody — and the public tab (#283) is empty until this exists,
+   * so a creator who reaches Pre-launch without passing it launches with a tab
+   * that tells backers the campaign has answered nothing.
+   */
+  { key: 'faq', label: 'FAQ', segment: 'faq', available: true, issue: 283 },
   { key: 'prelaunch', label: 'Pre-launch', segment: 'prelaunch', available: true, issue: 39 },
   { key: 'review', label: 'Review', segment: 'review', available: true, issue: 37 },
 ];

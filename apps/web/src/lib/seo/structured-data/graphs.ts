@@ -1,5 +1,12 @@
 import { canonicalUrl, isPubliclyVisible, type EnvSource, type PublicProjectPreview } from '../metadata';
-import { CATEGORIES_CRUMB, DISCOVER_CRUMB, HOME_CRUMB, breadcrumbNode, type Crumb } from './breadcrumb';
+import {
+  CATEGORIES_CRUMB,
+  COLLECTIONS_CRUMB,
+  DISCOVER_CRUMB,
+  HOME_CRUMB,
+  breadcrumbNode,
+  type Crumb,
+} from './breadcrumb';
 import type { JsonLdNode } from './document';
 import { faqPageNode, type FaqEntry } from './faq';
 import { siteIdentityNodes } from './identity';
@@ -70,6 +77,43 @@ export function categoryPageGraph(input: {
   return breadcrumb === null ? [] : [breadcrumb];
 }
 
+/**
+ * `/collections` — D-08's index.
+ *
+ * Home, then here: two steps, which is the fewest a trail may have and the reason
+ * `breadcrumbNode` refuses one.
+ */
+export function collectionsIndexGraph(env: EnvSource = process.env): readonly JsonLdNode[] {
+  const breadcrumb = breadcrumbNode([HOME_CRUMB, COLLECTIONS_CRUMB], env);
+  return breadcrumb === null ? [] : [breadcrumb];
+}
+
+/**
+ * `/collections/{slug}` — a curated list's landing page.
+ *
+ * **A trail and nothing else, and the argument is `categoryPageGraph`'s applied harder.**
+ * schema.org's `CollectionPage` says a page is *about* a collection, which is a claim about
+ * the subject of a document rather than about a curated list of campaigns; `ItemList` invites
+ * a rich result this platform has no eligibility for. Both would be markup emitted because it
+ * exists rather than because a consumer acts on it. The trail is the one true statement:
+ * these pages do sit under `/collections`, and that index is linked from every one of them.
+ *
+ * The name comes from the same response the page rendered its heading from, so the
+ * machine-readable and human-readable halves cannot name two different collections — the rule
+ * {@link projectPageGraph} states for a campaign.
+ */
+export function collectionPageGraph(input: {
+  readonly title: string;
+  readonly path: string;
+  readonly env?: EnvSource;
+}): readonly JsonLdNode[] {
+  const breadcrumb = breadcrumbNode(
+    [HOME_CRUMB, COLLECTIONS_CRUMB, { name: input.title, path: input.path }],
+    input.env ?? process.env,
+  );
+  return breadcrumb === null ? [] : [breadcrumb];
+}
+
 export interface ProjectPageGraphInput {
   /** The public projection, or `null` when it could not be confirmed public. */
   readonly preview: PublicProjectPreview | null;
@@ -106,9 +150,24 @@ export interface ProjectPageGraphInput {
  * machine-readable and human-readable halves cannot describe two different
  * campaigns.
  *
- * `faqs` is still empty at that call site: `GET /v1/projects/{id}/faqs` is in
- * §10.2 and is not built. `faqPageNode` answers null for an empty list rather
- * than emitting an `FAQPage` with no questions in it, so the absence costs a
+ * **`faqs` CARRIES THE CAMPAIGN'S REAL QUESTIONS SINCE #283.** This paragraph
+ * used to say the list was always empty because `GET /v1/projects/{id}/faqs` was
+ * in §10.2 and unbuilt; it is built, and the campaign page reads it.
+ *
+ * That read is the one on that page which is NOT gated on the active tab, and
+ * the reason is this function's own contract. `faqPageNode` takes "the pairs the
+ * page actually renders", and the argument above — that the machine-readable and
+ * human-readable halves cannot describe two different campaigns — is only kept
+ * if the graph sees the same list on every address the campaign has. The graph
+ * is emitted before the tab is chosen and every tab's canonical URL is the bare
+ * path, so an `FAQPage` built only on `?tab=faq` would hang off the one address
+ * no search engine indexes separately. `page.tsx` states this at its call site
+ * as well, because it reads as a violation of its own "only the active tab is
+ * fetched" rule and a later reader would otherwise correct it.
+ *
+ * A refused read still passes an empty list rather than a partial one, and
+ * `faqPageNode` answers null for an empty list rather than emitting an `FAQPage`
+ * with no questions in it — so a service that was restarting costs this graph a
  * node and never a wrong one.
  */
 export function projectPageGraph(input: ProjectPageGraphInput): readonly JsonLdNode[] {

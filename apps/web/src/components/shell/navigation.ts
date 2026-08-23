@@ -61,6 +61,13 @@ export interface FooterGroup {
  * where somebody looks for the thing that was not worth a slot in the header, and an account
  * area with eight destinations and no entry point outside its own navigation is an account
  * area reachable only by people who already know where it is.
+ *
+ * **Explore gained Collections with #266, and deliberately only here.** D-08's index is a
+ * public, indexable entry point, so leaving it reachable from the sitemap alone would be a
+ * set of pages a crawler finds and a reader never does. It is not in `PRIMARY_NAVIGATION`
+ * for the reason that list states about itself: two entries is what fits the 445-pixel pill
+ * §8.6 gives the collapsed header, and discovery is already the front door that curation is
+ * an editorial slice of.
  */
 export const FOOTER_GROUPS: readonly FooterGroup[] = Object.freeze([
   {
@@ -68,6 +75,7 @@ export const FOOTER_GROUPS: readonly FooterGroup[] = Object.freeze([
     links: [
       { href: '/discover', label: 'Discover' },
       { href: '/categories', label: 'Categories' },
+      { href: '/collections', label: 'Collections' },
       { href: '/search', label: 'Search' },
     ],
   },

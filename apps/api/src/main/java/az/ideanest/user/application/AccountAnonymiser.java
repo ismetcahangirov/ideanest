@@ -1,5 +1,6 @@
 package az.ideanest.user.application;
 
+import az.ideanest.user.infrastructure.SocialLinkRepository;
 import az.ideanest.user.infrastructure.UserRepository;
 import java.time.Instant;
 import java.util.UUID;
@@ -20,9 +21,21 @@ import org.springframework.transaction.annotation.Transactional;
  * row survives and its contents do not.
  *
  * <p><strong>What is overwritten:</strong> the email address, the display name,
- * the public slug, the avatar, the biography, the proof that the address was
- * verified, the password credential, every unspent verification link, and the
- * device label, user agent, and IP address of every session.
+ * the public slug, the avatar, the biography, the site, the location, every
+ * social link, the proof that the address was verified, the password credential,
+ * every unspent verification link, and the device label, user agent, and IP
+ * address of every session.
+ *
+ * <p><strong>#276's four go with the rest of the profile, and §17.4 is not
+ * satisfied without them.</strong> A row whose name reads "Deleted account" and
+ * whose Instagram address is still attached has not been anonymised — a link to
+ * somebody's account elsewhere identifies them more directly than the name above
+ * it, since it resolves to a page with their photograph on it. The site and the
+ * location are cleared by {@code User.anonymise} because they are columns on this
+ * row; the links are deleted here, because an entity cannot delete rows in a table
+ * it does not map. {@code ON DELETE CASCADE} on {@code user_social_links} is no
+ * help and was never meant to be: {@code users} rows are never hard-deleted, which
+ * is the whole point of anonymising rather than deleting.
  *
  * <p><strong>What survives:</strong> the row's identifier and timestamps, the
  * locale and currency (neither identifies anybody, and the currency is the unit
@@ -43,10 +56,12 @@ public class AccountAnonymiser {
     private static final Logger log = LoggerFactory.getLogger(AccountAnonymiser.class);
 
     private final UserRepository users;
+    private final SocialLinkRepository socialLinks;
     private final AccountSecurity security;
 
-    public AccountAnonymiser(UserRepository users, AccountSecurity security) {
+    public AccountAnonymiser(UserRepository users, SocialLinkRepository socialLinks, AccountSecurity security) {
         this.users = users;
+        this.socialLinks = socialLinks;
         this.security = security;
     }
 
@@ -74,6 +89,12 @@ public class AccountAnonymiser {
                     // the profile untouched, the job would report success, and
                     // the account would stay readable under its real name.
                     users.saveAndFlush(user);
+                    // After the flush, for the reason above it: this is a bulk DELETE, and a
+                    // bulk statement issued before the entity was written would be one more
+                    // thing between the mutation and the row it has to reach. Repeatable on
+                    // its own -- deleting nothing is what a second run does -- which is what
+                    // keeps the whole method idempotent.
+                    socialLinks.deleteByUserId(userId);
                     security.forget(userId);
                     log.info("Account {} anonymised.", userId);
                     return true;

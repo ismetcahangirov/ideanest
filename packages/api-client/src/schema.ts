@@ -836,6 +836,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/faqs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["projectFaqDelete"];
+        options?: never;
+        head?: never;
+        patch: operations["projectFaqEdit"];
+        trace?: never;
+    };
     "/v1/items/{id}": {
         parameters: {
             query?: never;
@@ -850,6 +866,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["itemEdit"];
+        trace?: never;
+    };
+    "/v1/locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["locationLocations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/me": {
@@ -994,6 +1026,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/me/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ownProfileProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["ownProfileEdit"];
         trace?: never;
     };
     "/v1/me/profile-visibility": {
@@ -1556,6 +1604,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{projectId}/faqs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["publicProjectFaqList"];
+        put?: never;
+        post: operations["projectFaqCreate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{projectId}/faqs/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["projectFaqReorder"];
+        trace?: never;
+    };
     "/v1/projects/{projectId}/fulfilments": {
         parameters: {
             query?: never;
@@ -2056,10 +2136,13 @@ export interface components {
             /** Format: uuid */
             id?: string;
             locale?: string;
+            location?: string;
             name?: string;
             slug?: string;
+            socialLinks?: components["schemas"]["SocialLink"][];
             /** Format: date-time */
             updatedAt?: string;
+            websiteUrl?: string;
         };
         AccountExport: {
             account?: components["schemas"]["Account"];
@@ -2357,7 +2440,7 @@ export interface components {
             section?: string;
         };
         CollaboratorCapabilitiesRequest: {
-            capabilities: ("EDIT_BASICS" | "EDIT_REWARDS" | "EDIT_STORY" | "SUBMIT_FOR_REVIEW" | "PUBLISH_UPDATES" | "RESPOND_TO_COMMENTS" | "VIEW_FINANCES" | "MANAGE_COLLABORATORS")[];
+            capabilities: ("EDIT_BASICS" | "EDIT_REWARDS" | "EDIT_STORY" | "SUBMIT_FOR_REVIEW" | "PUBLISH_UPDATES" | "RESPOND_TO_COMMENTS" | "MANAGE_FAQ" | "VIEW_FINANCES" | "MANAGE_COLLABORATORS")[];
         };
         CollaboratorResponse: {
             /** Format: date-time */
@@ -2477,6 +2560,10 @@ export interface components {
         CreateCollection: {
             collection: components["schemas"]["CollectionBody"];
             slug: string;
+        };
+        CreateFaqRequest: {
+            answer?: string;
+            question?: string;
         };
         CreateItemRequest: {
             description?: string;
@@ -2611,6 +2698,10 @@ export interface components {
             status?: components["schemas"]["ValueCount"][];
             tags?: components["schemas"]["NamedCount"][];
         };
+        FaqPatchRequest: {
+            answer?: string;
+            question?: string;
+        };
         Feed: {
             items?: components["schemas"]["Card"][];
             nextCursor?: string;
@@ -2679,7 +2770,7 @@ export interface components {
             width?: number;
         };
         InviteCollaboratorRequest: {
-            capabilities: ("EDIT_BASICS" | "EDIT_REWARDS" | "EDIT_STORY" | "SUBMIT_FOR_REVIEW" | "PUBLISH_UPDATES" | "RESPOND_TO_COMMENTS" | "VIEW_FINANCES" | "MANAGE_COLLABORATORS")[];
+            capabilities: ("EDIT_BASICS" | "EDIT_REWARDS" | "EDIT_STORY" | "SUBMIT_FOR_REVIEW" | "PUBLISH_UPDATES" | "RESPOND_TO_COMMENTS" | "MANAGE_FAQ" | "VIEW_FINANCES" | "MANAGE_COLLABORATORS")[];
             /** Format: email */
             email: string;
         };
@@ -2751,6 +2842,17 @@ export interface components {
             /** @deprecated */
             textual?: boolean;
             valueNode?: boolean;
+        };
+        Location: {
+            name?: string;
+            slug?: string;
+        };
+        LocationBody: {
+            name?: string;
+            slug?: string;
+        };
+        LocationIndex: {
+            items?: components["schemas"]["Location"][];
         };
         LockAddressesResponse: {
             /** Format: int32 */
@@ -2838,6 +2940,15 @@ export interface components {
             finalisedAt?: string;
             goal?: components["schemas"]["Money"];
             pledged?: components["schemas"]["Money"];
+        };
+        OwnProfileResponse: {
+            avatarUrl?: string;
+            bio?: string;
+            location?: components["schemas"]["LocationBody"];
+            name?: string;
+            slug?: string;
+            socialLinks?: components["schemas"]["SocialLinkBody"][];
+            websiteUrl?: string;
         };
         PatchPledgeRequest: {
             addons?: components["schemas"]["PledgeAddonBody"][];
@@ -2931,6 +3042,14 @@ export interface components {
             state?: string;
             title?: string;
         };
+        ProfilePatchRequest: {
+            avatarUrl?: string;
+            bio?: string;
+            locationSlug?: string;
+            name?: string;
+            socialLinks?: components["schemas"]["SocialLinkBody"][];
+            websiteUrl?: string;
+        };
         ProfileProjectCard: {
             /** Format: int32 */
             backersCount?: number;
@@ -3011,6 +3130,15 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
+        ProjectFaqListResponse: {
+            faqs?: components["schemas"]["ProjectFaqResponse"][];
+        };
+        ProjectFaqResponse: {
+            answer?: string;
+            /** Format: uuid */
+            id?: string;
+            question?: string;
+        };
         ProjectPageResponse: {
             /** Format: int32 */
             backersCount?: number;
@@ -3080,8 +3208,11 @@ export interface components {
             bio?: string;
             /** Format: date-time */
             joinedAt?: string;
+            location?: components["schemas"]["LocationBody"];
             name?: string;
             slug?: string;
+            socialLinks?: components["schemas"]["SocialLinkBody"][];
+            websiteUrl?: string;
         };
         PublicRewardListResponse: {
             addons?: components["schemas"]["PublicRewardResponse"][];
@@ -3176,6 +3307,9 @@ export interface components {
         };
         RemoveProject: {
             note: string;
+        };
+        ReorderFaqsRequest: {
+            faqIds?: string[];
         };
         ReorderProjects: {
             projectIds: string[];
@@ -3407,6 +3541,15 @@ export interface components {
             email: string;
             password: string;
             tokenDelivery?: string;
+        };
+        SocialLink: {
+            platform?: string;
+            url?: string;
+        };
+        SocialLinkBody: {
+            /** @enum {string} */
+            platform?: "INSTAGRAM" | "FACEBOOK" | "X" | "YOUTUBE" | "TIKTOK" | "LINKEDIN" | "TELEGRAM" | "GITHUB" | "BEHANCE";
+            url?: string;
         };
         Source: {
             campaign?: string;
@@ -3665,6 +3808,7 @@ export type SchemaCountrySlice = components['schemas']['CountrySlice'];
 export type SchemaCoverBody = components['schemas']['CoverBody'];
 export type SchemaCoverImageBody = components['schemas']['CoverImageBody'];
 export type SchemaCreateCollection = components['schemas']['CreateCollection'];
+export type SchemaCreateFaqRequest = components['schemas']['CreateFaqRequest'];
 export type SchemaCreateItemRequest = components['schemas']['CreateItemRequest'];
 export type SchemaCreateProjectRequest = components['schemas']['CreateProjectRequest'];
 export type SchemaCreateRewardRequest = components['schemas']['CreateRewardRequest'];
@@ -3681,6 +3825,7 @@ export type SchemaEntry = components['schemas']['Entry'];
 export type SchemaExplanationResponse = components['schemas']['ExplanationResponse'];
 export type SchemaExportBackersRequest = components['schemas']['ExportBackersRequest'];
 export type SchemaFacets = components['schemas']['Facets'];
+export type SchemaFaqPatchRequest = components['schemas']['FaqPatchRequest'];
 export type SchemaFeed = components['schemas']['Feed'];
 export type SchemaFollowStateResponse = components['schemas']['FollowStateResponse'];
 export type SchemaFollowingListResponse = components['schemas']['FollowingListResponse'];
@@ -3696,6 +3841,9 @@ export type SchemaItemBody = components['schemas']['ItemBody'];
 export type SchemaItemPatchRequest = components['schemas']['ItemPatchRequest'];
 export type SchemaItemResponse = components['schemas']['ItemResponse'];
 export type SchemaJsonNode = components['schemas']['JsonNode'];
+export type SchemaLocation = components['schemas']['Location'];
+export type SchemaLocationBody = components['schemas']['LocationBody'];
+export type SchemaLocationIndex = components['schemas']['LocationIndex'];
 export type SchemaLockAddressesResponse = components['schemas']['LockAddressesResponse'];
 export type SchemaMeResponse = components['schemas']['MeResponse'];
 export type SchemaModerationDecisionRequest = components['schemas']['ModerationDecisionRequest'];
@@ -3708,6 +3856,7 @@ export type SchemaNotificationResponse = components['schemas']['NotificationResp
 export type SchemaOAuthSignInRequest = components['schemas']['OAuthSignInRequest'];
 export type SchemaOpenLatePledgesRequest = components['schemas']['OpenLatePledgesRequest'];
 export type SchemaOutcome = components['schemas']['Outcome'];
+export type SchemaOwnProfileResponse = components['schemas']['OwnProfileResponse'];
 export type SchemaPatchPledgeRequest = components['schemas']['PatchPledgeRequest'];
 export type SchemaPledgeAddonBody = components['schemas']['PledgeAddonBody'];
 export type SchemaPledgeResponse = components['schemas']['PledgeResponse'];
@@ -3716,12 +3865,15 @@ export type SchemaPostCommentRequest = components['schemas']['PostCommentRequest
 export type SchemaPostalAddressBody = components['schemas']['PostalAddressBody'];
 export type SchemaPreference = components['schemas']['Preference'];
 export type SchemaPrelaunchPageResponse = components['schemas']['PrelaunchPageResponse'];
+export type SchemaProfilePatchRequest = components['schemas']['ProfilePatchRequest'];
 export type SchemaProfileProjectCard = components['schemas']['ProfileProjectCard'];
 export type SchemaProfileProjectListResponse = components['schemas']['ProfileProjectListResponse'];
 export type SchemaProfileVisibilityRequest = components['schemas']['ProfileVisibilityRequest'];
 export type SchemaProjectAnalyticsResponse = components['schemas']['ProjectAnalyticsResponse'];
 export type SchemaProjectChecklist = components['schemas']['ProjectChecklist'];
 export type SchemaProjectEdit = components['schemas']['ProjectEdit'];
+export type SchemaProjectFaqListResponse = components['schemas']['ProjectFaqListResponse'];
+export type SchemaProjectFaqResponse = components['schemas']['ProjectFaqResponse'];
 export type SchemaProjectPageResponse = components['schemas']['ProjectPageResponse'];
 export type SchemaProjectPatchRequest = components['schemas']['ProjectPatchRequest'];
 export type SchemaProjectUpdateListResponse = components['schemas']['ProjectUpdateListResponse'];
@@ -3742,6 +3894,7 @@ export type SchemaRemainder = components['schemas']['Remainder'];
 export type SchemaRemindRequest = components['schemas']['RemindRequest'];
 export type SchemaRemindResponse = components['schemas']['RemindResponse'];
 export type SchemaRemoveProject = components['schemas']['RemoveProject'];
+export type SchemaReorderFaqsRequest = components['schemas']['ReorderFaqsRequest'];
 export type SchemaReorderProjects = components['schemas']['ReorderProjects'];
 export type SchemaReorderRewardsRequest = components['schemas']['ReorderRewardsRequest'];
 export type SchemaReportQueueResponse = components['schemas']['ReportQueueResponse'];
@@ -3772,6 +3925,8 @@ export type SchemaShippingZoneListResponse = components['schemas']['ShippingZone
 export type SchemaShippingZoneRateBody = components['schemas']['ShippingZoneRateBody'];
 export type SchemaShippingZonesRequest = components['schemas']['ShippingZonesRequest'];
 export type SchemaSignInRequest = components['schemas']['SignInRequest'];
+export type SchemaSocialLink = components['schemas']['SocialLink'];
+export type SchemaSocialLinkBody = components['schemas']['SocialLinkBody'];
 export type SchemaSource = components['schemas']['Source'];
 export type SchemaStoryVersionDetail = components['schemas']['StoryVersionDetail'];
 export type SchemaStoryVersionSummary = components['schemas']['StoryVersionSummary'];
@@ -5184,6 +5339,52 @@ export interface operations {
             };
         };
     };
+    projectFaqDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    projectFaqEdit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FaqPatchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectFaqResponse"];
+                };
+            };
+        };
+    };
     itemDelete: {
         parameters: {
             query?: never;
@@ -5226,6 +5427,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ItemResponse"];
+                };
+            };
+        };
+    };
+    locationLocations: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationIndex"];
                 };
             };
         };
@@ -5464,6 +5687,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BackerPledgeListResponse"];
+                };
+            };
+        };
+    };
+    ownProfileProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnProfileResponse"];
+                };
+            };
+        };
+    };
+    ownProfileEdit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfilePatchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnProfileResponse"];
                 };
             };
         };
@@ -6525,6 +6792,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CommentResponse"];
+                };
+            };
+        };
+    };
+    publicProjectFaqList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectFaqListResponse"];
+                };
+            };
+        };
+    };
+    projectFaqCreate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFaqRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectFaqResponse"];
+                };
+            };
+        };
+    };
+    projectFaqReorder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderFaqsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectFaqListResponse"];
                 };
             };
         };
