@@ -1,6 +1,14 @@
 import { ApiError, createApiClient, type ApiClient, type components } from '@ideanest/api-client';
 import type { Category } from '../categories/api';
-import type { DiscoveryFeed } from '../discovery/api';
+import {
+  collectionFrom,
+  collectionQueryParams,
+  collectionsFrom,
+  type Collection,
+  type CollectionLanding,
+  type CollectionPageQuery,
+} from '../collections/api';
+import type { DiscoveryFeed, ProjectCard } from '../discovery/api';
 import type { EnvSource } from '../seo/metadata';
 import { apiOrigin } from '../seo/metadata-source';
 
@@ -251,6 +259,97 @@ export async function fetchCategories(options: ServerReadOptions = {}): Promise<
 
 /** One hour. See `fetchCategories`. */
 const TAXONOMY_REVALIDATE_SECONDS = 60 * 60;
+
+/**
+ * D-08's collections index — `GET /v1/collections`.
+ *
+ * <h2>Sixty seconds, unlike the taxonomy</h2>
+ *
+ * A collection's own copy changes about as often as a category's name does, and the read
+ * still takes the shared window rather than the taxonomy's hour, because
+ * `CollectionController` says why: `projectCount` moves whenever a campaign in a collection
+ * is suspended or ends, so the index goes stale on events nobody edited a collection to
+ * cause. Sixty seconds is also what the service puts on its own `Cache-Control`, and two
+ * caches disagreeing about the same bytes is the arrangement this module exists to avoid.
+ *
+ * <h2>Not paged, because the endpoint is not</h2>
+ *
+ * §10.2 gives this endpoint no cursor and the controller caps nothing: a curated list of
+ * lists is tens of rows. If that stops being true the answer is a cursor on both sides, not
+ * a slice taken here — a client that quietly showed the first twenty of something it was
+ * handed all of would be a client nobody can tell is truncating.
+ *
+ * `null` on failure, like everything else here. A collections index that could not be read is
+ * a page saying so; one that threw is a site that is down.
+ */
+export async function fetchCollections(
+  options: ServerReadOptions = {},
+): Promise<readonly Collection[] | null> {
+  try {
+    const index = await client(options).get('/v1/collections', readOptions(options));
+    /*
+     * Narrowed through `lib/collections/api.ts` rather than cast. The generated schema marks
+     * every field optional — springdoc marks a record component required only when it can
+     * prove it — so a page reading `collection.title` through the generated type would be
+     * narrowing ten fields that are never absent, and a collection with no slug would reach
+     * the index as a link to nowhere. `collectionFrom` is the one place that decides.
+     */
+    return collectionsFrom(index.items ?? []);
+  } catch (cause) {
+    return refusalOrRethrow(cause);
+  }
+}
+
+/**
+ * One collection and a page of its campaigns — `GET /v1/collections/{slug}`.
+ *
+ * <h2>`null` is "there is no such page", and that is the whole contract</h2>
+ *
+ * The service answers **404** for a slug that names nothing, for a collection that has not
+ * been published, and for one outside its window — three facts, one answer, for the reason
+ * `CollectionController` argues at length: a 403 would confirm to anybody who guesses a slug
+ * that the platform is preparing a collection under it. This reader keeps them
+ * indistinguishable, exactly as `fetchCampaignPage` does for a campaign whose state is not
+ * public, and `lib/collections/landing.ts` turns the `null` into the ordinary not-found route.
+ *
+ * <h2>The cards are cast, and the collection is not</h2>
+ *
+ * `items` is `DiscoveryResponses.Card`, the same shape `/v1/discover` answers with, so it
+ * takes the same cast `fetchDiscoveryFeed` takes and for the same stated reason:
+ * `lib/discovery/api.ts` owns that wire shape and the generated schema marks every field of
+ * it optional. The collection itself goes through `collectionFrom`, because unlike a card it
+ * has fields this application must refuse to render rather than merely trust.
+ */
+export async function fetchCollection(
+  slug: string,
+  page: CollectionPageQuery = {},
+  options: ServerReadOptions = {},
+): Promise<CollectionLanding | null> {
+  try {
+    const body = await client(options).get('/v1/collections/{slug}', {
+      path: { slug },
+      query: collectionQueryParams(page),
+      ...readOptions(options),
+    });
+
+    const collection = body.collection === undefined ? null : collectionFrom(body.collection);
+    /*
+     * A 200 carrying no usable collection is treated as a 404 rather than rendered as an
+     * empty page. There is no title for the heading and no address the page could claim as
+     * its own, which is the same argument `resolveCategoryLanding` makes for a taxonomy that
+     * could not be read: a 404 is recoverable, and a page that invents a collection is not.
+     */
+    if (collection === null) return null;
+
+    return {
+      collection,
+      items: (body.items ?? []) as unknown as readonly ProjectCard[],
+      nextCursor: body.nextCursor ?? null,
+    };
+  } catch (cause) {
+    return refusalOrRethrow(cause);
+  }
+}
 
 /** Just the fields read above, as the generated schema types them — every one optional. */
 interface RawCategory {

@@ -251,7 +251,7 @@ class CollaboratorSchemaTests extends AbstractIntegrationTest {
     // -----------------------------------------------------------------------
 
     @Test
-    @DisplayName("a capability outside the known eight is refused, and a duplicate is not a stronger grant")
+    @DisplayName("a capability outside the known set is refused, and a duplicate is not a stronger grant")
     void capabilitiesAreFromTheKnownSet() {
         UUID creator = insertUser();
         UUID projectId = insertProject(creator);

@@ -1,7 +1,8 @@
 import type { MetadataRoute } from 'next';
 
-import { fetchCategories } from '../../api/server';
+import { fetchCategories, fetchCollections } from '../../api/server';
 import { categoryPath, subcategoryPath } from '../../categories/api';
+import { COLLECTIONS_PATH, collectionPath } from '../../collections/api';
 import { isIndexableProjectState } from '../indexability';
 import { absoluteUrl } from './config';
 import type { SitemapProject } from './projects';
@@ -31,6 +32,12 @@ type ChangeFrequency = NonNullable<SitemapEntry['changeFrequency']>;
  * they are also the only routes on the platform whose content is entirely editorial, so a
  * crawler that finds them finds something worth indexing rather than a shell around a feed.
  *
+ * `/collections` joins it with #266, on exactly the terms `/categories` did: it is D-08's index
+ * and the only page on the site that links to a collection landing page. It is here rather than
+ * in `DISCOVERY_PATHS` for the same reason `/categories` is — the index itself is a fixed route
+ * whose address never changes, and the pages hanging off it are data, listed by
+ * `discoveryEntries`.
+ *
  * Nothing here claims a `lastModified`: these pages are code, their content
  * changes when this application is deployed, and this module has no honest way
  * to know when that was. An invented date — `new Date()`, say — tells a crawler
@@ -45,6 +52,7 @@ type ChangeFrequency = NonNullable<SitemapEntry['changeFrequency']>;
 export const PAGE_PATHS: readonly string[] = Object.freeze([
   '/',
   '/categories',
+  COLLECTIONS_PATH,
   '/about',
   '/how-it-works',
   '/trust-safety',
@@ -175,7 +183,8 @@ export function pageEntries(baseUrl: string): MetadataRoute.Sitemap {
 }
 
 /**
- * The `discovery` segment: the feed, plus one entry per category and subcategory.
+ * The `discovery` segment: the feed, one entry per category and subcategory, and one per
+ * curated collection.
  *
  * <h2>Why the taxonomy is read here rather than listed above</h2>
  *
@@ -185,26 +194,47 @@ export function pageEntries(baseUrl: string): MetadataRoute.Sitemap {
  * `fetchCategories` caches the read for an hour, so a crawl of several segments costs one
  * request to the service.
  *
+ * <h2>The collections are read on exactly the same terms — #266</h2>
+ *
+ * A collection is created, published, and withdrawn by a curator through the admin console
+ * (§4.11 AD-08's sibling), so the set of collection URLs is data in precisely the way the
+ * taxonomy is. They are listed here rather than in `PAGE_PATHS` because they are not code, and
+ * they belong in the `discovery` segment rather than a segment of their own because a
+ * collection page is a list of campaigns — the same kind of URL as a category page, with the
+ * same reason for existing.
+ *
+ * **AND ONLY THE ONES THE SERVICE ACTUALLY LISTS.** `GET /v1/collections` answers with the
+ * published, in-window collections and nothing else, so an unpublished one cannot reach this
+ * file. That matters more than it looks: a sitemap entry for a URL that answers 404 is a
+ * reported error against the whole file, and here it would additionally be an announcement of
+ * a collection the platform has not published — which is exactly what
+ * `CollectionController`'s 404-not-403 rule exists to prevent.
+ *
+ * The two reads are concurrent, because they are independent and a sitemap segment that
+ * serialised them would take two round trips to answer one request.
+ *
  * <h2>A failed read is the feed alone, never an exception</h2>
  *
- * `fetchCategories` answers `null` when the service refuses or cannot be reached. A sitemap
- * that 500s is a sitemap Search Console reports as an error against the whole site; one that
- * is briefly shorter is a sitemap. `/discover` is always in it, so the segment is never empty.
+ * Both readers answer `null` when the service refuses or cannot be reached. A sitemap that
+ * 500s is a sitemap Search Console reports as an error against the whole site; one that is
+ * briefly shorter is a sitemap. `/discover` is always in it, so the segment is never empty.
  *
  * <h2>`daily`, like the feed</h2>
  *
- * `pathEntries` claims `daily` for every path it writes, and that is as true of a category
- * landing page as of the feed: what changes on one is which campaigns are listed and how far
- * along they are, and both move every day. No `lastModified`, for the reason `PAGE_PATHS`
- * gives — nothing here knows when the page last actually changed.
+ * `pathEntries` claims `daily` for every path it writes, and that is as true of a category or
+ * collection landing page as of the feed: what changes on one is which campaigns are listed
+ * and how far along they are, and both move every day. No `lastModified`, for the reason
+ * `PAGE_PATHS` gives — nothing here knows when the page last actually changed.
  */
 export async function discoveryEntries(baseUrl: string): Promise<MetadataRoute.Sitemap> {
-  const categories = (await fetchCategories()) ?? [];
+  const [categories, collections] = await Promise.all([fetchCategories(), fetchCollections()]);
 
-  const taxonomyPaths = categories.flatMap((category) => [
+  const taxonomyPaths = (categories ?? []).flatMap((category) => [
     categoryPath(category.slug),
     ...category.subcategories.map((subcategory) => subcategoryPath(category.slug, subcategory.slug)),
   ]);
 
-  return pathEntries([...DISCOVERY_PATHS, ...taxonomyPaths], baseUrl);
+  const collectionPaths = (collections ?? []).map((collection) => collectionPath(collection.slug));
+
+  return pathEntries([...DISCOVERY_PATHS, ...taxonomyPaths, ...collectionPaths], baseUrl);
 }

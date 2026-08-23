@@ -1,5 +1,5 @@
 import { authorizedFetch, publicFetch } from '../api/client';
-import { errorFrom } from '../api/problem';
+import { ApiError, errorFrom } from '../api/problem';
 import type { Page } from '../community/signals';
 import type { Money } from '../money';
 
@@ -46,6 +46,88 @@ import type { Money } from '../money';
 /** §4.2 P-07. `PUBLIC` is the column default and what every account starts as. */
 export type ProfileVisibility = 'PUBLIC' | 'PRIVATE';
 
+/**
+ * §4.2 P-03's nine platforms — `az.ideanest.user.domain.SocialPlatform`, spelled exactly.
+ *
+ * A **closed** list on both sides. The request body binds straight to the enum, so a name
+ * this array got wrong is a 400 from Jackson before any handler runs rather than a link that
+ * quietly fails to save. `X` is stored under its current name and is not a second platform
+ * from `TWITTER`; the enum's own comment says so.
+ *
+ * The labels are here and not on the service because they are interface text: the service
+ * stores an identifier and this is the word a person reads beside a `<select>`.
+ */
+export const SOCIAL_PLATFORMS = [
+  'INSTAGRAM',
+  'FACEBOOK',
+  'X',
+  'YOUTUBE',
+  'TIKTOK',
+  'LINKEDIN',
+  'TELEGRAM',
+  'GITHUB',
+  'BEHANCE',
+] as const;
+
+export type SocialPlatform = (typeof SOCIAL_PLATFORMS)[number];
+
+const SOCIAL_PLATFORM_LABELS: Readonly<Record<SocialPlatform, string>> = {
+  INSTAGRAM: 'Instagram',
+  FACEBOOK: 'Facebook',
+  X: 'X',
+  YOUTUBE: 'YouTube',
+  TIKTOK: 'TikTok',
+  LINKEDIN: 'LinkedIn',
+  TELEGRAM: 'Telegram',
+  GITHUB: 'GitHub',
+  BEHANCE: 'Behance',
+};
+
+/**
+ * The word a reader sees for a platform.
+ *
+ * Falls back to the stored identifier rather than to nothing, so a tenth platform added to
+ * the service before this file hears about it renders as `MASTODON` — ugly, and legible —
+ * instead of as an empty option somebody cannot tell apart from "choose one".
+ */
+export function socialPlatformLabel(platform: string): string {
+  return SOCIAL_PLATFORM_LABELS[platform as SocialPlatform] ?? platform;
+}
+
+/** Whether a string is one of the nine this client knows how to offer. */
+export function isSocialPlatform(value: string): value is SocialPlatform {
+  return (SOCIAL_PLATFORMS as readonly string[]).includes(value);
+}
+
+/**
+ * One account elsewhere — `SocialLinkBody`, in both directions.
+ *
+ * No identifier and no position, because the wire shape has neither: the order **is** the
+ * order of the array, and a write replaces the whole list. See `saveOwnProfile`.
+ *
+ * `url` is a string somebody typed. The service refuses anything that is not `https://`, and
+ * `OwnProfileResponse`'s Javadoc is explicit that what it cannot refuse is everything an
+ * *ordinary* https link does when an indexable page publishes it — so every renderer of one
+ * of these owes it `rel="nofollow ugc noopener noreferrer"`. `components/profile/ProfileAbout`
+ * is where that is paid.
+ */
+export interface ProfileSocialLink {
+  readonly platform: string;
+  readonly url: string;
+}
+
+/**
+ * A place from V16's closed vocabulary of eighteen — `LocationBody`.
+ *
+ * A slug and a resolved name, and no identifier: the slug is the address, the same way it is
+ * for a category. The name is already in the reader's language when it arrives, so nothing
+ * here chooses one.
+ */
+export interface ProfileLocation {
+  readonly slug: string;
+  readonly name: string;
+}
+
 /** A cover, as every projection in this application carries one. */
 export interface CoverImage {
   readonly url: string;
@@ -84,6 +166,17 @@ export interface CoverImage {
  * expected is missing" are different things on the wire. They are typed as `T | null` and not
  * `?: T | null` for that reason: a caller that treated an absent key as "still loading" would
  * put a spinner over an answer it had already received.
+ *
+ * `socialLinks` goes the other way and is an **empty array, never null**, because an array is
+ * a thing a client maps over — `PublicProfileResponse` says so in as many words.
+ *
+ * <h2>Eight fields since #276, and the three new ones are user-supplied addresses</h2>
+ *
+ * `websiteUrl` and every `socialLinks` address are strings a stranger typed into a form on a
+ * page search engines index. The service refuses anything that is not `https://`, which
+ * closes `javascript:` and `data:` outright — and closes nothing else.
+ * `components/profile/ProfileAbout` carries the three `rel` tokens that close the rest, and
+ * `OwnProfileResponse`'s Javadoc gives a different reason for each of them.
  */
 export interface PublicProfile {
   readonly slug: string;
@@ -93,6 +186,12 @@ export interface PublicProfile {
   readonly bio: string | null;
   /** ISO-8601 instant, UTC. */
   readonly joinedAt: string;
+  /** §4.2 P-02. `https://` only, and never fetched by the service that stores it. */
+  readonly websiteUrl: string | null;
+  /** §4.2 P-02. One of V16's eighteen places, or `null` for somebody who has not said. */
+  readonly location: ProfileLocation | null;
+  /** §4.2 P-03, in the order their owner put them. Empty rather than null. */
+  readonly socialLinks: readonly ProfileSocialLink[];
 }
 
 /**
@@ -275,4 +374,155 @@ export async function probeProfileVisibility(
   if (response.ok) return 'PUBLIC';
   if (response.status === 404) return 'PRIVATE';
   return null;
+}
+
+/* -------------------------------------------------------------------------
+ * The owner's own profile — §4.2 P-01 to P-03, issue #276
+ * ---------------------------------------------------------------------- */
+
+/**
+ * The caller's own profile, as `GET /v1/me/profile` sends it.
+ *
+ * <h2>It is not `PublicProfile`, and the difference is one field each way</h2>
+ *
+ * This one carries no `joinedAt` — the editor has nothing to do with when the account was
+ * created — and it carries `slug` for a reason the public projection does not need: the
+ * editor has to show somebody their own handle and say that it is not theirs to change.
+ * Reusing the public interface would mean either a `joinedAt` this endpoint never sends or an
+ * optional field on the type every public caller then has to narrow.
+ *
+ * <h2>Hand-written, not `@ideanest/api-client`'s generated type</h2>
+ *
+ * `lib/community/updates.ts` states the reason and it holds here unchanged: **every field of
+ * the generated type is optional**, because springdoc marks a record component nullable
+ * unless it is annotated otherwise. A form built on that type would narrow `name` from
+ * `string | undefined` at every use and would have lost the one distinction this response
+ * exists to make — `bio: null` is "this person wrote none" and a missing key is a response
+ * that did not arrive.
+ */
+export interface OwnProfile {
+  readonly name: string;
+  /** Readable, and **not writable**. `PATCH /v1/me/profile` has no key for it. */
+  readonly slug: string;
+  readonly bio: string | null;
+  readonly avatarUrl: string | null;
+  readonly websiteUrl: string | null;
+  readonly location: ProfileLocation | null;
+  /** Empty rather than null, in the order their owner put them. */
+  readonly socialLinks: readonly ProfileSocialLink[];
+}
+
+/**
+ * A partial edit — `PATCH /v1/me/profile`, with **three-way** semantics on every key.
+ *
+ *   - **absent** — leave the stored value alone
+ *   - **`null`** — clear it
+ *   - **a value** — set it
+ *
+ * `JSON.stringify` drops a key whose value is `undefined`, so "absent" is what an optional
+ * property already produces and no caller has to build the body conditionally. That is worth
+ * stating rather than relying on quietly, because it is the difference between a form that
+ * saves the field somebody edited and one that writes its own blank defaults over the five
+ * they did not touch.
+ *
+ * **`name` cannot be cleared.** `users.name` is `NOT NULL`, so the key takes a string and
+ * never `null`; an empty one is a 400 naming `name`, not a clear.
+ *
+ * **`socialLinks` is written as a whole list, never merged.** Sending it replaces every row,
+ * in the order given; omitting it leaves every row alone. There is no per-link write and
+ * `SocialLinkBody` explains why one would be a second write path nobody asked for — so a
+ * caller that wants to delete one link sends the other four.
+ */
+export interface ProfileEdit {
+  readonly name?: string;
+  readonly bio?: string | null;
+  readonly avatarUrl?: string | null;
+  readonly websiteUrl?: string | null;
+  /** A slug from `GET /v1/locations`. Anything else is a 400 naming `locationSlug`. */
+  readonly locationSlug?: string | null;
+  readonly socialLinks?: readonly ProfileSocialLink[];
+}
+
+/** How many links a profile may carry — `ProfileEditing.MAX_SOCIAL_LINKS`. */
+export const MAX_SOCIAL_LINKS = 5;
+
+/** `users.name`, in characters. */
+export const PROFILE_NAME_MAX_CHARACTERS = 80;
+
+/** `users.bio`, in characters. */
+export const PROFILE_BIO_MAX_CHARACTERS = 2000;
+
+/**
+ * The caller's own profile.
+ *
+ * `authorizedFetch`, unlike the three reads above it: this is one account's own data behind a
+ * bearer token, and the service answers it `private, no-store`. There is nothing here a
+ * signed-out visitor could be shown, so throwing without a token is the right shape.
+ */
+export async function readOwnProfile(signal?: AbortSignal): Promise<OwnProfile> {
+  const response = await authorizedFetch('/v1/me/profile', { signal });
+  if (!response.ok) throw await errorFrom(response);
+
+  return (await response.json()) as OwnProfile;
+}
+
+/**
+ * Writes what changed, and answers the profile **as it now stands**.
+ *
+ * <h2>The response is the new state, and the caller must render from it</h2>
+ *
+ * 200 with the full profile rather than 204, and `OwnProfileController` gives the reason: the
+ * result is not inferable from the request. The location comes back as a slug *and* a
+ * resolved name the client never sent, text comes back trimmed, and every key the request
+ * omitted comes back holding a value this browser may never have held. A form that kept
+ * rendering its own draft after a save would show untrimmed text and an empty location name
+ * until somebody reloaded.
+ *
+ * An empty edit is a successful no-op that returns the current profile, which is what a form
+ * with nothing changed sends.
+ */
+export async function saveOwnProfile(edit: ProfileEdit): Promise<OwnProfile> {
+  const response = await authorizedFetch('/v1/me/profile', {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(edit),
+  });
+
+  if (!response.ok) throw await errorFrom(response);
+
+  return (await response.json()) as OwnProfile;
+}
+
+/** A refusal from `ProfileEditing`, matched to the control it is about. */
+export interface ProfileFieldRefusal {
+  /** `name`, `bio`, `avatarUrl`, `websiteUrl`, `locationSlug` or `socialLinks`. */
+  readonly field: string;
+  /** The service's own sentence, which says which of its rules was broken. */
+  readonly message: string;
+}
+
+/**
+ * The field a `400 PROFILE_FIELD_INVALID` is about, or `null` for anything else.
+ *
+ * <h2>Branching on `code`, never on `detail`</h2>
+ *
+ * `Problem.code` is the stable machine-readable reason; `detail` is prose that may be
+ * reworded or localised at any time. The field travels in `meta.field` for exactly this
+ * purpose — `ProfileExceptionHandler` says the point of it is that the editor can put the
+ * message beside the input that caused it rather than in a banner over a form with six
+ * controls in it. It is deliberately the same shape as `PROJECT_FIELD_INVALID`, so this is
+ * `components/campaign-editor/rewardFailure.ts`'s reader with one `code` changed.
+ *
+ * `meta` is `Record<string, unknown>`, so the type of `field` is checked rather than asserted:
+ * a service that one day sent a number there would otherwise put `[object Object]` under an
+ * input.
+ */
+export function profileFieldRefusal(cause: unknown): ProfileFieldRefusal | null {
+  if (!(cause instanceof ApiError)) return null;
+  if (cause.problem?.code !== 'PROFILE_FIELD_INVALID') return null;
+
+  const field = cause.problem.meta?.['field'];
+  if (typeof field !== 'string') return null;
+
+  return { field, message: cause.problem.detail ?? cause.message };
 }

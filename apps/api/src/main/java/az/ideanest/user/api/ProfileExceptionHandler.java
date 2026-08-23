@@ -1,15 +1,21 @@
 package az.ideanest.user.api;
 
 import az.ideanest.user.application.AccountNotFoundException;
+import az.ideanest.user.application.ProfileFieldRejectedException;
 import az.ideanest.user.application.ProfileNotFoundException;
 import java.net.URI;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
- * What §4.2's two profile endpoints refuse, as RFC 9457 problem details (§10.4).
+ * What §4.2's profile endpoints refuse, as RFC 9457 problem details (§10.4).
+ *
+ * <p>Four of them since #276 — the public page, P-07's switch, and the owner's own read and
+ * write — and they belong under one advice because they refuse overlapping things: an
+ * {@link AccountNotFoundException} means the same thing on three of them.
  *
  * <p>Its own advice rather than two types added to {@link UserExceptionHandler}, following
  * {@code PublicBackerExceptionHandler}: that file is scoped to the three controllers that
@@ -26,7 +32,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * with a token. {@code ProjectExceptionHandler} names the same trap about
  * {@code PublicProjectController}.
  */
-@RestControllerAdvice(assignableTypes = {PublicProfileController.class, ProfileVisibilityController.class})
+@RestControllerAdvice(
+        assignableTypes = {
+            PublicProfileController.class,
+            ProfileVisibilityController.class,
+            OwnProfileController.class
+        })
 public class ProfileExceptionHandler {
 
     /**
@@ -59,6 +70,32 @@ public class ProfileExceptionHandler {
     @ExceptionHandler(AccountNotFoundException.class)
     public ProblemDetail handleAccountNotFound(AccountNotFoundException exception) {
         return notFound();
+    }
+
+    /**
+     * 400 for a field of a profile edit that V2 or V46 would refuse one layer down, and for a
+     * {@code locationSlug} naming no place (#276).
+     *
+     * <p>The field name travels in {@code meta} so that the editor can put the message beside
+     * the input that caused it rather than in a banner at the top of a form. Deliberately the
+     * same shape and the same {@code meta.field} as {@code PROJECT_FIELD_INVALID} in the
+     * project module: a client that already handles one of them needs no second branch, and
+     * two shapes for "this field is wrong" would be two for no reason.
+     *
+     * <p><strong>The detail is the exception's message here, unlike the 404 above.</strong>
+     * That one must say the same sentence for three different facts, because any difference
+     * between them is an oracle. This one is answered only to the account's own owner about
+     * their own request, and the whole value of it is that it says which field and why.
+     */
+    @ExceptionHandler(ProfileFieldRejectedException.class)
+    public ProblemDetail handleFieldRejected(ProfileFieldRejectedException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("https://ideanest.az/problems/profile-field-invalid"));
+        problem.setTitle("Invalid field");
+        problem.setDetail(exception.getMessage());
+        problem.setProperty("code", "PROFILE_FIELD_INVALID");
+        problem.setProperty("meta", Map.of("field", exception.field()));
+        return problem;
     }
 
     /** One body, so that the two above cannot drift apart. */

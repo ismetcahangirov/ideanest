@@ -32,6 +32,7 @@ const ROUTES_THAT_EXIST = new Set([
   '/',
   '/discover',
   '/categories',
+  '/collections',
   '/search',
   '/notifications',
   '/projects/new',
@@ -73,6 +74,15 @@ describe('the navigation lists', () => {
     expect(targets).toContain('/about');
     expect(targets).toContain('/how-it-works');
     expect(targets).toContain('/trust-safety');
+  });
+
+  it('carry the collections index #266 built, and only in the footer', () => {
+    // D-08's pages are public and indexable, so reachable from the sitemap alone would be a
+    // set of pages a crawler finds and a reader never does. The header stays at two entries —
+    // the assertion above — because that is what §8.6's collapsed pill has room for.
+    const targets = FOOTER_GROUPS.flatMap((group) => group.links.map((link) => link.href));
+    expect(targets).toContain('/collections');
+    expect(PRIMARY_NAVIGATION.map((link) => link.href)).not.toContain('/collections');
   });
 
   it('carry no legal column, because §22 has not written the pages yet', () => {

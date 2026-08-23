@@ -28,12 +28,23 @@ import type { JsonLdNode } from './document';
  * and it has no idea what a campaign's FAQ endpoint holds. A page that renders
  * no FAQ passes no entries and gets no node.
  *
- * NOTHING MOUNTS THIS YET, and that is stated rather than hidden. The FAQ tab
- * belongs to the server-rendered campaign page, and the FAQ editor that fills it
- * is CD-15; `components/campaign-editor/StoryPanel.tsx` says the same. It lives
- * here so that the page and this graph land together rather than the page
- * landing first and the markup being remembered later — the same reason
+ * **MOUNTED SINCE #283.** This paragraph used to say nothing mounted it, and that
+ * was true for as long as the platform had nowhere to store a question: the tab
+ * belonged to the server-rendered campaign page and the editor that fills it did
+ * not exist. Both do now — `GET /v1/projects/{id}/faqs` is built, `CampaignFaqs`
+ * renders the pairs, and `projectPageGraph` passes this function the same list.
+ *
+ * Writing it ahead of its caller was the point, and it paid off exactly as
+ * intended: the page and this graph landed together rather than the page landing
+ * first and the markup being remembered later — the same reason
  * `projectPageRobots` was written before anything rendered it.
+ *
+ * **The list it is given is the list the page renders, and that is a contract
+ * rather than a coincidence.** The campaign page therefore reads the FAQ entries
+ * on every tab rather than only on `?tab=faq`, which is the one place that route
+ * departs from its own "only the active tab is fetched" rule. Gating the read on
+ * the tab would empty this node on four addresses out of five and leave the
+ * machine-readable half describing a campaign with no questions.
  */
 
 /** One published pair, as the page shows it. */

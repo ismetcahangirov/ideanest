@@ -14,11 +14,11 @@
  *       updates and comments do not exist. The content is public and the endpoints behind it
  *       are `permitAll`; hiding it behind a click is throwing it away.
  *   <li><strong>A nested route per tab</strong> — `/projects/{creator}/{slug}/comments`.
- *       Linkable and crawlable, and still rejected. It multiplies one URL into five that
+ *       Linkable and crawlable, and still rejected. It multiplies one URL into six that
  *       differ by a panel, so every one of them needs a canonical pointing at the campaign
- *       and four of them are duplicate-content candidates until it does; it needs a layout
+ *       and five of them are duplicate-content candidates until it does; it needs a layout
  *       to hold the header, which means the header's read is either repeated or lifted into
- *       a layout that cannot see the tab; and it adds four entries to
+ *       a layout that cannot see the tab; and it adds five entries to
  *       `apps/web/performance/budgets.json`, which CI fails on in both directions.
  *   <li><strong>A query parameter</strong> — `?tab=comments`. One route, one budget entry,
  *       one canonical URL (`projectPageMetadata` already builds it from the path alone, so
@@ -39,7 +39,7 @@
  * the sitemap entry and the link somebody pastes into a message from being three different
  * strings for one campaign.
  *
- * <h2>Four tabs, not seven, and the missing three are named</h2>
+ * <h2>Five tabs, not seven, and the missing two are named</h2>
  *
  * <ul>
  *   <li><strong>Rewards</strong> is on the page rather than in the tab list. The tier list is
@@ -47,13 +47,18 @@
  *       reader is deciding — moving it into a tab is its own issue, and doing it here would
  *       hide the reward tiers behind a click on every campaign for the sake of matching a
  *       table.
- *   <li><strong>FAQ</strong> has no endpoint. §10.2 names `GET /v1/projects/{id}/faqs` and
- *       the service does not publish it; a tab that always said "no questions yet" would be
- *       a claim about the campaign rather than about the platform.
  *   <li><strong>Community</strong> is blocked on #209, and §4.4 says why: a backer-statistics
  *       bucket below a minimum cell size identifies the person in it, and the minimum is a
  *       product and legal answer rather than an implementation detail.
  * </ul>
+ *
+ * <h2>The tab strip is five wide, and it scrolls rather than wraps</h2>
+ *
+ * `CampaignTabs` renders one row with `overflow-x-auto` and no wrapping. Five labels do not
+ * fit across a narrow phone, and a wrapped second row would push the campaign's own content
+ * down by a line on exactly the viewports where vertical space is scarcest. The row is
+ * therefore scrollable, every label stays on one line, and each link is reachable by Tab —
+ * which scrolls it into view without any script.
  */
 
 /** The name in the address bar. One constant, read by the page and by every link. */
@@ -101,7 +106,7 @@ export const CAMPAIGN_CURSOR_PARAM = 'from';
  */
 export const CAMPAIGN_THREAD_PARAM = 'thread';
 
-export type CampaignTabId = 'campaign' | 'creator' | 'updates' | 'comments';
+export type CampaignTabId = 'campaign' | 'creator' | 'faq' | 'updates' | 'comments';
 
 export interface CampaignTab {
   readonly id: CampaignTabId;
@@ -112,13 +117,19 @@ export interface CampaignTab {
 /**
  * The tabs, in the order §4.4 lists the ones that exist.
  *
- * Campaign first because it is the default and the page's own content; Creator, Updates and
- * Comments after it, which is the order of how far a reader has already got — who made this,
- * what has happened since, what everybody else is saying.
+ * Campaign first because it is the default and the page's own content; Creator, FAQ, Updates
+ * and Comments after it, which is the order of how far a reader has already got — who made
+ * this, what they have already been asked, what has happened since, what everybody else is
+ * saying.
+ *
+ * FAQ sits between Creator and Updates because that is where §4.4's table puts it, and the
+ * table's order is the reading order: the answers a creator has already written are what a
+ * reader with a question should meet before the comment box.
  */
 export const CAMPAIGN_TABS: readonly CampaignTab[] = Object.freeze([
   { id: 'campaign', label: 'Campaign' },
   { id: 'creator', label: 'Creator' },
+  { id: 'faq', label: 'FAQ' },
   { id: 'updates', label: 'Updates' },
   { id: 'comments', label: 'Comments' },
 ]);

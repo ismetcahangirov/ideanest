@@ -2,6 +2,7 @@ package az.ideanest.user.application;
 
 import az.ideanest.user.domain.ProfileVisibility;
 import az.ideanest.user.domain.User;
+import az.ideanest.user.infrastructure.ProfileLocations;
 import az.ideanest.user.infrastructure.UserRepository;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -65,9 +66,21 @@ import org.springframework.transaction.annotation.Transactional;
 public class PublicProfiles {
 
     private final UserRepository users;
+    private final ProfileLocations locations;
+    private final ProfileEditing profiles;
 
-    public PublicProfiles(UserRepository users) {
+    /**
+     * <p><strong>{@link ProfileEditing} is injected for one method and that is on purpose.</strong>
+     * A public profile shows §4.2's P-03 links and the owner's editor writes them, and the
+     * one thing both need is "this account's links, in order". Reading them here through a
+     * second copy of that query is how a rule — the ordering, and one day whatever it grows
+     * into — comes to be honoured on one of the two surfaces. It is the same argument this
+     * class makes about itself for {@link ProfileVisibility}, one table down.
+     */
+    public PublicProfiles(UserRepository users, ProfileLocations locations, ProfileEditing profiles) {
         this.users = users;
+        this.locations = locations;
+        this.profiles = profiles;
     }
 
     /**
@@ -110,7 +123,10 @@ public class PublicProfiles {
                 account.getName(),
                 account.getAvatarUrl(),
                 account.getBio(),
-                account.getCreatedAt());
+                account.getCreatedAt(),
+                account.getWebsiteUrl(),
+                locations.findById(account.getLocationId()).orElse(null),
+                profiles.socialLinksOf(account.getId()));
     }
 
     /**

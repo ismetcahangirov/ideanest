@@ -1,8 +1,11 @@
 package az.ideanest.user.application;
 
 import az.ideanest.user.domain.User;
+import az.ideanest.user.infrastructure.ProfileLocations;
+import az.ideanest.user.infrastructure.SocialLinkRepository;
 import az.ideanest.user.infrastructure.UserRepository;
 import java.time.Clock;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -33,11 +36,20 @@ import org.springframework.transaction.annotation.Transactional;
 public class AccountExportService {
 
     private final UserRepository users;
+    private final SocialLinkRepository socialLinks;
+    private final ProfileLocations locations;
     private final AccountSecurity security;
     private final Clock clock;
 
-    public AccountExportService(UserRepository users, AccountSecurity security, Clock clock) {
+    public AccountExportService(
+            UserRepository users,
+            SocialLinkRepository socialLinks,
+            ProfileLocations locations,
+            AccountSecurity security,
+            Clock clock) {
         this.users = users;
+        this.socialLinks = socialLinks;
+        this.locations = locations;
         this.security = security;
         this.clock = clock;
     }
@@ -61,6 +73,14 @@ public class AccountExportService {
                         user.getSlug(),
                         user.getBio(),
                         user.getAvatarUrl(),
+                        user.getWebsiteUrl(),
+                        // The slug rather than the identifier: a uuid means nothing in a file
+                        // somebody opens two years later, and the slug is the value that still
+                        // resolves if the name is ever retranslated.
+                        locations.findById(user.getLocationId())
+                                .map(ProfileLocation::slug)
+                                .orElse(null),
+                        socialLinksOf(user.getId()),
                         user.getLocale(),
                         user.getCurrency(),
                         user.getEmailVerifiedAt(),
@@ -70,5 +90,18 @@ public class AccountExportService {
                         user.getDeletionScheduledAt()),
                 history.sessions(),
                 history.verifications());
+    }
+
+    /**
+     * §4.2's P-03, in the export's own shape.
+     *
+     * <p>The order is the stored order, because the order is something the person chose and an
+     * export that reordered it would be reporting a fact about our storage rather than about
+     * them.
+     */
+    private List<AccountExport.SocialLink> socialLinksOf(UUID userId) {
+        return socialLinks.findByUserIdOrderByPositionAsc(userId).stream()
+                .map(link -> new AccountExport.SocialLink(link.getPlatform().name(), link.getUrl()))
+                .toList();
     }
 }

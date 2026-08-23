@@ -92,6 +92,27 @@ public class SecurityConfiguration {
                         // the same path later does not inherit this.
                         .requestMatchers(HttpMethod.GET, "/v1/categories")
                         .permitAll()
+                        // ---- #276: the location vocabulary ----------------
+                        // V16's gazetteer, on the categories rule's terms and
+                        // for its reason: it is reference data, the same closed
+                        // vocabulary ?city= already filters on, and there is
+                        // nothing in it that belongs to a person. The first
+                        // caller is the profile editor, which is authenticated
+                        // — but that is a fact about who asks first rather than
+                        // about who may, and discovery's own city facet is the
+                        // next caller and is not.
+                        //
+                        // What may be read is not decided here. There is only
+                        // one answer: every row of a seeded eighteen-row table,
+                        // named in the reader's language. Nothing is filtered,
+                        // so there is no visibility rule to get wrong.
+                        //
+                        // GET and nothing else. Adding a place is the
+                        // privileged, audited act V16 describes, and a write
+                        // method under this path later must not inherit this.
+                        .requestMatchers(HttpMethod.GET, "/v1/locations")
+                        .permitAll()
+                        // ---- end #276 -------------------------------------
                         // Browsing, and the counts beside it. Public because
                         // discovery is the front door: a visitor who has not
                         // registered is exactly the audience it exists for, and
@@ -274,6 +295,34 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/v1/projects/*/comments")
                         .permitAll()
                         // ---- end #84 --------------------------------------
+                        // ---- #283: campaign FAQs --------------------------
+                        // A campaign's FAQ tab (§4.4). Public because §10.2
+                        // lists this read under "Project — public", and because
+                        // §4.4 makes the tab part of the page a stranger reads
+                        // before deciding whether to register: "will you ship
+                        // to my country" is a question somebody asks while they
+                        // are still deciding, and an answer behind a token is
+                        // an answer given to the people who no longer need it.
+                        //
+                        // What may be read is not decided here. The handler
+                        // serves it only for a campaign in one of §6.1's nine
+                        // public states and answers 404 otherwise — see
+                        // ProjectFaqService, which is also where the campaign's
+                        // own team is told apart from everybody else when a
+                        // token is presented, so that a creator can read the
+                        // FAQ of a campaign that has not launched.
+                        //
+                        // GET and nothing else, for the reason the categories
+                        // rule gives: POST on this exact path is the creator
+                        // adding an entry, and it falls through to the rule at
+                        // the bottom so that an anonymous caller and an account
+                        // inside its deletion grace period are both refused.
+                        // PATCH /v1/projects/*/faqs/reorder and the flat
+                        // /v1/faqs/* routes are deliberately not matched here
+                        // either.
+                        .requestMatchers(HttpMethod.GET, "/v1/projects/*/faqs")
+                        .permitAll()
+                        // ---- end #283 -------------------------------------
                         // ---- #274: §4.2's public profile ------------------
                         // A person's own page and its two archives: what they
                         // created, and what they backed. Public because a profile

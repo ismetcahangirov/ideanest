@@ -18,7 +18,7 @@ import java.util.Map;
  * <p><strong>The names are the wire format.</strong> They are what the API
  * accepts and returns, and the campaign editor's People tab renders them, so
  * renaming one is a breaking change to a client and to every stored row —
- * {@code collaborator_capabilities_known} lists the same eight strings.
+ * {@code collaborator_capabilities_known} lists the same nine strings.
  *
  * <p>The creator holds all of them implicitly and holds them without a row. See
  * {@link Grants}.
@@ -68,6 +68,22 @@ public enum Capability {
 
     /** Reply to comments and questions as the campaign. */
     RESPOND_TO_COMMENTS(ProjectCapability.RESPOND_TO_COMMENTS),
+
+    /**
+     * Write, edit, reorder and remove the campaign's FAQ entries (#283).
+     *
+     * <p>Separate from {@link #EDIT_BASICS} because it is a different kind of
+     * authority: an FAQ entry is text published in the campaign's name to
+     * everybody reading its page, and a creator who wants somebody to answer
+     * questions without also letting them reprice the campaign has no way to say
+     * so unless this grant exists.
+     *
+     * <p>Separate from {@link #EDIT_STORY} for the same reason in the other
+     * direction. §4.6 puts the FAQ editor in the story tab, which is a fact about
+     * where the inputs are on screen and not about who should be trusted with
+     * them.
+     */
+    MANAGE_FAQ(ProjectCapability.MANAGE_FAQ),
 
     /**
      * See the backer report and the money in it.

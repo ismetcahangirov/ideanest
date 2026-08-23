@@ -60,6 +60,8 @@ the browser half of the auth flow work at all.
 | `/categories` | Site | **Public.** Every category and subcategory, and the crawl path to their pages (#265) |
 | `/categories/[category]` | Site | **Public.** A category's indexable landing page (#265) |
 | `/categories/[category]/[subcategory]` | Site | **Public.** A subcategory's, resolved inside its own parent (#265) |
+| `/collections` | Site | **Public.** D-08's index: staff selections, themed collections and open calls, and the crawl path to their pages (#266) |
+| `/collections/[slug]` | Site | **Public.** A collection's landing page — its campaigns in the curator's order, cursor-paginated. 404 for one that is unpublished or outside its window (#266) |
 | `/maintenance` | Site | **Public**, `noindex`. WS-09's planned-outage page. Nothing routes to it — see below (#263) |
 | `/sign-in` | Minimal | **Public**, `noindex`. Email and password, with the suspension and the rate limit surfaced (#268) |
 | `/register` | Minimal | **Public**, `noindex`. Account creation and the "check your email" state (#269) |
@@ -75,6 +77,7 @@ the browser half of the auth flow work at all.
 | `/settings/notifications` | Site | §4.10's table as a grid — per category, per channel, with a digest option (#89), moved by #275 |
 | `/settings/security` | Site | §4.1 A-07: enrol in two-factor, see the recovery codes once, disable (#278) |
 | `/settings/privacy` | Site | §4.1 A-10 and A-11: the data export and the thirty-day closure (#279), plus §4.2 P-07's profile switch (#274) |
+| `/settings/profile` | Site | §4.2 P-01 to P-03: name, biography, picture, website, location and links (#276). The picture is an address, not an upload — §13.1 |
 | `/settings/email` | Site | §4.1 A-12: asks to move the account. Says plainly that nothing has changed yet (#277) |
 | `/settings/password` | Site | §4.1 A-13: replaces the password. Signs the reader out, and says so before they submit (#277) |
 | `/account` | Site | Redirects to `/account/saved` (#275) |

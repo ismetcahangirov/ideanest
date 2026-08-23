@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { CAMPAIGN_TABS, campaignTabHref, type CampaignTabId } from '../../lib/projects/tabs';
 
 /**
- * §4.4's tab list — issues #282, #284 and #285, and the shell all three hang from.
+ * §4.4's tab list — issues #282, #283, #284 and #285, and the shell all four hang from.
  *
  * <h2>Links in a navigation landmark, and NOT an ARIA tab widget</h2>
  *
@@ -15,7 +15,7 @@ import { CAMPAIGN_TABS, campaignTabHref, type CampaignTabId } from '../../lib/pr
  * of these performs a navigation.
  *
  * <strong>A widget whose roles promise behaviour it does not have is worse than no roles.</strong>
- * A screen reader user told "tab, 2 of 4" presses the right arrow and nothing happens. So
+ * A screen reader user told "tab, 2 of 5" presses the right arrow and nothing happens. So
  * these are what they actually are: links, in a `<nav>` with a name, in a list, with
  * `aria-current="page"` on the one being read. That is a pattern every assistive technology
  * already understands, it needs no JavaScript, every browser's own keyboard handling works,
@@ -51,9 +51,20 @@ export function CampaignTabs({ active, path }: CampaignTabsProps) {
   return (
     <nav aria-label="Campaign sections" className="mt-10 border-b border-white/8">
       {/*
-        The row scrolls rather than wrapping. Four tabs fit on a phone; the day a fifth is
-        added, a wrapped second row would move the content below it down by a line on exactly
-        the narrow viewports where vertical space is scarcest.
+        THE ROW SCROLLS RATHER THAN WRAPPING, AND #283 IS THE DAY THAT STARTED MATTERING.
+
+        This comment used to say "four tabs fit on a phone; the day a fifth is added…". The
+        FAQ tab is the fifth. Five labels — Campaign, Creator, FAQ, Updates, Comments — are
+        roughly 450px of pills at this size, against about 320px of content width on a 360px
+        phone, so the row genuinely overflows now rather than hypothetically.
+
+        Nothing had to change for it. `flex` without `flex-wrap` cannot wrap, every label
+        carries `whitespace-nowrap` so no label breaks mid-word, and `overflow-x-auto` makes
+        the surplus a horizontal scroll instead of a second row that would push the campaign's
+        own content down by a line on exactly the viewports where vertical space is scarcest.
+
+        The scroll is not a keyboard trap and needs no script: these are links, so Tab moves
+        through them and the browser scrolls each one into view on focus.
       */}
       <ul className="-mb-px flex gap-1 overflow-x-auto">
         {CAMPAIGN_TABS.map((tab) => {

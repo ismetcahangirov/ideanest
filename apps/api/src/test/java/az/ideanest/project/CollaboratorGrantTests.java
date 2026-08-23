@@ -73,7 +73,7 @@ class CollaboratorGrantTests {
     void everyCapabilityIsNotOwnership() {
         Grants everything = Grants.of(EnumSet.allOf(Capability.class));
 
-        // The distinction that matters: what they may pass on. A holder of all eight
+        // The distinction that matters: what they may pass on. A holder of them all
         // is refused MANAGE_COLLABORATORS as a grant, and the creator is not.
         assertThat(everything.isCreator()).isFalse();
         assertThat(everything.holds(Capability.MANAGE_COLLABORATORS)).isTrue();
@@ -99,7 +99,7 @@ class CollaboratorGrantTests {
                 .containsExactly(Capability.VIEW_FINANCES);
 
         // Otherwise the creator's decision to grant one capability is advisory: this
-        // person invites an accomplice with all eight and the grant meant nothing.
+        // person invites an accomplice with all of them and the grant meant nothing.
         assertThat(storyEditor.ungrantable(EnumSet.allOf(Capability.class)))
                 .hasSize(Capability.values().length - 1)
                 .doesNotContain(Capability.EDIT_STORY);

@@ -51,6 +51,22 @@ export const DISCOVER_CRUMB: Crumb = Object.freeze({ name: 'Discover', path: '/d
 export const CATEGORIES_CRUMB: Crumb = Object.freeze({ name: 'Categories', path: '/categories' });
 
 /**
+ * Curation's index — D-08, §4.13 WS-04, issue #266.
+ *
+ * `CATEGORIES_CRUMB`'s argument, one vocabulary over: an open call's only address used to be
+ * `/discover?programme=…`, which robots.txt disallows wholesale, so a crumb naming a
+ * collection had nowhere true to point. `/collections/spring-2027` is a page, so the trail
+ * through `/collections` is a claim that holds.
+ *
+ * The path is duplicated from `lib/collections/api.ts`'s `COLLECTIONS_PATH` rather than
+ * imported, exactly as the two above are literals rather than imports from their own feature
+ * modules. This module is the bottom of the SEO layer and reaching up into a feature to
+ * build a trail would invert that — and a route's own module is not where "what does a
+ * crawler call this step" is decided.
+ */
+export const COLLECTIONS_CRUMB: Crumb = Object.freeze({ name: 'Collections', path: '/collections' });
+
+/**
  * Whitespace collapsed and trimmed.
  *
  * A campaign title arrives with the newlines a textarea put in it, and a newline

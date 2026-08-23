@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { fetchCategories } from '../../api/server';
+import { fetchCategories, fetchCollections } from '../../api/server';
+import type { Collection } from '../../collections/api';
 import type { SitemapProject } from './projects';
 import {
   DISCOVERY_PATHS,
@@ -13,13 +14,14 @@ import {
 } from './entries';
 
 /**
- * `discoveryEntries` reads the taxonomy since #265, because §4.3 makes it data rather than
- * code. The read is stubbed here: what is under test is which URLs a tree becomes, not whether
- * the service answers.
+ * `discoveryEntries` reads the taxonomy since #265 and the collections since #266, because
+ * §4.3 makes both data rather than code. The reads are stubbed here: what is under test is
+ * which URLs a tree and a collection list become, not whether the service answers.
  */
-vi.mock('../../api/server', () => ({ fetchCategories: vi.fn() }));
+vi.mock('../../api/server', () => ({ fetchCategories: vi.fn(), fetchCollections: vi.fn() }));
 
 const categoriesMock = vi.mocked(fetchCategories);
+const collectionsMock = vi.mocked(fetchCollections);
 
 const BASE = 'https://ideanest.az';
 const NOW = new Date('2026-08-17T12:00:00.000Z');
@@ -37,9 +39,32 @@ const TAXONOMY = [
   { id: '2', slug: 'crafts', name: 'Crafts', subcategories: [] },
 ];
 
+function collection(overrides: Partial<Collection> = {}): Collection {
+  return {
+    id: 'c1',
+    slug: 'staff-picks',
+    kind: 'staff_selection',
+    title: 'Staff picks',
+    description: null,
+    image: null,
+    grantsBadge: true,
+    projectCount: 6,
+    opensAt: null,
+    closesAt: null,
+    ...overrides,
+  };
+}
+
+const COLLECTIONS = [
+  collection(),
+  collection({ id: 'c2', slug: 'spring-2026', kind: 'open_call', title: 'Spring 2026' }),
+];
+
 beforeEach(() => {
   categoriesMock.mockReset();
+  collectionsMock.mockReset();
   categoriesMock.mockResolvedValue(TAXONOMY);
+  collectionsMock.mockResolvedValue(COLLECTIONS);
 });
 
 function project(overrides: Partial<SitemapProject> = {}): SitemapProject {
@@ -194,7 +219,7 @@ describe('the content-type segments', () => {
     for (const url of urls) expect(url).not.toContain('?');
   });
 
-  it('lists a page per category and per subcategory', async () => {
+  it('lists a page per category, per subcategory, and per collection', async () => {
     const urls = (await discoveryEntries(BASE)).map((entry) => entry.url);
 
     expect(urls).toEqual([
@@ -203,17 +228,51 @@ describe('the content-type segments', () => {
       'https://ideanest.az/categories/games/tabletop',
       'https://ideanest.az/categories/games/video',
       'https://ideanest.az/categories/crafts',
+      'https://ideanest.az/collections/staff-picks',
+      'https://ideanest.az/collections/spring-2026',
     ]);
   });
 
-  it('is the feed alone when the taxonomy cannot be read', async () => {
+  /**
+   * A sitemap entry for a URL that answers 404 is an error reported against the whole file,
+   * and here it would additionally announce a collection the platform has not published —
+   * which is what `CollectionController`'s 404-not-403 rule exists to prevent. The index
+   * endpoint already filters, so what is asserted is that nothing here adds a URL of its own.
+   */
+  it('lists only the collections the service actually published', async () => {
+    collectionsMock.mockResolvedValue([collection({ slug: 'only-this-one' })]);
+
+    const urls = (await discoveryEntries(BASE)).map((entry) => entry.url);
+    const collectionUrls = urls.filter((url) => url.includes('/collections/'));
+
+    expect(collectionUrls).toEqual(['https://ideanest.az/collections/only-this-one']);
+  });
+
+  it('is the feed alone when neither the taxonomy nor the collections can be read', async () => {
     categoriesMock.mockResolvedValue(null);
+    collectionsMock.mockResolvedValue(null);
 
     // A briefly shorter sitemap is a sitemap; one that throws is an error reported against the
     // whole site.
     expect((await discoveryEntries(BASE)).map((entry) => entry.url)).toEqual([
       'https://ideanest.az/discover',
     ]);
+  });
+
+  /** One read failing must not take the other's URLs with it. They are independent. */
+  it('still lists the taxonomy when only the collections could not be read', async () => {
+    collectionsMock.mockResolvedValue(null);
+
+    const urls = (await discoveryEntries(BASE)).map((entry) => entry.url);
+
+    expect(urls).toContain('https://ideanest.az/categories/games');
+    expect(urls.some((url) => url.includes('/collections/'))).toBe(false);
+  });
+
+  it('lists the collections index among the static pages, as the crawl path to them', () => {
+    expect(pageEntries(BASE).map((entry) => entry.url)).toContain(
+      'https://ideanest.az/collections',
+    );
   });
 
   it('claims no lastModified for a page whose content it cannot date', async () => {

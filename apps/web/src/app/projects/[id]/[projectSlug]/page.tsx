@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { CampaignComments } from '../../../../components/project/CampaignComments';
+import { CampaignFaqs } from '../../../../components/project/CampaignFaqs';
 import { CampaignOutcomeNotice } from '../../../../components/project/CampaignOutcomeNotice';
 import { CampaignRewards } from '../../../../components/project/CampaignRewards';
 import { CampaignStory } from '../../../../components/project/CampaignStory';
@@ -12,6 +13,7 @@ import { CreatorPanel } from '../../../../components/project/CreatorPanel';
 import { ReportControl } from '../../../../components/moderation/ReportControl';
 import { StructuredData } from '../../../../components/seo/StructuredData';
 import { fetchCommentThreads } from '../../../../lib/community/comments';
+import { fetchProjectFaqs } from '../../../../lib/community/faqs';
 import { fetchProjectUpdates } from '../../../../lib/community/updates';
 import { fetchCampaignPage, fetchPublicRewards } from '../../../../lib/api/server';
 import {
@@ -77,15 +79,28 @@ import { projectPageGraph } from '../../../../lib/seo/structured-data/graphs';
  * `?tab=comments` rather than a `useState` or a route per tab, and
  * `lib/projects/tabs.ts` argues all three options and the two it rejected. The short version:
  * local state makes the Comments tab unlinkable and invisible to a crawler, a route per tab
- * multiplies one canonical URL into five and adds four entries to a budgets file CI fails on
+ * multiplies one canonical URL into six and adds five entries to a budgets file CI fails on
  * in both directions, and a query parameter costs a navigation that each tab's own separate
  * read was always going to need.
  *
- * <strong>Only the active tab is fetched.</strong> A reader on the default Campaign tab pays
- * for the campaign and its tiers exactly as before this issue; the updates, the comments and
- * the creator's profile are read only when their tab is the one being rendered. Fetching all
- * four to render one would be four times the service load per crawl for content nobody asked
- * for, on the route whose largest contentful paint is the subject of #119.
+ * <strong>Only the active tab is fetched, with exactly one exception.</strong> The updates,
+ * the comments and the creator's profile are read only when their tab is the one being
+ * rendered. Fetching all of them to render one would be several times the service load per
+ * crawl for content nobody asked for, on the route whose largest contentful paint is the
+ * subject of #119.
+ *
+ * <strong>The FAQ is the exception, and it is read on every tab.</strong> Not for the tab —
+ * for the structured data. `faqPageNode` is documented as taking "the pairs the page actually
+ * renders", and `projectPageGraph`'s whole argument is that the machine-readable and the
+ * human-readable halves of this page cannot describe two different campaigns. The graph is
+ * emitted before the tab is chosen and the canonical URL of every tab is the bare path, so an
+ * `FAQPage` node built only on `?tab=faq` would hang off the one address no search engine
+ * indexes separately — which is a node that exists for nobody.
+ *
+ * So this one read is paid on every render: one small, unpaged, minute-cached body against a
+ * graph that is true on every address the campaign has. <strong>Do not "fix" this by moving
+ * it inside the tab</strong> — it would silently empty the `FAQPage` node on four tabs out of
+ * five. The tab is handed the same list rather than reading it again.
  *
  * <h2>Why the folder is `[id]/[projectSlug]` when the first segment is a creator's slug</h2>
  *
@@ -209,6 +224,22 @@ export default async function CampaignPage({
    */
   const tiers = tiersOf(await fetchPublicRewards(campaign.id));
 
+  /*
+   * Read on every tab, deliberately — see the header comment. It feeds the `FAQPage` node in
+   * the graph below, which is emitted on every address this campaign has, and it is handed to
+   * the FAQ tab rather than read a second time there.
+   *
+   * After the public check, like the tiers and for the same reason: asking for a campaign's
+   * questions before the campaign is known to be public would put a request on the service
+   * for every crawl of a URL that does not exist, with an identifier this page does not have
+   * until the first read answers.
+   *
+   * `null` is a refused read. The graph is given an empty list for it rather than a partial
+   * one, and the tab is given the `null` so it can say the service failed rather than that
+   * the creator has answered nothing.
+   */
+  const faqs = await fetchProjectFaqs(campaign.id);
+
   return (
     <main className="mx-auto w-full max-w-[1200px] px-5 py-10 sm:px-6">
       {/*
@@ -217,10 +248,16 @@ export default async function CampaignPage({
         element so that it is in the first bytes a crawler reads rather than after a
         photograph.
 
-        `faqs` is empty: `GET /v1/projects/{id}/faqs` is in §10.2 and is not built, and
-        `faqPageNode` returns null for an empty list rather than an empty `FAQPage` — a
-        structured-data node claiming a page has questions when it has none is worse than
-        no node.
+        `faqs` IS NO LONGER EMPTY. `faqPageNode` was written ahead of the endpoint and said
+        so; #283 built `GET /v1/projects/{id}/faqs`, so the node now describes the campaign's
+        real questions rather than being withheld. The header comment above explains why that
+        read is the one that is NOT gated on the active tab.
+
+        A refused read passes an empty list, not a wrong one. `faqPageNode` answers null for
+        an empty list rather than emitting an `FAQPage` with no questions in it, so a service
+        that was restarting costs this page a node and never an untrue one — the same
+        distinction the tab itself draws between "could not be loaded" and "has nothing
+        here".
       */}
       <StructuredData
         nodes={projectPageGraph({
@@ -228,7 +265,7 @@ export default async function CampaignPage({
           path,
           deadline: campaign.deadline,
           tiers,
-          faqs: [],
+          faqs: faqs ?? [],
         })}
       />
 
@@ -315,6 +352,8 @@ export default async function CampaignPage({
 
           {tab === 'creator' && <CreatorTab campaign={campaign} />}
 
+          {tab === 'faq' && <CampaignFaqs faqs={faqs} />}
+
           {tab === 'updates' && <UpdatesTab campaign={campaign} path={path} cursor={cursor} />}
 
           {tab === 'comments' && (
@@ -389,6 +428,19 @@ async function CreatorTab({
 
   return <CreatorPanel campaign={campaign} profile={profile} projects={others} />;
 }
+
+/*
+ * §4.4's FAQ tab — #283 — has no async component of its own, and that is the visible
+ * consequence of the exception stated at the top of this file: its read is made in the page
+ * body so that the structured data and the tab are given the same list. `CampaignFaqs` is
+ * therefore rendered directly above.
+ *
+ * The read is unpaged, because §4.4 caps a campaign's list at fifty entries server-side and
+ * publishes no cursor — so there is no cursor to carry and no "older questions" link to
+ * build. The cap is what makes the absent cursor honest: if fifty stops being enough the
+ * answer is a cursor, never a bigger cap, because the failure mode of the alternative is
+ * silent truncation.
+ */
 
 /** §4.4's Updates tab — #284. */
 async function UpdatesTab({

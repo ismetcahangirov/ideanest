@@ -101,7 +101,7 @@ public final class Grants {
      * <ul>
      *   <li><strong>Nobody may grant more than they hold.</strong> Otherwise the
      *       creator's decision to give somebody exactly one capability is
-     *       advisory: that person invites an accomplice with all eight, and the
+     *       advisory: that person invites an accomplice with all of them, and the
      *       grant the creator issued was a suggestion.
      *   <li><strong>Only the creator may grant
      *       {@link Capability#MANAGE_COLLABORATORS}.</strong> A holder who could
@@ -111,8 +111,8 @@ public final class Grants {
      * </ul>
      *
      * <p>Returned as a set rather than as a boolean so that the refusal can name
-     * which capability was the problem. "Forbidden" on a form with eight
-     * checkboxes tells a creator to try combinations.
+     * which capability was the problem. "Forbidden" on a form of checkboxes
+     * tells a creator to try combinations.
      */
     public Set<Capability> ungrantable(Set<Capability> requested) {
         if (creator) {

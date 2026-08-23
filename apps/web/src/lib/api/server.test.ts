@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { fetchCampaignPage, fetchDiscoveryFeed, fetchPublicRewards } from './server';
+import {
+  fetchCampaignPage,
+  fetchCollection,
+  fetchCollections,
+  fetchDiscoveryFeed,
+  fetchPublicRewards,
+} from './server';
 
 /**
  * The reads a Server Component makes — #119.
@@ -155,5 +161,95 @@ describe('the discovery read', () => {
 
   it('is null when the service refuses, so the page falls back to fetching in the browser', async () => {
     expect(await fetchDiscoveryFeed('', { env: ENV, fetchImpl: refuses(429) })).toBeNull();
+  });
+});
+
+describe('the collections reads', () => {
+  it('asks the service directly for the index', async () => {
+    const { calls, fetchImpl } = ok({ items: [] });
+
+    await fetchCollections({ env: ENV, fetchImpl });
+
+    expect(calls[0]?.url).toBe('https://api.test/v1/collections');
+  });
+
+  /**
+   * A collection with no slug has no URL, so a card for it would be a link to nowhere in the
+   * site's own crawl path — and this index is the only path a crawler has to a collection
+   * page. `lib/collections/api.ts` owns the decision; this asserts the reader goes through it
+   * rather than casting the generated type wholesale.
+   */
+  it('drops a row it could not render, and keeps the rest in order', async () => {
+    const { fetchImpl } = ok({
+      items: [
+        { slug: 'staff-picks', title: 'Staff picks', kind: 'staff_selection' },
+        { title: 'No slug' },
+        { slug: 'spring-2026', title: 'Spring 2026', kind: 'open_call' },
+      ],
+    });
+
+    const collections = await fetchCollections({ env: ENV, fetchImpl });
+
+    expect(collections?.map((collection) => collection.slug)).toEqual([
+      'staff-picks',
+      'spring-2026',
+    ]);
+  });
+
+  it('holds the index for as long as the service says it may', async () => {
+    const { calls, fetchImpl } = ok({ items: [] });
+
+    await fetchCollections({ env: ENV, fetchImpl });
+
+    expect((calls[0]?.init as { next?: { revalidate?: number } }).next?.revalidate).toBe(60);
+  });
+
+  it('is null when the index could not be read', async () => {
+    expect(await fetchCollections({ env: ENV, fetchImpl: refuses(503) })).toBeNull();
+  });
+
+  it('asks for one collection by slug, with the paging parameters the service names', async () => {
+    const { calls, fetchImpl } = ok({
+      collection: { slug: 'spring-2026', title: 'Spring 2026', kind: 'open_call' },
+      items: [],
+    });
+
+    await fetchCollection('spring-2026', { cursor: 'abc', limit: 24 }, { env: ENV, fetchImpl });
+
+    const url = new URL(calls[0]?.url as string);
+    expect(url.origin + url.pathname).toBe('https://api.test/v1/collections/spring-2026');
+    expect(url.searchParams.get('cursor')).toBe('abc');
+    expect(url.searchParams.get('limit')).toBe('24');
+  });
+
+  /**
+   * A slug that names nothing, a collection that has not been published, and one outside its
+   * window are one answer on the wire and stay one answer here — `CollectionController`
+   * explains that a 403 would confirm to anybody who guesses a slug that the platform is
+   * preparing something under it, and a client that told them apart would leak from the
+   * browser what the service refused to leak.
+   */
+  it('is null for a collection the service will not serve', async () => {
+    expect(
+      await fetchCollection('spring-2027', {}, { env: ENV, fetchImpl: refuses(404) }),
+    ).toBeNull();
+  });
+
+  it('is null for a 200 carrying no usable collection, rather than an empty page', async () => {
+    const { fetchImpl } = ok({ items: [] });
+
+    expect(await fetchCollection('spring-2026', {}, { env: ENV, fetchImpl })).toBeNull();
+  });
+
+  it('carries the cursor, because a short page is not the end of a collection', async () => {
+    const { fetchImpl } = ok({
+      collection: { slug: 'spring-2026', title: 'Spring 2026', kind: 'open_call' },
+      items: [],
+      nextCursor: 'abc',
+    });
+
+    const landing = await fetchCollection('spring-2026', {}, { env: ENV, fetchImpl });
+
+    expect(landing?.nextCursor).toBe('abc');
   });
 });

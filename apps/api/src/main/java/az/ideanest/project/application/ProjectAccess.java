@@ -313,8 +313,8 @@ public class ProjectAccess implements ProjectAuthorisation {
      * @throws CapabilityNotGrantedException naming the capabilities that were
      *     beyond the granter's authority, so the refusal can be shown against the
      *     checkboxes that caused it rather than as "forbidden". Read as "you would
-     *     have to hold these to confer them" — which is exact for seven of the
-     *     eight, and for {@link Capability#MANAGE_COLLABORATORS} understates the
+     *     have to hold these to confer them" — which is exact for all but one of
+     *     them, and for {@link Capability#MANAGE_COLLABORATORS} understates the
      *     rule: holding it is not enough, only the creator may confer it
      */
     public void requireGrantable(Project project, UUID granterId, Set<Capability> requested) {

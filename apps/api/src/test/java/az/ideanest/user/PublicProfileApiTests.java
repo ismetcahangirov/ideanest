@@ -99,7 +99,9 @@ class PublicProfileApiTests extends AbstractIntegrationTest {
         // Exhaustive, on purpose. A field added to the projection fails here rather than
         // appearing on a page served to anybody who types a URL -- and the two fields most
         // likely to be added by accident are the address and the account identifier.
-        assertThat(body).containsOnlyKeys("slug", "name", "avatarUrl", "bio", "joinedAt");
+        assertThat(body)
+                .containsOnlyKeys(
+                        "slug", "name", "avatarUrl", "bio", "joinedAt", "websiteUrl", "location", "socialLinks");
         assertThat(body.get("slug")).isEqualTo(slug);
         assertThat(body.get("bio")).isEqualTo("Makes furniture out of reclaimed oak.");
         assertThat(body.get("joinedAt")).isNotNull();
