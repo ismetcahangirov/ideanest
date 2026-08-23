@@ -98,6 +98,41 @@ public class UserAccounts {
     }
 
     /**
+     * P-10's language half: which of §21.1's four languages this account is written to
+     * (#324).
+     *
+     * <p><strong>The value is not checked here, and that is the one thing worth saying
+     * about this method.</strong> {@code LocaleRequest} refuses anything that is not one of
+     * §21.1's four before the handler runs, and {@code users_locale_supported} refuses the
+     * same four one layer down; a third check in the middle would be a third place for the
+     * list to drift, and the one that falls behind is whichever is furthest from the
+     * migration. What this does instead is go through the entity rather than issue an
+     * UPDATE, so that the row is loaded, the check constraint sees the write, and a value
+     * that somehow reached here without passing the first check fails as a constraint
+     * violation on a known row rather than silently updating none.
+     *
+     * <p>Idempotent, like {@code PublicProfiles.setVisibility}: setting the language the
+     * account already holds does nothing and reports success, so a retry after a dropped
+     * connection leaves the account where the person put it.
+     *
+     * <p>No audit row. {@code AuditLog} records privileged actions taken over an account,
+     * and this is its owner choosing the language of their own mail — reversible by the
+     * person who made the change, in the same request they made it with.
+     *
+     * @throws AccountNotFoundException for a genuine token whose account is no longer
+     *     there — deleted between issue and use. The same answer {@code setVisibility}
+     *     gives for the same fact, and it becomes 404 rather than 401 at the edge: the
+     *     token is ours and the account is not, so sending the client back to sign in
+     *     again would be an instruction it cannot carry out
+     */
+    @Transactional
+    public void setLocale(UUID accountId, String locale) {
+        User account = users.findByIdAndDeletedAtIsNull(accountId)
+                .orElseThrow(() -> new AccountNotFoundException(accountId));
+        account.setLocale(locale);
+    }
+
+    /**
      * §4.1's A-12 (#277): moves the account to an address that has just proved itself.
      *
      * <p><strong>The uniqueness check is here and it is not the one that decides.</strong>
