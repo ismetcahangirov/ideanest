@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Field, InlineAlert, Pill, TextInput } from '@ideanest/ui';
 import { deviceLabelOf, signIn } from '../../lib/auth/api';
+import { PASSWORD_CHANGED_NOTICE, SIGN_IN_NOTICE_PARAM } from '../../lib/auth/credentials';
 import { describeAuthFailure, fieldErrorsOf, type AuthFailure } from '../../lib/auth/failures';
 import { DEFAULT_SIGNED_IN_PATH, RETURN_TO_PARAM, safeReturnPath } from '../../lib/auth/redirect';
 import { ProviderSignIn } from './ProviderSignIn';
@@ -53,6 +54,16 @@ import { useSignInOutcome } from './useSignInOutcome';
  * because `TokenController` answers a provider sign-in through the same `respondTo`: an
  * account with a second factor gets a challenge whichever way the password step was passed,
  * and a provider button that skipped it would make two-factor advisory.
+ *
+ * <h2>What #271 and #277 added to this screen</h2>
+ *
+ * A link to `/reset-password`, which this form deliberately refused to carry while there was
+ * no page behind it, and a notice for somebody who has just changed their password. The second
+ * is here rather than on `/settings/password` because that screen cannot survive its own
+ * success: `POST /v1/auth/change-password` revokes every session including the caller's, so the
+ * route guard moves the reader off a private path before any confirmation could be read. The
+ * confirmation travels in a fixed query value instead, never as text — see the comment beside
+ * it.
  *
  * <h2>Motion</h2>
  *
@@ -127,6 +138,29 @@ export function SignInForm() {
         still choose the right keyboard on a phone.
       */}
 
+      {/*
+        WHY THIS SCREEN EXPLAINS A SIGN-OUT IT DID NOT PERFORM. `POST /v1/auth/change-password`
+        revokes every session including the caller's, so #277's panel cannot render its own
+        confirmation — the route guard moves a signed-out reader off `/settings/password` a
+        frame later. The confirmation travels here instead.
+
+        A FIXED NAME MATCHED AGAINST A FIXED VALUE, never a sentence carried in the URL. Text
+        printed from a query parameter is text an attacker writes, and a fabricated notice on a
+        sign-in form is a phishing page hosted on our own domain. Anything but the one known
+        value renders nothing.
+
+        `success` and not lime: lime means "act now" (§2.4), and this is something that has
+        already happened.
+      */}
+      {searchParams.get(SIGN_IN_NOTICE_PARAM) === PASSWORD_CHANGED_NOTICE && (
+        <InlineAlert variant="success" title="Your password was changed">
+          <p>
+            Every browser signed in to the account was signed out, including this one. Sign in
+            with the new password.
+          </p>
+        </InlineAlert>
+      )}
+
       {failure !== null && (
         <InlineAlert variant="danger" title={failure.title}>
           <p>{failure.detail}</p>
@@ -166,6 +200,25 @@ export function SignInForm() {
         </Pill>
       )}
 
+      {/*
+        THE RESET IS LINKED NOW THAT #271 EXISTS. The comment this replaced refused the link
+        while `/reset-password` was a 404 and the service had no `POST /v1/auth/forgot-password`
+        — "worse on this screen than anywhere else on the platform: it is offered to somebody
+        who is already locked out". Both halves are built, so the refusal no longer applies.
+
+        Below the sign-in control rather than beside the password field: the reader who can sign
+        in should meet the button first, and this is the way out for the one the screen has just
+        failed.
+      */}
+      <p className="text-center text-sm text-white/64">
+        <Link
+          href="/reset-password"
+          className="rounded-sm text-white underline underline-offset-4 hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
+        >
+          Forgot your password?
+        </Link>
+      </p>
+
       <p className="text-center text-sm text-white/64">
         No account yet?{' '}
         <Link
@@ -175,13 +228,6 @@ export function SignInForm() {
           Create one
         </Link>
       </p>
-
-      {/*
-        PASSWORD RESET IS #271 AND IS NOT LINKED, because there is no page behind it and no
-        endpoint under it — the service has no `POST /v1/auth/forgot-password`. A "Forgot your
-        password?" link that resolves to a 404 is worse on this screen than anywhere else on
-        the platform: it is offered to somebody who is already locked out.
-      */}
     </form>
 
       {/*

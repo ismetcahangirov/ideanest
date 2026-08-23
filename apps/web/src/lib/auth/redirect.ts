@@ -96,6 +96,21 @@ const AUTHENTICATION_PATHS: readonly string[] = Object.freeze([
   '/sign-in',
   '/register',
   '/verify-email',
+
+  /*
+   * #271 and #277's landing pages, added with them.
+   *
+   * THE LOOP THESE PREVENT IS WORSE THAN THE ONE ABOVE, and it is why the list had to grow
+   * rather than being left as "the three original screens". `?next=/reset-password` sends
+   * somebody who has just signed in to the form for people who cannot; `?next=/verify-email`
+   * at least lands on a page that does something. Both are mistakes rather than attacks — a
+   * link clicked while the guard was already redirecting — and the answer is the same as
+   * having no return path at all.
+   *
+   * The prefix rule below covers `/reset-password/confirm` without a second entry.
+   */
+  '/reset-password',
+  '/confirm-email-change',
 ]);
 
 export function isAuthenticationPath(pathname: string): boolean {

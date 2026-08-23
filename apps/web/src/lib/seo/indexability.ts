@@ -179,6 +179,13 @@ export const PRIVATE_PATH_PREFIXES: readonly string[] = Object.freeze([
   '/register',
   '/verify-email',
 
+  // #271 and #277's landing pages, on the same terms and for the sharper half of the same
+  // reason. `/reset-password` itself has nothing to index; `/reset-password/confirm` and
+  // `/confirm-email-change` each carry a single-use credential in the query string, and the
+  // first of the two sets a password rather than merely proving an address.
+  '/reset-password',
+  '/confirm-email-change',
+
   // The API, which this application proxies under its own origin so that the
   // refresh cookie can be `SameSite=Strict` (see `next.config.mjs`). It serves
   // JSON, it is rate limited, and a crawler walking it is spending the budget
