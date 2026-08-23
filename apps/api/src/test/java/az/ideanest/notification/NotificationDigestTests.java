@@ -239,15 +239,40 @@ class NotificationDigestTests extends AbstractIntegrationTest {
     @DisplayName("a notification held since the period opened waits for it to close")
     void aNotificationHeldSinceThePeriodOpenedWaitsForItToClose() {
         digest(NotificationChannel.EMAIL);
-        confirm(digestHour.plusSeconds(1));
+
+        /*
+         * THE PASS IS CHOSEN FIRST AND THE NOTIFICATION IS PLACED RELATIVE TO IT.
+         *
+         * The obvious version of this test — hold something at {@code digestHour + 1s} and
+         * judge a pass two hours from now — is wrong for two hours of every day, and it is
+         * wrong deterministically rather than flakily. {@code digestHour} is the period that
+         * had most recently closed when the fixture was built; adding two hours to now can
+         * cross the *next* close, at which point the cutoff moves forward a whole period and
+         * the row this test is asserting is not yet due becomes due. With the suite's
+         * 08:00 UTC digest hour that is every run started between 06:00 and 08:00.
+         *
+         * Deriving the period from the pass removes the arithmetic entirely: whatever the
+         * wall clock says, {@code periodOpenedAt} is by construction the boundary
+         * {@code combineDue} will compute for this exact instant, so a notification a second
+         * after it is inside the period that is still open. The field above is left alone,
+         * because every other test in this file wants a period that has already closed.
+         *
+         * The pass is still {@code now + 1s} rather than a fixed instant, for the reason
+         * {@link #aPassJustNow()} gives: a held row's {@code next_attempt_at} is the real
+         * clock, and a pass judged before that finds the row ineligible for a reason none of
+         * these tests is about.
+         */
+        Instant pass = aPassJustNow();
+        Instant periodOpenedAt = properties.digest().window().lastClosedAt(pass);
+        confirm(periodOpenedAt.plusSeconds(1));
 
         RecordingChannels channels = RecordingChannels.accepting();
-        assertThat(digests.combineDue(aPassJustNow().plus(Duration.ofHours(2)), channels.map()))
+        assertThat(digests.combineDue(pass, channels.map()))
                 .as("its period has not closed yet")
                 .isZero();
         assertThat(heldCount()).isEqualTo(1);
 
-        assertThat(digests.combineDue(aPassTomorrow(), channels.map()))
+        assertThat(digests.combineDue(pass.plus(Duration.ofDays(1)), channels.map()))
                 .as("and it goes out when the period does close")
                 .isEqualTo(1);
         assertThat(heldCount()).isZero();
@@ -464,11 +489,6 @@ class NotificationDigestTests extends AbstractIntegrationTest {
      */
     private Instant aPassJustNow() {
         return Instant.now().truncatedTo(ChronoUnit.MICROS).plusSeconds(1);
-    }
-
-    /** A pass a day later, by which time the period in progress has closed too. */
-    private Instant aPassTomorrow() {
-        return aPassJustNow().plus(Duration.ofDays(1));
     }
 
     private long heldCount() {
