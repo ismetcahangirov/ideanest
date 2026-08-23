@@ -20,13 +20,27 @@ import { FOOTER_GROUPS } from './navigation';
  * `--text-tertiary` and lift to white on hover, which is 4.9:1 at rest and is why they are
  * set at 16px or above (§9.1).
  *
- * <h2>Language and currency are stated, not offered</h2>
+ * <h2>Language and currency are stated here, and chosen elsewhere</h2>
  *
- * WS-02 lists them, and #280 — the preferences themselves — is blocked on the localisation
- * work in §21.1. A `<select>` here that changed nothing would be the worst of the three
- * options available: a control that lies. So the footer says what this build actually serves
- * — English, and amounts in Azerbaijani manat — as a plain statement of fact. It becomes a
- * control when there is a second value to choose.
+ * WS-02 lists both. #280 built the preference and it lives on `/settings/language`, not in
+ * this footer, for two separate reasons that happen to point the same way.
+ *
+ * THE LANGUAGE IS NOT OFFERED HERE BECAUSE THIS FOOTER IS ON CACHED PAGES. Choosing a
+ * language means reading a cookie, and reading a cookie makes a render dynamic — this
+ * component is on `/`, the category landings and the static pages, every one of which is a
+ * shared cached render today. A control here would turn all of them into a render per
+ * visitor to translate a navigation bar, paid on the largest contentful paint of the pages a
+ * stranger meets first. #324's catalogue therefore covers the already-dynamic account area,
+ * and the public shell stays English until #123's locale-prefixed URLs make one cached
+ * render per language possible. `src/i18n/request.ts` carries the long form of this.
+ *
+ * So what the footer states remains true: this build serves the public site in English.
+ *
+ * THE CURRENCY IS NOT OFFERED ANYWHERE, and that is not a staging decision. §21.2's display
+ * currency is an approximation from central-bank rates, and the service has no rate source,
+ * no rate table and one currency — `SUPPORTED_CURRENCY = "AZN"` in three of its services. A
+ * selector would convert manat to manat. The settings screen states it as a fact for the
+ * same reason this does.
  *
  * <h2>There is no Legal column</h2>
  *

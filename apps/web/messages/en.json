@@ -1,0 +1,85 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "saving": "Saving…",
+    "tryAgain": "Try again"
+  },
+  "account": {
+    "groups": {
+      "yourAccount": "Your account",
+      "settings": "Settings"
+    },
+    "nav": {
+      "label": "Account"
+    },
+    "links": {
+      "pledges": {
+        "label": "Pledges",
+        "summary": "What you have backed, and what you can still change."
+      },
+      "saved": {
+        "label": "Saved projects",
+        "summary": "Campaigns you saved to come back to."
+      },
+      "following": {
+        "label": "Following",
+        "summary": "Creators whose launches you are told about."
+      },
+      "surveys": {
+        "label": "Surveys",
+        "summary": "What creators still need from you before they can ship."
+      },
+      "deliveries": {
+        "label": "Deliveries",
+        "summary": "Where each reward is, and where it is going."
+      },
+      "profile": {
+        "label": "Profile",
+        "summary": "Your name, picture, biography and links, as everybody else sees them."
+      },
+      "notifications": {
+        "label": "Notifications",
+        "summary": "What IdeaNest tells you, and how it reaches you."
+      },
+      "sessions": {
+        "label": "Devices",
+        "summary": "Every browser signed in to this account."
+      },
+      "email": {
+        "label": "Email address",
+        "summary": "The address you sign in with, and where we write to you."
+      },
+      "password": {
+        "label": "Password",
+        "summary": "Change it here, or reset it by email if you cannot."
+      },
+      "security": {
+        "label": "Two-factor authentication",
+        "summary": "A code from your phone, on top of your password."
+      },
+      "privacy": {
+        "label": "Data and closure",
+        "summary": "Take a copy of your data, or close the account."
+      },
+      "language": {
+        "label": "Language",
+        "summary": "Which language IdeaNest writes to you in."
+      }
+    }
+  },
+  "settings": {
+    "language": {
+      "title": "Language",
+      "intro": "Choose the language IdeaNest writes to you in.",
+      "fieldLabel": "Interface language",
+      "fieldHint": "Applies to your account pages straight away. The public site is still in English while the rest of the translation is written.",
+      "save": "Save language",
+      "saved": "Language saved.",
+      "failed": "That language could not be saved. Try again.",
+      "currencyHeading": "Currency",
+      "currencyValue": "Azerbaijani manat (AZN)",
+      "currencyNote": "Every campaign on IdeaNest is funded in manat today, so there is nothing here to choose between. A display currency arrives with the second one."
+    }
+  }
+}

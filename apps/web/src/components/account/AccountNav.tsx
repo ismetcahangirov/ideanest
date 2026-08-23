@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ACCOUNT_GROUPS, isCurrentAccountLink } from '../../lib/account/navigation';
+import { isCurrentAccountLink } from '../../lib/account/navigation';
 
 /**
  * The account area's own navigation — §4.2, issue #275.
@@ -31,16 +31,58 @@ import { ACCOUNT_GROUPS, isCurrentAccountLink } from '../../lib/account/navigati
  *
  * Below the breakpoint the two groups become one horizontally scrolling row. A drawer would
  * be a second off-canvas panel in an application that already has one (WS-03) and would hide
- * the eight destinations behind a control, on the screens where somebody arrived specifically
- * to reach one of them.
+ * the thirteen destinations behind a control, on the screens where somebody arrived
+ * specifically to reach one of them.
+ *
+ * <h2>The words arrive as props, already translated — §21.1, issue #324</h2>
+ *
+ * `lib/account/navigation.ts` carries keys, and **the server resolves them.** This component
+ * used to call `useTranslations('account')` under a `NextIntlClientProvider` that `AccountArea`
+ * put above it, which worked and was expensive in exactly the way `apps/web/performance/README.md`
+ * refuses to let pass unnoticed: the provider drags next-intl's client runtime plus the whole
+ * serialised `account` namespace into the First Load JS of **every** route in the area. That
+ * broke sixteen budgets at once — `/settings/sessions` by 27.4 KiB, `/settings/notifications`
+ * by 23.5, `/settings` and `/account` by 11.1 each, `/settings/profile` by 7.7 — and a
+ * navigation bar's labels did not buy 27 KiB.
+ *
+ * So the boundary stays (it is still the only way to know the path) and the catalogue does
+ * not cross it. `AccountArea` reads `account.*` through `getTranslations` on the server and
+ * hands down the sixteen strings this file draws; the browser downloads those sixteen strings
+ * instead of the machinery to look them up. `components/settings/LanguagePanel.tsx` makes the
+ * same trade for the same reason and states it from the panel's side.
+ *
+ * THE LANDMARK'S NAME IS TRANSLATED TOO, and it is the one string in this file a sighted
+ * reader would never have noticed was wrong. `aria-label` is read aloud and nothing else, so a
+ * Russian navigation announced as "Account" is a defect only a screen-reader user meets —
+ * which is exactly the kind of string a catalogue is for. It arrives as `label`, resolved from
+ * `account.nav.label` in all four languages, beside the entries it names.
  */
-export function AccountNav() {
+
+/** One destination, with the words a reader sees already in their own language. */
+export interface AccountNavLink {
+  readonly href: string;
+  readonly label: string;
+}
+
+/** One titled group of destinations. */
+export interface AccountNavGroup {
+  readonly heading: string;
+  readonly links: readonly AccountNavLink[];
+}
+
+export interface AccountNavProps {
+  /** The landmark's accessible name, already in the reader's language. */
+  readonly label: string;
+  readonly groups: readonly AccountNavGroup[];
+}
+
+export function AccountNav({ label, groups }: AccountNavProps) {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Account" className="lg:sticky lg:top-24">
+    <nav aria-label={label} className="lg:sticky lg:top-24">
       <ul className="flex list-none gap-x-6 gap-y-8 overflow-x-auto pb-2 lg:flex-col lg:overflow-visible lg:pb-0">
-        {ACCOUNT_GROUPS.map((group) => (
+        {groups.map((group) => (
           <li key={group.heading} className="min-w-max lg:min-w-0">
             <h2 className="px-3 text-xs font-medium tracking-[0.08em] text-white/40 uppercase">
               {group.heading}

@@ -12,6 +12,8 @@ import {
 import { usePathname, useRouter } from 'next/navigation';
 import { signOut as clearSession } from '../../lib/api/access-token';
 import { signInHref } from '../../lib/auth/redirect';
+import { currentLocaleCookie, writeLocaleCookie } from '../../lib/i18n/cookie';
+import { isLocale } from '../../lib/i18n/locale';
 import { requiresSession } from '../../lib/session/private-routes';
 import { fetchSession, type Session } from '../../lib/session/session';
 
@@ -52,6 +54,13 @@ import { fetchSession, type Session } from '../../lib/session/session';
  * route has to remember to guard itself — a rule that is enforced by being unnecessary
  * rather than by review. `lib/session/private-routes.ts` is the list, and it is deliberately
  * not the crawler's list.
+ *
+ * <h2>It also mirrors the account's language into the cookie</h2>
+ *
+ * `GET /v1/me` carries `locale` (#324), and this is the only place in the client that reads
+ * that response on every page load — so it is the only place that can notice the account and
+ * the browser disagreeing. See {@link SessionProvider}'s language effect for why the mirror
+ * belongs here rather than on the preference screen.
  */
 
 export type SessionStatus = 'unknown' | 'signed-in' | 'signed-out';
@@ -142,6 +151,49 @@ export function SessionProvider({ children }: SessionProviderProps) {
     const query = window.location.search;
     router.replace(signInHref(`${pathname}${query}`));
   }, [status, pathname, router]);
+
+  /*
+   * THE ACCOUNT'S LANGUAGE, MIRRORED INTO THE COOKIE A RENDER CAN READ — #324, #280.
+   *
+   * `users.locale` is the durable record and it travels with the account. The cookie is the
+   * only thing a **server** render can read before the first byte (`src/i18n/request.ts`), and
+   * it is per browser. So a person who chose Russian here is met by English the first time
+   * they open a different browser, a different device, or a private window — the account knows
+   * their language and the render never asks it.
+   *
+   * This is the join. Every page load already reads `GET /v1/me` to bootstrap the session, and
+   * that response now carries the language; noticing a disagreement costs nothing extra
+   * because the request was being made anyway. `/settings/language` writes both sides when
+   * somebody chooses, and this is what carries the choice to the next browser.
+   *
+   * WHY THE REFRESH, AND WHY IT CANNOT LOOP. Writing the cookie alone would leave the page
+   * that is already on screen in the language the render started in — the mirror would be
+   * correct and invisible until the next navigation, which is the same experience it exists to
+   * fix. `router.refresh()` re-renders the server tree, which re-reads the cookie. It cannot
+   * repeat: the effect is keyed on the session object, `refresh()` re-renders server components
+   * without remounting this one or re-running `read`, and by the time any of it could run again
+   * the cookie and the account agree and the first guard returns.
+   *
+   * A VALUE THAT IS ABSENT OR UNKNOWN IS LEFT ALONE. `locale` is optional in the generated
+   * schema, so a service that has not shipped #324 answers without it, and a tag outside
+   * §21.1's four is a language this client cannot draw. Both mean "nothing to mirror" rather
+   * than "mirror the default", because overwriting a browser's stated preference with a
+   * fallback would be this effect doing the opposite of its job.
+   *
+   * The `Session` shape is `lib/session/session.ts`'s and stays that module's to widen; the
+   * field is read here through a narrowed view of the same object rather than by changing a
+   * type five other screens depend on.
+   */
+  useEffect(() => {
+    if (session === null) return;
+
+    const stated = (session as Session & { readonly locale?: string | null }).locale;
+    if (!isLocale(stated)) return;
+    if (currentLocaleCookie() === stated) return;
+
+    writeLocaleCookie(stated);
+    router.refresh();
+  }, [session, router]);
 
   const signOut = useCallback(async () => {
     /*

@@ -1,9 +1,30 @@
+import createNextIntlPlugin from 'next-intl/plugin';
+
 /**
  * Deliberately `.mjs` rather than `.ts`: Next compiles a TypeScript config
  * through the `typescript` package it finds in the workspace, and this
  * repository is on TypeScript 7, whose compiler API it cannot drive. A plain
  * module with JSDoc types costs nothing and removes the coupling.
  */
+
+/**
+ * The message catalogue's server half — docs/architecture.md §21.1, issue #324.
+ *
+ * The plugin does one thing: it teaches the bundler where the request-scoped
+ * configuration lives, so that `getTranslations` on the server and
+ * `NextIntlClientProvider` in the browser resolve to the same catalogue without
+ * every route passing one down by hand.
+ *
+ * IT IS POINTED AT A PATH RATHER THAN LEFT TO THE DEFAULT because the default
+ * looks for `./i18n/request.ts` at the application root, and everything in this
+ * application that is not a route lives under `src/`. A convention that puts one
+ * module somewhere none of its neighbours are is a module nobody finds.
+ *
+ * NO `createMiddleware` AND NO `[locale]` SEGMENT. The language is negotiated
+ * from a cookie inside `src/i18n/request.ts`, which explains at length why the
+ * account area is translated and the cached public routes are not.
+ */
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 /**
  * Where the Spring Boot service listens. Read at build time on the server only,
@@ -141,4 +162,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

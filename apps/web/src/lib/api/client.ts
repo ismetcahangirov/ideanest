@@ -1,5 +1,41 @@
 import { ApiError } from './problem';
 import { currentAccessToken, refreshAccessToken } from './access-token';
+import { currentLocaleCookie } from '../i18n/cookie';
+import { DEFAULT_LOCALE } from '../i18n/locale';
+
+/**
+ * States the language this client is rendering in, on every request it makes — issue #324.
+ *
+ * <h2>This closes a real asymmetry rather than adding a feature</h2>
+ *
+ * The service has localised its taxonomy since V11: `CategoryController`,
+ * `PublicProjectController`, `DiscoveryController`, `SearchController`, `CollectionController`
+ * and `LocationController` all negotiate on `Accept-Language` and all set
+ * `Vary: Accept-Language`. This client has never sent one, so the header the browser happened
+ * to attach decided the language of every category name, collection title and facet label —
+ * which meant a visitor with a Russian browser read Russian category names on an otherwise
+ * English page, and nobody chose that.
+ *
+ * Sending the language the page is actually drawn in makes the two agree. When nobody has
+ * stated a preference the value is {@link DEFAULT_LOCALE}, which is the language the interface
+ * is in, so the default is not a silent change of behaviour for anybody — it is the first
+ * time the two halves of the page have been asked to match.
+ *
+ * <h2>Set rather than defaulted</h2>
+ *
+ * `Headers.set`, not `Headers.append`, and it runs before the caller's own headers are
+ * honoured nowhere — a caller that passes an explicit `Accept-Language` has a reason to and
+ * keeps it, because `new Headers(init.headers)` is constructed first and this only fills a
+ * gap. That matters for the one place that already threads a locale of its own:
+ * `lib/api/server.ts`, which negotiates on the server and must not be overruled here.
+ */
+function withLanguage(headers: Headers): Headers {
+  if (!headers.has('Accept-Language')) {
+    headers.set('Accept-Language', currentLocaleCookie() ?? DEFAULT_LOCALE);
+  }
+
+  return headers;
+}
 
 /**
  * Calls the API with the account's access token.
@@ -77,7 +113,7 @@ export async function authorizedFetch(path: string, init: RequestInit = {}): Pro
  */
 export async function publicFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const token = currentAccessToken();
-  const headers = new Headers(init.headers);
+  const headers = withLanguage(new Headers(init.headers));
   if (token !== null) headers.set('Authorization', `Bearer ${token}`);
 
   return fetch(path, {
@@ -89,7 +125,7 @@ export async function publicFetch(path: string, init: RequestInit = {}): Promise
 }
 
 function send(path: string, init: RequestInit, token: string): Promise<Response> {
-  const headers = new Headers(init.headers);
+  const headers = withLanguage(new Headers(init.headers));
   headers.set('Authorization', `Bearer ${token}`);
 
   return fetch(path, {

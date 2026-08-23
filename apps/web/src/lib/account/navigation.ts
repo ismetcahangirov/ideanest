@@ -54,29 +54,54 @@
  * published (§13.1). That is a missing half of one field rather than a page that cannot work,
  * which is the line this list draws.
  *
- * One §4.2 capability is still deliberately absent:
+ * **Language arrived with #324, and it is the second entry this comment used to argue
+ * against.** The argument was that P-10 was blocked on §21.1's localisation work and that
+ * `SiteFooter` already refused to draw a control that would change nothing — correct while
+ * it held, and it no longer does. `messages/{az,en,ru,tr}.json` exist, `i18n/request.ts`
+ * negotiates a language before the first byte of an account render, and `/settings/language`
+ * is a page rather than a promise. The entry is now the correct one and its absence would be
+ * the defect.
  *
- *   - **Language and currency** (P-10, #280) — blocked on §21.1's localisation work, and
- *     `SiteFooter` already refuses to draw a control that would change nothing.
+ * **P-10's other half — display currency — is still stated rather than offered, and that is
+ * not a page waiting to be written.** §21.2 gives the platform one currency and no rate
+ * source, so a chooser would convert AZN to AZN: a menu with a single entry in it, implying
+ * a second that nothing in the system can compute. `lib/money.ts` formats against the
+ * campaign's currency for the same reason — the currency is a property of the project and
+ * never of the reader. It arrives with a second currency, not with a control.
  *
- * It arrives with its page.
+ * <h2>Interface text lives in the catalogue, not here — §21.1</h2>
+ *
+ * Every entry carries a **key** rather than a sentence. The English used to be inline, which
+ * meant this file was readable and untranslatable at the same time: a navigation whose labels
+ * are literals is one that can only ever be drawn in one language, however many the service
+ * answers in. `account.groups.*` and `account.links.*.{label,summary}` are the addresses; the
+ * copy is in `messages/*.json` and `navigation.test.ts` asserts that every key here resolves
+ * in all four of them, because an entry whose Turkish label is missing is precisely the defect
+ * a catalogue exists to prevent.
+ *
+ * Each entry has a `.summary` beside its `.label` and **nothing draws it today**: `/settings`
+ * and `/account` are both redirects to their first screen rather than landing pages with a
+ * described list, for the reason those two files give. The line is written and translated
+ * because the first landing page or command palette that wants it should find it there rather
+ * than invent thirteen sentences in four languages; it is stated here so that its absence from
+ * every rendered surface is a known fact rather than a puzzle.
  */
 
 export interface AccountLink {
   readonly href: string;
-  readonly label: string;
-  /** One line under the label, for the landing page. The navigation itself shows only labels. */
-  readonly summary: string;
+  /** The `account.links.*` entry in the message catalogue that names this destination. */
+  readonly key: string;
 }
 
 export interface AccountGroup {
-  readonly heading: string;
+  /** The `account.groups.*` entry. */
+  readonly headingKey: string;
   readonly links: readonly AccountLink[];
 }
 
 export const ACCOUNT_GROUPS: readonly AccountGroup[] = Object.freeze([
   {
-    heading: 'Your account',
+    headingKey: 'yourAccount',
     links: [
       /*
        * FIRST, AND NOT UNDER `/account/*` LIKE THE FOUR BELOW IT — #287.
@@ -91,82 +116,46 @@ export const ACCOUNT_GROUPS: readonly AccountGroup[] = Object.freeze([
        * First in the group because it is the only entry about money. What somebody has
        * committed outranks what they have saved to look at later.
        */
-      {
-        href: '/pledges',
-        label: 'Pledges',
-        summary: 'What you have backed, and what you can still change.',
-      },
-      {
-        href: '/account/saved',
-        label: 'Saved projects',
-        summary: 'Campaigns you saved to come back to.',
-      },
-      {
-        href: '/account/following',
-        label: 'Following',
-        summary: 'Creators whose launches you are told about.',
-      },
-      {
-        href: '/account/surveys',
-        label: 'Surveys',
-        summary: 'What creators still need from you before they can ship.',
-      },
-      {
-        href: '/account/deliveries',
-        label: 'Deliveries',
-        summary: 'Where each reward is, and where it is going.',
-      },
+      { href: '/pledges', key: 'pledges' },
+      { href: '/account/saved', key: 'saved' },
+      { href: '/account/following', key: 'following' },
+      { href: '/account/surveys', key: 'surveys' },
+      { href: '/account/deliveries', key: 'deliveries' },
     ],
   },
   {
-    heading: 'Settings',
+    headingKey: 'settings',
     links: [
       /*
        * FIRST IN THE GROUP — #276. It is the only entry here about what strangers see; the
-       * five below it are about what the account is told, which devices are in, and what
-       * happens to its data. The visibility switch that decides whether the profile answers
-       * at all stays on "Data and closure" and `ProfileVisibilityPanel` explains why.
+       * seven below it are about what the account is told, which devices are in, what happens
+       * to its data, and which language all of it is written in. The visibility switch that
+       * decides whether the profile answers at all stays on "Data and closure" and
+       * `ProfileVisibilityPanel` explains why.
        */
-      {
-        href: '/settings/profile',
-        label: 'Profile',
-        summary: 'Your name, picture, biography and links, as everybody else sees them.',
-      },
-      {
-        href: '/settings/notifications',
-        label: 'Notifications',
-        summary: 'What IdeaNest tells you, and how it reaches you.',
-      },
-      {
-        href: '/settings/sessions',
-        label: 'Devices',
-        summary: 'Every browser signed in to this account.',
-      },
-      {
-        href: '/settings/email',
-        label: 'Email address',
-        summary: 'The address you sign in with, and where we write to you.',
-      },
-      {
-        href: '/settings/password',
-        label: 'Password',
-        summary: 'Change it here, or reset it by email if you cannot.',
-      },
-      {
-        href: '/settings/security',
-        label: 'Two-factor authentication',
-        summary: 'A code from your phone, on top of your password.',
-      },
-      {
-        href: '/settings/privacy',
-        label: 'Data and closure',
-        summary: 'Take a copy of your data, or close the account.',
-      },
+      { href: '/settings/profile', key: 'profile' },
+      { href: '/settings/notifications', key: 'notifications' },
+      { href: '/settings/sessions', key: 'sessions' },
+      { href: '/settings/email', key: 'email' },
+      { href: '/settings/password', key: 'password' },
+      { href: '/settings/security', key: 'security' },
+      { href: '/settings/privacy', key: 'privacy' },
+      /*
+       * LAST, BELOW "Data and closure" — #280.
+       *
+       * The group is ordered by how much a change here costs the person making it: what
+       * strangers see, then what the account is told, then which devices are in, then the
+       * credentials, then the two irreversible ones. Nothing in it costs less than the
+       * language the interface is drawn in — it changes nothing the account holds, nothing
+       * anybody else sees, and it is undone by choosing again — so it sits at the end rather
+       * than beside Profile, where it would push the settings that carry consequences down.
+       */
+      { href: '/settings/language', key: 'language' },
     ],
   },
 ]);
 
-/** Every link in both groups, flattened — the landing page and the tests read this. */
+/** Every link in both groups, flattened — what `accountLinkFor` searches, and what the tests read. */
 export const ACCOUNT_LINKS: readonly AccountLink[] = Object.freeze(
   ACCOUNT_GROUPS.flatMap((group) => group.links),
 );
@@ -184,7 +173,7 @@ export function isCurrentAccountLink(href: string, pathname: string): boolean {
   return pathname === href;
 }
 
-/** The heading for a path, or `null` where the path is not one of ours. */
+/** The catalogue entry for a path, or `null` where the path is not one of ours. */
 export function accountLinkFor(pathname: string): AccountLink | null {
   return ACCOUNT_LINKS.find((link) => link.href === pathname) ?? null;
 }

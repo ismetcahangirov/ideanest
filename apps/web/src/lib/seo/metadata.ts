@@ -28,15 +28,28 @@ import { absoluteUrl, siteUrl } from './sitemap/config';
 export const SITE_NAME = 'IdeaNest';
 
 /**
- * The `<html lang>` this application ships.
+ * The `<html lang>` of the **document**, which is the language of the public site.
  *
  * docs/architecture.md §21.1 makes Azerbaijani the primary language and English
- * phase 1, and `next-intl` is not wired up yet, so every string in this build is
- * English and `lang="en"` is the truth rather than the plan. IT LIVES HERE
- * BECAUSE THE ROOT LAYOUT AND `og:locale` MUST NOT DISAGREE: a page that
- * announces `lang="en"` to a screen reader and `az_AZ` to Facebook is lying to
- * one of them, and the localisation work has one constant to change rather than
- * two files to remember.
+ * phase 1. `next-intl` IS wired up now (#324) — what it covers is the account
+ * area, which is already rendered per person, and not the public routes, which
+ * are cached shared renders that a per-visitor language would turn into a render
+ * each. `src/i18n/request.ts` argues that trade-off in full and names the work
+ * that changes it (#123's locale-prefixed URLs, which are how a translated page
+ * stays cached).
+ *
+ * So `lang="en"` remains the truth about this document rather than the plan. The
+ * account area, when it renders in another language, declares that language on
+ * its own wrapper — `lang` is valid on any element and overrides for its subtree,
+ * which is the standard mechanism for a page with more than one language on it
+ * and is what keeps a screen reader from pronouncing Russian with English
+ * phonetics.
+ *
+ * IT LIVES HERE BECAUSE THE ROOT LAYOUT AND `og:locale` MUST NOT DISAGREE: a page
+ * that announces `lang="en"` to a screen reader and `az_AZ` to Facebook is lying
+ * to one of them, and there is one constant to change rather than two files to
+ * remember. `lib/i18n/locale.ts` holds the per-language Open Graph spellings for
+ * when a page can be served in more than one.
  */
 export const SITE_LANGUAGE = 'en';
 
