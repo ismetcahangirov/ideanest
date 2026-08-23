@@ -46,6 +46,7 @@
     "/search": 614,
     "/settings": 599,
     "/settings/email": 601,
+    "/settings/language": 602,
     "/settings/notifications": 629,
     "/settings/password": 600,
     "/settings/privacy": 606,

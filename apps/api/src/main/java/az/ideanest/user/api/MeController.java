@@ -29,6 +29,13 @@ public class MeController {
      * @param id the account
      * @param email returned in full, because the person reading it is the
      *     person it belongs to
+     * @param locale which of §21.1's four languages this account is set to (#324).
+     *     Carried on the owner's own read because the client cannot derive it: the
+     *     preference screen has to open showing the language that is stored rather
+     *     than the one the browser happens to be asking in, and every request the
+     *     client makes afterwards has to carry that same language as
+     *     {@code Accept-Language} — otherwise a person who chose Russian on one
+     *     device reads Azerbaijani on the next, and nothing on screen explains why
      * @param deletionScheduledAt when this account will be anonymised, or absent
      *     when nobody has asked for that. The client needs it to show the state
      *     the account is actually in — an account that has been closed and can
@@ -40,6 +47,7 @@ public class MeController {
             String email,
             String name,
             String slug,
+            String locale,
             boolean emailVerified,
             Instant deletionScheduledAt) {
     }
@@ -65,6 +73,7 @@ public class MeController {
                 account.email().value(),
                 account.name(),
                 account.slug(),
+                account.locale(),
                 account.emailVerified(),
                 account.deletionScheduledAt());
     }

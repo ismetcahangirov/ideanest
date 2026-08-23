@@ -85,6 +85,25 @@ function client(options: ServerReadOptions): ApiClient {
     : createApiClient({ baseUrl, fetch: options.fetchImpl });
 }
 
+/**
+ * <h2>WHY `locale` IS STILL NOT DEFAULTED HERE, AFTER #324</h2>
+ *
+ * The browser-side client now states the interface language on every request
+ * (`lib/api/client.ts`), and this one deliberately does not. Negotiating a language on this
+ * side means reading the cookie, and reading a cookie makes a render dynamic — these are
+ * the public reads, and every one of them is cached for the minute below. A `Vary`
+ * on a header we chose per visitor turns one shared render into one render each, on exactly
+ * the routes a stranger meets first.
+ *
+ * The consequence is written down rather than hidden: taxonomy names inside a **cached
+ * public** page follow whatever the *server's* request carried, not the reader's preference.
+ * The fix is one cached render per language keyed by the path, which is a locale-prefixed
+ * URL — #123 — and is the same reason `src/i18n/request.ts` gives for leaving the public
+ * shell in English.
+ *
+ * The parameter stays, because a caller inside an already-dynamic route may pass one and be
+ * right to.
+ */
 function readOptions(options: ServerReadOptions) {
   return {
     ...(options.locale === undefined ? {} : { headers: { 'accept-language': options.locale } }),

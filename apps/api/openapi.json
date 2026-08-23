@@ -2323,6 +2323,27 @@
         "tags" : [ "fulfilment-controller" ]
       }
     },
+    "/v1/me/locale" : {
+      "patch" : {
+        "operationId" : "localePreferenceSetLocale",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LocaleRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "locale-preference-controller" ]
+      }
+    },
     "/v1/me/notification-preferences" : {
       "get" : {
         "operationId" : "notificationPreferencePreferences",
@@ -7668,6 +7689,17 @@
           }
         }
       },
+      "LocaleRequest" : {
+        "type" : "object",
+        "properties" : {
+          "locale" : {
+            "type" : "string",
+            "minLength" : 1,
+            "pattern" : "az|en|ru|tr"
+          }
+        },
+        "required" : [ "locale" ]
+      },
       "Location" : {
         "type" : "object",
         "properties" : {
@@ -7730,6 +7762,9 @@
           "id" : {
             "type" : "string",
             "format" : "uuid"
+          },
+          "locale" : {
+            "type" : "string"
           },
           "name" : {
             "type" : "string"

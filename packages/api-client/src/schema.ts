@@ -964,6 +964,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/locale": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["localePreferenceSetLocale"];
+        trace?: never;
+    };
     "/v1/me/notification-preferences": {
         parameters: {
             query?: never;
@@ -2843,6 +2859,9 @@ export interface components {
             textual?: boolean;
             valueNode?: boolean;
         };
+        LocaleRequest: {
+            locale: string;
+        };
         Location: {
             name?: string;
             slug?: string;
@@ -2867,6 +2886,7 @@ export interface components {
             emailVerified?: boolean;
             /** Format: uuid */
             id?: string;
+            locale?: string;
             name?: string;
             slug?: string;
         };
@@ -3841,6 +3861,7 @@ export type SchemaItemBody = components['schemas']['ItemBody'];
 export type SchemaItemPatchRequest = components['schemas']['ItemPatchRequest'];
 export type SchemaItemResponse = components['schemas']['ItemResponse'];
 export type SchemaJsonNode = components['schemas']['JsonNode'];
+export type SchemaLocaleRequest = components['schemas']['LocaleRequest'];
 export type SchemaLocation = components['schemas']['Location'];
 export type SchemaLocationBody = components['schemas']['LocationBody'];
 export type SchemaLocationIndex = components['schemas']['LocationIndex'];
@@ -5575,6 +5596,28 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["BackerFulfilmentResponse"];
                 };
+            };
+        };
+    };
+    localePreferenceSetLocale: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocaleRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

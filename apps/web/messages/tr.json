@@ -1,0 +1,85 @@
+{
+  "common": {
+    "save": "Kaydet",
+    "cancel": "Vazgeç",
+    "saving": "Kaydediliyor…",
+    "tryAgain": "Tekrar deneyin"
+  },
+  "account": {
+    "groups": {
+      "yourAccount": "Hesabınız",
+      "settings": "Ayarlar"
+    },
+    "nav": {
+      "label": "Hesap"
+    },
+    "links": {
+      "pledges": {
+        "label": "Destekler",
+        "summary": "Desteklediğiniz kampanyalar ve hâlâ değiştirebilecekleriniz."
+      },
+      "saved": {
+        "label": "Kaydedilen projeler",
+        "summary": "Sonra dönmek için kaydettiğiniz kampanyalar."
+      },
+      "following": {
+        "label": "Takip edilenler",
+        "summary": "Lansmanlarından haberdar edildiğiniz kurucular."
+      },
+      "surveys": {
+        "label": "Anketler",
+        "summary": "Kurucuların gönderim yapabilmek için sizden hâlâ ihtiyaç duyduğu bilgiler."
+      },
+      "deliveries": {
+        "label": "Teslimatlar",
+        "summary": "Her ödülün nerede olduğu ve nereye gittiği."
+      },
+      "profile": {
+        "label": "Profil",
+        "summary": "Adınız, fotoğrafınız, biyografiniz ve bağlantılarınız — herkesin gördüğü hâliyle."
+      },
+      "notifications": {
+        "label": "Bildirimler",
+        "summary": "IdeaNest'in size ne söylediği ve bunun size nasıl ulaştığı."
+      },
+      "sessions": {
+        "label": "Cihazlar",
+        "summary": "Bu hesaba giriş yapmış bütün tarayıcılar."
+      },
+      "email": {
+        "label": "E-posta adresi",
+        "summary": "Giriş yaptığınız adres ve size yazdığımız yer."
+      },
+      "password": {
+        "label": "Parola",
+        "summary": "Buradan değiştirin, yapamıyorsanız e-postayla sıfırlayın."
+      },
+      "security": {
+        "label": "İki adımlı doğrulama",
+        "summary": "Parolanızın üstüne telefonunuzdan gelen bir kod."
+      },
+      "privacy": {
+        "label": "Veriler ve hesap kapatma",
+        "summary": "Verilerinizin bir kopyasını alın veya hesabı kapatın."
+      },
+      "language": {
+        "label": "Dil",
+        "summary": "IdeaNest'in size hangi dilde yazdığı."
+      }
+    }
+  },
+  "settings": {
+    "language": {
+      "title": "Dil",
+      "intro": "IdeaNest'in size hangi dilde yazacağını seçin.",
+      "fieldLabel": "Arayüz dili",
+      "fieldHint": "Hesap sayfalarınıza hemen uygulanır. Çevirinin geri kalanı yazılana kadar herkese açık site İngilizce kalır.",
+      "save": "Dili kaydet",
+      "saved": "Dil kaydedildi.",
+      "failed": "Dil kaydedilemedi. Tekrar deneyin.",
+      "currencyHeading": "Para birimi",
+      "currencyValue": "Azerbaycan manatı (AZN)",
+      "currencyNote": "Bugün IdeaNest'teki bütün kampanyalar manat ile finanse ediliyor, bu yüzden burada seçilecek bir şey yok. Görüntüleme para birimi ikincisiyle birlikte gelecek."
+    }
+  }
+}

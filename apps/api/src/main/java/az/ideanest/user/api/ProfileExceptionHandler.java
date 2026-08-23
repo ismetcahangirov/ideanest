@@ -13,9 +13,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 /**
  * What §4.2's profile endpoints refuse, as RFC 9457 problem details (§10.4).
  *
- * <p>Four of them since #276 — the public page, P-07's switch, and the owner's own read and
- * write — and they belong under one advice because they refuse overlapping things: an
- * {@link AccountNotFoundException} means the same thing on three of them.
+ * <p>Five of them since #324 — the public page, P-07's switch, P-10's language, and the
+ * owner's own read and write — and they belong under one advice because they refuse
+ * overlapping things: an {@link AccountNotFoundException} means the same thing on four of
+ * them, and the language write is here rather than in its own file for exactly that reason.
+ * A second advice would be a second spelling of one 404, and two spellings of a body that
+ * must not distinguish a deleted account from one that never existed is how they come to
+ * differ.
  *
  * <p>Its own advice rather than two types added to {@link UserExceptionHandler}, following
  * {@code PublicBackerExceptionHandler}: that file is scoped to the three controllers that
@@ -36,6 +40,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
         assignableTypes = {
             PublicProfileController.class,
             ProfileVisibilityController.class,
+            LocalePreferenceController.class,
             OwnProfileController.class
         })
 public class ProfileExceptionHandler {

@@ -80,6 +80,7 @@ the browser half of the auth flow work at all.
 | `/settings/profile` | Site | §4.2 P-01 to P-03: name, biography, picture, website, location and links (#276). The picture is an address, not an upload — §13.1 |
 | `/settings/email` | Site | §4.1 A-12: asks to move the account. Says plainly that nothing has changed yet (#277) |
 | `/settings/password` | Site | §4.1 A-13: replaces the password. Signs the reader out, and says so before they submit (#277) |
+| `/settings/language` | Site | §4.2 P-10: the interface language, from §21.1's four (#280). The currency is stated rather than offered — §21.2 has one currency and no rate source |
 | `/account` | Site | Redirects to `/account/saved` (#275) |
 | `/account/saved` | Site | §4.9 C-10: the campaigns this account saved (#288) |
 | `/account/following` | Site | §4.9 C-10: the creators it follows (#288) |
@@ -142,6 +143,21 @@ shell for the opposite reason: a sign-in page is a screen with one job, and some
 signed in and changing a notification setting is not mid-transaction. `/settings/sessions` and
 `/settings/notifications` each lost a `<main>` of their own in the move, because `SiteShell`
 owns the only one on the page.
+
+**Which routes are key-based, and which are still English literals (#324).** The message
+catalogue lives in `messages/{az,en,ru,tr}.json` and `src/i18n/request.ts` negotiates the
+reader's language from a cookie. It covers **the account area only** — `/settings/*`,
+`/account/*` and `/pledges/*`, through `AccountArea` and its navigation, plus
+`/settings/language` itself. Every other route in the table above is an inline English
+literal today.
+
+That split is a caching decision rather than a to-do list. Reading a cookie makes a render
+dynamic; the account area is authenticated and renders per person already, so it pays
+nothing, while `/`, the category landings and the static pages are cached shared renders that
+a per-visitor language would turn into a render each. The way out is one cached render per
+language keyed by the path — locale-prefixed URLs, which is #123 — and until then
+`app/layout.tsx` keeps `lang="en"` for the document while `AccountArea` declares its own
+language on the subtree it translates. `docs/architecture.md` §21.1 carries the full argument.
 
 **There is no route for the two-factor challenge (#272).** It is a state of the sign-in form.
 The challenge `POST /v1/auth/login` returns is a credential for the next few minutes — the

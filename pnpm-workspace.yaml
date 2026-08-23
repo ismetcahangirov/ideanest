@@ -2,6 +2,15 @@ packages:
   - 'apps/*'
   - 'packages/*'
 allowBuilds:
+  # Both arrived under `next-intl` (#324) and both are refused, because neither
+  # is on the path to a build. `@parcel/watcher` is a native file watcher used
+  # for development reloading, and `@swc/core` ships prebuilt bindings as
+  # optional dependencies — its install script only compiles one when no
+  # prebuilt binary matches the platform, which is not this one. Allowing a
+  # postinstall script is allowing arbitrary code at install time, so the
+  # default here is no and each yes needs the reason beside it.
+  '@parcel/watcher': false
+  '@swc/core': false
   esbuild: true
   # Next's image optimiser. Arrives as an optional dependency of `next` and
   # needs its native binding built.
