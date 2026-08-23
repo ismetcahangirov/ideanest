@@ -185,6 +185,24 @@ Marked `[W]` web, `[M]` mobile, `[A]` admin.
 > lands rather than guessing. Reading it on the server would mean widening the
 > cookie's path, which is a decision for §17 and not for the client.
 
+> **The web client's second factor is a step on the sign-in form, not a route,
+> and that is a property of the challenge.** `POST /v1/auth/login` answers a
+> confirmed account with a challenge rather than tokens, and `TokenController`
+> marks that response `no-store` because the challenge is a credential for the
+> next few minutes. A URL is the one place such a value must not go — a query
+> string is written to access logs, kept in browser history, and forwarded in the
+> `Referer` header of whatever the page loads next, which is the same argument
+> `VerifyEmailRequest` makes about the verification token. #272 built the step;
+> there is no `/two-factor` path to look for.
+>
+> **`GET /v1/me` does not say whether two-factor is on, and #278's screen cannot
+> ask.** Its six fields carry no `twoFactorEnabled`, and no other read answers it
+> either. The enrolment screen therefore offers both directions and lets
+> `POST /v1/auth/2fa/enable` decide — it refuses an already-confirmed enrolment
+> with a sentence written for the account's owner. A field on `GET /v1/me` is the
+> honest fix and belongs to whoever owns this section rather than to an epic
+> scoped to the web client.
+
 ### 4.2 Profile
 
 | # | Capability | Platform |
@@ -199,6 +217,20 @@ Marked `[W]` web, `[M]` mobile, `[A]` admin.
 | P-08 | Blocked users | W |
 | P-09 | Notification preferences | W, M |
 | P-10 | Language and currency | W, M |
+
+> **The web client's account area is one navigation over two prefixes**, built by
+> #275: `/settings/*` for what somebody decides — notifications, devices,
+> two-factor, data and closure — and `/account/*` for what they have — saved
+> campaigns, followed creators, surveys, deliveries. The split is a fact about the
+> existing URLs rather than a design. `/settings/notifications` is the address in
+> every notification email the platform has sent, and moving it under `/account`
+> to buy a tidier tree would break links this repository does not own.
+>
+> **P-01 to P-03 and P-10 are absent from that navigation on purpose.** The
+> profile editor has no write to save to — there is no `PATCH /v1/me` — and the
+> language and currency preferences are blocked on §21.1. An entry pointing at a
+> page that cannot work is worse than no entry, which is the rule the site header
+> already follows.
 
 ### 4.3 Discovery and search `[W] [M]`
 
@@ -1262,9 +1294,11 @@ Preferences are per category and per channel, with a digest option.
 > own root with a 404. A capability that belongs to every screen belongs to no
 > feature, and that is exactly the kind of gap an inventory has to be told to
 > look for. Epic #258 works from this table, and the first pull request under it
-> built WS-01 through WS-06 and WS-09. WS-07 (#292) and WS-08 (#293, blocked on a
-> legal deliverable) are still to come, and `apps/web/README.md`'s route table is
-> the inventory of what actually exists.
+> built WS-01 through WS-06 and WS-09. **WS-07 (#292) landed with the account
+> area**, so the footer carries About, How it works and Trust and safety and the
+> sitemap advertises all three. WS-08 (#293) is still to come and is blocked on a
+> legal deliverable §22 owns; the footer still has no Legal column, deliberately.
+> `apps/web/README.md`'s route table is the inventory of what actually exists.
 
 | # | Capability | Note |
 |---|---|---|

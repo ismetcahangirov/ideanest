@@ -4,6 +4,7 @@ import { CampaignOutcomeNotice } from '../../../../components/project/CampaignOu
 import { CampaignRewards } from '../../../../components/project/CampaignRewards';
 import { CampaignStory } from '../../../../components/project/CampaignStory';
 import { CampaignSummary } from '../../../../components/project/CampaignSummary';
+import { ReportControl } from '../../../../components/moderation/ReportControl';
 import { StructuredData } from '../../../../components/seo/StructuredData';
 import { fetchCampaignPage, fetchPublicRewards } from '../../../../lib/api/server';
 import { previewOf, readCampaignPage, tiersOf } from '../../../../lib/projects/publicPage';
@@ -191,6 +192,35 @@ export default async function CampaignPage({
         </div>
 
         <CampaignRewards tiers={tiers} />
+      </div>
+
+      {/*
+        §4.9's C-06, mounted by #286.
+
+        AT THE FOOT OF THE PAGE, AND QUIET. A Report control beside the pledge button would
+        put "something is wrong here" next to "give this person money" on every campaign,
+        including the honest ones. Somebody who wants to report a campaign has read it, so
+        the end of the page is where they are; `--text-tertiary` at 4.9:1 is legible without
+        competing (docs/ui-kit.md §9.1).
+
+        THE CREATOR'S ACCOUNT CANNOT BE REPORTED FROM HERE. `POST /v1/users/{id}/report`
+        takes an identifier and `GET /v1/projects/{creatorSlug}/{projectSlug}` returns the
+        creator's slug, name and avatar — not their id. The surface that has one is the
+        public profile, #274, which is itself blocked on a `GET /v1/users/{slug}` the service
+        does not publish. `ReportControl` already takes an account target; it gains an entry
+        point when that page lands.
+
+        It is a client boundary, and the only one beneath this route. `ReportControl` writes
+        §4.11's dialog entry as a CSS keyframe rather than importing `@ideanest/ui/motion`,
+        for the reason the header comment above gives about `FadeUp`: 116 kB of animation
+        runtime is not spent on the page #119 exists to keep fast.
+      */}
+      <div className="mt-16 border-t border-white/6 pt-6">
+        <ReportControl
+          target={{ kind: 'campaign', id: campaign.id }}
+          name={campaign.title}
+          returnTo={pathOf(creatorSlug, projectSlug)}
+        />
       </div>
     </main>
   );

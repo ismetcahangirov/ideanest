@@ -1,0 +1,97 @@
+import { describe, expect, it } from 'vitest';
+import { SESSION_REQUIRED_PATHS } from '../session/private-routes';
+import {
+  ACCOUNT_GROUPS,
+  ACCOUNT_LINKS,
+  accountLinkFor,
+  isCurrentAccountLink,
+} from './navigation';
+
+/**
+ * §4.2's account navigation — issue #275.
+ *
+ * WHAT THESE COVER:
+ *
+ *   - **every entry points at a route this application serves.** `components/shell/navigation.ts`
+ *     has the same test for the same reason, and it matters more here: an account navigation is
+ *     exactly where somebody adds the entry before the page.
+ *   - **every entry is behind the session guard.** Each of these screens reads one person's own
+ *     data, so a path that `requiresSession` does not match is a path an anonymous visitor
+ *     reaches and gets a wall of 401s on.
+ *   - the current-page match is exact. A prefix match would be a second answer to a question
+ *     `isCurrent` already answers differently for the site header, and the difference is
+ *     deliberate.
+ */
+
+const ROUTES_THAT_EXIST = new Set([
+  '/account/saved',
+  '/account/following',
+  '/account/surveys',
+  '/account/deliveries',
+  '/settings/notifications',
+  '/settings/sessions',
+  '/settings/security',
+  '/settings/privacy',
+]);
+
+/** The same matcher `SessionProvider` guards with, kept in step by importing the list. */
+function guarded(pathname: string): boolean {
+  return SESSION_REQUIRED_PATHS.some((pattern) => {
+    const patternSegments = pattern.split('/');
+    const pathSegments = pathname.split('/');
+    if (pathSegments.length < patternSegments.length) return false;
+    return patternSegments.every(
+      (segment, index) => segment === '*' || segment === pathSegments[index],
+    );
+  });
+}
+
+describe('the account navigation', () => {
+  it('points only at routes that exist', () => {
+    for (const link of ACCOUNT_LINKS) {
+      expect(ROUTES_THAT_EXIST, `${link.href} is in the account navigation`).toContain(link.href);
+    }
+  });
+
+  it('lists every route that exists, so a built screen is not unreachable', () => {
+    expect(new Set(ACCOUNT_LINKS.map((link) => link.href))).toEqual(ROUTES_THAT_EXIST);
+  });
+
+  it('puts every entry behind the session guard', () => {
+    for (const link of ACCOUNT_LINKS) {
+      expect(guarded(link.href), `${link.href} requires a session`).toBe(true);
+    }
+  });
+
+  it('labels and summarises every entry', () => {
+    for (const link of ACCOUNT_LINKS) {
+      expect(link.label.trim()).not.toBe('');
+      expect(link.summary.trim()).not.toBe('');
+    }
+  });
+
+  it('offers no profile editor, because there is no endpoint to save one to', () => {
+    // #276 is blocked: the service has no `PATCH /v1/me`. An entry here would be a form with
+    // nowhere to save.
+    expect(ACCOUNT_LINKS.map((link) => link.href)).not.toContain('/settings/profile');
+  });
+
+  it('groups them by the question being asked rather than by URL prefix', () => {
+    expect(ACCOUNT_GROUPS.map((group) => group.heading)).toEqual(['Your account', 'Settings']);
+  });
+});
+
+describe('isCurrentAccountLink', () => {
+  it('is exact', () => {
+    expect(isCurrentAccountLink('/settings/security', '/settings/security')).toBe(true);
+    expect(isCurrentAccountLink('/settings', '/settings/security')).toBe(false);
+    expect(isCurrentAccountLink('/account/saved', '/account/saved-later')).toBe(false);
+  });
+});
+
+describe('accountLinkFor', () => {
+  it('finds the entry for a path, and answers null for one that is not ours', () => {
+    expect(accountLinkFor('/account/surveys')?.label).toBe('Surveys');
+    expect(accountLinkFor('/pledges/abc/address')).toBeNull();
+  });
+});

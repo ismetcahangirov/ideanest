@@ -7,8 +7,11 @@ import { MailCheck } from 'lucide-react';
 import { Field, InlineAlert, Pill, TextInput } from '@ideanest/ui';
 import { register } from '../../lib/auth/api';
 import { describeAuthFailure, fieldErrorsOf, type AuthFailure } from '../../lib/auth/failures';
-import { RETURN_TO_PARAM, safeReturnPath } from '../../lib/auth/redirect';
+import { DEFAULT_SIGNED_IN_PATH, RETURN_TO_PARAM, safeReturnPath } from '../../lib/auth/redirect';
 import { AuthPageHeader } from './AuthPageHeader';
+import { ProviderSignIn } from './ProviderSignIn';
+import { TwoFactorChallenge } from './TwoFactorChallenge';
+import { useSignInOutcome } from './useSignInOutcome';
 
 /**
  * §4.1's A-01 — account creation, and the "check your email" state that follows it. Issue
@@ -57,6 +60,22 @@ export function RegisterForm() {
 
   const returnTo = searchParams.get(RETURN_TO_PARAM);
 
+  /*
+   * A PROVIDER SIGN-IN ON THIS SCREEN CREATES A SESSION, and that is not a contradiction: §17.1
+   * makes `POST /v1/auth/oauth/{provider}` create the account when the provider's address is
+   * verified and unknown here, and sign in when it is known. There is no "register with Google"
+   * that is a different request from "sign in with Google" — the button does one thing and the
+   * service decides which of the two happened.
+   *
+   * So this form owns the same outcome handling `SignInForm` does, including the two-factor
+   * branch: somebody who already has an account with a second factor can press the button on
+   * this page, and skipping the challenge because the screen is called Register would be
+   * exactly the bypass `useSignInOutcome` exists to prevent.
+   */
+  const { challenge, settle, finish, clearChallenge } = useSignInOutcome(
+    safeReturnPath(returnTo) ?? DEFAULT_SIGNED_IN_PATH,
+  );
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting) return;
@@ -76,6 +95,22 @@ export function RegisterForm() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (challenge !== null) {
+    return (
+      <>
+        <AuthPageHeader title="One more step">
+          This account already has two-factor authentication switched on.
+        </AuthPageHeader>
+        <TwoFactorChallenge
+          challenge={challenge.value}
+          expiresInSeconds={challenge.expiresInSeconds}
+          onSignedIn={finish}
+          onStartOver={clearChallenge}
+        />
+      </>
+    );
   }
 
   if (sentTo !== null) {
@@ -197,6 +232,15 @@ export function RegisterForm() {
           it is a claim that somebody accepted something nobody has written.
         */}
       </form>
+
+      {/*
+        The providers, below the form for `SignInForm`'s reason. `intent="register"` only
+        changes Google's own wording on its button — the request is identical, because the
+        service decides whether an account is created (§17.1's linking table).
+      */}
+      <div className="mt-6">
+        <ProviderSignIn onOutcome={settle} intent="register" />
+      </div>
     </>
   );
 }

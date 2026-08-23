@@ -35,8 +35,17 @@ const ROUTES_THAT_EXIST = new Set([
   '/search',
   '/notifications',
   '/projects/new',
+  '/about',
+  '/how-it-works',
+  '/trust-safety',
+  '/account/saved',
+  '/account/following',
+  '/account/surveys',
+  '/account/deliveries',
   '/settings/notifications',
   '/settings/sessions',
+  '/settings/security',
+  '/settings/privacy',
   '/sign-in',
   '/register',
 ]);
@@ -55,6 +64,15 @@ describe('the navigation lists', () => {
 
   it('keep the header to the two entries §8.6’s collapsed pill has room for', () => {
     expect(PRIMARY_NAVIGATION).toHaveLength(2);
+  });
+
+  it('carry the static content pages #292 built', () => {
+    // WS-07. They were absent while there was nothing behind them; a footer that lists them
+    // and a build that does not serve them is the failure this file exists to catch.
+    const targets = FOOTER_GROUPS.flatMap((group) => group.links.map((link) => link.href));
+    expect(targets).toContain('/about');
+    expect(targets).toContain('/how-it-works');
+    expect(targets).toContain('/trust-safety');
   });
 
   it('carry no legal column, because §22 has not written the pages yet', () => {

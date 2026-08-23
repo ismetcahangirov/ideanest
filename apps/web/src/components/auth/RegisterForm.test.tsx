@@ -3,6 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiError } from '../../lib/api/problem';
 import { register } from '../../lib/auth/api';
+import { SessionProvider } from '../session/SessionProvider';
 import { RegisterForm } from './RegisterForm';
 
 /**
@@ -25,6 +26,8 @@ let search = '';
 
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(search),
+  // `SessionProvider` reads it for the private-route guard; nothing on this screen is private.
+  usePathname: () => '/register',
   useRouter: () => ({
     push: () => {},
     replace: () => {},
@@ -40,7 +43,25 @@ vi.mock('../../lib/auth/api', async (importOriginal) => ({
   register: vi.fn(),
 }));
 
+/*
+ * #273 put the provider buttons on this screen, and #272 the two-factor branch behind them, so
+ * the form now reads the session through `useSignInOutcome` — a provider sign-in creates one.
+ * The bootstrap is stubbed rather than the provider being replaced: what is under test is the
+ * registration path, and a `SessionProvider` that resolves to "signed out" is the state
+ * somebody filling in this form is actually in.
+ */
+vi.mock('../../lib/session/session', () => ({ fetchSession: vi.fn().mockResolvedValue(null) }));
+vi.mock('../../lib/api/access-token', () => ({ signOut: vi.fn().mockResolvedValue(undefined) }));
+
 const registerMock = vi.mocked(register);
+
+function renderForm() {
+  return render(
+    <SessionProvider>
+      <RegisterForm />
+    </SessionProvider>,
+  );
+}
 
 async function fillAndSubmit(
   user: ReturnType<typeof userEvent.setup>,
@@ -63,7 +84,7 @@ describe('a successful registration', () => {
   it('shows the check-your-email state and echoes the address back', async () => {
     const user = userEvent.setup();
     registerMock.mockResolvedValue(undefined);
-    render(<RegisterForm />);
+    renderForm();
 
     await fillAndSubmit(user);
 
@@ -75,7 +96,7 @@ describe('a successful registration', () => {
   it('says nothing about whether the account already existed', async () => {
     const user = userEvent.setup();
     registerMock.mockResolvedValue(undefined);
-    render(<RegisterForm />);
+    renderForm();
 
     await fillAndSubmit(user);
     await screen.findByRole('heading', { name: 'Check your email' });
@@ -89,7 +110,7 @@ describe('a successful registration', () => {
   it('replaces the form rather than leaving it underneath', async () => {
     const user = userEvent.setup();
     registerMock.mockResolvedValue(undefined);
-    render(<RegisterForm />);
+    renderForm();
 
     await fillAndSubmit(user);
     await screen.findByRole('heading', { name: 'Check your email' });
@@ -101,7 +122,7 @@ describe('a successful registration', () => {
   it('trims what was typed before sending it', async () => {
     const user = userEvent.setup();
     registerMock.mockResolvedValue(undefined);
-    render(<RegisterForm />);
+    renderForm();
 
     await fillAndSubmit(user, '  aysel@example.com  ');
     await screen.findByRole('heading', { name: 'Check your email' });
@@ -120,7 +141,7 @@ describe('a refused registration', () => {
         errors: { password: 'A password must be at least 12 characters' },
       }),
     );
-    render(<RegisterForm />);
+    renderForm();
 
     await fillAndSubmit(user);
 
@@ -132,7 +153,7 @@ describe('a refused registration', () => {
   it('keeps the form so the reader can correct it', async () => {
     const user = userEvent.setup();
     registerMock.mockRejectedValue(new ApiError(400, { title: 'Invalid request' }));
-    render(<RegisterForm />);
+    renderForm();
 
     await fillAndSubmit(user);
 
@@ -141,7 +162,7 @@ describe('a refused registration', () => {
   });
 
   it('states its own password minimum nowhere', () => {
-    render(<RegisterForm />);
+    renderForm();
     // The policy decides, and `RegistrationRequest` deliberately carries no length annotation
     // so that one place decides what is acceptable.
     expect(screen.queryByText(/\d+ characters/u)).toBeNull();
@@ -151,7 +172,7 @@ describe('a refused registration', () => {
 describe('the links', () => {
   it('carries the return path on to the sign-in page', () => {
     search = 'next=%2Fsettings';
-    render(<RegisterForm />);
+    renderForm();
 
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
       'href',
@@ -160,7 +181,7 @@ describe('the links', () => {
   });
 
   it('offers no consent to a document that has not been written', () => {
-    render(<RegisterForm />);
+    renderForm();
     expect(screen.queryByText(/terms/iu)).toBeNull();
     expect(screen.queryByRole('link', { name: /privacy/iu })).toBeNull();
   });

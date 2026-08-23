@@ -2,12 +2,14 @@
 
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Field, InlineAlert, Pill, TextInput } from '@ideanest/ui';
 import { deviceLabelOf, signIn } from '../../lib/auth/api';
 import { describeAuthFailure, fieldErrorsOf, type AuthFailure } from '../../lib/auth/failures';
 import { DEFAULT_SIGNED_IN_PATH, RETURN_TO_PARAM, safeReturnPath } from '../../lib/auth/redirect';
-import { useSession } from '../session/SessionProvider';
+import { ProviderSignIn } from './ProviderSignIn';
+import { TwoFactorChallenge } from './TwoFactorChallenge';
+import { useSignInOutcome } from './useSignInOutcome';
 
 /**
  * §4.1's A-03 — email and password sign-in. Issue #268.
@@ -39,14 +41,18 @@ import { useSession } from '../session/SessionProvider';
  * The session is re-read before navigating, so the header shows the reader's name on the page
  * they land on rather than a frame later.
  *
- * <h2>Two-factor</h2>
+ * <h2>Two-factor, and the providers</h2>
  *
  * `POST /v1/auth/login` answers 200 with a challenge instead of tokens when the account has a
- * second factor confirmed, and **the challenge screen is #272 and is not built.** This form
- * says so plainly rather than failing silently or, worse, reporting a wrong password. It is
- * reachable today only by an account that enrolled through another client, because the web
- * enrolment screen (#278) does not exist either — which is why #272 was not folded into this
- * pull request.
+ * second factor confirmed, and #272 built the step that answers it. **It is a state of this
+ * form rather than a route**, because the challenge is a credential for the next few minutes
+ * and a URL is the one place a credential must not go — `TwoFactorChallenge` argues it at
+ * length.
+ *
+ * `ProviderSignIn` (#273) sits below the form and shares this component's outcome handler,
+ * because `TokenController` answers a provider sign-in through the same `respondTo`: an
+ * account with a second factor gets a challenge whichever way the password step was passed,
+ * and a provider button that skipped it would make two-factor advisory.
  *
  * <h2>Motion</h2>
  *
@@ -55,18 +61,16 @@ import { useSession } from '../session/SessionProvider';
  */
 
 export function SignInForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const { refresh } = useSession();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<AuthFailure | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Readonly<Record<string, string>>>({});
-  const [twoFactor, setTwoFactor] = useState(false);
 
   const returnTo = safeReturnPath(searchParams.get(RETURN_TO_PARAM)) ?? DEFAULT_SIGNED_IN_PATH;
+  const { challenge, settle, finish, clearChallenge } = useSignInOutcome(returnTo);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -75,28 +79,15 @@ export function SignInForm() {
     setSubmitting(true);
     setFailure(null);
     setFieldErrors({});
-    setTwoFactor(false);
 
     try {
-      const outcome = await signIn({
-        email: email.trim(),
-        password,
-        ...(deviceLabel() === undefined ? {} : { deviceLabel: deviceLabel() as string }),
-      });
-
-      if (outcome.kind === 'two-factor-required') {
-        setTwoFactor(true);
-        return;
-      }
-
-      /*
-       * The session is read before the navigation rather than after it. The shell reads its
-       * state from the provider, and navigating first would land the reader on a page whose
-       * header still says Sign in — briefly, and exactly at the moment they are checking
-       * whether it worked.
-       */
-      await refresh();
-      router.replace(returnTo);
+      await settle(
+        await signIn({
+          email: email.trim(),
+          password,
+          ...(deviceLabel() === undefined ? {} : { deviceLabel: deviceLabel() as string }),
+        }),
+      );
     } catch (cause) {
       setFailure(describeAuthFailure(cause));
       setFieldErrors(fieldErrorsOf(cause));
@@ -105,7 +96,28 @@ export function SignInForm() {
     }
   }
 
+  if (challenge !== null) {
+    return (
+      <TwoFactorChallenge
+        challenge={challenge.value}
+        expiresInSeconds={challenge.expiresInSeconds}
+        onSignedIn={finish}
+        onStartOver={() => {
+          /*
+           * The password is cleared with the challenge. Somebody starting over is either on
+           * the wrong account or has decided to sign in as somebody else, and a form that
+           * kept the previous password filled in is a form that signs them back into it.
+           */
+          clearChallenge();
+          setPassword('');
+          setFailure(null);
+        }}
+      />
+    );
+  }
+
   return (
+    <div className="flex flex-col gap-6">
     <form onSubmit={submit} noValidate className="flex flex-col gap-5">
       {/*
         `noValidate` because the browser's own bubble is not this form's error treatment:
@@ -118,16 +130,6 @@ export function SignInForm() {
       {failure !== null && (
         <InlineAlert variant="danger" title={failure.title}>
           <p>{failure.detail}</p>
-        </InlineAlert>
-      )}
-
-      {twoFactor && (
-        <InlineAlert variant="warning" title="This account needs a second factor">
-          <p>
-            Your password was accepted. This account has two-factor authentication switched on,
-            and the screen that asks for the code is not built in the web client yet — signing
-            in from the mobile application will work in the meantime.
-          </p>
         </InlineAlert>
       )}
 
@@ -181,6 +183,15 @@ export function SignInForm() {
         the platform: it is offered to somebody who is already locked out.
       */}
     </form>
+
+      {/*
+        Below the form rather than above it. §4.1 A-03 is the path most accounts here take, and
+        a screen that opens with two provider buttons pushes the field somebody came to type in
+        below the fold on a phone. It renders nothing at all when neither provider is
+        configured.
+      */}
+      <ProviderSignIn onOutcome={settle} />
+    </div>
   );
 }
 

@@ -1,5 +1,6 @@
 import { setAccessToken } from '../api/access-token';
 import { errorFrom } from '../api/problem';
+import { postToAuth } from './post';
 
 /**
  * §4.1's authentication endpoints, as the browser calls them — A-01, A-02, A-03.
@@ -29,34 +30,14 @@ import { errorFrom } from '../api/problem';
  */
 
 /**
- * `X-IdeaNest-Client`, which `lib/api/access-token.ts` sends on every cookie-authenticated
- * request and this module sends on all three of its own.
+ * `X-IdeaNest-Client`, `credentials: same-origin` and `no-store` are `./post.ts`'s, and it is
+ * the only way anything in this application posts to `/v1/auth`.
  *
- * On the sign-in it carries no cookie yet and is sent anyway. The header costs nothing, the
- * service reads it as "this is the web client", and a client that sets it only where it is
- * strictly required is a client whose next endpoint forgets to.
+ * IT MOVED WHEN THE SECOND CALLER ARRIVED. The two-factor challenge (#272) and the provider
+ * sign-ins (#273) finish a sign-in this module starts, and a second copy of the same six
+ * lines is a second place `credentials: 'same-origin'` can be dropped — which fails silently,
+ * by simply not storing the refresh cookie.
  */
-const CLIENT_HEADER = 'X-IdeaNest-Client';
-const CLIENT_HEADER_VALUE = 'ideanest-web';
-
-async function post(path: string, body: unknown): Promise<Response> {
-  return fetch(path, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      [CLIENT_HEADER]: CLIENT_HEADER_VALUE,
-    },
-    body: JSON.stringify(body),
-    credentials: 'same-origin',
-    /*
-     * `no-store`, and this is the case `lib/api/client.ts` calls out as genuinely wanting
-     * it rather than `no-cache`: a credential exchange carries no validator to win a `304`
-     * with, so nothing is given up by refusing to store it, and what would be stored is
-     * somebody's sign-in response.
-     */
-    cache: 'no-store',
-  });
-}
 
 /* -------------------------------------------------------------------------
  * A-01 — registration
@@ -80,7 +61,7 @@ export interface RegistrationInput {
  * this shows the same "check your email" state either way.
  */
 export async function register(input: RegistrationInput): Promise<void> {
-  const response = await post('/v1/auth/register', {
+  const response = await postToAuth('/v1/auth/register', {
     email: input.email,
     password: input.password,
     name: input.name,
@@ -108,7 +89,7 @@ export async function register(input: RegistrationInput): Promise<void> {
  * spent, or never existed.
  */
 export async function verifyEmail(token: string): Promise<void> {
-  const response = await post('/v1/auth/verify-email', { token });
+  const response = await postToAuth('/v1/auth/verify-email', { token });
   if (!response.ok) throw await errorFrom(response);
 }
 
@@ -164,12 +145,26 @@ interface TokenBody {
  * the one wrong-credentials sentence the service wrote.
  */
 export async function signIn(input: SignInInput): Promise<SignInOutcome> {
-  const response = await post('/v1/auth/login', {
+  const response = await postToAuth('/v1/auth/login', {
     email: input.email,
     password: input.password,
     ...(input.deviceLabel === undefined ? {} : { deviceLabel: input.deviceLabel }),
   });
 
+  return readSignInOutcome(response);
+}
+
+/**
+ * Turns a sign-in response into an outcome, and writes the token when there is one.
+ *
+ * SHARED WITH THE PROVIDER SIGN-INS (#273), because `TokenController` deliberately answers
+ * `/v1/auth/login` and `/v1/auth/oauth/{provider}` through one `respondTo` — same session,
+ * same rotation, and a challenge from either when the account has a second factor confirmed.
+ * Its own comment gives the reason: "letting a provider button skip it would make two-factor
+ * advisory, which is the same as not having it." A client that parsed the two responses in
+ * two places is a client where one of them eventually forgets the challenge branch.
+ */
+export async function readSignInOutcome(response: Response): Promise<SignInOutcome> {
   if (!response.ok) throw await errorFrom(response);
 
   const body = (await response.json()) as TokenBody;
