@@ -20,6 +20,20 @@ import { ApiError, type Problem } from '../api/problem';
  * kept underneath it when there is one — it is the half that names the tier, the
  * country, or the amount, and it is written by the code that knows which. Nothing
  * branches on `detail`; `code` is the only thing matched against (§10.4).
+ *
+ * <h2>The pledge manager reads this table too, and it is still one table</h2>
+ *
+ * #287 added §4.5's PL-09 edit and PL-10 cancellation, which raise four codes checkout never
+ * sees (`PLEDGE_NOT_EDITABLE`, `PLEDGE_NOT_FOUND`, `REWARD_NOT_FOUND`) and re-raise several it
+ * does. A second table keyed by endpoint was the alternative and it is the wrong shape: the
+ * codes are properties of the pledge module rather than of the screen that met them, and
+ * `PROJECT_NOT_LIVE` from a cancellation means precisely what `PROJECT_NOT_LIVE` from a draft
+ * means. What did change is one sentence — that entry used to say "nothing was reserved",
+ * which is a claim about a request only checkout makes.
+ *
+ * `CheckoutFailure` keeps its name, because roughly a dozen files import it and renaming a
+ * type is a large diff whose only effect is to make a later reader wonder what changed about
+ * the error handling. Nothing did.
  */
 
 /** What the interface should offer next. */
@@ -136,9 +150,15 @@ const WORDING: Record<string, Wording> = {
     recovery: 'change-selection',
   },
   PLEDGE_ALREADY_EXISTS: {
+    /*
+     * The recovery changed with #287 and the sentence changed with it. It used to end "which
+     * is not something this build can do yet", which was true while the pledge manager did
+     * not exist; `/pledges/{id}` is now where a backer changes what they chose, so the
+     * refusal points at it instead of at a dead end.
+     */
     title: 'You are already backing this campaign',
     detail:
-      'One pledge per campaign. Changing what you chose means editing the pledge you have, which is not something this build can do yet.',
+      'One pledge per campaign. To change what you chose, open the pledge you already have and edit it.',
     recovery: 'none',
   },
   IDEMPOTENCY_KEY_REUSED: {
@@ -164,9 +184,49 @@ const WORDING: Record<string, Wording> = {
     field: 'contribution',
   },
   PROJECT_NOT_LIVE: {
+    /*
+     * Reachable from four endpoints since #287 — the draft, the confirm, the edit and the
+     * cancel — because `PledgeService#requireEditable` deliberately answers a closed campaign
+     * with the code the draft endpoint already gives. So the sentence says "nothing has
+     * changed" rather than "nothing was reserved": on a cancellation there was never anything
+     * to reserve, and a message about a reservation on that screen would be about a request
+     * the backer did not make.
+     */
     title: 'This campaign is not taking pledges',
-    detail: 'It may have closed, or it may not have opened yet. Nothing was reserved.',
+    detail: 'It may have closed, or it may not have opened yet. Nothing has changed.',
     recovery: 'none',
+  },
+  PLEDGE_NOT_EDITABLE: {
+    /*
+     * §4.5's PL-09 and PL-10, refused by the PLEDGE's own state rather than the campaign's —
+     * the service is explicit that a closed campaign is `PROJECT_NOT_LIVE` instead, so this
+     * code means only the thing it alone can mean.
+     *
+     * `meta.state` says which state, and the screen prints it separately: an EXPIRED draft and
+     * a COLLECTED pledge are the same refusal and completely different next moves, and this
+     * sentence is deliberately the half that is true of both.
+     */
+    title: 'This pledge can no longer be changed',
+    detail:
+      'It has moved past the point where a backer can edit or withdraw it. Nothing has changed. If something about it is wrong, the campaign’s creator is who to ask.',
+    recovery: 'none',
+  },
+  PLEDGE_NOT_FOUND: {
+    /*
+     * 404 for a pledge that does not exist AND for one belonging to somebody else,
+     * deliberately indistinguishable — the endpoint must not be usable to ask whether a
+     * pledge id is real. The wording keeps that promise rather than guessing which it was.
+     */
+    title: 'That pledge is not here',
+    detail:
+      'It may have been cancelled, or the link may be wrong. Your own pledges are listed on your pledges page.',
+    recovery: 'none',
+  },
+  REWARD_NOT_FOUND: {
+    title: 'That reward is no longer offered',
+    detail:
+      'The creator has removed the tier you chose. Pick another one, or continue without a reward. Nothing has changed.',
+    recovery: 'change-selection',
   },
   RESERVATION_EXPIRED: {
     title: 'Your reward was only held for five minutes',

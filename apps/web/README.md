@@ -64,6 +64,9 @@ the browser half of the auth flow work at all.
 | `/sign-in` | Minimal | **Public**, `noindex`. Email and password, with the suspension and the rate limit surfaced (#268) |
 | `/register` | Minimal | **Public**, `noindex`. Account creation and the "check your email" state (#269) |
 | `/verify-email` | Minimal | **Public**, `noindex`. Where the verification link lands, and the expired-token path (#270) |
+| `/reset-password` | Minimal | **Public**, `noindex`. §4.1 A-06: asks for a link. Says the same thing whether or not the address has an account (#271) |
+| `/reset-password/confirm` | Minimal | **Public**, `noindex`. Where the reset link lands. The hour is stated before the fields, not only after the refusal (#271) |
+| `/confirm-email-change` | Minimal | **Public**, `noindex`. §4.1 A-12: where the link sent to the *new* address lands (#277) |
 | `/about` | Site | **Public.** WS-07: what the platform is, all-or-nothing, and what it costs (#292) |
 | `/how-it-works` | Site | **Public.** WS-07: backing a campaign, running one, and what happens between a pledge and a parcel (#292) |
 | `/trust-safety` | Site | **Public.** WS-07: what is reviewed, how to report, and what happens to money and data (#292) |
@@ -71,13 +74,18 @@ the browser half of the auth flow work at all.
 | `/settings/sessions` | Site | Session management (#27), moved into the account area by #275 |
 | `/settings/notifications` | Site | §4.10's table as a grid — per category, per channel, with a digest option (#89), moved by #275 |
 | `/settings/security` | Site | §4.1 A-07: enrol in two-factor, see the recovery codes once, disable (#278) |
-| `/settings/privacy` | Site | §4.1 A-10 and A-11: the data export, and the thirty-day closure (#279) |
+| `/settings/privacy` | Site | §4.1 A-10 and A-11: the data export and the thirty-day closure (#279), plus §4.2 P-07's profile switch (#274) |
+| `/settings/email` | Site | §4.1 A-12: asks to move the account. Says plainly that nothing has changed yet (#277) |
+| `/settings/password` | Site | §4.1 A-13: replaces the password. Signs the reader out, and says so before they submit (#277) |
 | `/account` | Site | Redirects to `/account/saved` (#275) |
 | `/account/saved` | Site | §4.9 C-10: the campaigns this account saved (#288) |
 | `/account/following` | Site | §4.9 C-10: the creators it follows (#288) |
 | `/account/surveys` | Site | §4.8 PM-05 and PM-06: the surveys a backer owes an answer to (#289) |
 | `/account/deliveries` | Site | §4.8 PM-09 and PM-10: where each reward is (#290) |
+| `/pledges` | Site | §4.5 PL-09 and PL-10: everything this account has backed, and what can still be changed (#287) |
+| `/pledges/[pledgeId]` | Site | §4.5 PL-09 and PL-10: one pledge — edit the tier, the add-ons and the destination, or cancel it (#287) |
 | `/pledges/[pledgeId]/address` | Site | §4.8 PM-07: where one pledge's reward goes (#290) |
+| `/u/[slug]` | Site | **Public.** §4.2 P-04 to P-07: somebody's profile, what they created, what they backed. 404 for a private one (#274) |
 | `/notifications` | — | The in-app inbox: read state, grouping by day, and filtering (#88) |
 | `/projects/new` | — | Name a campaign and create the draft (#33) |
 | `/projects/[id]/edit` | — | Redirects to the first tab (#33) |
@@ -85,7 +93,7 @@ the browser half of the auth flow work at all.
 | `/projects/[id]/edit/story` | — | Rich text story, risks, and version history (#35) |
 | `/projects/[id]/edit/prelaunch` | — | Open the pre-launch page, share the link, see who is waiting (#39) |
 | `/projects/[id]/prelaunch` | — | **Public.** The pre-launch page itself, and the reminder signup (#39) |
-| `/projects/[id]/[projectSlug]` | — | **Public.** The campaign page, server-rendered — §10.2's `/projects/{creatorSlug}/{projectSlug}` (#119) |
+| `/projects/[id]/[projectSlug]` | — | **Public.** The campaign page, server-rendered — §10.2's `/projects/{creatorSlug}/{projectSlug}` (#119). §4.4's header, media, trust block and controls (#281) and its four tabs at `?tab=` (#282, #284, #285) |
 | `/projects/[id]/back` | — | Reward selection, add-ons, destination, and confirmation (#54) |
 | `/projects/[id]/dashboard` | — | The creator dashboard shell and its overview panel -- CD-01's live totals (#93) |
 | `/projects/[id]/dashboard/charts` | — | CD-02's funding trend, CD-07's reward mix and CD-08's destinations (#96) |
@@ -228,11 +236,40 @@ page loads next, and this value is a credential until it is spent.
 
 **There is no resend.** `RegistrationService` answers a second registration for
 an existing address by publishing `RegistrationAttemptedOnExistingAccount` and
-returning; it issues no new token, and the service has no
-`POST /v1/auth/forgot-password` either. So the expired-link page offers no
-resend button that would do nothing, and says what does work instead — signing
-in, which `SignInService` deliberately allows before an address is verified. The
+returning, and it issues no new token. So the expired-link page offers no resend
+button that would do nothing, and says what does work instead — signing in,
+which `SignInService` deliberately allows before an address is verified. The
 account menu carries the unverified state from there.
+
+### The other two links, on the same contract
+
+#271 and #277 added two more messages with a token in a URL, and neither the API
+nor a mail transport builds those URLs yet (#86), so this file is where they are
+written down. Both resolve against the same
+`ideanest.notification.email.base-url` and both must point at:
+
+```
+{WEB_BASE_URL}/reset-password/confirm?token={token}      # A-06, one hour
+{WEB_BASE_URL}/confirm-email-change?token={token}        # A-12, six hours
+```
+
+Each page reads the token out of its own URL and sends it in a **body**, for the
+reason above and one stronger: spending the first sets a password, and spending
+the second moves the address a password reset is sent to. `ResetPasswordRequest`
+and `ConfirmEmailChangeRequest` both restate the argument.
+
+**Unlike verification, the reset link has a resend and the address change does
+not.** `/reset-password` can be asked again by anybody — it answers 202 either
+way, so offering it costs nothing and discloses nothing, and asking again retires
+the previous link. The address change cannot: asking again requires the current
+password and a session, so a dead confirmation link sends the reader back to
+`/settings/email` rather than offering a button that would 401.
+
+**`weak-password` on the reset does not withdraw the form.** The service checks
+the password policy before it claims the link, so the token survives a rejected
+password and the page keeps both. That is the one refusal on either screen that
+leaves the form usable, and it exists because the alternative — burning a
+single-use, one-hour link on a typo — is this flow's most common support ticket.
 
 
 ## Server rendering
@@ -785,10 +822,14 @@ One Tap is browser-arbitrated through FedCM and is suppressed after a dismissal 
 | Gap | What it costs | Whose it is |
 |---|---|---|
 | `GET /v1/me` carries no `twoFactorEnabled` | `/settings/security` cannot say whether two-factor is already on. It offers both paths and lets `POST /2fa/enable` answer — the service refuses an enrolled account with a sentence written for its owner, and the panel moves to the off-path on it | §17, not this epic |
-| No `GET /v1/users/{slug}` | The public profile (#274) cannot be built, so `/account/following` lists creators as text rather than as links, and a creator's account cannot be reported from a campaign page — `POST /v1/users/{id}/report` needs an identifier the campaign response does not carry | The user module |
-| No `POST /v1/auth/forgot-password` | Password reset (#271) has no page and no link from the sign-in form | §17 |
 | No `PATCH /v1/me` | The profile editor (#276) has nowhere to save, so there is no entry for it in the account navigation | The user module |
-| No `GET /v1/me/pledges` | The backer's pledge list (#287) cannot be built. `/account/deliveries` is per-parcel and `/pledges/{id}/address` is reached from there and from a survey | The pledge module |
+| `GET /v1/users/{slug}` carries no counts | The profile's two tabs cannot print "12 campaigns" above a list; they print the list. Answering the counts inside the user module would give the module every other module depends on a dependency on `project` and `pledge` in turn, and a `total` on each list would sit above a shorter one on the backed tab, which drops what the reader may not see | Decided, not a gap — `PublicProfiles` carries the argument |
+| No creator biography beyond `users.bio` | The Creator tab (#282) has a bio, an avatar and the campaigns this account has launched. §4.4 also asks for history and contact, and there is no column for either | The user module |
+| A suspended account still has a public profile | §4.11's AD-04 stops an account and does not retract the campaigns it launched, so withdrawing the index while publishing everything it indexes would be a half-measure. Whether a suspension should hide the profile is a product question nobody has been asked | Needs a decision |
+
+Three rows left this table when #271, #274 and #287 landed: `GET /v1/users/{slug}`,
+`POST /v1/auth/forgot-password` and `GET /v1/me/pledges` are all built. What they
+unblocked is in the sections above.
 
 ## Real user monitoring
 

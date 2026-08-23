@@ -289,6 +289,46 @@ export interface PledgeResponse {
    * a successful campaign, and belongs to epic #59.
    */
   cardVerified: boolean;
+  /**
+   * §4.5's PL-16: whether this pledge was taken after the campaign's deadline.
+   *
+   * Read-only in every sense. It is stamped from what `PledgeAcceptance` answered at the time
+   * and is deliberately NOT re-stamped by an edit — a backer changing their shirt size during
+   * a late-pledge window does not move their original pledge into the late column, because
+   * §5.1's funding decision was made from the number this flag divides.
+   */
+  latePledge: boolean;
+  /**
+   * §4.8's PM-09 and PM-10 — what was bought against this pledge after the campaign closed.
+   *
+   * BESIDE THE PLEDGE AND NEVER INSIDE IT, which is why the amounts above do not include
+   * them: V29 froze the comparison §5.1 made at the deadline, and folding a later purchase
+   * back into `base_amount` would change a number the platform has already reported. Empty on
+   * every pledge until somebody upgrades or buys an add-on late.
+   */
+  supplements: readonly PledgeSupplement[];
+}
+
+/**
+ * One post-campaign purchase recorded against a pledge — a `pledge_supplements` row.
+ *
+ * `collectedAt` is null on every row this platform holds: PM-16's charge is epic #59's, and a
+ * client that rendered "paid" from a non-null field nobody writes would be inventing a
+ * receipt. It is read rather than assumed for that reason.
+ */
+export interface PledgeSupplement {
+  id: string;
+  /** `UPGRADE` or `ADDONS`. Widened, so an unknown kind renders as itself. */
+  kind: string;
+  /** The two tiers of an upgrade. Null on an add-on purchase, which has `addons` instead. */
+  fromRewardTierId?: string | null;
+  toRewardTierId?: string | null;
+  /** Always positive. A downgrade is a refund, and refunds are #67's. */
+  amount: Money;
+  addons: readonly PledgeAddon[];
+  createdAt: string;
+  /** Null on every supplement this platform holds — see the interface comment. */
+  collectedAt?: string | null;
 }
 
 /**
@@ -421,9 +461,128 @@ export async function confirmPledge(
 }
 
 /* -------------------------------------------------------------------------
- * Still to come. Each of these is a function in THIS module, not a new client.
+ * The pledge manager — PATCH and DELETE /v1/pledges/{id} (#287)
+ * ---------------------------------------------------------------------- */
+
+/**
+ * What §4.5's PL-09 lets a backer change.
+ *
+ * <h2>ABSENT AND NULL ARE DIFFERENT HERE, AND THE DIFFERENCE IS MONEY</h2>
+ *
+ * The endpoint takes JSON Merge-Patch semantics (RFC 7396) and `PatchPledgeRequest` on the
+ * service is built out of a `Patched<T>` for exactly this reason. `"rewardTierId": null` gives
+ * up the reward and makes the pledge support-only (PL-02); **leaving the key out keeps the
+ * reward**. A client that sent every field on every save — which is what
+ * `lib/fulfilment/api.ts` correctly does for a shipping address — would strip the reward off a
+ * pledge whose backer only raised their contribution.
+ *
+ * TypeScript expresses the distinction the same way the wire does: an optional property that
+ * is not set is absent, because `JSON.stringify` drops `undefined`. So a caller builds the
+ * object with only the keys it means to change, and `editPledge` does not helpfully fill in
+ * the rest.
+ *
+ * `shippingCountry: null` clears the destination, which is a real edit: a backer who drops the
+ * posted item from their selection has nowhere for it to go, and reading that as "leave it
+ * alone" would go on charging them postage for a download.
+ *
+ * `projectId` is not here and never will be. A pledge backs the campaign it was made for, so
+ * moving it is not an edit. Neither is `referrerCode`: which link brought somebody is a fact
+ * about how they arrived rather than a preference they can revise.
+ */
+export interface PledgeEdit {
+  /** The new tier, or `null` for PL-02. Absent keeps the tier the pledge has. */
+  rewardTierId?: string | null;
+  /** The whole selection, replaced. An empty array removes every add-on. */
+  addons?: readonly PledgeAddon[];
+  /** Tier price plus PL-03's bonus, or the whole of a support-only pledge. */
+  contribution?: Money;
+  /** ISO 3166-1 alpha-2, or `null` to clear it. */
+  shippingCountry?: string | null;
+  isAnonymous?: boolean;
+  paymentMethodId?: string | null;
+}
+
+/**
+ * §4.5's PL-09 — `PATCH /v1/pledges/{id}`.
+ *
+ * **The whole pledge comes back, not the fields that changed**, and the caller replaces its
+ * copy with it rather than merging. On this endpoint the total is what somebody is about to be
+ * charged, and a client that merged a partial response would keep a stale one.
+ *
+ * Two things decide whether an edit is allowed, and they are owned by two different modules
+ * (`PledgeService#requireEditable` composes them):
+ *
+ *   - the **pledge's** state is `DRAFT` or `CONFIRMED` — anything else is
+ *     `PLEDGE_NOT_EDITABLE` (409), carrying `meta.state`;
+ *   - the **campaign** is live and before its deadline — anything else is `PROJECT_NOT_LIVE`
+ *     (409), carrying `meta.deadline`, which is the same code and body the draft endpoint
+ *     gives, so one fact has one answer wherever it is asked.
+ *
+ * A draft whose five minutes have run out is `RESERVATION_EXPIRED` (409): editing it would
+ * re-price a place the tier has already promised to give back. Every one of these is worded
+ * for a backer in `./failure`.
+ *
+ * `Idempotency-Key` is required, as it is on every payment mutation (§10.3). See
+ * `./idempotency` for why the caller owns the key rather than this function minting one.
+ */
+export async function editPledge(
+  id: string,
+  edit: PledgeEdit,
+  idempotencyKey: string,
+  signal?: AbortSignal,
+): Promise<PledgeResponse> {
+  return readPledge(
+    await authorizedFetch(`/v1/pledges/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: mutationHeaders(idempotencyKey),
+      /*
+       * `JSON.stringify` drops an `undefined` value, so a key the caller did not set is a key
+       * the service never sees — which is precisely Merge-Patch's "leave this alone". Nothing
+       * here normalises or back-fills, because both would turn an absence into an instruction.
+       */
+      body: JSON.stringify(edit),
+      signal,
+    }),
+  );
+}
+
+/**
+ * §4.5's PL-10 — `DELETE /v1/pledges/{id}`. The backer withdraws.
+ *
+ * **What it releases is the point, and the confirmation on screen has to say so.** Every place
+ * the pledge held goes back: the reward tier's, and each add-on's quantity (#203), from
+ * whichever counter was holding them. That is stock another backer can then take, which is why
+ * this is not a reversible action even though nothing was charged.
+ *
+ * **Nothing is refunded, because nothing was collected** (§9.7). There is no refund path here
+ * and there must not be one: money that really was collected comes back through #67.
+ *
+ * `204`, and a retry is `204` too — the ordinary retry carries the same key and is replayed
+ * from `idempotency_keys`, and a client that lost its key and sent a fresh one is answered
+ * `204` as well, because "it is cancelled" is true either way. So this function returns
+ * nothing: there is no body to read and no state to reconcile beyond re-reading the pledge.
+ *
+ * **A lapsed draft may still be cancelled**, unlike edited. The backer is asking for the place
+ * to go back and the sweep is about to do the same thing; refusing would be our scheduling
+ * getting in their way.
+ */
+export async function cancelPledge(
+  id: string,
+  idempotencyKey: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const response = await authorizedFetch(`/v1/pledges/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: mutationHeaders(idempotencyKey),
+    signal,
+  });
+
+  if (!response.ok) throw await errorFrom(response);
+}
+
+/* -------------------------------------------------------------------------
+ * Still to come. This is a function in THIS module, not a new client.
  *
  *   #55  the card                POST /v1/payment-methods, and a real
  *                                `paymentMethodId` on the confirm body
- *   #56  edit and cancel         PATCH /v1/pledges/{id} | DELETE /v1/pledges/{id}
  * ---------------------------------------------------------------------- */
