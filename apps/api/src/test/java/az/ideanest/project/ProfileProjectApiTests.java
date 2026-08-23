@@ -46,6 +46,13 @@ import tools.jackson.databind.ObjectMapper;
  */
 class ProfileProjectApiTests extends AbstractIntegrationTest {
 
+    /**
+     * What this class's fixture accounts are called, namespaced so they cannot collide
+     * with another suite's — see {@code BackerArchiveApiTests.account} for the failure
+     * that shape produces when two classes share a handle convention.
+     */
+    private static final String HANDLE_PREFIX = "created-";
+
     private static final AtomicInteger SEQUENCE = new AtomicInteger();
 
     /** §6.1's nine, which is what {@code PublicProjects.VISIBLE} holds. */
@@ -271,7 +278,7 @@ class ProfileProjectApiTests extends AbstractIntegrationTest {
     // -----------------------------------------------------------------------
 
     private UUID creator(String role) {
-        return Campaigns.creator(dataSource, role + "-" + SEQUENCE.incrementAndGet());
+        return Campaigns.creator(dataSource, HANDLE_PREFIX + role + "-" + SEQUENCE.incrementAndGet());
     }
 
     private String slugOf(UUID creatorId) {

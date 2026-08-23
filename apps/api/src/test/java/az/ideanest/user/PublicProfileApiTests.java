@@ -46,6 +46,20 @@ import tools.jackson.databind.ObjectMapper;
 class PublicProfileApiTests extends AbstractIntegrationTest {
 
     /** Distinguishes the accounts these tests create; a counter, as elsewhere in this suite. */
+    /**
+     * What this class's fixture accounts are called.
+     *
+     * <p><strong>Namespaced so they cannot be another suite's.</strong>
+     * {@code Campaigns.creator} inserts a {@code users} row and no credential, nothing
+     * deletes users between classes, and `role + "-" + counter` is a convention several
+     * suites share with counters that all start at one. A suite that takes
+     * {@code creator-1@example.com} first leaves the next one unable to register a
+     * password against it — its sign-in answers 401, its next call carries
+     * {@code Authorization: Bearer null}, and the failure surfaces in a fixture far from
+     * the cause and only when the whole suite runs.
+     */
+    private static final String HANDLE_PREFIX = "profile-";
+
     private static final AtomicInteger SEQUENCE = new AtomicInteger();
 
     private static final String PASSWORD = "a-long-enough-password";
@@ -256,7 +270,7 @@ class PublicProfileApiTests extends AbstractIntegrationTest {
 
     /** An account with no password, for the reads. Its slug is its handle. */
     private String account(String role) {
-        String handle = role + "-" + SEQUENCE.incrementAndGet();
+        String handle = HANDLE_PREFIX + role + "-" + SEQUENCE.incrementAndGet();
         Campaigns.creator(dataSource, handle, "Test " + role);
         return handle;
     }
@@ -271,7 +285,7 @@ class PublicProfileApiTests extends AbstractIntegrationTest {
     }
 
     private Account registered(String role) {
-        String marker = role + "-" + SEQUENCE.incrementAndGet();
+        String marker = HANDLE_PREFIX + role + "-" + SEQUENCE.incrementAndGet();
         String email = marker + "@example.com";
 
         rest.postForEntity(

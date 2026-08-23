@@ -49,6 +49,12 @@ import tools.jackson.databind.ObjectMapper;
  */
 class BackerArchiveApiTests extends AbstractIntegrationTest {
 
+    /**
+     * What this class's fixture accounts are called, so that they cannot be another
+     * suite's. See {@link #account(String)} for what goes wrong without it.
+     */
+    private static final String HANDLE_PREFIX = "archive-";
+
     private static final AtomicInteger SEQUENCE = new AtomicInteger();
 
     private static final String PASSWORD = "a-long-enough-password";
@@ -349,8 +355,22 @@ class BackerArchiveApiTests extends AbstractIntegrationTest {
     // -----------------------------------------------------------------------
 
     /** An account with no password, for everything the reads need. */
+    /**
+     * A fixture account with no password, under a handle only this class uses.
+     *
+     * <p><strong>The prefix is the whole point and it is not decoration.</strong>
+     * {@code Campaigns.creator} inserts a {@code users} row and no
+     * {@code user_credentials} row, {@code clearCheckouts} does not delete users, and the
+     * `role + "-" + counter` convention is shared with {@code PledgeApiTests} and
+     * {@code PublicBackerApiTests} — whose own counters also start at one. Without a
+     * prefix this class registers {@code creator-1@example.com} first, those suites then
+     * find the address taken, {@code RegistrationService} returns without creating a
+     * credential, their sign-in answers 401, and their next call goes out with
+     * {@code Authorization: Bearer null}. The failure surfaces as an empty response body
+     * in a fixture three frames away from the cause, and only when the whole suite runs.
+     */
     private UUID account(String role) {
-        return Campaigns.creator(dataSource, role + "-" + SEQUENCE.incrementAndGet());
+        return Campaigns.creator(dataSource, HANDLE_PREFIX + role + "-" + SEQUENCE.incrementAndGet());
     }
 
     /** A registered, signed-in account: its token and its identifier. */
@@ -358,7 +378,9 @@ class BackerArchiveApiTests extends AbstractIntegrationTest {
     }
 
     private Account registered(String role) {
-        String email = role + "-" + SEQUENCE.incrementAndGet() + "@example.com";
+        // Prefixed for the reason `account` above gives at length: an address this class
+        // takes first is an address another suite cannot register a password against.
+        String email = HANDLE_PREFIX + role + "-" + SEQUENCE.incrementAndGet() + "@example.com";
 
         rest.postForEntity(
                 "/v1/auth/register",
