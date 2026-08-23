@@ -286,15 +286,36 @@ Marked `[W]` web, `[M]` mobile, `[A]` admin.
 > The server has never seen the bytes. **Upload and crop wait on §13.1**, and until
 > that pipeline exists an uploader here would be a control with nowhere to write.
 >
-> **P-10 is still absent, and its blocker was misattributed until #324.** The
-> language and currency preferences are blocked on §21.1's message catalogue — every
-> string in `apps/web` is an inline English literal — and, for the currency half,
-> on there being no rate source in the service and one currency in the system, so
-> the approximation §21.2 describes would convert AZN to AZN. #123's locale-prefixed
-> URLs are an indexing decision and were never the dependency. An entry pointing at
-> a page that cannot work is worse than no entry, which is the rule the site header
-> already follows, and `SiteFooter` follows it too by stating both values as facts
-> rather than offering them as controls.
+> **P-10 arrived with #280, as one half offered and one half stated.** Its blocker
+> was misattributed until #324: the dependency was §21.1's message catalogue, not
+> #123's locale-prefixed URLs, which are an indexing decision. The catalogue now
+> exists and `/settings/language` is in the account navigation.
+>
+> **The language is a control.** `GET /v1/me` returns the account's `locale` and
+> `PATCH /v1/me/locale` writes it — a path that names the one setting, on
+> `PATCH /v1/me/profile-visibility`'s reasoning rather than a general account
+> patch. The screen writes the column and a cookie together, because a render has
+> to know the language before its first byte and cannot wait on an API call;
+> `SessionProvider` mirrors the column into the cookie when a session bootstraps,
+> so a person who chose Russian on one device is not met by English on the next.
+> The options are named in their own languages — a list of endonyms — because
+> somebody stranded in a script they cannot read needs to find their own, and
+> "Azerbaijani" spelled in Russian is unreadable to exactly that person.
+>
+> **The currency is still stated rather than offered, and no amount of front-end
+> work changes that.** §21.2's display currency is an approximation from
+> central-bank rates; the service has no rate source, no rate table, and
+> `SUPPORTED_CURRENCY = "AZN"` in three of its services, so the control would
+> convert AZN to AZN. The screen says so in a sentence instead of drawing a
+> `<select>` with one option, which is the same rule the site header follows: an
+> entry pointing at a page that cannot work is worse than no entry.
+>
+> **What the language does not yet change is the public site**, which is still
+> English. §21.1 explains why — a per-visitor language on a cached route turns one
+> shared render into a render each — and names the work that lifts it.
+> `SiteFooter` therefore goes on stating both values as facts, and is now telling
+> the truth about a smaller claim than before: the public site is in English, and
+> the account area is in whatever its owner chose.
 >
 > **The location is a slug from a closed vocabulary, and that vocabulary is
 > published now (`GET /v1/locations`).** V16 seeded eighteen places for §4.3's
@@ -3170,6 +3191,7 @@ GET    /v1/me/pledges                       # PL-09/PL-10 (#287); the caller's o
 GET    /v1/me/profile                       # P-01..P-03 (#276); the owner's editable projection
 PATCH  /v1/me/profile                       # P-01..P-03 (#276); named, not a general PATCH /v1/me
 PATCH  /v1/me/profile-visibility            # P-07 (#274); the profile page's one switch
+PATCH  /v1/me/locale                        # P-10's language half (#324); az|en|ru|tr, 204
 GET    /v1/users/{slug}                     # P-06 (#274); 404 for a private profile, never 403
 GET    /v1/users/{slug}/projects            # P-05 (#274); public states only
 GET    /v1/users/{slug}/backed              # P-04 (#274); no amounts, anonymous pledges omitted
@@ -5138,6 +5160,38 @@ internationalisation APIs.
 
 **Creator content is never machine-translated.** It is displayed in the language
 it was written in.
+
+> **The catalogue exists now, and it covers the account area rather than the
+> whole client (#324).** `apps/web/messages/{az,en,ru,tr}.json` holds the four
+> languages, `next-intl` resolves them, and `apps/web/src/i18n/request.ts`
+> negotiates the reader's language from a cookie. `users.locale` is the durable
+> record behind that cookie: it is returned by `GET /v1/me` and written by
+> `PATCH /v1/me/locale`, which is what #280's `/settings/language` calls. Before
+> this the column had been unreachable over HTTP since V2 and `User.setLocale`
+> had no callers at all.
+>
+> **Why the public site is still English, and why that is a performance fact
+> rather than an unfinished chore.** Reading a cookie makes a render dynamic.
+> That costs nothing on `/settings/*`, `/account/*` and `/pledges/*`, which are
+> authenticated and render per person already. It is expensive on `/`, the
+> category landings and the static pages, which are cached shared renders — a
+> language chosen per visitor turns every one of them into a render each, paid on
+> the largest contentful paint of the pages a stranger meets first.
+>
+> **This is where #123 stops being unrelated.** A locale-prefixed URL is how a
+> translated public page stays cached: one render per language, keyed by the
+> path. The `area: seo` issue and the public half of the catalogue are therefore
+> the same piece of work. §4.2's note that #123 "was never the dependency" holds
+> for the *preference* — a stored account setting genuinely does not need
+> locale-prefixed URLs — and does not hold for translating the cached routes.
+>
+> **One consequence is worth stating because it is invisible.** The service has
+> localised its taxonomy since V11 and the web client never sent
+> `Accept-Language`, so whatever header the browser happened to attach decided the
+> language of every category name, collection title and facet label on an
+> otherwise English page. `lib/api/client.ts` now states the interface language on
+> every browser-side request, so the two halves of a page finally agree.
+> `lib/api/server.ts` deliberately still does not, for the caching reason above.
 
 ### 21.2 Currency
 
