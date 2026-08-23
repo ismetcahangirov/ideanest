@@ -274,6 +274,43 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/v1/projects/*/comments")
                         .permitAll()
                         // ---- end #84 --------------------------------------
+                        // ---- #274: §4.2's public profile ------------------
+                        // A person's own page and its two archives: what they
+                        // created, and what they backed. Public because a profile
+                        // read by somebody who has not registered is the audience
+                        // it exists for -- the creator link on every campaign page
+                        // points here, and #90's follow button is reached from it.
+                        //
+                        // WHAT MAY BE READ IS NOT DECIDED HERE, exactly as it is
+                        // not for the two rules above. PublicProfiles refuses an
+                        // account whose profile_visibility is PRIVATE, a closed
+                        // account and a slug that never existed with one 404 --
+                        // never a 403, which would confirm that the slug names a
+                        // real account and so publish the one fact a withheld
+                        // profile is withholding. The archives apply the same rule
+                        // and drop what the reader may not see: a campaign in a
+                        // non-public state, and §4.5's PL-12 anonymous pledges.
+                        //
+                        // GET AND NOTHING ELSE, and the exclusions matter more
+                        // here than anywhere else in this list because three other
+                        // handlers already answer under `/v1/users/*`. POST and
+                        // DELETE `/v1/users/*/follow` are somebody subscribing in
+                        // their own name, and POST `/v1/users/*/report` is somebody
+                        // making an accusation in it; all three fall through to the
+                        // rule at the bottom, so an anonymous caller cannot follow
+                        // on another account's behalf or file an unattributable
+                        // report.
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/v1/users/*",
+                                "/v1/users/*/projects",
+                                "/v1/users/*/backed")
+                        .permitAll()
+                        // `PATCH /v1/me/profile-visibility` -- P-07's switch, and
+                        // the only write in this feature -- is deliberately absent.
+                        // It is the account deciding about itself and falls through
+                        // to the rule below with the rest of `/v1/me`.
+                        // ---- end #274 -------------------------------------
                         // "Tell me when this opens", and "stop reminding me".
                         // Unauthenticated on purpose and bounded in the handler by
                         // a rate limiter per source address and per email address:

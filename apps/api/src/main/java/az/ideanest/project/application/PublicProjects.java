@@ -56,8 +56,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PublicProjects {
 
-    /** See the class comment. The same nine as {@code DiscoveryStatus.PUBLIC_STATES}. */
-    private static final Set<ProjectState> VISIBLE = EnumSet.of(
+    /**
+     * See the class comment. The same nine as {@code DiscoveryStatus.PUBLIC_STATES}.
+     *
+     * <p><strong>Package-private rather than private since #274.</strong>
+     * {@link ProfileCampaigns} serves §4.2's two public campaign lists and has to apply
+     * this exact set; a second literal nine states away in the same package would be the
+     * copy that eventually falls behind, and the specific way it falls behind is that it
+     * keeps {@code SUSPENDED} out of one list and lets it into another. Still not public:
+     * every module outside this one asks a method here rather than holding the set, so a
+     * caller cannot come to depend on the enum it is written in.
+     */
+    static final Set<ProjectState> VISIBLE = EnumSet.of(
             ProjectState.PRELAUNCH,
             ProjectState.LIVE,
             ProjectState.CANCELED,

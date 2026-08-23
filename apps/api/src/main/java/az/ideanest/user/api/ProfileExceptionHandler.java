@@ -1,0 +1,75 @@
+package az.ideanest.user.api;
+
+import az.ideanest.user.application.AccountNotFoundException;
+import az.ideanest.user.application.ProfileNotFoundException;
+import java.net.URI;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+/**
+ * What §4.2's two profile endpoints refuse, as RFC 9457 problem details (§10.4).
+ *
+ * <p>Its own advice rather than two types added to {@link UserExceptionHandler}, following
+ * {@code PublicBackerExceptionHandler}: that file is scoped to the three controllers that
+ * take a password, and its one entry is a 403 about one. Adding a public read's 404 to it
+ * would put a refusal that must never distinguish a private account from a missing one
+ * behind the same advice as a refusal whose whole job is to say the password was wrong.
+ *
+ * <p><strong>The 404 here must not escape unhandled, and that is the reason this file
+ * exists at all rather than being left to Spring's default.</strong>
+ * {@link PublicProfileController} is a {@code permitAll} endpoint: an unhandled exception
+ * on one reaches Spring Security's error dispatch and comes back as 401, which tells an
+ * anonymous visitor to sign in to see a profile that does not exist — and, worse, gives a
+ * different answer for a private profile than for an absent one to anybody who tries it
+ * with a token. {@code ProjectExceptionHandler} names the same trap about
+ * {@code PublicProjectController}.
+ */
+@RestControllerAdvice(assignableTypes = {PublicProfileController.class, ProfileVisibilityController.class})
+public class ProfileExceptionHandler {
+
+    /**
+     * 404 for a slug nobody holds, for an account §17.4 has anonymised, and for one whose
+     * owner chose {@code PRIVATE}.
+     *
+     * <p>One body for all three — {@code ProfileNotFoundException} argues each pair — and
+     * deliberately the same {@code USER_NOT_FOUND} that {@code BackerSignalExceptionHandler}
+     * already answers {@code POST /v1/users/{slug}/follow} with. Two codes for one fact
+     * would let a client tell "no profile" from "no account", which is the distinction
+     * neither endpoint may draw; a client that handles one needs no second branch.
+     *
+     * <p><strong>Not a 403, under any of the three.</strong> This endpoint takes no
+     * credential, so a 403 would be an oracle any stranger could ask, and what it would
+     * report on is a person who asked this platform for no page.
+     */
+    @ExceptionHandler(ProfileNotFoundException.class)
+    public ProblemDetail handleProfileNotFound(ProfileNotFoundException exception) {
+        return notFound();
+    }
+
+    /**
+     * 404 for a genuine token whose account is no longer there.
+     *
+     * <p>Deleted between the token being issued and being used. The token is ours and the
+     * account is not, so this is 404 rather than 401 — the same answer {@code GET /v1/me}
+     * gives, and a 401 would send a client to sign in again for an account that cannot be
+     * signed in to.
+     */
+    @ExceptionHandler(AccountNotFoundException.class)
+    public ProblemDetail handleAccountNotFound(AccountNotFoundException exception) {
+        return notFound();
+    }
+
+    /** One body, so that the two above cannot drift apart. */
+    private static ProblemDetail notFound() {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+        problem.setType(URI.create("https://ideanest.az/problems/user-not-found"));
+        problem.setTitle("No such account");
+        // Deliberately not the exception's message, and deliberately the same sentence for
+        // an account that is hidden as for one that never existed.
+        problem.setDetail("There is no account at that address.");
+        problem.setProperty("code", "USER_NOT_FOUND");
+        return problem;
+    }
+}

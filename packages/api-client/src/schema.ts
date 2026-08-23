@@ -468,6 +468,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/change-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["credentialChangeEmail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["credentialChangePassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/confirm-email-change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["credentialConfirmEmailChange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["credentialForgotPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/login": {
         parameters: {
             query?: never;
@@ -542,6 +606,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["authRegister"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["credentialResetPassword"];
         delete?: never;
         options?: never;
         head?: never;
@@ -898,6 +978,38 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/me/pledges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["backerArchiveMine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/profile-visibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["profileVisibilitySetVisibility"];
         trace?: never;
     };
     "/v1/me/saved": {
@@ -1844,6 +1956,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/users/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["publicProfileProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/users/{slug}/backed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["backerArchiveBacked"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/users/{slug}/follow": {
         parameters: {
             query?: never;
@@ -1855,6 +1999,22 @@ export interface paths {
         put?: never;
         post: operations["backerSignalFollow"];
         delete: operations["backerSignalUnfollow"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/users/{slug}/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["profileProjectCreated"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2031,6 +2191,26 @@ export interface components {
             /** Format: uuid */
             nextCursor?: string;
         };
+        BackerPledgeListResponse: {
+            nextCursor?: string;
+            pledges?: components["schemas"]["BackerPledgeSummary"][];
+        };
+        BackerPledgeSummary: {
+            amounts?: components["schemas"]["Amounts"];
+            /** Format: date-time */
+            canceledAt?: string;
+            /** Format: date-time */
+            confirmedAt?: string;
+            isAnonymous?: boolean;
+            latePledge?: boolean;
+            /** Format: uuid */
+            pledgeId?: string;
+            project?: components["schemas"]["Campaign"];
+            /** Format: uuid */
+            rewardTierId?: string;
+            rewardTitle?: string;
+            state?: string;
+        };
         BackerSegmentResponse: {
             /** Format: date-time */
             createdAt?: string;
@@ -2066,6 +2246,17 @@ export interface components {
         };
         BuyAddonsRequest: {
             addons: components["schemas"]["PledgeAddonBody"][];
+        };
+        Campaign: {
+            coverImage?: components["schemas"]["CoverImageBody"];
+            creatorSlug?: string;
+            /** Format: date-time */
+            deadline?: string;
+            /** Format: uuid */
+            id?: string;
+            slug?: string;
+            state?: string;
+            title?: string;
         };
         CampaignMessageListResponse: {
             items?: components["schemas"]["CampaignMessageResponse"][];
@@ -2142,6 +2333,15 @@ export interface components {
             channel: "IN_APP" | "EMAIL" | "PUSH";
             /** @enum {string} */
             mode: "OFF" | "IMMEDIATE" | "DIGEST";
+        };
+        ChangeEmailRequest: {
+            currentPassword: string;
+            /** Format: email */
+            newEmail: string;
+        };
+        ChangePasswordRequest: {
+            currentPassword: string;
+            newPassword: string;
         };
         ChannelTotal: {
             amount?: components["schemas"]["Money"];
@@ -2239,6 +2439,9 @@ export interface components {
             parentId?: string;
             /** Format: uuid */
             threadId?: string;
+        };
+        ConfirmEmailChangeRequest: {
+            token: string;
         };
         ConfirmPledgeRequest: {
             /** Format: uuid */
@@ -2418,6 +2621,10 @@ export interface components {
         FollowingListResponse: {
             items?: components["schemas"]["Item"][];
             nextCursor?: string;
+        };
+        ForgotPasswordRequest: {
+            /** Format: email */
+            email: string;
         };
         FulfilmentImportResponse: {
             /** Format: int32 */
@@ -2724,6 +2931,32 @@ export interface components {
             state?: string;
             title?: string;
         };
+        ProfileProjectCard: {
+            /** Format: int32 */
+            backersCount?: number;
+            blurb?: string;
+            coverImage?: components["schemas"]["CoverImageBody"];
+            creatorSlug?: string;
+            /** Format: date-time */
+            deadline?: string;
+            goal?: components["schemas"]["Money"];
+            /** Format: uuid */
+            id?: string;
+            /** Format: date-time */
+            launchedAt?: string;
+            pledged?: components["schemas"]["Money"];
+            slug?: string;
+            state?: string;
+            title?: string;
+        };
+        ProfileProjectListResponse: {
+            nextCursor?: string;
+            projects?: components["schemas"]["ProfileProjectCard"][];
+        };
+        ProfileVisibilityRequest: {
+            /** @enum {string} */
+            visibility: "PUBLIC" | "PRIVATE";
+        };
         ProjectAnalyticsResponse: {
             /** Format: date-time */
             computedAt?: string;
@@ -2841,6 +3074,14 @@ export interface components {
             /** Format: int64 */
             backerCount?: number;
             rewardTiers?: components["schemas"]["RewardTierCountBody"][];
+        };
+        PublicProfileResponse: {
+            avatarUrl?: string;
+            bio?: string;
+            /** Format: date-time */
+            joinedAt?: string;
+            name?: string;
+            slug?: string;
         };
         PublicRewardListResponse: {
             addons?: components["schemas"]["PublicRewardResponse"][];
@@ -2964,6 +3205,10 @@ export interface components {
             reason?: string;
             state?: string;
             target?: components["schemas"]["Target"];
+        };
+        ResetPasswordRequest: {
+            password: string;
+            token: string;
         };
         Resolution: {
             /** Format: date-time */
@@ -3385,10 +3630,13 @@ export type SchemaBackerBreakdownResponse = components['schemas']['BackerBreakdo
 export type SchemaBackerFilterBody = components['schemas']['BackerFilterBody'];
 export type SchemaBackerFulfilmentResponse = components['schemas']['BackerFulfilmentResponse'];
 export type SchemaBackerListResponse = components['schemas']['BackerListResponse'];
+export type SchemaBackerPledgeListResponse = components['schemas']['BackerPledgeListResponse'];
+export type SchemaBackerPledgeSummary = components['schemas']['BackerPledgeSummary'];
 export type SchemaBackerSegmentResponse = components['schemas']['BackerSegmentResponse'];
 export type SchemaBackerSurveyBody = components['schemas']['BackerSurveyBody'];
 export type SchemaBackerSurveyListResponse = components['schemas']['BackerSurveyListResponse'];
 export type SchemaBuyAddonsRequest = components['schemas']['BuyAddonsRequest'];
+export type SchemaCampaign = components['schemas']['Campaign'];
 export type SchemaCampaignMessageListResponse = components['schemas']['CampaignMessageListResponse'];
 export type SchemaCampaignMessageResponse = components['schemas']['CampaignMessageResponse'];
 export type SchemaCancelProjectRequest = components['schemas']['CancelProjectRequest'];
@@ -3397,6 +3645,8 @@ export type SchemaCard = components['schemas']['Card'];
 export type SchemaCategoryCount = components['schemas']['CategoryCount'];
 export type SchemaCategoryResponse = components['schemas']['CategoryResponse'];
 export type SchemaChange = components['schemas']['Change'];
+export type SchemaChangeEmailRequest = components['schemas']['ChangeEmailRequest'];
+export type SchemaChangePasswordRequest = components['schemas']['ChangePasswordRequest'];
 export type SchemaChannelTotal = components['schemas']['ChannelTotal'];
 export type SchemaChecklistItemBody = components['schemas']['ChecklistItemBody'];
 export type SchemaCollaboratorCapabilitiesRequest = components['schemas']['CollaboratorCapabilitiesRequest'];
@@ -3407,6 +3657,7 @@ export type SchemaCollectionIndex = components['schemas']['CollectionIndex'];
 export type SchemaCollectionPage = components['schemas']['CollectionPage'];
 export type SchemaCommentListResponse = components['schemas']['CommentListResponse'];
 export type SchemaCommentResponse = components['schemas']['CommentResponse'];
+export type SchemaConfirmEmailChangeRequest = components['schemas']['ConfirmEmailChangeRequest'];
 export type SchemaConfirmPledgeRequest = components['schemas']['ConfirmPledgeRequest'];
 export type SchemaConfirmTwoFactorRequest = components['schemas']['ConfirmTwoFactorRequest'];
 export type SchemaCopyBody = components['schemas']['CopyBody'];
@@ -3433,6 +3684,7 @@ export type SchemaFacets = components['schemas']['Facets'];
 export type SchemaFeed = components['schemas']['Feed'];
 export type SchemaFollowStateResponse = components['schemas']['FollowStateResponse'];
 export type SchemaFollowingListResponse = components['schemas']['FollowingListResponse'];
+export type SchemaForgotPasswordRequest = components['schemas']['ForgotPasswordRequest'];
 export type SchemaFulfilmentImportResponse = components['schemas']['FulfilmentImportResponse'];
 export type SchemaFulfilmentListResponse = components['schemas']['FulfilmentListResponse'];
 export type SchemaFulfilmentProgressResponse = components['schemas']['FulfilmentProgressResponse'];
@@ -3464,6 +3716,9 @@ export type SchemaPostCommentRequest = components['schemas']['PostCommentRequest
 export type SchemaPostalAddressBody = components['schemas']['PostalAddressBody'];
 export type SchemaPreference = components['schemas']['Preference'];
 export type SchemaPrelaunchPageResponse = components['schemas']['PrelaunchPageResponse'];
+export type SchemaProfileProjectCard = components['schemas']['ProfileProjectCard'];
+export type SchemaProfileProjectListResponse = components['schemas']['ProfileProjectListResponse'];
+export type SchemaProfileVisibilityRequest = components['schemas']['ProfileVisibilityRequest'];
 export type SchemaProjectAnalyticsResponse = components['schemas']['ProjectAnalyticsResponse'];
 export type SchemaProjectChecklist = components['schemas']['ProjectChecklist'];
 export type SchemaProjectEdit = components['schemas']['ProjectEdit'];
@@ -3472,6 +3727,7 @@ export type SchemaProjectPatchRequest = components['schemas']['ProjectPatchReque
 export type SchemaProjectUpdateListResponse = components['schemas']['ProjectUpdateListResponse'];
 export type SchemaProjectUpdateResponse = components['schemas']['ProjectUpdateResponse'];
 export type SchemaPublicBackerListResponse = components['schemas']['PublicBackerListResponse'];
+export type SchemaPublicProfileResponse = components['schemas']['PublicProfileResponse'];
 export type SchemaPublicRewardListResponse = components['schemas']['PublicRewardListResponse'];
 export type SchemaPublicRewardResponse = components['schemas']['PublicRewardResponse'];
 export type SchemaPublishCollection = components['schemas']['PublishCollection'];
@@ -3492,6 +3748,7 @@ export type SchemaReportQueueResponse = components['schemas']['ReportQueueRespon
 export type SchemaReportRequest = components['schemas']['ReportRequest'];
 export type SchemaReportResolutionRequest = components['schemas']['ReportResolutionRequest'];
 export type SchemaReportResponse = components['schemas']['ReportResponse'];
+export type SchemaResetPasswordRequest = components['schemas']['ResetPasswordRequest'];
 export type SchemaResolution = components['schemas']['Resolution'];
 export type SchemaRespondRequest = components['schemas']['RespondRequest'];
 export type SchemaRewardItemBody = components['schemas']['RewardItemBody'];
@@ -4294,6 +4551,94 @@ export interface operations {
             };
         };
     };
+    credentialChangeEmail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeEmailRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    credentialChangePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    credentialConfirmEmailChange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmEmailChangeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    credentialForgotPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ForgotPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     tokenSignIn: {
         parameters: {
             query?: never;
@@ -4405,6 +4750,28 @@ export interface operations {
         responses: {
             /** @description Accepted */
             202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    credentialResetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5075,6 +5442,51 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["NotificationResponse"];
                 };
+            };
+        };
+    };
+    backerArchiveMine: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackerPledgeListResponse"];
+                };
+            };
+        };
+    };
+    profileVisibilitySetVisibility: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileVisibilityRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -6996,6 +7408,53 @@ export interface operations {
             };
         };
     };
+    publicProfileProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicProfileResponse"];
+                };
+            };
+        };
+    };
+    backerArchiveBacked: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileProjectListResponse"];
+                };
+            };
+        };
+    };
     backerSignalFollow: {
         parameters: {
             query?: never;
@@ -7036,6 +7495,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FollowStateResponse"];
+                };
+            };
+        };
+    };
+    profileProjectCreated: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileProjectListResponse"];
                 };
             };
         };
