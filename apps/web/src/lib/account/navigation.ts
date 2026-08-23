@@ -26,8 +26,16 @@
  * <h2>It lists what exists, and nothing else</h2>
  *
  * `components/shell/navigation.ts`'s rule, restated because it is easy to break here — an
- * account navigation is exactly where somebody adds the entry before the page. Two §4.2
- * capabilities are deliberately absent:
+ * account navigation is exactly where somebody adds the entry before the page.
+ *
+ * **The two credentials arrived with #277 and are two entries rather than one.** A-12 and A-13
+ * are one screen's worth of decisions to the service — `AccountCredentialsService` holds both
+ * — and they are two here because their consequences differ in the one way a reader cares
+ * about: changing the password ends every session on the account, and changing the address ends
+ * none. One entry called "Sign-in details" would put one warning over both, and the warning is
+ * either wrong for half the page or absent where it is needed.
+ *
+ * Two §4.2 capabilities are deliberately absent:
  *
  *   - **Profile** (P-01 to P-03, #276) — the service has no write for it. There is no
  *     `PATCH /v1/me`, so an editor would be a form with nowhere to save.
@@ -53,6 +61,24 @@ export const ACCOUNT_GROUPS: readonly AccountGroup[] = Object.freeze([
   {
     heading: 'Your account',
     links: [
+      /*
+       * FIRST, AND NOT UNDER `/account/*` LIKE THE FOUR BELOW IT — #287.
+       *
+       * The prefix split this navigation is built on (`/settings/*` for what somebody
+       * decides, `/account/*` for what they have) would put the pledge list under
+       * `/account`, and it is not there because `/pledges/{id}/address` has been a real
+       * URL since #75 and is linked from survey and delivery email. Moving the parent to
+       * buy a tidier tree would either break those links or leave one screen addressed two
+       * ways; §4.2's own note about `/settings/notifications` makes the same argument.
+       *
+       * First in the group because it is the only entry about money. What somebody has
+       * committed outranks what they have saved to look at later.
+       */
+      {
+        href: '/pledges',
+        label: 'Pledges',
+        summary: 'What you have backed, and what you can still change.',
+      },
       {
         href: '/account/saved',
         label: 'Saved projects',
@@ -87,6 +113,16 @@ export const ACCOUNT_GROUPS: readonly AccountGroup[] = Object.freeze([
         href: '/settings/sessions',
         label: 'Devices',
         summary: 'Every browser signed in to this account.',
+      },
+      {
+        href: '/settings/email',
+        label: 'Email address',
+        summary: 'The address you sign in with, and where we write to you.',
+      },
+      {
+        href: '/settings/password',
+        label: 'Password',
+        summary: 'Change it here, or reset it by email if you cannot.',
       },
       {
         href: '/settings/security',

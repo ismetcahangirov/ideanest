@@ -38,6 +38,53 @@ describe('requiresSession', () => {
     expect(requiresSession('/projects/abc/prelaunch')).toBe(false);
   });
 
+  /**
+   * The routes this pull request added, on the side of the line each belongs to — #267.
+   *
+   * The guard was built by #318 and its list has not changed, which is the point of
+   * asserting it here: a list that no route has to remember to join is also a list nobody
+   * remembers to check. Every one of these is a new page, and getting any of them wrong is
+   * silent — a guarded public page 404s for the audience it exists for, and an unguarded
+   * private one renders somebody's pledge to whoever holds the URL.
+   */
+  it('guards the credential screens the account area gained', () => {
+    // §4.1's A-12 and A-13 (#277). Covered by `/settings` rather than by entries of their
+    // own, which is the prefix rule doing its job.
+    expect(requiresSession('/settings/email')).toBe(true);
+    expect(requiresSession('/settings/password')).toBe(true);
+  });
+
+  it('guards the pledge manager and everything under it', () => {
+    // §4.5's PL-09 and PL-10 (#287). A pledge is money somebody committed and the screen
+    // can cancel it.
+    expect(requiresSession('/pledges')).toBe(true);
+    expect(requiresSession('/pledges/abc')).toBe(true);
+    expect(requiresSession('/pledges/abc/address')).toBe(true);
+  });
+
+  it('leaves the recovery pages and the public profile alone', () => {
+    /*
+     * §4.1's A-06 (#271). GUARDING THESE WOULD BE ABSURD IN A WAY THAT IS EASY TO DO BY
+     * ACCIDENT: somebody asking for a password reset is by definition somebody who cannot
+     * sign in, so a guard would redirect them to the form they cannot get past and then
+     * offer them the reset link they were already following.
+     */
+    expect(requiresSession('/reset-password')).toBe(false);
+    expect(requiresSession('/reset-password/confirm')).toBe(false);
+
+    /*
+     * §4.1's A-12's confirmation. The credential is the token in the message, and the
+     * person following it is reading the new mailbox — which is the browser least likely
+     * to be signed in.
+     */
+    expect(requiresSession('/confirm-email-change')).toBe(false);
+
+    // §4.2's P-04 to P-07 (#274). A public profile read by a stranger is the audience it
+    // exists for; visibility is decided by the service, which answers 404 for a private
+    // one rather than letting the client decide.
+    expect(requiresSession('/u/ismet')).toBe(false);
+  });
+
   it('matches whole segments, never a prefix of one', () => {
     expect(requiresSession('/settings-guide')).toBe(false);
     expect(requiresSession('/adminstration')).toBe(false);

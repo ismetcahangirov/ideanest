@@ -1,0 +1,96 @@
+import Link from 'next/link';
+import { CAMPAIGN_TABS, campaignTabHref, type CampaignTabId } from '../../lib/projects/tabs';
+
+/**
+ * §4.4's tab list — issues #282, #284 and #285, and the shell all three hang from.
+ *
+ * <h2>Links in a navigation landmark, and NOT an ARIA tab widget</h2>
+ *
+ * This looks like a tab strip and is deliberately not marked up as one. `role="tablist"`,
+ * `role="tab"` and `aria-selected` are a contract with the reader: arrow keys move between
+ * the tabs, one tab stop holds the whole group, focus stays inside the widget, and the panel
+ * changes without the page moving. Every one of those requires JavaScript to manage roving
+ * `tabindex` — which would make the tab shell a client boundary on the route #119 exists to
+ * keep server-rendered — and the last one would be a lie regardless, because activating one
+ * of these performs a navigation.
+ *
+ * <strong>A widget whose roles promise behaviour it does not have is worse than no roles.</strong>
+ * A screen reader user told "tab, 2 of 4" presses the right arrow and nothing happens. So
+ * these are what they actually are: links, in a `<nav>` with a name, in a list, with
+ * `aria-current="page"` on the one being read. That is a pattern every assistive technology
+ * already understands, it needs no JavaScript, every browser's own keyboard handling works,
+ * and a crawler follows it.
+ *
+ * `lib/projects/tabs.ts` argues the other half of this — why the tab is a query parameter
+ * rather than local state or a route per tab, and which of §4.4's seven tabs exist.
+ *
+ * <h2>Server-rendered, and nothing here is a boundary</h2>
+ *
+ * No state, no handler, no hook. The active tab arrives as a prop because the page read it
+ * from the address, so the correct tab is in the HTML rather than chosen after hydration —
+ * which is what makes a link to the Comments tab open the comments for somebody whose
+ * JavaScript never arrives.
+ *
+ * <h2>Colour and focus</h2>
+ *
+ * The current tab is white text over a white rule; the rest are `--text-secondary` (§2.2,
+ * 9.2:1). <strong>No lime</strong>: lime is "act now" (§2.4) and a tab is a place, not an
+ * urgency. Colour is not the only signal either — `aria-current` carries it to a screen
+ * reader and the weight change carries it to somebody who cannot separate the two greys
+ * (§9.2). The focus ring is the kit's lime outline on a dark ground, which §9.3 permits and
+ * which is the one place lime belongs on this component.
+ */
+
+export interface CampaignTabsProps {
+  readonly active: CampaignTabId;
+  /** §10.2's canonical path for this campaign. Every tab is that path plus a parameter. */
+  readonly path: string;
+}
+
+export function CampaignTabs({ active, path }: CampaignTabsProps) {
+  return (
+    <nav aria-label="Campaign sections" className="mt-10 border-b border-white/8">
+      {/*
+        The row scrolls rather than wrapping. Four tabs fit on a phone; the day a fifth is
+        added, a wrapped second row would move the content below it down by a line on exactly
+        the narrow viewports where vertical space is scarcest.
+      */}
+      <ul className="-mb-px flex gap-1 overflow-x-auto">
+        {CAMPAIGN_TABS.map((tab) => {
+          const current = tab.id === active;
+          return (
+            <li key={tab.id}>
+              <Link
+                href={campaignTabHref(path, tab.id)}
+                /*
+                 * `page`, not `true`. `aria-current="page"` is the value for "this link points
+                 * at the resource being viewed", and it is accurate here in a way it would not
+                 * be in a real tab widget: each tab genuinely is an address, and following one
+                 * genuinely navigates.
+                 */
+                aria-current={current ? 'page' : undefined}
+                /*
+                 * `scroll={false}` so following a tab keeps the reader where they were rather
+                 * than throwing them to the top of the campaign. The header above is unchanged
+                 * between tabs, so scrolling to it would be scrolling to something they have
+                 * already read.
+                 */
+                scroll={false}
+                className={[
+                  'inline-flex h-11 items-center whitespace-nowrap border-b-2 px-4 text-sm',
+                  'transition-colors duration-150 ease-in-out',
+                  'focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--lime-500)]',
+                  current
+                    ? 'border-white font-medium text-white'
+                    : 'border-transparent text-white/64 hover:border-white/16 hover:text-white',
+                ].join(' ')}
+              >
+                {tab.label}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}

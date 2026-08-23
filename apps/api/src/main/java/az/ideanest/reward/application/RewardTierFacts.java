@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -83,6 +84,36 @@ public class RewardTierFacts implements RewardFacts, RewardStock, RewardTitles {
     public Map<UUID, RewardTitle> titlesOf(UUID projectId) {
         Map<UUID, RewardTitle> titles = new HashMap<>();
         for (RewardTier tier : rewards.findByProjectIdOrderBySortOrderAscCreatedAtAsc(projectId)) {
+            titles.put(
+                    tier.getId(),
+                    new RewardTitle(tier.getId(), tier.getTitle(), Money.of(tier.getAmount(), tier.getCurrency())));
+        }
+        return Map.copyOf(titles);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>{@code findAllById} rather than a query per identifier, and rather than the
+     * campaign-shaped read above: a page of a backer's own pledges names one tier on each of
+     * twenty different campaigns, so {@link #titlesOf} would fetch twenty campaigns' worth
+     * of tiers to read twenty titles.
+     *
+     * <p>Deduplicated before the read, so a caller holding the same tier twice cannot make
+     * the answer carry it twice — which a {@code Map} would collapse anyway, silently, and
+     * silently is how a caller comes to believe the result is positional.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Map<UUID, RewardTitle> titlesOfTiers(Collection<UUID> rewardTierIds) {
+        if (rewardTierIds == null || rewardTierIds.isEmpty()) {
+            // No statement at all rather than one that can match nothing. A pledge without a
+            // reward is §4.5's PL-02 and is ordinary, so a page of them asks about no tiers.
+            return Map.of();
+        }
+
+        Map<UUID, RewardTitle> titles = new HashMap<>();
+        for (RewardTier tier : rewards.findAllById(Set.copyOf(rewardTierIds))) {
             titles.put(
                     tier.getId(),
                     new RewardTitle(tier.getId(), tier.getTitle(), Money.of(tier.getAmount(), tier.getCurrency())));

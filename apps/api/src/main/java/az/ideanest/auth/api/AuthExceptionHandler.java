@@ -3,10 +3,13 @@ package az.ideanest.auth.api;
 import az.ideanest.auth.application.AccountLinkRefusedException;
 import az.ideanest.auth.application.AccountSuspendedException;
 import az.ideanest.auth.application.AuthenticationFailedException;
+import az.ideanest.auth.application.EmailAlreadyInUseException;
 import az.ideanest.auth.application.TwoFactorRejectedException;
 import az.ideanest.auth.application.ProviderNotConfiguredException;
 import az.ideanest.auth.application.VerificationRejectedException;
 import az.ideanest.auth.application.WeakPasswordException;
+import az.ideanest.user.application.AccountNotFoundException;
+import az.ideanest.user.application.IncorrectPasswordException;
 import java.net.URI;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
@@ -25,7 +28,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * request" and hide it.
  */
 @RestControllerAdvice(
-        assignableTypes = {AuthController.class, TokenController.class, TwoFactorController.class})
+        assignableTypes = {
+            AuthController.class,
+            CredentialController.class,
+            TokenController.class,
+            TwoFactorController.class
+        })
 public class AuthExceptionHandler {
 
     /**
@@ -163,6 +171,75 @@ public class AuthExceptionHandler {
 
         return ResponseEntity.badRequest()
                 // These responses are about credentials. Nothing caches them.
+                .cacheControl(CacheControl.noStore())
+                .body(problem);
+    }
+
+    /**
+     * §4.1's A-12 and A-13: the current password confirming a credential change was
+     * not the account's.
+     *
+     * <p>403 and not 401, which is the distinction {@code UserExceptionHandler} draws
+     * for the same exception on the deletion endpoint: the access token was accepted,
+     * and what failed is the second check. A 401 would send a client into signing the
+     * user in again over a password typed into the wrong box, and would lose the form.
+     *
+     * <p>The exception belongs to the {@code user} module and is caught here as well as
+     * there, deliberately. It says one thing — "that is not the password on this
+     * account" — and a second exception meaning the same thing is how two endpoints end
+     * up answering one mistake with two different statuses.
+     */
+    @ExceptionHandler(IncorrectPasswordException.class)
+    public ResponseEntity<ProblemDetail> handleIncorrectPassword(IncorrectPasswordException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+        problem.setType(URI.create("https://ideanest.az/problems/incorrect-password"));
+        problem.setTitle("Password required");
+        problem.setDetail(exception.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .cacheControl(CacheControl.noStore())
+                .body(problem);
+    }
+
+    /**
+     * §4.1's A-12: the address asked for already has an account.
+     *
+     * <p>409 rather than 400: the request was well formed and what it conflicts with is
+     * the state of the world, which retrying identically will not change.
+     *
+     * <p><strong>Saying so is not registration's enumeration oracle.</strong> The caller
+     * is signed in, the endpoint is rate limited per account, and every accepted request
+     * mails the address they named. {@link EmailAlreadyInUseException} carries the whole
+     * argument; the short version is that a change which silently did nothing would
+     * leave somebody waiting for a confirmation that is never coming.
+     */
+    @ExceptionHandler(EmailAlreadyInUseException.class)
+    public ResponseEntity<ProblemDetail> handleEmailInUse(EmailAlreadyInUseException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/email-already-in-use"));
+        problem.setTitle("Address unavailable");
+        problem.setDetail(exception.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .cacheControl(CacheControl.noStore())
+                .body(problem);
+    }
+
+    /**
+     * A valid access token for an account that has since been closed.
+     *
+     * <p>401 rather than 404: an access token lives for fifteen minutes and outlives the
+     * account it was minted for, so the honest answer is that this credential is no
+     * longer good — which is the answer that makes a client stop using it. A 404 would
+     * read as "no such endpoint" and be retried.
+     */
+    @ExceptionHandler(AccountNotFoundException.class)
+    public ResponseEntity<ProblemDetail> handleAccountNotFound(AccountNotFoundException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.UNAUTHORIZED);
+        problem.setType(URI.create("https://ideanest.az/problems/authentication-failed"));
+        problem.setTitle("Not authenticated");
+        // Never the exception's own message: it names the account identifier, and this
+        // body is read by whoever presented the token rather than by whoever owns it.
+        problem.setDetail("This account is no longer available.");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .cacheControl(CacheControl.noStore())
                 .body(problem);
     }

@@ -97,6 +97,42 @@ public class UserAccounts {
         users.findByIdAndDeletedAtIsNull(userId).ifPresent(user -> user.markEmailVerified(at));
     }
 
+    /**
+     * §4.1's A-12 (#277): moves the account to an address that has just proved itself.
+     *
+     * <p><strong>The uniqueness check is here and it is not the one that decides.</strong>
+     * Two accounts asking to move to one address is a race this cannot win by reading —
+     * both see it free — and the unique index on {@code users.email} is what refuses the
+     * second. What the check buys is the ordinary case: somebody who typed an address
+     * that is already registered is told so by the endpoint that took the confirmation,
+     * rather than by a constraint violation surfacing as a 500.
+     *
+     * <p>Answers {@code false} rather than throwing when the address is taken, because
+     * the caller has more to say about it than this module does: it holds the request
+     * row, and it is the one that has to decide whether the link is spent.
+     *
+     * @return whether the address moved
+     */
+    @Transactional
+    public boolean changeEmail(UUID userId, EmailAddress newEmail, Instant at) {
+        Optional<User> account = users.findByIdAndDeletedAtIsNull(userId);
+        if (account.isEmpty()) {
+            return false;
+        }
+        if (account.get().getEmail().equals(newEmail)) {
+            // Already there. Not a failure — a second click on the same link, or a
+            // change that was confirmed and then asked for again — and answering true
+            // is what makes the confirmation endpoint idempotent in the way that
+            // matters: the account ends up at the address the link named.
+            return true;
+        }
+        if (users.existsByEmail(newEmail)) {
+            return false;
+        }
+        account.get().changeEmail(newEmail, at);
+        return true;
+    }
+
     private String allocateSlug(String name) {
         String base = Slugs.slugify(name);
         if (base.length() < 3) {
@@ -138,6 +174,7 @@ public class UserAccounts {
                 user.getSlug(),
                 user.isEmailVerified(),
                 user.getDeletionScheduledAt(),
-                user.getSuspendedAt());
+                user.getSuspendedAt(),
+                user.getLocale());
     }
 }

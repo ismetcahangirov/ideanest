@@ -4,6 +4,8 @@ import az.ideanest.shared.EmailAddress;
 import az.ideanest.shared.Identifiers;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
@@ -60,6 +62,15 @@ public class User {
     @Column(name = "currency", nullable = false)
     private String currency;
 
+    /**
+     * §4.2's P-07 (#274). {@code PUBLIC} for every account that existed before V45,
+     * and for every account created since — that migration argues why the default
+     * could not honestly be anything else.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "profile_visibility", nullable = false)
+    private ProfileVisibility profileVisibility = ProfileVisibility.PUBLIC;
+
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
@@ -106,6 +117,7 @@ public class User {
         this.slug = slug;
         this.locale = locale;
         this.currency = currency;
+        this.profileVisibility = ProfileVisibility.PUBLIC;
     }
 
     /**
@@ -128,6 +140,35 @@ public class User {
 
     public boolean isEmailVerified() {
         return emailVerifiedAt != null;
+    }
+
+    /**
+     * §4.1's A-12 (#277): moves the account to an address that has just proved itself.
+     *
+     * <p><strong>The new address is verified by arriving here.</strong> The only way to
+     * reach this method is by spending a link that was sent to it, which is precisely
+     * the proof {@code emailVerifiedAt} records — re-sending a verification would ask
+     * somebody to prove twice what they have just proved once. Setting it also matters
+     * because an unverified account may do almost nothing on this platform, and an
+     * address change is not a demotion.
+     *
+     * <p>{@link #markEmailVerified} keeps the first timestamp on purpose and is
+     * therefore no use here: the account is verified <em>at a new address</em>, and the
+     * date the old one was proven is a fact about an address we no longer hold.
+     */
+    public void changeEmail(EmailAddress newEmail, Instant at) {
+        this.email = Objects.requireNonNull(newEmail, "An address change has a new address");
+        this.emailVerifiedAt = at;
+    }
+
+    /** §4.2's P-07: whether this account has a public profile page. Never null. */
+    public ProfileVisibility getProfileVisibility() {
+        return profileVisibility;
+    }
+
+    public void setProfileVisibility(ProfileVisibility profileVisibility) {
+        this.profileVisibility =
+                Objects.requireNonNull(profileVisibility, "Profile visibility is PUBLIC or PRIVATE, never absent");
     }
 
     public boolean isDeleted() {
@@ -204,6 +245,13 @@ public class User {
         this.emailVerifiedAt = null;
         // locale and currency stay. Neither identifies anybody, and currency is
         // the unit the retained financial rows are denominated in.
+        //
+        // The profile is withdrawn (#274). Not because "Deleted account" identifies
+        // anybody — it does not — but because the page it would serve lists the
+        // campaigns this row created and backed, and that list is a fingerprint: one
+        // person's set of campaigns is frequently unique, and it stays unique after the
+        // name above it is replaced.
+        this.profileVisibility = ProfileVisibility.PRIVATE;
         this.anonymisedAt = at;
         this.deletedAt = at;
     }

@@ -157,6 +157,11 @@ function draft(overrides: Partial<PledgeResponse> = {}): PledgeResponse {
     // exist to prove the screen reads them rather than asserting them.
     paymentMethodId: null,
     cardVerified: false,
+    // Both always present on the wire — `latePledge` is a primitive on the record and
+    // `supplements` is a list — and both added to the type by #287, which reads them on the
+    // pledge manager. False and empty is what the service sends for a pledge made at checkout.
+    latePledge: false,
+    supplements: [],
     ...overrides,
   };
 }

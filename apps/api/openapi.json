@@ -1009,6 +1009,90 @@
         "tags" : [ "two-factor-controller" ]
       }
     },
+    "/v1/auth/change-email" : {
+      "post" : {
+        "operationId" : "credentialChangeEmail",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ChangeEmailRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "credential-controller" ]
+      }
+    },
+    "/v1/auth/change-password" : {
+      "post" : {
+        "operationId" : "credentialChangePassword",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "credential-controller" ]
+      }
+    },
+    "/v1/auth/confirm-email-change" : {
+      "post" : {
+        "operationId" : "credentialConfirmEmailChange",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ConfirmEmailChangeRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "credential-controller" ]
+      }
+    },
+    "/v1/auth/forgot-password" : {
+      "post" : {
+        "operationId" : "credentialForgotPassword",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "credential-controller" ]
+      }
+    },
     "/v1/auth/login" : {
       "post" : {
         "operationId" : "tokenSignIn",
@@ -1139,6 +1223,27 @@
           }
         },
         "tags" : [ "auth-controller" ]
+      }
+    },
+    "/v1/auth/reset-password" : {
+      "post" : {
+        "operationId" : "credentialResetPassword",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "credential-controller" ]
       }
     },
     "/v1/auth/sessions" : {
@@ -2249,6 +2354,61 @@
           }
         },
         "tags" : [ "notification-inbox-controller" ]
+      }
+    },
+    "/v1/me/pledges" : {
+      "get" : {
+        "operationId" : "backerArchiveMine",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "cursor",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BackerPledgeListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "backer-archive-controller" ]
+      }
+    },
+    "/v1/me/profile-visibility" : {
+      "patch" : {
+        "operationId" : "profileVisibilitySetVisibility",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ProfileVisibilityRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "profile-visibility-controller" ]
       }
     },
     "/v1/me/saved" : {
@@ -5063,6 +5223,73 @@
         "tags" : [ "content-report-controller" ]
       }
     },
+    "/v1/users/{slug}" : {
+      "get" : {
+        "operationId" : "publicProfileProfile",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PublicProfileResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "public-profile-controller" ]
+      }
+    },
+    "/v1/users/{slug}/backed" : {
+      "get" : {
+        "operationId" : "backerArchiveBacked",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "cursor",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProfileProjectListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "backer-archive-controller" ]
+      }
+    },
     "/v1/users/{slug}/follow" : {
       "delete" : {
         "operationId" : "backerSignalUnfollow",
@@ -5111,6 +5338,47 @@
           }
         },
         "tags" : [ "backer-signal-controller" ]
+      }
+    },
+    "/v1/users/{slug}/projects" : {
+      "get" : {
+        "operationId" : "profileProjectCreated",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "cursor",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProfileProjectListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "profile-project-controller" ]
       }
     },
     "/v1/webhooks/psp/{provider}" : {
@@ -5570,6 +5838,59 @@
           }
         }
       },
+      "BackerPledgeListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "nextCursor" : {
+            "type" : "string"
+          },
+          "pledges" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/BackerPledgeSummary"
+            }
+          }
+        }
+      },
+      "BackerPledgeSummary" : {
+        "type" : "object",
+        "properties" : {
+          "amounts" : {
+            "$ref" : "#/components/schemas/Amounts"
+          },
+          "canceledAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "confirmedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "isAnonymous" : {
+            "type" : "boolean"
+          },
+          "latePledge" : {
+            "type" : "boolean"
+          },
+          "pledgeId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "project" : {
+            "$ref" : "#/components/schemas/Campaign"
+          },
+          "rewardTierId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "rewardTitle" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          }
+        }
+      },
       "BackerSegmentResponse" : {
         "type" : "object",
         "properties" : {
@@ -5669,6 +5990,34 @@
           }
         },
         "required" : [ "addons" ]
+      },
+      "Campaign" : {
+        "type" : "object",
+        "properties" : {
+          "coverImage" : {
+            "$ref" : "#/components/schemas/CoverImageBody"
+          },
+          "creatorSlug" : {
+            "type" : "string"
+          },
+          "deadline" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
       },
       "CampaignMessageListResponse" : {
         "type" : "object",
@@ -5882,6 +6231,39 @@
           }
         },
         "required" : [ "category", "channel", "mode" ]
+      },
+      "ChangeEmailRequest" : {
+        "type" : "object",
+        "properties" : {
+          "currentPassword" : {
+            "type" : "string",
+            "maxLength" : 256,
+            "minLength" : 0
+          },
+          "newEmail" : {
+            "type" : "string",
+            "format" : "email",
+            "maxLength" : 254,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "currentPassword", "newEmail" ]
+      },
+      "ChangePasswordRequest" : {
+        "type" : "object",
+        "properties" : {
+          "currentPassword" : {
+            "type" : "string",
+            "maxLength" : 256,
+            "minLength" : 0
+          },
+          "newPassword" : {
+            "type" : "string",
+            "maxLength" : 256,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "currentPassword", "newPassword" ]
       },
       "ChannelTotal" : {
         "type" : "object",
@@ -6138,6 +6520,17 @@
             "format" : "uuid"
           }
         }
+      },
+      "ConfirmEmailChangeRequest" : {
+        "type" : "object",
+        "properties" : {
+          "token" : {
+            "type" : "string",
+            "maxLength" : 512,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "token" ]
       },
       "ConfirmPledgeRequest" : {
         "type" : "object",
@@ -6680,6 +7073,18 @@
             "type" : "string"
           }
         }
+      },
+      "ForgotPasswordRequest" : {
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "type" : "string",
+            "format" : "email",
+            "maxLength" : 254,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "email" ]
       },
       "FulfilmentImportResponse" : {
         "type" : "object",
@@ -7472,6 +7877,75 @@
           }
         }
       },
+      "ProfileProjectCard" : {
+        "type" : "object",
+        "properties" : {
+          "backersCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "blurb" : {
+            "type" : "string"
+          },
+          "coverImage" : {
+            "$ref" : "#/components/schemas/CoverImageBody"
+          },
+          "creatorSlug" : {
+            "type" : "string"
+          },
+          "deadline" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "goal" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "launchedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "pledged" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ProfileProjectListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "nextCursor" : {
+            "type" : "string"
+          },
+          "projects" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ProfileProjectCard"
+            }
+          }
+        }
+      },
+      "ProfileVisibilityRequest" : {
+        "type" : "object",
+        "properties" : {
+          "visibility" : {
+            "type" : "string",
+            "enum" : [ "PUBLIC", "PRIVATE" ]
+          }
+        },
+        "required" : [ "visibility" ]
+      },
       "ProjectAnalyticsResponse" : {
         "type" : "object",
         "properties" : {
@@ -7775,6 +8249,27 @@
             "items" : {
               "$ref" : "#/components/schemas/RewardTierCountBody"
             }
+          }
+        }
+      },
+      "PublicProfileResponse" : {
+        "type" : "object",
+        "properties" : {
+          "avatarUrl" : {
+            "type" : "string"
+          },
+          "bio" : {
+            "type" : "string"
+          },
+          "joinedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "slug" : {
+            "type" : "string"
           }
         }
       },
@@ -8136,6 +8631,22 @@
             "$ref" : "#/components/schemas/Target"
           }
         }
+      },
+      "ResetPasswordRequest" : {
+        "type" : "object",
+        "properties" : {
+          "password" : {
+            "type" : "string",
+            "maxLength" : 256,
+            "minLength" : 0
+          },
+          "token" : {
+            "type" : "string",
+            "maxLength" : 512,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "password", "token" ]
       },
       "Resolution" : {
         "type" : "object",

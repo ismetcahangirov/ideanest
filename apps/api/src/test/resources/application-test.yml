@@ -331,6 +331,14 @@ ideanest:
       sign-ins-per-address: 100000
       sign-ins-per-email: 5
       social-sign-ins-per-address: 100000
+      # §4.1's A-06, on the same principle: the per-address ceiling is off because
+      # every test calls from 127.0.0.1, and the per-email one keeps its real value
+      # because each test uses its own address.
+      password-resets-per-address: 100000
+      password-resets-per-email: 3
+      # §4.1's A-12 and A-13. Per account, so each test exercises it in isolation
+      # and the real value can stand.
+      credential-changes-per-user: 10
     token:
       issuer: https://api.ideanest.test
     oauth:

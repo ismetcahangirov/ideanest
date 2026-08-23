@@ -230,12 +230,42 @@ describe('the links', () => {
   });
 
   /**
-   * There is no `POST /v1/auth/forgot-password` in the service and no page behind #271. A
-   * "Forgot your password?" link resolving to a 404 is worse on this screen than anywhere
-   * else: it is offered to somebody who is already locked out.
+   * THIS ASSERTION WAS THE OPPOSITE UNTIL #271 SHIPPED, and the reason it flipped is worth
+   * keeping: the link was refused while `POST /v1/auth/forgot-password` did not exist and
+   * `/reset-password` answered 404, because "a link resolving to a 404 is worse on this screen
+   * than anywhere else — it is offered to somebody who is already locked out". Both halves are
+   * built now, so the screen that fails somebody has to carry the way out.
    */
-  it('does not offer a password reset that does not exist', () => {
+  it('offers the password reset, now that there is one', () => {
     renderForm();
-    expect(screen.queryByText(/forgot/iu)).toBeNull();
+
+    expect(screen.getByRole('link', { name: 'Forgot your password?' })).toHaveAttribute(
+      'href',
+      '/reset-password',
+    );
+  });
+});
+
+/**
+ * #277's password change cannot render its own confirmation: `POST /v1/auth/change-password`
+ * revokes every session including the caller's, and the route guard moves a signed-out reader
+ * off `/settings/password` before anything could be read. So the confirmation lands here.
+ */
+describe('the notice after a password change', () => {
+  it('explains the sign-out somebody has just been given', () => {
+    search = 'notice=password-changed';
+    renderForm();
+
+    expect(screen.getByText('Your password was changed')).toBeInTheDocument();
+  });
+
+  it('prints nothing for a value it does not know, because the URL is attacker-controlled', () => {
+    // A notice whose text came out of a query string is a phishing page hosted on our own
+    // domain. The parameter selects from a fixed set or it selects nothing.
+    search = 'notice=your-account-needs-verifying-at-evil.test';
+    renderForm();
+
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.queryByText(/evil\.test/u)).toBeNull();
   });
 });

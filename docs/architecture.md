@@ -195,6 +195,48 @@ Marked `[W]` web, `[M]` mobile, `[A]` admin.
 > `VerifyEmailRequest` makes about the verification token. #272 built the step;
 > there is no `/two-factor` path to look for.
 >
+> **A-06's reset does not say whether the address has an account, and #271 kept
+> it that way.** `POST /v1/auth/forgot-password` answers 202 either way, for the
+> reason registration answers 202 either way: an endpoint that says "no such
+> account" turns a breach list into the subset of those people who are here, and
+> that subset is what somebody wants before writing a phishing email. What differs
+> is invisible from outside — an address with no account receives **nothing**.
+> Registration writes to an already-registered address because its owner deserves
+> to know somebody is probing it; the reset form takes whatever was typed into it,
+> so mailing that would make this platform a delivery service for strangers.
+>
+> The link is single-use, lasts **one hour** rather than the verification link's
+> twenty-four, and issuing a second one retires the first. The password policy is
+> checked **before** the link is spent, so a rejected password leaves the link
+> usable — burning it on the way to a 400 is the reset flow's most common
+> self-inflicted support ticket. Every session dies when it succeeds.
+>
+> **An account with no password can still reset one.** Somebody who registered
+> through Google or Apple has no `user_credentials` row and the reset creates one.
+> That is the documented way back for a person who has lost the provider account
+> they signed up with; the proof required is control of the mailbox, which is what
+> would recover the provider account too.
+
+> **A-12 does not move the address until the new one answers, and V44 is written
+> about why (#277).** Writing `users.email` immediately and clearing the verified
+> flag is the obvious alternative and it fails on one typo: sign-in is by address,
+> and so is the reset that would fix it, so the account would already be behind a
+> mailbox nobody can read. The request is held in `email_change_requests` and the
+> address moves in a single statement when the link is spent.
+>
+> **Both addresses are written to**, which is what the capability asks for. The new
+> one gets the link. The old one gets a notice with no link at all — it cannot
+> approve the change and does not need to; what it does is make an address takeover
+> visible to the person losing the account, at the address they still hold.
+>
+> **A-13 revokes every session including the caller's; A-12 revokes none.** A
+> password is changed precisely when somebody believes the old one is known, and
+> leaving the sessions it issued alive makes the change ceremonial. An address
+> change alters no credential: the same password still opens the same sessions.
+> Both require the current password, because a stolen access token is fifteen
+> minutes of somebody else's session and neither of these should be what makes it
+> permanent.
+
 > **`GET /v1/me` does not say whether two-factor is on, and #278's screen cannot
 > ask.** Its six fields carry no `twoFactorEnabled`, and no other read answers it
 > either. The enrolment screen therefore offers both directions and lets
@@ -231,6 +273,26 @@ Marked `[W]` web, `[M]` mobile, `[A]` admin.
 > language and currency preferences are blocked on §21.1. An entry pointing at a
 > page that cannot work is worse than no entry, which is the rule the site header
 > already follows.
+>
+> **P-04 to P-07 are a third surface and not part of that navigation either
+> (#274).** `/u/{slug}` is somebody else's page: it is read by strangers, it is
+> indexable, and it belongs to no account area. What lives under `/settings` is the
+> one thing about it its owner decides — P-07's visibility, on the privacy screen
+> that already holds the closure and export controls.
+>
+> **PRIVATE answers 404 and never 403.** A 403 confirms that the slug names a real
+> account, which is exactly the fact a withheld profile is withholding; the reads
+> answer a private profile, a closed account and a slug that never existed with one
+> response. What PRIVATE does *not* retract is stated in `ProfileVisibility`,
+> because a setting that overpromises is worse than none: a creator's name and
+> avatar are on every campaign page they have published, and choosing PRIVATE
+> withdraws the profile rather than the campaigns.
+>
+> **P-04's archive carries no amounts, and that is the capability's own wording.**
+> What a stranger may see is that somebody backed a campaign, never for how much —
+> and §4.5's PL-12 anonymous pledges are omitted from it entirely rather than
+> listed without a name, since a list of campaigns is frequently identifying on its
+> own.
 
 ### 4.3 Discovery and search `[W] [M]`
 
@@ -427,13 +489,46 @@ and each entry needs a translation per supported locale.
 > the issue is about, since the narrative is the entire content a crawler and a
 > link unfurler are given.
 >
-> **The first pass is the header, the story, the risks and the reward tiers.**
+> **The first pass was the header, the story, the risks and the reward tiers.**
 > Those are the parts a stranger reads before deciding whether to register, and
 > each of the remaining tabs already has a public endpoint of its own — folding
 > them in would produce one response whose cost is decided by the longest comment
-> thread on the platform, cached for as long as its least cacheable part. The
-> tabs, the media player, the trust block and the save and share controls are
-> still to come; what is on the page today is complete rather than partial.
+> thread on the platform, cached for as long as its least cacheable part.
+>
+> **The rest arrived with #281, #282, #284 and #285, and the split above is why
+> the tab is a query parameter.** `?tab=` keeps one canonical URL for one
+> campaign — a route per tab would be five, four of them thin — while still being
+> a link somebody can send and a crawler can follow, which local state is not.
+> Only the active tab is fetched, so the second read is paid for by the reader who
+> asked for it.
+>
+> **The tab strip is a list of links and deliberately not an ARIA tab widget.**
+> `role="tab"` promises arrow-key movement, a single tab stop, and a panel that
+> changes without the page moving; the first two need JavaScript to manage a
+> roving `tabindex` on the route §4.4 is server-rendered for, and the third would
+> be false anyway because activating one of these navigates. A widget whose roles
+> promise behaviour it does not have is worse than no roles at all.
+>
+> **The media player has no video to play, and says so by not offering one.**
+> `ProjectPageResponse` carries a cover image and §13.2's pipeline is not built,
+> so the player is the poster. A play control that did nothing would be worse than
+> its absence, so the affordance exists as an unreachable branch with the seam
+> documented rather than as a button.
+>
+> **The Creator tab has a biography and previous campaigns, and no contact row.**
+> §4.4 asks for history and contact; `users` has `bio` and nothing else, and
+> §4.9's C-12 has no reply half. The tab omits the rows rather than inventing
+> them. It reads §4.2's public profile, so a creator who has set their profile to
+> PRIVATE degrades to the byline with no link — and with no explanation, because
+> an explanation would rebuild in the interface the 404-not-403 oracle the service
+> exists to avoid.
+>
+> **The Comments tab attributes the creator and nobody else.** `CommentResponse`
+> carries an `authorId` and no display name, and the profile read is keyed on a
+> slug, so nothing on the platform turns one into the other. The tab marks the
+> campaign's own replies and leaves every other comment unattributed rather than
+> inventing a byline; a name beside a comment is worth having only when it is the
+> right name.
 >
 > **A closed campaign shows two totals.** What it raised at its deadline, frozen
 > by §5.1, beside what has actually been collected since — see §5.1 for why
@@ -881,6 +976,18 @@ The most valuable and most complex module. It begins when funding closes.
 > charged**: PM-16 is the charge, `collected_at` is null on every row this platform
 > holds, and a stub that marked one collected would tell a creator money had arrived.
 >
+> **PL-09 and PL-10 have a screen now (#287), and a list to reach it from.**
+> `GET /v1/me/pledges` answers the caller's own rows and nothing else; there is no
+> "list somebody's pledges" read anywhere on the platform, because §4.4 already
+> states that this page names no backer and #209 is where that would be settled.
+>
+> The list carries all six amounts, the tier's title and enough of the campaign to
+> render a card — including campaigns in states the public may not see, which is
+> the one place a backer is shown more than a stranger and is correct: somebody who
+> committed money to a campaign trust and safety later stopped still has a pledge,
+> and hiding it would make the money look like it had gone somewhere unnameable.
+> §4.2's P-04 archive is the opposite case and drops exactly those rows.
+
 > **Not built:** PM-14 to PM-16's tax and customs (#78, blocked on a decision) and the
 > charge PM-16 asks for (epic #59), PM-17's backer report *for the pledge manager* —
 > §4.7's CD-10 is built and is the same list — PM-18's bulk address editing, and PM-19's
@@ -2966,8 +3073,11 @@ POST   /v1/auth/login
 POST   /v1/auth/refresh
 POST   /v1/auth/logout
 POST   /v1/auth/verify-email
-POST   /v1/auth/forgot-password
-POST   /v1/auth/reset-password
+POST   /v1/auth/forgot-password        # A-06 (#271); always 202, account or no account
+POST   /v1/auth/reset-password         # A-06 (#271); single-use link, one hour
+POST   /v1/auth/change-password        # A-13 (#277); current password, revokes every session
+POST   /v1/auth/change-email           # A-12 (#277); 202 -- the address has not moved yet
+POST   /v1/auth/confirm-email-change   # A-12 (#277); unauthenticated, the link is the credential
 POST   /v1/auth/2fa/enable      # starts an enrolment; does not switch it on
 POST   /v1/auth/2fa/confirm     # a current code switches it on, returns recovery codes
 POST   /v1/auth/2fa/verify      # second half of a sign-in: challenge + code
@@ -2990,7 +3100,11 @@ PATCH  /v1/me/notification-preferences
 GET    /v1/me/export
 POST   /v1/me/deletion
 DELETE /v1/me/deletion
-GET    /v1/users/{slug}
+GET    /v1/me/pledges                       # PL-09/PL-10 (#287); the caller's own pledges
+PATCH  /v1/me/profile-visibility            # P-07 (#274); the profile page's one switch
+GET    /v1/users/{slug}                     # P-06 (#274); 404 for a private profile, never 403
+GET    /v1/users/{slug}/projects            # P-05 (#274); public states only
+GET    /v1/users/{slug}/backed              # P-04 (#274); no amounts, anonymous pledges omitted
 POST   /v1/users/{slug}/follow              # C-10 (#90)
 DELETE /v1/users/{slug}/follow
 

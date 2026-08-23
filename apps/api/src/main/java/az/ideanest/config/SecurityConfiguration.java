@@ -274,6 +274,43 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/v1/projects/*/comments")
                         .permitAll()
                         // ---- end #84 --------------------------------------
+                        // ---- #274: §4.2's public profile ------------------
+                        // A person's own page and its two archives: what they
+                        // created, and what they backed. Public because a profile
+                        // read by somebody who has not registered is the audience
+                        // it exists for -- the creator link on every campaign page
+                        // points here, and #90's follow button is reached from it.
+                        //
+                        // WHAT MAY BE READ IS NOT DECIDED HERE, exactly as it is
+                        // not for the two rules above. PublicProfiles refuses an
+                        // account whose profile_visibility is PRIVATE, a closed
+                        // account and a slug that never existed with one 404 --
+                        // never a 403, which would confirm that the slug names a
+                        // real account and so publish the one fact a withheld
+                        // profile is withholding. The archives apply the same rule
+                        // and drop what the reader may not see: a campaign in a
+                        // non-public state, and §4.5's PL-12 anonymous pledges.
+                        //
+                        // GET AND NOTHING ELSE, and the exclusions matter more
+                        // here than anywhere else in this list because three other
+                        // handlers already answer under `/v1/users/*`. POST and
+                        // DELETE `/v1/users/*/follow` are somebody subscribing in
+                        // their own name, and POST `/v1/users/*/report` is somebody
+                        // making an accusation in it; all three fall through to the
+                        // rule at the bottom, so an anonymous caller cannot follow
+                        // on another account's behalf or file an unattributable
+                        // report.
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/v1/users/*",
+                                "/v1/users/*/projects",
+                                "/v1/users/*/backed")
+                        .permitAll()
+                        // `PATCH /v1/me/profile-visibility` -- P-07's switch, and
+                        // the only write in this feature -- is deliberately absent.
+                        // It is the account deciding about itself and falls through
+                        // to the rule below with the rest of `/v1/me`.
+                        // ---- end #274 -------------------------------------
                         // "Tell me when this opens", and "stop reminding me".
                         // Unauthenticated on purpose and bounded in the handler by
                         // a rate limiter per source address and per email address:
@@ -379,7 +416,46 @@ public class SecurityConfiguration {
                                 // deliberately absent: enrolling, confirming,
                                 // and disabling all require a bearer token, and
                                 // fall through to the rule below.
-                                "/v1/auth/2fa/verify")
+                                "/v1/auth/2fa/verify",
+                                // ---- #271: §4.1's A-06, password reset -------
+                                // Both halves are unauthenticated by necessity:
+                                // somebody who needs a reset is by definition
+                                // somebody who cannot sign in, so requiring a
+                                // token here would be circular in exactly the
+                                // way the paragraph above describes.
+                                //
+                                // What authorises each is its own credential.
+                                // `forgot-password` authorises nothing at all — it is a
+                                // request to send mail, it answers 202 whether
+                                // or not the address has an account, and it is
+                                // bounded per source address and per email
+                                // address by CredentialController. `reset-password`
+                                // carries a single-use 256-bit token that was
+                                // sent to the account's own address and expires
+                                // in an hour.
+                                "/v1/auth/forgot-password",
+                                "/v1/auth/reset-password",
+                                // `/v1/auth/change-password` is deliberately
+                                // absent and falls through to the rule at the
+                                // bottom: changing a password you know is not
+                                // recovering one you do not, and it requires a
+                                // bearer token as well as the current password.
+                                // ---- end #271 -------------------------------
+                                // ---- #277: §4.1's A-12, address change -------
+                                // The CONFIRMATION only. The credential is the
+                                // token in the message sent to the new address,
+                                // exactly as it is for `/v1/auth/verify-email`,
+                                // and requiring a session as well would mean the
+                                // link only works in the browser that asked for
+                                // it — which is the browser least likely to be
+                                // signed in to the new mailbox.
+                                //
+                                // `/v1/auth/change-email` — the ask — is not
+                                // here. It needs a bearer token and the current
+                                // password, because the address on an account is
+                                // what a reset is sent to, and moving it is the
+                                // last step of taking the account over.
+                                "/v1/auth/confirm-email-change")
                         .permitAll()
                         // What an account inside its deletion grace period may
                         // still do: look at itself, take its data with it, and

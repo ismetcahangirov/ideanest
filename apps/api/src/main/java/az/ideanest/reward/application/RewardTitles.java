@@ -1,6 +1,7 @@
 package az.ideanest.reward.application;
 
 import az.ideanest.shared.money.Money;
+import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
 
@@ -42,6 +43,33 @@ public interface RewardTitles {
      *     already decided they may see
      */
     Map<UUID, RewardTitle> titlesOf(UUID projectId);
+
+    /**
+     * The same, for tiers named one by one rather than by the campaign they belong to.
+     *
+     * <p><strong>A second method rather than a loop at the call site, and #287 is what made
+     * it necessary.</strong> {@code GET /v1/me/pledges} is a page of a backer's own pledges,
+     * each on a different campaign, and each naming at most one tier. Asking
+     * {@link #titlesOf} per row would be twenty round trips per page view — and twenty
+     * whole campaigns' worth of tiers fetched to read twenty titles, on a campaign with
+     * forty of them. That is exactly the argument {@code ProjectSummaries.summariesOf}
+     * makes about its own batch form, arrived at from the other direction.
+     *
+     * <p>Both methods stay. A report about one campaign genuinely asks about that campaign,
+     * and expressing it as a set of tier identifiers there would mean the caller had to
+     * know the tiers before it could ask what they are called.
+     *
+     * <p>The identifiers are not authorised and do not need to be, for {@link #titlesOf}'s
+     * reason: a caller holds them because a row it may already read names them, and a tier
+     * title tells nobody anything that row has not already decided they may see.
+     *
+     * @param rewardTierIds the tiers. Null and empty are both an empty answer, and so is a
+     *     tier that no longer exists — a campaign may delete a tier no pledge took, and a
+     *     page of pledges must not fail because one identifier is stale
+     * @return one entry per tier that exists, keyed by its identifier. Never null, possibly
+     *     smaller than what was asked for
+     */
+    Map<UUID, RewardTitle> titlesOfTiers(Collection<UUID> rewardTierIds);
 
     /**
      * What a tier is called and what it asks for.

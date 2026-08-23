@@ -21,6 +21,13 @@ import java.util.UUID;
  *     AD-04 (#104). Part of the contract for the same reason as the field above and one
  *     stronger: a suspended account may not sign in at all, and sign-in is in another
  *     module. Orthogonal to deletion, so both can be set at once
+ * @param locale which of §21.1's languages this person reads, as they chose at
+ *     registration. Part of the contract because the messages this platform sends about
+ *     an account — A-06's reset link, A-12's two confirmations, A-13's notice — are
+ *     composed in {@code auth}, and the alternative is the request's
+ *     {@code Accept-Language}. That is the wrong answer twice over: a reset is
+ *     frequently asked for from a borrowed device, and the notice that a password
+ *     changed is triggered by whoever changed it, who may not be the account's owner
  */
 public record UserAccount(
         UUID id,
@@ -29,7 +36,8 @@ public record UserAccount(
         String slug,
         boolean emailVerified,
         Instant deletionScheduledAt,
-        Instant suspendedAt) {
+        Instant suspendedAt,
+        String locale) {
 
     /** Whether this account is inside its grace period and awaiting anonymisation. */
     public boolean deletionPending() {

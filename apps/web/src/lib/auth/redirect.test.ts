@@ -77,6 +77,28 @@ describe('isAuthenticationPath', () => {
     expect(isAuthenticationPath('/settings')).toBe(false);
     expect(isAuthenticationPath('/')).toBe(false);
   });
+
+  /**
+   * #271 and #277's landing pages, which joined the group after it was written.
+   *
+   * The list is hand-maintained because the route tree has no runtime form to derive it
+   * from, and a hand-maintained list is one somebody adds a route without joining. These
+   * assertions are what makes that a failing test rather than a return path that walks
+   * somebody who has just signed in back to the form for people who cannot.
+   */
+  it('covers the recovery landing pages, including the confirm step under one of them', () => {
+    expect(isAuthenticationPath('/reset-password')).toBe(true);
+    expect(isAuthenticationPath('/reset-password/confirm')).toBe(true);
+    expect(isAuthenticationPath('/confirm-email-change')).toBe(true);
+  });
+
+  it('does not claim the settings screens that change the same two credentials', () => {
+    // §4.1's A-12 and A-13 are behind the guard rather than in front of it, so they are
+    // legitimate return paths: being sent back to `/settings/password` after signing in is
+    // exactly what should happen.
+    expect(isAuthenticationPath('/settings/password')).toBe(false);
+    expect(isAuthenticationPath('/settings/email')).toBe(false);
+  });
 });
 
 describe('signInHref', () => {

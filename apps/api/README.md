@@ -264,6 +264,11 @@ rather than wherever the first commit happened to put it.
 | `POST /v1/auth/oauth/{provider}` | Signs in with a Google or Apple ID token. Same session, same tokens, same cookie as `/login` |
 | `POST /v1/auth/refresh` | Rotates the refresh token and returns a new access token |
 | `POST /v1/auth/logout` | Revokes the session. `204` even with no token |
+| `POST /v1/auth/forgot-password` | Asks for a reset link. Always `202`, account or no account |
+| `POST /v1/auth/reset-password` | Spends the link and sets the password. `204`. Revokes every session |
+| `POST /v1/auth/change-password` | Replaces the password. Costs the current one. `204`. Revokes every session, the caller's included |
+| `POST /v1/auth/change-email` | Asks to move the account to another address. Costs the current password. `202` — the address has **not** moved |
+| `POST /v1/auth/confirm-email-change` | Spends the link sent to the new address and moves the account. `204`. Unauthenticated |
 | `POST /v1/auth/2fa/enable` | Starts a TOTP enrolment. Costs the password. Does **not** switch two-factor on |
 | `POST /v1/auth/2fa/confirm` | A current code switches it on and returns the recovery codes, once |
 | `POST /v1/auth/2fa/verify` | The second half of a sign-in: a challenge and a code, for tokens |
@@ -285,6 +290,41 @@ here. Both paths return the same status and the same body; what differs is the
 message the address receives, and that goes to its owner rather than to whoever
 typed it. The cost is that the sign-up form cannot say "you already have an
 account" — the email says it instead.
+
+**A password reset says nothing about the address either (#271).**
+`POST /v1/auth/forgot-password` answers `202` whether or not the account exists,
+for the same reason. One thing differs from registration and it is deliberate:
+an address with **no** account receives nothing at all. Registration writes to an
+already-registered address because its owner deserves to know somebody is probing
+it; the reset form takes whatever was typed into it, and mailing that would make
+this service a delivery mechanism for strangers.
+
+The link is single-use, lasts an hour rather than a verification link's
+twenty-four, and asking again retires the previous one. The password policy is
+checked **before** the link is spent, so a rejected password leaves the link
+usable — burning it on the way to a `400` is the reset flow's most common
+self-inflicted support ticket. An account that has only ever signed in through a
+provider has no `user_credentials` row, and a reset creates one: that is the
+documented way back for somebody who has lost the provider account, and the proof
+required is control of the mailbox, which is what would recover the provider
+account anyway.
+
+**An address change does not move the address (#277).** `V44__create_email_change_requests.sql`
+carries the argument: writing `users.email` immediately and clearing the verified
+flag fails on a single typo, because sign-in is by address and so is the reset
+that would fix it. The request is held in `email_change_requests` and the address
+moves in one statement when the link is spent. **Both addresses are written to** —
+the new one gets the link, the old one gets a notice with no link at all, which is
+how somebody losing their account finds out at an address they still hold.
+
+**A password change revokes every session; an address change revokes none.** A
+password is changed precisely when somebody believes the old one is known, and
+leaving the sessions it issued alive makes the change ceremonial — including the
+session that asked, because "every session except this one" is a rule the client
+would have to be trusted to have picked correctly. An address change alters no
+credential, so the same password still opens the same sessions. Both cost the
+current password, because a stolen access token is fifteen minutes of somebody
+else's session and neither of these is what it should be able to make permanent.
 
 **Passwords** must be 12–256 characters and may not contain the address they
 protect. There are no composition rules: they reliably produce `Password1!` and

@@ -1,6 +1,10 @@
 package az.ideanest.auth.application;
 
+import az.ideanest.auth.application.AuthEvents.EmailChangeNoticeToPreviousAddress;
+import az.ideanest.auth.application.AuthEvents.EmailChangeRequested;
 import az.ideanest.auth.application.AuthEvents.EmailVerificationRequested;
+import az.ideanest.auth.application.AuthEvents.PasswordChanged;
+import az.ideanest.auth.application.AuthEvents.PasswordResetRequested;
 import az.ideanest.auth.application.AuthEvents.RegistrationAttemptedOnExistingAccount;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -36,5 +40,33 @@ public class VerificationNotificationListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onRegistrationAttemptOnExistingAccount(RegistrationAttemptedOnExistingAccount event) {
         notifier.sendRegistrationAttemptOnExistingAccount(event.email(), event.locale());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onPasswordResetRequested(PasswordResetRequested event) {
+        notifier.sendPasswordReset(event.email(), event.token(), event.locale());
+    }
+
+    /**
+     * The notice that a password changed.
+     *
+     * <p>After commit like everything else here, and the ordering matters more than
+     * usual: a message saying "your password was changed" that arrives before the
+     * change is committed — and is then rolled back — teaches people to ignore the
+     * one message on this platform that is worth acting on immediately.
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onPasswordChanged(PasswordChanged event) {
+        notifier.sendPasswordChanged(event.email(), event.locale());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onEmailChangeRequested(EmailChangeRequested event) {
+        notifier.sendEmailChangeConfirmation(event.newEmail(), event.token(), event.locale());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onEmailChangeNotice(EmailChangeNoticeToPreviousAddress event) {
+        notifier.sendEmailChangeNotice(event.previousEmail(), event.newEmail(), event.locale());
     }
 }

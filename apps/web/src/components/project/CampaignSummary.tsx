@@ -1,14 +1,15 @@
 import { CalendarClock, CircleCheck, CircleDot, CircleSlash, Clock, Hourglass } from 'lucide-react';
-import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { MediaFrame, Tag } from '@ideanest/ui/server';
-import { PRELAUNCH_COVER_SIZES } from '../../lib/images/sizes';
-import { canOptimise } from '../../lib/images/source';
+import { Tag } from '@ideanest/ui/server';
 import { formatMoney } from '../../lib/money';
+import { countdownLabel, remainingUntil } from '../../lib/projects/deadline';
 import type { CampaignPage } from '../../lib/projects/publicPage';
 import type { ProjectState } from '../../lib/projects/api';
+import { CampaignActions } from './CampaignActions';
+import { CampaignMedia } from './CampaignMedia';
 import { LiveFunding } from './LiveFunding';
+import { CampaignCountdown } from './ViewerClock';
 
 /**
  * §4.4's header: the cover, the title, who made it, and how the funding stands.
@@ -17,8 +18,17 @@ import { LiveFunding } from './LiveFunding';
  *
  * #119's complaint is that the campaign page assembled itself in the browser, so the
  * title, the summary, the creator's name and the funding figures were absent from the
- * HTML a crawler and a link unfurler are served. Nothing here is a client component and
- * nothing here fetches: every value is read from a projection the server already has.
+ * HTML a crawler and a link unfurler are served. This component itself is a Server
+ * Component and nothing here fetches: every value is read from a projection the server
+ * already has.
+ *
+ * <strong>Three islands hang beneath it, and each one is a fact the server does not have
+ * rather than content it declined to render.</strong> `LiveFunding` starts from the
+ * server's figures and adds §12.1's deltas. `CampaignCountdown` needs the current time,
+ * which is stale the moment a cached page is sent. `CampaignActions` needs the session and
+ * the clipboard. Every one of them renders the server's answer first, so the complete
+ * document is still what a crawler and a reader with no JavaScript are served; each file
+ * argues its own boundary, and #281 added the last two.
  *
  * <h2>Colour</h2>
  *
@@ -33,9 +43,11 @@ import { LiveFunding } from './LiveFunding';
  *
  * <h2>Motion</h2>
  *
- * None. `FadeUp` on the page heading is the one scroll-entry animation this surface gets
- * and it lives in the page, once (docs/motion-system.md §5). A header that animated its
- * funding figures would animate the number a backer is trying to read.
+ * None, and there is none on the page above it either — `page.tsx` sets out why the route
+ * declines its moderate budget (docs/motion-system.md §5) rather than paying 116 kB of
+ * animation runtime to fade one heading in. A header that animated its funding figures would
+ * animate the number a backer is trying to read, and §6's rule for countdowns says the same
+ * of the one added by #281: it is a number that changes, not a number that moves.
  */
 
 /** Under two days left, which is what ui-kit §8.1 calls "closing within 48 hours". */
@@ -84,9 +96,32 @@ export interface CampaignSummaryProps {
    * on, so a live counter needs an address the browser can reach directly.
    */
   readonly realtimeOrigin?: string | undefined;
+  /**
+   * §10.2's canonical path for this campaign.
+   *
+   * Threaded from the page rather than rebuilt here, for the reason `campaignTabHref` gives:
+   * `page.tsx` owns `pathOf`, the canonical URL and the structured data are built from it, and
+   * a second encoding of the same two slugs is a second chance for them to disagree about a
+   * handle with a character that needs escaping. The share control shares it, and every
+   * sign-in link under this header returns to it.
+   */
+  readonly path: string;
+  /**
+   * The instant the countdown is measured against. Defaults to the real clock.
+   *
+   * Injected for the same reason `readCampaignPage` takes one: a test has to be able to ask
+   * what this header looks like on the last afternoon of a campaign without waiting for that
+   * afternoon. Nothing in the application passes it.
+   */
+  readonly now?: Date;
 }
 
-export function CampaignSummary({ campaign, realtimeOrigin }: CampaignSummaryProps) {
+export function CampaignSummary({
+  campaign,
+  realtimeOrigin,
+  path,
+  now = new Date(),
+}: CampaignSummaryProps) {
   const badge = BADGES[campaign.state];
 
   /*
@@ -97,33 +132,31 @@ export function CampaignSummary({ campaign, realtimeOrigin }: CampaignSummaryPro
   const showDays = campaign.daysLeft !== null && campaign.state === 'LIVE';
   const urgent = showDays && campaign.daysLeft !== null && campaign.daysLeft <= URGENT_DAYS;
 
+  /*
+   * §4.4'S LIVE COUNTDOWN, COMPUTED HERE AND CORRECTED IN THE BROWSER.
+   *
+   * The value below is what goes into the HTML, so a reader with no JavaScript and a crawler
+   * both get a real number rather than an empty element. `CampaignCountdown` starts from it
+   * and then ticks — `ViewerClock` explains why the first client render has to match this one
+   * exactly, and why the interval is not one second above the final hour.
+   *
+   * Only while the campaign is live. `daysLeft` is floored at zero, so a campaign that closed
+   * a fortnight ago and one closing tonight report the same number, and a countdown on the
+   * former would be the loud lie `showDays` already exists to prevent.
+   */
+  const remaining =
+    showDays && campaign.deadline !== null ? remainingUntil(campaign.deadline, now) : null;
+  const countdown = remaining === null ? null : countdownLabel(remaining);
+
   return (
     <header className="grid gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-start">
       {/*
-        The box is reserved whether or not there is a cover. `MediaFrame` sets the 16:9
-        crop before anything loads, so the page's largest element does not change height
-        when the photograph decodes — which is the layout shift the Core Web Vitals budget
-        in CI is measured on.
+        §4.4's media player, which is poster-first and has nothing to play — `CampaignMedia`
+        argues that at length rather than shipping a play button over a campaign that has no
+        video. It also reserves the 16:9 box before anything loads, so the page's largest
+        element does not change height when the photograph decodes.
       */}
-      <MediaFrame ratio="16/9" radius="lg">
-        {campaign.coverImage !== null && (
-          <Image
-            src={campaign.coverImage.url}
-            alt=""
-            fill
-            sizes={PRELAUNCH_COVER_SIZES}
-            /*
-             * An address on a host the optimiser will not fetch is served as it is rather
-             * than thrown over: `next/image` raises on a URL no remote pattern matches, and
-             * a raised render in a Server Component takes the whole page down. One
-             * creator's typo must not be able to do that.
-             */
-            unoptimized={!canOptimise(campaign.coverImage.url)}
-            priority
-            className="object-cover"
-          />
-        )}
-      </MediaFrame>
+      <CampaignMedia campaign={campaign} />
 
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-center gap-2">
@@ -201,6 +234,29 @@ export function CampaignSummary({ campaign, realtimeOrigin }: CampaignSummaryPro
             </p>
           </div>
         )}
+
+        {/*
+          §4.4's live countdown, beside the figures rather than inside them. It is a separate
+          element from the "N days left" sentence above on purpose: that one is the whole-day
+          figure the badge and the structured data agree on, and this one moves. Both are
+          computed from the same `deadline`, so they cannot drift — `lib/projects/deadline.ts`
+          states that as the invariant.
+        */}
+        {campaign.deadline !== null && countdown !== null && (
+          <CampaignCountdown deadline={campaign.deadline} initialLabel={countdown} />
+        )}
+
+        {/*
+          §4.4's save, share and reminder controls. The one client boundary in this header, and
+          `CampaignActions` justifies it: all three are writes or browser capabilities, and
+          folding them into one island is what keeps the session read to a single subscription.
+        */}
+        <CampaignActions
+          projectId={campaign.id}
+          state={campaign.state}
+          title={campaign.title}
+          path={path}
+        />
       </div>
     </header>
   );

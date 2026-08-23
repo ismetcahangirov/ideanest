@@ -24,12 +24,21 @@ import {
  */
 
 const ROUTES_THAT_EXIST = new Set([
+  /*
+   * #287's pledge manager, which is the one entry not under `/account` or `/settings` —
+   * `navigation.ts` argues why the URL could not move. The list here is deliberately a
+   * literal set rather than anything derived from the navigation itself: a test that read
+   * its expectation from the thing under test would pass for any navigation at all.
+   */
+  '/pledges',
   '/account/saved',
   '/account/following',
   '/account/surveys',
   '/account/deliveries',
   '/settings/notifications',
   '/settings/sessions',
+  '/settings/email',
+  '/settings/password',
   '/settings/security',
   '/settings/privacy',
 ]);
