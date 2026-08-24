@@ -185,11 +185,14 @@ ON CONFLICT (key) DO NOTHING;
 
 INSERT INTO support_tickets (id, requester_id, subject, subject_type, subject_ref, state, priority,
                              assignee_id, created_at, updated_at, resolved_at) VALUES
+  -- A ticket about "my parcel" has to point at the requester's own pledge. An
+  -- arbitrary pledge on the right campaign looks correct in the list and falls
+  -- apart the moment anyone opens it next to the backer it names.
   (seed_id('ticket:1'), seed_id('user:ferid'), 'Bağlamam iki həftədir çatmır', 'PLEDGE',
-   (SELECT id FROM pledges WHERE project_id = seed_id('project:qab') ORDER BY id LIMIT 1),
+   seed_id('pledge:demo:ferid:qab'),
    'OPEN', 'HIGH', seed_id('user:moderator'), now() - interval '4 days', now() - interval '1 day', NULL),
   (seed_id('ticket:2'), seed_id('user:aygun'), 'Kartımdan iki dəfə pul çıxdı', 'PLEDGE',
-   (SELECT id FROM pledges WHERE project_id = seed_id('project:albom') ORDER BY id LIMIT 1),
+   seed_id('pledge:demo:aygun:albom'),
    'PENDING', 'URGENT', seed_id('user:finance'), now() - interval '2 days', now() - interval '6 hours', NULL),
   (seed_id('ticket:3'), seed_id('user:backer'), 'Sorğu linki işləmir', 'PROJECT', seed_id('project:albom'),
    'RESOLVED', 'NORMAL', seed_id('user:moderator'), now() - interval '12 days', now() - interval '10 days', now() - interval '10 days'),
@@ -276,6 +279,9 @@ SELECT seed_id('txn:refund:' || p.id::text), p.id, p.project_id, 'REFUND', 'SUCC
        'refund-' || substr(md5(p.id::text), 1, 24), now() - interval '6 days'
 FROM pledges p
 WHERE p.project_id = seed_id('project:qab') AND p.state = 'FULFILLED'
+  -- Only the generated crowd. Picking by row order means a pledge added
+  -- later would otherwise shift which four get refunded.
+  AND p.idempotency_key NOT LIKE 'seed-demo-%'
 ORDER BY p.id LIMIT 4
 ON CONFLICT (id) DO NOTHING;
 
@@ -314,6 +320,7 @@ SELECT seed_id('refund:pending'), p.id, p.project_id, seed_id('txn:charge:' || p
        seed_id('user:finance'), now() - interval '1 day', NULL,
        'refund-req-pending-0001'
 FROM pledges p WHERE p.project_id = seed_id('project:albom') AND p.state = 'COLLECTED'
+AND p.idempotency_key NOT LIKE 'seed-demo-%'
 ORDER BY p.id OFFSET 3 LIMIT 1
 ON CONFLICT (id) DO NOTHING;
 
@@ -328,6 +335,7 @@ SELECT seed_id('refund:failed'), p.id, p.project_id, seed_id('txn:charge:' || p.
        seed_id('user:finance'), now() - interval '9 days', now() - interval '8 days',
        'refund-req-failed-0001'
 FROM pledges p WHERE p.project_id = seed_id('project:lampa') AND p.state = 'FULFILLED'
+AND p.idempotency_key NOT LIKE 'seed-demo-%'
 ORDER BY p.id OFFSET 5 LIMIT 1
 ON CONFLICT (id) DO NOTHING;
 
@@ -341,6 +349,7 @@ SELECT seed_id('dispute:open'), seed_id('txn:charge:' || p.id::text), p.id, p.pr
        p.total_amount, p.currency, 25.00, 'product_not_received', 'OPEN',
        now() + interval '5 days', now() - interval '3 days', NULL, seed_id('user:finance'), now() - interval '3 days'
 FROM pledges p WHERE p.project_id = seed_id('project:qab') AND p.state = 'FULFILLED'
+AND p.idempotency_key NOT LIKE 'seed-demo-%'
 ORDER BY p.id OFFSET 10 LIMIT 1
 ON CONFLICT (id) DO NOTHING;
 
@@ -352,6 +361,7 @@ SELECT seed_id('dispute:review'), seed_id('txn:charge:' || p.id::text), p.id, p.
        p.total_amount, p.currency, 25.00, 'fraudulent', 'UNDER_REVIEW',
        now() + interval '2 days', now() - interval '9 days', NULL, seed_id('user:finance'), now() - interval '2 days'
 FROM pledges p WHERE p.project_id = seed_id('project:lampa') AND p.state = 'FULFILLED'
+AND p.idempotency_key NOT LIKE 'seed-demo-%'
 ORDER BY p.id OFFSET 12 LIMIT 1
 ON CONFLICT (id) DO NOTHING;
 
@@ -364,6 +374,7 @@ SELECT seed_id('dispute:won'), seed_id('txn:charge:' || p.id::text), p.id, p.pro
        now() - interval '30 days', now() - interval '45 days', now() - interval '28 days',
        seed_id('user:finance'), now() - interval '28 days'
 FROM pledges p WHERE p.project_id = seed_id('project:qab') AND p.state = 'FULFILLED'
+AND p.idempotency_key NOT LIKE 'seed-demo-%'
 ORDER BY p.id OFFSET 20 LIMIT 1
 ON CONFLICT (id) DO NOTHING;
 
@@ -376,6 +387,7 @@ SELECT seed_id('dispute:lost'), seed_id('txn:charge:' || p.id::text), p.id, p.pr
        now() - interval '60 days', now() - interval '75 days', now() - interval '58 days',
        seed_id('user:finance'), now() - interval '58 days'
 FROM pledges p WHERE p.project_id = seed_id('project:lampa') AND p.state = 'FULFILLED'
+AND p.idempotency_key NOT LIKE 'seed-demo-%'
 ORDER BY p.id OFFSET 30 LIMIT 1
 ON CONFLICT (id) DO NOTHING;
 
