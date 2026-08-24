@@ -1,0 +1,634 @@
+package az.ideanest.admin;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import az.ideanest.audit.AuditAction;
+import az.ideanest.audit.AuditEntry;
+import az.ideanest.audit.AuditEntryRepository;
+import az.ideanest.auth.application.AccessTokenIssuer;
+import az.ideanest.shared.EmailAddress;
+import az.ideanest.shared.Identifiers;
+import az.ideanest.support.AbstractIntegrationTest;
+import az.ideanest.support.Campaigns;
+import az.ideanest.support.Ledgers;
+import az.ideanest.support.Pledges;
+import az.ideanest.user.infrastructure.UserRepository;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import javax.sql.DataSource;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.resttestclient.TestRestTemplate;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+/**
+ * The console's three read surfaces — AD-05 and AD-14, issues #304, #305 and #314.
+ *
+ * <p>The tests that carry the design:
+ *
+ * <ul>
+ *   <li>{@link #aPostingShowsBothSidesEvenWhenTheFilterMatchedOne()} — the one assertion
+ *       this whole feature is for. A ledger that showed you the escrow side of a posting
+ *       because you filtered on escrow would be showing half a double entry and calling it
+ *       a ledger.
+ *   <li>{@link #anUnknownLedgerAccountIsRefusedRatherThanEmpty()} — a page of nothing on a
+ *       ledger reads as "this account is empty", which is a statement about the platform's
+ *       money and not about a typo.
+ *   <li>{@link #thePaymentLogKeepsEveryAttempt()} — a status never moves, so a pending call
+ *       that later resolves is two rows. The log is what makes §9.6's retry schedule
+ *       answerable.
+ *   <li>{@link #everyConsoleReadIsAudited()} — none of these three endpoints writes
+ *       anything, and all three are recorded anyway: they hand somebody with no
+ *       relationship to a pledge the record of what a named person paid.
+ *   <li>{@link #onlyStaffMayReadTheConsole()} — the default case, asserted for all three.
+ * </ul>
+ *
+ * <p><strong>Rows are written with SQL rather than driven through a collection run.</strong>
+ * These are read endpoints over two append-only tables; driving a real charge would make a
+ * suite about paging depend on the whole payment provider configuration, and
+ * {@code CollectionTests} already owns that path. What is <em>not</em> faked is the
+ * identifier: {@link Identifiers#newIdentifier()} rather than {@link UUID#randomUUID()},
+ * because both endpoints page by the primary key on the strength of it being a UUID v7, and
+ * a fixture using version 4 would order at random and pass anyway.
+ */
+class ConsoleReadApiTests extends AbstractIntegrationTest {
+
+    private static final AtomicInteger SEQUENCE = new AtomicInteger();
+    private static final String PASSWORD = "a-long-enough-password";
+
+    /** The single address {@code application-test.yml} lists as a moderator. */
+    private static final String MODERATOR_EMAIL = "moderator@ideanest.test";
+
+    private static Account staff;
+
+    @Autowired
+    private TestRestTemplate rest;
+
+    @Autowired
+    private UserRepository users;
+
+    @Autowired
+    private AuditEntryRepository auditEntries;
+
+    @Autowired
+    private AccessTokenIssuer tokens;
+
+    @Autowired
+    private DataSource dataSource;
+
+    /**
+     * Every financial row this suite wrote, gone.
+     *
+     * <p>{@code transactions} references {@code projects} with {@code ON DELETE NO ACTION},
+     * so rows left behind make the next suite's {@code DELETE FROM projects} fail.
+     * {@code Ledgers} argues why teardown may turn the append-only triggers off and why
+     * doing so weakens nothing asserted here. Audit rows are left where they are — V21
+     * refuses a DELETE, which is the point of that table — so every assertion about the
+     * trail is scoped to a row this suite can name.
+     */
+    @AfterEach
+    void clearTheMoney() {
+        Ledgers.clear(dataSource);
+        Campaigns.clear(dataSource);
+    }
+
+    // ------------------------------------------------------------------
+    // AD-14: the audit trail
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("the trail comes back newest first")
+    void theTrailIsNewestFirst() {
+        UUID subject = UUID.randomUUID();
+        write("first", subject);
+        write("second", subject);
+
+        List<Map<String, Object>> entries = entriesIn(get(
+                "/v1/admin/audit?entityType=console-test&entityId=" + subject, staff().accessToken()));
+
+        // A queue is worked from the front and a trail is read from the end. The order is
+        // the opposite of the report queue's, and deliberately.
+        assertThat(entries).hasSize(2);
+        assertThat(entries.get(0)).containsEntry("detail", "second");
+        assertThat(entries.get(1)).containsEntry("detail", "first");
+    }
+
+    @Test
+    @DisplayName("the trail narrows to one kind of thing, and to one thing")
+    void theTrailNarrows() {
+        UUID one = UUID.randomUUID();
+        UUID another = UUID.randomUUID();
+        write("about one", one);
+        write("about another", another);
+
+        assertThat(entriesIn(get("/v1/admin/audit?entityType=console-test", staff().accessToken())))
+                .hasSizeGreaterThanOrEqualTo(2);
+        assertThat(entriesIn(get(
+                        "/v1/admin/audit?entityType=console-test&entityId=" + one, staff().accessToken())))
+                .hasSize(1);
+    }
+
+    @Test
+    @DisplayName("an entity identifier with no kind is dropped, and the response says so")
+    void anEntityIdentifierAloneIsDropped() {
+        UUID subject = UUID.randomUUID();
+        write("orphaned filter", subject);
+
+        ResponseEntity<Map<String, Object>> page =
+                get("/v1/admin/audit?entityId=" + subject, staff().accessToken());
+
+        /*
+         * V21's index leads on the kind, so an identifier alone cannot use it. Answering
+         * with the whole trail and echoing an empty filter is honest; answering with the
+         * whole trail while echoing the filter back would tell a client its question had
+         * been applied when it had not, which is the failure worth preventing.
+         */
+        assertThat(page.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(page.getBody().get("entityId")).isNull();
+        assertThat(page.getBody().get("entityType")).isNull();
+    }
+
+    @Test
+    @DisplayName("the trail pages from a cursor rather than an offset")
+    void theTrailPagesFromACursor() {
+        UUID subject = UUID.randomUUID();
+        write("older", subject);
+        write("newer", subject);
+
+        String path = "/v1/admin/audit?entityType=console-test&entityId=" + subject + "&limit=1";
+        ResponseEntity<Map<String, Object>> firstPage = get(path, staff().accessToken());
+        List<Map<String, Object>> first = entriesIn(firstPage);
+        assertThat(first).hasSize(1);
+        assertThat(first.get(0)).containsEntry("detail", "newer");
+        assertThat(firstPage.getBody().get("nextCursor")).isEqualTo(first.get(0).get("id"));
+
+        List<Map<String, Object>> second =
+                entriesIn(get(path + "&after=" + firstPage.getBody().get("nextCursor"), staff().accessToken()));
+        assertThat(second).hasSize(1);
+        assertThat(second.get(0)).containsEntry("detail", "older");
+    }
+
+    @Test
+    @DisplayName("the trail carries what an investigation asks for and not only what happened")
+    void theTrailCarriesTheContext() {
+        UUID subject = UUID.randomUUID();
+        write("with context", subject);
+
+        Map<String, Object> entry = entriesIn(get(
+                        "/v1/admin/audit?entityType=console-test&entityId=" + subject, staff().accessToken()))
+                .get(0);
+
+        // Who, as what, to what, when, and how it came out. A trail missing any of those
+        // is one somebody has to open psql to finish reading, which is what this screen
+        // exists to stop.
+        assertThat(entry).containsKeys("id", "occurredAt", "actorType", "action", "entityType", "entityId", "outcome");
+        assertThat(entry).containsEntry("action", "report.upheld");
+        assertThat(entry).containsEntry("outcome", "SUCCEEDED");
+    }
+
+    // ------------------------------------------------------------------
+    // AD-05: the payment log
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("the payment log keeps every attempt, because a status never moves")
+    void thePaymentLogKeepsEveryAttempt() {
+        Fixture fixture = campaignWithPledge("payments-attempts");
+        charge(fixture, "FAILED", "100.00", 1, "51", "Insufficient funds.");
+        charge(fixture, "SUCCEEDED", "100.00", 2, null, null);
+
+        List<Map<String, Object>> log = transactionsIn(
+                get("/v1/admin/payments?pledgeId=" + fixture.pledgeId(), staff().accessToken()));
+
+        assertThat(log).hasSize(2);
+        // Newest first: the attempt that settled is the one somebody is looking for.
+        assertThat(log.get(0)).containsEntry("status", "SUCCEEDED");
+        assertThat(log.get(0)).containsEntry("attemptNumber", 2);
+        assertThat(log.get(1)).containsEntry("status", "FAILED");
+        assertThat(log.get(1)).containsEntry("failureCode", "51");
+        assertThat(log.get(1)).containsEntry("failureMessage", "Insufficient funds.");
+    }
+
+    @Test
+    @DisplayName("an amount crosses as a string, never as a JSON number")
+    void anAmountIsAString() {
+        Fixture fixture = campaignWithPledge("payments-money");
+        charge(fixture, "SUCCEEDED", "1234.50", 1, null, null);
+
+        Map<String, Object> row = transactionsIn(
+                        get("/v1/admin/payments?pledgeId=" + fixture.pledgeId(), staff().accessToken()))
+                .get(0);
+
+        // §10.3, and on this surface it is not a formality: a payment log is read next to
+        // a provider's own statement, and a figure that has been through an IEEE 754
+        // double eventually disagrees with it by a qapik nobody can account for.
+        assertThat(amountOf(row)).containsEntry("amount", "1234.50").containsEntry("currency", "AZN");
+    }
+
+    @Test
+    @DisplayName("a pledge filter beats a campaign filter, and the response says which it applied")
+    void thePledgeFilterWins() {
+        Fixture fixture = campaignWithPledge("payments-both");
+        charge(fixture, "SUCCEEDED", "100.00", 1, null, null);
+
+        ResponseEntity<Map<String, Object>> page = get(
+                "/v1/admin/payments?pledgeId=" + fixture.pledgeId() + "&projectId=" + UUID.randomUUID(),
+                staff().accessToken());
+
+        // The two indexes do not combine, so one of them is applied; the response is what
+        // tells a client which, rather than leaving it to infer that from the rows.
+        assertThat(transactionsIn(page)).hasSize(1);
+        assertThat(page.getBody()).containsEntry("pledgeId", fixture.pledgeId().toString());
+        assertThat(page.getBody().get("projectId")).isNull();
+    }
+
+    @Test
+    @DisplayName("the payment log is not cached anywhere")
+    void thePaymentLogIsNotCached() {
+        Fixture fixture = campaignWithPledge("payments-cache");
+        charge(fixture, "SUCCEEDED", "100.00", 1, null, null);
+
+        ResponseEntity<Map<String, Object>> page =
+                get("/v1/admin/payments?projectId=" + fixture.projectId(), staff().accessToken());
+
+        assertThat(page.getHeaders().getCacheControl())
+                .as("a browser disk cache holding somebody's charge history survives signing out")
+                .contains("no-store");
+    }
+
+    // ------------------------------------------------------------------
+    // AD-05: the ledger
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("a posting shows both sides even when the filter matched one of them")
+    void aPostingShowsBothSidesEvenWhenTheFilterMatchedOne() {
+        Fixture fixture = campaignWithPledge("ledger-sides");
+        UUID transactionId = charge(fixture, "SUCCEEDED", "100.00", 1, null, null);
+        post(transactionId, fixture.projectId(), "100.00");
+
+        List<Map<String, Object>> postings =
+                postingsIn(get("/v1/admin/ledger?account=escrow", staff().accessToken()));
+
+        assertThat(postings).hasSize(1);
+        // The filter decides which postings are interesting. It must never decide which
+        // half of one is shown -- a balance that does not balance is the one thing this
+        // table exists to make impossible.
+        assertThat(linesOf(postings.get(0))).hasSize(2);
+        assertThat(linesOf(postings.get(0))).extracting(line -> line.get("account"))
+                .containsExactlyInAnyOrder("escrow", "platform_fee");
+        assertThat(postings.get(0)).containsEntry("balanced", true);
+    }
+
+    @Test
+    @DisplayName("the page carries what every account holds, not only what moved on it")
+    void theLedgerCarriesTheBalances() {
+        Fixture fixture = campaignWithPledge("ledger-balances");
+        UUID transactionId = charge(fixture, "SUCCEEDED", "100.00", 1, null, null);
+        post(transactionId, fixture.projectId(), "100.00");
+
+        ResponseEntity<Map<String, Object>> page =
+                get("/v1/admin/ledger?projectId=" + fixture.projectId(), staff().accessToken());
+
+        List<Map<String, Object>> balances = balancesIn(page);
+        assertThat(balances).extracting(balance -> balance.get("account"))
+                .containsExactlyInAnyOrder("escrow", "platform_fee");
+        // Debits positive, credits negative. Escrow holding a hundred and the fee account
+        // owing a hundred is the same fact stated from both ends.
+        assertThat(netOf(balances, "escrow")).containsEntry("amount", "100.00");
+        assertThat(netOf(balances, "platform_fee")).containsEntry("amount", "-100.00");
+    }
+
+    @Test
+    @DisplayName("balances are not narrowed by the account filter")
+    void balancesIgnoreTheAccountFilter() {
+        Fixture fixture = campaignWithPledge("ledger-balance-scope");
+        UUID transactionId = charge(fixture, "SUCCEEDED", "100.00", 1, null, null);
+        post(transactionId, fixture.projectId(), "100.00");
+
+        List<Map<String, Object>> balances = balancesIn(get(
+                "/v1/admin/ledger?account=escrow&projectId=" + fixture.projectId(), staff().accessToken()));
+
+        // Filtering the postings to escrow does not make the other accounts stop existing,
+        // and a one-line balance panel would read as though it were the whole ledger.
+        assertThat(balances).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("an unknown ledger account is refused rather than answered with an empty page")
+    void anUnknownLedgerAccountIsRefusedRatherThanEmpty() {
+        ResponseEntity<Map<String, Object>> refused =
+                get("/v1/admin/ledger?account=platform_fees", staff().accessToken());
+
+        // The plural is the mistake somebody actually makes. A page of nothing here reads
+        // as "this account is empty", which is a statement about the platform's money.
+        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(refused.getBody()).containsEntry("code", "UNKNOWN_LEDGER_ACCOUNT");
+    }
+
+    @Test
+    @DisplayName("the ledger pages over postings rather than over entries")
+    void theLedgerPagesOverPostings() {
+        Fixture fixture = campaignWithPledge("ledger-paging");
+        post(charge(fixture, "SUCCEEDED", "100.00", 1, null, null), fixture.projectId(), "100.00");
+        post(charge(fixture, "SUCCEEDED", "200.00", 2, null, null), fixture.projectId(), "200.00");
+
+        ResponseEntity<Map<String, Object>> firstPage =
+                get("/v1/admin/ledger?projectId=" + fixture.projectId() + "&limit=1", staff().accessToken());
+
+        // One posting, both of its entries. A page of one entry would be half a posting,
+        // which is what makes the limit a limit on postings.
+        assertThat(postingsIn(firstPage)).hasSize(1);
+        assertThat(linesOf(postingsIn(firstPage).get(0))).hasSize(2);
+        assertThat(firstPage.getBody().get("nextCursor")).isNotNull();
+
+        List<Map<String, Object>> second = postingsIn(get(
+                "/v1/admin/ledger?projectId=" + fixture.projectId() + "&limit=1&after="
+                        + firstPage.getBody().get("nextCursor"),
+                staff().accessToken()));
+        assertThat(second).hasSize(1);
+        assertThat(second.get(0).get("transactionId"))
+                .isNotEqualTo(postingsIn(firstPage).get(0).get("transactionId"));
+    }
+
+    // ------------------------------------------------------------------
+    // Who may read, and what that leaves behind
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("only staff may read the console")
+    void onlyStaffMayReadTheConsole() {
+        Account outsider = account("console-outsider");
+
+        assertThat(get("/v1/admin/audit", outsider.accessToken()).getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(get("/v1/admin/payments", outsider.accessToken()).getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+        ResponseEntity<Map<String, Object>> ledger = get("/v1/admin/ledger", outsider.accessToken());
+        assertThat(ledger.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(ledger.getBody()).containsEntry("code", "NOT_A_MODERATOR");
+    }
+
+    @Test
+    @DisplayName("every console read is audited, with counts and no rows")
+    void everyConsoleReadIsAudited() {
+        Fixture fixture = campaignWithPledge("console-audit");
+        charge(fixture, "SUCCEEDED", "100.00", 1, null, null);
+
+        get("/v1/admin/payments?projectId=" + fixture.projectId(), staff().accessToken());
+        get("/v1/admin/ledger", staff().accessToken());
+        get("/v1/admin/audit", staff().accessToken());
+
+        assertThat(detailOfLatest(AuditAction.PAYMENT_LOG_READ)).contains("rows=", "project=set");
+        assertThat(detailOfLatest(AuditAction.LEDGER_READ)).contains("postings=");
+        assertThat(detailOfLatest(AuditAction.AUDIT_TRAIL_READ)).contains("rows=");
+
+        // The filter was used; what it was set to is not repeated into the one table with
+        // no retention rule.
+        assertThat(detailOfLatest(AuditAction.PAYMENT_LOG_READ))
+                .doesNotContain(fixture.projectId().toString());
+    }
+
+    @Test
+    @DisplayName("a refused read leaves no audit row, because nothing was read")
+    void aRefusedReadLeavesNoRow() {
+        Account outsider = account("console-refused");
+        int before = auditRows(AuditAction.LEDGER_READ).size();
+
+        get("/v1/admin/ledger", outsider.accessToken());
+
+        assertThat(auditRows(AuditAction.LEDGER_READ)).hasSize(before);
+    }
+
+    // ------------------------------------------------------------------
+    // Fixtures
+    // ------------------------------------------------------------------
+
+    private record Account(String accessToken, UUID id) {
+    }
+
+    /** A campaign and a pledge on it, which is everything a transaction needs to reference. */
+    private record Fixture(UUID projectId, UUID pledgeId) {
+    }
+
+    private Fixture campaignWithPledge(String handle) {
+        String unique = handle + SEQUENCE.incrementAndGet();
+        UUID creatorId = Campaigns.creator(dataSource, unique);
+        UUID projectId = Campaigns.seed(dataSource, creatorId, unique)
+                .state("COLLECTING")
+                .goal("100.00")
+                .insert();
+        return new Fixture(projectId, Pledges.confirmed(dataSource, projectId, unique + "-backer", "100.00"));
+    }
+
+    /**
+     * One row in {@code transactions}.
+     *
+     * <p>The identifier is a UUID v7 rather than a version 4, and that is not incidental:
+     * the log pages by the primary key on the strength of it being time-ordered, and a
+     * fixture using {@link UUID#randomUUID()} would order at random and let a broken cursor
+     * pass.
+     */
+    private UUID charge(
+            Fixture fixture, String status, String amount, int attempt, String failureCode, String failureMessage) {
+
+        UUID id = Identifiers.newIdentifier();
+        jdbc().update(
+                        """
+                        INSERT INTO transactions (id, pledge_id, project_id, type, status, amount, currency,
+                                                  provider, provider_transaction_id, failure_code, failure_message,
+                                                  attempt_number, idempotency_key)
+                        VALUES (?, ?, ?, 'CHARGE', ?, CAST(? AS numeric), 'AZN', 'PAYRIFF', ?, ?, ?, ?, ?)
+                        """,
+                        id,
+                        fixture.pledgeId(),
+                        fixture.projectId(),
+                        status,
+                        amount,
+                        "prov-" + id,
+                        failureCode,
+                        failureMessage,
+                        attempt,
+                        "console-test-" + id);
+        return id;
+    }
+
+    /** A balanced pair of entries against a transaction. Anything else is refused at commit. */
+    private void post(UUID transactionId, UUID projectId, String amount) {
+        jdbc().update(
+                        """
+                        INSERT INTO ledger_entries (transaction_id, account, direction, amount, currency, project_id)
+                        VALUES (?, 'escrow', 'DEBIT', CAST(? AS numeric), 'AZN', ?),
+                               (?, 'platform_fee', 'CREDIT', CAST(? AS numeric), 'AZN', ?)
+                        """,
+                        transactionId,
+                        amount,
+                        projectId,
+                        transactionId,
+                        amount,
+                        projectId);
+    }
+
+    /**
+     * An audit row this suite can find again.
+     *
+     * <p>Written through SQL rather than through {@code AuditLog}, because the writing side
+     * is {@code MANDATORY} and would need a transaction of its own here, and because the
+     * kind is invented: {@code console-test} is not one of {@code AuditAction}'s entity
+     * types, which keeps every assertion in this file away from the rows other suites leave
+     * behind in a table nothing may delete from.
+     */
+    private void write(String detail, UUID entityId) {
+        jdbc().update(
+                """
+                INSERT INTO audit_logs (id, actor_type, actor_id, action, entity_type, entity_id, outcome, detail)
+                VALUES (?, 'MODERATOR', ?, 'report.upheld', 'console-test', ?, 'SUCCEEDED', ?)
+                """,
+                Identifiers.newIdentifier(),
+                staff().id(),
+                entityId,
+                detail);
+    }
+
+    private Account account(String prefix) {
+        EmailAddress email = EmailAddress.of(prefix + SEQUENCE.incrementAndGet() + "@example.com");
+        rest.postForEntity(
+                "/v1/auth/register",
+                Map.of("email", email.value(), "password", PASSWORD, "name", "Test Person"),
+                String.class);
+        return signIn(email);
+    }
+
+    /**
+     * The one account this suite's configuration treats as platform staff.
+     *
+     * <p>Its token is minted rather than signed in for, exactly as
+     * {@code ContentReportApiTests} and {@code AdminUserApiTests} do: several suites share
+     * this address and {@code sign-ins-per-email} is deliberately left at its real value of
+     * five, so a suite that signs in as it spends one of those five and makes somebody
+     * else's tests fail with a 401 that has nothing to do with them.
+     */
+    private Account staff() {
+        if (staff != null) {
+            return staff;
+        }
+        EmailAddress email = EmailAddress.of(MODERATOR_EMAIL);
+        if (users.findByEmailAndDeletedAtIsNull(email).isEmpty()) {
+            rest.postForEntity(
+                    "/v1/auth/register",
+                    Map.of("email", email.value(), "password", PASSWORD, "name", "Test Moderator"),
+                    String.class);
+        }
+
+        UUID id = users.findByEmailAndDeletedAtIsNull(email).orElseThrow().getId();
+        String accessToken = tokens.issue(
+                        id,
+                        UUID.randomUUID(),
+                        new AccessTokenIssuer.AccountStanding(true, false),
+                        false,
+                        Instant.now())
+                .value();
+
+        staff = new Account(accessToken, id);
+        return staff;
+    }
+
+    private Account signIn(EmailAddress email) {
+        ResponseEntity<Map<String, Object>> signedIn = rest.exchange(
+                "/v1/auth/login",
+                HttpMethod.POST,
+                new HttpEntity<>(
+                        Map.of("email", email.value(), "password", PASSWORD, "tokenDelivery", "body"), jsonHeaders()),
+                new ParameterizedTypeReference<Map<String, Object>>() {});
+
+        UUID id = users.findByEmailAndDeletedAtIsNull(email).orElseThrow().getId();
+        return new Account((String) signedIn.getBody().get("accessToken"), id);
+    }
+
+    private ResponseEntity<Map<String, Object>> get(String path, String accessToken) {
+        return rest.exchange(
+                path,
+                HttpMethod.GET,
+                new HttpEntity<>(bearer(accessToken)),
+                new ParameterizedTypeReference<Map<String, Object>>() {});
+    }
+
+    private static HttpHeaders jsonHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        return headers;
+    }
+
+    private static HttpHeaders bearer(String accessToken) {
+        HttpHeaders headers = jsonHeaders();
+        headers.setBearerAuth(accessToken);
+        return headers;
+    }
+
+    private List<AuditEntry> auditRows(AuditAction action) {
+        return auditEntries.findByActorIdOrderByOccurredAtDesc(staff().id()).stream()
+                .filter(entry -> entry.getAction().equals(action.action()))
+                .toList();
+    }
+
+    private String detailOfLatest(AuditAction action) {
+        List<AuditEntry> rows = auditRows(action);
+        assertThat(rows).as("%s should have been recorded", action.action()).isNotEmpty();
+        return rows.getFirst().getDetail();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> entriesIn(ResponseEntity<Map<String, Object>> page) {
+        return (List<Map<String, Object>>) page.getBody().get("entries");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> transactionsIn(ResponseEntity<Map<String, Object>> page) {
+        return (List<Map<String, Object>>) page.getBody().get("transactions");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> postingsIn(ResponseEntity<Map<String, Object>> page) {
+        return (List<Map<String, Object>>) page.getBody().get("postings");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> balancesIn(ResponseEntity<Map<String, Object>> page) {
+        return (List<Map<String, Object>>) page.getBody().get("balances");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> linesOf(Map<String, Object> posting) {
+        return (List<Map<String, Object>>) posting.get("lines");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> amountOf(Map<String, Object> row) {
+        return (Map<String, Object>) row.get("amount");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> netOf(List<Map<String, Object>> balances, String account) {
+        return (Map<String, Object>) balances.stream()
+                .filter(balance -> account.equals(balance.get("account")))
+                .findFirst()
+                .orElseThrow()
+                .get("net");
+    }
+
+    private JdbcTemplate jdbc() {
+        return new JdbcTemplate(dataSource);
+    }
+}

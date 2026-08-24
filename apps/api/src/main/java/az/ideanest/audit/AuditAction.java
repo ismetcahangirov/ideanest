@@ -291,7 +291,45 @@ public enum AuditAction {
     EMAIL_CHANGE_REQUESTED("account.email_change_requested", "account"),
 
     /** The new address proved itself and {@code users.email} moved — A-12. */
-    EMAIL_CHANGED("account.email_changed", "account");
+    EMAIL_CHANGED("account.email_changed", "account"),
+
+    /**
+     * §4.11's AD-14 (#314): staff read the trail.
+     *
+     * <p><strong>The trail records being read, and the row lands in the trail.</strong>
+     * That is the intended shape and not an oversight. This table is the only place that
+     * can answer "who looked at the record of who did what", and an audit surface that is
+     * itself unaudited is the surface an investigation starts by distrusting. The noise it
+     * adds is one row per page read by a member of staff, against a table that already
+     * carries every privileged write on the platform.
+     *
+     * <p>The detail carries the filter and the number of rows returned, and never a row:
+     * repeating the contents of the trail into the trail would double it every time
+     * somebody looked.
+     *
+     * <p>The entity is the staff account, following {@link #ACCOUNTS_SEARCHED} — a read of
+     * a list has no single subject, which is exactly what makes it worth recording.
+     */
+    AUDIT_TRAIL_READ("audit.trail_read", "account"),
+
+    /**
+     * §4.11's AD-05 (#304): staff read the payment log.
+     *
+     * <p>Audited for {@link #ACCOUNTS_SEARCHED}'s reason rather than for a financial one.
+     * The rows themselves are already immutable and already reconciled; what is not
+     * otherwise recorded anywhere is that somebody with no relationship to a pledge went
+     * looking at what a named person paid, when, and which card was refused.
+     */
+    PAYMENT_LOG_READ("payment.log_read", "account"),
+
+    /**
+     * §4.11's AD-05 (#305): staff read the ledger.
+     *
+     * <p>The same argument as {@link #PAYMENT_LOG_READ}, and one of its own: §22.1 makes
+     * these rows a regulatory record, and a regulatory record is one whose readers are
+     * known as well as whose writers are.
+     */
+    LEDGER_READ("ledger.read", "account");
 
     private final String action;
     private final String entityType;

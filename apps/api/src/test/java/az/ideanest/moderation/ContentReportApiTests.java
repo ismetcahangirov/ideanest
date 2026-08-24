@@ -227,6 +227,11 @@ class ContentReportApiTests extends AbstractIntegrationTest {
     }
 
     @SuppressWarnings("unchecked")
+    private static Map<String, Object> targetOf(Map<String, Object> report) {
+        return (Map<String, Object>) report.get("target");
+    }
+
+    @SuppressWarnings("unchecked")
     private static Map<String, Object> metaOf(Map<String, Object> problem) {
         return (Map<String, Object>) problem.get("meta");
     }
@@ -517,6 +522,91 @@ class ContentReportApiTests extends AbstractIntegrationTest {
                 moderator().accessToken());
         assertThat(reportsIn(pastTheEnd.getBody())).isEmpty();
         assertThat(pastTheEnd.getBody().get("nextCursor")).isNull();
+    }
+
+    @Test
+    @DisplayName("the queue narrows to one kind of reported thing, and says which it narrowed to")
+    void theQueueNarrowsByTarget() {
+        UUID campaign = liveCampaign(account("creator"));
+        Account person = account("subject");
+        post("/v1/projects/" + campaign + "/report", account("reporter").accessToken(), reportBody("FRAUD", null));
+        post("/v1/users/" + person.id() + "/report", account("reporter").accessToken(), reportBody("OFFENSIVE", null));
+
+        ResponseEntity<Map<String, Object>> profiles =
+                get("/v1/admin/moderation/reports?target=USER", moderator().accessToken());
+
+        List<Map<String, Object>> reports = reportsIn(profiles.getBody());
+        assertThat(reports).hasSize(1);
+        assertThat(targetOf(reports.get(0))).containsEntry("id", person.id().toString());
+        // Echoed, because AD-09 draws the campaign queue and the profile queue from this
+        // one endpoint: a screen that filed the wrong response would be showing complaints
+        // about people under a heading about campaigns.
+        assertThat(profiles.getBody()).containsEntry("target", "USER");
+
+        // And the unfiltered queue is unchanged by the parameter existing, which is what
+        // makes this safe to add to the screen #101 already ships.
+        assertThat(reportsIn(get("/v1/admin/moderation/reports", moderator().accessToken()).getBody()))
+                .hasSize(2);
+    }
+
+    @Test
+    @DisplayName("a narrowed queue pages through its own kind rather than through the whole table")
+    void aNarrowedQueuePagesThroughItsOwnKind() {
+        UUID campaign = liveCampaign(account("creator"));
+        Account person = account("subject");
+
+        /*
+         * Two campaign reports around one profile report, so that a page of one taken
+         * from the unfiltered queue would be a campaign report. This is the assertion the
+         * filter exists for: narrowing in the browser would hand a client a cursor that
+         * has already moved past rows it never saw, and there is no way to ask for them
+         * back.
+         */
+        post("/v1/projects/" + campaign + "/report", account("reporter").accessToken(), reportBody("FRAUD", null));
+        post("/v1/users/" + person.id() + "/report", account("reporter").accessToken(), reportBody("OFFENSIVE", null));
+        post("/v1/projects/" + campaign + "/report", account("reporter").accessToken(), reportBody("SPAM", null));
+
+        ResponseEntity<Map<String, Object>> firstPage =
+                get("/v1/admin/moderation/reports?target=USER&limit=1", moderator().accessToken());
+        List<Map<String, Object>> first = reportsIn(firstPage.getBody());
+        assertThat(first).hasSize(1);
+        assertThat(targetOf(first.get(0))).containsEntry("type", "USER");
+
+        ResponseEntity<Map<String, Object>> pastTheEnd = get(
+                "/v1/admin/moderation/reports?target=USER&limit=1&after="
+                        + firstPage.getBody().get("nextCursor"),
+                moderator().accessToken());
+        assertThat(reportsIn(pastTheEnd.getBody())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("a kind nothing can be reported as returns an empty queue rather than a refusal")
+    void anUnreportableKindIsEmptyRatherThanRefused() {
+        UUID campaign = liveCampaign(account("creator"));
+        post("/v1/projects/" + campaign + "/report", account("reporter").accessToken(), reportBody("FRAUD", null));
+
+        ResponseEntity<Map<String, Object>> updates =
+                get("/v1/admin/moderation/reports?target=PROJECT_UPDATE", moderator().accessToken());
+
+        // PROJECT_UPDATE is in V23's check constraint and has no report route (§10.2), so
+        // the honest answer is that there is nothing in that queue -- not a 400 telling a
+        // client the value does not exist, which it does. #297 is the issue that gives it
+        // an intake, and the day it lands nothing here changes.
+        assertThat(updates.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(reportsIn(updates.getBody())).isEmpty();
+        assertThat(updates.getBody()).containsEntry("target", "PROJECT_UPDATE");
+    }
+
+    @Test
+    @DisplayName("a kind outside the taxonomy is refused rather than quietly ignored")
+    void anUnknownKindIsRefused() {
+        ResponseEntity<Map<String, Object>> refused =
+                get("/v1/admin/moderation/reports?target=PROFILE", moderator().accessToken());
+
+        // "PROFILE" is what somebody types for USER. Answering it with the whole queue
+        // would be showing campaign reports on the profile screen, which is worse than
+        // showing nothing and much worse than saying no.
+        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     // ------------------------------------------------------------------

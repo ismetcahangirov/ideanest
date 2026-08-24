@@ -16,6 +16,64 @@
     "bearerAuth" : [ ]
   } ],
   "paths" : {
+    "/v1/admin/audit" : {
+      "get" : {
+        "operationId" : "auditTrailTrail",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "entityType",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "entityId",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "actorId",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "after",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Page"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "audit-trail-controller" ]
+      }
+    },
     "/v1/admin/collections" : {
       "get" : {
         "operationId" : "adminCurationList",
@@ -386,6 +444,56 @@
         "tags" : [ "email-template-controller" ]
       }
     },
+    "/v1/admin/ledger" : {
+      "get" : {
+        "operationId" : "ledgerLedger",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "account",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "projectId",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "after",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/View"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "ledger-controller" ]
+      }
+    },
     "/v1/admin/moderation/reports" : {
       "get" : {
         "operationId" : "reportQueueQueue",
@@ -397,6 +505,14 @@
             "type" : "string",
             "default" : "OPEN",
             "enum" : [ "OPEN", "UPHELD", "DISMISSED" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "target",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "PROJECT", "PROJECT_UPDATE", "COMMENT", "USER" ]
           }
         }, {
           "in" : "query",
@@ -637,6 +753,57 @@
           }
         },
         "tags" : [ "project-moderation-controller" ]
+      }
+    },
+    "/v1/admin/payments" : {
+      "get" : {
+        "operationId" : "paymentLogLog",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "pledgeId",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "projectId",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "after",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Page"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "payment-log-controller" ]
       }
     },
     "/v1/admin/projects/{id}/suspend" : {
@@ -6235,6 +6402,17 @@
           }
         }
       },
+      "Balance" : {
+        "type" : "object",
+        "properties" : {
+          "account" : {
+            "type" : "string"
+          },
+          "net" : {
+            "$ref" : "#/components/schemas/Money"
+          }
+        }
+      },
       "BuyAddonsRequest" : {
         "type" : "object",
         "properties" : {
@@ -7689,6 +7867,20 @@
           }
         }
       },
+      "Line" : {
+        "type" : "object",
+        "properties" : {
+          "account" : {
+            "type" : "string"
+          },
+          "amount" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "direction" : {
+            "type" : "string"
+          }
+        }
+      },
       "LocaleRequest" : {
         "type" : "object",
         "properties" : {
@@ -7994,6 +8186,29 @@
           }
         }
       },
+      "Page" : {
+        "type" : "object",
+        "properties" : {
+          "nextCursor" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "pledgeId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "transactions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Transaction"
+            }
+          }
+        }
+      },
       "PatchPledgeRequest" : {
         "type" : "object",
         "properties" : {
@@ -8171,6 +8386,32 @@
           },
           "region" : {
             "type" : "string"
+          }
+        }
+      },
+      "Posting" : {
+        "type" : "object",
+        "properties" : {
+          "balanced" : {
+            "type" : "boolean"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "lines" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Line"
+            }
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "transactionId" : {
+            "type" : "string",
+            "format" : "uuid"
           }
         }
       },
@@ -9012,6 +9253,9 @@
             }
           },
           "state" : {
+            "type" : "string"
+          },
+          "target" : {
             "type" : "string"
           }
         }
@@ -10032,6 +10276,52 @@
           }
         }
       },
+      "Transaction" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "attemptNumber" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "failureCode" : {
+            "type" : "string"
+          },
+          "failureMessage" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "pledgeId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "provider" : {
+            "type" : "string"
+          },
+          "providerTransactionId" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        }
+      },
       "TwoFactorEnrolmentResponse" : {
         "type" : "object",
         "properties" : {
@@ -10142,6 +10432,34 @@
           }
         },
         "required" : [ "challenge" ]
+      },
+      "View" : {
+        "type" : "object",
+        "properties" : {
+          "account" : {
+            "type" : "string"
+          },
+          "balances" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Balance"
+            }
+          },
+          "nextCursor" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "postings" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Posting"
+            }
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }
       },
       "WeightResponse" : {
         "type" : "object",

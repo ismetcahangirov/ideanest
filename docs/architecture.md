@@ -3328,6 +3328,10 @@ GET    /v1/admin/moderation/queue
 POST   /v1/admin/moderation/{id}/approve
 POST   /v1/admin/moderation/{id}/reject
 POST   /v1/admin/moderation/{id}/request-changes
+GET    /v1/admin/moderation/reports      # AD-02/AD-09; ?target= narrows to one kind (#298)
+GET    /v1/admin/moderation/reports/{id} # AD-01 (#296); one complaint and its decision
+POST   /v1/admin/moderation/reports/{id}/uphold
+POST   /v1/admin/moderation/reports/{id}/dismiss
 POST   /v1/admin/projects/{id}/suspend   # AD-02 (#103); staff only, audited, ends every pledge
 GET    /v1/admin/users                   # AD-04 (#104); staff only, audited, no-store
 GET    /v1/admin/users/{id}              # AD-04 (#104); one account, audited
@@ -3336,7 +3340,9 @@ POST   /v1/admin/users/{id}/reinstate    # the way back; not in this list before
 GET    /v1/admin/finance/payouts
 POST   /v1/admin/finance/payouts/{id}/approve
 POST   /v1/admin/finance/refunds
-GET    /v1/admin/audit-logs
+GET    /v1/admin/payments                # AD-05 (#304); charges, provider references, declines
+GET    /v1/admin/ledger                  # AD-05 (#305); postings with both sides, and balances
+GET    /v1/admin/audit                   # AD-14 (#314); the trail, newest first
 GET    /v1/admin/collections
 POST   /v1/admin/collections
 GET    /v1/admin/collections/{slug}
@@ -3360,6 +3366,30 @@ PUT    /v1/admin/collections/{slug}/projects/order
 > `{"twoFactorRequired": true, "challenge": "…", "expiresInSeconds": …}` and no
 > tokens at all — not a `401`, because nothing was refused: the password was
 > accepted and the flow is halfway through.
+
+> **The three console reads are `no-store`, staff-only, and audited.** `payments`,
+> `ledger` and `audit` return rows nobody outside the platform may see, so none of
+> them may sit in a shared cache or a browser's disk cache, where it would survive
+> signing out. Each is also *recorded* — a read, which almost none on this platform
+> are. The argument is §17's: an account with no relationship to a pledge, a
+> campaign or a person is reading what they paid and what was done to them, and
+> "who looked at this" cannot be asked afterwards of a read nobody recorded. The
+> audit row carries the filter and a row count and never a row, so reading the
+> trail does not double it.
+>
+> **`GET /v1/admin/audit`, not `/v1/admin/audit-logs`.** The older spelling in this
+> list named the table; #314 shipped the shorter one, which names the thing, and
+> every other route under this prefix names a subject rather than a schema object.
+>
+> **What these three deliberately do not filter on.** The audit trail narrows by
+> entity kind, by one entity, or by actor, and by nothing else; the payment log
+> narrows by pledge or by campaign; the ledger by account, campaign, or both.
+> Every one of those is an index V21 or V41 already created. A filter outside that
+> set — "every failed charge", "every refund ever recorded", a date range — is a
+> sequential scan over the two tables that only ever grow, and the first person to
+> run it would be a moderator with a support ticket open rather than a load test.
+> Each is one migration on the day it is needed. The endpoint types say which are
+> missing and why.
 
 > **Moderation has three outcomes, not two.** `request-changes` was added to the
 > two above it because rejection is terminal (§6.1): a queue whose only outcomes

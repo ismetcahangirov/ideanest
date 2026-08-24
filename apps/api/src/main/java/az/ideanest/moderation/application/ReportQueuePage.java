@@ -1,6 +1,7 @@
 package az.ideanest.moderation.application;
 
 import az.ideanest.moderation.domain.ReportState;
+import az.ideanest.moderation.domain.ReportTargetType;
 import java.util.List;
 import java.util.UUID;
 
@@ -14,12 +15,17 @@ import java.util.UUID;
  * same trade for the same reason on a feed nobody paginates to the end of either.
  *
  * @param state which state was asked for
+ * @param targetType which kind of target was asked for, or null for all of them.
+ *     Carried rather than dropped because AD-09 splits one table into two screens —
+ *     the campaign queue and the profile queue — and a client with both open needs to
+ *     know which of them a response belongs to, for the reason {@link #state} is echoed
  * @param reports oldest first, because a queue is worked in the order things arrived
  * @param nextCursor what to pass as {@code after} for the next page, or null when
  *     this was the last one. It is the identifier of the last report on this page,
  *     which is a UUID v7 and therefore a position in arrival order (§7.3)
  */
-public record ReportQueuePage(ReportState state, List<QueuedReport> reports, UUID nextCursor) {
+public record ReportQueuePage(
+        ReportState state, ReportTargetType targetType, List<QueuedReport> reports, UUID nextCursor) {
 
     public ReportQueuePage {
         reports = List.copyOf(reports);
