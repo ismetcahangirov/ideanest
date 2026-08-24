@@ -16,6 +16,16 @@ updates:
       # Raise this deliberately when the Node version in ci.yml changes.
       - dependency-name: '@types/node'
         update-types: ['version-update:semver-major']
+      # `packages/api-client` is on TypeScript 5 and the rest of the repository
+      # is on 7. That is not drift, it is the generator: `openapi-typescript`
+      # builds `schema.ts` through the compiler API, and TypeScript 7 does not
+      # expose `ts.factory` at all, so the generator throws on import. Its
+      # latest release declares `typescript: ^5.x` as a peer and upstream has
+      # no fix (openapi-ts/openapi-typescript#2841). A major bump here cannot
+      # go green, so it is not worth proposing every Monday.
+      # Drop this when #334 closes, not before.
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
     groups:
       # One pull request per ecosystem keeps the review load sane. Major
       # versions stay separate because they need a real read.
