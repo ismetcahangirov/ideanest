@@ -82,3 +82,17 @@ are decisions about a session rather than about a request, and mobile's will dif
 package therefore pins TypeScript 5 for the generator and for its own `tsc --noEmit`. The
 sources are still checked by TypeScript 7 in practice, because `@ideanest/web` imports them
 from source and compiles them with its own.
+
+The wall is `ts.factory`, which TypeScript 7 does not expose — `node -e "require('typescript')
+.factory"` is `undefined` on 7.0.2 — and which `openapi-typescript` calls to build the AST it
+prints. Its latest release declares `typescript: ^5.x` as a peer and says so honestly;
+upstream tracks the gap in [openapi-ts/openapi-typescript#2841][ts7], open with no fix. The
+pin cannot be lifted by resolution tricks either: pnpm resolves a peer from the importer, so
+neither a scoped `overrides` entry nor `packageExtensions` will hand the generator its own
+TypeScript 5 while this package declares 7.
+
+`.github/dependabot.yml` therefore ignores major `typescript` bumps, and **#334** carries the
+work to lift both when upstream lands. Do not raise the pin on its own — the generator is what
+decides, not the version number.
+
+[ts7]: https://github.com/openapi-ts/openapi-typescript/issues/2841
