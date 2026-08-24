@@ -11,6 +11,7 @@ import {
   openReportsLabel,
   refine,
   shortId,
+  targetParameter,
 } from './describe';
 
 const NOW = new Date('2026-08-18T12:00:00.000Z');
@@ -82,6 +83,13 @@ describe('moderation/describe', () => {
     });
   });
 
+  describe('targetParameter', () => {
+    it("turns the chip row's vocabulary into the endpoint's", () => {
+      expect(targetParameter('ALL')).toBeNull();
+      expect(targetParameter('USER')).toBe('USER');
+    });
+  });
+
   describe('refine', () => {
     const campaign = report({ id: 'campaign' });
     const account = report({ id: 'account', target: { type: 'USER', id: 'u9u8u7u6' } });
@@ -94,9 +102,13 @@ describe('moderation/describe', () => {
       expect(isRefined(DEFAULT_FILTERS)).toBe(false);
     });
 
-    it('narrows to one kind of target', () => {
-      const only = refine(all, { ...DEFAULT_FILTERS, target: 'USER' }, NOW);
-      expect(only.map((row) => row.id)).toEqual(['account']);
+    it('does not narrow by target, because the service does that now', () => {
+      // #298 moved `target` across the line from a client-side narrowing to a query
+      // parameter. Keeping a copy of the rule here would have been two answers to one
+      // question -- and the wrong one would have been the one that filtered a page after
+      // the cursor had already moved past what it dropped.
+      const untouched = refine(all, { ...DEFAULT_FILTERS, target: 'USER' }, NOW);
+      expect(untouched.map((row) => row.id)).toEqual(['campaign', 'account', 'stale', 'piled-on']);
     });
 
     it('narrows to what has waited too long', () => {
@@ -119,13 +131,16 @@ describe('moderation/describe', () => {
     });
 
     it('reports that it is hiding something, which is what the count line is for', () => {
-      expect(isRefined({ ...DEFAULT_FILTERS, target: 'PROJECT' })).toBe(true);
       expect(isRefined({ ...DEFAULT_FILTERS, overdueOnly: true })).toBe(true);
       expect(isRefined({ ...DEFAULT_FILTERS, repeatedOnly: true })).toBe(true);
     });
 
-    it('changing the state alone is not a client-side narrowing — the service does that', () => {
+    it('neither server filter counts as hiding something — the service narrowed', () => {
+      // A queue narrowed to accounts is not showing three of twenty-five: it asked for
+      // accounts and was given accounts, and every page of them is reachable. A
+      // "showing 3 of 3" line under a complete list is worse than no line at all.
       expect(isRefined({ ...DEFAULT_FILTERS, state: 'UPHELD' })).toBe(false);
+      expect(isRefined({ ...DEFAULT_FILTERS, target: 'PROJECT' })).toBe(false);
     });
   });
 

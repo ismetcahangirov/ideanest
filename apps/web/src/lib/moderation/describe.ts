@@ -135,10 +135,18 @@ export type TargetFilter = 'ALL' | ReportTargetType;
 /**
  * What a triager narrows the queue by.
  *
- * ONLY `state` IS A SERVER FILTER. The endpoint takes `state`, `after` and
- * `limit` and nothing else, so the other three are applied to the reports
- * already loaded — which the screen says out loud rather than letting a count
- * quietly mean something different from what it looks like.
+ * `state` AND `target` ARE SERVER FILTERS; the other two are not. The endpoint takes
+ * `state`, `target`, `after` and `limit`, so those two change what is asked for and reset
+ * the cursor, and the remaining two narrow what is already loaded — which the screen says
+ * out loud rather than letting a count quietly mean something different from what it looks
+ * like.
+ *
+ * <p><strong>`target` moved across that line with #298</strong>, and it had to. It used to
+ * be a client-side narrowing like the other two, which was correct for a chip on a queue
+ * somebody is skimming and wrong for AD-09's profile screen: a page of twenty-five reports
+ * containing two profile reports is not a page of two, and the cursor the client is left
+ * holding has already moved past the twenty-three it dropped. Once the service could
+ * narrow, keeping a second implementation here would have been two answers to one question.
  */
 export interface QueueFilters {
   readonly state: ReportState;
@@ -156,23 +164,42 @@ export const DEFAULT_FILTERS: QueueFilters = {
   repeatedOnly: false,
 };
 
-/** Whether anything is being hidden — what the "showing x of y" line is for. */
+/**
+ * Whether anything is being hidden from what was loaded — what the "showing x of y" line is
+ * for.
+ *
+ * <p><strong>`target` is deliberately not counted here any more.</strong> It is a server
+ * filter since #298, so a queue narrowed to accounts is not showing three of twenty-five: it
+ * asked for accounts and was given accounts, and every page of them is reachable. Counting
+ * it would put a "showing 3 of 3" line under a complete list.
+ */
 export function isRefined(filters: QueueFilters): boolean {
-  return filters.target !== 'ALL' || filters.overdueOnly || filters.repeatedOnly;
+  return filters.overdueOnly || filters.repeatedOnly;
 }
 
-/** Applies the three client-side narrowings, in the order they are cheapest. */
+/**
+ * Applies the two client-side narrowings, in the order they are cheapest.
+ *
+ * <p>Both are triage rather than selection — "which of these has waited too long", "which of
+ * these has been reported by more than one person" — and both are answerable from a report
+ * the client already holds. `target` and `state` are not here: they change which reports the
+ * service is asked for. See {@link QueueFilters}.
+ */
 export function refine(
   reports: readonly QueuedReport[],
   filters: QueueFilters,
   now: Date,
 ): QueuedReport[] {
   return reports.filter((report) => {
-    if (filters.target !== 'ALL' && report.target.type !== filters.target) return false;
     if (filters.repeatedOnly && !isRepeated(report)) return false;
     if (filters.overdueOnly && !isOverdue(report, now)) return false;
     return true;
   });
+}
+
+/** The value the endpoint's `target` parameter takes, or null for every kind. */
+export function targetParameter(filter: TargetFilter): ReportTargetType | null {
+  return filter === 'ALL' ? null : filter;
 }
 
 /* -------------------------------------------------------------------------

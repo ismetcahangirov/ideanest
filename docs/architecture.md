@@ -1301,18 +1301,18 @@ Preferences are per category and per channel, with a digest option.
 |---|---|---|
 | AD-01 | Project moderation | Queue, approve, reject, request changes, notes, history |
 | AD-02 | Trust and safety | Report queue, fraud signals, suspension. Reporting and the queue are built (#102, §7.2's `content_reports`); **suspension is built (#103)** and fraud signals are not |
-| AD-03 | Curation | Editorial badges, collections, open calls, placement |
+| AD-03 | Curation | Editorial badges, collections, open calls, placement. The endpoints arrived with #48; **the four screens are built (#300 to #303)** at `/admin/curation` and its three siblings |
 | AD-04 | User management | Search, inspect, ban, verification status, audited impersonation. **Search, inspect and the ban are built (#104)**; impersonation is not |
-| AD-05 | Finance | Payment log, ledger, payout queue, approvals, disputes |
+| AD-05 | Finance | Payment log, ledger, payout queue, approvals, disputes. **The payment log and the ledger are built (#304, #305)**; the payout queue waits on #69 and disputes on #68 |
 | AD-06 | Refunds | Full and partial with reason codes |
 | AD-07 | Chargebacks | Notification, evidence, outcome |
 | AD-08 | Taxonomy | Category and tag management with translations |
-| AD-09 | Content moderation | Comments, updates, profiles |
+| AD-09 | Content moderation | Comments, updates, profiles. **The profile queue is built (#298)**, narrowed by `?target=` rather than in the browser; updates have no report route to fill one (#297) |
 | AD-10 | Support | Tickets with user context and action history |
 | AD-11 | Fee configuration | Platform and processing rates, exceptions |
 | AD-12 | Feature flags | Gradual rollout, experiments |
 | AD-13 | Analytics | Volume, success rate, average pledge, cohorts, funnels |
-| AD-14 | Audit log | Immutable record of privileged actions. The record is built (#107, §7.2); the screen that reads it belongs to this epic |
+| AD-14 | Audit log | Immutable record of privileged actions. The record is built (#107, §7.2) and **the screen that reads it is built (#314)** at `/admin/audit` |
 | AD-15 | Email templates | Edit, preview, test send. **Preview and test send are built (#86, §12.3)** at `GET /v1/admin/email-templates/{type}/preview` and `POST …/test-send`; the test send takes no recipient and goes to the caller's own address, which §12.3 argues. Editing is a schema and a decision about who may rewrite a payment-failure notice, and belongs to this epic |
 | AD-16 | System health | Queue depth, failed jobs, provider status |
 
@@ -1329,6 +1329,21 @@ Preferences are per category and per channel, with a digest option.
 > **The console lives in `apps/web` under an `(admin)` route group**, not in a
 > separate application; §16 has the argument and the condition under which it
 > reverses.
+
+> **The console itself, as #294 built it.** `/admin` is a page rather than a redirect to
+> the first screen, which is what `/settings` and `/account` are, and the difference is what
+> it has to say. This epic's definition of done is that every module in the table above has
+> either a screen or an open blocker naming what it waits on — so the front door lists all
+> sixteen, links the nine that work, and prints beside each of the other seven what it is
+> blocked on and which issue owns it. A console showing only the nine reads as a console that
+> is nine screens, and the seven become something a new member of staff discovers by asking.
+>
+> The screens sit under `app/admin/layout.tsx` with a shell of their own rather than the
+> public one. **No route among them is a gate**, and that is deliberate: the browser holds no
+> role model to check against, every endpoint the console calls refuses a caller who is not
+> on the configured moderator list, and a check in a layout would be a second, weaker copy of
+> one the service already makes correctly. The two would eventually disagree, and the
+> dangerous direction is the one where the browser says yes.
 
 > **AD-04, as #104 built it.** `GET /v1/admin/users` searches the accounts by address,
 > display name or profile slug — staff arrive holding whatever the complaint gave them, so

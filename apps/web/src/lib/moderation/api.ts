@@ -35,11 +35,12 @@ export type ReportState = 'OPEN' | 'UPHELD' | 'DISMISSED';
 export const REPORT_STATES: readonly ReportState[] = ['OPEN', 'UPHELD', 'DISMISSED'];
 
 /**
- * All four are in the service's taxonomy and in V23's check constraint; only
- * `PROJECT` and `USER` have a route that can produce one today. The other two
- * are here because the queue will serve them the day §4.9's community module
- * lands, and a client that crashes on an unknown string is worse than one that
- * renders it.
+ * All four are in the service's taxonomy and in V23's check constraint; three of
+ * them have a route that can produce one. `PROJECT_UPDATE` does not — §10.2 gives
+ * an update no report route, so that queue has no intake and #297 is the issue
+ * that gives it one. It is enumerated anyway, because the endpoint accepts it and
+ * answers with an empty page, and a client that crashes on a value the service
+ * will one day return is worse than one that renders it.
  */
 export type ReportTargetType = 'PROJECT' | 'PROJECT_UPDATE' | 'COMMENT' | 'USER';
 
@@ -104,6 +105,15 @@ export interface QueuedReport {
 export interface ReportQueuePage {
   /** Echoed by the service so a stale response cannot be filed under the wrong filter. */
   state: ReportState;
+  /**
+   * Which kind of reported thing was asked for, echoed for the same reason, and absent
+   * when the request asked for every kind.
+   *
+   * AD-09 draws the campaign queue and the profile queue from this one endpoint, so a
+   * screen that filed the wrong response would be showing complaints about people under a
+   * heading about campaigns.
+   */
+  target?: ReportTargetType | null;
   reports: QueuedReport[];
   /**
    * Absent on the last page. KEYSET, not an offset: a moderator working the
@@ -124,6 +134,15 @@ export const QUEUE_PAGE_SIZE = 25;
 
 export interface QueueRequest {
   state: ReportState;
+  /**
+   * One kind of reported thing, or absent for every kind.
+   *
+   * A SERVER FILTER, and it has to be. Narrowing a loaded page in the browser would leave
+   * a client holding a cursor that has already moved past the rows it dropped, with no way
+   * to ask for them back: twenty-five reports of which two are about profiles is not a page
+   * of two. `/admin/moderation/profiles` is the screen that needs it.
+   */
+  target?: ReportTargetType | null;
   /** The previous page's `nextCursor`. */
   after?: string | null;
   limit?: number;
@@ -134,6 +153,7 @@ export function queueQuery(request: QueueRequest): string {
   const params = new URLSearchParams();
   params.set('state', request.state);
   params.set('limit', String(request.limit ?? QUEUE_PAGE_SIZE));
+  if (request.target != null) params.set('target', request.target);
   if (request.after != null && request.after !== '') params.set('after', request.after);
   return params.toString();
 }

@@ -205,29 +205,94 @@ describe('ModerationQueue', () => {
       );
     });
 
-    it('narrows what is already loaded without asking again, and says that is what it did', async () => {
+    it('asks the service to narrow by target rather than filtering the page it holds', async () => {
       const user = userEvent.setup();
       render(<ModerationQueue />);
       await screen.findByText('Fraud');
 
+      listReportsMock.mockResolvedValue(page([ACCOUNT_REPORT]));
       await user.click(screen.getByRole('button', { name: 'Accounts' }));
 
+      // #298. Filtering in the browser would leave the cursor pointing past the reports it
+      // dropped, with nothing able to ask for them back: a page of twenty-five containing
+      // two profile reports is not a page of two.
+      await waitFor(() => {
+        expect(listReportsMock).toHaveBeenLastCalledWith(
+          expect.objectContaining({ state: 'OPEN', target: 'USER' }),
+        );
+      });
+      expect(await screen.findByText('Spam')).toBeInTheDocument();
       expect(screen.queryByText('Fraud')).toBeNull();
-      expect(screen.getByText('Spam')).toBeInTheDocument();
-      expect(screen.getByText(/Showing 1 report of the 2 loaded so far/)).toBeInTheDocument();
-      expect(listReportsMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not call a server-narrowed queue a filtered one', async () => {
+      const user = userEvent.setup();
+      render(<ModerationQueue />);
+      await screen.findByText('Fraud');
+
+      listReportsMock.mockResolvedValue(page([ACCOUNT_REPORT]));
+      await user.click(screen.getByRole('button', { name: 'Accounts' }));
+      expect(await screen.findByText('Spam')).toBeInTheDocument();
+
+      // No "showing 1 of 2" line: the service was asked for accounts and returned accounts,
+      // and every page of them is reachable.
+      expect(screen.queryByText(/Showing/)).toBeNull();
     });
 
     it('explains an empty result that a filter caused rather than claiming the queue is clear', async () => {
       const user = userEvent.setup();
+      // One report, two hours old, complained about by one person: it survives the server
+      // filters and neither triage narrowing.
+      listReportsMock.mockResolvedValue(page([ACCOUNT_REPORT]));
+      render(<ModerationQueue />);
+      await screen.findByText('Spam');
+
+      await user.click(screen.getByRole('button', { name: 'Open over 48 hours' }));
+
+      expect(screen.getByText('Nothing matches these filters')).toBeInTheDocument();
+      // And not "The queue is clear", which would be a different and untrue sentence.
+      expect(screen.queryByText('The queue is clear')).toBeNull();
+    });
+  });
+
+  describe('pinned to one kind of target', () => {
+    it('asks the service for that kind and offers no way to widen', async () => {
+      listReportsMock.mockResolvedValue(page([ACCOUNT_REPORT]));
+      render(<ModerationQueue pinnedTarget="USER" />);
+      await screen.findByText('Spam');
+
+      expect(listReportsMock).toHaveBeenCalledWith(expect.objectContaining({ target: 'USER' }));
+      // A chip row whose first entry widens back to everything is a control that turns the
+      // profile screen into the whole queue, under a heading that still says profiles.
+      expect(screen.queryByRole('button', { name: 'Everything' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Campaigns' })).toBeNull();
+    });
+
+    it('keeps the state tabs, which narrow a different question', async () => {
+      listReportsMock.mockResolvedValue(page([ACCOUNT_REPORT]));
+      render(<ModerationQueue pinnedTarget="USER" />);
+      await screen.findByText('Spam');
+
+      expect(screen.getByRole('button', { name: 'Upheld' })).toBeInTheDocument();
+    });
+  });
+
+  describe('the decision detail link', () => {
+    it('is absent unless the screen says where it goes', async () => {
       render(<ModerationQueue />);
       await screen.findByText('Fraud');
 
-      await user.click(screen.getByRole('button', { name: 'Open over 48 hours' }));
-      await user.click(screen.getByRole('button', { name: 'More than one report' }));
-      await user.click(screen.getByRole('button', { name: 'Accounts' }));
+      expect(screen.queryByRole('link', { name: /Full history/ })).toBeNull();
+    });
 
-      expect(screen.getByText('Nothing matches these filters')).toBeInTheDocument();
+    it('names the report it opens, because twenty of "Open" is unusable by ear', async () => {
+      render(<ModerationQueue detailHrefBase="/admin/moderation" />);
+      await screen.findByText('Fraud');
+
+      const link = screen.getByRole('link', {
+        name: /Open the full history of the report about campaign/,
+      });
+      expect(link).toHaveAttribute('href', '/admin/moderation/report-campaign');
     });
   });
 

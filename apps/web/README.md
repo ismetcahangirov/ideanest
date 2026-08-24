@@ -103,8 +103,19 @@ the browser half of the auth flow work at all.
 | `/projects/[id]/dashboard/charts` | — | CD-02's funding trend, CD-07's reward mix and CD-08's destinations (#96) |
 | `/projects/[id]/dashboard/backers` | — | CD-10's backer report with saved segments, and CD-11's CSV export (#97, #79) |
 | `/projects/[id]/dashboard/surveys` | — | §4.8's survey manager — PM-01 to PM-04 (#73) |
-| `/admin/moderation` | — | **Staff only.** The submission queue: approve, reject, request changes (#101) |
-| `/admin/users` | — | **Staff only.** Search, inspect, suspend and reinstate an account (#104) |
+| `/admin` | Console | **Staff only.** §4.11's sixteen modules, which have a screen, and what the rest wait on (#294) |
+| `/admin/moderation` | Console | **Staff only.** The submission queue: approve, reject, request changes (#101) |
+| `/admin/moderation/[reportId]` | Console | **Staff only.** One complaint, its decision, and its full audit history (#296) |
+| `/admin/moderation/profiles` | Console | **Staff only.** AD-09's queue of complaints filed against a person (#298) |
+| `/admin/users` | Console | **Staff only.** Search, inspect, suspend and reinstate an account (#104) |
+| `/admin/curation` | Console | **Staff only.** Editorial collections: create, publish, withdraw (#301) |
+| `/admin/curation/[slug]` | Console | **Staff only.** One collection and the campaigns in it, in order (#301, #303) |
+| `/admin/curation/badges` | Console | **Staff only.** Which collections grant §3.2's editorial badge (#300) |
+| `/admin/curation/open-calls` | Console | **Staff only.** §4.3's programmes and the windows they are open in (#302) |
+| `/admin/curation/placements` | Console | **Staff only.** The order curated collections appear in (#303) |
+| `/admin/payments` | Console | **Staff only.** Every provider call, its reference, and why the refused ones failed (#304) |
+| `/admin/ledger` | Console | **Staff only.** The double-entry ledger, both sides of each posting, and the balances (#305) |
+| `/admin/audit` | Console | **Staff only.** Every privileged action the platform has recorded (#314) |
 | `/robots.txt` | — | **Public.** Crawl directives, and the pointer to the sitemap index (#122) |
 | `/sitemap_index.xml` | — | **Public.** The index over the sitemap segments (#122) |
 | `/sitemap/[segment].xml` | — | **Public.** One sitemap segment — `pages`, `discovery`, `projects-N` (#122) |
@@ -118,6 +129,7 @@ The **Shell** column is what §4.13 WS-01 and WS-02 describe. Three values:
 |---|---|---|
 | **Site** | Global header, collapsing navigation, search, footer | `app/(site)/layout.tsx` → `SiteShell` |
 | **Minimal** | A wordmark that goes home, and a one-line footer | `MinimalShell`, used by `app/(auth)` and by the root failure states |
+| **Console** | A bar with a way back to the site, and a rail over the console's screens | `app/admin/layout.tsx` → `AdminArea` (#294) |
 | **—** | No shared chrome. The page draws its own | — |
 
 **Not every route that should carry the site shell does yet, and the gap is
@@ -134,7 +146,10 @@ is that route's own issue, because each has a reason of its own:
   `docs/motion-system.md` §5 gives it a motion budget of near zero; a collapsing
   navigation bar offering a trip to Discover, on the screen where somebody is
   about to pledge, is the opposite of both.
-- The two `/admin` routes get their own shell, which is #294.
+- The `/admin` routes have their own shell since #294 — **Console** above. It is deliberately
+  not `SiteShell`: the public header offers Discover, the categories, search and "Start a
+  project", none of which a member of staff clearing a report queue wants, and `MinimalShell`
+  records what importing that header costs a route which draws no navigation.
 
 **The account area moved into the site shell with #275.** `/settings/*`, `/account/*` and
 `/pledges/*` share `AccountArea` — the site header and footer, plus a navigation over the
@@ -151,6 +166,15 @@ reader's language from a cookie. It covers **the account area only** — `/setti
 `/settings/language` itself. Every other route in the table above is an inline English
 literal today.
 
+**The console is a deliberate case rather than an oversight (#294).** Its routes are
+authenticated and render per person, so the caching argument below does not apply to them —
+what does is that §21.1's catalogue exists for the product's readers, and the console's
+readers are the people who operate the platform. Sixteen module descriptions in four
+languages, for an audience that has not existed yet, is four times the strings to keep
+current for nobody. `lib/admin/navigation.ts` says so beside the data, and the day the
+platform has staff who do not read English it gains keys the way `lib/account/navigation.ts`
+did.
+
 That split is a caching decision rather than a to-do list. Reading a cookie makes a render
 dynamic; the account area is authenticated and renders per person already, so it pays
 nothing, while `/`, the category landings and the static pages are cached shared renders that
@@ -165,8 +189,20 @@ service marks the response `no-store` — and a URL is where a credential must n
 strings are written to access logs, kept in history, and forwarded in the `Referer` header of
 whatever loads next. `TwoFactorChallenge` carries the full argument.
 
-The two `/admin` routes are the whole of the console today; the other fourteen
-modules in §4.11 are epic #259.
+**The console is thirteen routes and nine of §4.11's sixteen modules, and `/admin` says
+which.** #259's definition of done is that every module has either a screen or an open
+blocker naming what it waits on, so the console's front door lists all sixteen: the nine that
+work link to their screens, and the seven that do not say what they are blocked on and which
+issue owns it. `lib/admin/navigation.ts` is the single list behind both that page and the
+rail, and `navigation.test.ts` asserts the two cannot disagree — a rail entry belonging to no
+module, or a screen in no rail, fails the suite.
+
+**None of those routes is a gate, and none of them may become one.** There is no role model
+in the schema or in the access token, so every endpoint the console calls refuses a caller
+who is not on the configured moderator list and each screen renders that refusal. A check in
+a layout would be a second, weaker copy of one the service already makes correctly, and the
+dangerous direction is the one where the browser says yes. #295 is the issue that replaces
+the list with something a client could honestly read.
 
 **`/maintenance` has no switch in front of it.** It is a page an edge or a load
 balancer can be pointed at during a planned outage, and nothing in this
