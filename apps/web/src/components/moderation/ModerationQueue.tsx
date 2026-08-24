@@ -11,6 +11,7 @@ import {
   listReports,
   resolveReport,
   type QueuedReport,
+  type ReportTargetType,
 } from '../../lib/moderation/api';
 import {
   DEFAULT_FILTERS,
@@ -20,6 +21,7 @@ import {
   refine,
   shortId,
   targetLabel,
+  targetParameter,
   type QueueFilters,
   type TargetFilter,
 } from '../../lib/moderation/describe';
@@ -86,6 +88,37 @@ function reports(count: number): string {
   return `${count} ${count === 1 ? 'report' : 'reports'}`;
 }
 
+export interface ModerationQueueProps {
+  /**
+   * Narrows the queue to one kind of reported thing, and takes the chip row away.
+   *
+   * <p>Absent on `/admin/moderation`, which is every complaint the platform has — that is
+   * the screen #101 built and this parameter does not change it. Set on
+   * `/admin/moderation/profiles`, where AD-09 asks for the reports filed against a person
+   * rather than one of their campaigns, and where offering a chip that could widen back to
+   * campaigns would be offering to turn one screen into the other.
+   *
+   * <p><strong>It is a server filter either way.</strong> The endpoint narrows, so the
+   * cursor a client holds describes the queue it is actually reading — see
+   * `lib/moderation/api.ts` on why narrowing a loaded page instead would leave rows nothing
+   * could ask for.
+   */
+  readonly pinnedTarget?: ReportTargetType;
+  /**
+   * The path the decision detail view (#296) lives under, or absent for no link at all.
+   *
+   * <p>A string and not a function that builds the href, which is what this was first
+   * written as. Both pages that render this queue are server components, and a function
+   * prop cannot cross that boundary — Next refuses it at build time rather than at runtime,
+   * which is the better of the two but is still a defect caught by the build rather than by
+   * a type. A prefix is data and travels.
+   *
+   * <p>Absent by default: a queue rendered somewhere the console is not should not grow a
+   * link to a route that may not be reachable from there.
+   */
+  readonly detailHrefBase?: string;
+}
+
 /**
  * AD-02's report queue, and the five decisions that clear it.
  *
@@ -98,13 +131,20 @@ function reports(count: number): string {
  * the report and it replaces the row wholesale; nothing here merges a guess into
  * state. A refusal leaves the card exactly as it was, with the reason on it.
  *
+ * ONE COMPONENT SERVES TWO SCREENS since #298 — the whole queue and AD-09's profile
+ * queue — because they differ in exactly one query parameter and in one chip row. A second
+ * component would have been the same four hundred lines with a constant changed, and the
+ * copy that got the next fix would have been whichever one somebody was looking at.
+ *
  * MOTION is the modal's 200ms entry and 150ms of colour on hover. Nothing else.
  * docs/motion-system.md §5: motion decreases as the work gets more consequential,
  * and §8 forbids animation in long lists regardless.
  */
-export function ModerationQueue() {
+export function ModerationQueue({ pinnedTarget, detailHrefBase }: ModerationQueueProps = {}) {
   const [status, setStatus] = useState<Status>('loading');
-  const [filters, setFilters] = useState<QueueFilters>(DEFAULT_FILTERS);
+  const [filters, setFilters] = useState<QueueFilters>(() =>
+    pinnedTarget === undefined ? DEFAULT_FILTERS : { ...DEFAULT_FILTERS, target: pinnedTarget },
+  );
   const [loaded, setLoaded] = useState<readonly QueuedReport[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -122,11 +162,13 @@ export function ModerationQueue() {
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   const state = filters.state;
+  const target = targetParameter(filters.target);
 
   /*
-   * Keyed on the state and on `attempt` alone. The other three filters narrow
-   * what is already loaded, so changing one must not throw the loaded pages away
-   * and start the cursor again.
+   * Keyed on the two server filters and on `attempt`. The other two narrow what is already
+   * loaded, so changing one must not throw the loaded pages away and start the cursor
+   * again — and `target` moved into this list with #298 precisely because it stopped being
+   * one of those.
    */
   useEffect(() => {
     const controller = new AbortController();
@@ -134,7 +176,12 @@ export function ModerationQueue() {
     async function load(): Promise<void> {
       setStatus('loading');
       try {
-        const page = await listReports({ state, limit: QUEUE_PAGE_SIZE, signal: controller.signal });
+        const page = await listReports({
+          state,
+          target,
+          limit: QUEUE_PAGE_SIZE,
+          signal: controller.signal,
+        });
         if (controller.signal.aborted) return;
 
         setLoaded(page.reports);
@@ -160,7 +207,7 @@ export function ModerationQueue() {
 
     void load();
     return () => controller.abort();
-  }, [state, attempt]);
+  }, [state, target, attempt]);
 
   const loadMore = useCallback(async (): Promise<void> => {
     if (cursor === null || loadingMore) return;
@@ -168,7 +215,7 @@ export function ModerationQueue() {
     setLoadingMore(true);
     setError(null);
     try {
-      const page = await listReports({ state, after: cursor, limit: QUEUE_PAGE_SIZE });
+      const page = await listReports({ state, target, after: cursor, limit: QUEUE_PAGE_SIZE });
       setLoaded((previous) => [...previous, ...page.reports]);
       setCursor(page.nextCursor ?? null);
     } catch (cause) {
@@ -176,7 +223,7 @@ export function ModerationQueue() {
     } finally {
       setLoadingMore(false);
     }
-  }, [cursor, loadingMore, state]);
+  }, [cursor, loadingMore, state, target]);
 
   function markBusy(id: string, busy: boolean): void {
     setBusyIds((previous) => {
@@ -321,9 +368,9 @@ export function ModerationQueue() {
       </div>
 
       {/*
-        The filter rail. Only `Status` reaches the service — the endpoint takes
-        `state`, `after` and `limit` and nothing else — so the other two say what
-        they are narrowing, below.
+        The filter rail. `Status` and `What was reported` reach the service; the two under
+        `Triage` narrow what is already loaded, and the line below the rail says so rather
+        than letting a count quietly mean something different from what it looks like.
       */}
       <div className="mt-4 space-y-3">
         <ChipRow aria-label="Status">
@@ -338,17 +385,24 @@ export function ModerationQueue() {
           ))}
         </ChipRow>
 
-        <ChipRow aria-label="What was reported">
-          {TARGET_FILTERS.map(([value, label]) => (
-            <Chip
-              key={value}
-              active={filters.target === value}
-              onClick={() => setFilters((previous) => ({ ...previous, target: value }))}
-            >
-              {label}
-            </Chip>
-          ))}
-        </ChipRow>
+        {/*
+          Absent when the screen is pinned to one kind. A chip row on the profile queue
+          whose first entry widens back to everything is a control that turns the screen
+          into a different screen, under a heading that still says profiles.
+        */}
+        {pinnedTarget === undefined && (
+          <ChipRow aria-label="What was reported">
+            {TARGET_FILTERS.map(([value, label]) => (
+              <Chip
+                key={value}
+                active={filters.target === value}
+                onClick={() => setFilters((previous) => ({ ...previous, target: value }))}
+              >
+                {label}
+              </Chip>
+            ))}
+          </ChipRow>
+        )}
 
         <ChipRow aria-label="Triage">
           <Chip
@@ -418,7 +472,7 @@ export function ModerationQueue() {
           }
           description={
             refined
-              ? 'Widen the filters, or load another page — the last three narrow what is already loaded rather than asking the service again.'
+              ? 'Widen the filters, or load another page — the last two narrow what is already loaded rather than asking the service again.'
               : state === 'OPEN'
                 ? 'Every report has been decided. New complaints arrive here as they are made.'
                 : 'Nothing has been decided this way yet.'
@@ -434,6 +488,11 @@ export function ModerationQueue() {
               report={report}
               now={now}
               busy={busyIds.has(report.id)}
+              detailHref={
+                detailHrefBase === undefined
+                  ? undefined
+                  : `${detailHrefBase}/${encodeURIComponent(report.id)}`
+              }
               onDecide={openDialog}
             />
           ))}

@@ -1,0 +1,163 @@
+import { authorizedFetch } from '../api/client';
+import { errorFrom } from '../api/problem';
+import type { Money } from './payments';
+
+/**
+ * §4.11's AD-05: the double-entry ledger — issue #305.
+ *
+ * <p><strong>Postings, not entries.</strong> §7.2's invariant is stated per transaction — for
+ * every `transaction_id`, the debits equal the credits — so a list of rows would be a list in
+ * which the platform's central accounting rule is invisible. The endpoint groups, and this
+ * module keeps the grouping: {@link LedgerPosting} is the unit, and every posting carries all
+ * of its sides even when an account filter matched only one of them.
+ *
+ * <p>That last clause is the reason the filter is safe to offer. A ledger that showed you the
+ * escrow half of a double entry because escrow was what you filtered on would be showing a
+ * balance that does not balance, which is the one thing this table exists to make impossible.
+ */
+
+/** Value arriving where the entry points, or value leaving. */
+export type EntryDirection = 'DEBIT' | 'CREDIT';
+
+/**
+ * §7.2's six accounts.
+ *
+ * <p>Five are fixed names and the sixth is parameterised — `creator:{id}` is one account per
+ * creator — so this is not an enumeration of every value the column can hold. It is the set a
+ * screen can offer as a filter, which is the five: a chooser over every creator on the
+ * platform is a list that grows without bound, and the way to one creator's account is the
+ * campaign filter beside it.
+ */
+export const LEDGER_ACCOUNTS: ReadonlyArray<readonly [value: string, label: string]> =
+  Object.freeze([
+    ['escrow', 'Escrow'],
+    ['platform_fee', 'Platform fee'],
+    ['psp_fee', 'Processing fee'],
+    ['tax_payable', 'Tax payable'],
+    ['refunds', 'Refunds'],
+  ]);
+
+/** One side of one posting. */
+export interface LedgerLine {
+  /** The stored account name, which for a creator is `creator:{id}`. */
+  account: string;
+  direction: EntryDirection;
+  /** Always positive; the direction carries the sign. */
+  amount: Money;
+}
+
+/** Everything the ledger wrote about one transaction. */
+export interface LedgerPosting {
+  /**
+   * The provider call these entries explain.
+   *
+   * It joins to the payment log (#304), which is the other half of the same event: what was
+   * asked of a provider, and what it meant.
+   */
+  transactionId: string;
+  projectId: string;
+  /** ISO-8601 instant, UTC. */
+  createdAt: string;
+  /** Both sides, in the order they were written. Always at least two. */
+  lines: LedgerLine[];
+  /**
+   * Whether the debits equal the credits.
+   *
+   * <p>It is always true — V41 refuses a commit in which it is not — and it is on the wire so
+   * that a reader can see that rather than be told it. A `false` reaching this screen would
+   * mean a row arrived past the application and past the database's own trigger, which is an
+   * incident and not a rounding note.
+   */
+  balanced: boolean;
+}
+
+/** What one account holds, in one currency. */
+export interface LedgerBalance {
+  account: string;
+  /**
+   * Debits minus credits.
+   *
+   * Positive on `escrow` is money the platform is holding. Positive on a creator's account is
+   * money paid out beyond what was earned, which should never happen.
+   */
+  net: Money;
+}
+
+export interface LedgerView {
+  /** Echoed, and absent when the request did not ask for it. */
+  account?: string | null;
+  projectId?: string | null;
+  postings: LedgerPosting[];
+  /** A number rather than an identifier: `ledger_entries.id` is a sequence. */
+  nextCursor?: number | null;
+  /**
+   * Every account's net, for the campaign asked about or for the whole platform.
+   *
+   * <p><strong>Not narrowed by the account filter.</strong> Filtering the postings to escrow
+   * does not make the other five accounts stop existing, and a one-line balance panel would
+   * read as though it were the whole ledger.
+   */
+  balances: LedgerBalance[];
+}
+
+/**
+ * How many postings a page holds.
+ *
+ * <p>Postings, not rows: a posting is at least two entries and occasionally five, so
+ * twenty-five of them is between fifty and a hundred and twenty-five lines on screen. Smaller
+ * than the other console lists for that reason.
+ */
+export const LEDGER_PAGE_SIZE = 20;
+
+/**
+ * What the ledger may be narrowed by — §4.11's "readable by account and by campaign".
+ *
+ * <p>Unlike the payment log's two filters, these combine: `ledger_entries` has an index that
+ * leads on `(account, project_id)`, so escrow-on-one-campaign is one index read.
+ */
+export interface LedgerRequest {
+  account?: string | null;
+  projectId?: string | null;
+  after?: number | null;
+  limit?: number;
+  signal?: AbortSignal;
+}
+
+export function ledgerQuery(request: LedgerRequest): string {
+  const params = new URLSearchParams();
+  params.set('limit', String(request.limit ?? LEDGER_PAGE_SIZE));
+  if (request.account != null && request.account !== '') params.set('account', request.account);
+  if (request.projectId != null && request.projectId !== '')
+    params.set('projectId', request.projectId);
+  if (request.after != null) params.set('after', String(request.after));
+  return params.toString();
+}
+
+/** One page of postings, newest first, with the balances behind them. */
+export async function readLedger(request: LedgerRequest = {}): Promise<LedgerView> {
+  const response = await authorizedFetch(`/v1/admin/ledger?${ledgerQuery(request)}`, {
+    signal: request.signal,
+  });
+  if (!response.ok) throw await errorFrom(response);
+
+  return (await response.json()) as LedgerView;
+}
+
+/**
+ * An account's name, in words.
+ *
+ * <p>A creator's account is rendered as "Creator" plus the first characters of the
+ * identifier, which is all the ledger knows: nothing turns a creator id into a person here,
+ * and a screen that pretended otherwise would be inventing a name. An account outside the six
+ * is shown verbatim rather than hidden — the column has a check constraint, so a value that
+ * is not one of these is something worth seeing.
+ */
+export function accountLabel(account: string): string {
+  const known = LEDGER_ACCOUNTS.find(([value]) => value === account);
+  if (known !== undefined) return known[1];
+
+  if (account.startsWith('creator:')) {
+    return `Creator ${account.slice('creator:'.length, 'creator:'.length + 8)}`;
+  }
+  return account;
+}

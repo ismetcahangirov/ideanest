@@ -1,9 +1,12 @@
 package az.ideanest.ledger.infrastructure;
 
+import az.ideanest.ledger.application.AccountTotal;
+import az.ideanest.ledger.application.PostingHead;
 import az.ideanest.ledger.domain.LedgerEntry;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -81,4 +84,147 @@ public interface LedgerEntryRepository extends JpaRepository<LedgerEntry, Long> 
      * unique key cannot see.
      */
     boolean existsByTransactionId(UUID transactionId);
+
+    /*
+     * The nine below are AD-05's ledger explorer -- #305.
+     *
+     * The screen shows both sides of every entry together, which is what makes the paging
+     * two queries rather than one: the first pages over postings, the second loads every
+     * entry of the postings that page named. PostingHead has the argument in full, and the
+     * short version is that a page of entries cuts the last posting in half.
+     *
+     * The second query is also what makes the account filter honest. Narrowing to escrow
+     * and rendering only the escrow entries would be showing one side of a double entry
+     * and calling it a ledger; the filter decides which postings are interesting and never
+     * which half of one is shown.
+     */
+
+    /** The newest postings, whatever they were about. */
+    @Query(
+            """
+            SELECT new az.ideanest.ledger.application.PostingHead(e.transactionId, MAX(e.id))
+            FROM LedgerEntry e
+            GROUP BY e.transactionId
+            ORDER BY MAX(e.id) DESC
+            """)
+    List<PostingHead> newestPostings(Pageable limit);
+
+    /** The page after {@code before}. Keyset over the posting's own last entry. */
+    @Query(
+            """
+            SELECT new az.ideanest.ledger.application.PostingHead(e.transactionId, MAX(e.id))
+            FROM LedgerEntry e
+            GROUP BY e.transactionId
+            HAVING MAX(e.id) < :before
+            ORDER BY MAX(e.id) DESC
+            """)
+    List<PostingHead> newestPostingsBefore(@Param("before") Long before, Pageable limit);
+
+    /** The newest postings that touched one campaign. */
+    @Query(
+            """
+            SELECT new az.ideanest.ledger.application.PostingHead(e.transactionId, MAX(e.id))
+            FROM LedgerEntry e
+            WHERE e.projectId = :projectId
+            GROUP BY e.transactionId
+            ORDER BY MAX(e.id) DESC
+            """)
+    List<PostingHead> newestPostingsOfProject(@Param("projectId") UUID projectId, Pageable limit);
+
+    /** The page after {@code before}, within one campaign. */
+    @Query(
+            """
+            SELECT new az.ideanest.ledger.application.PostingHead(e.transactionId, MAX(e.id))
+            FROM LedgerEntry e
+            WHERE e.projectId = :projectId
+            GROUP BY e.transactionId
+            HAVING MAX(e.id) < :before
+            ORDER BY MAX(e.id) DESC
+            """)
+    List<PostingHead> newestPostingsOfProjectBefore(
+            @Param("projectId") UUID projectId, @Param("before") Long before, Pageable limit);
+
+    /**
+     * The newest postings that touched one account.
+     *
+     * <p>Backed by {@code ledger_entries_account_idx}, which leads on {@code account}. A
+     * caller wanting one account on one campaign narrows the second half in Java rather
+     * than in a fourth pair of queries here: the index has already done the expensive part,
+     * and the two filters are rarely both set.
+     */
+    @Query(
+            """
+            SELECT new az.ideanest.ledger.application.PostingHead(e.transactionId, MAX(e.id))
+            FROM LedgerEntry e
+            WHERE e.account = :account
+            GROUP BY e.transactionId
+            ORDER BY MAX(e.id) DESC
+            """)
+    List<PostingHead> newestPostingsOfAccount(@Param("account") String account, Pageable limit);
+
+    /** The page after {@code before}, within one account. */
+    @Query(
+            """
+            SELECT new az.ideanest.ledger.application.PostingHead(e.transactionId, MAX(e.id))
+            FROM LedgerEntry e
+            WHERE e.account = :account
+            GROUP BY e.transactionId
+            HAVING MAX(e.id) < :before
+            ORDER BY MAX(e.id) DESC
+            """)
+    List<PostingHead> newestPostingsOfAccountBefore(
+            @Param("account") String account, @Param("before") Long before, Pageable limit);
+
+    /**
+     * Every entry of these postings, oldest first.
+     *
+     * <p>One query for the whole page rather than one per posting, which is the argument
+     * {@code countOpenByTarget} makes on the report queue: a read whose cost grows with the
+     * size of the page is a screen that stops working when there is a lot on it.
+     *
+     * <p>Callers pass a non-empty list; an empty {@code IN} is not valid SQL, and a caller
+     * with no postings already knows the page was empty.
+     */
+    @Query("SELECT e FROM LedgerEntry e WHERE e.transactionId IN :transactionIds ORDER BY e.id ASC")
+    List<LedgerEntry> entriesOf(@Param("transactionIds") List<UUID> transactionIds);
+
+    /**
+     * What every account holds, per currency, across the whole platform.
+     *
+     * <p>The same arithmetic as {@link #balanceOf(String, String)} -- debits positive,
+     * credits negative -- asked for every account at once rather than one at a time. The
+     * explorer draws six accounts and the platform has at least one currency; twelve round
+     * trips for a page header is the version of this that gets written by accident.
+     *
+     * <p>Grouped by currency and never summed across it, for §21.2's reason: there is no
+     * rate at which manat and dollars add up, so a single total would be a number with no
+     * meaning that somebody would eventually reconcile against.
+     */
+    @Query(
+            """
+            SELECT new az.ideanest.ledger.application.AccountTotal(
+                e.account,
+                e.currency,
+                COALESCE(SUM(CASE WHEN e.direction = az.ideanest.ledger.application.EntryDirection.DEBIT
+                                  THEN e.amount ELSE -e.amount END), 0))
+            FROM LedgerEntry e
+            GROUP BY e.account, e.currency
+            ORDER BY e.account, e.currency
+            """)
+    List<AccountTotal> balances();
+
+    /** The same, for one campaign. */
+    @Query(
+            """
+            SELECT new az.ideanest.ledger.application.AccountTotal(
+                e.account,
+                e.currency,
+                COALESCE(SUM(CASE WHEN e.direction = az.ideanest.ledger.application.EntryDirection.DEBIT
+                                  THEN e.amount ELSE -e.amount END), 0))
+            FROM LedgerEntry e
+            WHERE e.projectId = :projectId
+            GROUP BY e.account, e.currency
+            ORDER BY e.account, e.currency
+            """)
+    List<AccountTotal> balancesOfProject(@Param("projectId") UUID projectId);
 }

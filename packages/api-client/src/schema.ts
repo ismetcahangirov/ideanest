@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/v1/admin/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["auditTrailTrail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/collections": {
         parameters: {
             query?: never;
@@ -164,6 +180,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/ledger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ledgerLedger"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/moderation/reports": {
         parameters: {
             query?: never;
@@ -270,6 +302,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["projectModerationRequestChanges"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["paymentLogLog"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2343,6 +2391,10 @@ export interface components {
         BackerSurveyListResponse: {
             surveys?: components["schemas"]["BackerSurveyBody"][];
         };
+        Balance: {
+            account?: string;
+            net?: components["schemas"]["Money"];
+        };
         BuyAddonsRequest: {
             addons: components["schemas"]["PledgeAddonBody"][];
         };
@@ -2859,6 +2911,11 @@ export interface components {
             textual?: boolean;
             valueNode?: boolean;
         };
+        Line: {
+            account?: string;
+            amount?: components["schemas"]["Money"];
+            direction?: string;
+        };
         LocaleRequest: {
             locale: string;
         };
@@ -2970,6 +3027,15 @@ export interface components {
             socialLinks?: components["schemas"]["SocialLinkBody"][];
             websiteUrl?: string;
         };
+        Page: {
+            /** Format: uuid */
+            nextCursor?: string;
+            /** Format: uuid */
+            pledgeId?: string;
+            /** Format: uuid */
+            projectId?: string;
+            transactions?: components["schemas"]["Transaction"][];
+        };
         PatchPledgeRequest: {
             addons?: components["schemas"]["PledgeAddonBody"][];
             contribution?: components["schemas"]["Money"];
@@ -3037,6 +3103,16 @@ export interface components {
             postcode?: string;
             recipient?: string;
             region?: string;
+        };
+        Posting: {
+            balanced?: boolean;
+            /** Format: date-time */
+            createdAt?: string;
+            lines?: components["schemas"]["Line"][];
+            /** Format: uuid */
+            projectId?: string;
+            /** Format: uuid */
+            transactionId?: string;
         };
         Preference: {
             /** @enum {string} */
@@ -3342,6 +3418,7 @@ export interface components {
             nextCursor?: string;
             reports?: components["schemas"]["QueuedReportResponse"][];
             state?: string;
+            target?: string;
         };
         ReportRequest: {
             detail?: string;
@@ -3718,6 +3795,25 @@ export interface components {
             refreshToken?: string;
             tokenType?: string;
         };
+        Transaction: {
+            amount?: components["schemas"]["Money"];
+            /** Format: int32 */
+            attemptNumber?: number;
+            /** Format: date-time */
+            createdAt?: string;
+            failureCode?: string;
+            failureMessage?: string;
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            pledgeId?: string;
+            /** Format: uuid */
+            projectId?: string;
+            provider?: string;
+            providerTransactionId?: string;
+            status?: string;
+            type?: string;
+        };
         TwoFactorEnrolmentResponse: {
             algorithm?: string;
             /** Format: int32 */
@@ -3756,6 +3852,15 @@ export interface components {
             code?: string;
             recoveryCode?: string;
             tokenDelivery?: string;
+        };
+        View: {
+            account?: string;
+            balances?: components["schemas"]["Balance"][];
+            /** Format: int64 */
+            nextCursor?: number;
+            postings?: components["schemas"]["Posting"][];
+            /** Format: uuid */
+            projectId?: string;
         };
         WeightResponse: {
             active?: boolean;
@@ -3798,6 +3903,7 @@ export type SchemaBackerPledgeSummary = components['schemas']['BackerPledgeSumma
 export type SchemaBackerSegmentResponse = components['schemas']['BackerSegmentResponse'];
 export type SchemaBackerSurveyBody = components['schemas']['BackerSurveyBody'];
 export type SchemaBackerSurveyListResponse = components['schemas']['BackerSurveyListResponse'];
+export type SchemaBalance = components['schemas']['Balance'];
 export type SchemaBuyAddonsRequest = components['schemas']['BuyAddonsRequest'];
 export type SchemaCampaign = components['schemas']['Campaign'];
 export type SchemaCampaignMessageListResponse = components['schemas']['CampaignMessageListResponse'];
@@ -3861,6 +3967,7 @@ export type SchemaItemBody = components['schemas']['ItemBody'];
 export type SchemaItemPatchRequest = components['schemas']['ItemPatchRequest'];
 export type SchemaItemResponse = components['schemas']['ItemResponse'];
 export type SchemaJsonNode = components['schemas']['JsonNode'];
+export type SchemaLine = components['schemas']['Line'];
 export type SchemaLocaleRequest = components['schemas']['LocaleRequest'];
 export type SchemaLocation = components['schemas']['Location'];
 export type SchemaLocationBody = components['schemas']['LocationBody'];
@@ -3878,12 +3985,14 @@ export type SchemaOAuthSignInRequest = components['schemas']['OAuthSignInRequest
 export type SchemaOpenLatePledgesRequest = components['schemas']['OpenLatePledgesRequest'];
 export type SchemaOutcome = components['schemas']['Outcome'];
 export type SchemaOwnProfileResponse = components['schemas']['OwnProfileResponse'];
+export type SchemaPage = components['schemas']['Page'];
 export type SchemaPatchPledgeRequest = components['schemas']['PatchPledgeRequest'];
 export type SchemaPledgeAddonBody = components['schemas']['PledgeAddonBody'];
 export type SchemaPledgeResponse = components['schemas']['PledgeResponse'];
 export type SchemaPledgeSupplementBody = components['schemas']['PledgeSupplementBody'];
 export type SchemaPostCommentRequest = components['schemas']['PostCommentRequest'];
 export type SchemaPostalAddressBody = components['schemas']['PostalAddressBody'];
+export type SchemaPosting = components['schemas']['Posting'];
 export type SchemaPreference = components['schemas']['Preference'];
 export type SchemaPrelaunchPageResponse = components['schemas']['PrelaunchPageResponse'];
 export type SchemaProfilePatchRequest = components['schemas']['ProfilePatchRequest'];
@@ -3967,6 +4076,7 @@ export type SchemaTemplate = components['schemas']['Template'];
 export type SchemaTermResponse = components['schemas']['TermResponse'];
 export type SchemaThread = components['schemas']['Thread'];
 export type SchemaTokenResponse = components['schemas']['TokenResponse'];
+export type SchemaTransaction = components['schemas']['Transaction'];
 export type SchemaTwoFactorEnrolmentResponse = components['schemas']['TwoFactorEnrolmentResponse'];
 export type SchemaUpdateNotificationPreferencesRequest = components['schemas']['UpdateNotificationPreferencesRequest'];
 export type SchemaUpgradePledgeRequest = components['schemas']['UpgradePledgeRequest'];
@@ -3974,10 +4084,37 @@ export type SchemaValueCount = components['schemas']['ValueCount'];
 export type SchemaVerificationRecord = components['schemas']['VerificationRecord'];
 export type SchemaVerifyEmailRequest = components['schemas']['VerifyEmailRequest'];
 export type SchemaVerifyTwoFactorRequest = components['schemas']['VerifyTwoFactorRequest'];
+export type SchemaView = components['schemas']['View'];
 export type SchemaWeightResponse = components['schemas']['WeightResponse'];
 export type SchemaWeightsResponse = components['schemas']['WeightsResponse'];
 export type $defs = Record<string, never>;
 export interface operations {
+    auditTrailTrail: {
+        parameters: {
+            query?: {
+                entityType?: string;
+                entityId?: string;
+                actorId?: string;
+                after?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page"];
+                };
+            };
+        };
+    };
     adminCurationList: {
         parameters: {
             query?: never;
@@ -4266,10 +4403,36 @@ export interface operations {
             };
         };
     };
+    ledgerLedger: {
+        parameters: {
+            query?: {
+                account?: string;
+                projectId?: string;
+                after?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["View"];
+                };
+            };
+        };
+    };
     reportQueueQueue: {
         parameters: {
             query?: {
                 state?: "OPEN" | "UPHELD" | "DISMISSED";
+                target?: "PROJECT" | "PROJECT_UPDATE" | "COMMENT" | "USER";
                 after?: string;
                 limit?: number;
             };
@@ -4438,6 +4601,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectEdit"];
+                };
+            };
+        };
+    };
+    paymentLogLog: {
+        parameters: {
+            query?: {
+                pledgeId?: string;
+                projectId?: string;
+                after?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page"];
                 };
             };
         };

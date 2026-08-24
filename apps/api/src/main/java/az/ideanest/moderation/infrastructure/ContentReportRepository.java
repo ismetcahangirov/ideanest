@@ -14,7 +14,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /**
- * Reports, by the five questions actually asked of them.
+ * Reports, by the questions actually asked of them.
  *
  * <p><strong>Neither write is a {@code save}.</strong> Both of the two statements
  * that change this table name their own condition, and both do it because the
@@ -155,6 +155,38 @@ public interface ContentReportRepository extends JpaRepository<ContentReport, UU
     @Query("SELECT r FROM ContentReport r WHERE r.state = :state AND r.id > :after ORDER BY r.id")
     List<ContentReport> pageAfter(
             @Param("state") ReportState state, @Param("after") UUID after, Pageable limit);
+
+    /**
+     * The first page of one kind of target's queue.
+     *
+     * <p><strong>Why the filter is a second pair of methods and not a parameter on the
+     * first.</strong> {@code (:targetType IS NULL OR r.targetType = :targetType)} would be
+     * one query and would make every unfiltered page depend on the driver inferring the
+     * type of a null enum parameter. The class comment above makes the same argument about
+     * the cursor, and it is the same argument: the call site says which question it is
+     * asking, where a reader can see it.
+     *
+     * <p>AD-09's profile queue is the caller that needs this, and it needs it because the
+     * alternative — reading the whole queue and dropping three quarters of it in the
+     * browser — turns a keyset cursor into a lie. A page of twenty-five reports holding two
+     * profile reports is not a page of two, and the client has no way to ask for the rest.
+     */
+    @Query("SELECT r FROM ContentReport r WHERE r.state = :state AND r.targetType = :targetType ORDER BY r.id")
+    List<ContentReport> firstPageOfType(
+            @Param("state") ReportState state, @Param("targetType") ReportTargetType targetType, Pageable limit);
+
+    /** The next page of one kind of target's queue. See {@link #pageAfter} on keyset paging. */
+    @Query(
+            """
+            SELECT r FROM ContentReport r
+            WHERE r.state = :state AND r.targetType = :targetType AND r.id > :after
+            ORDER BY r.id
+            """)
+    List<ContentReport> pageAfterOfType(
+            @Param("state") ReportState state,
+            @Param("targetType") ReportTargetType targetType,
+            @Param("after") UUID after,
+            Pageable limit);
 
     /**
      * How many people have an open complaint about each of these targets.

@@ -5,7 +5,10 @@ import az.ideanest.payment.domain.TransactionStatus;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * Provider calls, appended and read back.
@@ -44,4 +47,57 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
 
     /** How many calls of one status a campaign has produced. For the collection's progress. */
     long countByProjectIdAndStatus(UUID projectId, TransactionStatus status);
+
+    /*
+     * The six below are AD-05's log — #304. Three filter shapes, each with a first page
+     * and a keyset page; PaymentLogScope has the argument for why there are three.
+     *
+     * Ordered by identifier rather than by created_at, which is the same choice
+     * AuditEntryRepository makes and for the same reason: the identifier is a UUID v7
+     * carrying the millisecond it was minted in (§7.3), it is unique where the timestamp is
+     * not, and a unique sort key is a cursor of one value instead of two. Four attempts
+     * against one pledge inside the same second are the ordinary case here, not the edge.
+     */
+
+    /** The newest calls the platform has made, whatever they were about. */
+    @Query("SELECT t FROM PaymentTransaction t ORDER BY t.id DESC")
+    List<PaymentTransaction> newest(Pageable limit);
+
+    /** The page after {@code before}. */
+    @Query("SELECT t FROM PaymentTransaction t WHERE t.id < :before ORDER BY t.id DESC")
+    List<PaymentTransaction> newestBefore(@Param("before") UUID before, Pageable limit);
+
+    /** Everything that moved on one campaign, newest first. */
+    @Query("SELECT t FROM PaymentTransaction t WHERE t.projectId = :projectId ORDER BY t.id DESC")
+    List<PaymentTransaction> newestOfProject(@Param("projectId") UUID projectId, Pageable limit);
+
+    /** The page after {@code before}, within one campaign. */
+    @Query(
+            """
+            SELECT t FROM PaymentTransaction t
+            WHERE t.projectId = :projectId AND t.id < :before
+            ORDER BY t.id DESC
+            """)
+    List<PaymentTransaction> newestOfProjectBefore(
+            @Param("projectId") UUID projectId, @Param("before") UUID before, Pageable limit);
+
+    /**
+     * One pledge's whole attempt history, newest first.
+     *
+     * <p>The same rows as {@link #findByPledgeIdOrderByCreatedAtDesc}, paged. That one
+     * stays because the collection run reads it whole and wants no {@link Pageable}; this
+     * one exists because a screen cannot.
+     */
+    @Query("SELECT t FROM PaymentTransaction t WHERE t.pledgeId = :pledgeId ORDER BY t.id DESC")
+    List<PaymentTransaction> newestOfPledge(@Param("pledgeId") UUID pledgeId, Pageable limit);
+
+    /** The page after {@code before}, within one pledge. */
+    @Query(
+            """
+            SELECT t FROM PaymentTransaction t
+            WHERE t.pledgeId = :pledgeId AND t.id < :before
+            ORDER BY t.id DESC
+            """)
+    List<PaymentTransaction> newestOfPledgeBefore(
+            @Param("pledgeId") UUID pledgeId, @Param("before") UUID before, Pageable limit);
 }

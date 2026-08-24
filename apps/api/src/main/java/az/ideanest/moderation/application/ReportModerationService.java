@@ -6,6 +6,7 @@ import az.ideanest.audit.AuditLog;
 import az.ideanest.audit.AuditOutcome;
 import az.ideanest.moderation.domain.ContentReport;
 import az.ideanest.moderation.domain.ReportState;
+import az.ideanest.moderation.domain.ReportTargetType;
 import az.ideanest.moderation.domain.TargetReportCount;
 import az.ideanest.moderation.infrastructure.ContentReportRepository;
 import az.ideanest.project.application.NotAModeratorException;
@@ -65,6 +66,16 @@ public class ReportModerationService {
     /**
      * One page of reports in one state, oldest first.
      *
+     * <p><strong>The target filter is what makes AD-09's profile queue a queue.</strong>
+     * §4.11 lists moderation of campaigns, comments, updates and profiles as one module,
+     * and one table holds all four; a screen for one of them therefore either narrows here
+     * or narrows in the browser. Narrowing in the browser breaks the cursor — twenty-five
+     * reports of which two are about profiles is not a page of two, and the client cannot
+     * ask for the missing twenty-three — so the filter is a predicate on the query.
+     *
+     * @param targetType the kind of thing the reports are about, or null for every kind.
+     *     {@code null} is the campaign-and-everything queue #101 already serves, so the
+     *     existing screen is unchanged by this parameter existing
      * @param after the last identifier of the previous page, or null for the first
      * @param limit already clamped to {@code ModerationProperties.Queue} by the
      *     controller, which is where a request's shape is decided
@@ -73,14 +84,15 @@ public class ReportModerationService {
      *     screen an ordinary account may read
      */
     @Transactional(readOnly = true)
-    public ReportQueuePage queue(UUID moderatorId, ReportState state, UUID after, int limit) {
+    public ReportQueuePage queue(
+            UUID moderatorId, ReportState state, ReportTargetType targetType, UUID after, int limit) {
+
         staff.requireStaff(moderatorId);
 
         PageRequest page = PageRequest.ofSize(limit);
-        List<ContentReport> rows =
-                after == null ? reports.firstPage(state, page) : reports.pageAfter(state, after, page);
+        List<ContentReport> rows = pageOf(state, targetType, after, page);
         if (rows.isEmpty()) {
-            return new ReportQueuePage(state, List.of(), null);
+            return new ReportQueuePage(state, targetType, List.of(), null);
         }
 
         Map<UUID, Long> openPerTarget = openReportsOnTargetsOf(rows);
@@ -93,7 +105,25 @@ public class ReportModerationService {
         // the queue, and reporting a cursor on a short page would cost a client one
         // request to discover the same thing.
         UUID nextCursor = rows.size() < limit ? null : rows.get(rows.size() - 1).getId();
-        return new ReportQueuePage(state, queued, nextCursor);
+        return new ReportQueuePage(state, targetType, queued, nextCursor);
+    }
+
+    /**
+     * The four queries the two optional arguments select between.
+     *
+     * <p>Spelled out rather than assembled, because {@code ContentReportRepository} keeps
+     * each page shape as its own named query — see the argument there about a null
+     * parameter whose type the driver has to guess.
+     */
+    private List<ContentReport> pageOf(
+            ReportState state, ReportTargetType targetType, UUID after, PageRequest page) {
+
+        if (targetType == null) {
+            return after == null ? reports.firstPage(state, page) : reports.pageAfter(state, after, page);
+        }
+        return after == null
+                ? reports.firstPageOfType(state, targetType, page)
+                : reports.pageAfterOfType(state, targetType, after, page);
     }
 
     /**

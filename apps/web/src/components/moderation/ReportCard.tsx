@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Card, Pill, Tag } from '@ideanest/ui';
 import type { QueuedReport } from '../../lib/moderation/api';
 import {
@@ -22,6 +23,14 @@ export interface ReportCardProps {
   /** Pinned per load, so every card on one render ages from the same instant. */
   readonly now: Date;
   readonly busy: boolean;
+  /**
+   * The decision detail view for this report (#296), or absent where there is none.
+   *
+   * <p>A card carries everything needed to decide a report and deliberately not everything
+   * known about one: the full decision history, and the other complaints about the same
+   * target, belong on a page rather than on a row in a queue somebody is skimming.
+   */
+  readonly detailHref?: string;
   readonly onDecide: (report: QueuedReport, decision: Decision) => void;
 }
 
@@ -50,7 +59,7 @@ function stateVariant(report: QueuedReport): 'success' | 'default' {
  * button cannot be aimed at. Hover is the standard 150ms colour change `Card`
  * already carries and nothing else moves.
  */
-export function ReportCard({ report, now, busy, onDecide }: ReportCardProps) {
+export function ReportCard({ report, now, busy, detailHref, onDecide }: ReportCardProps) {
   const kind = targetLabel(report.target.type);
   const target = `${kind} ${shortId(report.target.id)}`;
   const overdue = isOverdue(report, now);
@@ -76,6 +85,20 @@ export function ReportCard({ report, now, busy, onDecide }: ReportCardProps) {
               Reported about {kind}{' '}
               <span className="font-mono text-white/64">{shortId(report.target.id)}</span>
             </p>
+            {/*
+              The name says which report, for the reason the decision buttons below give:
+              twenty cards offering "Open" is unusable by ear, and this one leads to a
+              screen about somebody's account.
+            */}
+            {detailHref !== undefined && (
+              <Link
+                href={detailHref}
+                aria-label={`Open the full history of the report about ${target}`}
+                className="mt-2 inline-block rounded-lg text-sm text-white/64 underline underline-offset-2 transition-colors duration-150 ease-in-out hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
+              >
+                Full history
+              </Link>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

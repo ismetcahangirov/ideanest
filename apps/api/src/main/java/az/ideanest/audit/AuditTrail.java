@@ -1,0 +1,98 @@
+package az.ideanest.audit;
+
+import java.util.List;
+import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * The reading side of the trail — AD-14, #314.
+ *
+ * <p>{@link AuditLog} writes and this reads, and they are two classes because they have
+ * two different callers and two different rules. Every module in the service writes; one
+ * screen reads. Putting the read on {@code AuditLog} would put a paged query in front of
+ * every caller whose only business here is one {@code record} call, and the first
+ * consequence of that is somebody reading the trail inside the transaction that is
+ * writing to it.
+ *
+ * <p><strong>There is no authorisation here, and that is deliberate.</strong> This class
+ * is inside the cross-cutting package everything may depend on, and a staff check in it
+ * would either duplicate {@code shared.access.PlatformStaff} or make the audit package
+ * depend on a module. The refusal lives one layer out, in
+ * {@code admin.application.AuditTrailService}, which is also where reading the trail is
+ * itself recorded — the two belong in the same place, for the reason
+ * {@code UserAdministrationService} gives about a search.
+ *
+ * <p><strong>Read-only, and it could not be otherwise.</strong> V21 puts a trigger on the
+ * table that raises on UPDATE, DELETE and TRUNCATE. Nothing here could edit a row if it
+ * tried, which is the property that makes the trail worth reading at all.
+ */
+@Service
+public class AuditTrail {
+
+    private final AuditEntryRepository entries;
+
+    public AuditTrail(AuditEntryRepository entries) {
+        this.entries = entries;
+    }
+
+    /**
+     * One page of the trail, newest first.
+     *
+     * @param filter one of the four shapes {@link AuditTrailFilter} allows. Normalised
+     *     first, so the page and the echoed filter describe the same query
+     * @param before the identifier of the last row on the previous page, or null for the
+     *     first page. An identifier that is not in the table is not an error: it is a
+     *     position, and every row below it is still a correct answer
+     * @param limit already clamped by the caller, which is where a request's shape is
+     *     decided
+     */
+    @Transactional(readOnly = true)
+    public AuditTrailPage page(AuditTrailFilter filter, UUID before, int limit) {
+        AuditTrailFilter asked = filter.normalised();
+        PageRequest page = PageRequest.ofSize(limit);
+        List<AuditEntry> rows = rowsFor(asked, before, page);
+
+        /*
+         * A full page is the only honest signal that there may be more — the same rule
+         * the report queue follows. Reporting "no more" on a page that happened to fill
+         * exactly would hide the tail; reporting a cursor on a short page would cost the
+         * client one request to learn the same thing.
+         */
+        UUID nextCursor = rows.size() < limit ? null : rows.get(rows.size() - 1).getId();
+        return new AuditTrailPage(asked, rows, nextCursor);
+    }
+
+    /**
+     * What has happened to one thing, most recent first and unpaged.
+     *
+     * <p>The detail read: a screen showing one campaign, one report or one account asks
+     * for its history and gets all of it. Unpaged because the history of a single entity
+     * is bounded by how many times somebody acted on it, which is tens rather than
+     * thousands — unlike the trail as a whole, which is bounded by nothing.
+     */
+    @Transactional(readOnly = true)
+    public List<AuditEntry> historyOf(String entityType, UUID entityId) {
+        return entries.findByEntityTypeAndEntityIdOrderByOccurredAtDesc(entityType, entityId);
+    }
+
+    private List<AuditEntry> rowsFor(AuditTrailFilter filter, UUID before, PageRequest page) {
+        if (filter.isSingleEntity()) {
+            return before == null
+                    ? entries.newestOfEntity(filter.entityType(), filter.entityId(), page)
+                    : entries.newestOfEntityBefore(filter.entityType(), filter.entityId(), before, page);
+        }
+        if (filter.entityType() != null) {
+            return before == null
+                    ? entries.newestOfType(filter.entityType(), page)
+                    : entries.newestOfTypeBefore(filter.entityType(), before, page);
+        }
+        if (filter.actorId() != null) {
+            return before == null
+                    ? entries.newestByActor(filter.actorId(), page)
+                    : entries.newestByActorBefore(filter.actorId(), before, page);
+        }
+        return before == null ? entries.newest(page) : entries.newestBefore(before, page);
+    }
+}

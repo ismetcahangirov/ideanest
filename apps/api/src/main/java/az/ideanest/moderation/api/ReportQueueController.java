@@ -3,6 +3,7 @@ package az.ideanest.moderation.api;
 import az.ideanest.moderation.ModerationProperties;
 import az.ideanest.moderation.application.ReportModerationService;
 import az.ideanest.moderation.domain.ReportState;
+import az.ideanest.moderation.domain.ReportTargetType;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -56,6 +57,14 @@ public class ReportQueueController {
      * @param state defaults to {@code OPEN}, because that is the queue; the other two
      *     are how a decision is looked up afterwards. An unknown value is a 400 from
      *     the binder rather than an empty page, which would read as "nothing to do"
+     * @param target narrows to one kind of reported thing, and is absent by default —
+     *     the queue #101 serves is every kind, and adding this parameter does not
+     *     change it. §4.11's AD-09 splits the same table into screens per kind, and the
+     *     narrowing has to happen in the query: a client that filtered a page of
+     *     twenty-five down to the two profile reports in it would have no way to ask
+     *     for the other twenty-three, because the cursor it holds has moved past them.
+     *     {@code PROJECT_UPDATE} is accepted and returns nothing, which is the honest
+     *     answer while §10.2 gives an update no report route — see {@code ReportTargetType}
      * @param after the {@code nextCursor} of the previous page, or absent for the
      *     first. Keyset rather than an offset — a moderator working the queue removes
      *     rows from it as they go, and an offset against a shifting set skips reports
@@ -67,11 +76,12 @@ public class ReportQueueController {
     public ReportQueueResponse queue(
             @AuthenticationPrincipal Jwt accessToken,
             @RequestParam(defaultValue = "OPEN") ReportState state,
+            @RequestParam(required = false) ReportTargetType target,
             @RequestParam(required = false) UUID after,
             @RequestParam(required = false) Integer limit) {
 
         return ReportQueueResponse.of(
-                moderation.queue(moderatorOf(accessToken), state, after, pageSize(limit)));
+                moderation.queue(moderatorOf(accessToken), state, target, after, pageSize(limit)));
     }
 
     /** One report, for a client refreshing a row rather than a page. */
