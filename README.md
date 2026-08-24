@@ -103,6 +103,9 @@ ideanest/
 │   ├── architecture.md       Full platform specification
 │   ├── ui-kit.md             Colour, surface, typography, components
 │   └── motion-system.md      Motion tokens, patterns, budgets
+├── ops/
+│   ├── backup/               Backup and point-in-time recovery drill
+│   └── seed/                 Local demo data. Development only
 ├── CLAUDE.md                 Contribution and workflow rules
 └── .github/workflows/
     ├── ci.yml                Typecheck, tests, Storybook build and preview
@@ -128,6 +131,38 @@ cd ideanest
 pnpm install
 
 cd apps/api && ./gradlew build      # backend: compile and test
+```
+
+### Local demo data
+
+A freshly migrated database is empty, and an empty crowdfunding platform hides
+most of what there is to look at: every progress bar is a sliver, the moderation
+queue and the broken moderation queue render identically, and the finance
+console has nothing to page through.
+
+[`ops/seed/`](ops/seed/README.md) fills one. Run the service once so Flyway
+finishes, then:
+
+```bash
+ops/seed/run.sh
+```
+
+That writes 26 campaigns across every lifecycle state, 923 accounts — one per
+console role — and the pledges, charges, ledger postings, refunds, disputes and
+payouts behind them. Every account signs in with `IdeaNest2026!`; the role table
+is in the directory's own README.
+
+**Development only.** The accounts share one password and the payment records
+name providers that were never called. Do not point it at anything deployed.
+
+If a PostgreSQL already owns port 5432 on your machine, publish the compose
+database elsewhere with the overlay next to it:
+
+```bash
+cd apps/api
+docker compose -f compose.yaml -f compose.local-port.yaml up -d
+DB_URL=jdbc:postgresql://localhost:5433/ideanest \
+  SPRING_DOCKER_COMPOSE_ENABLED=false ./gradlew bootRun
 ```
 
 ### Scripts

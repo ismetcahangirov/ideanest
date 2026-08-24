@@ -1,0 +1,21 @@
+# Optional overlay for machines that already run PostgreSQL.
+#
+# A native install owns 5432 and wins the bind, so `docker compose up` appears
+# to succeed while every connection reaches the wrong server -- which shows up
+# much later as an empty database or a schema that does not match. Publishing
+# the container somewhere else removes the ambiguity instead of hiding it.
+#
+#   docker compose -f compose.yaml -f compose.local-port.yaml up -d
+#   DB_URL=jdbc:postgresql://localhost:5433/ideanest \
+#   SPRING_DOCKER_COMPOSE_ENABLED=false ./gradlew bootRun
+#
+# `SPRING_DOCKER_COMPOSE_ENABLED=false` matters: bootRun's compose integration
+# reads compose.yaml alone, so left on it would start a second stack on 5432
+# and undo the point of this file.
+services:
+  postgres:
+    # `!override` replaces the base list. Compose merges sequences by appending,
+    # so without it the container publishes 5432 *and* 5433 and the conflict is
+    # still there.
+    ports: !override
+      - '5433:5432'
