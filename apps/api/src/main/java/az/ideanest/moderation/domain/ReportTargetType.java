@@ -8,13 +8,13 @@ package az.ideanest.moderation.domain;
  * script and a bulk import. Neither is redundant with the other; see
  * {@code ContentReportSchemaTests}.
  *
- * <p><strong>One of the four still cannot be reported, and it is enumerated
- * anyway.</strong> {@code PROJECT_UPDATE} has no route: §10.2 gives an update no
- * report endpoint, and AD-09's moderation of updates is not built. {@code COMMENT}
- * was in the same position until #84 — and #102's bet paid off exactly as it was
- * argued: comments arrived, V23's check constraint already named the value, and
- * publishing {@code POST /v1/comments/{id}/report} cost a controller method, a
- * {@code ReportTargets} branch, and no migration at all.
+ * <p><strong>All four can now be reported, and #102's bet paid off twice.</strong>
+ * {@code COMMENT} had no route until #84 and {@code PROJECT_UPDATE} had none until
+ * #297, and both arrived the same way: V23's check constraint already named the
+ * value, so publishing the route cost a controller method, a {@code ReportTargets}
+ * branch, and no migration at all. Enumerating a target before it could be reported
+ * is what made that true, and it is why nothing was removed from this file when it
+ * became reachable.
  */
 public enum ReportTargetType {
 
@@ -22,9 +22,13 @@ public enum ReportTargetType {
     PROJECT,
 
     /**
-     * A numbered update on a campaign. AD-09's "updates".
+     * A numbered update on a campaign. AD-09's "updates", and §10.2's
+     * {@code POST /v1/updates/{id}/report}.
      *
-     * <p>Nothing can write this: {@code project_updates} does not exist.
+     * <p>Written since #297. The identifier is checked through
+     * {@code PublicProjectUpdates}, which also refuses one that is scheduled rather
+     * than published — see that class for why a future update is deliberately not
+     * reportable.
      */
     PROJECT_UPDATE,
 
@@ -43,12 +47,18 @@ public enum ReportTargetType {
     /**
      * Whether this release can accept a report about this kind of thing.
      *
-     * <p>Read by {@code ReportTargets}, which is the one place that has to know —
-     * an endpoint cannot check the identifier of a row in a table that does not
-     * exist, and accepting a report nobody can ever look at is worse than refusing
-     * it, because the reporter is shown a success.
+     * <p><strong>True for all four since #297</strong>, and the method is kept rather
+     * than deleted. It is the thing that made adding a target cheap: a surface whose
+     * table does not exist yet is enumerated, refused here, and becomes reachable by
+     * flipping one answer — where an enum that only listed what worked would need a
+     * migration to grow. The next target the platform learns to moderate will start
+     * out returning false from this method.
+     *
+     * <p>Read by {@code ReportTargets}, which is the one place that has to know:
+     * accepting a report nobody can ever look at is worse than refusing it, because
+     * the reporter is shown a success.
      */
     public boolean isReportable() {
-        return this != PROJECT_UPDATE;
+        return true;
     }
 }

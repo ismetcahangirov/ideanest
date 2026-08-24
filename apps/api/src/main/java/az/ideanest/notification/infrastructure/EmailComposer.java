@@ -3,6 +3,7 @@ package az.ideanest.notification.infrastructure;
 import az.ideanest.notification.NotificationProperties;
 import az.ideanest.notification.application.NotificationDigest;
 import az.ideanest.notification.application.NotificationMessage;
+import az.ideanest.notification.application.TemplateOverrides;
 import az.ideanest.notification.domain.NotificationType;
 import az.ideanest.shared.money.Money;
 import java.nio.charset.StandardCharsets;
@@ -83,10 +84,24 @@ public class EmailComposer {
     private final ObjectMapper json;
     private final NotificationProperties properties;
 
-    public EmailComposer(MessageSource messages, ObjectMapper json, NotificationProperties properties) {
+    /**
+     * AD-15's edits, layered over the catalogue — #315.
+     *
+     * <p>Consulted before {@link MessageSource} for the two keys the editor owns, and for
+     * no others. Without this the template editor would store copy nothing renders, which
+     * is a screen that lies about what it does.
+     */
+    private final TemplateOverrides overrides;
+
+    public EmailComposer(
+            MessageSource messages,
+            ObjectMapper json,
+            NotificationProperties properties,
+            TemplateOverrides overrides) {
         this.messages = messages;
         this.json = json;
         this.properties = properties;
+        this.overrides = overrides;
     }
 
     /**
@@ -100,10 +115,15 @@ public class EmailComposer {
         String action = actionUrl(message.type(), params, message.subjectType(), message.subjectId());
         String base = PREFIX + message.type().name() + ".";
 
+        // The subject and the first paragraph are the two an administrator may rewrite
+        // (#315); the headline and the button label stay in the catalogue, because a
+        // button with no label is a broken email rather than a badly worded one.
+        String type = message.type().name();
+
         return EmailContent.of(
-                copy(base + "subject", facts),
+                overridden(overrides.subjectFor(type, TemplateOverrides.RENDER_LOCALE), base + "subject", facts),
                 copy(base + "headline", facts),
-                paragraphs(base, facts),
+                overriddenParagraphs(type, base, facts),
                 copy(base + "action", facts),
                 action);
     }
@@ -293,6 +313,34 @@ public class EmailComposer {
             second = optional(base + "body2", facts);
         }
         return second == null ? List.of(copy(base + "body", facts)) : List.of(copy(base + "body", facts), second);
+    }
+
+    /** An edited string when there is one, and the catalogue's otherwise. */
+    private String overridden(java.util.Optional<String> override, String key, EmailFacts facts) {
+        return override
+                .map(text -> java.text.MessageFormat.format(text, facts.arguments()))
+                .orElseGet(() -> copy(key, facts));
+    }
+
+    /**
+     * The paragraphs, with the first one overridable.
+     *
+     * <p>Only the first. A type's second paragraph is conditional on facts the editor
+     * cannot see — {@code .body2.named} exists only when the campaign is named — so
+     * offering it for editing would mean an administrator writing copy that appears for
+     * some recipients and not others, with nothing on the screen to say which.
+     */
+    private List<String> overriddenParagraphs(String type, String base, EmailFacts facts) {
+        java.util.Optional<String> body = overrides.bodyFor(type, TemplateOverrides.RENDER_LOCALE);
+        if (body.isEmpty()) {
+            return paragraphs(base, facts);
+        }
+
+        List<String> shipped = paragraphs(base, facts);
+        List<String> edited = new ArrayList<>(shipped.size());
+        edited.add(java.text.MessageFormat.format(body.get(), facts.arguments()));
+        edited.addAll(shipped.subList(1, shipped.size()));
+        return edited;
     }
 
     /**

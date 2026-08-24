@@ -1302,29 +1302,44 @@ Preferences are per category and per channel, with a digest option.
 | AD-01 | Project moderation | Queue, approve, reject, request changes, notes, history |
 | AD-02 | Trust and safety | Report queue, fraud signals, suspension. Reporting and the queue are built (#102, §7.2's `content_reports`); **suspension is built (#103)** and fraud signals are not |
 | AD-03 | Curation | Editorial badges, collections, open calls, placement. The endpoints arrived with #48; **the four screens are built (#300 to #303)** at `/admin/curation` and its three siblings |
-| AD-04 | User management | Search, inspect, ban, verification status, audited impersonation. **Search, inspect and the ban are built (#104)**; impersonation is not |
-| AD-05 | Finance | Payment log, ledger, payout queue, approvals, disputes. **The payment log and the ledger are built (#304, #305)**; the payout queue waits on #69 and disputes on #68 |
-| AD-06 | Refunds | Full and partial with reason codes |
-| AD-07 | Chargebacks | Notification, evidence, outcome |
-| AD-08 | Taxonomy | Category and tag management with translations |
-| AD-09 | Content moderation | Comments, updates, profiles. **The profile queue is built (#298)**, narrowed by `?target=` rather than in the browser; updates have no report route to fill one (#297) |
-| AD-10 | Support | Tickets with user context and action history |
-| AD-11 | Fee configuration | Platform and processing rates, exceptions |
-| AD-12 | Feature flags | Gradual rollout, experiments |
-| AD-13 | Analytics | Volume, success rate, average pledge, cohorts, funnels |
+| AD-04 | User management | Search, inspect, ban, verification status, audited impersonation. **Search, inspect and the ban are built (#104)**, and **`/admin/staff` is built (#295)** — the role model that replaced the configured list. Impersonation is not, and is the one thing in this table still waiting on a decision (#299) |
+| AD-05 | Finance | Payment log, ledger, payout queue, approvals, disputes. **All of it is built**: the log and the ledger with #304 and #305, the payout queue and its dual approval with #69 and #306 |
+| AD-06 | Refunds | Full and partial with reason codes. **Built (#67, #307)** at `/admin/refunds`. The decision — reason code, author, state — is `refunds`; the money is a `REFUND` transaction and a ledger posting, and the two are deliberately separate tables |
+| AD-07 | Chargebacks | Notification, evidence, outcome. **Built (#68, #308)** at `/admin/disputes`. Intake is a provider webhook and no endpoint opens one; evidence is recorded here and still submitted through the provider's own console, because §9.3's interface has no upload |
+| AD-08 | Taxonomy | Category and tag management with translations. **Built (#309)** at `/admin/taxonomy`. Handles are permanent — they are in the public URL of every campaign filed under them — and nothing can be retired, because `projects.category_id` references these rows |
+| AD-09 | Content moderation | Comments, updates, profiles. **All three are built**: the profile queue with #298 and the comment and update queue with #297, which published `POST /v1/updates/{id}/report` and cost no migration because V23's constraint had named the value since #102 |
+| AD-10 | Support | Tickets with user context and action history. **Built (#310)** at `/admin/support`. Staff record a conversation against an account; there is no public form, which is a separate surface with its own rate limiting |
+| AD-11 | Fee configuration | Platform and processing rates, exceptions. **Built (#311)** at `/admin/fees`. There is no edit: a change closes the schedule in force and opens a new one, so a payout calculated last month still prices against last month's terms |
+| AD-12 | Feature flags | Gradual rollout, experiments. **Rollout is built (#312)** at `/admin/flags`; experiments are not, because a variant needs a metric to judge it by and nothing measures one |
+| AD-13 | Analytics | Volume, success rate, average pledge, cohorts, funnels. **The first three are built (#313)** at `/admin/analytics`, over V27's rollups summed across campaigns rather than within one. Cohorts and funnels are not, and the screen says what each waits on |
 | AD-14 | Audit log | Immutable record of privileged actions. The record is built (#107, §7.2) and **the screen that reads it is built (#314)** at `/admin/audit` |
-| AD-15 | Email templates | Edit, preview, test send. **Preview and test send are built (#86, §12.3)** at `GET /v1/admin/email-templates/{type}/preview` and `POST …/test-send`; the test send takes no recipient and goes to the caller's own address, which §12.3 argues. Editing is a schema and a decision about who may rewrite a payment-failure notice, and belongs to this epic |
-| AD-16 | System health | Queue depth, failed jobs, provider status |
+| AD-15 | Email templates | Edit, preview, test send. **All three are built**: preview and test send with #86, editing with #315 at `/admin/email-templates`. An edit appends a version and overrides the shipped catalogue rather than replacing it |
+| AD-16 | System health | Queue depth, failed jobs, provider status. **Built (#316)** at `/admin/health`, over counts the service already takes. It does not alert — #138 is what will, and the page says so
 
-> **Two of these sixteen have a screen. The console that reads the other
-> fourteen is #259.** The distinction that table hides is between a capability's
-> *record* and its *console*: #107 built the audit log and nothing displays it,
-> #86 built email preview and test send and nothing edits a template, #102 and
-> #103 built reporting and suspension and only the queue has a page. Where a
-> module has no endpoint at all, #259 still carries an issue for the screen,
-> labelled `status: blocked` and naming what it waits on — a backlog in which
-> the missing fourteen are simply absent reads as a console that is nearly
+> **All sixteen have a screen now, and #259 is what built them.** The
+> distinction that table used to hide is between a capability's *record* and its
+> *console*: #107 built the audit log and nothing displayed it, #86 built email
+> preview and test send and nothing edited a template, #102 and #103 built
+> reporting and suspension and only the queue had a page. Where a module had no
+> endpoint at all, #259 carried an issue for the screen, labelled
+> `status: blocked` and naming what it waited on — a backlog in which the missing
+> fourteen were simply absent would have read as a console that was nearly
 > finished.
+>
+> **Four of those blockers turned out to be stale rather than real**, which is
+> the argument for having written them down. AD-08's taxonomy tables had existed
+> since V6 and V11 and only lacked a write endpoint; AD-09's updates became
+> reportable the moment #83 built `project_updates`; AD-13's rollups were already
+> being written per campaign and needed summing the other way; and AD-16 was
+> labelled blocked on #138 when every number it wanted was a `COUNT` the service
+> could already take. Each was found by reading the blocker rather than by
+> trusting the label.
+>
+> **What is genuinely still open is one half of one module.** AD-04's audited
+> impersonation is a policy question §17 does not answer — what a session issued
+> in somebody else's name may *not* do — and #299 stays open rather than being
+> implemented around, which §5 of `CLAUDE.md` requires of a
+> `status: needs-decision` issue.
 >
 > **The console lives in `apps/web` under an `(admin)` route group**, not in a
 > separate application; §16 has the argument and the condition under which it
@@ -1339,11 +1354,22 @@ Preferences are per category and per channel, with a digest option.
 > is nine screens, and the seven become something a new member of staff discovers by asking.
 >
 > The screens sit under `app/admin/layout.tsx` with a shell of their own rather than the
-> public one. **No route among them is a gate**, and that is deliberate: the browser holds no
-> role model to check against, every endpoint the console calls refuses a caller who is not
-> on the configured moderator list, and a check in a layout would be a second, weaker copy of
-> one the service already makes correctly. The two would eventually disagree, and the
-> dangerous direction is the one where the browser says yes.
+> public one. **No route among them is a gate**, and that is still deliberate after #295
+> gave the platform a role model. `GET /v1/admin/me` now tells the console what the reader
+> may do, so the console renders honestly instead of drawing a grid of refusals — but the
+> route itself is not gated, for a reason that is about the session rather than about
+> authorisation: the web client holds its access token in a module variable and its refresh
+> token in a `SameSite=Strict` `HttpOnly` cookie that rotates on every use, so a Server
+> Component could only authenticate by spending that cookie and would end the session it was
+> trying to check. A layout gate would therefore be a second, weaker copy of a check the
+> service already makes correctly, and the dangerous direction is the one where the browser
+> says yes.
+>
+> **The rail does not vary by capability either.** Hiding the screens somebody cannot use is
+> available since #295 and is not done: a member of staff who cannot see the fee screen has
+> no way to learn it exists, and the first thing they do is ask whether the console is
+> broken. Every screen refuses and names the capability it wanted, which is a better answer
+> than an absence.
 
 > **AD-04, as #104 built it.** `GET /v1/admin/users` searches the accounts by address,
 > display name or profile slug — staff arrive holding whatever the complaint gave them, so
@@ -3421,7 +3447,8 @@ PUT    /v1/admin/collections/{slug}/projects/order
 > **Who is a moderator is configuration, until there is a role model.** Nothing in
 > the schema or the access token distinguishes platform staff, and epic #100 owns
 > that. Until then the three endpoints check the caller's verified address against
-> `ideanest.project.moderation.moderator-emails` and answer `403` with
+> the staff role model #295 built — `staff_role_grants`, read through
+> `shared.access.PlatformStaff` — and answer `403` with
 > `code: NOT_A_MODERATOR` otherwise. **The list is empty by default**, so no
 > account can moderate anything until a deployment says who can — the opposite
 > default is a creator approving their own campaign, and it has no symptom until a
@@ -3481,7 +3508,7 @@ PUT    /v1/admin/collections/{slug}/projects/order
 > **Curation is written through `/v1/admin/collections`, and who may is the same
 > configured list moderation uses.** §4.11's AD-03 names Curation as an admin module
 > and §3.2 grants "apply an editorial badge" to moderators and admins alone; there is
-> still no role model, so `ideanest.project.moderation.moderator-emails` is reused
+> written before #295 built the role model, when the configured list was reused
 > rather than a second directory being invented for epic #100 to find and delete. Every
 > mutation writes exactly one `curation_events` row in the same transaction, and the
 > four that change what the public sees — publish, unpublish, add, remove — require a

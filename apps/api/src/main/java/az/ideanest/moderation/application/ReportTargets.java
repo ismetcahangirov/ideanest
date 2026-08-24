@@ -1,7 +1,9 @@
 package az.ideanest.moderation.application;
 
 import az.ideanest.community.application.CommentNotFoundException;
+import az.ideanest.community.application.ProjectUpdateNotFoundException;
 import az.ideanest.community.application.PublicComments;
+import az.ideanest.community.application.PublicProjectUpdates;
 import az.ideanest.moderation.domain.ReportTargetType;
 import az.ideanest.project.application.ProjectNotFoundException;
 import az.ideanest.project.application.PublicProjects;
@@ -42,11 +44,17 @@ public class ReportTargets {
     private final PublicProjects projects;
     private final UserAccounts accounts;
     private final PublicComments comments;
+    private final PublicProjectUpdates updates;
 
-    public ReportTargets(PublicProjects projects, UserAccounts accounts, PublicComments comments) {
+    public ReportTargets(
+            PublicProjects projects,
+            UserAccounts accounts,
+            PublicComments comments,
+            PublicProjectUpdates updates) {
         this.projects = projects;
         this.accounts = accounts;
         this.comments = comments;
+        this.updates = updates;
     }
 
     /**
@@ -55,15 +63,16 @@ public class ReportTargets {
      * @throws ReportTargetNotFoundException when it does not exist, or exists and is
      *     not something this caller is allowed to know exists
      * @throws UnsupportedReportTargetException for a surface the platform has not
-     *     built yet. Unreachable through today's two routes; see the exception for
-     *     why it is here anyway
+     *     built yet. Unreachable through today's four routes — #297 published the
+     *     last of them — and kept for the next target that is enumerated before it
+     *     is reachable. See the exception, and {@code ReportTargetType.isReportable}
      */
     public void require(ReportTargetType targetType, UUID targetId) {
         switch (targetType) {
             case PROJECT -> requireProject(targetId);
             case USER -> requireAccount(targetId);
             case COMMENT -> requireComment(targetId);
-            case PROJECT_UPDATE -> throw new UnsupportedReportTargetException(targetType);
+            case PROJECT_UPDATE -> requireUpdate(targetId);
         }
     }
 
@@ -81,6 +90,18 @@ public class ReportTargets {
     private void requireAccount(UUID accountId) {
         accounts.findById(accountId)
                 .orElseThrow(() -> new ReportTargetNotFoundException(ReportTargetType.USER, accountId));
+    }
+
+    private void requireUpdate(UUID updateId) {
+        try {
+            updates.requireReportable(updateId);
+        } catch (ProjectUpdateNotFoundException e) {
+            // Translated rather than propagated, for the reason the two below give: the
+            // community module's advice is scoped to the community module's controllers,
+            // so its exception escaping here would reach the fallback handler and become
+            // a 500 on a safety endpoint.
+            throw new ReportTargetNotFoundException(ReportTargetType.PROJECT_UPDATE, updateId);
+        }
     }
 
     private void requireComment(UUID commentId) {

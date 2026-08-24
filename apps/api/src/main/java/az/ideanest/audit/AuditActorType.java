@@ -18,9 +18,9 @@ public enum AuditActorType {
      *
      * <p>Separate from {@link #USER} because staff authority is the authority worth
      * counting. Until epic #100 gives the platform a role model there is no role to
-     * read — {@code ideanest.project.moderation.moderator-emails} is what decides
+     * read — since #295 a granted role in {@code staff_role_grants} is what decides
      * it — so this is recorded by the call site that already asked
-     * {@code ModeratorDirectory}, at the point where it knows.
+     * {@code PlatformStaff}, at the point where it knows.
      */
     MODERATOR,
 

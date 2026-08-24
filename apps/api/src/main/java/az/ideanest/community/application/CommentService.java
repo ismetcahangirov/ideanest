@@ -9,7 +9,7 @@ import az.ideanest.community.domain.Comment;
 import az.ideanest.community.domain.ReplyDepthExceededException;
 import az.ideanest.community.infrastructure.CommentRepository;
 import az.ideanest.project.application.CapabilityNotGrantedException;
-import az.ideanest.project.application.ModeratorDirectory;
+import az.ideanest.shared.access.PlatformStaff;
 import az.ideanest.project.application.ProjectAccess;
 import az.ideanest.project.application.ProjectNotFoundException;
 import az.ideanest.project.application.PublicProjects;
@@ -93,7 +93,7 @@ public class CommentService {
     private final CommentRepository comments;
     private final ProjectAccess access;
     private final PublicProjects publicProjects;
-    private final ModeratorDirectory moderators;
+    private final PlatformStaff moderators;
     private final AuditLog audit;
     private final Outbox outbox;
     private final CommunityProperties properties;
@@ -103,7 +103,7 @@ public class CommentService {
             CommentRepository comments,
             ProjectAccess access,
             PublicProjects publicProjects,
-            ModeratorDirectory moderators,
+            PlatformStaff moderators,
             AuditLog audit,
             Outbox outbox,
             CommunityProperties properties,
@@ -204,7 +204,7 @@ public class CommentService {
 
         boolean author = comment.getAuthorId().equals(actorId);
         boolean forTheCampaign = !author && actingForTheCampaign(comment.getProjectId(), actorId);
-        boolean staff = !author && !forTheCampaign && moderators.isModerator(actorId);
+        boolean staff = !author && !forTheCampaign && moderators.isStaff(actorId);
         if (!author && !forTheCampaign && !staff) {
             throw new CommentDeletionNotPermittedException(commentId);
         }

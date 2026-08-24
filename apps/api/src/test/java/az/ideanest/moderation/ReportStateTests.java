@@ -74,8 +74,8 @@ class ReportStateTests {
     }
 
     @Test
-    @DisplayName("only the three surfaces that exist are reportable")
-    void updatesAreNotReportableYet() {
+    @DisplayName("all four of AD-09's surfaces are reportable")
+    void everySurfaceIsReportable() {
         assertThat(ReportTargetType.PROJECT.isReportable()).isTrue();
         assertThat(ReportTargetType.USER.isReportable()).isTrue();
 
@@ -84,12 +84,23 @@ class ReportStateTests {
         // against it, and `POST /v1/comments/{id}/report` is published.
         assertThat(ReportTargetType.COMMENT.isReportable()).isTrue();
 
-        // PROJECT_UPDATE has not moved and has no route to move to: §10.2 gives an
-        // update no report endpoint and AD-09's moderation of updates is not built,
-        // so a report accepted about one would be a queue row a moderator can act on
-        // in no way. The value stays in the taxonomy and in V23's constraint for
-        // #102's reason -- naming it costs one string, adding it later costs a
-        // migration on somebody else's critical path.
-        assertThat(ReportTargetType.PROJECT_UPDATE.isReportable()).isFalse();
+        // PROJECT_UPDATE moved with #297, and it moved for the same reason COMMENT did.
+        // This assertion previously said `isFalse` and explained that §10.2 gave an
+        // update no report endpoint and that AD-09's moderation of updates was not
+        // built. Both stopped being true: #83 built `project_updates`, and #297 added
+        // `PublicProjectUpdates`, a `ReportTargets` branch and
+        // `POST /v1/updates/{id}/report` -- with no migration, because V23's check
+        // constraint had named the value since #102.
+        //
+        // That is #102's bet paying off twice, and it is the reason `isReportable`
+        // still exists rather than being deleted now that every value answers true:
+        // the next surface the platform learns to moderate will be enumerated here
+        // before it can be written, and will start out returning false.
+        assertThat(ReportTargetType.PROJECT_UPDATE.isReportable()).isTrue();
+
+        assertThat(Arrays.stream(ReportTargetType.values())
+                        .filter(target -> !target.isReportable())
+                        .toList())
+                .isEmpty();
     }
 }

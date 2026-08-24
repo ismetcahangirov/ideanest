@@ -1,6 +1,6 @@
 package az.ideanest.admin.api;
 
-import az.ideanest.project.application.NotAModeratorException;
+import az.ideanest.staff.application.NotAModeratorException;
 import az.ideanest.user.application.AccountNotFoundException;
 import java.net.URI;
 import java.util.Map;

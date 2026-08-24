@@ -2,8 +2,8 @@ package az.ideanest.discovery.application;
 
 import az.ideanest.discovery.domain.RankingTerm;
 import az.ideanest.discovery.infrastructure.RankingWeightRepository;
-import az.ideanest.project.application.ModeratorDirectory;
-import az.ideanest.project.application.NotAModeratorException;
+import az.ideanest.shared.access.PlatformStaff;
+import az.ideanest.staff.application.NotAModeratorException;
 import java.math.BigDecimal;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -23,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
  * is the one where the question "who changed it, when, and why" is most likely to be
  * asked by somebody who is not on the team.
  *
- * <p>The check is {@link ModeratorDirectory} — the same configured list of addresses the
+ * <p>The check is {@link PlatformStaff} — since #295 a role model rather than the list the
  * moderation endpoints and {@link CurationService} use, empty by default, failing
  * closed. Reused rather than reinvented for the reason {@code CurationService} gives: a
  * second directory is a second thing epic #100 has to find and delete, and a deployment
@@ -64,13 +64,13 @@ public class RankingService {
     private final RankingWeightRepository weights;
     private final RankingWeightStore store;
     private final RankingDiagnostics diagnostics;
-    private final ModeratorDirectory moderators;
+    private final PlatformStaff moderators;
 
     public RankingService(
             RankingWeightRepository weights,
             RankingWeightStore store,
             RankingDiagnostics diagnostics,
-            ModeratorDirectory moderators) {
+            PlatformStaff moderators) {
         this.weights = weights;
         this.store = store;
         this.diagnostics = diagnostics;
@@ -159,7 +159,7 @@ public class RankingService {
     }
 
     private void requireCurator(UUID accountId) {
-        if (!moderators.isModerator(accountId)) {
+        if (!moderators.isStaff(accountId)) {
             throw new NotAModeratorException(accountId);
         }
     }

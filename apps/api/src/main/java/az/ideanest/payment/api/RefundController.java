@@ -1,0 +1,137 @@
+package az.ideanest.payment.api;
+
+import az.ideanest.payment.application.RefundService;
+import az.ideanest.payment.domain.RefundReason;
+import az.ideanest.payment.domain.RefundState;
+import az.ideanest.shared.money.Money;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import java.util.UUID;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * §4.11's AD-06 over HTTP — issues #67 and #307.
+ *
+ * <h2>The idempotency key is a header and is required</h2>
+ *
+ * <p>{@code Idempotency-Key}, following the convention every other payment mutation on
+ * this platform uses. <strong>Required rather than optional</strong>, which is stricter
+ * than most of §10.2: a refund is the one write where a duplicate is money leaving twice
+ * and where — unlike a duplicate charge — nobody complains about it. A request without a
+ * key is refused, so a client that has not thought about retries finds out at the first
+ * call rather than at the first timeout.
+ *
+ * <h2>Two capabilities across three endpoints</h2>
+ *
+ * <p>The reads need {@code VIEW_FINANCE}; the write needs {@code ISSUE_REFUND}. Checked in
+ * the service, following {@code AuditTrailController}, because that is also where the
+ * refund is recorded.
+ *
+ * <p><strong>{@code no-store}</strong>: these responses name pledges and amounts.
+ */
+@RestController
+@RequestMapping("/v1/admin/refunds")
+public class RefundController {
+
+    private final RefundService refunds;
+
+    /**
+     * The console's page size.
+     *
+     * <p>Fixed rather than configurable, unlike the audit trail and the payment log.
+     * Those page over tables that grow continuously and an incident may want a larger
+     * window; this one is a working queue that a person reads, and fifty rows is what fits
+     * on a screen somebody is scanning for one pledge.
+     */
+    private static final int PAGE_SIZE = 50;
+
+    public RefundController(RefundService refunds) {
+        this.refunds = refunds;
+    }
+
+    /**
+     * The refund list, newest first.
+     *
+     * @param state narrows to {@code REQUESTED}, {@code SUCCEEDED} or {@code FAILED}.
+     *     {@code REQUESTED} is the one worth watching: a row that stays there is a refund
+     *     the platform intended and did not complete
+     * @param page offset-paged rather than keyset, which is a departure from the rest of
+     *     the console — {@code RefundRepository} has the argument
+     */
+    @GetMapping
+    public ResponseEntity<PaymentAdminResponses.RefundPage> list(
+            @AuthenticationPrincipal Jwt accessToken,
+            @RequestParam(required = false) RefundState state,
+            @RequestParam(defaultValue = "0") int page) {
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(PaymentAdminResponses.RefundPage.of(
+                        refunds.list(callerOf(accessToken), state, page, PAGE_SIZE), page, PAGE_SIZE));
+    }
+
+    /** Every refund against one pledge. */
+    @GetMapping("/by-pledge/{pledgeId}")
+    public ResponseEntity<PaymentAdminResponses.RefundPage> forPledge(
+            @AuthenticationPrincipal Jwt accessToken, @org.springframework.web.bind.annotation.PathVariable UUID pledgeId) {
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(PaymentAdminResponses.RefundPage.of(
+                        refunds.forPledge(callerOf(accessToken), pledgeId), 0, PAGE_SIZE));
+    }
+
+    /** Sends money back. */
+    @PostMapping
+    public ResponseEntity<PaymentAdminResponses.Refund> issue(
+            @AuthenticationPrincipal Jwt accessToken,
+            @RequestHeader("Idempotency-Key") @NotBlank @Size(min = 8, max = 200) String idempotencyKey,
+            @Valid @RequestBody IssueRefundRequest request) {
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(PaymentAdminResponses.Refund.of(refunds.issue(
+                        callerOf(accessToken),
+                        request.pledgeId(),
+                        request.amount(),
+                        request.reason(),
+                        request.detail(),
+                        idempotencyKey)));
+    }
+
+    /**
+     * What to send back and why.
+     *
+     * @param amount <strong>null means "the rest of it".</strong> Not a {@code full}
+     *     boolean beside a number, because the two can disagree — a console that computed
+     *     the full amount from a page loaded before an earlier partial refund would send a
+     *     figure that is both "full" and too large. Null makes the service compute it from
+     *     the row it just locked. {@link Money} carries the currency and crosses the wire
+     *     as a string, per §10.3
+     * @param reason one of §9.7's codes. The countable half — {@code RefundReason} has why
+     * @param detail the story. Required, because a code is never the whole of it and the
+     *     person reading this row in six months is answering a complaint
+     */
+    public record IssueRefundRequest(
+            @NotNull UUID pledgeId,
+            Money amount,
+            @NotNull RefundReason reason,
+            @NotBlank @Size(max = 2000) String detail) {
+    }
+
+    private static UUID callerOf(Jwt accessToken) {
+        return UUID.fromString(accessToken.getSubject());
+    }
+}

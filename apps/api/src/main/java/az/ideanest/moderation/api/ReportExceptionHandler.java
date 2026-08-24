@@ -7,7 +7,7 @@ import az.ideanest.moderation.application.ReportTargetNotFoundException;
 import az.ideanest.moderation.application.SelfReportException;
 import az.ideanest.moderation.application.UnsupportedReportTargetException;
 import az.ideanest.moderation.domain.ReportState;
-import az.ideanest.project.application.NotAModeratorException;
+import az.ideanest.staff.application.NotAModeratorException;
 import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.List;

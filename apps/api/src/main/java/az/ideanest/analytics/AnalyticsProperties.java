@@ -12,15 +12,54 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * rather than a zero left behind by binding.
  *
  * @param referral how a visit becomes an attributed pledge — §4.7's CD-03
+ * @param reporting the calendar and the currency AD-13's platform figures are stated in
  */
 @ConfigurationProperties(prefix = "ideanest.analytics")
-public record AnalyticsProperties(Referral referral) {
+public record AnalyticsProperties(Referral referral, Reporting reporting) {
 
     public AnalyticsProperties {
         // A nested record binds to null when its whole block is absent, and a null
         // here would be a NullPointerException on the first visit rather than a
         // configuration error at start-up.
         referral = referral == null ? Referral.defaults() : referral;
+        reporting = reporting == null ? Reporting.defaults() : reporting;
+    }
+
+    /**
+     * How §4.11's AD-13 states a platform-wide figure — issue #313.
+     *
+     * @param timeZone the calendar a "day" belongs to. The same default as
+     *     {@code AnalyticsAggregationProperties.zone} and configured separately on purpose:
+     *     that one decides when the rollup job runs and this one decides how the numbers
+     *     are read back, and a deployment that moved its reporting calendar without moving
+     *     its aggregation schedule would want exactly that
+     * @param currency what the totals are denominated in. §21.2 gives nothing to convert
+     *     with, so pledges in anything else are counted and reported separately rather than
+     *     folded in — {@code PlatformAnalyticsService} has the argument
+     */
+    public record Reporting(String timeZone, String currency) {
+
+        private static final String DEFAULT_TIME_ZONE = "Asia/Baku";
+
+        private static final String DEFAULT_CURRENCY = "AZN";
+
+        public static Reporting defaults() {
+            return new Reporting(DEFAULT_TIME_ZONE, DEFAULT_CURRENCY);
+        }
+
+        public Reporting {
+            timeZone = timeZone == null || timeZone.isBlank() ? DEFAULT_TIME_ZONE : timeZone;
+            currency = currency == null || currency.isBlank() ? DEFAULT_CURRENCY : currency;
+
+            // Parsed at start-up rather than per request, so a name neither the tz database
+            // nor Java knows stops the process with the value in the message instead of
+            // failing the first time somebody opens the dashboard.
+            java.time.ZoneId.of(timeZone);
+
+            if (!currency.matches("^[A-Z]{3}$")) {
+                throw new IllegalArgumentException("A reporting currency is an ISO 4217 code, not " + currency);
+            }
+        }
     }
 
     /**

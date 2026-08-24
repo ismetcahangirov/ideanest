@@ -119,9 +119,21 @@ export const CONSOLE_MODULES: readonly ConsoleModule[] = Object.freeze([
   {
     code: 'AD-04',
     title: 'User management',
-    summary: 'Search an account, read its standing, stop it, and let it back in.',
+    summary: 'Search an account, read its standing, stop it, let it back in — and say who works here.',
     state: 'partial',
     href: '/admin/users',
+    /*
+     * `/admin/staff` is here rather than in a seventeenth module, and the choice is worth
+     * stating. §4.11's table has sixteen rows and no row for staff roles, because when it
+     * was written there was no role model to have a screen for — staff identity was one
+     * configured list of addresses, and #295 is what replaced it.
+     *
+     * Adding a row would mean this file and the specification disagreeing about how many
+     * modules the console has. Filing it under AD-04 is the truthful alternative: that
+     * module is the administration of people, and who among them works here is the same
+     * subject seen from the platform's side. The rail lists both under People.
+     */
+    otherScreens: ['/admin/staff'],
     waitingOn:
       'Audited impersonation is blocked on a policy answer: what a session issued in ' +
       "somebody else's name may not do is a question §17 does not settle (#299).",
@@ -130,89 +142,92 @@ export const CONSOLE_MODULES: readonly ConsoleModule[] = Object.freeze([
   {
     code: 'AD-05',
     title: 'Finance',
-    summary: 'Every charge and every posting, with the balances the postings add up to.',
-    state: 'partial',
+    summary: 'Every charge and posting, what each creator is owed, and the signatures before it leaves.',
+    state: 'built',
     href: '/admin/payments',
-    otherScreens: ['/admin/ledger'],
-    waitingOn:
-      'The payout queue and its approvals wait on #69, which calculates a payout; ' +
-      'disputes wait on #68.',
-    issue: 304,
+    otherScreens: ['/admin/ledger', '/admin/payouts'],
+    issue: 306,
   },
   {
     code: 'AD-06',
     title: 'Refunds',
-    summary: 'Full and partial, with reason codes.',
-    state: 'blocked',
-    href: null,
-    waitingOn: 'Blocked on #67: nothing in the service issues a refund yet.',
+    summary: 'Full and partial, with reason codes and a ledger entry behind each.',
+    state: 'built',
+    href: '/admin/refunds',
     issue: 307,
   },
   {
     code: 'AD-07',
     title: 'Chargebacks',
-    summary: 'Notification, evidence, outcome.',
-    state: 'blocked',
-    href: null,
-    waitingOn: 'Blocked on #68: no provider webhook raises a dispute yet.',
+    summary: 'Notification, evidence, outcome — and the deadline each one runs against.',
+    state: 'partial',
+    href: '/admin/disputes',
+    waitingOn:
+      'Evidence is recorded here and submitted through the provider: §9.3 gives the ' +
+      'provider interface no evidence upload, so the documents still go through their ' +
+      'console (#308).',
     issue: 308,
   },
   {
     code: 'AD-08',
     title: 'Taxonomy',
     summary: 'Categories, subcategories and tags, with a translation per locale.',
-    state: 'blocked',
-    href: null,
+    state: 'partial',
+    href: '/admin/taxonomy',
     waitingOn:
-      '§4.3 requires the taxonomy be editable without a deployment, and no endpoint ' +
-      'exposes it (#309).',
+      'Nothing can be retired: campaigns reference these rows, and hiding one from the ' +
+      'editor while leaving them filed under it needs a column V6 does not have (#309).',
     issue: 309,
   },
   {
     code: 'AD-09',
     title: 'Content moderation',
-    summary: 'Complaints filed against a person rather than one of their campaigns.',
-    state: 'partial',
-    href: '/admin/moderation/profiles',
-    waitingOn:
-      'Comments can be reported and updates cannot — §10.2 gives an update no report ' +
-      'route, so half that queue has no intake (#297).',
-    issue: 298,
+    summary: 'Complaints about comments, campaign updates, and people.',
+    state: 'built',
+    href: '/admin/moderation/content',
+    otherScreens: ['/admin/moderation/profiles'],
+    issue: 297,
   },
   {
     code: 'AD-10',
     title: 'Support',
     summary: 'Tickets with the account context and the history of what was done.',
-    state: 'blocked',
-    href: null,
-    waitingOn: 'Blocked on there being no ticket store (#310).',
+    state: 'partial',
+    href: '/admin/support',
+    waitingOn:
+      'Staff record a conversation against an account; there is no public form yet, ' +
+      'which is a surface with its own rate limiting and anonymous-sender question (#310).',
     issue: 310,
   },
   {
     code: 'AD-11',
     title: 'Fee configuration',
-    summary: 'Platform and processing rates, and the exceptions to them.',
-    state: 'blocked',
-    href: null,
-    waitingOn: 'Blocked on the fee schedule table, which is not built (#311).',
+    summary: 'Platform and processing rates, their exceptions, and every set of terms ever charged.',
+    state: 'built',
+    href: '/admin/fees',
     issue: 311,
   },
   {
     code: 'AD-12',
     title: 'Feature flags',
-    summary: 'Gradual rollout and experiments.',
-    state: 'blocked',
-    href: null,
-    waitingOn: 'Blocked on there being no flag store (#312).',
+    summary: 'Gradual rollout, with a kill switch that means what it says.',
+    state: 'partial',
+    href: '/admin/flags',
+    waitingOn:
+      'Rollout is built; experiments are not — a variant needs a metric to judge it by, ' +
+      'and nothing measures one (#312).',
     issue: 312,
   },
   {
     code: 'AD-13',
     title: 'Analytics',
-    summary: 'Volume, success rate, average pledge, cohorts, funnels.',
-    state: 'blocked',
-    href: null,
-    waitingOn: '#95 aggregates one campaign rather than the platform (#313).',
+    summary: 'Volume, success rate and average pledge, across the whole platform.',
+    state: 'partial',
+    href: '/admin/analytics',
+    waitingOn:
+      'Cohorts need a rollup keyed on a backer’s first pledge and funnels need the ' +
+      'visit-to-pledge path; neither exists, and the screen says so rather than ' +
+      'approximating them (#313).',
     issue: 313,
   },
   {
@@ -226,21 +241,23 @@ export const CONSOLE_MODULES: readonly ConsoleModule[] = Object.freeze([
   {
     code: 'AD-15',
     title: 'Email templates',
-    summary: 'Preview and test send are built; editing is not.',
-    state: 'blocked',
-    href: null,
+    summary: 'Edit, preview and test send, with every version an edit has produced.',
+    state: 'partial',
+    href: '/admin/email-templates',
     waitingOn:
-      'No template store, and no answer to who may rewrite a payment-failure ' +
-      'notice (#315).',
+      'The subject and first paragraph are editable; the headline, button label and a ' +
+      'type’s conditional second paragraph stay in the shipped catalogue (#315).',
     issue: 315,
   },
   {
     code: 'AD-16',
     title: 'System health',
-    summary: 'Queue depth, failed jobs, provider status.',
-    state: 'blocked',
-    href: null,
-    waitingOn: 'Blocked on #138, which is the observability work §18 describes.',
+    summary: 'Queue depth, failed jobs and provider status, measured when you open it.',
+    state: 'partial',
+    href: '/admin/health',
+    waitingOn:
+      'Nothing here alerts. #138 is §18’s observability work and is still what will ' +
+      'wake somebody; this page is read rather than watched (#316).',
     issue: 316,
   },
 ]);
@@ -265,16 +282,25 @@ export interface ConsoleGroup {
  * are the same screen. Somebody working the console is asking "is this about content, about
  * people, about money, or about the platform" — so those are the four groups.
  *
- * <p><strong>Only built screens are here.</strong> The blocked twelve are on the console
- * index, where there is room to say what each is waiting for; a rail entry that opened a
- * page saying "not built" would be a destination in a navigation whose whole purpose is to
- * take somebody somewhere.
+ * <p><strong>Only screens that exist are here.</strong> Every module in §4.11's table now
+ * has one except AD-04's impersonation, which is a half of a module rather than a module and
+ * is blocked on a policy answer (#299) — so it stays on the console index, where there is
+ * room to say what it is waiting for. A rail entry that opened a page saying "not built"
+ * would be a destination in a navigation whose whole purpose is to take somebody somewhere.
+ *
+ * <p><strong>The rail does not vary by capability, and that is deliberate.</strong> Since
+ * #295 the console knows what the reader may do, so hiding the screens they cannot use is
+ * available and is not done: a member of staff who cannot see the fees screen has no way to
+ * find out that it exists, and the first thing they do is ask somebody whether the console
+ * is broken. Every screen refuses honestly and says which capability it wanted, which is a
+ * better answer than an absence.
  */
 export const CONSOLE_GROUPS: readonly ConsoleGroup[] = Object.freeze([
   {
     heading: 'Content',
     links: [
       { href: '/admin/moderation', label: 'Moderation queue' },
+      { href: '/admin/moderation/content', label: 'Content reports' },
       { href: '/admin/moderation/profiles', label: 'Profile reports' },
     ],
   },
@@ -285,22 +311,37 @@ export const CONSOLE_GROUPS: readonly ConsoleGroup[] = Object.freeze([
       { href: '/admin/curation/badges', label: 'Editorial badges' },
       { href: '/admin/curation/open-calls', label: 'Open calls' },
       { href: '/admin/curation/placements', label: 'Placement' },
+      { href: '/admin/taxonomy', label: 'Taxonomy' },
     ],
   },
   {
     heading: 'People',
-    links: [{ href: '/admin/users', label: 'Accounts' }],
+    links: [
+      { href: '/admin/users', label: 'Accounts' },
+      { href: '/admin/support', label: 'Support' },
+      { href: '/admin/staff', label: 'Staff and roles' },
+    ],
   },
   {
     heading: 'Money',
     links: [
       { href: '/admin/payments', label: 'Payment log' },
       { href: '/admin/ledger', label: 'Ledger' },
+      { href: '/admin/payouts', label: 'Payouts' },
+      { href: '/admin/refunds', label: 'Refunds' },
+      { href: '/admin/disputes', label: 'Chargebacks' },
+      { href: '/admin/fees', label: 'Fees' },
     ],
   },
   {
     heading: 'Platform',
-    links: [{ href: '/admin/audit', label: 'Audit log' }],
+    links: [
+      { href: '/admin/analytics', label: 'Analytics' },
+      { href: '/admin/audit', label: 'Audit log' },
+      { href: '/admin/email-templates', label: 'Email templates' },
+      { href: '/admin/flags', label: 'Feature flags' },
+      { href: '/admin/health', label: 'System health' },
+    ],
   },
 ]);
 

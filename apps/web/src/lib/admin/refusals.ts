@@ -43,6 +43,27 @@ export function statusFor(cause: unknown): ConsoleStatus {
 }
 
 /**
+ * The capability a 403 named, when it named one — issue #295.
+ *
+ * <p>Before the role model there was one refusal, because there was one question: a caller
+ * was staff or was not. A moderator opening the refund console got the same 403 as a
+ * stranger, which reads as a broken console rather than as a screen that is not theirs.
+ *
+ * <p>The service now answers `INSUFFICIENT_STAFF_CAPABILITY` with the capability in `meta`,
+ * and a screen that can name it can tell somebody what to go and ask for. Null for the
+ * refusals that are not about a capability — a signed-out session, a stranger — and for a
+ * service that has not been redeployed since #295.
+ */
+export function requiredCapabilityFrom(cause: unknown): string | null {
+  if (!(cause instanceof ApiError) || cause.problem?.code !== 'INSUFFICIENT_STAFF_CAPABILITY') {
+    return null;
+  }
+
+  const capability = cause.problem?.meta?.capability;
+  return typeof capability === 'string' ? capability : null;
+}
+
+/**
  * Turns a refusal into something a member of staff can act on.
  *
  * @param subject what the reader was trying to read, in the words the screen uses for it —
@@ -52,7 +73,14 @@ export function statusFor(cause: unknown): ConsoleStatus {
 export function consoleMessageFor(cause: unknown, subject: string): string {
   if (cause instanceof ApiError) {
     if (cause.status === 403) {
-      return `Your account is not on the platform moderator list, so ${subject} is not yours to read.`;
+      const capability = requiredCapabilityFrom(cause);
+
+      // Two different 403s since #295, and they lead somewhere different: one is fixed by
+      // asking an administrator for a role, and the other cannot be fixed by the person
+      // reading it. Collapsing them would send a colleague looking for a bug.
+      return capability === null
+        ? `Your account does not work on this platform, so ${subject} is not yours to read.`
+        : `Reading ${subject} needs ${capability}, which your roles do not include.`;
     }
 
     const code = cause.problem?.code;

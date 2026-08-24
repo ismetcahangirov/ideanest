@@ -76,7 +76,7 @@ public class ConsoleReadService {
     /**
      * AD-14's trail: what has been done, by whom, to what.
      *
-     * @throws az.ideanest.project.application.NotAModeratorException for a caller who is not
+     * @throws az.ideanest.staff.application.NotAModeratorException for a caller who is not
      *     platform staff
      */
     public AuditTrailPage auditTrail(UUID staffId, AuditTrailFilter filter, UUID before, int limit) {
@@ -99,7 +99,7 @@ public class ConsoleReadService {
     /**
      * AD-05's payment log: every charge, its provider reference, and why it failed.
      *
-     * @throws az.ideanest.project.application.NotAModeratorException for a caller who is not
+     * @throws az.ideanest.staff.application.NotAModeratorException for a caller who is not
      *     platform staff
      */
     public PaymentLogPage paymentLog(UUID staffId, PaymentLogScope scope, UUID before, int limit) {
@@ -121,7 +121,7 @@ public class ConsoleReadService {
     /**
      * AD-05's ledger: both sides of every posting, and what each account holds.
      *
-     * @throws az.ideanest.project.application.NotAModeratorException for a caller who is not
+     * @throws az.ideanest.staff.application.NotAModeratorException for a caller who is not
      *     platform staff
      */
     public LedgerView ledger(UUID staffId, LedgerScope scope, Long before, int limit) {

@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/v1/admin/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["platformAnalyticsDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/audit": {
         parameters: {
             query?: never;
@@ -132,6 +148,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/disputes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["disputeList"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/disputes/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["disputeQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/disputes/{disputeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["disputeInspect"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/disputes/{disputeId}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["disputeAddEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/disputes/{disputeId}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["disputeResolve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/disputes/{disputeId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["disputeSubmit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/email-templates": {
         parameters: {
             query?: never;
@@ -143,6 +255,22 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/email-templates/{type}/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["emailTemplateEditorRead"];
+        put: operations["emailTemplateEditorEdit"];
+        post?: never;
+        delete: operations["emailTemplateEditorWithdraw"];
         options?: never;
         head?: never;
         patch?: never;
@@ -180,6 +308,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/email-templates/{type}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["emailTemplateEditorHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/feature-flags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["featureFlagList"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/feature-flags/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["featureFlagSave"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/fees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["feeScheduleHistory"];
+        put?: never;
+        post: operations["feeScheduleReplace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["systemHealthSnapshot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/ledger": {
         parameters: {
             query?: never;
@@ -188,6 +396,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["ledgerLedger"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["staffMe"];
         put?: never;
         post?: never;
         delete?: never;
@@ -324,6 +548,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/payouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["payoutList"];
+        put?: never;
+        post: operations["payoutCalculate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/payouts/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["payoutQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/payouts/{payoutId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["payoutInspect"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/payouts/{payoutId}/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["payoutApprove"];
+        delete: operations["payoutWithdrawApproval"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/payouts/{payoutId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["payoutCancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/payouts/{payoutId}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["payoutSend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/projects/{id}/suspend": {
         parameters: {
             query?: never;
@@ -381,6 +701,278 @@ export interface paths {
         };
         get?: never;
         put: operations["adminRankingSetWeight"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["refundList"];
+        put?: never;
+        post: operations["refundIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/refunds/by-pledge/{pledgeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["refundForPledge"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["staffRoster"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/staff/{accountId}/roles/{role}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["staffGrant"];
+        post?: never;
+        delete: operations["staffRevoke"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/taxonomy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["taxonomyAdminTree"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/taxonomy/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["taxonomyAdminCreateCategory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/taxonomy/categories/{categoryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["taxonomyAdminEditCategory"];
+        trace?: never;
+    };
+    "/v1/admin/taxonomy/categories/{categoryId}/subcategories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["taxonomyAdminCreateSubcategory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/taxonomy/categories/{categoryId}/translations/{locale}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["taxonomyAdminTranslateCategory"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/taxonomy/subcategories/{subcategoryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["taxonomyAdminEditSubcategory"];
+        trace?: never;
+    };
+    "/v1/admin/taxonomy/subcategories/{subcategoryId}/translations/{locale}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["taxonomyAdminTranslateSubcategory"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/taxonomy/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["taxonomyAdminTags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["supportTicketList"];
+        put?: never;
+        post: operations["supportTicketRaise"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/tickets/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["supportTicketQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/tickets/{ticketId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["supportTicketInspect"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["supportTicketUpdate"];
+        trace?: never;
+    };
+    "/v1/admin/tickets/{ticketId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["supportTicketReply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/tickets/{ticketId}/thread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["supportTicketRequesterThread"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -2084,6 +2676,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/updates/{id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["contentReportReportUpdate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/users/{id}/report": {
         parameters: {
             query?: never;
@@ -2216,6 +2824,13 @@ export interface components {
             sessions?: components["schemas"]["SessionRecord"][];
             verifications?: components["schemas"]["VerificationRecord"][];
         };
+        AddEvidenceRequest: {
+            description: string;
+            /** @enum {string} */
+            kind: "RECEIPT" | "SHIPPING_PROOF" | "COMMUNICATION" | "TERMS_ACCEPTANCE" | "REFUND_POLICY" | "ACTIVITY_LOG" | "OTHER";
+            /** Format: uuid */
+            mediaId?: string;
+        };
         AddProject: {
             note: string;
             /** Format: uuid */
@@ -2297,6 +2912,16 @@ export interface components {
             /** Format: uuid */
             questionId?: string;
             value?: string[];
+        };
+        Approval: {
+            /** Format: date-time */
+            approvedAt?: string;
+            /** Format: uuid */
+            approverId?: string;
+            note?: string;
+        };
+        ApproveRequest: {
+            note?: string;
         };
         Backer: {
             amount?: components["schemas"]["Money"];
@@ -2395,8 +3020,16 @@ export interface components {
             account?: string;
             net?: components["schemas"]["Money"];
         };
+        Branch: {
+            category?: components["schemas"]["Category"];
+            subcategories?: components["schemas"]["Subcategory"][];
+        };
         BuyAddonsRequest: {
             addons: components["schemas"]["PledgeAddonBody"][];
+        };
+        CalculateRequest: {
+            /** Format: uuid */
+            projectId: string;
         };
         Campaign: {
             coverImage?: components["schemas"]["CoverImageBody"];
@@ -2458,6 +3091,18 @@ export interface components {
             slug?: string;
             state?: string;
             title?: string;
+        };
+        Category: {
+            /** Format: uuid */
+            id?: string;
+            nameAz?: string;
+            nameEn?: string;
+            slug?: string;
+            /** Format: int32 */
+            sortOrder?: number;
+            translations?: {
+                [key: string]: string;
+            };
         };
         CategoryCount: {
             /** Format: int64 */
@@ -2625,6 +3270,13 @@ export interface components {
             /** Format: int32 */
             width?: number;
         };
+        CreateCategoryRequest: {
+            nameAz: string;
+            nameEn: string;
+            slug: string;
+            /** Format: int32 */
+            sortOrder?: number;
+        };
         CreateCollection: {
             collection: components["schemas"]["CollectionBody"];
             slug: string;
@@ -2668,6 +3320,13 @@ export interface components {
             avatarUrl?: string;
             name?: string;
             slug?: string;
+        };
+        DailyPoint: {
+            /** Format: date */
+            day?: string;
+            /** Format: int64 */
+            pledgeCount?: number;
+            volume?: components["schemas"]["Money"];
         };
         DashboardResponse: {
             /** Format: int32 */
@@ -2716,6 +3375,47 @@ export interface components {
             password: string;
             recoveryCode?: string;
         };
+        Dispute: {
+            amount?: components["schemas"]["Money"];
+            /** Format: uuid */
+            chargeTransactionId?: string;
+            evidence?: components["schemas"]["Evidence"][];
+            /** Format: date-time */
+            evidenceDueAt?: string;
+            fee?: components["schemas"]["Money"];
+            /** Format: uuid */
+            handledBy?: string;
+            /** Format: uuid */
+            id?: string;
+            /** Format: date-time */
+            openedAt?: string;
+            /** Format: uuid */
+            pledgeId?: string;
+            /** Format: uuid */
+            projectId?: string;
+            provider?: string;
+            providerDisputeId?: string;
+            reasonCode?: string;
+            /** Format: date-time */
+            resolvedAt?: string;
+            /** @enum {string} */
+            state?: "OPEN" | "UNDER_REVIEW" | "WON" | "LOST" | "CONCEDED";
+        };
+        DisputePage: {
+            disputes?: components["schemas"]["Dispute"][];
+            hasMore?: boolean;
+            /** Format: int32 */
+            page?: number;
+        };
+        Draft: {
+            locale?: string;
+            override?: components["schemas"]["Version"];
+            requiredPlaceholders?: string[];
+            shippedBody?: string;
+            shippedSubject?: string;
+            /** @enum {string} */
+            type?: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
+        };
         DraftPledgeRequest: {
             addons?: components["schemas"]["PledgeAddonBody"][];
             contribution: components["schemas"]["Money"];
@@ -2726,6 +3426,11 @@ export interface components {
             /** Format: uuid */
             rewardTierId?: string;
             shippingCountry?: string;
+        };
+        EditRequest: {
+            body: string;
+            note?: string;
+            subject: string;
         };
         EmailTemplateListResponse: {
             templates?: components["schemas"]["Template"][];
@@ -2739,6 +3444,21 @@ export interface components {
             backerId?: string;
             /** Format: uuid */
             pledgeId?: string;
+            /** Format: date-time */
+            submittedAt?: string;
+        };
+        Evidence: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: uuid */
+            createdBy?: string;
+            description?: string;
+            /** Format: uuid */
+            id?: string;
+            kind?: string;
+            /** Format: uuid */
+            mediaId?: string;
+            providerEvidenceId?: string;
             /** Format: date-time */
             submittedAt?: string;
         };
@@ -2773,6 +3493,21 @@ export interface components {
         Feed: {
             items?: components["schemas"]["Card"][];
             nextCursor?: string;
+        };
+        Flag: {
+            description?: string;
+            enabled?: boolean;
+            enabledAccounts?: string[];
+            key?: string;
+            /** Format: int32 */
+            rolloutPercentage?: number;
+            /** Format: date-time */
+            updatedAt?: string;
+            /** Format: uuid */
+            updatedBy?: string;
+        };
+        FlagList: {
+            flags?: components["schemas"]["Flag"][];
         };
         FollowStateResponse: {
             following?: boolean;
@@ -2830,6 +3565,32 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
+        Grant: {
+            /** Format: uuid */
+            accountId?: string;
+            /** Format: date-time */
+            grantedAt?: string;
+            /** Format: uuid */
+            grantedBy?: string;
+            note?: string;
+            /** @enum {string} */
+            role?: "MODERATOR" | "CURATOR" | "FINANCE" | "ADMINISTRATOR";
+        };
+        GrantRequest: {
+            note?: string;
+        };
+        Health: {
+            /** Format: date-time */
+            at?: string;
+            jobs?: components["schemas"]["Job"][];
+            monitored?: boolean;
+            providers?: components["schemas"]["Provider"][];
+            queues?: components["schemas"]["Queue"][];
+            status?: string;
+        };
+        History: {
+            schedules?: components["schemas"]["Schedule"][];
+        };
         Image: {
             /** Format: int32 */
             height?: number;
@@ -2841,6 +3602,14 @@ export interface components {
             capabilities: ("EDIT_BASICS" | "EDIT_REWARDS" | "EDIT_STORY" | "SUBMIT_FOR_REVIEW" | "PUBLISH_UPDATES" | "RESPOND_TO_COMMENTS" | "MANAGE_FAQ" | "VIEW_FINANCES" | "MANAGE_COLLABORATORS")[];
             /** Format: email */
             email: string;
+        };
+        IssueRefundRequest: {
+            amount?: components["schemas"]["Money"];
+            detail: string;
+            /** Format: uuid */
+            pledgeId: string;
+            /** @enum {string} */
+            reason: "BACKER_REQUEST" | "CAMPAIGN_HALTED" | "CAMPAIGN_FAILED" | "FULFILMENT_FAILURE" | "DUPLICATE_CHARGE" | "PLATFORM_ERROR" | "DISPUTE_CONCEDED" | "FRAUD";
         };
         Item: {
             creatorSlug?: string;
@@ -2882,6 +3651,20 @@ export interface components {
             updatedAt?: string;
             /** Format: int32 */
             weightGrams?: number;
+        };
+        Job: {
+            /** Format: int32 */
+            attempts?: number;
+            lastError?: string;
+            /** Format: date-time */
+            lastRunAt?: string;
+            name?: string;
+            /** Format: date-time */
+            nextAttemptAt?: string;
+            /** Format: int64 */
+            overdueBySeconds?: number;
+            state?: string;
+            status?: string;
         };
         JsonNode: {
             array?: boolean;
@@ -2946,6 +3729,26 @@ export interface components {
             locale?: string;
             name?: string;
             slug?: string;
+        };
+        Membership: {
+            /** Format: uuid */
+            accountId?: string;
+            bootstrapped?: boolean;
+            capabilities?: ("MODERATE_CONTENT" | "ADMINISTER_ACCOUNTS" | "CURATE" | "VIEW_FINANCE" | "ISSUE_REFUND" | "MANAGE_DISPUTES" | "APPROVE_PAYOUT" | "HANDLE_SUPPORT" | "CONFIGURE_PLATFORM" | "VIEW_AUDIT" | "VIEW_HEALTH" | "ADMINISTER_STAFF")[];
+            roles?: ("MODERATOR" | "CURATOR" | "FINANCE" | "ADMINISTRATOR")[];
+            staff?: boolean;
+        };
+        Message: {
+            /** Format: uuid */
+            authorId?: string;
+            /** @enum {string} */
+            authorSide?: "REQUESTER" | "STAFF";
+            body?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: uuid */
+            id?: string;
+            internal?: boolean;
         };
         ModerationDecisionRequest: {
             note?: string;
@@ -3018,6 +3821,14 @@ export interface components {
             goal?: components["schemas"]["Money"];
             pledged?: components["schemas"]["Money"];
         };
+        Outcomes: {
+            /** Format: int64 */
+            failed?: number;
+            /** Format: int64 */
+            succeeded?: number;
+            /** Format: double */
+            successRate?: number;
+        };
         OwnProfileResponse: {
             avatarUrl?: string;
             bio?: string;
@@ -3045,6 +3856,61 @@ export interface components {
             /** Format: uuid */
             rewardTierId?: string;
             shippingCountry?: string;
+        };
+        PayoutFile: {
+            approvals?: components["schemas"]["Approval"][];
+            payout?: components["schemas"]["PayoutSummary"];
+            /** Format: int64 */
+            stillNeeded?: number;
+        };
+        PayoutPage: {
+            hasMore?: boolean;
+            /** Format: int32 */
+            page?: number;
+            payouts?: components["schemas"]["PayoutSummary"][];
+        };
+        PayoutSummary: {
+            /** Format: int32 */
+            approvalsRequired?: number;
+            /** Format: date-time */
+            calculatedAt?: string;
+            /** Format: uuid */
+            creatorId?: string;
+            failureCode?: string;
+            failureMessage?: string;
+            /** Format: uuid */
+            feeScheduleId?: string;
+            gross?: components["schemas"]["Money"];
+            /** Format: uuid */
+            id?: string;
+            net?: components["schemas"]["Money"];
+            /** Format: date-time */
+            payableAt?: string;
+            payableNow?: boolean;
+            /** Format: uuid */
+            payoutTransactionId?: string;
+            platformFee?: components["schemas"]["Money"];
+            processingFee?: components["schemas"]["Money"];
+            /** Format: uuid */
+            projectId?: string;
+            refunded?: components["schemas"]["Money"];
+            /** Format: date-time */
+            sentAt?: string;
+            /** @enum {string} */
+            state?: "CALCULATED" | "PENDING_APPROVAL" | "APPROVED" | "PAID" | "FAILED" | "CANCELLED";
+            taxWithheld?: components["schemas"]["Money"];
+        };
+        PlatformAnalyticsResponse: {
+            /** Format: date-time */
+            computedAt?: string;
+            daily?: components["schemas"]["DailyPoint"][];
+            /** Format: date */
+            from?: string;
+            notBuilt?: string[];
+            outcomes?: components["schemas"]["Outcomes"];
+            /** Format: date */
+            to?: string;
+            totals?: components["schemas"]["Totals"];
         };
         PledgeAddonBody: {
             /** Format: int32 */
@@ -3294,6 +4160,14 @@ export interface components {
             title?: string;
             visibility?: string;
         };
+        Provider: {
+            available?: boolean;
+            configured?: boolean;
+            detail?: string;
+            kind?: string;
+            provider?: string;
+            status?: string;
+        };
         PublicBackerListResponse: {
             /** Format: int64 */
             backerCount?: number;
@@ -3344,6 +4218,14 @@ export interface components {
             /** @enum {string} */
             visibility: "PUBLIC" | "BACKERS_ONLY";
         };
+        Queue: {
+            /** Format: int64 */
+            dead?: number;
+            name?: string;
+            status?: string;
+            /** Format: int64 */
+            waiting?: number;
+        };
         QueuedReportResponse: {
             /** Format: date-time */
             createdAt?: string;
@@ -3358,6 +4240,18 @@ export interface components {
             resolution?: components["schemas"]["Resolution"];
             state?: string;
             target?: components["schemas"]["Target"];
+        };
+        RaiseRequest: {
+            body: string;
+            /** @enum {string} */
+            priority?: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+            /** Format: uuid */
+            requesterId: string;
+            subject: string;
+            /** Format: uuid */
+            subjectRef?: string;
+            /** @enum {string} */
+            subjectType?: "NONE" | "PROJECT" | "PLEDGE" | "ACCOUNT";
         };
         RecoveryCodesResponse: {
             recoveryCodes?: string[];
@@ -3377,6 +4271,39 @@ export interface components {
         };
         RefreshRequest: {
             refreshToken?: string;
+        };
+        Refund: {
+            amount?: components["schemas"]["Money"];
+            /** Format: uuid */
+            chargeTransactionId?: string;
+            detail?: string;
+            failureCode?: string;
+            failureMessage?: string;
+            fullRefund?: boolean;
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            pledgeId?: string;
+            /** Format: uuid */
+            projectId?: string;
+            /** @enum {string} */
+            reason?: "BACKER_REQUEST" | "CAMPAIGN_HALTED" | "CAMPAIGN_FAILED" | "FULFILMENT_FAILURE" | "DUPLICATE_CHARGE" | "PLATFORM_ERROR" | "DISPUTE_CONCEDED" | "FRAUD";
+            /** Format: uuid */
+            refundTransactionId?: string;
+            /** Format: date-time */
+            requestedAt?: string;
+            /** Format: uuid */
+            requestedBy?: string;
+            /** Format: date-time */
+            settledAt?: string;
+            /** @enum {string} */
+            state?: "REQUESTED" | "SUCCEEDED" | "FAILED";
+        };
+        RefundPage: {
+            hasMore?: boolean;
+            /** Format: int32 */
+            page?: number;
+            refunds?: components["schemas"]["Refund"][];
         };
         RegistrationRequest: {
             /** Format: email */
@@ -3413,6 +4340,21 @@ export interface components {
         ReorderRewardsRequest: {
             rewardIds?: string[];
         };
+        ReplaceRequest: {
+            currency: string;
+            note: string;
+            platformRate: number;
+            processingFixed: number;
+            processingRate: number;
+            /** @enum {string} */
+            scope: "PLATFORM" | "CATEGORY" | "PROJECT";
+            /** Format: uuid */
+            scopeRef?: string;
+        };
+        ReplyRequest: {
+            body: string;
+            internal?: boolean;
+        };
         ReportQueueResponse: {
             /** Format: uuid */
             nextCursor?: string;
@@ -3447,6 +4389,10 @@ export interface components {
             /** Format: uuid */
             moderatorId?: string;
             note?: string;
+        };
+        ResolveRequest: {
+            /** @enum {string} */
+            outcome: "OPEN" | "UNDER_REVIEW" | "WON" | "LOST" | "CONCEDED";
         };
         RespondRequest: {
             answers?: components["schemas"]["AnswerBody"][];
@@ -3534,6 +4480,9 @@ export interface components {
             /** Format: uuid */
             rewardTierId?: string;
         };
+        Roster: {
+            grants?: components["schemas"]["Grant"][];
+        };
         RowFailureBody: {
             code?: string;
             /** Format: int32 */
@@ -3545,6 +4494,13 @@ export interface components {
             filter?: components["schemas"]["BackerFilterBody"];
             name: string;
         };
+        SaveFlagRequest: {
+            description: string;
+            enabled?: boolean;
+            enabledAccounts?: string[];
+            /** Format: int32 */
+            rolloutPercentage?: number;
+        };
         SaveStateResponse: {
             saved?: boolean;
         };
@@ -3552,11 +4508,36 @@ export interface components {
             items?: components["schemas"]["Item"][];
             nextCursor?: string;
         };
+        Schedule: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: uuid */
+            createdBy?: string;
+            currency?: string;
+            /** Format: date-time */
+            effectiveFrom?: string;
+            /** Format: date-time */
+            effectiveTo?: string;
+            /** Format: uuid */
+            id?: string;
+            note?: string;
+            open?: boolean;
+            platformRate?: string;
+            processingFixed?: string;
+            processingRate?: string;
+            /** @enum {string} */
+            scope?: "PLATFORM" | "CATEGORY" | "PROJECT";
+            /** Format: uuid */
+            scopeRef?: string;
+        };
         SendMessageRequest: {
             body: string;
             /** Format: uuid */
             segmentId?: string;
             subject: string;
+        };
+        SendRequest: {
+            destinationReference: string;
         };
         SessionRecord: {
             /** Format: date-time */
@@ -3679,6 +4660,20 @@ export interface components {
             /** Format: int32 */
             number?: number;
         };
+        Subcategory: {
+            /** Format: uuid */
+            id?: string;
+            nameAz?: string;
+            nameEn?: string;
+            /** Format: uuid */
+            parentId?: string;
+            slug?: string;
+            /** Format: int32 */
+            sortOrder?: number;
+            translations?: {
+                [key: string]: string;
+            };
+        };
         SubcategoryResponse: {
             id?: string;
             name?: string;
@@ -3760,6 +4755,17 @@ export interface components {
         SuspendProjectRequest: {
             reason: string;
         };
+        Tag: {
+            /** Format: uuid */
+            id?: string;
+            label?: string;
+            slug?: string;
+            /** Format: int32 */
+            usageCount?: number;
+        };
+        TagList: {
+            tags?: components["schemas"]["Tag"][];
+        };
         Target: {
             /** Format: uuid */
             id?: string;
@@ -3788,12 +4794,61 @@ export interface components {
             replies?: components["schemas"]["CommentResponse"][];
             root?: components["schemas"]["CommentResponse"];
         };
+        Ticket: {
+            /** Format: uuid */
+            assigneeId?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            priority?: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+            /** Format: uuid */
+            requesterId?: string;
+            /** Format: date-time */
+            resolvedAt?: string;
+            /** @enum {string} */
+            state?: "OPEN" | "PENDING" | "RESOLVED" | "CLOSED";
+            subject?: string;
+            /** Format: uuid */
+            subjectRef?: string;
+            /** @enum {string} */
+            subjectType?: "NONE" | "PROJECT" | "PLEDGE" | "ACCOUNT";
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        TicketContext: {
+            file?: components["schemas"]["TicketFile"];
+            history?: components["schemas"]["Ticket"][];
+        };
+        TicketFile: {
+            messages?: components["schemas"]["Message"][];
+            ticket?: components["schemas"]["Ticket"];
+        };
+        TicketPage: {
+            hasMore?: boolean;
+            /** Format: int32 */
+            page?: number;
+            tickets?: components["schemas"]["Ticket"][];
+        };
         TokenResponse: {
             accessToken?: string;
             /** Format: int64 */
             expiresInSeconds?: number;
             refreshToken?: string;
             tokenType?: string;
+        };
+        Totals: {
+            averagePledge?: components["schemas"]["Money"];
+            /** Format: int64 */
+            backerCount?: number;
+            /** Format: int64 */
+            liveProjects?: number;
+            /** Format: int64 */
+            otherCurrencyPledges?: number;
+            /** Format: int64 */
+            pledgeCount?: number;
+            volume?: components["schemas"]["Money"];
         };
         Transaction: {
             amount?: components["schemas"]["Money"];
@@ -3814,6 +4869,18 @@ export interface components {
             status?: string;
             type?: string;
         };
+        Translation: {
+            /** Format: uuid */
+            entryId?: string;
+            locale?: string;
+            name?: string;
+        };
+        TranslationRequest: {
+            name: string;
+        };
+        Tree: {
+            branches?: components["schemas"]["Branch"][];
+        };
         TwoFactorEnrolmentResponse: {
             algorithm?: string;
             /** Format: int32 */
@@ -3825,6 +4892,15 @@ export interface components {
         };
         UpdateNotificationPreferencesRequest: {
             preferences: components["schemas"]["Change"][];
+        };
+        UpdateRequest: {
+            /** Format: uuid */
+            assigneeId?: string;
+            /** @enum {string} */
+            priority?: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+            /** @enum {string} */
+            state?: "OPEN" | "PENDING" | "RESOLVED" | "CLOSED";
+            unassign?: boolean;
         };
         UpgradePledgeRequest: {
             /** Format: uuid */
@@ -3852,6 +4928,23 @@ export interface components {
             code?: string;
             recoveryCode?: string;
             tokenDelivery?: string;
+        };
+        Version: {
+            body?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: uuid */
+            createdBy?: string;
+            /** Format: uuid */
+            id?: string;
+            live?: boolean;
+            locale?: string;
+            note?: string;
+            requiredPlaceholders?: string[];
+            subject?: string;
+            templateKey?: string;
+            /** Format: int32 */
+            version?: number;
         };
         View: {
             account?: string;
@@ -3884,6 +4977,7 @@ export interface components {
 }
 export type SchemaAccount = components['schemas']['Account'];
 export type SchemaAccountExport = components['schemas']['AccountExport'];
+export type SchemaAddEvidenceRequest = components['schemas']['AddEvidenceRequest'];
 export type SchemaAddProject = components['schemas']['AddProject'];
 export type SchemaAddressProgressResponse = components['schemas']['AddressProgressResponse'];
 export type SchemaAdminCollectionIndex = components['schemas']['AdminCollectionIndex'];
@@ -3893,6 +4987,8 @@ export type SchemaAdminUserListResponse = components['schemas']['AdminUserListRe
 export type SchemaAdminUserResponse = components['schemas']['AdminUserResponse'];
 export type SchemaAmounts = components['schemas']['Amounts'];
 export type SchemaAnswerBody = components['schemas']['AnswerBody'];
+export type SchemaApproval = components['schemas']['Approval'];
+export type SchemaApproveRequest = components['schemas']['ApproveRequest'];
 export type SchemaBacker = components['schemas']['Backer'];
 export type SchemaBackerBreakdownResponse = components['schemas']['BackerBreakdownResponse'];
 export type SchemaBackerFilterBody = components['schemas']['BackerFilterBody'];
@@ -3904,13 +5000,16 @@ export type SchemaBackerSegmentResponse = components['schemas']['BackerSegmentRe
 export type SchemaBackerSurveyBody = components['schemas']['BackerSurveyBody'];
 export type SchemaBackerSurveyListResponse = components['schemas']['BackerSurveyListResponse'];
 export type SchemaBalance = components['schemas']['Balance'];
+export type SchemaBranch = components['schemas']['Branch'];
 export type SchemaBuyAddonsRequest = components['schemas']['BuyAddonsRequest'];
+export type SchemaCalculateRequest = components['schemas']['CalculateRequest'];
 export type SchemaCampaign = components['schemas']['Campaign'];
 export type SchemaCampaignMessageListResponse = components['schemas']['CampaignMessageListResponse'];
 export type SchemaCampaignMessageResponse = components['schemas']['CampaignMessageResponse'];
 export type SchemaCancelProjectRequest = components['schemas']['CancelProjectRequest'];
 export type SchemaCaptureVisitRequest = components['schemas']['CaptureVisitRequest'];
 export type SchemaCard = components['schemas']['Card'];
+export type SchemaCategory = components['schemas']['Category'];
 export type SchemaCategoryCount = components['schemas']['CategoryCount'];
 export type SchemaCategoryResponse = components['schemas']['CategoryResponse'];
 export type SchemaChange = components['schemas']['Change'];
@@ -3933,26 +5032,35 @@ export type SchemaCopyBody = components['schemas']['CopyBody'];
 export type SchemaCountrySlice = components['schemas']['CountrySlice'];
 export type SchemaCoverBody = components['schemas']['CoverBody'];
 export type SchemaCoverImageBody = components['schemas']['CoverImageBody'];
+export type SchemaCreateCategoryRequest = components['schemas']['CreateCategoryRequest'];
 export type SchemaCreateCollection = components['schemas']['CreateCollection'];
 export type SchemaCreateFaqRequest = components['schemas']['CreateFaqRequest'];
 export type SchemaCreateItemRequest = components['schemas']['CreateItemRequest'];
 export type SchemaCreateProjectRequest = components['schemas']['CreateProjectRequest'];
 export type SchemaCreateRewardRequest = components['schemas']['CreateRewardRequest'];
 export type SchemaCreator = components['schemas']['Creator'];
+export type SchemaDailyPoint = components['schemas']['DailyPoint'];
 export type SchemaDashboardResponse = components['schemas']['DashboardResponse'];
 export type SchemaDay = components['schemas']['Day'];
 export type SchemaDeleteAccountRequest = components['schemas']['DeleteAccountRequest'];
 export type SchemaDeletionScheduledResponse = components['schemas']['DeletionScheduledResponse'];
 export type SchemaDisableTwoFactorRequest = components['schemas']['DisableTwoFactorRequest'];
+export type SchemaDispute = components['schemas']['Dispute'];
+export type SchemaDisputePage = components['schemas']['DisputePage'];
+export type SchemaDraft = components['schemas']['Draft'];
 export type SchemaDraftPledgeRequest = components['schemas']['DraftPledgeRequest'];
+export type SchemaEditRequest = components['schemas']['EditRequest'];
 export type SchemaEmailTemplateListResponse = components['schemas']['EmailTemplateListResponse'];
 export type SchemaEnableTwoFactorRequest = components['schemas']['EnableTwoFactorRequest'];
 export type SchemaEntry = components['schemas']['Entry'];
+export type SchemaEvidence = components['schemas']['Evidence'];
 export type SchemaExplanationResponse = components['schemas']['ExplanationResponse'];
 export type SchemaExportBackersRequest = components['schemas']['ExportBackersRequest'];
 export type SchemaFacets = components['schemas']['Facets'];
 export type SchemaFaqPatchRequest = components['schemas']['FaqPatchRequest'];
 export type SchemaFeed = components['schemas']['Feed'];
+export type SchemaFlag = components['schemas']['Flag'];
+export type SchemaFlagList = components['schemas']['FlagList'];
 export type SchemaFollowStateResponse = components['schemas']['FollowStateResponse'];
 export type SchemaFollowingListResponse = components['schemas']['FollowingListResponse'];
 export type SchemaForgotPasswordRequest = components['schemas']['ForgotPasswordRequest'];
@@ -3960,12 +5068,18 @@ export type SchemaFulfilmentImportResponse = components['schemas']['FulfilmentIm
 export type SchemaFulfilmentListResponse = components['schemas']['FulfilmentListResponse'];
 export type SchemaFulfilmentProgressResponse = components['schemas']['FulfilmentProgressResponse'];
 export type SchemaFulfilmentResponse = components['schemas']['FulfilmentResponse'];
+export type SchemaGrant = components['schemas']['Grant'];
+export type SchemaGrantRequest = components['schemas']['GrantRequest'];
+export type SchemaHealth = components['schemas']['Health'];
+export type SchemaHistory = components['schemas']['History'];
 export type SchemaImage = components['schemas']['Image'];
 export type SchemaInviteCollaboratorRequest = components['schemas']['InviteCollaboratorRequest'];
+export type SchemaIssueRefundRequest = components['schemas']['IssueRefundRequest'];
 export type SchemaItem = components['schemas']['Item'];
 export type SchemaItemBody = components['schemas']['ItemBody'];
 export type SchemaItemPatchRequest = components['schemas']['ItemPatchRequest'];
 export type SchemaItemResponse = components['schemas']['ItemResponse'];
+export type SchemaJob = components['schemas']['Job'];
 export type SchemaJsonNode = components['schemas']['JsonNode'];
 export type SchemaLine = components['schemas']['Line'];
 export type SchemaLocaleRequest = components['schemas']['LocaleRequest'];
@@ -3974,6 +5088,8 @@ export type SchemaLocationBody = components['schemas']['LocationBody'];
 export type SchemaLocationIndex = components['schemas']['LocationIndex'];
 export type SchemaLockAddressesResponse = components['schemas']['LockAddressesResponse'];
 export type SchemaMeResponse = components['schemas']['MeResponse'];
+export type SchemaMembership = components['schemas']['Membership'];
+export type SchemaMessage = components['schemas']['Message'];
 export type SchemaModerationDecisionRequest = components['schemas']['ModerationDecisionRequest'];
 export type SchemaModerationOutcomeBody = components['schemas']['ModerationOutcomeBody'];
 export type SchemaMoney = components['schemas']['Money'];
@@ -3984,9 +5100,14 @@ export type SchemaNotificationResponse = components['schemas']['NotificationResp
 export type SchemaOAuthSignInRequest = components['schemas']['OAuthSignInRequest'];
 export type SchemaOpenLatePledgesRequest = components['schemas']['OpenLatePledgesRequest'];
 export type SchemaOutcome = components['schemas']['Outcome'];
+export type SchemaOutcomes = components['schemas']['Outcomes'];
 export type SchemaOwnProfileResponse = components['schemas']['OwnProfileResponse'];
 export type SchemaPage = components['schemas']['Page'];
 export type SchemaPatchPledgeRequest = components['schemas']['PatchPledgeRequest'];
+export type SchemaPayoutFile = components['schemas']['PayoutFile'];
+export type SchemaPayoutPage = components['schemas']['PayoutPage'];
+export type SchemaPayoutSummary = components['schemas']['PayoutSummary'];
+export type SchemaPlatformAnalyticsResponse = components['schemas']['PlatformAnalyticsResponse'];
 export type SchemaPledgeAddonBody = components['schemas']['PledgeAddonBody'];
 export type SchemaPledgeResponse = components['schemas']['PledgeResponse'];
 export type SchemaPledgeSupplementBody = components['schemas']['PledgeSupplementBody'];
@@ -4008,17 +5129,22 @@ export type SchemaProjectPageResponse = components['schemas']['ProjectPageRespon
 export type SchemaProjectPatchRequest = components['schemas']['ProjectPatchRequest'];
 export type SchemaProjectUpdateListResponse = components['schemas']['ProjectUpdateListResponse'];
 export type SchemaProjectUpdateResponse = components['schemas']['ProjectUpdateResponse'];
+export type SchemaProvider = components['schemas']['Provider'];
 export type SchemaPublicBackerListResponse = components['schemas']['PublicBackerListResponse'];
 export type SchemaPublicProfileResponse = components['schemas']['PublicProfileResponse'];
 export type SchemaPublicRewardListResponse = components['schemas']['PublicRewardListResponse'];
 export type SchemaPublicRewardResponse = components['schemas']['PublicRewardResponse'];
 export type SchemaPublishCollection = components['schemas']['PublishCollection'];
 export type SchemaPublishUpdateRequest = components['schemas']['PublishUpdateRequest'];
+export type SchemaQueue = components['schemas']['Queue'];
 export type SchemaQueuedReportResponse = components['schemas']['QueuedReportResponse'];
+export type SchemaRaiseRequest = components['schemas']['RaiseRequest'];
 export type SchemaRecoveryCodesResponse = components['schemas']['RecoveryCodesResponse'];
 export type SchemaReferralVisitResponse = components['schemas']['ReferralVisitResponse'];
 export type SchemaReferrerReportResponse = components['schemas']['ReferrerReportResponse'];
 export type SchemaRefreshRequest = components['schemas']['RefreshRequest'];
+export type SchemaRefund = components['schemas']['Refund'];
+export type SchemaRefundPage = components['schemas']['RefundPage'];
 export type SchemaRegistrationRequest = components['schemas']['RegistrationRequest'];
 export type SchemaRemainder = components['schemas']['Remainder'];
 export type SchemaRemindRequest = components['schemas']['RemindRequest'];
@@ -4027,23 +5153,30 @@ export type SchemaRemoveProject = components['schemas']['RemoveProject'];
 export type SchemaReorderFaqsRequest = components['schemas']['ReorderFaqsRequest'];
 export type SchemaReorderProjects = components['schemas']['ReorderProjects'];
 export type SchemaReorderRewardsRequest = components['schemas']['ReorderRewardsRequest'];
+export type SchemaReplaceRequest = components['schemas']['ReplaceRequest'];
+export type SchemaReplyRequest = components['schemas']['ReplyRequest'];
 export type SchemaReportQueueResponse = components['schemas']['ReportQueueResponse'];
 export type SchemaReportRequest = components['schemas']['ReportRequest'];
 export type SchemaReportResolutionRequest = components['schemas']['ReportResolutionRequest'];
 export type SchemaReportResponse = components['schemas']['ReportResponse'];
 export type SchemaResetPasswordRequest = components['schemas']['ResetPasswordRequest'];
 export type SchemaResolution = components['schemas']['Resolution'];
+export type SchemaResolveRequest = components['schemas']['ResolveRequest'];
 export type SchemaRespondRequest = components['schemas']['RespondRequest'];
 export type SchemaRewardItemBody = components['schemas']['RewardItemBody'];
 export type SchemaRewardPatchRequest = components['schemas']['RewardPatchRequest'];
 export type SchemaRewardResponse = components['schemas']['RewardResponse'];
 export type SchemaRewardSlice = components['schemas']['RewardSlice'];
 export type SchemaRewardTierCountBody = components['schemas']['RewardTierCountBody'];
+export type SchemaRoster = components['schemas']['Roster'];
 export type SchemaRowFailureBody = components['schemas']['RowFailureBody'];
 export type SchemaSaveBackerSegmentRequest = components['schemas']['SaveBackerSegmentRequest'];
+export type SchemaSaveFlagRequest = components['schemas']['SaveFlagRequest'];
 export type SchemaSaveStateResponse = components['schemas']['SaveStateResponse'];
 export type SchemaSavedListResponse = components['schemas']['SavedListResponse'];
+export type SchemaSchedule = components['schemas']['Schedule'];
 export type SchemaSendMessageRequest = components['schemas']['SendMessageRequest'];
+export type SchemaSendRequest = components['schemas']['SendRequest'];
 export type SchemaSessionRecord = components['schemas']['SessionRecord'];
 export type SchemaSessionSummary = components['schemas']['SessionSummary'];
 export type SchemaSetWeight = components['schemas']['SetWeight'];
@@ -4060,6 +5193,7 @@ export type SchemaSocialLinkBody = components['schemas']['SocialLinkBody'];
 export type SchemaSource = components['schemas']['Source'];
 export type SchemaStoryVersionDetail = components['schemas']['StoryVersionDetail'];
 export type SchemaStoryVersionSummary = components['schemas']['StoryVersionSummary'];
+export type SchemaSubcategory = components['schemas']['Subcategory'];
 export type SchemaSubcategoryResponse = components['schemas']['SubcategoryResponse'];
 export type SchemaSuggestionItem = components['schemas']['SuggestionItem'];
 export type SchemaSuggestions = components['schemas']['Suggestions'];
@@ -4070,25 +5204,60 @@ export type SchemaSurveyResponseBody = components['schemas']['SurveyResponseBody
 export type SchemaSurveyResponseListResponse = components['schemas']['SurveyResponseListResponse'];
 export type SchemaSuspendAccountRequest = components['schemas']['SuspendAccountRequest'];
 export type SchemaSuspendProjectRequest = components['schemas']['SuspendProjectRequest'];
+export type SchemaTag = components['schemas']['Tag'];
+export type SchemaTagList = components['schemas']['TagList'];
 export type SchemaTarget = components['schemas']['Target'];
 export type SchemaTaxon = components['schemas']['Taxon'];
 export type SchemaTemplate = components['schemas']['Template'];
 export type SchemaTermResponse = components['schemas']['TermResponse'];
 export type SchemaThread = components['schemas']['Thread'];
+export type SchemaTicket = components['schemas']['Ticket'];
+export type SchemaTicketContext = components['schemas']['TicketContext'];
+export type SchemaTicketFile = components['schemas']['TicketFile'];
+export type SchemaTicketPage = components['schemas']['TicketPage'];
 export type SchemaTokenResponse = components['schemas']['TokenResponse'];
+export type SchemaTotals = components['schemas']['Totals'];
 export type SchemaTransaction = components['schemas']['Transaction'];
+export type SchemaTranslation = components['schemas']['Translation'];
+export type SchemaTranslationRequest = components['schemas']['TranslationRequest'];
+export type SchemaTree = components['schemas']['Tree'];
 export type SchemaTwoFactorEnrolmentResponse = components['schemas']['TwoFactorEnrolmentResponse'];
 export type SchemaUpdateNotificationPreferencesRequest = components['schemas']['UpdateNotificationPreferencesRequest'];
+export type SchemaUpdateRequest = components['schemas']['UpdateRequest'];
 export type SchemaUpgradePledgeRequest = components['schemas']['UpgradePledgeRequest'];
 export type SchemaValueCount = components['schemas']['ValueCount'];
 export type SchemaVerificationRecord = components['schemas']['VerificationRecord'];
 export type SchemaVerifyEmailRequest = components['schemas']['VerifyEmailRequest'];
 export type SchemaVerifyTwoFactorRequest = components['schemas']['VerifyTwoFactorRequest'];
+export type SchemaVersion = components['schemas']['Version'];
 export type SchemaView = components['schemas']['View'];
 export type SchemaWeightResponse = components['schemas']['WeightResponse'];
 export type SchemaWeightsResponse = components['schemas']['WeightsResponse'];
 export type $defs = Record<string, never>;
 export interface operations {
+    platformAnalyticsDashboard: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformAnalyticsResponse"];
+                };
+            };
+        };
+    };
     auditTrailTrail: {
         parameters: {
             query?: {
@@ -4338,6 +5507,147 @@ export interface operations {
             };
         };
     };
+    disputeList: {
+        parameters: {
+            query?: {
+                state?: "OPEN" | "UNDER_REVIEW" | "WON" | "LOST" | "CONCEDED";
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisputePage"];
+                };
+            };
+        };
+    };
+    disputeQueue: {
+        parameters: {
+            query?: {
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisputePage"];
+                };
+            };
+        };
+    };
+    disputeInspect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                disputeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dispute"];
+                };
+            };
+        };
+    };
+    disputeAddEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                disputeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddEvidenceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Evidence"];
+                };
+            };
+        };
+    };
+    disputeResolve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                disputeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dispute"];
+                };
+            };
+        };
+    };
+    disputeSubmit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                disputeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dispute"];
+                };
+            };
+        };
+    };
     emailTemplateTemplates: {
         parameters: {
             query?: never;
@@ -4355,6 +5665,74 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["EmailTemplateListResponse"];
                 };
+            };
+        };
+    };
+    emailTemplateEditorRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Draft"];
+                };
+            };
+        };
+    };
+    emailTemplateEditorEdit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Version"];
+                };
+            };
+        };
+    };
+    emailTemplateEditorWithdraw: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -4403,6 +5781,138 @@ export interface operations {
             };
         };
     };
+    emailTemplateEditorHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["History"];
+                };
+            };
+        };
+    };
+    featureFlagList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlagList"];
+                };
+            };
+        };
+    };
+    featureFlagSave: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveFlagRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Flag"];
+                };
+            };
+        };
+    };
+    feeScheduleHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["History"];
+                };
+            };
+        };
+    };
+    feeScheduleReplace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplaceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Schedule"];
+                };
+            };
+        };
+    };
+    systemHealthSnapshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Health"];
+                };
+            };
+        };
+    };
     ledgerLedger: {
         parameters: {
             query?: {
@@ -4424,6 +5934,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["View"];
+                };
+            };
+        };
+    };
+    staffMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Membership"];
                 };
             };
         };
@@ -4630,6 +6160,193 @@ export interface operations {
             };
         };
     };
+    payoutList: {
+        parameters: {
+            query?: {
+                state?: "CALCULATED" | "PENDING_APPROVAL" | "APPROVED" | "PAID" | "FAILED" | "CANCELLED";
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutPage"];
+                };
+            };
+        };
+    };
+    payoutCalculate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalculateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutSummary"];
+                };
+            };
+        };
+    };
+    payoutQueue: {
+        parameters: {
+            query?: {
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutPage"];
+                };
+            };
+        };
+    };
+    payoutInspect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payoutId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutFile"];
+                };
+            };
+        };
+    };
+    payoutApprove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payoutId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApproveRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutFile"];
+                };
+            };
+        };
+    };
+    payoutWithdrawApproval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payoutId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutFile"];
+                };
+            };
+        };
+    };
+    payoutCancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payoutId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutSummary"];
+                };
+            };
+        };
+    };
+    payoutSend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payoutId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutSummary"];
+                };
+            };
+        };
+    };
     projectSuspensionSuspend: {
         parameters: {
             query?: never;
@@ -4722,6 +6439,508 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WeightsResponse"];
+                };
+            };
+        };
+    };
+    refundList: {
+        parameters: {
+            query?: {
+                state?: "REQUESTED" | "SUCCEEDED" | "FAILED";
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundPage"];
+                };
+            };
+        };
+    };
+    refundIssue: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueRefundRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Refund"];
+                };
+            };
+        };
+    };
+    refundForPledge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pledgeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundPage"];
+                };
+            };
+        };
+    };
+    staffRoster: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Roster"];
+                };
+            };
+        };
+    };
+    staffGrant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: string;
+                role: "MODERATOR" | "CURATOR" | "FINANCE" | "ADMINISTRATOR";
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["GrantRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Membership"];
+                };
+            };
+        };
+    };
+    staffRevoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: string;
+                role: "MODERATOR" | "CURATOR" | "FINANCE" | "ADMINISTRATOR";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Membership"];
+                };
+            };
+        };
+    };
+    taxonomyAdminTree: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tree"];
+                };
+            };
+        };
+    };
+    taxonomyAdminCreateCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCategoryRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Category"];
+                };
+            };
+        };
+    };
+    taxonomyAdminEditCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                categoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Category"];
+                };
+            };
+        };
+    };
+    taxonomyAdminCreateSubcategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                categoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCategoryRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subcategory"];
+                };
+            };
+        };
+    };
+    taxonomyAdminTranslateCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                categoryId: string;
+                locale: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TranslationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Translation"];
+                };
+            };
+        };
+    };
+    taxonomyAdminEditSubcategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subcategoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subcategory"];
+                };
+            };
+        };
+    };
+    taxonomyAdminTranslateSubcategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subcategoryId: string;
+                locale: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TranslationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Translation"];
+                };
+            };
+        };
+    };
+    taxonomyAdminTags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagList"];
+                };
+            };
+        };
+    };
+    supportTicketList: {
+        parameters: {
+            query?: {
+                state?: "OPEN" | "PENDING" | "RESOLVED" | "CLOSED";
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketPage"];
+                };
+            };
+        };
+    };
+    supportTicketRaise: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RaiseRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketFile"];
+                };
+            };
+        };
+    };
+    supportTicketQueue: {
+        parameters: {
+            query?: {
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketPage"];
+                };
+            };
+        };
+    };
+    supportTicketInspect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticketId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketContext"];
+                };
+            };
+        };
+    };
+    supportTicketUpdate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticketId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ticket"];
+                };
+            };
+        };
+    };
+    supportTicketReply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticketId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketFile"];
+                };
+            };
+        };
+    };
+    supportTicketRequesterThread: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticketId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Thread"];
                 };
             };
         };
@@ -7950,6 +10169,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SurveyResponseBody"];
+                };
+            };
+        };
+    };
+    contentReportReportUpdate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportResponse"];
                 };
             };
         };

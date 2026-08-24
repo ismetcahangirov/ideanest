@@ -61,7 +61,7 @@ public record AuditActor(AuditActorType type, UUID id, UUID onBehalfOf) {
     /**
      * An account acting with platform authority.
      *
-     * <p>Called from the paths that have already asked {@code ModeratorDirectory}
+     * <p>Called from the paths that have already asked {@code PlatformStaff}
      * whether this account may moderate. This type records the answer; it does not
      * decide it, and a call site that used it without the check would be recording
      * an authority it never verified.

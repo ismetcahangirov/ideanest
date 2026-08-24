@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -36,6 +37,38 @@ public class Subcategory {
 
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
+
+    /**
+     * A subcategory the taxonomy manager created — issue #309.
+     *
+     * <p>The slug is permanent for {@code Category}'s reason: it is in the public URL
+     * {@code /categories/{category}/{subcategory}}.
+     *
+     * <p><strong>The parent is permanent too</strong>, and that is the sharper rule.
+     * Moving a subcategory to another category silently re-files every campaign under it
+     * — a campaign's {@code subcategory_id} does not move, so the change is invisible to
+     * the creator and shows up as their campaign appearing somewhere they did not choose.
+     * Moving one is retiring it and creating another.
+     */
+    public Subcategory(UUID id, UUID parentId, String slug, String nameAz, String nameEn, int sortOrder) {
+        this.id = Objects.requireNonNull(id, "id");
+        this.parentId = Objects.requireNonNull(parentId, "parentId");
+        this.slug = Objects.requireNonNull(slug, "slug");
+        this.nameAz = Objects.requireNonNull(nameAz, "nameAz");
+        this.nameEn = Objects.requireNonNull(nameEn, "nameEn");
+        this.sortOrder = sortOrder;
+    }
+
+    /** Changes what it is called, in both built-in locales. See {@code Category.rename}. */
+    public void rename(String nameAz, String nameEn) {
+        this.nameAz = Objects.requireNonNull(nameAz, "nameAz");
+        this.nameEn = Objects.requireNonNull(nameEn, "nameEn");
+    }
+
+    /** Moves it within its parent. */
+    public void reorder(int sortOrder) {
+        this.sortOrder = sortOrder;
+    }
 
     protected Subcategory() {
         // JPA. Seeded by the migration; nothing in the application creates one.

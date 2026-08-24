@@ -82,7 +82,7 @@ public class UserAdministrationService {
      * reaches the client — an over-record beats a gap in the one table that answers "who
      * looked at this".
      *
-     * @throws az.ideanest.project.application.NotAModeratorException for a caller who is
+     * @throws az.ideanest.staff.application.NotAModeratorException for a caller who is
      *     not platform staff
      */
     public List<AdministeredAccount> search(

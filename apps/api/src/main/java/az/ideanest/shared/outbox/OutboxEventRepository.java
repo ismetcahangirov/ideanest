@@ -74,4 +74,18 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> 
                     """,
             nativeQuery = true)
     Optional<OutboxEvent> claimNext(@Param("now") Instant now);
+
+    /**
+     * How many events are in one state — AD-16's queue depth, issue #316.
+     *
+     * <p>A {@code COUNT} over a partial-index-free column, which is deliberate: the table
+     * is kept small by the relay draining it, and the one deployment where it is not is
+     * exactly the one this screen exists to show. An index added for a count nobody runs
+     * in a loop would cost every insert on the platform's busiest write path.
+     *
+     * <p>Read through {@link OutboxQueueDepth} rather than directly, so that the health
+     * screen never learns this table exists.
+     */
+    @Query("SELECT COUNT(e) FROM OutboxEvent e WHERE e.state = :state")
+    long countByState(@Param("state") OutboxEventState state);
 }

@@ -101,6 +101,26 @@ public class CategoryTranslation {
     @Column(name = "name", nullable = false)
     private String name;
 
+    /**
+     * A translation the taxonomy manager wrote — issue #309.
+     *
+     * <p>Until #309 nothing in the application wrote one; V11 seeded them and §4.3's
+     * requirement that the taxonomy be editable without a deployment was unmet.
+     *
+     * <p><strong>A locale with no row falls back to {@code name_en}</strong> rather than
+     * rendering blank, which is why creating a translation is an upsert and deleting one
+     * is a safe operation: the category keeps a name in every locale either way.
+     */
+    public CategoryTranslation(Key id, String name) {
+        this.id = java.util.Objects.requireNonNull(id, "id");
+        this.name = java.util.Objects.requireNonNull(name, "name");
+    }
+
+    /** Rewrites the translated name. The key never changes; a new locale is a new row. */
+    public void rename(String name) {
+        this.name = java.util.Objects.requireNonNull(name, "name");
+    }
+
     protected CategoryTranslation() {
         // JPA. Nothing in the application writes a translation; the migration does.
     }

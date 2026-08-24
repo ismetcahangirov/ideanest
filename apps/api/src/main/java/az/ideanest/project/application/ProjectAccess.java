@@ -7,8 +7,10 @@ import az.ideanest.project.domain.Grants;
 import az.ideanest.project.domain.Project;
 import az.ideanest.project.infrastructure.CollaboratorRepository;
 import az.ideanest.project.infrastructure.ProjectRepository;
+import az.ideanest.shared.access.PlatformStaff;
 import az.ideanest.shared.access.ProjectAuthorisation;
 import az.ideanest.shared.access.ProjectCapability;
+import az.ideanest.staff.application.NotAModeratorException;
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
@@ -92,10 +94,10 @@ public class ProjectAccess implements ProjectAuthorisation {
 
     private final ProjectRepository projects;
     private final CollaboratorRepository collaborators;
-    private final ModeratorDirectory moderators;
+    private final PlatformStaff moderators;
 
     public ProjectAccess(
-            ProjectRepository projects, CollaboratorRepository collaborators, ModeratorDirectory moderators) {
+            ProjectRepository projects, CollaboratorRepository collaborators, PlatformStaff moderators) {
         this.projects = projects;
         this.collaborators = collaborators;
         this.moderators = moderators;
@@ -241,7 +243,7 @@ public class ProjectAccess implements ProjectAuthorisation {
      * The campaign, locked, for a moderation decision by this account.
      *
      * <p>Staff is a configured list of addresses, and an empty list is nobody —
-     * see {@link ModeratorDirectory} for why that is the shape and why it fails
+     * see {@link PlatformStaff} for why that is the shape and why it fails
      * closed. It is deployment configuration standing in for a role model, and it
      * is the only thing that keeps "state transitions are enforced server-side and
      * cannot be bypassed" true before epic #100 exists: without it these endpoints
@@ -249,11 +251,12 @@ public class ProjectAccess implements ProjectAuthorisation {
      * their own campaign.
      *
      * <p><strong>Checked before the campaign is loaded</strong>, so a caller who
-     * is not staff learns nothing about which identifiers exist. Epic #100
-     * replaces the directory and changes nothing here.
+     * is not staff learns nothing about which identifiers exist. #295 replaced
+     * the directory behind {@link PlatformStaff} with a role model and changed
+     * nothing here, which is what that interface was for.
      */
     public Project requireModeratable(UUID projectId, UUID accountId) {
-        if (!moderators.isModerator(accountId)) {
+        if (!moderators.isStaff(accountId)) {
             throw new NotAModeratorException(accountId);
         }
         return projects.findByIdForUpdate(projectId).orElseThrow(() -> new ProjectNotFoundException(projectId));

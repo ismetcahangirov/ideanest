@@ -2,7 +2,7 @@ package az.ideanest.project.api;
 
 import az.ideanest.project.application.CapabilityNotGrantedException;
 import az.ideanest.project.application.LatePledgesNotEnabledException;
-import az.ideanest.project.application.NotAModeratorException;
+import az.ideanest.staff.application.NotAModeratorException;
 import az.ideanest.project.application.ProjectFieldLockedException;
 import az.ideanest.project.application.ProjectFieldRejectedException;
 import az.ideanest.project.application.ProjectNotFoundException;

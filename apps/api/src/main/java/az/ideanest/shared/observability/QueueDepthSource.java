@@ -1,0 +1,44 @@
+package az.ideanest.shared.observability;
+
+/**
+ * How much work is waiting in one queue, answered by the module that owns it — §4.11's
+ * AD-16, issue #316.
+ *
+ * <p><strong>This is {@code ProjectAudienceSource}'s shape, and it is here for the same
+ * reason.</strong> AD-16's screen wants the depth of every queue on the platform, and the
+ * queues live in three modules — the outbox and the job runner in {@code shared}, email
+ * delivery in {@code notification}. A health service that read those tables itself would
+ * be reaching into other modules' infrastructure, which {@code ModuleBoundaryTests}
+ * forbids and which would make adding a queue a change to a module that does not own it.
+ *
+ * <p>So the asking side names this interface and the owning side implements it. A new
+ * queue appears on the screen by adding a bean, and the screen needs no edit at all.
+ *
+ * <p><strong>Both counts, never one.</strong> A deep queue is a platform under load; a
+ * dead row is a platform that has given up and will not recover without somebody. A single
+ * number would let a thousand-item backlog hide one message that will never be sent —
+ * {@code SystemHealth.QueueDepth} grades them differently for exactly that reason.
+ */
+public interface QueueDepthSource {
+
+    /**
+     * What the screen calls this queue.
+     *
+     * <p>In the words a member of staff uses — "Outbox", "Scheduled jobs", "Emails" — and
+     * not the table name. The reader is answering a question about the platform, not
+     * about the schema.
+     */
+    String queueName();
+
+    /** Rows waiting to be handled. */
+    long waiting();
+
+    /**
+     * Rows that ran out of attempts and will not be retried.
+     *
+     * <p>Zero for a queue that has no dead state, which is an honest answer rather than a
+     * missing one: it means nothing here has been abandoned, not that abandonment is
+     * unmeasured.
+     */
+    long dead();
+}

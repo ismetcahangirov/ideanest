@@ -37,6 +37,9 @@ import org.springframework.web.bind.annotation.RestController;
  * unstateable without an identity to compare, and V23's header has the other two
  * reasons.
  *
+ * <p><strong>{@code POST /v1/updates/{id}/report} is published as of #297</strong>, which
+ * was the last of AD-09's three surfaces without one. See {@link #reportUpdate}.
+ *
  * <p><strong>{@code POST /v1/comments/{id}/report} is published as of #84.</strong> It
  * was absent because there was no {@code comments} table for an identifier to be
  * checked against, and accepting a report a moderator could never look at shows the
@@ -119,6 +122,35 @@ public class ContentReportController {
             HttpServletRequest httpRequest) {
 
         return report(ReportTargetType.COMMENT, id, accessToken, request, httpRequest);
+    }
+
+    /**
+     * "There is something wrong with this update." §4.11's AD-09, and §10.2's
+     * {@code POST /v1/updates/{id}/report} — issue #297.
+     *
+     * <p><strong>The last of §4.11's four report targets to get a route.</strong> AD-09
+     * asks for moderation of "comments, updates, profiles" and the queue could only be
+     * filled from two of the three, so half of it had no intake and the console screen
+     * said so. What unblocked it was not this endpoint but #83, which built
+     * {@code project_updates}: once the rows existed, the route was a method here and a
+     * branch in {@code ReportTargets}, exactly as #102 predicted when it enumerated the
+     * value it could not yet write.
+     *
+     * <p>The update is checked through the community module's
+     * {@code PublicProjectUpdates}, which refuses one that is scheduled rather than
+     * published — an accepted report about an unpublished update would tell the reporter
+     * that it exists. Nothing about the update changes: a report is a request for a person
+     * to look, and §10.2 gives an update no withdrawal in any case.
+     */
+    @PostMapping("/updates/{id}/report")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public ReportResponse reportUpdate(
+            @AuthenticationPrincipal Jwt accessToken,
+            @PathVariable UUID id,
+            @Valid @RequestBody ReportRequest request,
+            HttpServletRequest httpRequest) {
+
+        return report(ReportTargetType.PROJECT_UPDATE, id, accessToken, request, httpRequest);
     }
 
     /**
