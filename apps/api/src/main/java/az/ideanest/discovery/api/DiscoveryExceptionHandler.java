@@ -8,7 +8,7 @@ import az.ideanest.discovery.application.UnknownFilterValueException;
 import az.ideanest.discovery.application.UnsupportedDiscoveryOptionException;
 import az.ideanest.discovery.domain.DiscoveryCapability;
 import az.ideanest.discovery.domain.InvalidCursorException;
-import az.ideanest.project.application.NotAModeratorException;
+import az.ideanest.staff.application.NotAModeratorException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

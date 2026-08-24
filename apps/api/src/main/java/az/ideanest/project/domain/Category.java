@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -40,7 +41,46 @@ public class Category {
     private int sortOrder;
 
     protected Category() {
-        // JPA. Nothing in the application creates a category; the migration does.
+        // JPA.
+    }
+
+    /**
+     * A category the taxonomy manager created — issue #309.
+     *
+     * <p>Until #309 this comment said "nothing in the application creates a category; the
+     * migration does", and that was the whole of what AD-08 was blocked on: §4.3 requires
+     * the taxonomy be editable without a deployment, and every category on the platform
+     * came out of V6's seed.
+     *
+     * <p><strong>The slug is set once and never changed.</strong> It is in the public URL
+     * of every campaign filed under the category — {@code /categories/{category}} — and
+     * renaming it would break every link anybody has ever shared, with no redirect to
+     * catch them. The display names are what the manager edits; a category whose slug is
+     * genuinely wrong is retired and replaced.
+     */
+    public Category(UUID id, String slug, String nameAz, String nameEn, int sortOrder) {
+        this.id = Objects.requireNonNull(id, "id");
+        this.slug = Objects.requireNonNull(slug, "slug");
+        this.nameAz = Objects.requireNonNull(nameAz, "nameAz");
+        this.nameEn = Objects.requireNonNull(nameEn, "nameEn");
+        this.sortOrder = sortOrder;
+    }
+
+    /**
+     * Changes what the category is called, in both of §21.1's built-in locales.
+     *
+     * <p>Both at once rather than one at a time, so that a category cannot sit in a state
+     * where the Azerbaijani name is the new one and the English is the old — which is what
+     * a per-field patch produces the first time somebody is interrupted.
+     */
+    public void rename(String nameAz, String nameEn) {
+        this.nameAz = Objects.requireNonNull(nameAz, "nameAz");
+        this.nameEn = Objects.requireNonNull(nameEn, "nameEn");
+    }
+
+    /** Moves it in the navigation. */
+    public void reorder(int sortOrder) {
+        this.sortOrder = sortOrder;
     }
 
     public UUID getId() {

@@ -16,6 +16,41 @@
     "bearerAuth" : [ ]
   } ],
   "paths" : {
+    "/v1/admin/analytics" : {
+      "get" : {
+        "operationId" : "platformAnalyticsDashboard",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "from",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }, {
+          "in" : "query",
+          "name" : "to",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlatformAnalyticsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "platform-analytics-controller" ]
+      }
+    },
     "/v1/admin/audit" : {
       "get" : {
         "operationId" : "auditTrailTrail",
@@ -366,6 +401,198 @@
         "tags" : [ "admin-curation-controller" ]
       }
     },
+    "/v1/admin/disputes" : {
+      "get" : {
+        "operationId" : "disputeList",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "state",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "OPEN", "UNDER_REVIEW", "WON", "LOST", "CONCEDED" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DisputePage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "dispute-controller" ]
+      }
+    },
+    "/v1/admin/disputes/queue" : {
+      "get" : {
+        "operationId" : "disputeQueue",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DisputePage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "dispute-controller" ]
+      }
+    },
+    "/v1/admin/disputes/{disputeId}" : {
+      "get" : {
+        "operationId" : "disputeInspect",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "disputeId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Dispute"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "dispute-controller" ]
+      }
+    },
+    "/v1/admin/disputes/{disputeId}/evidence" : {
+      "post" : {
+        "operationId" : "disputeAddEvidence",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "disputeId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AddEvidenceRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Evidence"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "dispute-controller" ]
+      }
+    },
+    "/v1/admin/disputes/{disputeId}/resolve" : {
+      "post" : {
+        "operationId" : "disputeResolve",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "disputeId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ResolveRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Dispute"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "dispute-controller" ]
+      }
+    },
+    "/v1/admin/disputes/{disputeId}/submit" : {
+      "post" : {
+        "operationId" : "disputeSubmit",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "disputeId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Dispute"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "dispute-controller" ]
+      }
+    },
     "/v1/admin/email-templates" : {
       "get" : {
         "operationId" : "emailTemplateTemplates",
@@ -382,6 +609,86 @@
           }
         },
         "tags" : [ "email-template-controller" ]
+      }
+    },
+    "/v1/admin/email-templates/{type}/copy" : {
+      "delete" : {
+        "operationId" : "emailTemplateEditorWithdraw",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "email-template-editor-controller" ]
+      },
+      "get" : {
+        "operationId" : "emailTemplateEditorRead",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Draft"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "email-template-editor-controller" ]
+      },
+      "put" : {
+        "operationId" : "emailTemplateEditorEdit",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EditRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Version"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "email-template-editor-controller" ]
       }
     },
     "/v1/admin/email-templates/{type}/preview" : {
@@ -444,6 +751,149 @@
         "tags" : [ "email-template-controller" ]
       }
     },
+    "/v1/admin/email-templates/{type}/versions" : {
+      "get" : {
+        "operationId" : "emailTemplateEditorHistory",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/History"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "email-template-editor-controller" ]
+      }
+    },
+    "/v1/admin/feature-flags" : {
+      "get" : {
+        "operationId" : "featureFlagList",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FlagList"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "feature-flag-controller" ]
+      }
+    },
+    "/v1/admin/feature-flags/{key}" : {
+      "put" : {
+        "operationId" : "featureFlagSave",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SaveFlagRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Flag"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "feature-flag-controller" ]
+      }
+    },
+    "/v1/admin/fees" : {
+      "get" : {
+        "operationId" : "feeScheduleHistory",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/History"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "fee-schedule-controller" ]
+      },
+      "post" : {
+        "operationId" : "feeScheduleReplace",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReplaceRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Schedule"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "fee-schedule-controller" ]
+      }
+    },
+    "/v1/admin/health" : {
+      "get" : {
+        "operationId" : "systemHealthSnapshot",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Health"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "system-health-controller" ]
+      }
+    },
     "/v1/admin/ledger" : {
       "get" : {
         "operationId" : "ledgerLedger",
@@ -492,6 +942,24 @@
           }
         },
         "tags" : [ "ledger-controller" ]
+      }
+    },
+    "/v1/admin/me" : {
+      "get" : {
+        "operationId" : "staffMe",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Membership"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "staff-controller" ]
       }
     },
     "/v1/admin/moderation/reports" : {
@@ -806,6 +1274,248 @@
         "tags" : [ "payment-log-controller" ]
       }
     },
+    "/v1/admin/payouts" : {
+      "get" : {
+        "operationId" : "payoutList",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "state",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "CALCULATED", "PENDING_APPROVAL", "APPROVED", "PAID", "FAILED", "CANCELLED" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PayoutPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "payout-controller" ]
+      },
+      "post" : {
+        "operationId" : "payoutCalculate",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CalculateRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PayoutSummary"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "payout-controller" ]
+      }
+    },
+    "/v1/admin/payouts/queue" : {
+      "get" : {
+        "operationId" : "payoutQueue",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PayoutPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "payout-controller" ]
+      }
+    },
+    "/v1/admin/payouts/{payoutId}" : {
+      "get" : {
+        "operationId" : "payoutInspect",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "payoutId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PayoutFile"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "payout-controller" ]
+      }
+    },
+    "/v1/admin/payouts/{payoutId}/approvals" : {
+      "delete" : {
+        "operationId" : "payoutWithdrawApproval",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "payoutId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PayoutFile"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "payout-controller" ]
+      },
+      "post" : {
+        "operationId" : "payoutApprove",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "payoutId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ApproveRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PayoutFile"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "payout-controller" ]
+      }
+    },
+    "/v1/admin/payouts/{payoutId}/cancel" : {
+      "post" : {
+        "operationId" : "payoutCancel",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "payoutId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PayoutSummary"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "payout-controller" ]
+      }
+    },
+    "/v1/admin/payouts/{payoutId}/send" : {
+      "post" : {
+        "operationId" : "payoutSend",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "payoutId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SendRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PayoutSummary"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "payout-controller" ]
+      }
+    },
     "/v1/admin/projects/{id}/suspend" : {
       "post" : {
         "operationId" : "projectSuspensionSuspend",
@@ -928,6 +1638,681 @@
           }
         },
         "tags" : [ "admin-ranking-controller" ]
+      }
+    },
+    "/v1/admin/refunds" : {
+      "get" : {
+        "operationId" : "refundList",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "state",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "REQUESTED", "SUCCEEDED", "FAILED" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RefundPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "refund-controller" ]
+      },
+      "post" : {
+        "operationId" : "refundIssue",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "maxLength" : 200,
+            "minLength" : 8
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/IssueRefundRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Refund"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "refund-controller" ]
+      }
+    },
+    "/v1/admin/refunds/by-pledge/{pledgeId}" : {
+      "get" : {
+        "operationId" : "refundForPledge",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "pledgeId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RefundPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "refund-controller" ]
+      }
+    },
+    "/v1/admin/staff" : {
+      "get" : {
+        "operationId" : "staffRoster",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Roster"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "staff-controller" ]
+      }
+    },
+    "/v1/admin/staff/{accountId}/roles/{role}" : {
+      "delete" : {
+        "operationId" : "staffRevoke",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "path",
+          "name" : "role",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "MODERATOR", "CURATOR", "FINANCE", "ADMINISTRATOR" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Membership"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "staff-controller" ]
+      },
+      "put" : {
+        "operationId" : "staffGrant",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "path",
+          "name" : "role",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "MODERATOR", "CURATOR", "FINANCE", "ADMINISTRATOR" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/GrantRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Membership"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "staff-controller" ]
+      }
+    },
+    "/v1/admin/taxonomy" : {
+      "get" : {
+        "operationId" : "taxonomyAdminTree",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Tree"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "taxonomy-admin-controller" ]
+      }
+    },
+    "/v1/admin/taxonomy/categories" : {
+      "post" : {
+        "operationId" : "taxonomyAdminCreateCategory",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateCategoryRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Category"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "taxonomy-admin-controller" ]
+      }
+    },
+    "/v1/admin/taxonomy/categories/{categoryId}" : {
+      "patch" : {
+        "operationId" : "taxonomyAdminEditCategory",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "categoryId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EditRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Category"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "taxonomy-admin-controller" ]
+      }
+    },
+    "/v1/admin/taxonomy/categories/{categoryId}/subcategories" : {
+      "post" : {
+        "operationId" : "taxonomyAdminCreateSubcategory",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "categoryId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateCategoryRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Subcategory"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "taxonomy-admin-controller" ]
+      }
+    },
+    "/v1/admin/taxonomy/categories/{categoryId}/translations/{locale}" : {
+      "put" : {
+        "operationId" : "taxonomyAdminTranslateCategory",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "categoryId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "path",
+          "name" : "locale",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "^[a-z]{2}(-[A-Z]{2})?$"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TranslationRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Translation"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "taxonomy-admin-controller" ]
+      }
+    },
+    "/v1/admin/taxonomy/subcategories/{subcategoryId}" : {
+      "patch" : {
+        "operationId" : "taxonomyAdminEditSubcategory",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "subcategoryId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EditRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Subcategory"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "taxonomy-admin-controller" ]
+      }
+    },
+    "/v1/admin/taxonomy/subcategories/{subcategoryId}/translations/{locale}" : {
+      "put" : {
+        "operationId" : "taxonomyAdminTranslateSubcategory",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "subcategoryId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "path",
+          "name" : "locale",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "^[a-z]{2}(-[A-Z]{2})?$"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TranslationRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Translation"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "taxonomy-admin-controller" ]
+      }
+    },
+    "/v1/admin/taxonomy/tags" : {
+      "get" : {
+        "operationId" : "taxonomyAdminTags",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TagList"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "taxonomy-admin-controller" ]
+      }
+    },
+    "/v1/admin/tickets" : {
+      "get" : {
+        "operationId" : "supportTicketList",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "state",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "OPEN", "PENDING", "RESOLVED", "CLOSED" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TicketPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "support-ticket-controller" ]
+      },
+      "post" : {
+        "operationId" : "supportTicketRaise",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RaiseRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TicketFile"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "support-ticket-controller" ]
+      }
+    },
+    "/v1/admin/tickets/queue" : {
+      "get" : {
+        "operationId" : "supportTicketQueue",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TicketPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "support-ticket-controller" ]
+      }
+    },
+    "/v1/admin/tickets/{ticketId}" : {
+      "get" : {
+        "operationId" : "supportTicketInspect",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ticketId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TicketContext"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "support-ticket-controller" ]
+      },
+      "patch" : {
+        "operationId" : "supportTicketUpdate",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ticketId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Ticket"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "support-ticket-controller" ]
+      }
+    },
+    "/v1/admin/tickets/{ticketId}/messages" : {
+      "post" : {
+        "operationId" : "supportTicketReply",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ticketId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReplyRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TicketFile"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "support-ticket-controller" ]
+      }
+    },
+    "/v1/admin/tickets/{ticketId}/thread" : {
+      "get" : {
+        "operationId" : "supportTicketRequesterThread",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "ticketId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Thread"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "support-ticket-controller" ]
       }
     },
     "/v1/admin/users" : {
@@ -5598,6 +6983,43 @@
         "tags" : [ "survey-controller" ]
       }
     },
+    "/v1/updates/{id}/report" : {
+      "post" : {
+        "operationId" : "contentReportReportUpdate",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReportRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "202" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReportResponse"
+                }
+              }
+            },
+            "description" : "Accepted"
+          }
+        },
+        "tags" : [ "content-report-controller" ]
+      }
+    },
     "/v1/users/{id}/report" : {
       "post" : {
         "operationId" : "contentReportReportUser",
@@ -5914,6 +7336,25 @@
           }
         }
       },
+      "AddEvidenceRequest" : {
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "type" : "string",
+            "maxLength" : 5000,
+            "minLength" : 0
+          },
+          "kind" : {
+            "type" : "string",
+            "enum" : [ "RECEIPT", "SHIPPING_PROOF", "COMMUNICATION", "TERMS_ACCEPTANCE", "REFUND_POLICY", "ACTIVITY_LOG", "OTHER" ]
+          },
+          "mediaId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "description", "kind" ]
+      },
       "AddProject" : {
         "type" : "object",
         "properties" : {
@@ -6125,6 +7566,32 @@
             "items" : {
               "type" : "string"
             }
+          }
+        }
+      },
+      "Approval" : {
+        "type" : "object",
+        "properties" : {
+          "approvedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "approverId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "note" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ApproveRequest" : {
+        "type" : "object",
+        "properties" : {
+          "note" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 0
           }
         }
       },
@@ -6413,6 +7880,20 @@
           }
         }
       },
+      "Branch" : {
+        "type" : "object",
+        "properties" : {
+          "category" : {
+            "$ref" : "#/components/schemas/Category"
+          },
+          "subcategories" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Subcategory"
+            }
+          }
+        }
+      },
       "BuyAddonsRequest" : {
         "type" : "object",
         "properties" : {
@@ -6425,6 +7906,16 @@
           }
         },
         "required" : [ "addons" ]
+      },
+      "CalculateRequest" : {
+        "type" : "object",
+        "properties" : {
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "projectId" ]
       },
       "Campaign" : {
         "type" : "object",
@@ -6593,6 +8084,34 @@
           },
           "title" : {
             "type" : "string"
+          }
+        }
+      },
+      "Category" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "nameAz" : {
+            "type" : "string"
+          },
+          "nameEn" : {
+            "type" : "string"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "sortOrder" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "translations" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
           }
         }
       },
@@ -7047,6 +8566,32 @@
           }
         }
       },
+      "CreateCategoryRequest" : {
+        "type" : "object",
+        "properties" : {
+          "nameAz" : {
+            "type" : "string",
+            "maxLength" : 120,
+            "minLength" : 0
+          },
+          "nameEn" : {
+            "type" : "string",
+            "maxLength" : 120,
+            "minLength" : 0
+          },
+          "slug" : {
+            "type" : "string",
+            "minLength" : 1,
+            "pattern" : "^[a-z][a-z0-9-]{1,62}[a-z0-9]$"
+          },
+          "sortOrder" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "nameAz", "nameEn", "slug" ]
+      },
       "CreateCollection" : {
         "type" : "object",
         "properties" : {
@@ -7174,6 +8719,22 @@
           },
           "slug" : {
             "type" : "string"
+          }
+        }
+      },
+      "DailyPoint" : {
+        "type" : "object",
+        "properties" : {
+          "day" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "pledgeCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "volume" : {
+            "$ref" : "#/components/schemas/Money"
           }
         }
       },
@@ -7305,6 +8866,114 @@
         },
         "required" : [ "password" ]
       },
+      "Dispute" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "chargeTransactionId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "evidence" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Evidence"
+            }
+          },
+          "evidenceDueAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "fee" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "handledBy" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "openedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "pledgeId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "provider" : {
+            "type" : "string"
+          },
+          "providerDisputeId" : {
+            "type" : "string"
+          },
+          "reasonCode" : {
+            "type" : "string"
+          },
+          "resolvedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "state" : {
+            "type" : "string",
+            "enum" : [ "OPEN", "UNDER_REVIEW", "WON", "LOST", "CONCEDED" ]
+          }
+        }
+      },
+      "DisputePage" : {
+        "type" : "object",
+        "properties" : {
+          "disputes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Dispute"
+            }
+          },
+          "hasMore" : {
+            "type" : "boolean"
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "Draft" : {
+        "type" : "object",
+        "properties" : {
+          "locale" : {
+            "type" : "string"
+          },
+          "override" : {
+            "$ref" : "#/components/schemas/Version"
+          },
+          "requiredPlaceholders" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            },
+            "uniqueItems" : true
+          },
+          "shippedBody" : {
+            "type" : "string"
+          },
+          "shippedSubject" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
+          }
+        }
+      },
       "DraftPledgeRequest" : {
         "type" : "object",
         "properties" : {
@@ -7338,6 +9007,27 @@
           }
         },
         "required" : [ "contribution", "projectId" ]
+      },
+      "EditRequest" : {
+        "type" : "object",
+        "properties" : {
+          "body" : {
+            "type" : "string",
+            "maxLength" : 50000,
+            "minLength" : 0
+          },
+          "note" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 0
+          },
+          "subject" : {
+            "type" : "string",
+            "maxLength" : 300,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "body", "subject" ]
       },
       "EmailTemplateListResponse" : {
         "type" : "object",
@@ -7377,6 +9067,40 @@
           "pledgeId" : {
             "type" : "string",
             "format" : "uuid"
+          },
+          "submittedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "Evidence" : {
+        "type" : "object",
+        "properties" : {
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "createdBy" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "mediaId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "providerEvidenceId" : {
+            "type" : "string"
           },
           "submittedAt" : {
             "type" : "string",
@@ -7506,6 +9230,50 @@
           },
           "nextCursor" : {
             "type" : "string"
+          }
+        }
+      },
+      "Flag" : {
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "enabledAccounts" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid"
+            }
+          },
+          "key" : {
+            "type" : "string"
+          },
+          "rolloutPercentage" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "updatedBy" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }
+      },
+      "FlagList" : {
+        "type" : "object",
+        "properties" : {
+          "flags" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Flag"
+            }
           }
         }
       },
@@ -7650,6 +9418,84 @@
           }
         }
       },
+      "Grant" : {
+        "type" : "object",
+        "properties" : {
+          "accountId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "grantedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "grantedBy" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string",
+            "enum" : [ "MODERATOR", "CURATOR", "FINANCE", "ADMINISTRATOR" ]
+          }
+        }
+      },
+      "GrantRequest" : {
+        "type" : "object",
+        "properties" : {
+          "note" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 0
+          }
+        }
+      },
+      "Health" : {
+        "type" : "object",
+        "properties" : {
+          "at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "jobs" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Job"
+            }
+          },
+          "monitored" : {
+            "type" : "boolean"
+          },
+          "providers" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Provider"
+            }
+          },
+          "queues" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Queue"
+            }
+          },
+          "status" : {
+            "type" : "string"
+          }
+        }
+      },
+      "History" : {
+        "type" : "object",
+        "properties" : {
+          "schedules" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Schedule"
+            }
+          }
+        }
+      },
       "Image" : {
         "type" : "object",
         "properties" : {
@@ -7686,6 +9532,28 @@
           }
         },
         "required" : [ "capabilities", "email" ]
+      },
+      "IssueRefundRequest" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "detail" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 0
+          },
+          "pledgeId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "reason" : {
+            "type" : "string",
+            "enum" : [ "BACKER_REQUEST", "CAMPAIGN_HALTED", "CAMPAIGN_FAILED", "FULFILMENT_FAILURE", "DUPLICATE_CHARGE", "PLATFORM_ERROR", "DISPUTE_CONCEDED", "FRAUD" ]
+          }
+        },
+        "required" : [ "detail", "pledgeId", "reason" ]
       },
       "Item" : {
         "type" : "object",
@@ -7785,6 +9653,39 @@
           "weightGrams" : {
             "type" : "integer",
             "format" : "int32"
+          }
+        }
+      },
+      "Job" : {
+        "type" : "object",
+        "properties" : {
+          "attempts" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "lastError" : {
+            "type" : "string"
+          },
+          "lastRunAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "nextAttemptAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "overdueBySeconds" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
           }
         }
       },
@@ -7963,6 +9864,62 @@
           },
           "slug" : {
             "type" : "string"
+          }
+        }
+      },
+      "Membership" : {
+        "type" : "object",
+        "properties" : {
+          "accountId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "bootstrapped" : {
+            "type" : "boolean"
+          },
+          "capabilities" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "MODERATE_CONTENT", "ADMINISTER_ACCOUNTS", "CURATE", "VIEW_FINANCE", "ISSUE_REFUND", "MANAGE_DISPUTES", "APPROVE_PAYOUT", "HANDLE_SUPPORT", "CONFIGURE_PLATFORM", "VIEW_AUDIT", "VIEW_HEALTH", "ADMINISTER_STAFF" ]
+            }
+          },
+          "roles" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "MODERATOR", "CURATOR", "FINANCE", "ADMINISTRATOR" ]
+            }
+          },
+          "staff" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "Message" : {
+        "type" : "object",
+        "properties" : {
+          "authorId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "authorSide" : {
+            "type" : "string",
+            "enum" : [ "REQUESTER", "STAFF" ]
+          },
+          "body" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "internal" : {
+            "type" : "boolean"
           }
         }
       },
@@ -8157,6 +10114,23 @@
           }
         }
       },
+      "Outcomes" : {
+        "type" : "object",
+        "properties" : {
+          "failed" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "succeeded" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "successRate" : {
+            "type" : "number",
+            "format" : "double"
+          }
+        }
+      },
       "OwnProfileResponse" : {
         "type" : "object",
         "properties" : {
@@ -8234,6 +10208,149 @@
           },
           "shippingCountry" : {
             "type" : "string"
+          }
+        }
+      },
+      "PayoutFile" : {
+        "type" : "object",
+        "properties" : {
+          "approvals" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Approval"
+            }
+          },
+          "payout" : {
+            "$ref" : "#/components/schemas/PayoutSummary"
+          },
+          "stillNeeded" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "PayoutPage" : {
+        "type" : "object",
+        "properties" : {
+          "hasMore" : {
+            "type" : "boolean"
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "payouts" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PayoutSummary"
+            }
+          }
+        }
+      },
+      "PayoutSummary" : {
+        "type" : "object",
+        "properties" : {
+          "approvalsRequired" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "calculatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "creatorId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "failureCode" : {
+            "type" : "string"
+          },
+          "failureMessage" : {
+            "type" : "string"
+          },
+          "feeScheduleId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "gross" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "net" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "payableAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "payableNow" : {
+            "type" : "boolean"
+          },
+          "payoutTransactionId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "platformFee" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "processingFee" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "refunded" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "sentAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "state" : {
+            "type" : "string",
+            "enum" : [ "CALCULATED", "PENDING_APPROVAL", "APPROVED", "PAID", "FAILED", "CANCELLED" ]
+          },
+          "taxWithheld" : {
+            "$ref" : "#/components/schemas/Money"
+          }
+        }
+      },
+      "PlatformAnalyticsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "computedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "daily" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DailyPoint"
+            }
+          },
+          "from" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "notBuilt" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "outcomes" : {
+            "$ref" : "#/components/schemas/Outcomes"
+          },
+          "to" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "totals" : {
+            "$ref" : "#/components/schemas/Totals"
           }
         }
       },
@@ -8885,6 +11002,29 @@
           }
         }
       },
+      "Provider" : {
+        "type" : "object",
+        "properties" : {
+          "available" : {
+            "type" : "boolean"
+          },
+          "configured" : {
+            "type" : "boolean"
+          },
+          "detail" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "provider" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        }
+      },
       "PublicBackerListResponse" : {
         "type" : "object",
         "properties" : {
@@ -9034,6 +11174,25 @@
         },
         "required" : [ "visibility" ]
       },
+      "Queue" : {
+        "type" : "object",
+        "properties" : {
+          "dead" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "waiting" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
       "QueuedReportResponse" : {
         "type" : "object",
         "properties" : {
@@ -9069,6 +11228,38 @@
             "$ref" : "#/components/schemas/Target"
           }
         }
+      },
+      "RaiseRequest" : {
+        "type" : "object",
+        "properties" : {
+          "body" : {
+            "type" : "string",
+            "maxLength" : 20000,
+            "minLength" : 0
+          },
+          "priority" : {
+            "type" : "string",
+            "enum" : [ "LOW", "NORMAL", "HIGH", "URGENT" ]
+          },
+          "requesterId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "subject" : {
+            "type" : "string",
+            "maxLength" : 200,
+            "minLength" : 0
+          },
+          "subjectRef" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "subjectType" : {
+            "type" : "string",
+            "enum" : [ "NONE", "PROJECT", "PLEDGE", "ACCOUNT" ]
+          }
+        },
+        "required" : [ "body", "requesterId", "subject" ]
       },
       "RecoveryCodesResponse" : {
         "type" : "object",
@@ -9124,6 +11315,84 @@
             "type" : "string",
             "maxLength" : 256,
             "minLength" : 0
+          }
+        }
+      },
+      "Refund" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "chargeTransactionId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "detail" : {
+            "type" : "string"
+          },
+          "failureCode" : {
+            "type" : "string"
+          },
+          "failureMessage" : {
+            "type" : "string"
+          },
+          "fullRefund" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "pledgeId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "reason" : {
+            "type" : "string",
+            "enum" : [ "BACKER_REQUEST", "CAMPAIGN_HALTED", "CAMPAIGN_FAILED", "FULFILMENT_FAILURE", "DUPLICATE_CHARGE", "PLATFORM_ERROR", "DISPUTE_CONCEDED", "FRAUD" ]
+          },
+          "refundTransactionId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "requestedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "requestedBy" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "settledAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "state" : {
+            "type" : "string",
+            "enum" : [ "REQUESTED", "SUCCEEDED", "FAILED" ]
+          }
+        }
+      },
+      "RefundPage" : {
+        "type" : "object",
+        "properties" : {
+          "hasMore" : {
+            "type" : "boolean"
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "refunds" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Refund"
+            }
           }
         }
       },
@@ -9239,6 +11508,58 @@
           }
         }
       },
+      "ReplaceRequest" : {
+        "type" : "object",
+        "properties" : {
+          "currency" : {
+            "type" : "string",
+            "minLength" : 1,
+            "pattern" : "^[A-Z]{3}$"
+          },
+          "note" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 0
+          },
+          "platformRate" : {
+            "type" : "number",
+            "maximum" : 1,
+            "minimum" : 0
+          },
+          "processingFixed" : {
+            "type" : "number",
+            "minimum" : 0
+          },
+          "processingRate" : {
+            "type" : "number",
+            "maximum" : 1,
+            "minimum" : 0
+          },
+          "scope" : {
+            "type" : "string",
+            "enum" : [ "PLATFORM", "CATEGORY", "PROJECT" ]
+          },
+          "scopeRef" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "currency", "note", "platformRate", "processingFixed", "processingRate", "scope" ]
+      },
+      "ReplyRequest" : {
+        "type" : "object",
+        "properties" : {
+          "body" : {
+            "type" : "string",
+            "maxLength" : 20000,
+            "minLength" : 0
+          },
+          "internal" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "body" ]
+      },
       "ReportQueueResponse" : {
         "type" : "object",
         "properties" : {
@@ -9338,6 +11659,16 @@
             "type" : "string"
           }
         }
+      },
+      "ResolveRequest" : {
+        "type" : "object",
+        "properties" : {
+          "outcome" : {
+            "type" : "string",
+            "enum" : [ "OPEN", "UNDER_REVIEW", "WON", "LOST", "CONCEDED" ]
+          }
+        },
+        "required" : [ "outcome" ]
       },
       "RespondRequest" : {
         "type" : "object",
@@ -9558,6 +11889,17 @@
           }
         }
       },
+      "Roster" : {
+        "type" : "object",
+        "properties" : {
+          "grants" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Grant"
+            }
+          }
+        }
+      },
       "RowFailureBody" : {
         "type" : "object",
         "properties" : {
@@ -9590,6 +11932,35 @@
         },
         "required" : [ "name" ]
       },
+      "SaveFlagRequest" : {
+        "type" : "object",
+        "properties" : {
+          "description" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 0
+          },
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "enabledAccounts" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid"
+            },
+            "maxItems" : 200,
+            "minItems" : 0
+          },
+          "rolloutPercentage" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 100,
+            "minimum" : 0
+          }
+        },
+        "required" : [ "description" ]
+      },
       "SaveStateResponse" : {
         "type" : "object",
         "properties" : {
@@ -9612,6 +11983,57 @@
           }
         }
       },
+      "Schedule" : {
+        "type" : "object",
+        "properties" : {
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "createdBy" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "currency" : {
+            "type" : "string"
+          },
+          "effectiveFrom" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "effectiveTo" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "open" : {
+            "type" : "boolean"
+          },
+          "platformRate" : {
+            "type" : "string"
+          },
+          "processingFixed" : {
+            "type" : "string"
+          },
+          "processingRate" : {
+            "type" : "string"
+          },
+          "scope" : {
+            "type" : "string",
+            "enum" : [ "PLATFORM", "CATEGORY", "PROJECT" ]
+          },
+          "scopeRef" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }
+      },
       "SendMessageRequest" : {
         "type" : "object",
         "properties" : {
@@ -9631,6 +12053,17 @@
           }
         },
         "required" : [ "body", "subject" ]
+      },
+      "SendRequest" : {
+        "type" : "object",
+        "properties" : {
+          "destinationReference" : {
+            "type" : "string",
+            "maxLength" : 200,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "destinationReference" ]
       },
       "SessionRecord" : {
         "type" : "object",
@@ -9953,6 +12386,38 @@
           }
         }
       },
+      "Subcategory" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "nameAz" : {
+            "type" : "string"
+          },
+          "nameEn" : {
+            "type" : "string"
+          },
+          "parentId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "sortOrder" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "translations" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
       "SubcategoryResponse" : {
         "type" : "object",
         "properties" : {
@@ -10180,6 +12645,36 @@
         },
         "required" : [ "reason" ]
       },
+      "Tag" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "usageCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "TagList" : {
+        "type" : "object",
+        "properties" : {
+          "tags" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Tag"
+            }
+          }
+        }
+      },
       "Target" : {
         "type" : "object",
         "properties" : {
@@ -10258,6 +12753,100 @@
           }
         }
       },
+      "Ticket" : {
+        "type" : "object",
+        "properties" : {
+          "assigneeId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "priority" : {
+            "type" : "string",
+            "enum" : [ "LOW", "NORMAL", "HIGH", "URGENT" ]
+          },
+          "requesterId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "resolvedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "state" : {
+            "type" : "string",
+            "enum" : [ "OPEN", "PENDING", "RESOLVED", "CLOSED" ]
+          },
+          "subject" : {
+            "type" : "string"
+          },
+          "subjectRef" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "subjectType" : {
+            "type" : "string",
+            "enum" : [ "NONE", "PROJECT", "PLEDGE", "ACCOUNT" ]
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "TicketContext" : {
+        "type" : "object",
+        "properties" : {
+          "file" : {
+            "$ref" : "#/components/schemas/TicketFile"
+          },
+          "history" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Ticket"
+            }
+          }
+        }
+      },
+      "TicketFile" : {
+        "type" : "object",
+        "properties" : {
+          "messages" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Message"
+            }
+          },
+          "ticket" : {
+            "$ref" : "#/components/schemas/Ticket"
+          }
+        }
+      },
+      "TicketPage" : {
+        "type" : "object",
+        "properties" : {
+          "hasMore" : {
+            "type" : "boolean"
+          },
+          "page" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "tickets" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Ticket"
+            }
+          }
+        }
+      },
       "TokenResponse" : {
         "type" : "object",
         "properties" : {
@@ -10273,6 +12862,33 @@
           },
           "tokenType" : {
             "type" : "string"
+          }
+        }
+      },
+      "Totals" : {
+        "type" : "object",
+        "properties" : {
+          "averagePledge" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "backerCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "liveProjects" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "otherCurrencyPledges" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "pledgeCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "volume" : {
+            "$ref" : "#/components/schemas/Money"
           }
         }
       },
@@ -10322,6 +12938,43 @@
           }
         }
       },
+      "Translation" : {
+        "type" : "object",
+        "properties" : {
+          "entryId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "locale" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TranslationRequest" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "maxLength" : 120,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "name" ]
+      },
+      "Tree" : {
+        "type" : "object",
+        "properties" : {
+          "branches" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Branch"
+            }
+          }
+        }
+      },
       "TwoFactorEnrolmentResponse" : {
         "type" : "object",
         "properties" : {
@@ -10355,6 +13008,26 @@
           }
         },
         "required" : [ "preferences" ]
+      },
+      "UpdateRequest" : {
+        "type" : "object",
+        "properties" : {
+          "assigneeId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "priority" : {
+            "type" : "string",
+            "enum" : [ "LOW", "NORMAL", "HIGH", "URGENT" ]
+          },
+          "state" : {
+            "type" : "string",
+            "enum" : [ "OPEN", "PENDING", "RESOLVED", "CLOSED" ]
+          },
+          "unassign" : {
+            "type" : "boolean"
+          }
+        }
       },
       "UpgradePledgeRequest" : {
         "type" : "object",
@@ -10432,6 +13105,51 @@
           }
         },
         "required" : [ "challenge" ]
+      },
+      "Version" : {
+        "type" : "object",
+        "properties" : {
+          "body" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "createdBy" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "live" : {
+            "type" : "boolean"
+          },
+          "locale" : {
+            "type" : "string"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "requiredPlaceholders" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "subject" : {
+            "type" : "string"
+          },
+          "templateKey" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
       },
       "View" : {
         "type" : "object",

@@ -2,8 +2,8 @@ package az.ideanest.discovery.application;
 
 import az.ideanest.discovery.domain.CurationAction;
 import az.ideanest.discovery.infrastructure.CollectionRepository;
-import az.ideanest.project.application.ModeratorDirectory;
-import az.ideanest.project.application.NotAModeratorException;
+import az.ideanest.shared.access.PlatformStaff;
+import az.ideanest.staff.application.NotAModeratorException;
 import az.ideanest.project.application.Taxonomy;
 import java.time.Clock;
 import java.util.LinkedHashSet;
@@ -24,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
  * else, and every method here is that action or a step towards it — adding a campaign
  * to a badge-granting list <em>is</em> applying a badge. There is still no role model
  * in the schema or in the access token (§10.2 says so, and epic #100 owns it), so the
- * check is {@link ModeratorDirectory}: the same configured list of addresses the
+ * check is {@link PlatformStaff}, which #295 turned from one configured list of addresses into
  * moderation endpoints use, empty by default, failing closed.
  *
  * <p><strong>Reused rather than reinvented.</strong> A second directory — a
@@ -68,10 +68,10 @@ public class CurationService {
     private static final String SLUG_SHAPE = "^[a-z0-9]+(-[a-z0-9]+)*$";
 
     private final CollectionRepository collections;
-    private final ModeratorDirectory moderators;
+    private final PlatformStaff moderators;
     private final Clock clock;
 
-    public CurationService(CollectionRepository collections, ModeratorDirectory moderators, Clock clock) {
+    public CurationService(CollectionRepository collections, PlatformStaff moderators, Clock clock) {
         this.collections = collections;
         this.moderators = moderators;
         this.clock = clock;
@@ -249,7 +249,7 @@ public class CurationService {
     // ---------------------------------------------------------------------------
 
     private void requireCurator(UUID accountId) {
-        if (!moderators.isModerator(accountId)) {
+        if (!moderators.isStaff(accountId)) {
             throw new NotAModeratorException(accountId);
         }
     }

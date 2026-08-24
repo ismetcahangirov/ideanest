@@ -213,16 +213,24 @@ ideanest:
       # less than a working day.
       stale-after: PT6H
 
+  staff:
+    # The first administrator, by verified address, comma separated. #295 moved
+    # staff identity from this list to `staff_role_grants` (V48); what is left
+    # here is the bootstrap, because granting a role needs ADMINISTER_STAFF and
+    # a freshly migrated database has nobody who holds it.
+    #
+    # It reads MODERATOR_EMAILS, the variable the old list used, so no
+    # deployment loses its staff on this release. Empty means nobody, and that
+    # is deliberate: a deployment that forgets this has a console nobody can
+    # open, which is a visible problem with a one-variable fix, where the
+    # opposite mistake has no symptom until somebody uses it.
+    #
+    # Once real roles are granted, empty this. An administrator who exists only
+    # in an environment variable is one nobody can withdraw through the console,
+    # and /admin/staff says so.
+    bootstrap-emails: ${MODERATOR_EMAILS:}
+
   project:
-    moderation:
-      # Who may approve, reject, or send a campaign back, by verified address,
-      # comma separated. Empty means nobody can, and that is deliberate: there is
-      # no role model until epic #100, and the alternative default -- any signed-in
-      # account -- is a creator approving their own campaign. A deployment that
-      # forgets this has a queue nobody can clear, which is a visible problem with
-      # a one-variable fix; the opposite mistake has no symptom until a campaign
-      # that should never have launched is live.
-      moderator-emails: ${MODERATOR_EMAILS:}
     collaborators:
       # Seven days. An invitation nobody has accepted in a week is a typo or
       # somebody who has left; a link that works forever is edit access to an

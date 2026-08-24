@@ -2,6 +2,7 @@ package az.ideanest.shared.jobs;
 
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -107,4 +108,31 @@ public interface JobRecordRepository extends JpaRepository<JobRecord, String> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT j FROM JobRecord j WHERE j.name = :name")
     Optional<JobRecord> findAndLock(@Param("name") String name);
+
+    /**
+     * Every registered job, for AD-16's screen — #316.
+     *
+     * <p>Ordered by name so the screen is stable between reloads: a dashboard whose rows
+     * move is one where somebody reads the wrong line.
+     *
+     * <p>Unpaged, and it will stay that way. A job is registered by a bean at start-up, so
+     * the row count is the number of scheduled jobs in the codebase.
+     */
+    @Query("SELECT j FROM JobRecord j ORDER BY j.name ASC")
+    List<JobRecord> allJobs();
+
+    /** How many jobs are in one state. {@code DEAD} is the number worth looking at. */
+    @Query("SELECT COUNT(j) FROM JobRecord j WHERE j.state = :state")
+    long countByState(@Param("state") JobState state);
+
+    /**
+     * How many jobs are due and have not run.
+     *
+     * <p>The queue depth for the scheduler, in the sense {@link
+     * az.ideanest.shared.observability.QueueDepthSource} means: work that is waiting. A
+     * job whose next attempt is in the future is not waiting, it is scheduled.
+     */
+    @Query("SELECT COUNT(j) FROM JobRecord j WHERE j.state = az.ideanest.shared.jobs.JobState.READY"
+            + " AND j.nextAttemptAt <= :now")
+    long countDue(@Param("now") Instant now);
 }

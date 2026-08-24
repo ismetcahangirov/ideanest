@@ -100,4 +100,59 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
             """)
     List<PaymentTransaction> newestOfPledgeBefore(
             @Param("pledgeId") UUID pledgeId, @Param("before") UUID before, Pageable limit);
+
+    /**
+     * The settled charge on a pledge, newest first — #67.
+     *
+     * <p>A refund is submitted against the original authorisation, so this is what finds
+     * the {@code providerTransactionId} to send. Newest first because §9.6 permits up to
+     * four collection attempts and only the successful one has an identifier worth
+     * reversing; earlier rows are declines.
+     *
+     * <p>{@code SUCCEEDED} only, and {@code PENDING} deliberately excluded: refunding a
+     * charge the provider has accepted but not settled is an instruction most providers
+     * refuse, and the ones that accept it produce a refund and a charge that race.
+     */
+    @Query(
+            """
+            SELECT t FROM PaymentTransaction t
+            WHERE t.pledgeId = :pledgeId
+              AND t.type = az.ideanest.payment.domain.TransactionType.CHARGE
+              AND t.status = az.ideanest.payment.domain.TransactionStatus.SUCCEEDED
+            ORDER BY t.createdAt DESC
+            """)
+    List<PaymentTransaction> settledChargesOf(@Param("pledgeId") UUID pledgeId);
+
+    /**
+     * How much was actually collected on a pledge — #67's overdraft check.
+     *
+     * <p>The sum of its settled charges. Read from this table rather than from
+     * {@code pledges.amount} because what may be refunded is what was taken, and those
+     * differ whenever a collection was partial or a supplement was added after the fact.
+     * It also keeps the payment module out of the pledge module's table.
+     */
+    @Query(
+            """
+            SELECT COALESCE(SUM(t.amount), 0) FROM PaymentTransaction t
+            WHERE t.pledgeId = :pledgeId
+              AND t.type = az.ideanest.payment.domain.TransactionType.CHARGE
+              AND t.status = az.ideanest.payment.domain.TransactionStatus.SUCCEEDED
+            """)
+    java.math.BigDecimal collectedOn(@Param("pledgeId") UUID pledgeId);
+
+    /**
+     * Every settled charge on a campaign — #69's payout calculation.
+     *
+     * <p>The gross a payout is computed from. Ordered so that a payout's own record of
+     * which rows it covered is reproducible.
+     */
+    @Query(
+            """
+            SELECT t FROM PaymentTransaction t
+            WHERE t.projectId = :projectId
+              AND t.type = az.ideanest.payment.domain.TransactionType.CHARGE
+              AND t.status = az.ideanest.payment.domain.TransactionStatus.SUCCEEDED
+            ORDER BY t.createdAt ASC
+            """)
+    List<PaymentTransaction> settledChargesOfProject(@Param("projectId") UUID projectId);
 }

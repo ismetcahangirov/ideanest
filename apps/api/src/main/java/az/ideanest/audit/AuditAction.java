@@ -329,7 +329,97 @@ public enum AuditAction {
      * these rows a regulatory record, and a regulatory record is one whose readers are
      * known as well as whose writers are.
      */
-    LEDGER_READ("ledger.read", "account");
+    LEDGER_READ("ledger.read", "account"),
+
+    /**
+     * §4.11's role model (#295): somebody was given an authority over the platform.
+     *
+     * <p><strong>The most privileged action there is</strong>, because it is the one that
+     * makes the others possible: granting {@code FINANCE} is granting every refund that
+     * role will ever issue. The entity is the account that received the role rather than
+     * the administrator who gave it, so that "what has been done to this account" answers
+     * with the grant — the administrator is the actor, which is the column that question
+     * is not asked of.
+     *
+     * <p>The detail carries the role and the note. A grant with no reason recorded is one
+     * nobody can review, and V48's {@code granted_by} answers who but never why.
+     */
+    STAFF_ROLE_GRANTED("staff.role_granted", "account"),
+
+    /**
+     * The withdrawal (#295).
+     *
+     * <p>Recorded even though the row is gone, which is the point: a deleted grant leaves
+     * no trace in {@code staff_role_grants}, so this table is the only place that can say
+     * somebody used to be able to approve payouts. Without it, the answer to "who removed
+     * her access, and when" is that nobody knows.
+     */
+    STAFF_ROLE_REVOKED("staff.role_revoked", "account"),
+
+    /**
+     * AD-11 (#311): the platform changed what it charges.
+     *
+     * <p>The entity is the schedule that was opened rather than the one that was closed:
+     * a replacement is one decision, and keying it on the new row makes "why does this
+     * schedule exist" answerable from the row itself.
+     */
+    FEE_SCHEDULE_CHANGED("fee.schedule_changed", "fee_schedule"),
+
+    /** AD-12 (#312): a feature flag was created, edited, or switched. */
+    FEATURE_FLAG_CHANGED("feature.flag_changed", "feature_flag"),
+
+    /**
+     * AD-08 (#309): a category, subcategory or tag was added, renamed or retired.
+     *
+     * <p>Privileged because §4.3 makes the taxonomy the thing every campaign is filed
+     * under: renaming a category rewrites what several thousand campaigns say they are.
+     */
+    TAXONOMY_CHANGED("taxonomy.changed", "taxonomy"),
+
+    /**
+     * AD-15 (#315): the copy of a platform email was rewritten.
+     *
+     * <p>The entity is the version, so the trail and {@code email_template_versions} agree
+     * about which edit is being talked about.
+     */
+    EMAIL_TEMPLATE_EDITED("email.template_edited", "email_template"),
+
+    /** AD-10 (#310): staff answered, assigned or closed a support ticket. */
+    SUPPORT_TICKET_HANDLED("support.ticket_handled", "support_ticket"),
+
+    /**
+     * AD-06 (#67, #307): money was sent back.
+     *
+     * <p>The entity is the refund rather than the pledge, unlike most of this enum: a
+     * pledge can be refunded more than once — partially — and three rows about one
+     * refund are only a history if they share an identifier.
+     */
+    REFUND_ISSUED("refund.issued", "refund"),
+
+    /** AD-07 (#68, #308): evidence was submitted, or an outcome recorded, on a dispute. */
+    DISPUTE_HANDLED("dispute.handled", "dispute"),
+
+    /**
+     * AD-05 (#69, #306): a payout was calculated from a campaign's collections.
+     *
+     * <p>Recorded although no money has moved. The calculation is the decision that fixes
+     * what a creator will be paid, and it is the figure an approver signs — so "who
+     * produced this number, and when" has to be answerable separately from "who approved
+     * it".
+     */
+    PAYOUT_CALCULATED("payout.calculated", "payout"),
+
+    /**
+     * One signature on a payout (#69, #306).
+     *
+     * <p>One row per approver, which is what makes dual approval visible in the trail as
+     * two entries by two accounts. A single row naming both would be one statement about
+     * two decisions taken at different times by different people.
+     */
+    PAYOUT_APPROVED("payout.approved", "payout"),
+
+    /** The money left (#69, #306). */
+    PAYOUT_SENT("payout.sent", "payout");
 
     private final String action;
     private final String entityType;

@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
  * addresses.</strong> Nothing in the schema, the access token, or
  * {@code SecurityConfiguration} distinguishes platform staff from anybody else, and
  * epic #100 owns that. Until it lands, {@code ideanest.project.moderation
- * .moderator-emails} is what these three endpoints check, through
+ * staff role model (#295) is what these three endpoints check, through
  * {@code ProjectAccess.requireModeratable} — one method, called by all three, rather
  * than an annotation somebody forgets on the fourth. The list is empty by default,
  * which means no account can moderate anything until a deployment says who can.

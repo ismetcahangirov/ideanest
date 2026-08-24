@@ -142,7 +142,7 @@ public class ReportQueueController {
      *
      * <p>Checked against the configured moderator list by the service before anything
      * happens, and recorded as the {@code MODERATOR} on the audit row. Read from the
-     * token's subject rather than from the request, for {@code ModeratorDirectory}'s
+     * token's subject rather than from the request, for {@code StaffDirectory}'s
      * reason: an actor who could name themselves would be writing the record as well
      * as taking the decision.
      */

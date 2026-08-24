@@ -9,7 +9,7 @@ import az.ideanest.moderation.domain.ReportState;
 import az.ideanest.moderation.domain.ReportTargetType;
 import az.ideanest.moderation.domain.TargetReportCount;
 import az.ideanest.moderation.infrastructure.ContentReportRepository;
-import az.ideanest.project.application.NotAModeratorException;
+import az.ideanest.staff.application.NotAModeratorException;
 import az.ideanest.shared.access.PlatformStaff;
 import java.util.HashMap;
 import java.util.List;
@@ -38,7 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
  * decide reports and not campaigns.
  *
  * <p>Asked through the contract in {@code shared.access} rather than by naming the
- * project module's {@code ModeratorDirectory} directly, which is what this module did
+ * staff module's {@code StaffDirectory} directly, which is what this module did
  * before #236. The dependency on that module's {@code application} layer was legal —
  * it is the boundary {@code ModuleBoundaryTests} allows — but it was on a class, and
  * epic #100 replaces the class. Depending on the question instead means #100 changes

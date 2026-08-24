@@ -220,6 +220,69 @@ public class PaymentTransaction {
     }
 
     /**
+     * A refund attempt, recorded from what the provider said — #67.
+     *
+     * <p>A {@code REFUND} row for a <strong>positive</strong> amount, never a
+     * {@code CHARGE} row for a negative one. V41 is explicit about this: direction is a
+     * property of what kind of call it was, and a signed amount would be a second and
+     * silently disagreeing answer to the question {@code type} already answers.
+     *
+     * <p>{@code attemptNumber} is fixed at one. §9.6's schedule counts collection
+     * attempts against a pledge, and a refund is not one of them — a refund that fails is
+     * retried by staff issuing another, which is a new decision and a new
+     * {@code refunds} row rather than the next attempt at an old one.
+     */
+    public static PaymentTransaction refund(
+            UUID pledgeId,
+            UUID projectId,
+            Money amount,
+            ProviderName provider,
+            RefundResult result,
+            String idempotencyKey) {
+        return new PaymentTransaction(
+                pledgeId,
+                projectId,
+                TransactionType.REFUND,
+                TransactionStatus.of(result.outcome()),
+                amount,
+                provider,
+                result.providerTransactionId(),
+                result.rawResponse(),
+                result.failureCode(),
+                result.failureMessage(),
+                1,
+                idempotencyKey);
+    }
+
+    /**
+     * A payout attempt, recorded from what the provider said — #69.
+     *
+     * <p><strong>The pledge is null and the campaign is not.</strong> V41 says so in the
+     * check that pairs them: everything except a payout names a pledge, and a payout is
+     * about a campaign and a creator rather than about any single one.
+     */
+    public static PaymentTransaction payout(
+            UUID projectId,
+            Money amount,
+            ProviderName provider,
+            PayoutResult result,
+            String idempotencyKey) {
+        return new PaymentTransaction(
+                null,
+                projectId,
+                TransactionType.PAYOUT,
+                TransactionStatus.of(result.outcome()),
+                amount,
+                provider,
+                result.providerTransactionId(),
+                result.rawResponse(),
+                result.failureCode(),
+                result.failureMessage(),
+                1,
+                idempotencyKey);
+    }
+
+    /**
      * The failure code on a row the provider never answered.
      *
      * <p>A code of the platform's own, and it has to be: V41 requires a

@@ -1,7 +1,7 @@
 package az.ideanest.notification.api;
 
 import az.ideanest.notification.application.TemplateNotEmailedException;
-import az.ideanest.project.application.NotAModeratorException;
+import az.ideanest.staff.application.NotAModeratorException;
 import jakarta.mail.MessagingException;
 import java.net.URI;
 import java.util.Map;

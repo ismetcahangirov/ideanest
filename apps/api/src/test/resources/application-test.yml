@@ -71,14 +71,16 @@ ideanest:
       # shortened window here would assert a different one.
       re-rollup-window: PT72H
 
-  project:
-    moderation:
-      # One address, so the fail-closed default is exercised by every other
-      # account in the suite: any account that is not this one is refused, which
-      # is the assertion that matters. The moderator fixture registers exactly
-      # this address.
-      moderator-emails: moderator@ideanest.test
+  staff:
+    # One address, so the fail-closed default is exercised by every other
+    # account in the suite: any account that is not this one is refused, which
+    # is the assertion that matters. The moderator fixture registers exactly
+    # this address, and holds ADMINISTRATOR through the bootstrap -- so the
+    # suites written before #295 keep passing unchanged, and the ones that
+    # assert a narrower capability grant a role explicitly.
+    bootstrap-emails: moderator@ideanest.test
 
+  project:
     story:
       # The production value. The window itself is what the tests are checking, so
       # shortening it here would mean asserting a rule against a configuration
