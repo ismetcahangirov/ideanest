@@ -1,6 +1,6 @@
 plugins {
     java
-    id("org.springframework.boot") version "4.1.0"
+    id("org.springframework.boot") version "4.1.1"
     id("io.spring.dependency-management") version "1.1.7"
 }
 
@@ -131,7 +131,7 @@ dependencies {
     // in-process on a free port and hands back the received MIME, so the
     // subject, the two body parts and the Message-ID are asserted as they went
     // over the wire.
-    testImplementation("com.icegreen:greenmail-junit5:2.1.9")
+    testImplementation("com.icegreen:greenmail-junit5:2.1.12")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
