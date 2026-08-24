@@ -14,6 +14,12 @@ import java.util.UUID;
  * number. On this surface that rule is not a formality: a payment log is read next to a
  * provider's own statement, and a figure that has been through an IEEE 754 double is a
  * figure that will eventually disagree with it by a qapik nobody can account for.
+ *
+ * <p><strong>The type, the status and the provider arrive here as strings.</strong> They are
+ * closed sets, and they are the payment module's own — §9.4 says a provider change must be a
+ * single-file change, which it cannot be if this file names a {@code ProviderName}. This
+ * class passes them through rather than converting them, because the conversion happened in
+ * {@link LoggedTransaction}, inside the module that owns the vocabulary.
  */
 final class PaymentLogResponses {
 
@@ -33,10 +39,10 @@ final class PaymentLogResponses {
                 row.id(),
                 row.pledgeId(),
                 row.projectId(),
-                row.type().name(),
-                row.status().name(),
+                row.type(),
+                row.status(),
                 row.amount(),
-                row.provider().name(),
+                row.provider(),
                 row.providerTransactionId(),
                 row.failureCode(),
                 row.failureMessage(),
