@@ -3,6 +3,8 @@ import { Link } from '../../../../i18n/navigation';
 import { StaticPage } from '../../../../components/content/StaticPage';
 import { localeOrDefault } from '../../../../lib/i18n/locale';
 import { publicPageMetadata } from '../../../../lib/seo/metadata';
+import { getTranslations } from 'next-intl/server';
+import type { ReactNode } from 'react';
 
 export async function generateMetadata({
   params,
@@ -10,6 +12,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations('static.trustSafety');
 
   /*
    * A function rather than a `const` since #123: the canonical and the `hreflang` cluster
@@ -17,10 +20,9 @@ export async function generateMetadata({
    * `searchParams` that would not.
    */
   return publicPageMetadata({
-  title: 'Trust and safety',
-  description:
-    'What IdeaNest checks before a campaign goes live, how to report one, and what happens to your money and your data.',
-  path: '/trust-safety',
+    title: t('metaTitle'),
+    description: t('metaDescription'),
+    path: '/trust-safety',
     locale: localeOrDefault(locale),
   });
 }
@@ -40,103 +42,54 @@ export async function generateMetadata({
  * blocked on a legal deliverable that §22 owns. Nothing here is written as though it were a
  * contract, and nothing links to a document that does not exist.
  */
-export default function TrustSafetyPage() {
+/** See `about/page.tsx` — the same two shapes, named for the same reason. */
+const INLINE_LINK = 'text-white underline underline-offset-4';
+const BOLD = (chunks: ReactNode) => <strong className="font-medium text-white">{chunks}</strong>;
+
+export default async function TrustSafetyPage() {
+  const t = await getTranslations('static.trustSafety');
+
+  const link = (href: string) => (chunks: ReactNode) => (
+    <Link href={href} className={INLINE_LINK}>
+      {chunks}
+    </Link>
+  );
+
   return (
-    <StaticPage
-      title="Trust and safety"
-      summary="What is checked, what is not, and what to do when something looks wrong."
-    >
-      <h2>Every campaign is read before it goes live</h2>
-      <p>
-        A campaign cannot publish itself. It is submitted, a person reviews it against the rules
-        below, and it is approved, sent back for changes, or rejected with a reason. Nothing on
-        the platform reaches the public without passing through that.
-      </p>
-      <p>
-        Review is not verification. A reviewer checks that a campaign is what it says it is, is
-        allowed to be funded, and is not somebody else’s work. They are not in a position to
-        confirm that a creator can manufacture what they have drawn — which is why a pledge is
-        described everywhere on this platform as funding an attempt.
-      </p>
+    <StaticPage title={t('title')} summary={t('summary')}>
+      <h2>{t('review.heading')}</h2>
+      <p>{t('review.first')}</p>
+      <p>{t('review.second')}</p>
 
-      <h2>What is not allowed</h2>
+      <h2>{t('notAllowed.heading')}</h2>
       <ul>
-        <li>Prohibited items — things the platform does not allow to be funded at all.</li>
-        <li>Misrepresentation — a campaign that states something untrue about itself.</li>
-        <li>Work that is not the creator’s own, or that uses somebody else’s intellectual property.</li>
-        <li>Offensive material, and content that targets people for who they are.</li>
-        <li>Spam, and campaigns that exist to advertise something else.</li>
-        <li>Fraud — where there is reason to believe nobody intends to deliver.</li>
+        <li>{t('notAllowed.prohibited')}</li>
+        <li>{t('notAllowed.misrepresentation')}</li>
+        <li>{t('notAllowed.notOwn')}</li>
+        <li>{t('notAllowed.offensive')}</li>
+        <li>{t('notAllowed.spam')}</li>
+        <li>{t('notAllowed.fraud')}</li>
       </ul>
 
-      <h2>Reporting something</h2>
-      <p>
-        A campaign, a comment or an account can be reported by anybody with an IdeaNest account.
-        A report goes to a moderator, not to an automatic filter: nothing disappears because
-        five people objected to it, and a report is a request for a person to look.
-      </p>
-      <p>
-        Reporting the same thing twice does not add weight — the second report returns the first
-        one. Reports are not public, and the account being reported is not told who reported it.
-      </p>
+      <h2>{t('reporting.heading')}</h2>
+      <p>{t('reporting.first')}</p>
+      <p>{t('reporting.second')}</p>
 
-      <h2>Your money</h2>
-      <p>
-        Card details never reach IdeaNest’s own servers; payments go through the provider’s
-        hosted fields. While a campaign is running your pledge is an authorisation rather than a
-        charge, and a campaign that misses its goal takes nothing at all.
-      </p>
-      <p>
-        Every payment operation is idempotent, which is the unglamorous property that matters
-        most: a request that is retried because a connection dropped produces one pledge and one
-        charge, not two.
-      </p>
+      <h2>{t('money.heading')}</h2>
+      <p>{t('money.first')}</p>
+      <p>{t('money.second')}</p>
 
-      <h2>Your account and your data</h2>
+      <h2>{t('account.heading')}</h2>
       <ul>
-        <li>
-          <strong className="font-medium text-white">Two-factor authentication</strong> is
-          available on every account and required before a payout. Set it up under{' '}
-          <Link href="/settings/security" className="text-white underline underline-offset-4">
-            two-factor authentication
-          </Link>
-          .
-        </li>
-        <li>
-          <strong className="font-medium text-white">Every signed-in device</strong> is listed
-          under{' '}
-          <Link href="/settings/sessions" className="text-white underline underline-offset-4">
-            devices
-          </Link>
-          , and any of them can be signed out from any other.
-        </li>
-        <li>
-          <strong className="font-medium text-white">Shipping addresses</strong> are encrypted at
-          rest and are visible to a creator only for the campaign you backed.
-        </li>
-        <li>
-          <strong className="font-medium text-white">A copy of your data</strong> is a download,
-          and closing your account keeps it for thirty days before anonymising it — so a closure
-          made in anger, or by somebody else, can be undone. Both are under{' '}
-          <Link href="/settings/privacy" className="text-white underline underline-offset-4">
-            data and closure
-          </Link>
-          .
-        </li>
+        <li>{t.rich('account.twoFactor', { b: BOLD, security: link('/settings/security') })}</li>
+        <li>{t.rich('account.devices', { b: BOLD, sessions: link('/settings/sessions') })}</li>
+        <li>{t.rich('account.addresses', { b: BOLD })}</li>
+        <li>{t.rich('account.data', { b: BOLD, privacy: link('/settings/privacy') })}</li>
       </ul>
 
-      <h2>What we cannot do</h2>
-      <p>
-        IdeaNest cannot make a campaign deliver. What it can do is keep the record honest: a
-        campaign’s updates, its comments and the way to report it are all on the campaign’s own
-        page, where somebody deciding whether to back it will see them.
-      </p>
-      <p>
-        A creator can moderate comments on their own campaign, and a removed one does not vanish
-        — the row stays, marked as removed. A comment thread that has been cleaned out therefore
-        still looks like one, which is the point: a page with nothing on it and a page with
-        twelve removals are different things, and a reader is entitled to tell them apart.
-      </p>
+      <h2>{t('limits.heading')}</h2>
+      <p>{t('limits.first')}</p>
+      <p>{t('limits.second')}</p>
     </StaticPage>
   );
 }

@@ -473,5 +473,105 @@
       "withdrawWarning": "Geri çekmek, yorumun kaldırıldığını belirten bir not bırakır. Ona verilen yanıtlar kalır ve yorum ne düzenlenebilir ne de geri getirilebilir.",
       "keep": "Kalsın"
     }
+  },
+  "static": {
+    "about": {
+      "metaTitle": "Hakkımızda",
+      "metaDescription": "IdeaNest nedir, «ya hep ya hiç» fonlama nasıl işler ve maliyeti nedir.",
+      "title": "IdeaNest hakkında",
+      "summary": "Henüz var olmayan şeyleri fonlamak için bir yer — koşullar herkes için aynı.",
+      "intro": "IdeaNest, ödül temelli bir kitlesel fonlama platformudur. Bir üretici hedefi ve son tarihi olan bir kampanya yayımlar; o şeyin var olmasını isteyenler destek verir; hedefe son tarihe kadar ulaşılırsa destekler tahsil edilir ve üretici o şeyi yapar. Ulaşılamazsa kimseden hiçbir ücret alınmaz.",
+      "allOrNothing": {
+        "heading": "Ya hep ya hiç — ve bu neden bir ayrıntı değil",
+        "first": "Kısmen fonlanmış bir kampanya, hiç fonlanmamış olandan kötüdür. Üreticinin elinde işi bitirmeye yetmeyen bir para, destekçilerin elinde ise kimsenin tutamayacağı bir söz kalır. Bu yüzden hedefine ulaşamayan bir kampanya hiçbir tutar toplamaz, üreticisine hiçbir komisyona mal olmaz ve hiçbir karta dokunmaz.",
+        "second": "Bunun sonucu olarak son tarih gerçekten bir şey ifade eder. Son gününde yüzde 90'da olan bir kampanya gerçekten risk altındadır ve platform bunu süsleyerek değil, olduğu gibi söyler."
+      },
+      "cost": {
+        "heading": "Maliyeti nedir",
+        "successful": "<b>Başarılı bir kampanya</b> topladığı tutarın yüzde 5'ini, ayrıca ödeme sağlayıcısının kendi komisyonunu öder — yaklaşık yüzde 2,5–3 ve destek başına küçük bir sabit tutar.",
+        "unsuccessful": "<b>Başarısız bir kampanya</b> hiçbir şey ödemez. Ne listeleme ücreti, ne platform komisyonu, ne de işleme ücreti.",
+        "note": "Oranlar kodda değil yapılandırmada tutulur; bu nedenle bir kategori ya da bireysel bir anlaşma farklı bir oran taşıyabilir. Yukarıdaki oran standart tarifedir."
+      },
+      "notAPurchase": {
+        "heading": "Destek bir satın alma değildir",
+        "body": "Bu, iki kez okunmaya en çok değen cümledir. Bir kampanyayı desteklemek, bir denemeyi fonlamaktır. Üretici hem bu denemeden hem de işlerin nasıl gittiğini destekçilere dürüstçe anlatmaktan sorumludur; o, ürünü depoda hazır bekleyen bir mağaza değildir. Her kampanya, incelemeye gönderilmeden önce kendi risklerini ve zorluklarını yayımlamak zorundadır; bu bölüm önerilen değil, zorunludur."
+      },
+      "next": {
+        "heading": "Sonraki adım",
+        "body": "<howItWorks>Nasıl çalışır</howItWorks>, destek olmayı ve kampanya yürütmeyi adım adım anlatır. <trustSafety>Güven ve güvenlik</trustSafety>, incelemeyi, bildirimi ve verilerinize ne olduğunu kapsar."
+      }
+    },
+    "howItWorks": {
+      "metaTitle": "Nasıl çalışır",
+      "metaDescription": "Bir kampanyaya destek olmak, kampanya yürütmek ve IdeaNest'te destekle kargo arasında neler olur.",
+      "title": "Nasıl çalışır",
+      "summary": "Bir kampanyayı bulmakla onun fonladığı şeyi elinize almak arasında neler olur.",
+      "backing": {
+        "heading": "Bir şeye destek oluyorsanız",
+        "first": "Bir ödül seviyesi seçin ya da ödülsüz destek olun. Kartınız provizyona alınır ve kampanya sürerken <b>hiçbir tutar tahsil edilmez</b> — son tarihe kadar desteğinizi değiştirebilir, başka bir seviyeye geçebilir, ek seçebilir ya da tamamen iptal edebilirsiniz.",
+        "second": "Son tarihte iki şeyden biri olur. Kampanya hedefine ulaştıysa onaylanan her destek tahsil edilir ve kampanya yerine getirme aşamasına geçer. Ulaşamadıysa hiçbir tutar tahsil edilmez, komisyon alınmaz ve saklanan kart tokenları otuz gün içinde silinir.",
+        "third": "Tahsilat sırasında kart başarısız olabilir — süresi dolmuş, bakiyesi yetersiz ya da banka reddetmiş olabilir. Destekten vazgeçilmeden önce yedi günlük bir süre boyunca yeniden denenir."
+      },
+      "surveys": {
+        "heading": "Sonra üretici size birkaç soru sorar",
+        "first": "Ödüllerin çoğu, kampanya sayfasının bilemeyeceği bir bilgiye ihtiyaç duyar: bir beden, bir renk, bir baskı ve nereye gönderileceği. Bu bir anket olarak gelir ve hesabınızdaki <surveys>anketler</surveys> bölümünde görünür. Teslimat adresiniz yanıtlarınızdan ayrı tutulur ve şifreli saklanır; ayrıca hesabınıza değil desteğinize aittir — böylece iki kampanya iki farklı yere gidebilir.",
+        "second": "Kargolar yola çıktıkça <deliveries>teslimatlar</deliveries> bölümü her biri için kargo firmasını ve takip numarasını gösterir."
+      },
+      "running": {
+        "heading": "Bir kampanya yürütüyorsanız",
+        "draft": "<b>Taslak oluşturun.</b> Bir başlık, bir özet, bir kategori, bir hedef, bir ile altmış gün arası bir süre ve bir kapak görseli. Hikâye en az 500, riskler bölümü en az 200 karakter olmalı — ikisi de zorunludur.",
+        "rewards": "<b>Ödüller ekleyin.</b> Yüze kadar seviye; her birinin fiyatı, içeriği ve nereye gönderildiği. Kampanya yayına girdikten sonra bir seviyenin fiyatı değiştirilemez ve destekçisi olan bir seviye silinemez — yalnızca gizlenebilir.",
+        "submit": "<b>İncelemeye gönderin.</b> Onu bir insan okur. Onaylar, değişiklik ister ya da gerekçesiyle reddeder.",
+        "launch": "<b>Yayına alın.</b> Bu andan itibaren hedef ve son tarih sabitlenir. Geri kalan her şey — hikâye, güncellemeler, ödül adetlerinin artırılması — düzenlenebilir kalır.",
+        "deliver": "<b>Teslim edin.</b> Anketi gönderin, adresleri toplayın, etiket basmaya başladığınızda onları kilitleyin ve kargolar çıktıkça takip numaralarını kaydedin."
+      },
+      "agreeing": {
+        "heading": "Destekçi olarak neyi kabul ediyorsunuz",
+        "first": "Bir destek, bitmiş bir ürünü satın almak değil bir denemeyi fonlamaktır. Üretici size işlerin nasıl gittiğine dair dürüst bir anlatım borçludur — kampanya güncellemeleri tam da bunun içindir — platform ise size bunu görme ve dürüst davranmayan bir kampanyayı bildirme araçlarını borçludur. Bunların hiçbiri, şeyin ulaşacağına dair bir garanti ile aynı şey değildir.",
+        "second": "<trustSafety>Güven ve güvenlik</trustSafety>, nelerin kontrol edildiğini ve bir şey yanlış göründüğünde ne yapılacağını anlatır."
+      }
+    },
+    "trustSafety": {
+      "metaTitle": "Güven ve güvenlik",
+      "metaDescription": "Kampanyalar nasıl incelenir, neye izin verilmez, bir şey nasıl bildirilir ve paranıza ve verilerinize ne olur.",
+      "title": "Güven ve güvenlik",
+      "summary": "Neyin kontrol edildiği, neyin edilmediği ve bir şey yanlış göründüğünde ne yapılacağı.",
+      "review": {
+        "heading": "Her kampanya yayına girmeden önce okunur",
+        "first": "Bir kampanya kendini yayımlayamaz. İncelemeye gönderilir, bir insan onu aşağıdaki kurallara göre değerlendirir ve kampanya onaylanır, değişiklik için geri gönderilir ya da gerekçesiyle reddedilir. Platformda hiçbir şey bundan geçmeden herkese açık hale gelmez.",
+        "second": "İnceleme, doğrulama değildir. İnceleyen kişi kampanyanın kendini anlattığı gibi olup olmadığını, fonlanmasına izin verilip verilmediğini ve başkasının işi olup olmadığını kontrol eder. Üreticinin çizdiği şeyi üretebileceğini teyit edecek konumda değildir — destek bu platformda her yerde bir denemeyi fonlamak olarak tanımlanır, işte bu yüzden."
+      },
+      "notAllowed": {
+        "heading": "Neye izin verilmez",
+        "prohibited": "Yasaklı şeyler — platformun fonlanmasına hiç izin vermediği şeyler.",
+        "misrepresentation": "Yanlış tanıtım — kendisi hakkında gerçek dışı bir şey söyleyen kampanya.",
+        "notOwn": "Üreticiye ait olmayan ya da başkasının fikri mülkiyetini kullanan işler.",
+        "offensive": "Rahatsız edici materyal ve insanları kim oldukları için hedef alan içerik.",
+        "spam": "Spam ve başka bir şeyin reklamını yapmak için açılmış kampanyalar.",
+        "fraud": "Dolandırıcılık — kimsenin teslim etmeye niyeti olmadığını düşünmek için sebep varsa."
+      },
+      "reporting": {
+        "heading": "Bir şeyi bildirmek",
+        "first": "IdeaNest hesabı olan herkes bir kampanyayı, bir yorumu ya da bir hesabı bildirebilir. Bildirim otomatik bir filtreye değil bir moderatöre gider: beş kişi itiraz etti diye hiçbir şey kaybolmaz ve bildirim, bir insanın bakması için yapılan bir taleptir.",
+        "second": "Aynı şeyi iki kez bildirmek ağırlık katmaz — ikinci bildirim birincisini geri döndürür. Bildirimler herkese açık değildir ve bildirilen hesaba kimin bildirdiği söylenmez."
+      },
+      "money": {
+        "heading": "Paranız",
+        "first": "Kart bilgileri hiçbir zaman IdeaNest'in kendi sunucularına ulaşmaz; ödemeler sağlayıcının kendi alanları üzerinden geçer. Kampanya sürerken desteğiniz bir tahsilat değil bir provizyondur ve hedefine ulaşamayan bir kampanya hiçbir tutar almaz.",
+        "second": "Her ödeme işlemi idempotenttir — bu, gösterişsiz ama en önemli özelliktir: bağlantı koptuğu için yinelenen bir istek iki değil bir destek ve bir tahsilat üretir."
+      },
+      "account": {
+        "heading": "Hesabınız ve verileriniz",
+        "twoFactor": "<b>İki aşamalı doğrulama</b> her hesapta kullanılabilir ve ödemeden önce zorunludur. <security>iki aşamalı doğrulama</security> bölümünden kurun.",
+        "devices": "<b>Oturum açmış her cihaz</b> <sessions>cihazlar</sessions> bölümünde listelenir ve herhangi biri bir diğerinden kapatılabilir.",
+        "addresses": "<b>Teslimat adresleri</b> şifreli saklanır ve bir üreticiye yalnızca desteklediğiniz kampanya için görünür.",
+        "data": "<b>Verilerinizin bir kopyası</b> indirilebilir; hesabınızı kapattığınızda ise veriler anonimleştirilmeden önce otuz gün saklanır — böylece öfkeyle ya da başkası tarafından yapılmış bir kapatma geri alınabilir. İkisi de <privacy>veriler ve hesap kapatma</privacy> bölümündedir."
+      },
+      "limits": {
+        "heading": "Yapamadıklarımız",
+        "first": "IdeaNest bir kampanyayı teslim etmeye zorlayamaz. Yapabileceği şey kaydı dürüst tutmaktır: bir kampanyanın güncellemeleri, yorumları ve onu bildirme yolu — hepsi kampanyanın kendi sayfasında, onu destekleyip desteklemeyeceğine karar veren kişinin göreceği yerde.",
+        "second": "Bir üretici kendi kampanyasındaki yorumları yönetebilir ve kaldırılan bir yorum yok olmaz — satır kalır, kaldırıldı olarak işaretlenir. Temizlenmiş bir yorum başlığı bu yüzden hâlâ temizlenmiş görünür; mesele de budur: üzerinde hiçbir şey olmayan bir sayfa ile on iki kaldırma bulunan bir sayfa farklı şeylerdir ve okuyucunun bunları ayırt etmeye hakkı vardır."
+      }
+    }
   }
 }
