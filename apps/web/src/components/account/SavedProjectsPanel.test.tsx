@@ -59,10 +59,7 @@ describe('SavedProjectsPanel', () => {
     listMock.mockResolvedValue({ items: [campaign('p1', 'A tabletop game')], nextCursor: null });
     render(<SavedProjectsPanel />);
 
-    expect(await screen.findByRole('link', { name: 'A tabletop game' })).toHaveAttribute(
-      'href',
-      '/projects/aysel/slug-p1',
-    );
+    expect(await screen.findByRole('link', { name: 'A tabletop game' })).toHaveAttribute('href', '/en/projects/aysel/slug-p1');
   });
 
   it('names every Remove button after the campaign it removes', async () => {
@@ -134,10 +131,7 @@ describe('SavedProjectsPanel', () => {
     render(<SavedProjectsPanel />);
 
     expect(await screen.findByText('Nothing saved yet')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Browse campaigns/u })).toHaveAttribute(
-      'href',
-      '/discover',
-    );
+    expect(screen.getByRole('link', { name: /Browse campaigns/u })).toHaveAttribute('href', '/en/discover');
   });
 
   it('renders nothing at all when there is no session, rather than an error', async () => {

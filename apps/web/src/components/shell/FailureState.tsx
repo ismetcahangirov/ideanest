@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 
 /**
  * What a not-found, an error and a maintenance page have in common — §4.13 WS-09, issue #263.

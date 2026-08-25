@@ -113,7 +113,7 @@ describe('InboxPanel', () => {
     const link = await screen.findByRole('link', {
       name: 'Xari Bulbul Ceramics reached its goal of 5,000.00 AZN',
     });
-    expect(link).toHaveAttribute('href', '/projects/aysel-studio/xari-bulbul-ceramics');
+    expect(link).toHaveAttribute('href', '/en/projects/aysel-studio/xari-bulbul-ceramics');
   });
 
   /*

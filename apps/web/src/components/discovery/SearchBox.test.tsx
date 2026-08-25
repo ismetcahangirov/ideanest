@@ -31,7 +31,15 @@ import { SearchBox } from './SearchBox';
  * that a burst of keystrokes produces one request, which holds on either clock.
  */
 
-vi.mock('next/navigation', () => ({
+vi.mock('next/navigation', async (importOriginal) => ({
+  /*
+   * Spread first so the real module's other exports survive. `i18n/navigation.ts`
+   * builds its wrappers at import time and reads `redirect` and `permanentRedirect`
+   * while doing so, and a factory that replaced the module wholesale left those
+   * undefined — which failed as a TypeError inside next-intl rather than anywhere
+   * near the test that caused it.
+   */
+  ...(await importOriginal<typeof import('next/navigation')>()),
   useRouter: () => ({
     push: (href: string) => navigated.push(href),
     replace: (href: string) => navigated.push(href),
@@ -291,7 +299,7 @@ describe('selecting a suggestion', () => {
     await user.click(screen.getByRole('option', { name: /Oyun gecəsi dəsti/ }));
 
     // The same address `ProjectCard` builds: /projects/{creator}/{project}.
-    expect(navigated).toEqual(['/projects/sound-lab/oyun-gecesi-desti']);
+    expect(navigated).toEqual(['/en/projects/sound-lab/oyun-gecesi-desti']);
     expect(applied).toHaveLength(0);
   });
 

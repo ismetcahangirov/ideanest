@@ -25,7 +25,7 @@ function environment(overrides: Partial<ReporterEnvironment> = {}) {
   const sent: Promise<string>[] = [];
   const deferred: (() => void)[] = [];
   const base: ReporterEnvironment = {
-    pathname: () => '/discover',
+    pathname: () => '/en/discover',
     connection: () => '4g',
     device: () => 'mobile',
     beacon: {
@@ -63,7 +63,7 @@ describe('createReporter', () => {
     expect(reporter.flush()).toBe('sendBeacon');
 
     const payload = await parsedFrom(sent);
-    expect(payload.route).toBe('/discover');
+    expect(payload.route).toBe('/[locale]/discover');
     expect(payload.sessionId).toBe(session.id);
     expect(payload.traceId).toBe(session.traceId);
     expect(payload.samples).toEqual([
@@ -109,19 +109,19 @@ describe('createReporter', () => {
 
   it('sends the route pattern and never the path it came from', async () => {
     const { environment: env, sent } = environment({
-      pathname: () => '/projects/019432f1-2c4a-7bb1-9f7e-0f21b7c9a4d2/back',
+      pathname: () => '/en/projects/019432f1-2c4a-7bb1-9f7e-0f21b7c9a4d2/back',
     });
     const reporter = createReporter(env);
 
     reporter.report({ name: 'LCP', value: 1822, navigationType: 'navigate' });
     reporter.flush();
 
-    expect((await parsedFrom(sent)).route).toBe('/projects/[id]/back');
+    expect((await parsedFrom(sent)).route).toBe('/[locale]/projects/[id]/back');
     expect(await sent[0]).not.toContain('019432f1');
   });
 
   it('reports an unknown path as the sentinel', async () => {
-    const { environment: env, sent } = environment({ pathname: () => '/discover?q=watches' });
+    const { environment: env, sent } = environment({ pathname: () => '/en/discover?q=watches' });
     const reporter = createReporter(env);
 
     reporter.report({ name: 'LCP', value: 1822, navigationType: 'navigate' });
@@ -136,19 +136,19 @@ describe('createReporter', () => {
    * still looks reasonable.
    */
   it('flushes when the route changes rather than mixing two pages', async () => {
-    let pathname = '/discover';
+    let pathname = '/en/discover';
     const { environment: env, sent } = environment({ pathname: () => pathname });
     const reporter = createReporter(env);
 
     reporter.report({ name: 'LCP', value: 1000, navigationType: 'navigate' });
-    pathname = '/settings/sessions';
+    pathname = '/en/settings/sessions';
     reporter.report({ name: 'CLS', value: 0.02, navigationType: 'navigate' });
 
     expect(sent).toHaveLength(1);
-    expect((await parsedFrom(sent, 0)).route).toBe('/discover');
+    expect((await parsedFrom(sent, 0)).route).toBe('/[locale]/discover');
 
     reporter.flush();
-    expect((await parsedFrom(sent, 1)).route).toBe('/settings/sessions');
+    expect((await parsedFrom(sent, 1)).route).toBe('/[locale]/settings/sessions');
   });
 
   /*
@@ -203,7 +203,7 @@ describe('browserEnvironment', () => {
   function fakeWindow(storage: Record<string, string> = {}): Window {
     const entries = new Map(Object.entries(storage));
     return {
-      location: { pathname: '/discover' },
+      location: { pathname: '/en/discover' },
       navigator: { sendBeacon: () => true },
       innerWidth: 400,
       fetch: () => Promise.resolve(new Response()),
@@ -221,7 +221,7 @@ describe('browserEnvironment', () => {
   it('builds an environment for a sampled session', () => {
     const built = browserEnvironment(fakeWindow(), '1');
     expect(built).not.toBeNull();
-    expect(built?.pathname()).toBe('/discover');
+    expect(built?.pathname()).toBe('/en/discover');
     expect(built?.device()).toBe('mobile');
     expect(built?.connection()).toBe('unknown');
   });

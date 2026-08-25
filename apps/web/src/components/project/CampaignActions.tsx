@@ -8,6 +8,7 @@ import { signInHref } from '../../lib/auth/redirect';
 import { forgetMe, remindMe, saveCampaign, type ProjectState } from '../../lib/projects/api';
 import { unsaveCampaign } from '../../lib/community/signals';
 import { useSession } from '../session/SessionProvider';
+import { localeHref, useLocale } from '../../i18n/navigation';
 
 /**
  * §4.4's save, share and reminder controls — issue #281, and §4.9's C-09, C-11 and C-13.
@@ -89,6 +90,13 @@ function messageFor(cause: unknown): string {
 
 export function CampaignActions({ projectId, state, title, path }: CampaignActionsProps) {
   const { status } = useSession();
+  /*
+   * The sign-in below is a full-document anchor rather than a `Link`, deliberately — signing
+   * in is a boundary the client cache should not carry state across — and the language still
+   * has to survive it. Without this a reader signing in from a Russian page lands wherever
+   * their cookie last pointed. `i18n/navigation.tsx` carries the argument.
+   */
+  const locale = useLocale();
 
   const [save, setSave] = useState<SaveState>('idle');
   const [remind, setRemind] = useState<RemindState>('idle');
@@ -183,7 +191,7 @@ export function CampaignActions({ projectId, state, title, path }: CampaignActio
           401, which `messageFor` turns into "Sign in first."
         */}
         {signedOut ? (
-          <a href={signInHref(path)} className="rounded-full">
+          <a href={localeHref(signInHref(path), locale)} className="rounded-full">
             <Pill
               variant="ghost"
               size="sm"
@@ -237,7 +245,10 @@ export function CampaignActions({ projectId, state, title, path }: CampaignActio
 
         {state === 'PRELAUNCH' &&
           (signedOut ? (
-            <a href={`/projects/${encodeURIComponent(projectId)}/prelaunch`} className="rounded-full">
+            <a
+              href={localeHref(`/projects/${encodeURIComponent(projectId)}/prelaunch`, locale)}
+              className="rounded-full"
+            >
               <Pill variant="ghost" size="sm" iconLeft={<Bell aria-hidden="true" className="size-4" />}>
                 Remind me
               </Pill>

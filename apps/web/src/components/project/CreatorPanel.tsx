@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import { ArrowUpRight } from 'lucide-react';
 import { formatDay, SERVER_TIME_ZONE } from '../../lib/projects/deadline';
 import { canOptimise } from '../../lib/images/source';

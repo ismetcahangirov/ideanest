@@ -24,7 +24,15 @@ import { RegisterForm } from './RegisterForm';
 
 let search = '';
 
-vi.mock('next/navigation', () => ({
+vi.mock('next/navigation', async (importOriginal) => ({
+  /*
+   * Spread first so the real module's other exports survive. `i18n/navigation.ts`
+   * builds its wrappers at import time and reads `redirect` and `permanentRedirect`
+   * while doing so, and a factory that replaced the module wholesale left those
+   * undefined — which failed as a TypeError inside next-intl rather than anywhere
+   * near the test that caused it.
+   */
+  ...(await importOriginal<typeof import('next/navigation')>()),
   useSearchParams: () => new URLSearchParams(search),
   // `SessionProvider` reads it for the private-route guard; nothing on this screen is private.
   usePathname: () => '/register',
@@ -174,10 +182,7 @@ describe('the links', () => {
     search = 'next=%2Fsettings';
     renderForm();
 
-    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
-      'href',
-      '/sign-in?next=%2Fsettings',
-    );
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/en/sign-in?next=%2Fsettings');
   });
 
   it('offers no consent to a document that has not been written', () => {

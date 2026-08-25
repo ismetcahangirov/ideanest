@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import { MessageSquareOff } from 'lucide-react';
 import { Tag } from '@ideanest/ui/server';
 import { formatInstant, SERVER_TIME_ZONE } from '../../lib/projects/deadline';

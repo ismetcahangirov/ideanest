@@ -1,7 +1,7 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { Link } from '../../i18n/navigation';
+import { usePathname } from '../../i18n/navigation';
 import { Bell } from 'lucide-react';
 import { TopBar, cn } from '@ideanest/ui';
 import { useSession } from '../session/SessionProvider';

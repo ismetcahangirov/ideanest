@@ -28,6 +28,7 @@ import {
 } from '../../lib/moderation/report';
 import { signInHref } from '../../lib/auth/redirect';
 import { useSession } from '../session/SessionProvider';
+import { localeHref, useLocale } from '../../i18n/navigation';
 
 /**
  * §4.9's C-06 and C-07 — telling the platform that something is wrong. Issue #286.
@@ -84,6 +85,13 @@ export function ReportControl({
   appearance = 'link',
 }: ReportControlProps) {
   const { status } = useSession();
+  /*
+   * The sign-in below is a full-document anchor rather than a `Link`, deliberately — signing
+   * in is a boundary the client cache should not carry state across — and the language still
+   * has to survive it. Without this a reader signing in from a Russian page lands wherever
+   * their cookie last pointed. `i18n/navigation.tsx` carries the argument.
+   */
+  const locale = useLocale();
   const panel = useRef<HTMLDivElement>(null);
 
   const [open, setOpen] = useState(false);
@@ -192,7 +200,7 @@ export function ReportControl({
                   five copies of the same one, and how a moderator can come back to you.
                 </p>
                 <div className="flex flex-wrap gap-3">
-                  <a href={signInHref(returnTo)}>
+                  <a href={localeHref(signInHref(returnTo), locale)}>
                     <Pill type="button">Sign in</Pill>
                   </a>
                   <Pill type="button" variant="ghost" onClick={close}>

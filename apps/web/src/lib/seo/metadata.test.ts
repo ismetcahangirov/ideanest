@@ -142,7 +142,7 @@ describe('canonicalUrl', () => {
 
 /** The template the root layout stashes for its children to be composed with. */
 function rootTitleTemplate(): string {
-  const title = rootMetadata(env).title;
+  const title = rootMetadata('en', env).title;
   if (title === null || title === undefined || typeof title === 'string' || !('template' in title)) {
     throw new Error('The root layout must export a title template.');
   }
@@ -154,6 +154,7 @@ describe('the title template', () => {
     title: 'Discover',
     description: 'Browse and filter every campaign on IdeaNest.',
     path: '/discover',
+    locale: 'en',
     env,
   });
 
@@ -162,7 +163,7 @@ describe('the title template', () => {
   });
 
   it('leaves the site name alone as the default title', () => {
-    expect(resolveTitle(rootMetadata(env).title, null).absolute).toBe(SITE_NAME);
+    expect(resolveTitle(rootMetadata('en', env).title, null).absolute).toBe(SITE_NAME);
   });
 
   it('does not put the site name in the page title itself, so it is never doubled', () => {
@@ -183,11 +184,13 @@ describe('publicPageMetadata', () => {
     title: 'Discover',
     description: 'Browse and filter every campaign on IdeaNest.',
     path: '/discover?utm_source=x',
+    locale: 'en',
     env,
   });
 
   it('carries an absolute canonical with the noise stripped', () => {
-    expect(page.alternates?.canonical).toBe('https://ideanest.az/discover');
+    /* The canonical is this page in THIS language since #123, never the un-prefixed path. */
+    expect(page.alternates?.canonical).toBe('https://ideanest.az/en/discover');
   });
 
   it('describes itself completely to Open Graph', () => {
@@ -195,7 +198,7 @@ describe('publicPageMetadata', () => {
       type: 'website',
       siteName: SITE_NAME,
       locale: SITE_OG_LOCALE,
-      url: 'https://ideanest.az/discover',
+      url: 'https://ideanest.az/en/discover',
       title: 'Discover',
       description: 'Browse and filter every campaign on IdeaNest.',
     });
@@ -230,6 +233,7 @@ describe('publicPageMetadata', () => {
       title: 'Kilim',
       description: 'A rug.',
       path: '/projects/1/prelaunch',
+      locale: 'en',
       image: { url: 'https://cdn.example/cover.jpg', width: 1600, height: 900, alt: 'The cover' },
       env,
     });
@@ -244,6 +248,7 @@ describe('publicPageMetadata', () => {
       title: 'Kilim',
       description: 'word '.repeat(80),
       path: '/x',
+      locale: 'en',
       env,
     });
 
@@ -414,7 +419,7 @@ describe('projectPageMetadata', () => {
   const path = '/projects/0193f2a1/prelaunch';
 
   it('leaks nothing about a campaign it could not confirm is public', () => {
-    const page = projectPageMetadata(null, path, env);
+    const page = projectPageMetadata(null, path, 'en', env);
 
     expect(page.robots).toEqual({ index: false, follow: false });
     expect(page.openGraph).toBeNull();
@@ -439,6 +444,7 @@ describe('projectPageMetadata', () => {
         coverImage: { url: 'https://cdn.example/draft.jpg', width: 1600, height: 900 },
       },
       path,
+      'en',
       env,
     );
     const printed = JSON.stringify(page);
@@ -461,17 +467,18 @@ describe('projectPageMetadata', () => {
         coverImage: null,
       },
       path,
+      'en',
       env,
     );
 
     expect(page.title).toBe('Quba kilims');
     expect(page.description).toBe('Handwoven rugs, dyed with plants.');
-    expect(page.alternates?.canonical).toBe(`https://ideanest.az${path}`);
+    expect(page.alternates?.canonical).toBe(`https://ideanest.az/en${path}`);
     expect(page.openGraph).toMatchObject({
       type: 'website',
       siteName: SITE_NAME,
       locale: SITE_OG_LOCALE,
-      url: `https://ideanest.az${path}`,
+      url: `https://ideanest.az/en${path}`,
       title: 'Quba kilims',
       description: 'Handwoven rugs, dyed with plants.',
     });
@@ -494,6 +501,7 @@ describe('projectPageMetadata', () => {
         coverImage: null,
       },
       path,
+      'en',
       env,
     );
 
@@ -511,6 +519,7 @@ describe('projectPageMetadata', () => {
         coverImage: { url: 'https://cdn.example/quba.jpg', width: 1600, height: 900 },
       },
       path,
+      'en',
       env,
     );
 
@@ -530,6 +539,7 @@ describe('projectPageMetadata', () => {
         coverImage: { url: 'javascript:alert(1)', width: 1600, height: 900 },
       },
       path,
+      'en',
       env,
     );
 

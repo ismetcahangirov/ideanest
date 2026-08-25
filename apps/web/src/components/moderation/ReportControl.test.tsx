@@ -30,7 +30,15 @@ vi.mock('../../lib/moderation/report', async (importOriginal) => ({
 }));
 vi.mock('../../lib/session/session', () => ({ fetchSession: vi.fn() }));
 vi.mock('../../lib/api/access-token', () => ({ signOut: vi.fn().mockResolvedValue(undefined) }));
-vi.mock('next/navigation', () => ({
+vi.mock('next/navigation', async (importOriginal) => ({
+  /*
+   * Spread first so the real module's other exports survive. `i18n/navigation.ts`
+   * builds its wrappers at import time and reads `redirect` and `permanentRedirect`
+   * while doing so, and a factory that replaced the module wholesale left those
+   * undefined — which failed as a TypeError inside next-intl rather than anywhere
+   * near the test that caused it.
+   */
+  ...(await importOriginal<typeof import('next/navigation')>()),
   usePathname: () => '/projects/aysel/a-game',
   useRouter: () => ({
     push: () => {},
@@ -158,10 +166,7 @@ describe('a visitor with no session', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Report this campaign' }));
 
-    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
-      'href',
-      '/sign-in?next=%2Fprojects%2Faysel%2Fa-game',
-    );
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/en/sign-in?next=%2Fprojects%2Faysel%2Fa-game');
     expect(screen.queryByRole('button', { name: 'Send report' })).not.toBeInTheDocument();
   });
 });

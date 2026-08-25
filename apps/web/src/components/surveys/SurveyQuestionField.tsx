@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import { Checkbox, Field, Radio, RadioGroup, TextInput, Textarea } from '@ideanest/ui';
 import type { SurveyQuestion } from '../../lib/surveys/api';
 

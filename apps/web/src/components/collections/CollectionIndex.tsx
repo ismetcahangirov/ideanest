@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import { EmptyState } from '@ideanest/ui/server';
 import type { Collection } from '../../lib/collections/api';
 import { CollectionCard } from './CollectionCard';

@@ -51,7 +51,15 @@ vi.mock('../../lib/community/signals', async (importOriginal) => ({
 }));
 vi.mock('../../lib/session/session', () => ({ fetchSession: vi.fn() }));
 vi.mock('../../lib/api/access-token', () => ({ signOut: vi.fn().mockResolvedValue(undefined) }));
-vi.mock('next/navigation', () => ({
+vi.mock('next/navigation', async (importOriginal) => ({
+  /*
+   * Spread first so the real module's other exports survive. `i18n/navigation.ts`
+   * builds its wrappers at import time and reads `redirect` and `permanentRedirect`
+   * while doing so, and a factory that replaced the module wholesale left those
+   * undefined — which failed as a TypeError inside next-intl rather than anywhere
+   * near the test that caused it.
+   */
+  ...(await importOriginal<typeof import('next/navigation')>()),
   usePathname: () => '/projects/ayan/coffee-table-book',
   useRouter: () => ({
     push: () => {},
@@ -233,10 +241,10 @@ describe('the tab list', () => {
   it('makes every tab a real address, with the default tab on the bare path', () => {
     render(<CampaignTabs active="campaign" path={PATH} />);
 
-    expect(screen.getByRole('link', { name: 'Campaign' })).toHaveAttribute('href', PATH);
+    expect(screen.getByRole('link', { name: 'Campaign' })).toHaveAttribute('href', `/en${PATH}`);
     expect(screen.getByRole('link', { name: 'Comments' })).toHaveAttribute(
       'href',
-      `${PATH}?tab=comments`,
+      `/en${PATH}?tab=comments`,
     );
   });
 
@@ -266,7 +274,7 @@ describe('the save, share and reminder controls', () => {
     renderActions();
 
     const link = await screen.findByRole('link', { name: 'Save' });
-    expect(link).toHaveAttribute('href', `/sign-in?next=${encodeURIComponent(PATH)}`);
+    expect(link).toHaveAttribute('href', `/en/sign-in?next=${encodeURIComponent(PATH)}`);
   });
 
   it('names the save control after the campaign it saves', async () => {

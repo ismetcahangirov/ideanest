@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import { EmptyState, InlineAlert, Pill } from '@ideanest/ui';
 import { ApiError } from '../../lib/api/problem';
 import { campaignCount, getCollectionCampaigns } from '../../lib/collections/api';

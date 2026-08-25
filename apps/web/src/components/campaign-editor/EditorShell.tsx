@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import type { ReactNode } from 'react';
 import { Tag, cn } from '@ideanest/ui';
 import type { ProjectState } from '../../lib/projects/api';

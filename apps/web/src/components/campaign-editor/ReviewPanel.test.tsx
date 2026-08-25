@@ -163,14 +163,11 @@ describe('ReviewPanel', () => {
     await renderPanel();
 
     const cover = screen.getByRole('link', { name: /Cover image/ });
-    expect(cover).toHaveAttribute('href', '/projects/project-1/edit/basics');
+    expect(cover).toHaveAttribute('href', '/en/projects/project-1/edit/basics');
 
     // Named by requirement as well as by section: four links called "Fix in
     // Basics" are four indistinguishable links in a screen reader's list.
-    expect(screen.getByRole('link', { name: 'Fix in Story: Risks and challenges' })).toHaveAttribute(
-      'href',
-      '/projects/project-1/edit/story',
-    );
+    expect(screen.getByRole('link', { name: 'Fix in Story: Risks and challenges' })).toHaveAttribute('href', '/en/projects/project-1/edit/story');
 
     // A satisfied requirement is not something to go and fix.
     expect(screen.queryByRole('link', { name: /Fix in Basics: Title/ })).not.toBeInTheDocument();

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import { InlineAlert, Pill, Skeleton, SkeletonGroup, Tag } from '@ideanest/ui';
 import { countryName } from '../checkout/DestinationField';
 import { PledgeSummary } from '../checkout/PledgeSummary';

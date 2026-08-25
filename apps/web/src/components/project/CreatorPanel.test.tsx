@@ -75,7 +75,7 @@ describe('the creator tab', () => {
   it('links the creator through to the profile route the profile epic owns', () => {
     render(<CreatorPanel campaign={campaign()} profile={PROFILE} projects={[]} />);
 
-    expect(screen.getByRole('link', { name: /Ayan Q/u })).toHaveAttribute('href', '/u/ayan');
+    expect(screen.getByRole('link', { name: /Ayan Q/u })).toHaveAttribute('href', '/en/u/ayan');
   });
 
   it('shows the biography and the joining date the profile published', () => {
@@ -113,10 +113,7 @@ describe('the creator tab', () => {
   it('lists the creator’s other campaigns, each with its state as a word', () => {
     render(<CreatorPanel campaign={campaign()} profile={PROFILE} projects={[OTHER]} />);
 
-    expect(screen.getByRole('link', { name: /A folding bicycle/u })).toHaveAttribute(
-      'href',
-      '/projects/ayan/a-folding-bicycle',
-    );
+    expect(screen.getByRole('link', { name: /A folding bicycle/u })).toHaveAttribute('href', '/en/projects/ayan/a-folding-bicycle');
     // Never a hue on its own (§9.2): "Did not fund" is exactly the fact a reader must not
     // have to infer from a colour, so every card states its outcome in text.
     expect(screen.getByText('Funded')).toBeInTheDocument();

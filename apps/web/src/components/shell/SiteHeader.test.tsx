@@ -22,7 +22,15 @@ import { SiteHeader } from './SiteHeader';
 
 let pathname = '/';
 
-vi.mock('next/navigation', () => ({
+vi.mock('next/navigation', async (importOriginal) => ({
+  /*
+   * Spread first so the real module's other exports survive. `i18n/navigation.ts`
+   * builds its wrappers at import time and reads `redirect` and `permanentRedirect`
+   * while doing so, and a factory that replaced the module wholesale left those
+   * undefined — which failed as a TypeError inside next-intl rather than anywhere
+   * near the test that caused it.
+   */
+  ...(await importOriginal<typeof import('next/navigation')>()),
   usePathname: () => pathname,
   useRouter: () => ({
     push: () => {},
@@ -79,7 +87,7 @@ describe('signed out', () => {
     renderHeader();
 
     await waitFor(() => expect(screen.getByRole('link', { name: 'Register' })).toBeInTheDocument());
-    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/sign-in');
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/en/sign-in');
   });
 
   /**
@@ -94,13 +102,13 @@ describe('signed out', () => {
 
     const onLime = container.querySelectorAll('[data-on-lime]');
     expect(onLime).toHaveLength(1);
-    expect(onLime[0]).toHaveAttribute('href', '/register');
+    expect(onLime[0]).toHaveAttribute('href', '/en/register');
   });
 
   it('is a link and not a button, so it can be opened in a new tab', async () => {
     renderHeader();
     await waitFor(() =>
-      expect(screen.getByRole('link', { name: 'Register' })).toHaveAttribute('href', '/register'),
+      expect(screen.getByRole('link', { name: 'Register' })).toHaveAttribute('href', '/en/register'),
     );
   });
 });
@@ -132,10 +140,7 @@ describe('signed in', () => {
     renderHeader();
 
     await waitFor(() =>
-      expect(screen.getByRole('link', { name: 'Notifications' })).toHaveAttribute(
-        'href',
-        '/notifications',
-      ),
+      expect(screen.getByRole('link', { name: 'Notifications' })).toHaveAttribute('href', '/en/notifications'),
     );
   });
 

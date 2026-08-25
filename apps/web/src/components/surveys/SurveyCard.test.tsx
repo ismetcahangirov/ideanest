@@ -120,10 +120,7 @@ describe('SurveyCard', () => {
       />,
     );
 
-    expect(screen.getByRole('link', { name: /Add or change your address/u })).toHaveAttribute(
-      'href',
-      '/pledges/pledge-9/address',
-    );
+    expect(screen.getByRole('link', { name: /Add or change your address/u })).toHaveAttribute('href', '/en/pledges/pledge-9/address');
 
     await user.click(screen.getByRole('button', { name: 'Save answers' }));
 

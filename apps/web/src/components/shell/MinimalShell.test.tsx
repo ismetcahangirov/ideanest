@@ -72,7 +72,7 @@ describe('the frame', () => {
 
   it('offers a way home from the wordmark', () => {
     renderShell();
-    expect(screen.getByRole('link', { name: 'IdeaNest' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'IdeaNest' })).toHaveAttribute('href', '/en');
   });
 
   it('renders no footer when it was given none', () => {
@@ -100,7 +100,7 @@ describe('a failure state', () => {
   it('is not a dead end', () => {
     renderShell();
 
-    expect(screen.getByRole('link', { name: 'Go to the home page' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'Go to the home page' })).toHaveAttribute('href', '/en');
     const elsewhere = screen.getByRole('navigation', { name: 'Elsewhere on IdeaNest' });
     expect(elsewhere).toBeInTheDocument();
   });

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import { CAMPAIGN_TABS, campaignTabHref, type CampaignTabId } from '../../lib/projects/tabs';
 
 /**

@@ -108,7 +108,7 @@ describe('serialise', () => {
       traceId: correlation.traceId,
       spanId: correlation.spanId,
       sessionId: '0f4b7a2c-1d3e-4f5a-8b9c-0d1e2f3a4b5c',
-      route: '/discover',
+      route: '/[locale]/discover',
       connection: '4g',
       device: 'mobile',
       samples: [{ name: 'LCP', value: 1822, navigationType: 'navigate' }],

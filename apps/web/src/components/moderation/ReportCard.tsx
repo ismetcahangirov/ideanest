@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import { Card, Pill, Tag } from '@ideanest/ui';
 import type { QueuedReport } from '../../lib/moderation/api';
 import {

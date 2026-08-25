@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import { CalendarClock, Sparkles, Tags } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { MediaFrame, Tag } from '@ideanest/ui/server';

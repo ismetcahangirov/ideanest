@@ -29,7 +29,15 @@ import { AccountNav, type AccountNavGroup } from './AccountNav';
  * in all four catalogues; the assertions below are about **output** — the text a person reads.
  */
 
-vi.mock('next/navigation', () => ({
+vi.mock('next/navigation', async (importOriginal) => ({
+  /*
+   * Spread first so the real module's other exports survive. `i18n/navigation.ts`
+   * builds its wrappers at import time and reads `redirect` and `permanentRedirect`
+   * while doing so, and a factory that replaced the module wholesale left those
+   * undefined — which failed as a TypeError inside next-intl rather than anywhere
+   * near the test that caused it.
+   */
+  ...(await importOriginal<typeof import('next/navigation')>()),
   usePathname: () => pathname,
 }));
 
@@ -109,20 +117,14 @@ describe('AccountNav', () => {
       .getAllByRole('link')
       .map((anchor) => anchor.getAttribute('href'));
 
-    expect(hrefs).toEqual(ACCOUNT_LINKS.map((link) => link.href));
+    expect(hrefs).toEqual(ACCOUNT_LINKS.map((link) => `/en${link.href}`));
   });
 
   it('takes its words from the catalogue, in English', () => {
     renderNav('en');
 
-    expect(screen.getByRole('link', { name: en.account.links.saved.label })).toHaveAttribute(
-      'href',
-      '/account/saved',
-    );
-    expect(screen.getByRole('link', { name: en.account.links.language.label })).toHaveAttribute(
-      'href',
-      '/settings/language',
-    );
+    expect(screen.getByRole('link', { name: en.account.links.saved.label })).toHaveAttribute('href', '/en/account/saved');
+    expect(screen.getByRole('link', { name: en.account.links.language.label })).toHaveAttribute('href', '/en/settings/language');
     expect(
       screen.getByRole('heading', { name: en.account.groups.yourAccount }),
     ).toBeInTheDocument();
@@ -137,10 +139,7 @@ describe('AccountNav', () => {
     expect(ru.account.links.saved.label).not.toBe(en.account.links.saved.label);
 
     const nav = screen.getByRole('navigation', { name: NAV_LABELS.ru });
-    expect(within(nav).getByRole('link', { name: ru.account.links.saved.label })).toHaveAttribute(
-      'href',
-      '/account/saved',
-    );
+    expect(within(nav).getByRole('link', { name: ru.account.links.saved.label })).toHaveAttribute('href', '/en/account/saved');
     expect(
       within(nav).getByRole('heading', { name: ru.account.groups.yourAccount }),
     ).toBeInTheDocument();
@@ -168,7 +167,7 @@ describe('AccountNav', () => {
           expect(
             within(nav).getByRole('link', { name: link.label }),
             `${locale} draws ${link.label}`,
-          ).toHaveAttribute('href', link.href);
+          ).toHaveAttribute('href', `/en${link.href}`);
         }
       }
 
@@ -182,7 +181,7 @@ describe('AccountNav', () => {
 
     const current = currentLinks();
     expect(current).toHaveLength(1);
-    expect(current[0]).toHaveAttribute('href', '/settings/security');
+    expect(current[0]).toHaveAttribute('href', '/en/settings/security');
   });
 
   it('marks nothing on a path that is not one of its entries', () => {

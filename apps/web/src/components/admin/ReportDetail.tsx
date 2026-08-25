@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import { EmptyState, InlineAlert, Pill, Skeleton, SkeletonGroup, Tag } from '@ideanest/ui';
 import { ApiError } from '../../lib/api/problem';
 import { actionLabel, readTrail, type AuditEntry } from '../../lib/admin/audit';

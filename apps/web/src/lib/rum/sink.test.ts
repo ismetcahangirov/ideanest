@@ -8,7 +8,7 @@ const payload: RumPayload = {
   traceId: '4bf92f3577b34da6a3ce929d0e0e4736',
   spanId: '00f067aa0ba902b7',
   sessionId: '0f4b7a2c-1d3e-4f5a-8b9c-0d1e2f3a4b5c',
-  route: '/discover',
+  route: '/[locale]/discover',
   connection: '4g',
   device: 'mobile',
   samples: [
@@ -30,7 +30,7 @@ describe('recordsFrom', () => {
       traceId: payload.traceId,
       spanId: payload.spanId,
       sessionId: payload.sessionId,
-      route: '/discover',
+      route: '/[locale]/discover',
       metric: 'LCP',
       value: 1822,
       rating: 'good',
@@ -73,8 +73,8 @@ describe('LocalSink', () => {
 
     expect(sink.size()).toBe(2);
     expect(sink.observations()).toEqual([
-      { route: '/discover', name: 'LCP', value: 1822 },
-      { route: '/discover', name: 'CLS', value: 0.3 },
+      { route: '/[locale]/discover', name: 'LCP', value: 1822 },
+      { route: '/[locale]/discover', name: 'CLS', value: 0.3 },
     ]);
   });
 

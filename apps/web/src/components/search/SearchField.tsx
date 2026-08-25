@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '../../i18n/navigation';
 import { Search } from 'lucide-react';
 import { cn } from '@ideanest/ui';
 import { searchHref } from '../../lib/search/query';

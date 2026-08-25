@@ -20,9 +20,11 @@ import createNextIntlPlugin from 'next-intl/plugin';
  * application that is not a route lives under `src/`. A convention that puts one
  * module somewhere none of its neighbours are is a module nobody finds.
  *
- * NO `createMiddleware` AND NO `[locale]` SEGMENT. The language is negotiated
- * from a cookie inside `src/i18n/request.ts`, which explains at length why the
- * account area is translated and the cached public routes are not.
+ * THE LANGUAGE IS A PATH SEGMENT (#123). `src/i18n/routing.ts` declares the
+ * shape, `src/middleware.ts` sends a bare path to a prefixed one, and
+ * `src/i18n/request.ts` resolves the catalogue from the matched `[locale]`
+ * parameter. Nothing here reads a cookie, so a localised page is as static as
+ * the English one it replaced.
  */
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 

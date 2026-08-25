@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import { CharacterCount, Field, InlineAlert, Pill, Select, TextInput, Textarea } from '@ideanest/ui';
 import { ApiError } from '../../lib/api/problem';
 import { characterCount } from '../../lib/projects/basics';

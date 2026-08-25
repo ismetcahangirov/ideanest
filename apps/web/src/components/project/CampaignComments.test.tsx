@@ -43,7 +43,15 @@ vi.mock('../../lib/session/session', () => ({ fetchSession: vi.fn() }));
 vi.mock('../../lib/api/access-token', () => ({ signOut: vi.fn().mockResolvedValue(undefined) }));
 
 const refresh = vi.fn();
-vi.mock('next/navigation', () => ({
+vi.mock('next/navigation', async (importOriginal) => ({
+  /*
+   * Spread first so the real module's other exports survive. `i18n/navigation.ts`
+   * builds its wrappers at import time and reads `redirect` and `permanentRedirect`
+   * while doing so, and a factory that replaced the module wholesale left those
+   * undefined — which failed as a TypeError inside next-intl rather than anywhere
+   * near the test that caused it.
+   */
+  ...(await importOriginal<typeof import('next/navigation')>()),
   usePathname: () => '/projects/ayan/coffee-table-book',
   useRouter: () => ({
     push: () => {},
@@ -210,7 +218,7 @@ describe('the comments tab', () => {
 
     expect(await screen.findByRole('link', { name: 'Show more replies' })).toHaveAttribute(
       'href',
-      `${PATH}?tab=comments&thread=c1`,
+      `/en${PATH}?tab=comments&thread=c1`,
     );
   });
 });
@@ -269,7 +277,7 @@ describe('writing a comment', () => {
     renderTab(page([]));
 
     const link = await screen.findByRole('link', { name: 'Sign in to comment' });
-    expect(link).toHaveAttribute('href', `/sign-in?next=${encodeURIComponent(PATH)}`);
+    expect(link).toHaveAttribute('href', `/en/sign-in?next=${encodeURIComponent(PATH)}`);
     expect(screen.queryByLabelText('Add a comment')).not.toBeInTheDocument();
   });
 });

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '../../i18n/navigation';
 import { Reply, Trash2 } from 'lucide-react';
 import { ApiError } from '../../lib/api/problem';
 import { deleteComment } from '../../lib/community/comments';

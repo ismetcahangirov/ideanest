@@ -50,17 +50,25 @@ export const UNRECOGNISED_ROUTE = '(unrecognised)';
  * be a leak nobody would notice.
  */
 export const ROUTE_PATTERNS: readonly string[] = [
-  '/discover',
-  '/projects/new',
-  '/projects/[id]/back',
-  '/projects/[id]/edit',
-  '/projects/[id]/edit/basics',
-  '/projects/[id]/edit/prelaunch',
-  '/projects/[id]/edit/review',
-  '/projects/[id]/edit/rewards',
-  '/projects/[id]/edit/story',
-  '/projects/[id]/prelaunch',
-  '/settings/sessions',
+  /*
+   * EVERY PATTERN CARRIES `[locale]` SINCE #123, because these are matched against the
+   * pathname the browser is actually on and the language is a segment of it. Without the
+   * prefix `/az/discover` matches nothing, every measurement is filed under
+   * `(unrecognised)`, and the real-user monitoring goes quietly blank for the whole site —
+   * `route-pattern.test.ts` asserts these against `performance/budgets.json`, whose keys
+   * moved for the same reason.
+   */
+  '/[locale]/discover',
+  '/[locale]/projects/new',
+  '/[locale]/projects/[id]/back',
+  '/[locale]/projects/[id]/edit',
+  '/[locale]/projects/[id]/edit/basics',
+  '/[locale]/projects/[id]/edit/prelaunch',
+  '/[locale]/projects/[id]/edit/review',
+  '/[locale]/projects/[id]/edit/rewards',
+  '/[locale]/projects/[id]/edit/story',
+  '/[locale]/projects/[id]/prelaunch',
+  '/[locale]/settings/sessions',
 ];
 
 /** Whether a string is one of the patterns this module may emit. */

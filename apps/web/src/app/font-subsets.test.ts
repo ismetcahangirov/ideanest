@@ -22,7 +22,7 @@ import { describe, expect, it } from 'vitest';
  * from `import.meta.url`, which under the jsdom environment is not a `file:`
  * URL and cannot be turned into a path.
  */
-const layoutSource = readFileSync(resolve(process.cwd(), 'src/app/layout.tsx'), 'utf8');
+const layoutSource = readFileSync(resolve(process.cwd(), 'src/app/[locale]/layout.tsx'), 'utf8');
 
 /**
  * The `unicode-range` Google Fonts serves for each cut, copied from the

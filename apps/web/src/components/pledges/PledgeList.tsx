@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import { HeartHandshake } from 'lucide-react';
 import { EmptyState, InlineAlert, Pill, Skeleton, SkeletonGroup, Tag } from '@ideanest/ui';
 import { useCursorList } from '../account/useCursorList';

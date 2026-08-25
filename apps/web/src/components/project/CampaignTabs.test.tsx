@@ -36,7 +36,7 @@ describe('the campaign tab strip', () => {
 
     expect(screen.getByRole('link', { name: 'FAQ' })).toHaveAttribute(
       'href',
-      `${PATH}?tab=faq`,
+      `/en${PATH}?tab=faq`,
     );
   });
 
@@ -53,7 +53,7 @@ describe('the campaign tab strip', () => {
   it('gives the default tab the bare path, so one campaign has one address', () => {
     render(<CampaignTabs active="faq" path={PATH} />);
 
-    expect(screen.getByRole('link', { name: 'Campaign' })).toHaveAttribute('href', PATH);
+    expect(screen.getByRole('link', { name: 'Campaign' })).toHaveAttribute('href', `/en${PATH}`);
   });
 
   it('marks the tab being read in words rather than in colour alone', () => {

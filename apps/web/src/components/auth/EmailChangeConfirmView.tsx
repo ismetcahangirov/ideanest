@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import { useSearchParams } from 'next/navigation';
 import { CircleCheck } from 'lucide-react';
 import { InlineAlert } from '@ideanest/ui';

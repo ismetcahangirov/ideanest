@@ -129,10 +129,7 @@ describe('the updates tab', () => {
       />,
     );
 
-    expect(screen.getByRole('link', { name: 'Older updates' })).toHaveAttribute(
-      'href',
-      '/projects/ayan/coffee-table-book?tab=updates&from=3',
-    );
+    expect(screen.getByRole('link', { name: 'Older updates' })).toHaveAttribute('href', '/en/projects/ayan/coffee-table-book?tab=updates&from=3');
   });
 
   /**

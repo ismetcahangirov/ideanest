@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '../../i18n/navigation';
 import { Search } from 'lucide-react';
 import { Combobox, Pill, type ComboboxOption } from '@ideanest/ui';
 import type { ApiError } from '../../lib/api/problem';

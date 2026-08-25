@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter } from '../../i18n/navigation';
 import { signOut as clearSession } from '../../lib/api/access-token';
 import { signInHref } from '../../lib/auth/redirect';
 import { currentLocaleCookie, writeLocaleCookie } from '../../lib/i18n/cookie';

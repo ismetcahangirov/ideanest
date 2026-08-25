@@ -52,31 +52,22 @@ describe('a category page', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Games' })).toBeInTheDocument();
 
     const trail = screen.getByRole('navigation', { name: 'Breadcrumb' });
-    expect(within(trail).getByRole('link', { name: 'Categories' })).toHaveAttribute(
-      'href',
-      '/categories',
-    );
+    expect(within(trail).getByRole('link', { name: 'Categories' })).toHaveAttribute('href', '/en/categories');
   });
 
   it('links every subcategory, which is the only path a crawler has to them', () => {
     render(<CategoryLanding category={GAMES} campaigns={[CARD]} hasMore={false} />);
 
     const children = screen.getByRole('navigation', { name: 'Subcategories of Games' });
-    expect(within(children).getByRole('link', { name: 'Tabletop' })).toHaveAttribute(
-      'href',
-      '/categories/games/tabletop',
-    );
-    expect(within(children).getByRole('link', { name: 'Video games' })).toHaveAttribute(
-      'href',
-      '/categories/games/video',
-    );
+    expect(within(children).getByRole('link', { name: 'Tabletop' })).toHaveAttribute('href', '/en/categories/games/tabletop');
+    expect(within(children).getByRole('link', { name: 'Video games' })).toHaveAttribute('href', '/en/categories/games/video');
   });
 
   it('offers the same category inside the feed, as a real filter URL', () => {
     render(<CategoryLanding category={GAMES} campaigns={[CARD]} hasMore={false} />);
 
     const link = screen.getByRole('link', { name: /Filter and sort Games in the feed/u });
-    expect(link).toHaveAttribute('href', '/discover?category=games');
+    expect(link).toHaveAttribute('href', '/en/discover?category=games');
   });
 
   it('says there is more when the service said so', () => {
@@ -100,10 +91,7 @@ describe('a subcategory page', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Tabletop' })).toBeInTheDocument();
 
     const trail = screen.getByRole('navigation', { name: 'Breadcrumb' });
-    expect(within(trail).getByRole('link', { name: 'Games' })).toHaveAttribute(
-      'href',
-      '/categories/games',
-    );
+    expect(within(trail).getByRole('link', { name: 'Games' })).toHaveAttribute('href', '/en/categories/games');
   });
 
   it('does not offer its own children, because it has none', () => {
@@ -129,10 +117,7 @@ describe('a subcategory page', () => {
       />,
     );
 
-    expect(screen.getByRole('link', { name: /in the feed/u })).toHaveAttribute(
-      'href',
-      '/discover?category=games&subcategory=tabletop',
-    );
+    expect(screen.getByRole('link', { name: /in the feed/u })).toHaveAttribute('href', '/en/discover?category=games&subcategory=tabletop');
   });
 });
 
@@ -144,10 +129,7 @@ describe('with nothing published', () => {
       screen.getByRole('heading', { level: 2, name: 'Nothing published in Games yet' }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/clear/iu)).toBeNull();
-    expect(screen.getByRole('link', { name: 'Browse the feed' })).toHaveAttribute(
-      'href',
-      '/discover',
-    );
+    expect(screen.getByRole('link', { name: 'Browse the feed' })).toHaveAttribute('href', '/en/discover');
   });
 
   it('still lists the subcategories, which may not be empty', () => {

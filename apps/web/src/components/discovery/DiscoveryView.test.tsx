@@ -62,11 +62,17 @@ const nav = vi.hoisted(() => {
   };
 });
 
-vi.mock('next/navigation', async () => {
+vi.mock('next/navigation', async (importOriginal) => {
   const { useSyncExternalStore } = await import('react');
 
   return {
-    usePathname: () => '/discover',
+    /*
+     * Spread first so the real module's other exports survive — `i18n/navigation.tsx` reads
+     * `useParams` to learn the route's language, and a factory that replaced the module
+     * wholesale left it undefined.
+     */
+    ...(await importOriginal<typeof import('next/navigation')>()),
+    usePathname: () => '/en/discover',
     useRouter: () => ({
       push: nav.navigate,
       replace: nav.navigate,

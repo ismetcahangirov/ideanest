@@ -26,7 +26,15 @@ import { PasswordResetConfirmForm } from './PasswordResetConfirmForm';
 
 let search = '';
 
-vi.mock('next/navigation', () => ({
+vi.mock('next/navigation', async (importOriginal) => ({
+  /*
+   * Spread first so the real module's other exports survive. `i18n/navigation.ts`
+   * builds its wrappers at import time and reads `redirect` and `permanentRedirect`
+   * while doing so, and a factory that replaced the module wholesale left those
+   * undefined — which failed as a TypeError inside next-intl rather than anywhere
+   * near the test that caused it.
+   */
+  ...(await importOriginal<typeof import('next/navigation')>()),
   useSearchParams: () => new URLSearchParams(search),
 }));
 
@@ -81,7 +89,7 @@ describe('with a token in the URL', () => {
     expect(resetMock).toHaveBeenCalledWith('tok_1', 'a much longer password');
     expect(await screen.findByText('Your password is set')).toBeInTheDocument();
     expect(screen.getByText(/has been signed out/u)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/sign-in');
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/en/sign-in');
   });
 });
 
@@ -117,10 +125,7 @@ describe('a link that cannot be used', () => {
 
     expect(await screen.findByText('This link cannot be used')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Set my password' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Ask for a new link' })).toHaveAttribute(
-      'href',
-      '/reset-password',
-    );
+    expect(screen.getByRole('link', { name: 'Ask for a new link' })).toHaveAttribute('href', '/en/reset-password');
     // The constraint that produced this, restated where it explains the screen.
     expect(screen.getByText(/works for one hour and can be used once/u)).toBeInTheDocument();
   });
@@ -175,9 +180,6 @@ describe('without a token', () => {
 
     expect(screen.getByText('Open the link we sent you')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Ask for a reset link' })).toHaveAttribute(
-      'href',
-      '/reset-password',
-    );
+    expect(screen.getByRole('link', { name: 'Ask for a reset link' })).toHaveAttribute('href', '/en/reset-password');
   });
 });

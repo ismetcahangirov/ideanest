@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import { EmptyState, InlineAlert, Pill, Skeleton, SkeletonGroup, Tag } from '@ideanest/ui';
 import { authorizedFetch } from '../../lib/api/client';
 import { errorFrom } from '../../lib/api/problem';

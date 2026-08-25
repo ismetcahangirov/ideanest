@@ -13,7 +13,15 @@ import { NewProjectForm } from './NewProjectForm';
 
 const replace = vi.fn();
 
-vi.mock('next/navigation', () => ({
+vi.mock('next/navigation', async (importOriginal) => ({
+  /*
+   * Spread first so the real module's other exports survive. `i18n/navigation.ts`
+   * builds its wrappers at import time and reads `redirect` and `permanentRedirect`
+   * while doing so, and a factory that replaced the module wholesale left those
+   * undefined — which failed as a TypeError inside next-intl rather than anywhere
+   * near the test that caused it.
+   */
+  ...(await importOriginal<typeof import('next/navigation')>()),
   useRouter: () => ({ replace, push: vi.fn(), back: vi.fn() }),
 }));
 
@@ -60,7 +68,7 @@ describe('NewProjectForm', () => {
      * `replace`, so the back button does not return to a page that would offer
      * to create a second draft.
      */
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/projects/project-1/edit/basics'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/en/projects/project-1/edit/basics'));
   });
 
   it('refuses a title over sixty characters instead of letting the service do it', async () => {
