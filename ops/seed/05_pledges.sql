@@ -173,6 +173,82 @@ FROM (SELECT pa.pledge_id, sum(rt.amount * pa.quantity) AS total
       GROUP BY pa.pledge_id) a
 WHERE a.pledge_id = p.id AND p.addons_amount <> a.total;
 
+-- ── The named accounts pledge too ───────────────────────────────────────────
+--
+-- The generated crowd above is drawn only from backer%@example.az, so without
+-- this block `backer@ideanest.az` -- the account the README sends people to --
+-- signs in to an empty /pledges, an empty /account/deliveries and an empty
+-- survey list. Saves and follows alone are not what that account is for.
+--
+-- Amounts and shipping are read from the tier rather than typed beside it, so a
+-- price change cannot leave a pledge disagreeing with the reward it bought.
+
+INSERT INTO pledges (
+    id, project_id, backer_id, reward_tier_id, state,
+    base_amount, addons_amount, bonus_amount, shipping_amount, tax_amount, currency,
+    shipping_country, is_anonymous, is_late_pledge, referrer_code, idempotency_key,
+    reservation_expires_at, confirmed_at, collected_at, canceled_at,
+    next_charge_attempt_at, charge_window_ends_at, charge_attempts,
+    version, created_at, updated_at)
+SELECT
+    seed_id('pledge:demo:' || d.account || ':' || d.campaign),
+    p.id,
+    seed_id('user:' || d.account),
+    rt.id,
+    d.state,
+    rt.amount,
+    0,
+    d.bonus,
+    CASE WHEN rt.shipping_type IN ('NONE', 'DIGITAL', 'LOCAL_PICKUP') THEN 0 ELSE 6 END,
+    0,
+    'AZN',
+    CASE WHEN rt.shipping_type IN ('NONE', 'DIGITAL') THEN NULL ELSE 'AZ' END,
+    false,
+    d.state = 'COLLECTED' AND d.campaign = 'masa',
+    d.referrer,
+    'seed-demo-' || d.account || '-' || d.campaign,
+    NULL,
+    p.launched_at + (p.deadline - p.launched_at) * 0.4,
+    CASE WHEN d.state IN ('COLLECTED', 'FULFILLED') THEN p.deadline + interval '2 days' END,
+    NULL,
+    NULL, NULL, 0,
+    1,
+    p.launched_at + (p.deadline - p.launched_at) * 0.4,
+    now()
+FROM (VALUES
+    -- Nurlan is the demo backer: six pledges spread so that every account
+    -- screen has something on it -- live pledges, a delivery, a survey.
+    ('backer',  'tumar',   'tier:tumar:bir',        'CONFIRMED', 10, 'instagram'),
+    ('backer',  'qala',    'tier:qala:kolleksiya',  'CONFIRMED',  0, NULL),
+    ('backer',  'qab',     'tier:qab:bir',          'FULFILLED',  0, NULL),
+    ('backer',  'albom',   'tier:albom:vinil',      'COLLECTED',  5, 'telegram'),
+    ('backer',  'lampa',   'tier:lampa:bir',        'FULFILLED',  0, NULL),
+    ('backer',  'masa',    'tier:masa:oyun',        'COLLECTED',  0, NULL),
+    -- Aygün's support ticket is about a double charge on the album, so she has
+    -- to have backed the album.
+    ('aygun',   'naringi', 'tier:naringi:ikilik',   'CONFIRMED',  0, NULL),
+    ('aygun',   'albom',   'tier:albom:vinil',      'COLLECTED',  0, NULL),
+    ('aygun',   'usta',    'tier:usta:usb',         'COLLECTED',  0, 'newsletter'),
+    ('lale',    'qala',    'tier:qala:reqemsal',    'CONFIRMED',  0, NULL),
+    ('lale',    'masa',    'tier:masa:deluxe',      'COLLECTED',  0, NULL),
+    ('lale',    'seyyah',  'tier:seyyah:cap',       'CONFIRMED',  0, NULL),
+    -- Fərid's ticket is about an undelivered Ağ Qab parcel. Same reason.
+    ('ferid',   'qab',     'tier:qab:bir',          'FULFILLED',  0, NULL),
+    ('ferid',   'qehve',   'tier:qehve:abune3',     'CONFIRMED',  0, NULL),
+    ('nezrin',  'tar',     'tier:tar:adapter',      'CONFIRMED',  0, NULL),
+    ('nezrin',  'albom',   'tier:albom:konsert',    'COLLECTED',  0, NULL),
+    ('emin',    'qala',    'tier:qala:beta',        'CONFIRMED',  0, NULL),
+    ('emin',    'torpaq',  'tier:torpaq:bir',       'CONFIRMED',  0, NULL),
+    ('zaur',    'qehve',   'tier:qehve:torba',      'CONFIRMED',  0, NULL),
+    ('zaur',    'foto',    'tier:foto:albom',       'COLLECTED',  0, NULL),
+    ('samir',   'qala',    'tier:qala:reqemsal',    'CONFIRMED',  0, NULL),
+    ('samir',   'divar',   'tier:divar:cap',        'CONFIRMED',  0, NULL),
+    ('collab',  'tumar',   'tier:tumar:ucluk',      'CONFIRMED',  0, NULL)
+) AS d(account, campaign, tier, state, bonus, referrer)
+JOIN projects p ON p.id = seed_id('project:' || d.campaign)
+JOIN reward_tiers rt ON rt.id = seed_id(d.tier)
+ON CONFLICT (id) DO NOTHING;
+
 -- ── Charges ─────────────────────────────────────────────────────────────────
 --
 -- One succeeded charge per pledge whose money actually moved, plus the failed
