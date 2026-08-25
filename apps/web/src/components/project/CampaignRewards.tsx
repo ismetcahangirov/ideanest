@@ -1,5 +1,6 @@
 import { formatMoney } from '../../lib/money';
 import type { PublicRewardTier } from '../../lib/seo/structured-data/product';
+import { getTranslations } from 'next-intl/server';
 
 /**
  * The reward tiers a backer chooses between — §4.4's right-hand column, server-rendered.
@@ -34,13 +35,15 @@ export interface CampaignRewardsProps {
   readonly tiers: readonly PublicRewardTier[];
 }
 
-export function CampaignRewards({ tiers }: CampaignRewardsProps) {
+export async function CampaignRewards({ tiers }: CampaignRewardsProps) {
+  const t = await getTranslations('campaign.rewards');
+
   if (tiers.length === 0) return null;
 
   return (
     <section aria-labelledby="campaign-rewards" className="flex flex-col gap-4">
       <h2 id="campaign-rewards" className="text-xl font-medium tracking-[-0.02em] text-white">
-        Rewards
+        {t('heading')}
       </h2>
 
       <ul className="flex flex-col gap-3">

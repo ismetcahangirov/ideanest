@@ -10,6 +10,8 @@ import { CampaignActions } from './CampaignActions';
 import { CampaignMedia } from './CampaignMedia';
 import { LiveFunding } from './LiveFunding';
 import { CampaignCountdown } from './ViewerClock';
+import { getTranslations } from 'next-intl/server';
+import { campaignActionsCopy } from '../../lib/i18n/shell-copy.server';
 
 /**
  * §4.4's header: the cover, the title, who made it, and how the funding stands.
@@ -54,7 +56,14 @@ import { CampaignCountdown } from './ViewerClock';
 const URGENT_DAYS = 2;
 
 interface StateBadge {
-  readonly label: string;
+  /**
+   * A key into `campaign.state`, not a word.
+   *
+   * `COLLECTING` deliberately shares `SUCCESSFUL`'s key rather than having one of its own:
+   * it is an internal fact about where §6.1 has got to, and what a visitor needs to know is
+   * that the campaign funded. The comment above explains the rest of the mapping.
+   */
+  readonly labelKey: string;
   readonly icon: ReactNode;
   readonly variant: 'default' | 'success' | 'warning' | 'danger';
 }
@@ -69,21 +78,24 @@ interface StateBadge {
  * the backers of each were told different things.
  */
 const BADGES: Partial<Record<ProjectState, StateBadge>> = {
-  PRELAUNCH: { label: 'Coming soon', icon: <CalendarClock className="size-3.5" />, variant: 'default' },
-  LIVE: { label: 'Live', icon: <CircleDot className="size-3.5" />, variant: 'default' },
-  SUCCESSFUL: { label: 'Funded', icon: <CircleCheck className="size-3.5" />, variant: 'success' },
-  COLLECTING: { label: 'Funded', icon: <CircleCheck className="size-3.5" />, variant: 'success' },
-  LATE_PLEDGE: { label: 'Late pledges open', icon: <Hourglass className="size-3.5" />, variant: 'warning' },
-  FULFILLING: { label: 'Fulfilling', icon: <Hourglass className="size-3.5" />, variant: 'success' },
-  COMPLETED: { label: 'Completed', icon: <CircleCheck className="size-3.5" />, variant: 'success' },
-  UNSUCCESSFUL: { label: 'Did not fund', icon: <CircleSlash className="size-3.5" />, variant: 'default' },
-  CANCELED: { label: 'Cancelled', icon: <CircleSlash className="size-3.5" />, variant: 'default' },
+  PRELAUNCH: { labelKey: 'PRELAUNCH', icon: <CalendarClock className="size-3.5" />, variant: 'default' },
+  LIVE: { labelKey: 'LIVE', icon: <CircleDot className="size-3.5" />, variant: 'default' },
+  SUCCESSFUL: { labelKey: 'SUCCESSFUL', icon: <CircleCheck className="size-3.5" />, variant: 'success' },
+  COLLECTING: { labelKey: 'SUCCESSFUL', icon: <CircleCheck className="size-3.5" />, variant: 'success' },
+  LATE_PLEDGE: { labelKey: 'LATE_PLEDGE', icon: <Hourglass className="size-3.5" />, variant: 'warning' },
+  FULFILLING: { labelKey: 'FULFILLING', icon: <Hourglass className="size-3.5" />, variant: 'success' },
+  COMPLETED: { labelKey: 'COMPLETED', icon: <CircleCheck className="size-3.5" />, variant: 'success' },
+  UNSUCCESSFUL: { labelKey: 'UNSUCCESSFUL', icon: <CircleSlash className="size-3.5" />, variant: 'default' },
+  CANCELED: { labelKey: 'CANCELED', icon: <CircleSlash className="size-3.5" />, variant: 'default' },
 };
 
-function daysLeftLabel(days: number): string {
-  if (days === 0) return 'Last day';
-  return days === 1 ? '1 day left' : `${days} days left`;
-}
+/*
+ * ICU PLURALS RATHER THAN A TERNARY. "1 day left" against "2 days left" is the whole of
+ * English and none of Russian, which chooses between three forms by the last digit — 1 день,
+ * 2 дня, 5 дней — so a singular/plural split would be wrong for most numbers with nothing on
+ * screen to say so. `=0` is its own case in every language because "0 days left" is not what
+ * the last day of a campaign is called.
+ */
 
 export interface CampaignSummaryProps {
   readonly campaign: CampaignPage;
@@ -116,12 +128,14 @@ export interface CampaignSummaryProps {
   readonly now?: Date;
 }
 
-export function CampaignSummary({
+export async function CampaignSummary({
   campaign,
   realtimeOrigin,
   path,
   now = new Date(),
 }: CampaignSummaryProps) {
+  const t = await getTranslations('campaign');
+  const actions = await campaignActionsCopy();
   const badge = BADGES[campaign.state];
 
   /*
@@ -165,7 +179,7 @@ export function CampaignSummary({
               <span aria-hidden="true" className="flex items-center">
                 {badge.icon}
               </span>
-              {badge.label}
+              {t(`state.${badge.labelKey}`)}
             </Tag>
           )}
 
@@ -180,7 +194,7 @@ export function CampaignSummary({
               className="inline-flex h-[26px] items-center gap-1.5 rounded-sm bg-lime-500 px-2.5 text-xs font-medium text-on-lime"
             >
               <Clock aria-hidden="true" className="size-3" />
-              {daysLeftLabel(campaign.daysLeft)}
+              {t('daysLeft', { days: campaign.daysLeft })}
             </span>
           )}
 
@@ -230,7 +244,7 @@ export function CampaignSummary({
 
             <p className="text-sm text-white/64">
               of {formatMoney(campaign.goal)} goal
-              {showDays && campaign.daysLeft !== null && ` · ${daysLeftLabel(campaign.daysLeft)}`}
+              {showDays && campaign.daysLeft !== null && ` · ${t('daysLeft', { days: campaign.daysLeft })}`}
             </p>
           </div>
         )}
@@ -252,6 +266,7 @@ export function CampaignSummary({
           folding them into one island is what keeps the session read to a single subscription.
         */}
         <CampaignActions
+          copy={actions}
           projectId={campaign.id}
           state={campaign.state}
           title={campaign.title}

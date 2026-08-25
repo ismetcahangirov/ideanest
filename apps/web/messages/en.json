@@ -391,5 +391,87 @@
       "belowRewardPrice": "This reward costs {price}. Give that or more, or choose a cheaper reward.",
       "destinationUnpriced": "The creator has not set a delivery cost to this destination for {lines}. Choose somewhere else, or take that out of your pledge."
     }
+  },
+  "campaign": {
+    "tabs": {
+      "label": "Campaign sections",
+      "campaign": "Campaign",
+      "creator": "Creator",
+      "faq": "FAQ",
+      "updates": "Updates",
+      "comments": "Comments"
+    },
+    "state": {
+      "PRELAUNCH": "Coming soon",
+      "LIVE": "Live",
+      "SUCCESSFUL": "Funded",
+      "LATE_PLEDGE": "Late pledges open",
+      "FULFILLING": "Fulfilling",
+      "COMPLETED": "Completed",
+      "UNSUCCESSFUL": "Did not fund",
+      "CANCELED": "Cancelled"
+    },
+    "daysLeft": "{days, plural, =0 {Last day} one {# day left} other {# days left}}",
+    "backers": "{count, plural, =0 {No backers} one {# backer} other {# backers}}",
+    "actions": {
+      "save": "Save",
+      "share": "Share",
+      "remind": "Remind me"
+    },
+    "rewards": {
+      "heading": "Rewards"
+    },
+    "media": {
+      "hasVideo": "This campaign has a video."
+    },
+    "creator": {
+      "heading": "About the creator",
+      "others": "Their other campaigns"
+    },
+    "trust": {
+      "heading": "How funding works here",
+      "body": "The platform connects creators with backers. Rewards are not guaranteed, but creators must keep backers informed. You are only charged if the project reaches its goal by the deadline."
+    },
+    "outcome": {
+      "funded": "This campaign was funded",
+      "notFunded": "This campaign did not reach its goal",
+      "reached": "It reached its goal before the deadline.",
+      "notReached": "It did not reach its goal before the deadline.",
+      "raised": "It raised",
+      "closedOn": "on {date}",
+      "settling": "The figures above are what the campaign raised at its deadline. Every confirmed pledge is collected after it closes, so the amount shown elsewhere on this page may change as those collections settle.",
+      "nobodyCharged": "Nobody was charged. On IdeaNest a campaign that does not reach its goal collects nothing and pays no fee."
+    },
+    "faqs": {
+      "heading": "Frequently asked questions",
+      "failed": "The questions and answers could not be loaded just now. Reload the page to try again.",
+      "empty": "This campaign has not answered any questions yet. Ask one in the comments and the creator can add the answer here."
+    },
+    "updates": {
+      "heading": "Updates",
+      "failed": "The updates could not be loaded just now. Reload the page to try again.",
+      "older": "Older updates",
+      "backersOnly": "Backers only"
+    },
+    "comments": {
+      "heading": "Comments",
+      "all": "All comments",
+      "failed": "The comments could not be loaded just now. Reload the page to try again.",
+      "empty": "Nobody has commented on this campaign yet.",
+      "showReplies": "Show more replies",
+      "older": "Older comments",
+      "withdrawn": "This comment was withdrawn.",
+      "fromCreator": "From the campaign",
+      "composerLabel": "Add a comment",
+      "signedOut": "Commenting needs an account. It is how the platform can tell one person from five copies of the same one, and how the creator can answer you.",
+      "signIn": "Sign in to comment",
+      "cancel": "Cancel",
+      "notPosted": "It was not posted",
+      "reply": "Reply",
+      "replyLabel": "Your reply",
+      "withdraw": "Withdraw",
+      "withdrawWarning": "Withdrawing leaves a note saying the comment was removed. Any replies to it stay, and it cannot be edited or restored.",
+      "keep": "Keep it"
+    }
   }
 }

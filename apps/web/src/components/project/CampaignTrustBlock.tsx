@@ -3,6 +3,7 @@ import { formatInstant, SERVER_TIME_ZONE } from '../../lib/projects/deadline';
 import { formatMoney } from '../../lib/money';
 import type { CampaignPage } from '../../lib/projects/publicPage';
 import { ViewerInstant } from './ViewerClock';
+import { getTranslations } from 'next-intl/server';
 
 /**
  * §4.4's trust block — issue #281. Fixed copy on every project, plus the all-or-nothing
@@ -14,6 +15,14 @@ import { ViewerInstant } from './ViewerClock';
  * are reproduced below word for word, and {@link TRUST_COPY} is exported so that a test can
  * assert the page renders exactly those words rather than something a later edit made
  * friendlier.
+ *
+ * <strong>THE CONSTANT SURVIVED TRANSLATION, AND IS NOW WHAT GUARDS IT.</strong> The
+ * paragraph is drawn from `campaign.trust.body` so that a Russian backer reads the promise
+ * rather than looking at it, and `TRUST_COPY` remains the English original.
+ * `CampaignHeader.test.tsx` asserts the catalogue's English matches this constant exactly,
+ * so the sentence can be translated but not quietly reworded — which is the failure §4.4's
+ * "word for word" is actually about. Whoever adds the fourth language writes a translation;
+ * whoever edits the English has to edit the constant and see this comment.
  *
  * That matters more than it looks. Each sentence is a promise about somebody's money, and
  * the third — "You are only charged if the project reaches its goal by the deadline" — is the
@@ -80,7 +89,9 @@ export interface CampaignTrustBlockProps {
   readonly campaign: CampaignPage;
 }
 
-export function CampaignTrustBlock({ campaign }: CampaignTrustBlockProps) {
+export async function CampaignTrustBlock({ campaign }: CampaignTrustBlockProps) {
+  const t = await getTranslations('campaign.trust');
+
   const open = OPEN_STATES.includes(campaign.state);
 
   /*
@@ -99,10 +110,10 @@ export function CampaignTrustBlock({ campaign }: CampaignTrustBlockProps) {
     >
       <h2 id="campaign-trust" className="flex items-center gap-2 text-base font-medium text-white">
         <ShieldCheck aria-hidden="true" className="size-5 text-white/64" />
-        How funding works here
+        {t('heading')}
       </h2>
 
-      <p className="max-w-[68ch] text-sm leading-relaxed text-reading">{TRUST_COPY}</p>
+      <p className="max-w-[68ch] text-sm leading-relaxed text-reading">{t('body')}</p>
 
       {campaign.deadline !== null && serverDeadline !== null && (
         <p className="max-w-[68ch] text-sm leading-relaxed text-white/64">

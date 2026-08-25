@@ -10,6 +10,37 @@ import { deleteComment, postComment, replyToComment } from '../../lib/community/
 import { fetchSession, type Session } from '../../lib/session/session';
 import { SessionProvider } from '../session/SessionProvider';
 import { CampaignComments } from './CampaignComments';
+import CATALOGUE from '../../../messages/en.json';
+import { resolveServerTree } from '../../test-support/server-tree';
+
+/*
+ * The real catalogue, through next-intl's own formatter.
+ *
+ * `createTranslator` rather than a hand-rolled substitution, because these messages carry ICU
+ * plurals — `{days, plural, one {# day left} other {# days left}}` — and a regex that swapped
+ * `{days}` for a number would produce a sentence no language actually renders. Asserting
+ * against `messages/en.json` formatted the way the application formats it is what makes this
+ * suite fail when a translation is edited to something the component no longer draws.
+ */
+vi.mock('next-intl/server', async () => {
+  const { createTranslator } = await import('next-intl');
+
+  return {
+    getLocale: async () => 'en',
+    /*
+     * `namespace` is a plain string here and a union of every valid path in next-intl's own
+     * types. The cast is at the mock's edge rather than at each call: what a component asks
+     * for is whatever it asks for, and a namespace that does not exist fails as a missing
+     * message — which is the failure worth seeing.
+     */
+    getTranslations: async (namespace: string) =>
+      createTranslator({
+        locale: 'en',
+        messages: CATALOGUE,
+        namespace: namespace as never,
+      }),
+  };
+});
 
 /**
  * §4.4's Comments tab — #285, over §4.9's C-01, C-02, C-03 and C-07.
@@ -102,12 +133,18 @@ function page(threads: readonly CampaignCommentThread[]): CampaignCommentPage {
   return { threads, nextCursor: null };
 }
 
-function renderTab(
+async function renderTab(
   body: CampaignCommentPage | null,
   overrides: Partial<React.ComponentProps<typeof CampaignComments>> = {},
 ) {
+  /*
+   * `resolveServerTree` awaits the async server components in the tree before handing it to
+   * a client-side renderer, which would otherwise draw them as nothing at all — see
+   * `test-support/server-tree.tsx`.
+   */
   return render(
-    <SessionProvider>
+    await resolveServerTree(
+      <SessionProvider>
       <CampaignComments
         page={body}
         projectId="p1"
@@ -120,6 +157,7 @@ function renderTab(
         {...overrides}
       />
     </SessionProvider>,
+    ),
   );
 }
 
@@ -135,13 +173,13 @@ afterEach(cleanup);
 
 describe('the comments tab', () => {
   it('puts the conversation in the markup rather than in a request', async () => {
-    renderTab(page([thread()]));
+    await renderTab(page([thread()]));
 
     expect(await screen.findByText('Will this ship to Georgia?')).toBeInTheDocument();
   });
 
   it('marks the campaign’s own reply in words rather than only in colour', async () => {
-    renderTab(
+    await renderTab(
       page([
         thread({
           replies: [
@@ -163,7 +201,7 @@ describe('the comments tab', () => {
   });
 
   it('renders a withdrawn comment as a tombstone that names nobody', async () => {
-    const { container } = renderTab(
+    const { container } = await renderTab(
       page([
         thread({
           root: comment({ deleted: true, body: null, authorId: null, acceptsReplies: false }),
@@ -180,7 +218,7 @@ describe('the comments tab', () => {
   });
 
   it('offers no controls under a tombstone', async () => {
-    renderTab(
+    await renderTab(
       page([
         thread({ root: comment({ deleted: true, body: null, authorId: null, acceptsReplies: true }) }),
       ]),
@@ -192,26 +230,26 @@ describe('the comments tab', () => {
   });
 
   it('renders a comment body as text, never as markup', async () => {
-    renderTab(page([thread({ root: comment({ body: '<script>alert(1)</script>' }) })]));
+    await renderTab(page([thread({ root: comment({ body: '<script>alert(1)</script>' }) })]));
 
     expect(await screen.findByText('<script>alert(1)</script>')).toBeInTheDocument();
   });
 
-  it('blames the service, not the campaign, when the read was refused', () => {
-    renderTab(null);
+  it('blames the service, not the campaign, when the read was refused', async () => {
+    await renderTab(null);
 
     expect(screen.getByText(/could not be loaded/u)).toBeInTheDocument();
     expect(screen.queryByText(/Nobody has commented/u)).not.toBeInTheDocument();
   });
 
-  it('says nobody has commented only when nobody has', () => {
-    renderTab(page([]));
+  it('says nobody has commented only when nobody has', async () => {
+    await renderTab(page([]));
 
     expect(screen.getByText('Nobody has commented on this campaign yet.')).toBeInTheDocument();
   });
 
   it('offers the rest of a long conversation as a link rather than as a press', async () => {
-    renderTab(
+    await renderTab(
       page([thread({ nextReplyCursor: 'c50' })]),
       { threadHrefs: { c1: `${PATH}?tab=comments&thread=c1` } },
     );
@@ -225,7 +263,7 @@ describe('the comments tab', () => {
 
 describe('the reply control', () => {
   it('is placed by acceptsReplies rather than by the depth', async () => {
-    renderTab(
+    await renderTab(
       page([
         thread({
           root: comment({ acceptsReplies: false }),
@@ -239,7 +277,7 @@ describe('the reply control', () => {
   });
 
   it('posts an answer to the comment it was opened under', async () => {
-    renderTab(page([thread()]));
+    await renderTab(page([thread()]));
 
     await userEvent.click(await screen.findByRole('button', { name: 'Reply' }));
     await userEvent.type(screen.getByLabelText('Your reply'), 'Yes, it ships.');
@@ -254,7 +292,7 @@ describe('the reply control', () => {
 
 describe('writing a comment', () => {
   it('posts to the campaign and asks the server to render the list again', async () => {
-    renderTab(page([]));
+    await renderTab(page([]));
 
     await userEvent.type(await screen.findByLabelText('Add a comment'), 'When does it ship?');
     await userEvent.click(screen.getByRole('button', { name: 'Post comment' }));
@@ -264,7 +302,7 @@ describe('writing a comment', () => {
   });
 
   it('refuses an empty body without spending a request', async () => {
-    renderTab(page([]));
+    await renderTab(page([]));
 
     await userEvent.click(await screen.findByRole('button', { name: 'Post comment' }));
 
@@ -274,7 +312,7 @@ describe('writing a comment', () => {
 
   it('offers a signed-out reader a sign-in that returns here, not a form', async () => {
     sessionMock.mockResolvedValue(null);
-    renderTab(page([]));
+    await renderTab(page([]));
 
     const link = await screen.findByRole('link', { name: 'Sign in to comment' });
     expect(link).toHaveAttribute('href', `/en/sign-in?next=${encodeURIComponent(PATH)}`);
@@ -284,13 +322,13 @@ describe('writing a comment', () => {
 
 describe('withdrawing a comment', () => {
   it('is offered to the author and to nobody else', async () => {
-    renderTab(page([thread({ root: comment({ authorId: 'u9' }) })]));
+    await renderTab(page([thread({ root: comment({ authorId: 'u9' }) })]));
 
     await screen.findByText('Will this ship to Georgia?');
     expect(screen.queryByRole('button', { name: 'Withdraw' })).not.toBeInTheDocument();
 
     cleanup();
-    renderTab(page([thread({ root: comment({ authorId: ACCOUNT.id }) })]));
+    await renderTab(page([thread({ root: comment({ authorId: ACCOUNT.id }) })]));
 
     expect(await screen.findByRole('button', { name: 'Withdraw' })).toBeInTheDocument();
   });
@@ -301,7 +339,7 @@ describe('withdrawing a comment', () => {
    * withdrawn, for the moderator holding a report about it.
    */
   it('says what it actually does before it does it', async () => {
-    renderTab(page([thread({ root: comment({ authorId: ACCOUNT.id }) })]));
+    await renderTab(page([thread({ root: comment({ authorId: ACCOUNT.id }) })]));
 
     await userEvent.click(await screen.findByRole('button', { name: 'Withdraw' }));
 
@@ -310,6 +348,8 @@ describe('withdrawing a comment', () => {
     expect(deleteMock).not.toHaveBeenCalled();
 
     await userEvent.click(screen.getByRole('button', { name: 'Withdraw it' }));
+
+
 
     await waitFor(() => expect(deleteMock).toHaveBeenCalledWith('c1'));
     expect(refresh).toHaveBeenCalled();

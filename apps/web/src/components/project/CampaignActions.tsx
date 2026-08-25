@@ -9,6 +9,7 @@ import { forgetMe, remindMe, saveCampaign, type ProjectState } from '../../lib/p
 import { unsaveCampaign } from '../../lib/community/signals';
 import { useSession } from '../session/SessionProvider';
 import { localeHref, useLocale } from '../../i18n/navigation';
+import type { CampaignActionsCopy } from '../../lib/i18n/campaign-copy';
 
 /**
  * §4.4's save, share and reminder controls — issue #281, and §4.9's C-09, C-11 and C-13.
@@ -69,6 +70,8 @@ import { localeHref, useLocale } from '../../i18n/navigation';
  */
 
 export interface CampaignActionsProps {
+  /** The words this control draws, resolved on the server. See `lib/i18n/campaign-copy.ts`. */
+  readonly copy: CampaignActionsCopy;
   readonly projectId: string;
   readonly state: ProjectState;
   /** The campaign's title, for the share sheet and for each control's accessible name. */
@@ -88,7 +91,9 @@ function messageFor(cause: unknown): string {
   return 'The service could not be reached. Try again.';
 }
 
-export function CampaignActions({ projectId, state, title, path }: CampaignActionsProps) {
+export function CampaignActions({ projectId, state, title, path,
+  copy,
+}: CampaignActionsProps) {
   const { status } = useSession();
   /*
    * The sign-in below is a full-document anchor rather than a `Link`, deliberately — signing
@@ -197,7 +202,7 @@ export function CampaignActions({ projectId, state, title, path }: CampaignActio
               size="sm"
               iconLeft={<Bookmark aria-hidden="true" className="size-4" />}
             >
-              Save
+              {copy.save}
             </Pill>
           </a>
         ) : (
@@ -240,7 +245,7 @@ export function CampaignActions({ projectId, state, title, path }: CampaignActio
             )
           }
         >
-          Share
+          {copy.share}
         </Pill>
 
         {state === 'PRELAUNCH' &&
@@ -250,7 +255,7 @@ export function CampaignActions({ projectId, state, title, path }: CampaignActio
               className="rounded-full"
             >
               <Pill variant="ghost" size="sm" iconLeft={<Bell aria-hidden="true" className="size-4" />}>
-                Remind me
+                {copy.remind}
               </Pill>
             </a>
           ) : (

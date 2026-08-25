@@ -7,6 +7,7 @@ import { ApiError } from '../../lib/api/problem';
 import { signInHref } from '../../lib/auth/redirect';
 import { isSubmittableComment, postComment, replyToComment } from '../../lib/community/comments';
 import { useSession } from '../session/SessionProvider';
+import type { CommentCopy } from '../../lib/i18n/campaign-copy';
 
 /**
  * Writing a comment, and answering one — §4.9's C-01 and C-03, issue #285.
@@ -57,6 +58,8 @@ export type CommentTarget =
   | { readonly kind: 'reply'; readonly commentId: string };
 
 export interface CommentComposerProps {
+  /** The words this control draws, resolved on the server. See `lib/i18n/campaign-copy.ts`. */
+  readonly copy: CommentCopy;
   readonly target: CommentTarget;
   /** Where a sign-in should return to — §10.2's canonical path for this campaign. */
   readonly returnTo: string;
@@ -96,6 +99,7 @@ export function CommentComposer({
   submitLabel,
   onPosted,
   onCancel,
+  copy,
 }: CommentComposerProps) {
   const router = useRouter();
   const { status } = useSession();
@@ -118,12 +122,11 @@ export function CommentComposer({
     return (
       <div className="flex flex-col gap-3 rounded-lg border border-white/8 bg-surface-2 p-5">
         <p className="text-sm text-white/64">
-          Commenting needs an account. It is how the platform can tell one person from five
-          copies of the same one, and how the creator can answer you.
+          {copy.signedOut}
         </p>
         <div>
           <a href={localeHref(signInHref(returnTo), locale)} className="rounded-full">
-            <Pill size="sm">Sign in to comment</Pill>
+            <Pill size="sm">{copy.signIn}</Pill>
           </a>
         </div>
       </div>
@@ -167,7 +170,7 @@ export function CommentComposer({
   return (
     <form onSubmit={(event) => void submit(event)} noValidate className="flex flex-col gap-3">
       {error !== null && (
-        <InlineAlert variant="danger" title="It was not posted">
+        <InlineAlert variant="danger" title={copy.notPosted}>
           <p>{error}</p>
         </InlineAlert>
       )}
@@ -191,7 +194,7 @@ export function CommentComposer({
 
         {onCancel !== undefined && (
           <Pill type="button" variant="ghost" size="sm" onClick={onCancel}>
-            Cancel
+            {copy.cancel}
           </Pill>
         )}
 

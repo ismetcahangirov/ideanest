@@ -391,5 +391,87 @@
       "belowRewardPrice": "Bu ödül {price} değerinde. Bu kadar ya da daha fazlasını verin veya daha ucuz bir ödül seçin.",
       "destinationUnpriced": "Üretici bu varış noktası için {lines} teslimat ücreti belirlememiş. Başka bir yer seçin ya da bunu desteğinizden çıkarın."
     }
+  },
+  "campaign": {
+    "tabs": {
+      "label": "Kampanya bölümleri",
+      "campaign": "Kampanya",
+      "creator": "Üretici",
+      "faq": "Sorular",
+      "updates": "Güncellemeler",
+      "comments": "Yorumlar"
+    },
+    "state": {
+      "PRELAUNCH": "Çok yakında",
+      "LIVE": "Etkin",
+      "SUCCESSFUL": "Fonlandı",
+      "LATE_PLEDGE": "Geç destekler açık",
+      "FULFILLING": "Yerine getiriliyor",
+      "COMPLETED": "Tamamlandı",
+      "UNSUCCESSFUL": "Fonlanamadı",
+      "CANCELED": "İptal edildi"
+    },
+    "daysLeft": "{days, plural, =0 {Son gün} other {# gün kaldı}}",
+    "backers": "{count, plural, =0 {Destekçi yok} other {# destekçi}}",
+    "actions": {
+      "save": "Kaydet",
+      "share": "Paylaş",
+      "remind": "Hatırlat"
+    },
+    "rewards": {
+      "heading": "Ödüller"
+    },
+    "media": {
+      "hasVideo": "Bu kampanyanın videosu var."
+    },
+    "creator": {
+      "heading": "Üretici hakkında",
+      "others": "Diğer kampanyaları"
+    },
+    "trust": {
+      "heading": "Burada fonlama nasıl işler",
+      "body": "Platform üreticilerle destekçileri bir araya getirir. Ödüller garanti değildir, ancak üreticiler destekçileri bilgilendirmek zorundadır. Sizden ücret yalnızca proje son tarihe kadar hedefine ulaşırsa tahsil edilir."
+    },
+    "outcome": {
+      "funded": "Bu kampanya fonlandı",
+      "notFunded": "Bu kampanya hedefine ulaşamadı",
+      "reached": "Son tarihten önce hedefine ulaştı.",
+      "notReached": "Son tarihe kadar hedefine ulaşamadı.",
+      "raised": "Topladığı",
+      "closedOn": "{date} tarihinde",
+      "settling": "Yukarıdaki rakamlar kampanyanın son tarihine kadar topladığı tutardır. Onaylanan her destek kampanya kapandıktan sonra tahsil edilir; bu nedenle bu sayfanın başka yerlerinde görünen tutar, tahsilatlar tamamlandıkça değişebilir.",
+      "nobodyCharged": "Kimseden ücret alınmadı. IdeaNest'te hedefine ulaşamayan bir kampanya hiçbir tutar toplamaz ve komisyon ödemez."
+    },
+    "faqs": {
+      "heading": "Sıkça sorulan sorular",
+      "failed": "Sorular ve yanıtlar şu anda yüklenemedi. Yeniden denemek için sayfayı yenileyin.",
+      "empty": "Bu kampanya henüz hiçbir soruyu yanıtlamadı. Yorumlarda bir soru sorun, üretici yanıtı buraya ekleyebilir."
+    },
+    "updates": {
+      "heading": "Güncellemeler",
+      "failed": "Güncellemeler şu anda yüklenemedi. Yeniden denemek için sayfayı yenileyin.",
+      "older": "Daha eski güncellemeler",
+      "backersOnly": "Yalnızca destekçilere"
+    },
+    "comments": {
+      "heading": "Yorumlar",
+      "all": "Tüm yorumlar",
+      "failed": "Yorumlar şu anda yüklenemedi. Yeniden denemek için sayfayı yenileyin.",
+      "empty": "Bu kampanyaya henüz kimse yorum yapmadı.",
+      "showReplies": "Daha fazla yanıt göster",
+      "older": "Daha eski yorumlar",
+      "withdrawn": "Bu yorum geri çekildi.",
+      "fromCreator": "Kampanyadan",
+      "composerLabel": "Yorum yazın",
+      "signedOut": "Yorum yapmak için bir hesap gerekir. Platform bir kişiyi aynı kişinin beş kopyasından böyle ayırt eder ve üretici size böyle yanıt verebilir.",
+      "signIn": "Yorum yapmak için giriş yapın",
+      "cancel": "İptal",
+      "notPosted": "Gönderilemedi",
+      "reply": "Yanıtla",
+      "replyLabel": "Yanıtınız",
+      "withdraw": "Geri çek",
+      "withdrawWarning": "Geri çekmek, yorumun kaldırıldığını belirten bir not bırakır. Ona verilen yanıtlar kalır ve yorum ne düzenlenebilir ne de geri getirilebilir.",
+      "keep": "Kalsın"
+    }
   }
 }

@@ -8,6 +8,37 @@ import { SessionProvider } from '../session/SessionProvider';
 import { CampaignSummary } from './CampaignSummary';
 import { CampaignOutcomeNotice } from './CampaignOutcomeNotice';
 import { CampaignRewards } from './CampaignRewards';
+import CATALOGUE from '../../../messages/en.json';
+import { resolveServerTree } from '../../test-support/server-tree';
+
+/*
+ * The real catalogue, through next-intl's own formatter.
+ *
+ * `createTranslator` rather than a hand-rolled substitution, because these messages carry ICU
+ * plurals — `{days, plural, one {# day left} other {# days left}}` — and a regex that swapped
+ * `{days}` for a number would produce a sentence no language actually renders. Asserting
+ * against `messages/en.json` formatted the way the application formats it is what makes this
+ * suite fail when a translation is edited to something the component no longer draws.
+ */
+vi.mock('next-intl/server', async () => {
+  const { createTranslator } = await import('next-intl');
+
+  return {
+    getLocale: async () => 'en',
+    /*
+     * `namespace` is a plain string here and a union of every valid path in next-intl's own
+     * types. The cast is at the mock's edge rather than at each call: what a component asks
+     * for is whatever it asks for, and a namespace that does not exist fails as a missing
+     * message — which is the failure worth seeing.
+     */
+    getTranslations: async (namespace: string) =>
+      createTranslator({
+        locale: 'en',
+        messages: CATALOGUE,
+        namespace: namespace as never,
+      }),
+  };
+});
 
 /**
  * What a campaign page says about a campaign, and what it must never say.
@@ -54,11 +85,18 @@ const sessionMock = vi.mocked(fetchSession);
 const PATH = '/projects/ayan/coffee-table-book';
 
 /** The header, with the session provider it needs and the clock a countdown is measured on. */
-function renderSummary(page: CampaignPage) {
+async function renderSummary(page: CampaignPage) {
+  /*
+   * `resolveServerTree` awaits the async server components before a client-side renderer
+   * sees them — it would otherwise draw them as nothing at all, which reads as the component
+   * being broken rather than as the renderer being unable to await it.
+   */
   return render(
-    <SessionProvider>
+    await resolveServerTree(
+      <SessionProvider>
       <CampaignSummary campaign={page} path={PATH} now={NOW} />
     </SessionProvider>,
+    ),
   );
 }
 
@@ -96,8 +134,8 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('the campaign summary', () => {
-  it('puts the campaign in the markup rather than in a request', () => {
-    renderSummary(campaign());
+  it('puts the campaign in the markup rather than in a request', async () => {
+    await renderSummary(campaign());
 
     expect(screen.getByRole('heading', { level: 1, name: 'A coffee table book' })).toBeInTheDocument();
     expect(screen.getByText('Two hundred photographs of Baku.')).toBeInTheDocument();
@@ -110,8 +148,8 @@ describe('the campaign summary', () => {
    * nothing to a reader with a colour-vision deficiency and nothing at all to a screen
    * reader, so the figure is printed and the bar carries an accessible name.
    */
-  it('states the completion as words as well as a bar', () => {
-    renderSummary(campaign());
+  it('states the completion as words as well as a bar', async () => {
+    await renderSummary(campaign());
 
     expect(screen.getByText('125%')).toBeInTheDocument();
     expect(screen.getByText('funded')).toBeInTheDocument();
@@ -125,8 +163,8 @@ describe('the campaign summary', () => {
    * `--success`; a lime badge here would tell a backer to hurry about something that is
    * finished.
    */
-  it('does not put a lime countdown on a campaign with ten days left', () => {
-    const { container } = renderSummary(campaign());
+  it('does not put a lime countdown on a campaign with ten days left', async () => {
+    const { container } = await renderSummary(campaign());
 
     // The days remaining are still stated in prose beside the goal — that is information.
     // What must not be there is the lime surface, which is the word "hurry".
@@ -134,8 +172,8 @@ describe('the campaign summary', () => {
     expect(container.querySelector('[data-on-lime]')).toBeNull();
   });
 
-  it('puts a lime countdown on a campaign closing within 48 hours', () => {
-    const { container } = renderSummary(campaign({ deadline: '2026-08-20T18:00:00Z' }));
+  it('puts a lime countdown on a campaign closing within 48 hours', async () => {
+    const { container } = await renderSummary(campaign({ deadline: '2026-08-20T18:00:00Z' }));
 
     const urgent = container.querySelector('[data-on-lime]');
     expect(urgent).not.toBeNull();
@@ -149,15 +187,17 @@ describe('the campaign summary', () => {
    * `daysLeft` is floored at zero, so a campaign that closed a fortnight ago reports the
    * same number as one closing tonight. "Last day" on the former is a lie.
    */
-  it('does not count down a campaign that has already closed', () => {
-    renderSummary(campaign({ state: 'SUCCESSFUL', deadline: '2026-08-01T00:00:00Z' }));
+  it('does not count down a campaign that has already closed', async () => {
+    await renderSummary(campaign({ state: 'SUCCESSFUL', deadline: '2026-08-01T00:00:00Z' }));
 
     expect(screen.queryByText('Last day')).not.toBeInTheDocument();
     expect(screen.getByText('Funded')).toBeInTheDocument();
   });
 
-  it('renders a pre-launch campaign that has no goal, without inventing a percentage', () => {
-    renderSummary(campaign({ state: 'PRELAUNCH', goal: undefined, deadline: undefined }));
+  it('renders a pre-launch campaign that has no goal, without inventing a percentage', async () => {
+    await renderSummary(campaign({ state: 'PRELAUNCH', goal: undefined, deadline: undefined }));
+
+
 
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
@@ -183,17 +223,18 @@ describe('the outcome notice', () => {
    * goal because collections failed; the campaign still funded, and both numbers are on the
    * page because conflating them is how somebody concludes their pledge vanished.
    */
-  it('shows what the campaign raised at the deadline, not what has been collected since', () => {
-    render(<CampaignOutcomeNotice campaign={closed} />);
+  it('shows what the campaign raised at the deadline, not what has been collected since', async () => {
+    render(await resolveServerTree(<CampaignOutcomeNotice campaign={closed} />));
 
     expect(screen.getByRole('heading', { name: /was funded/ })).toBeInTheDocument();
     expect(screen.getByText(/12,?500/)).toBeInTheDocument();
     expect(screen.getByText(/80 backers/)).toBeInTheDocument();
   });
 
-  it('tells the backers of a failed campaign that nobody was charged', () => {
+  it('tells the backers of a failed campaign that nobody was charged', async () => {
     render(
-      <CampaignOutcomeNotice
+      await resolveServerTree(
+        <CampaignOutcomeNotice
         campaign={campaign({
           state: 'UNSUCCESSFUL',
           deadline: '2026-08-18T00:00:00Z',
@@ -206,14 +247,15 @@ describe('the outcome notice', () => {
           },
         } as Partial<ProjectPageResponse>)}
       />,
+      ),
     );
 
     expect(screen.getByRole('heading', { name: /did not reach its goal/ })).toBeInTheDocument();
     expect(screen.getByText(/Nobody was charged/)).toBeInTheDocument();
   });
 
-  it('renders nothing while the campaign is still running', () => {
-    const { container } = render(<CampaignOutcomeNotice campaign={campaign()} />);
+  it('renders nothing while the campaign is still running', async () => {
+    const { container } = render(await resolveServerTree(<CampaignOutcomeNotice campaign={campaign()} />));
 
     expect(container).toBeEmptyDOMElement();
   });
@@ -221,9 +263,10 @@ describe('the outcome notice', () => {
 
 describe('the reward tiers', () => {
   /** PL-01: a sold-out tier stays on the page, and says so in words. */
-  it('shows a sold-out tier rather than hiding it', () => {
+  it('shows a sold-out tier rather than hiding it', async () => {
     render(
-      <CampaignRewards
+      await resolveServerTree(
+        <CampaignRewards
         tiers={[
           {
             id: 'tier-1',
@@ -243,6 +286,7 @@ describe('the reward tiers', () => {
           },
         ]}
       />,
+      ),
     );
 
     expect(screen.getByRole('heading', { name: 'Early bird' })).toBeInTheDocument();
@@ -251,8 +295,8 @@ describe('the reward tiers', () => {
     expect(screen.queryByText(/of this reward left/)).not.toBeInTheDocument();
   });
 
-  it('renders nothing when a campaign offers no tiers', () => {
-    const { container } = render(<CampaignRewards tiers={[]} />);
+  it('renders nothing when a campaign offers no tiers', async () => {
+    const { container } = render(await resolveServerTree(<CampaignRewards tiers={[]} />));
 
     expect(container).toBeEmptyDOMElement();
   });

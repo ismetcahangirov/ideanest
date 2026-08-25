@@ -6,6 +6,7 @@ import { canOptimise } from '../../lib/images/source';
 import { profileHref, type CreatorProject, type PublicProfile } from '../../lib/projects/creatorProfile';
 import type { CampaignPage } from '../../lib/projects/publicPage';
 import { ViewerInstant } from './ViewerClock';
+import { getTranslations } from 'next-intl/server';
 
 /**
  * §4.4's Creator tab — issue #282.
@@ -83,7 +84,9 @@ export interface CreatorPanelProps {
   readonly projects: readonly CreatorProject[];
 }
 
-export function CreatorPanel({ campaign, profile, projects }: CreatorPanelProps) {
+export async function CreatorPanel({ campaign, profile, projects }: CreatorPanelProps) {
+  const t = await getTranslations('campaign.creator');
+
   /*
    * The campaign's own creator fields are the fallback, not the profile's. They came with the
    * page and are true whatever the profile endpoint says, so a creator whose profile is
@@ -99,7 +102,7 @@ export function CreatorPanel({ campaign, profile, projects }: CreatorPanelProps)
     <section aria-labelledby="campaign-creator" className="flex flex-col gap-8">
       <div className="flex flex-col gap-4">
         <h2 id="campaign-creator" className="text-xl font-medium tracking-[-0.02em] text-white">
-          About the creator
+          {t('heading')}
         </h2>
 
         <div className="flex items-start gap-4">
@@ -159,7 +162,7 @@ export function CreatorPanel({ campaign, profile, projects }: CreatorPanelProps)
 
       {projects.length > 0 && (
         <div className="flex flex-col gap-4">
-          <h3 className="text-base font-medium text-white">Their other campaigns</h3>
+          <h3 className="text-base font-medium text-white">{t('others')}</h3>
 
           <ul className="flex flex-col gap-2">
             {projects.map((project) => {
