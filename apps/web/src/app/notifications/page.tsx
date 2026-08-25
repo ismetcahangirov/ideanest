@@ -21,7 +21,13 @@ export const metadata: Metadata = privatePageMetadata({
  */
 export default function NotificationsPage() {
   return (
-    <main className="mx-auto w-full max-w-[720px] px-5 py-10 sm:px-6 sm:py-14">
+    /*
+      A `<div>` and not a `<main>` since #345. `app/notifications/layout.tsx` puts this page
+      inside `SiteShell`, which owns the only `<main>` on the document and is the skip link's
+      target. The column width and the padding stay here: the shell sets neither, and every
+      page inside it draws its own measure.
+    */
+    <div className="mx-auto w-full max-w-[720px] px-5 py-10 sm:px-6 sm:py-14">
       <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
         Notifications
       </h1>
@@ -36,6 +42,6 @@ export default function NotificationsPage() {
       <div className="mt-8">
         <InboxPanel />
       </div>
-    </main>
+    </div>
   );
 }

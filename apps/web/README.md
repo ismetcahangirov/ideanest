@@ -90,7 +90,7 @@ the browser half of the auth flow work at all.
 | `/pledges/[pledgeId]` | Site | §4.5 PL-09 and PL-10: one pledge — edit the tier, the add-ons and the destination, or cancel it (#287) |
 | `/pledges/[pledgeId]/address` | Site | §4.8 PM-07: where one pledge's reward goes (#290) |
 | `/u/[slug]` | Site | **Public.** §4.2 P-04 to P-07: somebody's profile, what they created, what they backed. 404 for a private one (#274) |
-| `/notifications` | — | The in-app inbox: read state, grouping by day, and filtering (#88) |
+| `/notifications` | Site | The in-app inbox: read state, grouping by day, and filtering (#88), in the site shell since #345 |
 | `/projects/new` | — | Name a campaign and create the draft (#33) |
 | `/projects/[id]/edit` | — | Redirects to the first tab (#33) |
 | `/projects/[id]/edit/basics` | — | Title, summary, category, goal, duration, cover (#33) |
@@ -132,14 +132,14 @@ The **Shell** column is what §4.13 WS-01 and WS-02 describe. Three values:
 | **Console** | A bar with a way back to the site, and a rail over the console's screens | `app/admin/layout.tsx` → `AdminArea` (#294) |
 | **—** | No shared chrome. The page draws its own | — |
 
-**A route does not have to live in `app/(site)` to carry the site shell.** Three
-do not, and each renders `SiteShell` from a four-line layout at its own segment:
-`/u/{slug}` (`app/u/layout.tsx`, #274), `/projects/[id]/[projectSlug]` and
-`/projects/[id]/prelaunch` (#343). All three sit under a dynamic segment shared
-with private routes — `/projects/[id]` also carries `/edit`, `/dashboard` and
-`/back` — and Next allows one slug name per level, so lifting the public half
-into the group would mean restructuring the private half with it. A leaf layout
-buys the same chrome and leaves the siblings alone.
+**A route does not have to live in `app/(site)` to carry the site shell.**
+Several do not, and each renders `SiteShell` from a four-line layout at its own
+segment: `/u/{slug}` (`app/u/layout.tsx`, #274), `/notifications` (#345), and
+`/projects/[id]/[projectSlug]` and `/projects/[id]/prelaunch` (#343). The two
+under `/projects/[id]` are there of necessity: that segment also carries
+`/edit`, `/dashboard` and `/back`, and Next allows one slug name per level, so
+lifting the public half into the group would mean restructuring the private half
+with it. A leaf layout buys the same chrome and leaves the siblings alone.
 
 That is not only a convenience. It means chrome is opt-in per segment rather
 than opt-out, which is what keeps the next bullet true by default instead of by
@@ -166,6 +166,14 @@ shell for the opposite reason: a sign-in page is a screen with one job, and some
 signed in and changing a notification setting is not mid-transaction. `/settings/sessions` and
 `/settings/notifications` each lost a `<main>` of their own in the move, because `SiteShell`
 owns the only one on the page.
+
+**`/notifications` joined the site shell with #345, and took `SiteShell` rather
+than `AccountArea`.** It is the route the header's own bell links to, so a frame
+that vanished on arrival read as having left the site. It is deliberately not an
+account screen — its docblock argues that "this is not a setting, it is a place
+somebody reads" — and it is not in `ACCOUNT_GROUPS`, so the account rail would
+have drawn thirteen entries with none of them marked `aria-current="page"`. It
+gave up a `<main>` of its own for the same reason the two screens above did.
 
 **Which routes are key-based, and which are still English literals (#324).** The message
 catalogue lives in `messages/{az,en,ru,tr}.json` and `src/i18n/request.ts` negotiates the
