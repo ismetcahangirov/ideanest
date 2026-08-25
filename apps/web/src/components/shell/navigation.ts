@@ -25,6 +25,21 @@
 
 export interface NavigationLink {
   readonly href: string;
+  /**
+   * A key into `shell.*` in `messages/*.json`, never a word — issue #324.
+   *
+   * The label used to live here as an English literal, which made this module the copy as
+   * well as the structure and meant a fifth language could not be added without editing the
+   * route table. `SiteShell` resolves these on the server and hands the words down; nothing
+   * in the browser ever sees the catalogue. `AccountLink` in `lib/account/navigation.ts`
+   * made the same move first and carries the longer argument.
+   */
+  readonly key: string;
+}
+
+/** A link once its word has been looked up. What a component actually renders. */
+export interface ResolvedNavigationLink {
+  readonly href: string;
   readonly label: string;
 }
 
@@ -39,13 +54,20 @@ export interface NavigationLink {
  * the width §8.6 specifies.
  */
 export const PRIMARY_NAVIGATION: readonly NavigationLink[] = Object.freeze([
-  { href: '/discover', label: 'Discover' },
-  { href: '/categories', label: 'Categories' },
+  { href: '/discover', key: 'discover' },
+  { href: '/categories', key: 'categories' },
 ]);
 
 export interface FooterGroup {
-  readonly heading: string;
+  /** A key into `shell.footer.groups`. See `NavigationLink.key`. */
+  readonly headingKey: string;
   readonly links: readonly NavigationLink[];
+}
+
+/** A footer group once its words have been looked up. */
+export interface ResolvedFooterGroup {
+  readonly heading: string;
+  readonly links: readonly ResolvedNavigationLink[];
 }
 
 /**
@@ -71,34 +93,34 @@ export interface FooterGroup {
  */
 export const FOOTER_GROUPS: readonly FooterGroup[] = Object.freeze([
   {
-    heading: 'Explore',
+    headingKey: 'explore',
     links: [
-      { href: '/discover', label: 'Discover' },
-      { href: '/categories', label: 'Categories' },
-      { href: '/collections', label: 'Collections' },
-      { href: '/search', label: 'Search' },
+      { href: '/discover', key: 'discover' },
+      { href: '/categories', key: 'categories' },
+      { href: '/collections', key: 'collections' },
+      { href: '/search', key: 'search' },
     ],
   },
   {
-    heading: 'Creators',
-    links: [{ href: '/projects/new', label: 'Start a campaign' }],
+    headingKey: 'creators',
+    links: [{ href: '/projects/new', key: 'startCampaign' }],
   },
   {
-    heading: 'Your account',
+    headingKey: 'yourAccount',
     links: [
-      { href: '/notifications', label: 'Notifications' },
-      { href: '/account/saved', label: 'Saved projects' },
-      { href: '/account/surveys', label: 'Surveys' },
-      { href: '/account/deliveries', label: 'Deliveries' },
-      { href: '/settings/notifications', label: 'Settings' },
+      { href: '/notifications', key: 'notifications' },
+      { href: '/account/saved', key: 'saved' },
+      { href: '/account/surveys', key: 'surveys' },
+      { href: '/account/deliveries', key: 'deliveries' },
+      { href: '/settings/notifications', key: 'settings' },
     ],
   },
   {
-    heading: 'About',
+    headingKey: 'about',
     links: [
-      { href: '/about', label: 'About IdeaNest' },
-      { href: '/how-it-works', label: 'How it works' },
-      { href: '/trust-safety', label: 'Trust and safety' },
+      { href: '/about', key: 'about' },
+      { href: '/how-it-works', key: 'howItWorks' },
+      { href: '/trust-safety', key: 'trustSafety' },
     ],
   },
 ]);

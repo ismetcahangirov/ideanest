@@ -6,6 +6,8 @@ import { SessionProvider } from '../../../../components/session/SessionProvider'
 import { MAIN_CONTENT_ID } from '../../../../components/shell/SkipLink';
 import CampaignPageLayout from './[projectSlug]/layout';
 import PrelaunchPageLayout from './prelaunch/layout';
+import MESSAGES from '../../../../../messages/en.json';
+import { resolveServerTree } from '../../../../test-support/server-tree';
 
 /**
  * The two public routes under `/projects/{id}` carry the site shell — issue #343.
@@ -69,6 +71,25 @@ vi.mock('next/navigation', async (importOriginal) => ({
 vi.mock('../../../../lib/session/session', () => ({ fetchSession: vi.fn() }));
 vi.mock('../../../../lib/api/access-token', () => ({ signOut: vi.fn().mockResolvedValue(undefined) }));
 
+/*
+ * The shell reads the catalogue on the server, so the frame under test is an async component.
+ * These two mocks are what let it resolve here: the real `messages/en.json`, reached the way
+ * `i18n/request.ts` reaches it, and `resolveServerTree` to await the component itself.
+ */
+vi.mock('next-intl/server', () => ({
+  getLocale: async () => 'en',
+  getTranslations: async (namespace: string) => (key: string) => {
+    let node: unknown = MESSAGES;
+    for (const segment of `${namespace}.${key}`.split('.')) {
+      if (typeof node !== 'object' || node === null) throw new Error(`no message at ${key}`);
+      node = (node as Record<string, unknown>)[segment];
+    }
+    if (typeof node !== 'string') throw new Error(`no message at ${namespace}.${key}`);
+    return node;
+  },
+}));
+
+
 const sessionMock = vi.mocked(fetchSession);
 
 beforeEach(() => {
@@ -85,26 +106,25 @@ afterEach(cleanup);
  * would make this a test of the fetch mocks. What matters is what the layout puts AROUND its
  * children, so the child is a paragraph.
  */
-function renderInLayout(Layout: (props: { children: ReactNode }) => ReactNode) {
-  return render(
-    <SessionProvider>{Layout({ children: <p>The campaign body</p> })}</SessionProvider>,
-  );
+async function renderInLayout(Layout: (props: { children: ReactNode }) => ReactNode) {
+  const tree = await resolveServerTree(Layout({ children: <p>The campaign body</p> }));
+  return render(<SessionProvider>{tree}</SessionProvider>);
 }
 
 describe.each([
   ['the campaign page', CampaignPageLayout],
   ['the pre-launch page', PrelaunchPageLayout],
 ])('%s', (_name, Layout) => {
-  it('renders inside the site header and footer', () => {
-    renderInLayout(Layout);
+  it('renders inside the site header and footer', async () => {
+    await renderInLayout(Layout);
 
     expect(screen.getByRole('banner')).toBeInTheDocument();
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();
     expect(screen.getByText('The campaign body')).toBeInTheDocument();
   });
 
-  it('has exactly one main landmark, and the skip link points at it', () => {
-    renderInLayout(Layout);
+  it('has exactly one main landmark, and the skip link points at it', async () => {
+    await renderInLayout(Layout);
 
     const mains = screen.getAllByRole('main');
     expect(mains).toHaveLength(1);

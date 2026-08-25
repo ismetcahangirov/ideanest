@@ -7,7 +7,8 @@ import { Menu, X } from 'lucide-react';
 import { cn, useDismiss, useFocusTrap, useScrollLock } from '@ideanest/ui';
 import { useSession } from '../session/SessionProvider';
 import { SearchField } from '../search/SearchField';
-import { PRIMARY_NAVIGATION, isCurrent } from './navigation';
+import { isCurrent } from './navigation';
+import type { ShellCopy } from '../../lib/i18n/shell-copy';
 
 /**
  * Off-canvas navigation and search below the layout's breakpoint — §4.13 WS-03.
@@ -44,7 +45,12 @@ import { PRIMARY_NAVIGATION, isCurrent } from './navigation';
  * for anybody who never opens it.
  */
 
-export function MobileNavDrawer() {
+export interface MobileNavDrawerProps {
+  /** The shell's words, resolved on the server. See `lib/i18n/shell-copy.ts`. */
+  readonly copy: ShellCopy;
+}
+
+export function MobileNavDrawer({ copy }: MobileNavDrawerProps) {
   const pathname = usePathname();
   const { status, session, signOut } = useSession();
 
@@ -73,7 +79,7 @@ export function MobileNavDrawer() {
     <>
       <button
         type="button"
-        aria-label="Open navigation"
+        aria-label={copy.drawer.open}
         aria-expanded={open}
         onClick={() => setOpen(true)}
         className="inline-grid size-10 place-items-center rounded-full bg-surface-3 text-white transition-colors duration-150 ease-in-out hover:bg-surface-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)] md:hidden"
@@ -99,7 +105,7 @@ export function MobileNavDrawer() {
             ref={panel}
             role="dialog"
             aria-modal="true"
-            aria-label="Navigation"
+            aria-label={copy.drawer.label}
             /* Focusable but not a tab stop, so a panel takes focus itself when it has no
                control to hand it to. `useFocusTrap` relies on this. */
             tabIndex={-1}
@@ -113,7 +119,7 @@ export function MobileNavDrawer() {
               <span className="text-lg font-semibold tracking-[-0.03em] text-white">IdeaNest</span>
               <button
                 type="button"
-                aria-label="Close navigation"
+                aria-label={copy.drawer.close}
                 onClick={close}
                 className="inline-grid size-10 place-items-center rounded-full bg-surface-3 text-white transition-colors duration-150 ease-in-out hover:bg-surface-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
               >
@@ -131,9 +137,9 @@ export function MobileNavDrawer() {
               <SearchField fullWidth onNavigate={close} />
             </div>
 
-            <nav aria-label="Primary" className="flex-1 overflow-y-auto px-3 py-4">
+            <nav aria-label={copy.nav.label} className="flex-1 overflow-y-auto px-3 py-4">
               <ul className="list-none">
-                {PRIMARY_NAVIGATION.map((link) => {
+                {copy.nav.links.map((link) => {
                   const current = isCurrent(link.href, pathname);
                   return (
                     <li key={link.href}>
@@ -158,17 +164,17 @@ export function MobileNavDrawer() {
                   <ul className="list-none">
                     <li>
                       <Link href="/notifications" className={DRAWER_ROW}>
-                        Notifications
+                        {copy.actions.notifications}
                       </Link>
                     </li>
                     <li>
                       <Link href="/projects/new" className={DRAWER_ROW}>
-                        Start a campaign
+                        {copy.actions.startCampaign}
                       </Link>
                     </li>
                     <li>
                       <Link href="/settings/sessions" className={DRAWER_ROW}>
-                        Devices and sessions
+                        {copy.actions.sessions}
                       </Link>
                     </li>
                     <li>
@@ -180,7 +186,7 @@ export function MobileNavDrawer() {
                         }}
                         className={cn(DRAWER_ROW, 'w-full text-left')}
                       >
-                        Sign out
+                        {copy.actions.signOut}
                       </button>
                     </li>
                   </ul>
@@ -198,13 +204,13 @@ export function MobileNavDrawer() {
                       data-on-lime=""
                       className="inline-flex h-11 items-center justify-center rounded-full bg-lime-500 text-sm font-medium text-on-lime transition-colors duration-150 ease-in-out hover:bg-lime-400"
                     >
-                      Register
+                      {copy.actions.register}
                     </Link>
                     <Link
                       href="/sign-in"
                       className="inline-flex h-11 items-center justify-center rounded-full border border-white/16 text-sm font-medium text-white transition-colors duration-150 ease-in-out hover:bg-surface-3"
                     >
-                      Sign in
+                      {copy.actions.signIn}
                     </Link>
                   </div>
                 )}

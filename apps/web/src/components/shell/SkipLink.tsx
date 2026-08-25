@@ -18,10 +18,21 @@
  *
  * The target is the `<main>` the site layout renders, which carries `tabIndex={-1}` so the
  * browser will actually move focus into it rather than only scrolling to it.
+ *
+ * ITS WORD ARRIVES AS A PROP, like the rest of the shell's. Reading the catalogue here would
+ * make this an async component, and an async component cannot be rendered by a synchronous
+ * parent — which is what `MinimalShell`, `SiteShell` and `AdminArea` all are at the point
+ * they place it. The rule the shell follows is that the frame resolves and the leaves are
+ * handed words; this is a leaf.
  */
 export const MAIN_CONTENT_ID = 'main-content';
 
-export function SkipLink() {
+export interface SkipLinkProps {
+  /** "Skip to content", in the reader's language. Resolved by whichever frame renders this. */
+  readonly label: string;
+}
+
+export function SkipLink({ label }: SkipLinkProps) {
   return (
     <a
       href={`#${MAIN_CONTENT_ID}`}
@@ -34,7 +45,7 @@ export function SkipLink() {
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]',
       ].join(' ')}
     >
-      Skip to content
+      {label}
     </a>
   );
 }

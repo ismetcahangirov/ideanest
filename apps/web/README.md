@@ -197,11 +197,34 @@ sends the reader through the redirect, which reads to them as the site forgettin
 picked.
 
 **Which routes are key-based, and which are still English literals (#324).** The message
-catalogue lives in `messages/{az,en,ru,tr}.json`. It covers **the account rail only** —
-`AccountArea` and its navigation, plus `/settings/language` itself. Everything else in the
-table above is an inline English literal today, **including the bodies of the account screens
-whose rail is translated**: switching to Azerbaijani changes the thirteen links on the left
-and nothing on the right.
+catalogue lives in `messages/{az,en,ru,tr}.json` and covers **the site shell and the account
+rail**: the header, the mobile drawer, the account menu, the footer, the skip link, the shared
+failure links, `AccountArea` and its navigation, and `/settings/language` itself. Page bodies
+are still inline English literals — including the bodies of the account screens whose rail is
+translated, so switching to Azerbaijani changes the chrome and the thirteen links on the left
+and nothing on the right yet.
+
+**How a word reaches a component, and the measurement behind it.** Server components call
+`getTranslations`. Client components are handed a resolved object as a prop by their server
+parent — `SiteShell` calls `shellCopy()` once and passes it to `SiteHeader`,
+`MobileNavDrawer` and `AccountMenu`. They are **not** given `useTranslations`, because that
+needs a `NextIntlClientProvider`, and a provider in `app/[locale]/layout.tsx` carrying only
+the `shell` namespace was measured at **+24.7 KiB on every route** — `/[locale]/about` went
+from 571.3 KiB of First Load JS to 596.0 KiB and six authentication routes broke their
+budgets. Without it the same page is 556.8 KiB.
+
+`src/lib/i18n/shell-copy.ts` holds the types and the pure builders and imports nothing from
+`next-intl/server`; `shell-copy.server.ts` is the half that reads the request. The split is
+what lets a component test build the same object out of `messages/*.json`, so the assertions
+are against the words the application draws rather than words retyped into a test.
+
+**The one exception, and it is measured rather than assumed.** `app/[locale]/error.tsx` and
+`app/[locale]/(site)/error.tsx` are error boundaries, which Next requires to be client
+components and renders itself — no server parent can hand them anything.
+`src/lib/i18n/failure-copy.client.ts` carries their eight strings in all four languages, under
+a kilobyte, and `failure-copy.client.test.ts` asserts every one of them against the catalogue
+so the two cannot drift. A third such surface should re-measure the provider rather than
+extend that file.
 
 That is now the whole of the remaining work, and it is no longer blocked on anything. Until
 #123 there was a real argument for leaving the public half alone — see below — and it does

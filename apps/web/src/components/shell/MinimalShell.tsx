@@ -48,12 +48,26 @@ export interface MinimalShellProps {
   readonly footer?: ReactNode;
   /** Centres the content vertically — right for a form, wrong for a long page. */
   readonly centred?: boolean;
+  /**
+   * "Skip to content", in the reader's language.
+   *
+   * A PROP RATHER THAN A LOOKUP because this frame is rendered by `app/[locale]/error.tsx`,
+   * which Next requires to be a client component — so this module is in a client bundle and
+   * cannot reach the server catalogue. Everything else that renders it is a server component
+   * and resolves the word before handing it over.
+   */
+  readonly skipToContent: string;
 }
 
-export function MinimalShell({ children, footer, centred = false }: MinimalShellProps) {
+export function MinimalShell({
+  children,
+  footer,
+  centred = false,
+  skipToContent,
+}: MinimalShellProps) {
   return (
     <div className="relative flex min-h-dvh flex-col">
-      <SkipLink />
+      <SkipLink label={skipToContent} />
 
       <header className="px-5 pt-7 sm:px-7">
         <Link

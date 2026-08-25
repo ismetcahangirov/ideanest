@@ -8,7 +8,8 @@ import { useSession } from '../session/SessionProvider';
 import { AccountMenu } from './AccountMenu';
 import { SearchField } from '../search/SearchField';
 import { MobileNavDrawer } from './MobileNavDrawer';
-import { PRIMARY_NAVIGATION, isCurrent } from './navigation';
+import { isCurrent } from './navigation';
+import type { ShellCopy } from '../../lib/i18n/shell-copy';
 
 /**
  * The global header — §4.13 WS-01, docs/ui-kit.md §8.6, docs/motion-system.md §4.7.
@@ -67,7 +68,17 @@ const NAV_LINK = [
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)] rounded-sm',
 ].join(' ');
 
-export function SiteHeader() {
+export interface SiteHeaderProps {
+  /**
+   * Every word this header and its two client children draw, resolved on the server by
+   * `SiteShell`. `lib/i18n/shell-copy.ts` explains why the copy arrives as a prop rather
+   * than through `useTranslations`: the provider that hook needs would sit above every route
+   * on the site, and this repository has measured that at up to 27.4 KiB per route.
+   */
+  readonly copy: ShellCopy;
+}
+
+export function SiteHeader({ copy }: SiteHeaderProps) {
   const pathname = usePathname();
   const { status, session, signOut } = useSession();
 
@@ -88,8 +99,8 @@ export function SiteHeader() {
          * remove the element §4.7 animates. Below `md` the same links are in the drawer
          * (WS-03), which is the one navigation on screen at that size.
          */
-        <ul className="hidden list-none items-center gap-8 md:flex">
-          {PRIMARY_NAVIGATION.map((link) => {
+        <ul aria-label={copy.nav.label} className="hidden list-none items-center gap-8 md:flex">
+          {copy.nav.links.map((link) => {
             const current = isCurrent(link.href, pathname);
             return (
               <li key={link.href}>
@@ -113,13 +124,13 @@ export function SiteHeader() {
             <>
               <Link
                 href="/notifications"
-                aria-label="Notifications"
-                title="Notifications"
+                aria-label={copy.actions.notifications}
+                title={copy.actions.notifications}
                 className="inline-grid size-10 place-items-center rounded-full bg-surface-3 text-white transition-colors duration-150 ease-in-out hover:bg-surface-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
               >
                 <Bell aria-hidden="true" className="size-[18px]" />
               </Link>
-              <AccountMenu session={session} onSignOut={signOut} />
+              <AccountMenu session={session} onSignOut={signOut} copy={copy.actions} />
             </>
           )}
 
@@ -129,7 +140,7 @@ export function SiteHeader() {
                 href="/sign-in"
                 className="hidden h-10 items-center rounded-full px-4 text-sm font-medium text-white transition-colors duration-150 ease-in-out hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)] sm:inline-flex"
               >
-                Sign in
+                {copy.actions.signIn}
               </Link>
               {/*
                 The one lime element in the shell (§8.6). A LINK STYLED AS THE ACCENT PILL
@@ -144,7 +155,7 @@ export function SiteHeader() {
                 data-on-lime=""
                 className="inline-flex h-10 items-center rounded-full bg-lime-500 px-[18px] text-sm font-medium text-on-lime transition-colors duration-150 ease-in-out hover:bg-lime-400 active:bg-lime-600"
               >
-                Register
+                {copy.actions.register}
               </Link>
             </>
           )}
@@ -158,7 +169,7 @@ export function SiteHeader() {
             <div aria-hidden="true" className="h-10 w-[132px] sm:w-[190px]" />
           )}
 
-          <MobileNavDrawer />
+          <MobileNavDrawer copy={copy} />
         </>
       }
     />

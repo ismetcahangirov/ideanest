@@ -1,5 +1,12 @@
+import az from '../../../messages/az.json';
+import en from '../../../messages/en.json';
+import ru from '../../../messages/ru.json';
+import tr from '../../../messages/tr.json';
 import { describe, expect, it } from 'vitest';
 import { FOOTER_GROUPS, PRIMARY_NAVIGATION, isCurrent } from './navigation';
+
+const CATALOGUES = { az, en, ru, tr };
+const LOCALES = ['az', 'en', 'ru', 'tr'] as const;
 
 describe('isCurrent', () => {
   it('marks a section current from anywhere inside it', () => {
@@ -87,13 +94,56 @@ describe('the navigation lists', () => {
 
   it('carry no legal column, because §22 has not written the pages yet', () => {
     // A Terms link resolving to nothing is a promise about a document that does not exist.
-    const headings = FOOTER_GROUPS.map((group) => group.heading);
-    expect(headings).not.toContain('Legal');
+    const headings = FOOTER_GROUPS.map((group) => group.headingKey);
+    expect(headings).not.toContain('legal');
   });
 
-  it('label every entry', () => {
+  it('key every entry, and hold no English in the route table at all', () => {
+    /*
+     * The labels used to live here as literals, which made this module the copy as well as
+     * the structure. Since #324 it holds keys, and the assertion is on the shape rather than
+     * on the words: a key that is empty resolves to nothing, and a key with a space in it is
+     * a label somebody pasted back in.
+     */
     for (const group of FOOTER_GROUPS) {
-      for (const link of group.links) expect(link.label.trim()).not.toBe('');
+      expect(group.headingKey.trim()).not.toBe('');
+      expect(group.headingKey).not.toMatch(/\s/u);
+
+      for (const link of group.links) {
+        expect(link.key.trim()).not.toBe('');
+        expect(link.key).not.toMatch(/\s/u);
+      }
+    }
+
+    for (const link of PRIMARY_NAVIGATION) {
+      expect(link.key.trim()).not.toBe('');
+      expect(link.key).not.toMatch(/\s/u);
+    }
+  });
+
+  it.each(LOCALES)('has a %s word for every key it declares', (locale) => {
+    /*
+     * The failure this catches is a route added with a key nobody translated. In production
+     * `getMessageFallback` renders the key's own name, so the footer would draw
+     * `shell.footer.links.press` — a defect that ships silently because English still reads
+     * correctly and nobody on the team reads all four languages.
+     */
+    const catalogue = CATALOGUES[locale];
+
+    for (const link of PRIMARY_NAVIGATION) {
+      expect(catalogue.shell.nav[link.key as keyof typeof catalogue.shell.nav]).toBeTypeOf(
+        'string',
+      );
+    }
+
+    for (const group of FOOTER_GROUPS) {
+      const groups = catalogue.shell.footer.groups;
+      expect(groups[group.headingKey as keyof typeof groups]).toBeTypeOf('string');
+
+      for (const link of group.links) {
+        const links = catalogue.shell.footer.links;
+        expect(links[link.key as keyof typeof links]).toBeTypeOf('string');
+      }
     }
   });
 });
