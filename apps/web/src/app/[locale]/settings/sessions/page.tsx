@@ -2,11 +2,18 @@ import type { Metadata } from 'next';
 import { AccountPageHeader } from '../../../../components/account/AccountPageHeader';
 import { SessionsPanel } from '../../../../components/sessions/SessionsPanel';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
+import { getTranslations } from 'next-intl/server';
 
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Active sessions',
-  description: 'Review the devices signed in to your IdeaNest account and sign out of any of them.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('settings.pages.sessions');
+
+  /*
+   * A function rather than a `const` since #324: the tab title is the one piece of
+   * this screen a reader sees before the page paints, and it followed the build
+   * rather than the reader until the catalogue reached it.
+   */
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
 
 /**
  * The list is per-account and authenticated with a bearer token held in memory,
@@ -17,12 +24,13 @@ export const metadata: Metadata = privatePageMetadata({
  * area's layout now: `SiteShell` owns the single `<main>` on the page, and a second one would
  * leave assistive technology with two answers to "jump to main".
  */
-export default function SessionsPage() {
+export default async function SessionsPage() {
+  const t = await getTranslations('settings.pages.sessions');
+
   return (
     <>
-      <AccountPageHeader title="Devices">
-        Every device currently signed in to your account. If you do not recognise one, sign it
-        out — it stops being able to refresh within fifteen minutes.
+      <AccountPageHeader title={t('title')}>
+        {t('intro')}
       </AccountPageHeader>
 
       <div className="mt-8">

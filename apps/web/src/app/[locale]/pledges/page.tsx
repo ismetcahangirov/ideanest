@@ -2,11 +2,17 @@ import type { Metadata } from 'next';
 import { AccountPageHeader } from '../../../components/account/AccountPageHeader';
 import { PledgeList } from '../../../components/pledges/PledgeList';
 import { privatePageMetadata } from '../../../lib/seo/metadata';
+import { getTranslations } from 'next-intl/server';
 
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Your pledges',
-  description: 'Every campaign you have backed, and what you chose.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('account.pages.pledges');
+
+  /*
+   * A function rather than a `const` since #324: the tab title is the one piece of
+   * this screen a reader sees before the page paints.
+   */
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
 
 /**
  * `/pledges` — the index of the caller's own pledges. §4.5 PL-09 and PL-10, issue #287.
@@ -47,12 +53,13 @@ export const metadata: Metadata = privatePageMetadata({
  * There is nothing here for a crawler and nothing to put in the initial HTML, so the page is
  * a heading and a boundary — the same shape every other account screen takes.
  */
-export default function PledgesPage() {
+export default async function PledgesPage() {
+  const t = await getTranslations('account.pages.pledges');
+
   return (
     <>
-      <AccountPageHeader title="Your pledges">
-        Every campaign you have backed. Nothing has been charged yet — a pledge is collected
-        when its campaign closes successfully, and you can change or withdraw one until then.
+      <AccountPageHeader title={t('title')}>
+        {t('intro')}
       </AccountPageHeader>
 
       <div className="mt-8">

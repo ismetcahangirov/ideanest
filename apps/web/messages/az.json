@@ -124,6 +124,44 @@
         "label": "Dil",
         "summary": "IdeaNest-in sizə hansı dildə yazdığı."
       }
+    },
+    "pages": {
+      "pledges": {
+        "metaTitle": "Dəstəkləriniz",
+        "metaDescription": "Dəstəklədiyiniz bütün kampaniyalar və seçdikləriniz.",
+        "title": "Dəstəkləriniz",
+        "intro": "Dəstəklədiyiniz bütün kampaniyalar. Hələ heç bir məbləğ alınmayıb — dəstək yalnız kampaniya uğurla başa çatdıqda hesabınızdan çıxılır, o vaxta qədər isə onu dəyişə və ya geri götürə bilərsiniz."
+      },
+      "saved": {
+        "metaTitle": "Saxlanmış layihələr",
+        "metaDescription": "Sonra qayıtmaq üçün saxladığınız kampaniyalar.",
+        "title": "Saxlanmış layihələr",
+        "intro": "Sonra qayıtmaq üçün saxladığınız kampaniyalar. Saxlamaq gizlidir — müəllifə bildirilmir."
+      },
+      "following": {
+        "metaTitle": "İzlədikləriniz",
+        "metaDescription": "Yeni kampaniyalarından xəbər tutduğunuz müəlliflər.",
+        "title": "İzlədikləriniz",
+        "intro": "İzlədiyiniz müəlliflər. Hər biri yeni bir kampaniya başlatdıqda sizə xəbər göndərir."
+      },
+      "surveys": {
+        "metaTitle": "Sorğular",
+        "metaDescription": "Müəlliflərin mükafatlarınızı göndərməzdən əvvəl sizdən ehtiyac duyduğu məlumatlar.",
+        "title": "Sorğular",
+        "intro": "Kampaniya maliyyələşdikdən sonra müəllif mükafatınızı göndərmək üçün nəyə ehtiyacı olduğunu soruşur — ölçü, rəng, buraxılış. Sorğu açıq olduğu müddətdə cavabınızı dəyişə bilərsiniz."
+      },
+      "deliveries": {
+        "metaTitle": "Çatdırılmalar",
+        "metaDescription": "Hər mükafatınızın harada olduğu və hara getdiyi.",
+        "title": "Çatdırılmalar",
+        "intro": "Sizə çatacaq hər mükafat üçün bir sətir. Müəllif bağlama zamanı daşıyıcını və izləmə nömrəsini qeyd edir, ona görə altında heç nə olmayan sətir hələ göndərilməyib deməkdir."
+      },
+      "inbox": {
+        "metaTitle": "Bildirişlər",
+        "metaDescription": "IdeaNest-in sizə bildirdiyi hər şey, ən yenisi əvvəldə.",
+        "title": "Bildirişlər",
+        "intro": "Platformanın sizə bildirdiyi hər şey, ən yenisi əvvəldə. Birini açmağınız onu oxunmuş kimi işarələyir. <settings>Sizə nə göndərildiyini dəyişin</settings>."
+      }
     }
   },
   "settings": {
@@ -138,6 +176,50 @@
       "currencyHeading": "Valyuta",
       "currencyValue": "Azərbaycan manatı (AZN)",
       "currencyNote": "Bu gün IdeaNest-dəki bütün kampaniyalar manatla maliyyələşdirilir, ona görə də burada seçiləcək bir şey yoxdur. Göstərmə valyutası ikincisi ilə birlikdə gələcək."
+    },
+    "pages": {
+      "profile": {
+        "metaTitle": "Profil",
+        "metaDescription": "Adınız, bioqrafiyanız, şəkliniz, veb saytınız, məkanınız və linkləriniz — başqalarının gördüyü kimi.",
+        "title": "Profil",
+        "intro": "Yad adamların profilinizi və ya yaratdığınız kampaniyanı açanda gördükləri. Səhifəni bütövlükdə gizlətmək üçün <privacy>məxfilik</privacy> bölməsinə keçin."
+      },
+      "notifications": {
+        "metaTitle": "Bildiriş parametrləri",
+        "metaDescription": "IdeaNest-in sizə nə bildirdiyini və bunun sizə necə çatdığını seçin.",
+        "title": "Bildirişlər",
+        "intro": "Sizə nəyin bildiriləcəyini və bunun sizə necə çatacağını seçin. <b>Baş verdikcə</b> hər birini ayrıca göndərir; <b>gündəlik icmal</b> kanal dəstəkləyirsə, onları gündə bir mesaja yığır. <b>Tətbiqdə</b> isə <inbox>bildirişlərinizi</inbox> doldurur. Dəyişikliklər siz etdikcə yadda saxlanılır."
+      },
+      "sessions": {
+        "metaTitle": "Aktiv sessiyalar",
+        "metaDescription": "IdeaNest hesabınıza daxil olmuş cihazları nəzərdən keçirin və istənilənini çıxarın.",
+        "title": "Cihazlar",
+        "intro": "Hesabınıza hazırda daxil olmuş bütün cihazlar. Tanımadığınız biri varsa, onu çıxarın — on beş dəqiqə ərzində sessiyasını yeniləyə bilməyəcək."
+      },
+      "email": {
+        "metaTitle": "E-poçt ünvanı",
+        "metaDescription": "IdeaNest hesabınızı başqa e-poçt ünvanına köçürün.",
+        "title": "E-poçt ünvanı",
+        "intro": "Daxil olduğunuz ünvan və IdeaNest-in sizə göndərdiyi hər şeyin getdiyi yer. Bunun əvəzinə şifrənizi dəyişmək üçün <password>şifrə</password> bölməsinə keçin."
+      },
+      "password": {
+        "metaTitle": "Şifrə",
+        "metaDescription": "IdeaNest hesabınızın şifrəsini dəyişin.",
+        "title": "Şifrə",
+        "intro": "Onu dəyişmək üçün hazırkı şifrəniz lazımdır. Əgər o sizdə yoxdursa — və ya yalnız Google, yaxud Apple ilə daxil olmusunuzsa — əvəzinə <reset>e-poçtla sıfırlayın</reset>."
+      },
+      "security": {
+        "metaTitle": "İki mərhələli doğrulama",
+        "metaDescription": "IdeaNest girişinizə telefonunuzdan gələn kodu əlavə edin.",
+        "title": "İki mərhələli doğrulama",
+        "intro": "Şifrənizin üstünə telefonunuzdan gələn kod. §4.1 ödənişdən əvvəl bunu tələb edir, ona görə müəllif gec-tez bununla qarşılaşacaq. Hansı brauzerlərin daxil olduğunu görmək üçün <devices>cihazlar</devices> bölməsinə keçin."
+      },
+      "privacy": {
+        "metaTitle": "Məxfilik, məlumatlar və hesabın bağlanması",
+        "metaDescription": "Profilinizi kimin görə biləcəyini seçin, IdeaNest məlumatlarınızın surətini yükləyin və ya hesabınızı bağlayın.",
+        "title": "Məxfilik, məlumatlar və hesabın bağlanması",
+        "intro": "Sizi kimlərin görə biləcəyi, IdeaNest-in sizin haqqınızda saxladığı hər şey və siz ayrılsanız onlarla nə olacağı."
+      }
     }
   }
 }

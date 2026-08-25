@@ -124,6 +124,44 @@
         "label": "Language",
         "summary": "Which language IdeaNest writes to you in."
       }
+    },
+    "pages": {
+      "pledges": {
+        "metaTitle": "Your pledges",
+        "metaDescription": "Every campaign you have backed, and what you chose.",
+        "title": "Your pledges",
+        "intro": "Every campaign you have backed. Nothing has been charged yet — a pledge is collected when its campaign closes successfully, and you can change or withdraw one until then."
+      },
+      "saved": {
+        "metaTitle": "Saved projects",
+        "metaDescription": "The campaigns you saved to come back to.",
+        "title": "Saved projects",
+        "intro": "Campaigns you saved to come back to. Saving is private — a creator is not told."
+      },
+      "following": {
+        "metaTitle": "Following",
+        "metaDescription": "The creators whose launches you are told about.",
+        "title": "Following",
+        "intro": "Creators you follow. Each one sends you a message when they launch something new."
+      },
+      "surveys": {
+        "metaTitle": "Surveys",
+        "metaDescription": "What creators still need from you before they can ship your rewards.",
+        "title": "Surveys",
+        "intro": "After a campaign funds, its creator asks what they need in order to send your reward — a size, a colour, an edition. You can change an answer while the survey is open."
+      },
+      "deliveries": {
+        "metaTitle": "Deliveries",
+        "metaDescription": "Where each of your rewards is, and where it is going.",
+        "title": "Deliveries",
+        "intro": "One row per reward you are owed. A creator records the carrier and the tracking number as they pack, so a row with nothing under it has not been sent yet."
+      },
+      "inbox": {
+        "metaTitle": "Notifications",
+        "metaDescription": "Everything IdeaNest has told you, newest first.",
+        "title": "Notifications",
+        "intro": "Everything the platform has told you, newest first. Opening one marks it read. <settings>Change what you are sent</settings>."
+      }
     }
   },
   "settings": {
@@ -138,6 +176,50 @@
       "currencyHeading": "Currency",
       "currencyValue": "Azerbaijani manat (AZN)",
       "currencyNote": "Every campaign on IdeaNest is funded in manat today, so there is nothing here to choose between. A display currency arrives with the second one."
+    },
+    "pages": {
+      "profile": {
+        "metaTitle": "Profile",
+        "metaDescription": "Your name, biography, picture, website, location and links, as everybody else sees them.",
+        "title": "Profile",
+        "intro": "What strangers see when they open your profile or a campaign you created. To hide the page altogether, go to <privacy>privacy</privacy>."
+      },
+      "notifications": {
+        "metaTitle": "Notification settings",
+        "metaDescription": "Choose what IdeaNest tells you, and how it reaches you.",
+        "title": "Notifications",
+        "intro": "Choose what you are told and how it reaches you. <b>As it happens</b> sends each one on its own; <b>daily digest</b> collects them into one message a day, where the channel supports it. <b>In app</b> is what fills your <inbox>notifications</inbox>. Changes save as you make them."
+      },
+      "sessions": {
+        "metaTitle": "Active sessions",
+        "metaDescription": "Review the devices signed in to your IdeaNest account and sign out of any of them.",
+        "title": "Devices",
+        "intro": "Every device currently signed in to your account. If you do not recognise one, sign it out — it stops being able to refresh within fifteen minutes."
+      },
+      "email": {
+        "metaTitle": "Email address",
+        "metaDescription": "Move your IdeaNest account to a different email address.",
+        "title": "Email address",
+        "intro": "The address you sign in with, and where everything IdeaNest sends you goes. To change your password instead, go to <password>password</password>."
+      },
+      "password": {
+        "metaTitle": "Password",
+        "metaDescription": "Change the password on your IdeaNest account.",
+        "title": "Password",
+        "intro": "Changing it needs the one you have now. If you do not have it — or you have only ever signed in with Google or Apple — <reset>reset it by email</reset> instead."
+      },
+      "security": {
+        "metaTitle": "Two-factor authentication",
+        "metaDescription": "Add a code from your phone to your IdeaNest sign-in.",
+        "title": "Two-factor authentication",
+        "intro": "A code from your phone, on top of your password. §4.1 requires it before a payout, so a creator will meet it sooner or later. To see which browsers are signed in, go to <devices>devices</devices>."
+      },
+      "privacy": {
+        "metaTitle": "Privacy, data and closure",
+        "metaDescription": "Choose who can see your profile, download a copy of your IdeaNest data, or close your account.",
+        "title": "Privacy, data and closure",
+        "intro": "Who can see you, everything IdeaNest holds about you, and what happens to it if you leave."
+      }
     }
   }
 }

@@ -3,11 +3,27 @@ import { Link } from '../../../../i18n/navigation';
 import { AccountPageHeader } from '../../../../components/account/AccountPageHeader';
 import { TwoFactorPanel } from '../../../../components/settings/TwoFactorPanel';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
+import { getTranslations } from 'next-intl/server';
 
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Two-factor authentication',
-  description: 'Add a code from your phone to your IdeaNest sign-in.',
-});
+/**
+ * The one class an inline link inside a page's introduction carries.
+ *
+ * Named rather than repeated because these sentences are now built by `t.rich`, where each
+ * tag is a function and a class typed twice in two of them is a difference nobody sees until
+ * one of the links is underlined and the other is not.
+ */
+const INLINE_LINK = 'text-white underline underline-offset-4';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('settings.pages.security');
+
+  /*
+   * A function rather than a `const` since #324: the tab title is the one piece of
+   * this screen a reader sees before the page paints, and it followed the build
+   * rather than the reader until the catalogue reached it.
+   */
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
 
 /**
  * `/settings/security` — §4.1 A-07, issue #278.
@@ -22,16 +38,19 @@ export const metadata: Metadata = privatePageMetadata({
  * something to check, and this is something to set up once. The navigation puts them beside
  * each other, and this page links across.
  */
-export default function SecurityPage() {
+export default async function SecurityPage() {
+  const t = await getTranslations('settings.pages.security');
+
   return (
     <>
-      <AccountPageHeader title="Two-factor authentication">
-        A code from your phone, on top of your password. §4.1 requires it before a payout, so a
-        creator will meet it sooner or later. To see which browsers are signed in, go to{' '}
-        <Link href="/settings/sessions" className="text-white underline underline-offset-4">
-          devices
-        </Link>
-        .
+      <AccountPageHeader title={t('title')}>
+        {t.rich('intro', {
+          devices: (chunks) => (
+            <Link href="/settings/sessions" className={INLINE_LINK}>
+              {chunks}
+            </Link>
+          ),
+        })}
       </AccountPageHeader>
 
       <div className="mt-8">

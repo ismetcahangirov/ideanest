@@ -124,6 +124,44 @@
         "label": "Dil",
         "summary": "IdeaNest'in size hangi dilde yazdığı."
       }
+    },
+    "pages": {
+      "pledges": {
+        "metaTitle": "Destekleriniz",
+        "metaDescription": "Desteklediğiniz tüm kampanyalar ve seçtikleriniz.",
+        "title": "Destekleriniz",
+        "intro": "Desteklediğiniz tüm kampanyalar. Henüz hiçbir tutar tahsil edilmedi — destek, kampanya başarıyla kapandığında tahsil edilir; o zamana kadar desteğinizi değiştirebilir veya geri çekebilirsiniz."
+      },
+      "saved": {
+        "metaTitle": "Kaydedilen projeler",
+        "metaDescription": "Geri dönmek için kaydettiğiniz kampanyalar.",
+        "title": "Kaydedilen projeler",
+        "intro": "Geri dönmek için kaydettiğiniz kampanyalar. Kaydetmek gizlidir — üreticiye bildirilmez."
+      },
+      "following": {
+        "metaTitle": "Takip edilenler",
+        "metaDescription": "Yeni kampanyalarından haberdar edildiğiniz üreticiler.",
+        "title": "Takip edilenler",
+        "intro": "Takip ettiğiniz üreticiler. Her biri yeni bir şey başlattığında size mesaj gönderir."
+      },
+      "surveys": {
+        "metaTitle": "Anketler",
+        "metaDescription": "Üreticilerin ödüllerinizi gönderebilmek için sizden hâlâ ihtiyaç duyduğu bilgiler.",
+        "title": "Anketler",
+        "intro": "Bir kampanya fonlandıktan sonra üretici, ödülünüzü gönderebilmek için nelere ihtiyacı olduğunu sorar — bir beden, bir renk, bir baskı. Anket açık olduğu sürece yanıtınızı değiştirebilirsiniz."
+      },
+      "deliveries": {
+        "metaTitle": "Teslimatlar",
+        "metaDescription": "Ödüllerinizin her birinin nerede olduğu ve nereye gittiği.",
+        "title": "Teslimatlar",
+        "intro": "Size borçlu olunan her ödül için bir satır. Üretici paketlerken kargo firmasını ve takip numarasını kaydeder; dolayısıyla altı boş olan bir satır henüz gönderilmemiş demektir."
+      },
+      "inbox": {
+        "metaTitle": "Bildirimler",
+        "metaDescription": "IdeaNest'in size bildirdiği her şey, en yenisi başta.",
+        "title": "Bildirimler",
+        "intro": "Platformun size bildirdiği her şey, en yenisi başta. Birini açmanız onu okundu olarak işaretler. <settings>Size ne gönderildiğini değiştirin</settings>."
+      }
     }
   },
   "settings": {
@@ -138,6 +176,50 @@
       "currencyHeading": "Para birimi",
       "currencyValue": "Azerbaycan manatı (AZN)",
       "currencyNote": "Bugün IdeaNest'teki bütün kampanyalar manat ile finanse ediliyor, bu yüzden burada seçilecek bir şey yok. Görüntüleme para birimi ikincisiyle birlikte gelecek."
+    },
+    "pages": {
+      "profile": {
+        "metaTitle": "Profil",
+        "metaDescription": "Adınız, biyografiniz, fotoğrafınız, web siteniz, konumunuz ve bağlantılarınız — herkesin gördüğü haliyle.",
+        "title": "Profil",
+        "intro": "Profilinizi veya oluşturduğunuz bir kampanyayı açan kişilerin gördükleri. Sayfayı tamamen gizlemek için <privacy>gizlilik</privacy> bölümüne gidin."
+      },
+      "notifications": {
+        "metaTitle": "Bildirim ayarları",
+        "metaDescription": "IdeaNest'in size neleri bildireceğini ve bunun size nasıl ulaşacağını seçin.",
+        "title": "Bildirimler",
+        "intro": "Size nelerin bildirileceğini ve bunun size nasıl ulaşacağını seçin. <b>Olay anında</b> her birini ayrı gönderir; <b>günlük özet</b> kanal destekliyorsa bunları günde tek bir mesajda toplar. <b>Uygulama içi</b> ise <inbox>bildirimlerinizi</inbox> dolduran seçenektir. Değişiklikler siz yaptıkça kaydedilir."
+      },
+      "sessions": {
+        "metaTitle": "Etkin oturumlar",
+        "metaDescription": "IdeaNest hesabınızda oturum açmış cihazları gözden geçirin ve dilediğinizin oturumunu kapatın.",
+        "title": "Cihazlar",
+        "intro": "Hesabınızda şu anda oturum açmış olan tüm cihazlar. Tanımadığınız bir tanesi varsa oturumunu kapatın — on beş dakika içinde oturumunu yenileyemez hale gelir."
+      },
+      "email": {
+        "metaTitle": "E-posta adresi",
+        "metaDescription": "IdeaNest hesabınızı farklı bir e-posta adresine taşıyın.",
+        "title": "E-posta adresi",
+        "intro": "Giriş yaparken kullandığınız adres ve IdeaNest'in size gönderdiği her şeyin ulaştığı yer. Bunun yerine şifrenizi değiştirmek için <password>şifre</password> bölümüne gidin."
+      },
+      "password": {
+        "metaTitle": "Şifre",
+        "metaDescription": "IdeaNest hesabınızın şifresini değiştirin.",
+        "title": "Şifre",
+        "intro": "Değiştirmek için şu anki şifreniz gerekir. Elinizde yoksa — ya da yalnızca Google veya Apple ile giriş yaptıysanız — bunun yerine <reset>e-postayla sıfırlayın</reset>."
+      },
+      "security": {
+        "metaTitle": "İki aşamalı doğrulama",
+        "metaDescription": "IdeaNest girişinize telefonunuzdan gelen bir kod ekleyin.",
+        "title": "İki aşamalı doğrulama",
+        "intro": "Şifrenizin üstüne, telefonunuzdan gelen bir kod. §4.1 bunu ödemeden önce zorunlu kılar, dolayısıyla bir üretici er ya da geç bununla karşılaşır. Hangi tarayıcılarda oturum açıldığını görmek için <devices>cihazlar</devices> bölümüne gidin."
+      },
+      "privacy": {
+        "metaTitle": "Gizlilik, veriler ve hesap kapatma",
+        "metaDescription": "Profilinizi kimin görebileceğini seçin, IdeaNest verilerinizin bir kopyasını indirin veya hesabınızı kapatın.",
+        "title": "Gizlilik, veriler ve hesap kapatma",
+        "intro": "Sizi kimlerin görebileceği, IdeaNest'in sizinle ilgili tuttuğu her şey ve siz ayrılırsanız bunlara ne olacağı."
+      }
     }
   }
 }

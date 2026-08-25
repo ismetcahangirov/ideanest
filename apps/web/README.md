@@ -197,12 +197,24 @@ sends the reader through the redirect, which reads to them as the site forgettin
 picked.
 
 **Which routes are key-based, and which are still English literals (#324).** The message
-catalogue lives in `messages/{az,en,ru,tr}.json` and covers **the site shell and the account
-rail**: the header, the mobile drawer, the account menu, the footer, the skip link, the shared
-failure links, `AccountArea` and its navigation, and `/settings/language` itself. Page bodies
-are still inline English literals — including the bodies of the account screens whose rail is
-translated, so switching to Azerbaijani changes the chrome and the thirteen links on the left
-and nothing on the right yet.
+catalogue lives in `messages/{az,en,ru,tr}.json` and covers **the site shell and every
+signed-in screen's frame**: the header, the mobile drawer, the account menu, the footer, the
+skip link, the shared failure links, `AccountArea` and its navigation, and the tab title,
+heading and introduction of all thirteen screens under `/settings/*`, `/account/*`,
+`/pledges` and `/notifications`. What is still English is the **panels below those headings**
+— the forms, tables and empty states each screen renders — along with the whole public site,
+the checkout, the campaign editor and the console.
+
+**Two suites hold the catalogue honest, and they cover different halves.**
+`lib/i18n/catalogue.test.ts` asserts properties of the messages: that the four languages hold
+the same keys, that none is empty, that every rich-text tag is balanced and matches English,
+and that no Latin-script language contains a Cyrillic homoglyph — а, е, о, р, с, х and у are
+drawn identically to their Latin counterparts, so one pasted into an Azerbaijani string reads
+as correct to every reviewer while breaking search and switching a screen reader's voice
+mid-word. One was found in `account.pages.surveys.intro` this way.
+`app/[locale]/account-area.pages.test.ts` asserts the other half — that each page actually
+*asks* for its keys, since a screen rewritten with a literal back in it passes every catalogue
+check while showing English to everybody.
 
 **How a word reaches a component, and the measurement behind it.** Server components call
 `getTranslations`. Client components are handed a resolved object as a prop by their server

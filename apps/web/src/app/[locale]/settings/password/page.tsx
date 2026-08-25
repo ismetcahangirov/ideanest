@@ -3,11 +3,27 @@ import { Link } from '../../../../i18n/navigation';
 import { AccountPageHeader } from '../../../../components/account/AccountPageHeader';
 import { PasswordChangePanel } from '../../../../components/settings/PasswordChangePanel';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
+import { getTranslations } from 'next-intl/server';
 
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Password',
-  description: 'Change the password on your IdeaNest account.',
-});
+/**
+ * The one class an inline link inside a page's introduction carries.
+ *
+ * Named rather than repeated because these sentences are now built by `t.rich`, where each
+ * tag is a function and a class typed twice in two of them is a difference nobody sees until
+ * one of the links is underlined and the other is not.
+ */
+const INLINE_LINK = 'text-white underline underline-offset-4';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('settings.pages.password');
+
+  /*
+   * A function rather than a `const` since #324: the tab title is the one piece of
+   * this screen a reader sees before the page paints, and it followed the build
+   * rather than the reader until the catalogue reached it.
+   */
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
 
 /**
  * `/settings/password` — §4.1 A-13, issue #277.
@@ -32,16 +48,19 @@ export const metadata: Metadata = privatePageMetadata({
  * The link is here, in the page's own standfirst, rather than inside the panel: it is an
  * alternative to the whole form and not a footnote to one of its fields.
  */
-export default function PasswordSettingsPage() {
+export default async function PasswordSettingsPage() {
+  const t = await getTranslations('settings.pages.password');
+
   return (
     <>
-      <AccountPageHeader title="Password">
-        Changing it needs the one you have now. If you do not have it — or you have only ever
-        signed in with Google or Apple —{' '}
-        <Link href="/reset-password" className="text-white underline underline-offset-4">
-          reset it by email
-        </Link>{' '}
-        instead.
+      <AccountPageHeader title={t('title')}>
+        {t.rich('intro', {
+          reset: (chunks) => (
+            <Link href="/reset-password" className={INLINE_LINK}>
+              {chunks}
+            </Link>
+          ),
+        })}
       </AccountPageHeader>
 
       <div className="mt-8">

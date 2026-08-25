@@ -3,12 +3,27 @@ import { Link } from '../../../../i18n/navigation';
 import { AccountPageHeader } from '../../../../components/account/AccountPageHeader';
 import { ProfileEditorPanel } from '../../../../components/profile/ProfileEditorPanel';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
+import { getTranslations } from 'next-intl/server';
 
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Profile',
-  description:
-    'Your name, biography, picture, website, location and links, as everybody else sees them.',
-});
+/**
+ * The one class an inline link inside a page's introduction carries.
+ *
+ * Named rather than repeated because these sentences are now built by `t.rich`, where each
+ * tag is a function and a class typed twice in two of them is a difference nobody sees until
+ * one of the links is underlined and the other is not.
+ */
+const INLINE_LINK = 'text-white underline underline-offset-4';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('settings.pages.profile');
+
+  /*
+   * A function rather than a `const` since #324: the tab title is the one piece of
+   * this screen a reader sees before the page paints, and it followed the build
+   * rather than the reader until the catalogue reached it.
+   */
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
 
 /**
  * `/settings/profile` — §4.2 P-01 to P-03, issue #276.
@@ -46,16 +61,19 @@ export const metadata: Metadata = privatePageMetadata({
  * no `FadeUp`: §5's reason is that this is work rather than exploration, and its own note
  * about an error message applies to a save confirmation too.
  */
-export default function ProfileSettingsPage() {
+export default async function ProfileSettingsPage() {
+  const t = await getTranslations('settings.pages.profile');
+
   return (
     <>
-      <AccountPageHeader title="Profile">
-        What strangers see when they open your profile or a campaign you created. To hide the
-        page altogether, go to{' '}
-        <Link href="/settings/privacy" className="text-white underline underline-offset-4">
-          privacy
-        </Link>
-        .
+      <AccountPageHeader title={t('title')}>
+        {t.rich('intro', {
+          privacy: (chunks) => (
+            <Link href="/settings/privacy" className={INLINE_LINK}>
+              {chunks}
+            </Link>
+          ),
+        })}
       </AccountPageHeader>
 
       <div className="mt-8">
