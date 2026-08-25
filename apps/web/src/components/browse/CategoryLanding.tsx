@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import { ArrowRight } from 'lucide-react';
 import { EmptyState } from '@ideanest/ui/server';
 import type { ProjectCard } from '../../lib/discovery/api';

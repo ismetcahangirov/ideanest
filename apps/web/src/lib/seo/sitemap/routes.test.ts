@@ -149,7 +149,10 @@ describe('the sitemap segments', () => {
 
     const entries = await sitemap({ id: Promise.resolve('discovery') });
 
-    expect(entries.map((entry) => entry.url)).toContain('https://ideanest.az/discover');
+    /* One address per language since #123 — `localised.ts` explains the shape. */
+    for (const locale of ['az', 'en', 'ru', 'tr']) {
+      expect(entries.map((entry) => entry.url)).toContain(`https://ideanest.az/${locale}/discover`);
+    }
   });
 
   it('lists a live campaign with an absolute URL and a real lastModified', async () => {
@@ -157,13 +160,27 @@ describe('the sitemap segments', () => {
 
     const entries = await sitemap({ id: Promise.resolve('projects-0') });
 
-    expect(entries).toEqual([
-      {
-        url: 'https://ideanest.az/projects/aysel/ceramics-for-the-old-town',
+    const path = '/projects/aysel/ceramics-for-the-old-town';
+    const languages = {
+      az: `https://ideanest.az/az${path}`,
+      en: `https://ideanest.az/en${path}`,
+      ru: `https://ideanest.az/ru${path}`,
+      tr: `https://ideanest.az/tr${path}`,
+      'x-default': `https://ideanest.az/en${path}`,
+    };
+
+    /*
+     * The campaign's own facts — the timestamp and the change frequency — are copied onto
+     * every language unchanged, because a deadline that passed passed it in all four.
+     */
+    expect(entries).toEqual(
+      ['az', 'en', 'ru', 'tr'].map((locale) => ({
+        url: `https://ideanest.az/${locale}${path}`,
         lastModified: new Date('2026-05-01T09:00:00.000Z'),
         changeFrequency: 'daily',
-      },
-    ]);
+        alternates: { languages },
+      })),
+    );
   });
 
   it('leaves a draft, a suspended, and a rejected campaign out', async () => {
@@ -176,9 +193,9 @@ describe('the sitemap segments', () => {
 
     const entries = await sitemap({ id: Promise.resolve('projects-0') });
 
-    expect(entries.map((entry) => entry.url)).toEqual([
-      'https://ideanest.az/projects/aysel/live',
-    ]);
+    expect(entries.map((entry) => entry.url)).toEqual(
+      ['az', 'en', 'ru', 'tr'].map((locale) => `https://ideanest.az/${locale}/projects/aysel/live`),
+    );
   });
 
   it('never puts more than one shards worth of URLs in a segment', async () => {

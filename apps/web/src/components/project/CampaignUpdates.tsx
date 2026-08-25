@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import { Lock } from 'lucide-react';
 import { Tag } from '@ideanest/ui/server';
 import { formatDay, SERVER_TIME_ZONE } from '../../lib/projects/deadline';

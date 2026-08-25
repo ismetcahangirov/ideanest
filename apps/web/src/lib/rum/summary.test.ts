@@ -49,19 +49,19 @@ describe('percentile75', () => {
 
 describe('summarise', () => {
   const observations: Observation[] = [
-    { route: '/discover', name: 'LCP', value: 1000 },
-    { route: '/discover', name: 'LCP', value: 2000 },
-    { route: '/discover', name: 'LCP', value: 3000 },
-    { route: '/discover', name: 'LCP', value: 9000 },
-    { route: '/discover', name: 'CLS', value: 0.02 },
-    { route: '/projects/[id]/back', name: 'INP', value: 120 },
+    { route: '/[locale]/discover', name: 'LCP', value: 1000 },
+    { route: '/[locale]/discover', name: 'LCP', value: 2000 },
+    { route: '/[locale]/discover', name: 'LCP', value: 3000 },
+    { route: '/[locale]/discover', name: 'LCP', value: 9000 },
+    { route: '/[locale]/discover', name: 'CLS', value: 0.02 },
+    { route: '/[locale]/projects/[id]/back', name: 'INP', value: 120 },
   ];
 
   it('groups by route and metric and rates the p75', () => {
     expect(summarise(observations)).toEqual([
-      { route: '/discover', name: 'CLS', samples: 1, p75: 0.02, rating: 'good' },
-      { route: '/discover', name: 'LCP', samples: 4, p75: 3000, rating: 'needs-improvement' },
-      { route: '/projects/[id]/back', name: 'INP', samples: 1, p75: 120, rating: 'good' },
+      { route: '/[locale]/discover', name: 'CLS', samples: 1, p75: 0.02, rating: 'good' },
+      { route: '/[locale]/discover', name: 'LCP', samples: 4, p75: 3000, rating: 'needs-improvement' },
+      { route: '/[locale]/projects/[id]/back', name: 'INP', samples: 1, p75: 120, rating: 'good' },
     ]);
   });
 
@@ -80,11 +80,11 @@ describe('formatSummary', () => {
   it('prints the rating words the lab summary prints', () => {
     const table = formatSummary(
       summarise([
-        { route: '/discover', name: 'LCP', value: 5000 },
-        { route: '/discover', name: 'CLS', value: 0.4 },
+        { route: '/[locale]/discover', name: 'LCP', value: 5000 },
+        { route: '/[locale]/discover', name: 'CLS', value: 0.4 },
       ]),
     );
-    expect(table).toContain('`/discover`');
+    expect(table).toContain('`/[locale]/discover`');
     expect(table).toContain('5000 ms (poor)');
     expect(table).toContain('0.400 (poor)');
   });

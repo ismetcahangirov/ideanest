@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import { Pill, Tag } from '@ideanest/ui';
 import type { InboxNotification } from '../../lib/notifications/api';
 import { categoryLabel, describeNotification } from '../../lib/notifications/describe';

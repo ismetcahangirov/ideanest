@@ -11,7 +11,7 @@ const valid: RumPayload = {
   traceId: '4bf92f3577b34da6a3ce929d0e0e4736',
   spanId: '00f067aa0ba902b7',
   sessionId: '0f4b7a2c-1d3e-4f5a-8b9c-0d1e2f3a4b5c',
-  route: '/discover',
+  route: '/[locale]/discover',
   connection: '4g',
   device: 'mobile',
   samples: [{ name: 'LCP', value: 1822, navigationType: 'navigate' }],
@@ -81,7 +81,7 @@ describe('a beacon the reporter sent', () => {
       requestId: valid.requestId,
       traceId: valid.traceId,
       sessionId: valid.sessionId,
-      route: '/discover',
+      route: '/[locale]/discover',
       metric: 'LCP',
       value: 1822,
       rating: 'good',
@@ -209,7 +209,7 @@ describe('what the endpoint refuses', () => {
     ['a JSON value that is not an object', '[]'],
     ['a field nobody reviewed', JSON.stringify({ ...valid, referrer: 'https://news.example' })],
     ['the retired FID', JSON.stringify({ ...valid, samples: [{ name: 'FID', value: 1, navigationType: 'navigate' }] })],
-    ['a route that is a URL', JSON.stringify({ ...valid, route: '/discover?q=watches' })],
+    ['a route that is a URL', JSON.stringify({ ...valid, route: '/[locale]/discover?q=watches' })],
     ['an implausible value', JSON.stringify({ ...valid, samples: [{ name: 'LCP', value: 1e308, navigationType: 'navigate' }] })],
   ])('answers 400 to %s', async (_description, body) => {
     const response = await handleRumPost(post(body), dependencies);
@@ -322,7 +322,7 @@ describe('GET', () => {
     const table = await response.text();
 
     expect(response.status).toBe(200);
-    expect(table).toContain('`/discover`');
+    expect(table).toContain('`/[locale]/discover`');
     expect(table).toContain('3000 ms (needs-improvement)');
   });
 

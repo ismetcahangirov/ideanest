@@ -24,6 +24,18 @@ const categoriesMock = vi.mocked(fetchCategories);
 const collectionsMock = vi.mocked(fetchCollections);
 
 const BASE = 'https://ideanest.az';
+
+/**
+ * A path, as the four addresses the sitemap now lists it at — issue #123.
+ *
+ * Written out here rather than imported from `localised.ts` so that these tests assert the
+ * URLs a crawler receives instead of re-running the code that builds them. A helper that
+ * shared the implementation would pass just as happily if the prefix were dropped.
+ */
+function localised(path: string): string[] {
+  const suffix = path === '/' ? '' : path;
+  return ['az', 'en', 'ru', 'tr'].map((locale) => `${BASE}/${locale}${suffix}`);
+}
 const NOW = new Date('2026-08-17T12:00:00.000Z');
 
 const TAXONOMY = [
@@ -89,11 +101,32 @@ describe('projectPath', () => {
 });
 
 describe('projectEntries', () => {
-  it('lists a live campaign at an absolute URL', () => {
+  it('lists a live campaign at an absolute URL in each language', () => {
     const entries = projectEntries([project()], BASE, NOW);
 
-    expect(entries).toHaveLength(1);
-    expect(entries[0]?.url).toBe('https://ideanest.az/projects/aysel/ceramics-for-the-old-town');
+    expect(entries.map((entry) => entry.url)).toEqual(
+      localised('/projects/aysel/ceramics-for-the-old-town'),
+    );
+  });
+
+  it('gives every language of a campaign the same reciprocal hreflang cluster', () => {
+    const entries = projectEntries([project()], BASE, NOW);
+    const path = '/projects/aysel/ceramics-for-the-old-town';
+
+    /*
+     * Google discards an hreflang annotation that is not confirmed from the other side, so
+     * each of the four must name all four — itself included — and `x-default` must name the
+     * language served to a reader matching none of them.
+     */
+    for (const entry of entries) {
+      expect(entry.alternates?.languages).toEqual({
+        az: `${BASE}/az${path}`,
+        en: `${BASE}/en${path}`,
+        ru: `${BASE}/ru${path}`,
+        tr: `${BASE}/tr${path}`,
+        'x-default': `${BASE}/en${path}`,
+      });
+    }
   });
 
   it('omits a draft, a submitted, a rejected, and a suspended campaign', () => {
@@ -135,9 +168,7 @@ describe('projectEntries', () => {
       NOW,
     );
 
-    expect(entries.map((entry) => entry.url)).toEqual([
-      'https://ideanest.az/projects/aysel/shown',
-    ]);
+    expect(entries.map((entry) => entry.url)).toEqual(localised('/projects/aysel/shown'));
   });
 
   it('takes lastModified from the campaigns own timestamps', () => {
@@ -202,15 +233,17 @@ describe('lastModifiedOf', () => {
 describe('the content-type segments', () => {
   it('lists the static pages absolutely', () => {
     expect(pageEntries(BASE).map((entry) => entry.url)).toEqual(
-      PAGE_PATHS.map((path) => `https://ideanest.az${path}`),
+      PAGE_PATHS.flatMap((path) => localised(path)),
     );
   });
 
   it('lists the unfiltered feed and nothing with a query string', async () => {
     const urls = (await discoveryEntries(BASE)).map((entry) => entry.url);
 
-    expect(urls).toContain('https://ideanest.az/discover');
-    for (const path of DISCOVERY_PATHS) expect(urls).toContain(`https://ideanest.az${path}`);
+    expect(urls).toContain('https://ideanest.az/az/discover');
+    for (const path of DISCOVERY_PATHS) {
+      for (const url of localised(path)) expect(urls).toContain(url);
+    }
 
     /*
      * The whole reason WS-05's routes exist: a category reachable only as `?category=games` is
@@ -222,15 +255,17 @@ describe('the content-type segments', () => {
   it('lists a page per category, per subcategory, and per collection', async () => {
     const urls = (await discoveryEntries(BASE)).map((entry) => entry.url);
 
-    expect(urls).toEqual([
-      'https://ideanest.az/discover',
-      'https://ideanest.az/categories/games',
-      'https://ideanest.az/categories/games/tabletop',
-      'https://ideanest.az/categories/games/video',
-      'https://ideanest.az/categories/crafts',
-      'https://ideanest.az/collections/staff-picks',
-      'https://ideanest.az/collections/spring-2026',
-    ]);
+    expect(urls).toEqual(
+      [
+        '/discover',
+        '/categories/games',
+        '/categories/games/tabletop',
+        '/categories/games/video',
+        '/categories/crafts',
+        '/collections/staff-picks',
+        '/collections/spring-2026',
+      ].flatMap((path) => localised(path)),
+    );
   });
 
   /**
@@ -245,7 +280,7 @@ describe('the content-type segments', () => {
     const urls = (await discoveryEntries(BASE)).map((entry) => entry.url);
     const collectionUrls = urls.filter((url) => url.includes('/collections/'));
 
-    expect(collectionUrls).toEqual(['https://ideanest.az/collections/only-this-one']);
+    expect(collectionUrls).toEqual(localised('/collections/only-this-one'));
   });
 
   it('is the feed alone when neither the taxonomy nor the collections can be read', async () => {
@@ -254,9 +289,9 @@ describe('the content-type segments', () => {
 
     // A briefly shorter sitemap is a sitemap; one that throws is an error reported against the
     // whole site.
-    expect((await discoveryEntries(BASE)).map((entry) => entry.url)).toEqual([
-      'https://ideanest.az/discover',
-    ]);
+    expect((await discoveryEntries(BASE)).map((entry) => entry.url)).toEqual(
+      localised('/discover'),
+    );
   });
 
   /** One read failing must not take the other's URLs with it. They are independent. */
@@ -265,13 +300,13 @@ describe('the content-type segments', () => {
 
     const urls = (await discoveryEntries(BASE)).map((entry) => entry.url);
 
-    expect(urls).toContain('https://ideanest.az/categories/games');
+    expect(urls).toContain('https://ideanest.az/az/categories/games');
     expect(urls.some((url) => url.includes('/collections/'))).toBe(false);
   });
 
   it('lists the collections index among the static pages, as the crawl path to them', () => {
     expect(pageEntries(BASE).map((entry) => entry.url)).toContain(
-      'https://ideanest.az/collections',
+      'https://ideanest.az/en/collections',
     );
   });
 

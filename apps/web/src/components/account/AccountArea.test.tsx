@@ -82,7 +82,15 @@ vi.mock('next-intl', () => ({
   ),
 }));
 
-vi.mock('next/navigation', () => ({
+vi.mock('next/navigation', async (importOriginal) => ({
+  /*
+   * Spread first so the real module's other exports survive. `i18n/navigation.ts`
+   * builds its wrappers at import time and reads `redirect` and `permanentRedirect`
+   * while doing so, and a factory that replaced the module wholesale left those
+   * undefined — which failed as a TypeError inside next-intl rather than anywhere
+   * near the test that caused it.
+   */
+  ...(await importOriginal<typeof import('next/navigation')>()),
   usePathname: () => '/settings/notifications',
 }));
 
@@ -133,10 +141,7 @@ describe('AccountArea', () => {
     await renderArea('tr');
 
     expect(tr.account.links.saved.label).not.toBe(en.account.links.saved.label);
-    expect(screen.getByRole('link', { name: tr.account.links.saved.label })).toHaveAttribute(
-      'href',
-      '/account/saved',
-    );
+    expect(screen.getByRole('link', { name: tr.account.links.saved.label })).toHaveAttribute('href', '/en/account/saved');
   });
 
   it('leaves no key unresolved, and names the landmark, in all four languages', async () => {
@@ -159,7 +164,7 @@ describe('AccountArea', () => {
         expect(
           screen.getByRole('link', { name: label }),
           `${at} links ${link.key}`,
-        ).toHaveAttribute('href', link.href);
+        ).toHaveAttribute('href', `/en${link.href}`);
       }
 
       unmount();

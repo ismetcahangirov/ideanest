@@ -92,7 +92,7 @@ describe('the card itself', () => {
 
 describe('the site image route', () => {
   it('renders a PNG', async () => {
-    const route = await import('../../app/opengraph-image');
+    const route = await import('../../app/[locale]/opengraph-image');
 
     expect(route.size).toEqual(OG_IMAGE_SIZE);
     expect(route.contentType).toBe('image/png');
@@ -117,7 +117,7 @@ describe('the campaign image route', () => {
       ),
     );
 
-    const route = await import('../../app/projects/[id]/prelaunch/opengraph-image');
+    const route = await import('../../app/[locale]/projects/[id]/prelaunch/opengraph-image');
     expect(route.size).toEqual(OG_IMAGE_SIZE);
     expect(route.contentType).toBe('image/png');
     await expectPng(await route.default({ params: Promise.resolve({ id: '0193f2a1' }) }));
@@ -138,7 +138,7 @@ describe('the campaign image route', () => {
     );
     vi.stubGlobal('fetch', fetchImpl);
 
-    const route = await import('../../app/projects/[id]/prelaunch/opengraph-image');
+    const route = await import('../../app/[locale]/projects/[id]/prelaunch/opengraph-image');
     // It degrades to the site card rather than 500ing the image route.
     await expectPng(await route.default({ params: Promise.resolve({ id: '0193f2a1' }) }));
 
@@ -153,7 +153,7 @@ describe('the campaign image route', () => {
       }),
     );
 
-    const route = await import('../../app/projects/[id]/prelaunch/opengraph-image');
+    const route = await import('../../app/[locale]/projects/[id]/prelaunch/opengraph-image');
     await expectPng(await route.default({ params: Promise.resolve({ id: '0193f2a1' }) }));
 
     vi.unstubAllGlobals();

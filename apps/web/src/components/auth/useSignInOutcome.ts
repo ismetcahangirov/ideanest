@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '../../i18n/navigation';
 import type { SignInOutcome } from '../../lib/auth/api';
 import { useSession } from '../session/SessionProvider';
 

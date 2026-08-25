@@ -43,10 +43,7 @@ describe('a collection header', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Spring 2026' })).toBeInTheDocument();
 
     const trail = screen.getByRole('navigation', { name: 'Breadcrumb' });
-    expect(within(trail).getByRole('link', { name: 'Collections' })).toHaveAttribute(
-      'href',
-      '/collections',
-    );
+    expect(within(trail).getByRole('link', { name: 'Collections' })).toHaveAttribute('href', '/en/collections');
   });
 
   it('prints the curator’s standfirst rather than paraphrasing it', () => {

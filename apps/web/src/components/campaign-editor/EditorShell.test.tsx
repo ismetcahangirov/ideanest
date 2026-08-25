@@ -47,10 +47,7 @@ describe('EditorShell', () => {
   it('points the available section at its own route', () => {
     renderShell();
 
-    expect(screen.getByRole('link', { name: 'Basics' })).toHaveAttribute(
-      'href',
-      '/projects/project-1/edit/basics',
-    );
+    expect(screen.getByRole('link', { name: 'Basics' })).toHaveAttribute('href', '/en/projects/project-1/edit/basics');
   });
 
   /*
@@ -68,10 +65,7 @@ describe('EditorShell', () => {
   it('renders a section whose route exists as a link to it', () => {
     renderShell();
 
-    expect(screen.getByRole('link', { name: 'Rewards' })).toHaveAttribute(
-      'href',
-      '/projects/project-1/edit/rewards',
-    );
+    expect(screen.getByRole('link', { name: 'Rewards' })).toHaveAttribute('href', '/en/projects/project-1/edit/rewards');
   });
 
   /*

@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CircleAlert, CircleCheck, Info } from 'lucide-react';
 import { InlineAlert, Pill, ProgressBar, Skeleton, SkeletonGroup } from '@ideanest/ui';

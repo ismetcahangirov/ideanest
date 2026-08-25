@@ -35,7 +35,15 @@ vi.mock('../../lib/profiles/api', async () => {
 });
 vi.mock('../../lib/session/session', () => ({ fetchSession: vi.fn() }));
 vi.mock('../../lib/api/access-token', () => ({ signOut: vi.fn().mockResolvedValue(undefined) }));
-vi.mock('next/navigation', () => ({
+vi.mock('next/navigation', async (importOriginal) => ({
+  /*
+   * Spread first so the real module's other exports survive. `i18n/navigation.ts`
+   * builds its wrappers at import time and reads `redirect` and `permanentRedirect`
+   * while doing so, and a factory that replaced the module wholesale left those
+   * undefined — which failed as a TypeError inside next-intl rather than anywhere
+   * near the test that caused it.
+   */
+  ...(await importOriginal<typeof import('next/navigation')>()),
   usePathname: () => '/settings/privacy',
   useRouter: () => ({
     push: () => {},
@@ -97,10 +105,7 @@ describe('a profile that is currently public', () => {
     renderPanel();
 
     await waitFor(() =>
-      expect(screen.getByRole('link', { name: /See your profile/u })).toHaveAttribute(
-        'href',
-        '/u/aysel',
-      ),
+      expect(screen.getByRole('link', { name: /See your profile/u })).toHaveAttribute('href', '/en/u/aysel'),
     );
   });
 

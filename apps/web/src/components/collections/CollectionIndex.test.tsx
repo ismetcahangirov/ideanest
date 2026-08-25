@@ -68,14 +68,8 @@ describe('the collections index', () => {
     render(<CollectionIndex collections={[collection(), OPEN_CALL]} />);
 
     const list = screen.getByRole('list', { name: 'Collections' });
-    expect(within(list).getByRole('link', { name: 'Staff picks' })).toHaveAttribute(
-      'href',
-      '/collections/staff-picks',
-    );
-    expect(within(list).getByRole('link', { name: 'Spring 2026' })).toHaveAttribute(
-      'href',
-      '/collections/spring-2026',
-    );
+    expect(within(list).getByRole('link', { name: 'Staff picks' })).toHaveAttribute('href', '/en/collections/staff-picks');
+    expect(within(list).getByRole('link', { name: 'Spring 2026' })).toHaveAttribute('href', '/en/collections/spring-2026');
   });
 
   it('keeps the order the curator arranged', () => {
@@ -133,10 +127,7 @@ describe('with nothing to list', () => {
       screen.getByRole('heading', { level: 2, name: 'No collections just now' }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/clear/iu)).toBeNull();
-    expect(screen.getByRole('link', { name: 'Browse the feed' })).toHaveAttribute(
-      'href',
-      '/discover',
-    );
+    expect(screen.getByRole('link', { name: 'Browse the feed' })).toHaveAttribute('href', '/en/discover');
   });
 
   it('says the same thing when the read was refused, because it cannot honestly say more', () => {

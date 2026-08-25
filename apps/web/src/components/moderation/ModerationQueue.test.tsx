@@ -292,7 +292,7 @@ describe('ModerationQueue', () => {
       const link = screen.getByRole('link', {
         name: /Open the full history of the report about campaign/,
       });
-      expect(link).toHaveAttribute('href', '/admin/moderation/report-campaign');
+      expect(link).toHaveAttribute('href', '/en/admin/moderation/report-campaign');
     });
   });
 

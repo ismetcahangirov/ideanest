@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import { useSearchParams } from 'next/navigation';
 import { MailCheck } from 'lucide-react';
 import { Field, InlineAlert, Pill, TextInput } from '@ideanest/ui';

@@ -39,7 +39,7 @@ describe('the footer', () => {
       for (const link of group.links) {
         expect(within(nav).getByRole('link', { name: link.label })).toHaveAttribute(
           'href',
-          link.href,
+          `/en${link.href}`,
         );
       }
     }

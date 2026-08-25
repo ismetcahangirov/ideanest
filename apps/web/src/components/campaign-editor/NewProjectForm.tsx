@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter } from '../../i18n/navigation';
 import { useState } from 'react';
 import { CharacterCount, Field, InlineAlert, Pill, TextInput } from '@ideanest/ui';
 import { ApiError } from '../../lib/api/problem';

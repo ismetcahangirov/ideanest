@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import { MailQuestion } from 'lucide-react';
 import { Field, Pill, TextInput } from '@ideanest/ui';
 import { describeAuthFailure, fieldErrorsOf, type AuthFailure } from '../../lib/auth/failures';

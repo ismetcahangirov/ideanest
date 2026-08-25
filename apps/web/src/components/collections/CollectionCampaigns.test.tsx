@@ -148,9 +148,6 @@ describe('with nothing published in the collection', () => {
       screen.getByRole('heading', { level: 2, name: 'Nothing to show here yet' }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/clear/iu)).toBeNull();
-    expect(screen.getByRole('link', { name: 'Browse the feed' })).toHaveAttribute(
-      'href',
-      '/discover',
-    );
+    expect(screen.getByRole('link', { name: 'Browse the feed' })).toHaveAttribute('href', '/en/discover');
   });
 });

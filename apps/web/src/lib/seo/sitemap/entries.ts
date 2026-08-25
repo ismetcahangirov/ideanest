@@ -4,7 +4,7 @@ import { fetchCategories, fetchCollections } from '../../api/server';
 import { categoryPath, subcategoryPath } from '../../categories/api';
 import { COLLECTIONS_PATH, collectionPath } from '../../collections/api';
 import { isIndexableProjectState } from '../indexability';
-import { absoluteUrl } from './config';
+import { localisedEntries } from './localised';
 import type { SitemapProject } from './projects';
 
 /**
@@ -160,21 +160,22 @@ export function projectEntries(
     .map((project) => {
       const lastModified = lastModifiedOf(project, now);
 
-      return {
-        url: absoluteUrl(projectPath(project.creatorSlug, project.slug), baseUrl),
+      return localisedEntries(projectPath(project.creatorSlug, project.slug), baseUrl, {
         // Written conditionally rather than as `undefined`, so that the object a
         // test compares is the object the XML is built from.
         ...(lastModified === undefined ? {} : { lastModified }),
         changeFrequency: changeFrequencyFor(project.state),
-      };
-    });
+      });
+    })
+    .flat();
 }
 
 function pathEntries(paths: readonly string[], baseUrl: string): MetadataRoute.Sitemap {
-  return paths.map((path) => ({
-    url: absoluteUrl(path, baseUrl),
-    changeFrequency: 'daily' as const,
-  }));
+  /*
+   * One path in, four entries out — `localised.ts` explains why the `hreflang` map on each
+   * of them repeats the whole set rather than naming only the others.
+   */
+  return paths.flatMap((path) => localisedEntries(path, baseUrl, { changeFrequency: 'daily' }));
 }
 
 /** The `pages` segment. */

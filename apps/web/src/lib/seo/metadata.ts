@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
+import { LOCALE_OG, type Locale, SUPPORTED_LOCALES } from '../i18n/locale';
 import type { ProjectState } from '../projects/api';
 import { absoluteUrl, siteUrl } from './sitemap/config';
+import { languageAlternates, localePath } from './sitemap/localised';
 
 /**
  * Every title, description, canonical URL, and social card this application
@@ -51,9 +53,20 @@ export const SITE_NAME = 'IdeaNest';
  * remember. `lib/i18n/locale.ts` holds the per-language Open Graph spellings for
  * when a page can be served in more than one.
  */
+/**
+ * THE ONE DOCUMENT THAT STILL HAS NO LANGUAGE OF ITS OWN, and the reason it is a constant.
+ *
+ * Since #123 every page is served under a `[locale]` segment and declares that segment as
+ * its `lang`, so this is no longer the site's language — it is the fallback for the single
+ * frame rendered outside the localised tree. `app/global-error.tsx` replaces the whole
+ * document after the root layout itself failed, which means the locale it would have read
+ * is exactly the thing that did not survive. English is what it can honestly claim.
+ *
+ * Any other use is a bug. `publicPageMetadata` takes the route's own locale.
+ */
 export const SITE_LANGUAGE = 'en';
 
-/** `og:locale`. The same language as `SITE_LANGUAGE`, in Open Graph's spelling. */
+/** `og:locale` for that same fallback frame, in Open Graph's spelling. */
 export const SITE_OG_LOCALE = 'en_US';
 
 /**
@@ -305,8 +318,21 @@ export interface PublicPageInput {
    */
   readonly title: string;
   readonly description: string;
-  /** The route's path. Any query string on it is dropped — see `canonicalUrl`. */
+  /**
+   * The route's path WITHOUT a language on it — `/discover`, never `/az/discover`. Any query
+   * string is dropped; see `canonicalUrl`. The locale below is what turns it into an address.
+   */
   readonly path: string;
+  /**
+   * The language this render is in — the `[locale]` segment the route matched.
+   *
+   * IT IS REQUIRED, AND THAT IS THE POINT. Defaulting it to English would compile everywhere
+   * and emit an English canonical on the Russian page, which is the one SEO defect that
+   * cannot be seen by looking at the page: the document renders correctly in Russian and
+   * quietly tells every crawler it is a duplicate of a different URL. A required field makes
+   * the compiler name each of the ten call sites instead.
+   */
+  readonly locale: Locale;
   /**
    * An explicit preview image, or omitted to fall back to the nearest
    * `opengraph-image` file. See `publicPageMetadata`.
@@ -332,7 +358,22 @@ export interface PublicPageInput {
  * it has spent a third of its width on the word.
  */
 export function publicPageMetadata(input: PublicPageInput): Metadata {
-  const canonical = canonicalUrl(input.path, input.env ?? process.env);
+  const env = input.env ?? process.env;
+
+  /*
+   * The canonical is this page in THIS language, never the English one. A shared canonical
+   * across the four would be a declaration that they are the same document, and a crawler
+   * that believed it would index one and drop three.
+   */
+  const canonical = canonicalUrl(localePath(input.path, input.locale), env);
+
+  /*
+   * The `hreflang` cluster, built by the same function the sitemap uses so the two documents
+   * cannot disagree about what a page's alternates are. `localised.ts` explains why the map
+   * names all four including this one.
+   */
+  const languages = languageAlternates(input.path, siteUrl(env));
+
   const title = input.title;
   const description = truncateAtWord(input.description);
   const images = input.image === undefined ? {} : { images: [{ ...input.image }] };
@@ -340,11 +381,19 @@ export function publicPageMetadata(input: PublicPageInput): Metadata {
   return {
     title,
     description,
-    alternates: { canonical },
+    alternates: { canonical, languages },
     openGraph: {
       type: input.type ?? 'website',
       siteName: SITE_NAME,
-      locale: SITE_OG_LOCALE,
+      locale: LOCALE_OG[input.locale],
+      /*
+       * The other three, which is what tells an unfurler that translations exist. Open Graph
+       * spells this as a repeated property rather than a list, and Next emits one tag per
+       * array element.
+       */
+      alternateLocale: SUPPORTED_LOCALES.filter((other) => other !== input.locale).map(
+        (other) => LOCALE_OG[other],
+      ),
       url: canonical,
       title,
       description,
@@ -376,11 +425,12 @@ export function publicPageMetadata(input: PublicPageInput): Metadata {
  * and the site-wide description, which is what the home page would have written for itself in
  * any case.
  */
-export function homePageMetadata(env: EnvSource = process.env): Metadata {
+export function homePageMetadata(locale: Locale, env: EnvSource = process.env): Metadata {
   const base = publicPageMetadata({
     title: `${SITE_NAME} — reward-based crowdfunding`,
     description: SITE_DESCRIPTION,
     path: '/',
+    locale,
     env,
   });
 
@@ -504,6 +554,7 @@ export function isFetchableImageUrl(url: string): boolean {
 export function projectPageMetadata(
   preview: PublicProjectPreview | null,
   path: string,
+  locale: Locale,
   env: EnvSource = process.env,
 ): Metadata {
   if (preview === null || !isPubliclyVisible(preview.state)) {
@@ -523,6 +574,7 @@ export function projectPageMetadata(
     title: preview.title,
     description: projectSocialDescription(preview),
     path,
+    locale,
     image,
     env,
   });
@@ -546,7 +598,7 @@ export function projectPageMetadata(
  * something, because the template is what CHILDREN are composed with; a page
  * that sets no title of its own is the site itself.
  */
-export function rootMetadata(env: EnvSource = process.env): Metadata {
+export function rootMetadata(locale: Locale, env: EnvSource = process.env): Metadata {
   return {
     metadataBase: metadataBase(env),
     applicationName: SITE_NAME,
@@ -558,7 +610,12 @@ export function rootMetadata(env: EnvSource = process.env): Metadata {
     openGraph: {
       type: 'website',
       siteName: SITE_NAME,
-      locale: SITE_OG_LOCALE,
+      /*
+       * The layout's default, inherited by any page that sets no Open Graph block of its
+       * own — every private route, in other words. It follows the route's language rather
+       * than naming English on a Russian settings screen.
+       */
+      locale: LOCALE_OG[locale],
       title: SITE_NAME,
       description: SITE_DESCRIPTION,
     },

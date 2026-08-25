@@ -188,29 +188,46 @@ somebody reads" — and it is not in `ACCOUNT_GROUPS`, so the account rail would
 have drawn thirteen entries with none of them marked `aria-current="page"`. It
 gave up a `<main>` of its own for the same reason the two screens above did.
 
+**Every route is served under a `[locale]` segment (#123).** `/az/discover`, `/ru/discover`
+and so on; `middleware.ts` answers a bare path with a 307 to the language the reader last
+chose. `src/i18n/routing.ts` declares the shape, `src/i18n/request.ts` resolves the catalogue
+from the matched segment, and `src/i18n/navigation.tsx` is what every `Link`, `useRouter` and
+`usePathname` in the application must come from — a raw `next/link` drops the language and
+sends the reader through the redirect, which reads to them as the site forgetting what they
+picked.
+
 **Which routes are key-based, and which are still English literals (#324).** The message
-catalogue lives in `messages/{az,en,ru,tr}.json` and `src/i18n/request.ts` negotiates the
-reader's language from a cookie. It covers **the account area only** — `/settings/*`,
-`/account/*` and `/pledges/*`, through `AccountArea` and its navigation, plus
-`/settings/language` itself. Every other route in the table above is an inline English
-literal today.
+catalogue lives in `messages/{az,en,ru,tr}.json`. It covers **the account rail only** —
+`AccountArea` and its navigation, plus `/settings/language` itself. Everything else in the
+table above is an inline English literal today, **including the bodies of the account screens
+whose rail is translated**: switching to Azerbaijani changes the thirteen links on the left
+and nothing on the right.
 
-**The console is a deliberate case rather than an oversight (#294).** Its routes are
-authenticated and render per person, so the caching argument below does not apply to them —
-what does is that §21.1's catalogue exists for the product's readers, and the console's
-readers are the people who operate the platform. Sixteen module descriptions in four
-languages, for an audience that has not existed yet, is four times the strings to keep
-current for nobody. `lib/admin/navigation.ts` says so beside the data, and the day the
-platform has staff who do not read English it gains keys the way `lib/account/navigation.ts`
-did.
+That is now the whole of the remaining work, and it is no longer blocked on anything. Until
+#123 there was a real argument for leaving the public half alone — see below — and it does
+not survive the language moving into the path.
 
-That split is a caching decision rather than a to-do list. Reading a cookie makes a render
-dynamic; the account area is authenticated and renders per person already, so it pays
-nothing, while `/`, the category landings and the static pages are cached shared renders that
-a per-visitor language would turn into a render each. The way out is one cached render per
-language keyed by the path — locale-prefixed URLs, which is #123 — and until then
-`app/layout.tsx` keeps `lang="en"` for the document while `AccountArea` declares its own
-language on the subtree it translates. `docs/architecture.md` §21.1 carries the full argument.
+**The console is in scope now, and #294's exemption is withdrawn.** That issue argued that
+§21.1's catalogue exists for the product's readers while the console's readers are the people
+who operate the platform, so sixteen module descriptions in four languages was four times the
+strings to keep current for nobody. The decision has been reversed deliberately rather than
+forgotten: the platform is to be legible in all four languages to everyone who uses it, staff
+included. `lib/admin/navigation.ts` carries the old note and is updated with the keys.
+
+**What the split used to be, and why it is gone.** The catalogue was reached through a
+cookie, and reading a cookie makes a render dynamic. The account area is authenticated and
+renders per person already, so it paid nothing; `/`, the category landings and the static
+pages are cached shared renders that a per-visitor language would have turned into a render
+each, on the largest contentful paint of the pages a stranger meets first. So the public half
+stayed in English for a performance reason rather than a scheduling one.
+
+A path segment removes the trade rather than improving it. `/az/discover` and `/ru/discover`
+are different URLs, so each is a cached render of its own and neither has to ask who is
+asking — the build output prints four `●` prerenders per static route where it printed one.
+`app/[locale]/layout.tsx` declares the segment as the document's `lang`, so `AccountArea` no
+longer needs its `<div lang>` override, and `SITE_LANGUAGE` survives only in
+`app/global-error.tsx`, which replaces the document after the layout that would have known
+the language failed. `docs/architecture.md` §21.1 carries the full argument.
 
 **There is no route for the two-factor challenge (#272).** It is a state of the sign-in form.
 The challenge `POST /v1/auth/login` returns is a credential for the next few minutes — the

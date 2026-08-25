@@ -51,10 +51,7 @@ describe('a campaign on the created list', () => {
   it('links to the campaign at its public address', () => {
     render(<ProfileCampaignCard card={CARD} funding="shown" />);
 
-    expect(screen.getByRole('link', { name: 'A folding bicycle' })).toHaveAttribute(
-      'href',
-      '/projects/aysel/folding-bicycle',
-    );
+    expect(screen.getByRole('link', { name: 'A folding bicycle' })).toHaveAttribute('href', '/en/projects/aysel/folding-bicycle');
   });
 
   it('shows no progress at all for a campaign with no goal', () => {

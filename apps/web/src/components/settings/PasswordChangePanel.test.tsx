@@ -27,7 +27,15 @@ import { PasswordChangePanel } from './PasswordChangePanel';
 const replaced: string[] = [];
 const signOutMock = vi.fn();
 
-vi.mock('next/navigation', () => ({
+vi.mock('next/navigation', async (importOriginal) => ({
+  /*
+   * Spread first so the real module's other exports survive. `i18n/navigation.ts`
+   * builds its wrappers at import time and reads `redirect` and `permanentRedirect`
+   * while doing so, and a factory that replaced the module wholesale left those
+   * undefined — which failed as a TypeError inside next-intl rather than anywhere
+   * near the test that caused it.
+   */
+  ...(await importOriginal<typeof import('next/navigation')>()),
   useRouter: () => ({
     push: () => {},
     replace: (href: string) => replaced.push(href),
@@ -115,7 +123,8 @@ describe('a successful change', () => {
     // The session goes before the navigation, or a signed-in-looking shell renders over a
     // sign-in page.
     expect(signOutMock).toHaveBeenCalled();
-    expect(replaced).toEqual([SIGN_IN_AFTER_PASSWORD_CHANGE]);
+    /* The panel names the route; `i18n/navigation.tsx` puts the reader's language on it. */
+    expect(replaced).toEqual([`/en${SIGN_IN_AFTER_PASSWORD_CHANGE}`]);
   });
 });
 

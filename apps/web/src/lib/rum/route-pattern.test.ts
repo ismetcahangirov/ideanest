@@ -33,9 +33,9 @@ describe('the pattern list', () => {
 
 describe('routePatternOf', () => {
   it('maps a concrete path onto its pattern', () => {
-    expect(routePatternOf('/discover')).toBe('/discover');
-    expect(routePatternOf('/settings/sessions')).toBe('/settings/sessions');
-    expect(routePatternOf('/projects/new')).toBe('/projects/new');
+    expect(routePatternOf('/en/discover')).toBe('/[locale]/discover');
+    expect(routePatternOf('/en/settings/sessions')).toBe('/[locale]/settings/sessions');
+    expect(routePatternOf('/en/projects/new')).toBe('/[locale]/projects/new');
   });
 
   /*
@@ -45,9 +45,9 @@ describe('routePatternOf', () => {
    */
   it('never lets a campaign identifier through', () => {
     const id = '019432f1-2c4a-7bb1-9f7e-0f21b7c9a4d2';
-    expect(routePatternOf(`/projects/${id}/back`)).toBe('/projects/[id]/back');
-    expect(routePatternOf(`/projects/${id}/edit/rewards`)).toBe('/projects/[id]/edit/rewards');
-    expect(routePatternOf(`/projects/${id}/prelaunch`)).toBe('/projects/[id]/prelaunch');
+    expect(routePatternOf(`/en/projects/${id}/back`)).toBe('/[locale]/projects/[id]/back');
+    expect(routePatternOf(`/en/projects/${id}/edit/rewards`)).toBe('/[locale]/projects/[id]/edit/rewards');
+    expect(routePatternOf(`/en/projects/${id}/prelaunch`)).toBe('/[locale]/projects/[id]/prelaunch');
 
     for (const pathname of [
       `/projects/${id}/back`,
@@ -64,9 +64,9 @@ describe('routePatternOf', () => {
    * sentinel, not a cleaned-up version of their mistake.
    */
   it('refuses anything carrying a query string or a fragment', () => {
-    expect(routePatternOf('/discover?q=vintage+watches')).toBe(UNRECOGNISED_ROUTE);
-    expect(routePatternOf('/discover?category=games')).toBe(UNRECOGNISED_ROUTE);
-    expect(routePatternOf('/discover#results')).toBe(UNRECOGNISED_ROUTE);
+    expect(routePatternOf('/en/discover?q=vintage+watches')).toBe(UNRECOGNISED_ROUTE);
+    expect(routePatternOf('/en/discover?category=games')).toBe(UNRECOGNISED_ROUTE);
+    expect(routePatternOf('/en/discover#results')).toBe(UNRECOGNISED_ROUTE);
     expect(routePatternOf('https://ideanest.az/discover?q=x')).toBe(UNRECOGNISED_ROUTE);
   });
 
@@ -103,12 +103,12 @@ describe('routePatternOf', () => {
   });
 
   it('treats a trailing slash as the same route', () => {
-    expect(routePatternOf('/discover/')).toBe('/discover');
-    expect(routePatternOf('/projects/abc/back/')).toBe('/projects/[id]/back');
+    expect(routePatternOf('/en/discover/')).toBe('/[locale]/discover');
+    expect(routePatternOf('/en/projects/abc/back/')).toBe('/[locale]/projects/[id]/back');
   });
 
   it('does not match a dynamic segment against nothing', () => {
-    expect(routePatternOf('/projects//back')).toBe(UNRECOGNISED_ROUTE);
+    expect(routePatternOf('/en/projects//back')).toBe(UNRECOGNISED_ROUTE);
   });
 
   it('survives a non-string', () => {

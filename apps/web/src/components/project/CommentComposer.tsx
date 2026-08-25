@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { localeHref, useLocale, useRouter } from '../../i18n/navigation';
 import { Field, InlineAlert, Pill, Textarea } from '@ideanest/ui';
 import { ApiError } from '../../lib/api/problem';
 import { signInHref } from '../../lib/auth/redirect';
@@ -99,6 +99,13 @@ export function CommentComposer({
 }: CommentComposerProps) {
   const router = useRouter();
   const { status } = useSession();
+  /*
+   * The sign-in below is a full-document anchor rather than a `Link`, deliberately — signing
+   * in is a boundary the client cache should not carry state across — and the language still
+   * has to survive it. Without this a reader signing in from a Russian page lands wherever
+   * their cookie last pointed. `i18n/navigation.tsx` carries the argument.
+   */
+  const locale = useLocale();
 
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
@@ -115,7 +122,7 @@ export function CommentComposer({
           copies of the same one, and how the creator can answer you.
         </p>
         <div>
-          <a href={signInHref(returnTo)} className="rounded-full">
+          <a href={localeHref(signInHref(returnTo), locale)} className="rounded-full">
             <Pill size="sm">Sign in to comment</Pill>
           </a>
         </div>

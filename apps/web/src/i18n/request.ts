@@ -1,58 +1,47 @@
 import { getRequestConfig } from 'next-intl/server';
-import { cookies } from 'next/headers';
-import { DEFAULT_LOCALE, LOCALE_COOKIE, localeOrDefault } from '../lib/i18n/locale';
+import { DEFAULT_LOCALE, isLocale } from '../lib/i18n/locale';
+import { routing } from './routing';
 
 /**
- * How a server render learns which language to draw — issue #324, docs/architecture.md §21.1.
+ * How a server render learns which language to draw — issues #324 and #123,
+ * docs/architecture.md §21.1.
  *
- * <h2>Cookie negotiation, and deliberately no `[locale]` URL segment</h2>
+ * <h2>This file used to read a cookie, and the change is the whole of #123</h2>
  *
- * §21.1 asks that interface text be key-based. It says nothing about URLs, and
- * locale-prefixed paths with `hreflang` alternates are a separate, unstarted decision
- * (#123, `area: seo`). A stored preference does not need them: a cookie names the language
- * before the first byte is written, which is all a server render requires.
+ * The previous version negotiated the language from `ideanest_locale`, and the docblock it
+ * carried was mostly an apology for what that cost: `cookies()` marks a render dynamic, so
+ * only the account area — authenticated, per-person, dynamic already — could afford to be
+ * translated. `/`, the category landings and the static pages were left in English literals
+ * because translating their shell would have turned every cached read into a per-request
+ * render, and the bill would have arrived on the largest contentful paint of the pages a
+ * stranger meets first.
  *
- * <h2>WHY ONLY THE ACCOUNT AREA IS TRANSLATED TODAY, AND WHY THAT IS A PERFORMANCE FACT
- * RATHER THAN AN UNFINISHED CHORE</h2>
+ * That trade is gone rather than improved. The language is a path segment now, so
+ * `requestLocale` resolves from the route's own `[locale]` parameter — a value the router
+ * already knows before this function is called, that no header or cookie was read to learn,
+ * and that leaves the render as static as it was. `/az/discover` and `/ru/discover` are two
+ * cached documents instead of one dynamic one.
  *
- * Reading a cookie makes a route dynamic. That is free on `/settings/*` and `/account/*`,
- * which are behind authentication and render per person already, and it is expensive on
- * the public site: `/`, the category landings and the static pages are cached reads today,
- * and translating their shell through this file would turn every one of them into a
- * per-request render for a navigation bar. The cost would be paid on the largest
- * contentful paint of the pages a stranger meets first.
+ * The consequence worth stating plainly: **there is no longer a performance argument for
+ * leaving any surface in English.** `middleware.ts` owns the one remaining cookie read, on
+ * the bare path only, where a redirect is the whole response.
  *
- * **This is the point at which #123 stops being unrelated.** A locale-prefixed URL is how
- * a translated public page stays statically rendered — one cached render per language,
- * keyed by the path — so the SEO issue and the public half of the catalogue are the same
- * piece of work, and this file is not it. `apps/web/README.md` records which routes are
- * key-based and which are still English literals.
+ * <h2>Trusting `requestLocale`, and still checking it</h2>
  *
- * <h2>The signed-in account's own column</h2>
- *
- * `users.locale` is the durable record and this cookie is its cache. The preference screen
- * writes both, and `SessionProvider` mirrors the account's value into the cookie when a
- * session bootstraps, so a person who chose Russian on one device is not met by English on
- * the next. The cookie is what a render reads because a render must not wait on an API
- * call to know what language to draw in.
+ * The value arrives from the matched route segment, and `generateStaticParams` only ever
+ * produces the four. It is still validated, because a `[locale]` segment is a wildcard —
+ * `/xx/discover` matches the route before it fails anything — and the line below feeds a
+ * dynamic import. An unchecked value there is an attacker-chosen path into the module
+ * graph, which is a different class of problem from a page in the wrong language.
  */
-export default getRequestConfig(async () => {
-  /*
-   * `cookies()` is async in Next 16 and is what marks this render dynamic. It is only ever
-   * reached from a route that already was — see the note above — so it costs nothing that
-   * was not already being paid.
-   */
-  const store = await cookies();
-  const locale = localeOrDefault(store.get(LOCALE_COOKIE)?.value);
+export default getRequestConfig(async ({ requestLocale }) => {
+  const requested = await requestLocale;
+  const locale = isLocale(requested) ? requested : routing.defaultLocale;
 
   return {
     locale,
 
-    /*
-     * One catalogue per language, loaded by the tag that was just validated — never by an
-     * unchecked cookie value, which would be an attacker-chosen path into a dynamic
-     * import. `localeOrDefault` narrows to one of four literals before this line.
-     */
+    /* One catalogue per language, loaded by the tag that was just narrowed to one of four. */
     messages: (await import(`../../messages/${locale}.json`)).default,
 
     /*
@@ -78,7 +67,7 @@ export default getRequestConfig(async () => {
 });
 
 /**
- * Re-exported so that the one place that decides the fallback and the one place that reads
- * the cookie are visibly the same module to anybody reading this file alone.
+ * Re-exported so that the one place that decides the fallback and the one place that names
+ * the default are visibly the same module to anybody reading this file alone.
  */
 export { DEFAULT_LOCALE };

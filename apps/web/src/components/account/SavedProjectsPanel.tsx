@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import Link from 'next/link';
+import { Link } from '../../i18n/navigation';
 import { Bookmark } from 'lucide-react';
 import { EmptyState, InlineAlert, Pill, Skeleton, SkeletonGroup } from '@ideanest/ui';
 import {

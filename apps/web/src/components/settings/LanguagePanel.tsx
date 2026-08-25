@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '../../i18n/navigation';
 import { Field, InlineAlert, Pill, Select } from '@ideanest/ui';
 import { authorizedFetch } from '../../lib/api/client';
 import { errorFrom } from '../../lib/api/problem';

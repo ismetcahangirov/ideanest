@@ -54,10 +54,7 @@ describe('ProjectCard', () => {
 
     // `GET /v1/projects/{creatorSlug}/{projectSlug}` — which is why the card
     // carries `creatorSlug` at all.
-    expect(screen.getByRole('link', { name: 'A field recorder' })).toHaveAttribute(
-      'href',
-      '/projects/sound-lab/a-field-recorder',
-    );
+    expect(screen.getByRole('link', { name: 'A field recorder' })).toHaveAttribute('href', '/en/projects/sound-lab/a-field-recorder');
   });
 
   it('renders money from the string the API sent, at full precision', () => {

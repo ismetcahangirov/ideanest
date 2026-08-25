@@ -27,7 +27,15 @@ import { SignInForm } from './SignInForm';
 const replaced: string[] = [];
 let search = '';
 
-vi.mock('next/navigation', () => ({
+vi.mock('next/navigation', async (importOriginal) => ({
+  /*
+   * Spread first so the real module's other exports survive. `i18n/navigation.ts`
+   * builds its wrappers at import time and reads `redirect` and `permanentRedirect`
+   * while doing so, and a factory that replaced the module wholesale left those
+   * undefined — which failed as a TypeError inside next-intl rather than anywhere
+   * near the test that caused it.
+   */
+  ...(await importOriginal<typeof import('next/navigation')>()),
   usePathname: () => '/sign-in',
   useSearchParams: () => new URLSearchParams(search),
   useRouter: () => ({
@@ -83,7 +91,7 @@ describe('a successful sign-in', () => {
 
     await fillAndSubmit(user);
 
-    await waitFor(() => expect(replaced).toEqual(['/']));
+    await waitFor(() => expect(replaced).toEqual(['/en']));
     // Twice: once for the bootstrap, once after signing in.
     expect(sessionMock.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
@@ -96,7 +104,7 @@ describe('a successful sign-in', () => {
 
     await fillAndSubmit(user);
 
-    await waitFor(() => expect(replaced).toEqual(['/settings/sessions']));
+    await waitFor(() => expect(replaced).toEqual(['/en/settings/sessions']));
   });
 
   it('refuses a return path pointing at another origin', async () => {
@@ -107,7 +115,7 @@ describe('a successful sign-in', () => {
 
     await fillAndSubmit(user);
 
-    await waitFor(() => expect(replaced).toEqual(['/']));
+    await waitFor(() => expect(replaced).toEqual(['/en']));
   });
 
   it('trims the address before sending it', async () => {
@@ -223,10 +231,7 @@ describe('the links', () => {
     search = 'next=%2Fsettings';
     renderForm();
 
-    expect(screen.getByRole('link', { name: 'Create one' })).toHaveAttribute(
-      'href',
-      '/register?next=%2Fsettings',
-    );
+    expect(screen.getByRole('link', { name: 'Create one' })).toHaveAttribute('href', '/en/register?next=%2Fsettings');
   });
 
   /**
@@ -239,10 +244,7 @@ describe('the links', () => {
   it('offers the password reset, now that there is one', () => {
     renderForm();
 
-    expect(screen.getByRole('link', { name: 'Forgot your password?' })).toHaveAttribute(
-      'href',
-      '/reset-password',
-    );
+    expect(screen.getByRole('link', { name: 'Forgot your password?' })).toHaveAttribute('href', '/en/reset-password');
   });
 });
 
