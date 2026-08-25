@@ -55,7 +55,7 @@
     "/projects/[id]/dashboard/backers": 635,
     "/projects/[id]/dashboard/charts": 634,
     "/projects/[id]/dashboard/surveys": 598,
-    "/projects/[id]/edit": 509,
+    "/projects/[id]/edit": 598,
     "/projects/[id]/edit/basics": 647,
     "/projects/[id]/edit/faq": 788,
     "/projects/[id]/edit/prelaunch": 776,

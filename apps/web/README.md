@@ -91,11 +91,14 @@ the browser half of the auth flow work at all.
 | `/pledges/[pledgeId]/address` | Site | §4.8 PM-07: where one pledge's reward goes (#290) |
 | `/u/[slug]` | Site | **Public.** §4.2 P-04 to P-07: somebody's profile, what they created, what they backed. 404 for a private one (#274) |
 | `/notifications` | Site | The in-app inbox: read state, grouping by day, and filtering (#88), in the site shell since #345 |
-| `/projects/new` | — | Name a campaign and create the draft (#33) |
-| `/projects/[id]/edit` | — | Redirects to the first tab (#33) |
-| `/projects/[id]/edit/basics` | — | Title, summary, category, goal, duration, cover (#33) |
-| `/projects/[id]/edit/story` | — | Rich text story, risks, and version history (#35) |
-| `/projects/[id]/edit/prelaunch` | — | Open the pre-launch page, share the link, see who is waiting (#39) |
+| `/projects/new` | Site | Name a campaign and create the draft (#33) |
+| `/projects/[id]/edit` | Site | Redirects to the first tab (#33). Inside the editor's layout, but a server redirect — nobody ever renders it, which is why its budget is an accounting figure rather than a page anyone pays for |
+| `/projects/[id]/edit/basics` | Site | Title, summary, category, goal, duration, cover (#33) |
+| `/projects/[id]/edit/story` | Site | Rich text story, risks, and version history (#35) |
+| `/projects/[id]/edit/rewards` | Site | Reward tiers, items, add-ons, and limits (#34) |
+| `/projects/[id]/edit/faq` | Site | The campaign's questions and answers (#283) |
+| `/projects/[id]/edit/prelaunch` | Site | Open the pre-launch page, share the link, see who is waiting (#39) |
+| `/projects/[id]/edit/review` | Site | The submission checklist, and the button that sends the campaign to review (#37) |
 | `/projects/[id]/prelaunch` | Site | **Public.** The pre-launch page itself, and the reminder signup (#39), in the site shell since #343 |
 | `/projects/[id]/[projectSlug]` | Site | **Public.** The campaign page, server-rendered — §10.2's `/projects/{creatorSlug}/{projectSlug}` (#119). §4.4's header, media, trust block and controls (#281) and its four tabs at `?tab=` (#282, #284, #285). In the site shell since #343 |
 | `/projects/[id]/back` | — | Reward selection, add-ons, destination, and confirmation (#54) |
@@ -134,12 +137,13 @@ The **Shell** column is what §4.13 WS-01 and WS-02 describe. Three values:
 
 **A route does not have to live in `app/(site)` to carry the site shell.**
 Several do not, and each renders `SiteShell` from a four-line layout at its own
-segment: `/u/{slug}` (`app/u/layout.tsx`, #274), `/notifications` (#345), and
-`/projects/[id]/[projectSlug]` and `/projects/[id]/prelaunch` (#343). The two
-under `/projects/[id]` are there of necessity: that segment also carries
-`/edit`, `/dashboard` and `/back`, and Next allows one slug name per level, so
-lifting the public half into the group would mean restructuring the private half
-with it. A leaf layout buys the same chrome and leaves the siblings alone.
+segment: `/u/{slug}` (`app/u/layout.tsx`, #274), `/notifications` (#345),
+`/projects/[id]/[projectSlug]` and `/projects/[id]/prelaunch` (#343), and
+`/projects/new` and the six editor tabs (#347). Everything under
+`/projects/[id]` is there of necessity: that segment also carries `/back`, and
+Next allows one slug name per level, so lifting the public half into the group
+would mean restructuring the private half with it. A leaf layout buys the same
+chrome and leaves the siblings alone.
 
 That is not only a convenience. It means chrome is opt-in per segment rather
 than opt-out, which is what keeps the next bullet true by default instead of by
@@ -158,6 +162,15 @@ exception:
 **The campaign page and the pre-launch page moved into it with #343**, and each
 gave up a `<main>` of its own in the move, for the same reason the account
 screens did below: `SiteShell` owns the only one on the page.
+
+**The campaign editor and `/projects/new` joined the site shell with #347.** All
+six editor tabs and the create form take `SiteShell` from a layout at their own
+segment. `docs/motion-system.md` §5 gives the editor "None — autosave indicator
+only" and gives the shell "One — §4.7's collapse"; those coexist because the same
+table charges the collapse to the shell's own row, "paid on all of them at once",
+rather than to the surface under it. `EditorShell`'s campaign title moved from a
+`<header>` to a `<div>` in the same change, so the page announces one banner and
+not two, and the six tabs each gave up a `<main>`.
 
 **The account area moved into the site shell with #275.** `/settings/*`, `/account/*` and
 `/pledges/*` share `AccountArea` — the site header and footer, plus a navigation over the

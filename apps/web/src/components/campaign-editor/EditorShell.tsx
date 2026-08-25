@@ -86,7 +86,20 @@ export function EditorShell({
 }: EditorShellProps) {
   return (
     <div className="mx-auto w-full max-w-[880px] px-5 py-10 sm:px-6 sm:py-14">
-      <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+      {/*
+        A `<div>` and not a `<header>` since #347, when this frame moved inside `SiteShell`.
+        HTML-AAM gives `<header>` the `banner` role unless it descends from `article`,
+        `aside`, `main`, `nav` or `section`; this one descends from the shell's `<main>`, so
+        by the specification it is already generic and the element was doing no work.
+
+        It is a `<div>` anyway because "already generic by the specification" is a claim about
+        every consumer of the tree, and it is not one that holds uniformly — testing-library
+        reports two banners for this arrangement, and assistive technology has been
+        inconsistent about the scoping rule for longer than that. A page that announces two
+        site headers is telling somebody there are two to choose between. Nothing is given up:
+        the role was generic in the tree this markup is meant to produce.
+      */}
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">
           <p className="text-xs font-medium tracking-[0.06em] text-white/40 uppercase">
             Campaign editor
@@ -102,7 +115,7 @@ export function EditorShell({
           {state != null && <Tag>{PROJECT_STATE_LABEL[state]}</Tag>}
           {status}
         </div>
-      </header>
+      </div>
 
       <nav aria-label="Campaign sections" className="mt-7">
         <ul className="scrollbar-none flex gap-2 overflow-x-auto">
