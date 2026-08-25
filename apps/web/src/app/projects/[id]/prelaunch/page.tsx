@@ -46,9 +46,11 @@ export async function generateMetadata({
 export default async function PublicPrelaunchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  return (
-    <main>
-      <PrelaunchView projectId={id} />
-    </main>
-  );
+  /*
+   * No wrapper since #343. This used to be a `<main>`; the layout beside this file now puts
+   * the page inside `SiteShell`, which owns the only `<main>` on the document, and
+   * `PrelaunchView` draws its own column and padding — so the element that was here carried
+   * a landmark and nothing else.
+   */
+  return <PrelaunchView projectId={id} />;
 }

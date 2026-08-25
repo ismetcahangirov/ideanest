@@ -16,24 +16,29 @@ import { SiteShell } from '../../components/shell/SiteShell';
  * In: the home page, discovery, search, and the category landing pages — everything this
  * pull request builds, plus `/discover`, which moved here.
  *
- * **Not in it, and deliberately: the campaign page, the pre-launch page, the checkout, the
- * campaign editor, the creator dashboard, the settings screens and the admin console.** They
- * are not left out because they should have no chrome; several of them should. They are left
- * out because moving them is not free and is not this issue's:
+ * **Not in it: the checkout, the campaign editor, the creator dashboard, the settings screens
+ * and the admin console.** They are not all left out because they should have no chrome;
+ * several of them should. They are left out because moving them is not free and is not this
+ * issue's:
  *
- *   - `/projects/[id]/[projectSlug]` and `/projects/[id]/prelaunch` sit under a dynamic
- *     segment that also carries `/projects/[id]/edit`, `/dashboard` and `/back`. Next allows
- *     one slug name per level, so the public half cannot be lifted into this group without
- *     restructuring the private half with it, and each of those routes has an issue that
- *     owns its layout. #281 is the one that rebuilds the campaign page's header.
  *   - The checkout must not get this header at all. §8.5 makes it the one screen a white
  *     panel dominates and §5 gives it a motion budget of near zero; a collapsing navigation
  *     bar offering to take somebody to Discover, on the screen where they are about to
  *     pledge, is the opposite of both.
  *   - The admin console gets its own shell, which is #294.
  *
- * `apps/web/README.md`'s route table records which routes carry the shell, so the gap is
- * written down rather than left to be noticed.
+ * **A route does not have to be filed here to get the shell, and three are not.** The public
+ * profile (`app/u/layout.tsx`, #274), the campaign page and the pre-launch page
+ * (`app/projects/[id]/[projectSlug]/layout.tsx` and its sibling, #343) each render
+ * `SiteShell` from a layout at their own segment. All three sit under a dynamic parent shared
+ * with private routes — `/projects/[id]` carries `/edit`, `/dashboard` and `/back` — and Next
+ * allows one slug name per level, so lifting the public half into this group would mean
+ * restructuring the private half with it. A leaf layout buys the same chrome and leaves the
+ * siblings alone, which is what keeps the checkout out of the header by default rather than
+ * by exception.
+ *
+ * `apps/web/README.md`'s route table records which routes carry the shell and how, so the
+ * arrangement is written down rather than left to be noticed.
  *
  * <h2>No metadata here</h2>
  *
