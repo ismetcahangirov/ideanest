@@ -1,6 +1,12 @@
 import { getTranslations } from 'next-intl/server';
 import { type CheckoutCopy, checkoutCopyFrom } from './checkout-copy';
 import {
+  type CampaignActionsCopy,
+  type CommentCopy,
+  campaignActionsCopyFrom,
+  commentCopyFrom,
+} from './campaign-copy';
+import {
   type FailureCopy,
   type FooterCopy,
   type ShellCopy,
@@ -36,4 +42,14 @@ export async function failureCopy(): Promise<FailureCopy> {
 /** The checkout's words. `checkout-copy.ts` explains why the whole of it is one prop. */
 export async function checkoutCopy(): Promise<CheckoutCopy> {
   return checkoutCopyFrom(await getTranslations('checkout'));
+}
+
+/** The save, share and reminder controls. */
+export async function campaignActionsCopy(): Promise<CampaignActionsCopy> {
+  return campaignActionsCopyFrom(await getTranslations('campaign.actions'));
+}
+
+/** The composer and the two comment controls, which share one section. */
+export async function commentCopy(): Promise<CommentCopy> {
+  return commentCopyFrom(await getTranslations('campaign.comments'));
 }

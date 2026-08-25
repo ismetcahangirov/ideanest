@@ -3,6 +3,7 @@ import { MediaFrame } from '@ideanest/ui/server';
 import { PRELAUNCH_COVER_SIZES } from '../../lib/images/sizes';
 import { canOptimise } from '../../lib/images/source';
 import type { CampaignPage } from '../../lib/projects/publicPage';
+import { getTranslations } from 'next-intl/server';
 
 /**
  * §4.4's media player — issue #281. Poster-first, no autoplay, and today no video.
@@ -67,7 +68,9 @@ export interface CampaignMediaProps {
   readonly video?: CampaignVideo | undefined;
 }
 
-export function CampaignMedia({ campaign, video }: CampaignMediaProps) {
+export async function CampaignMedia({ campaign, video }: CampaignMediaProps) {
+  const t = await getTranslations('campaign.media');
+
   const hasVideo = video !== undefined;
 
   return (
@@ -110,7 +113,7 @@ export function CampaignMedia({ campaign, video }: CampaignMediaProps) {
       {hasVideo && (
         <div className="absolute inset-0 grid place-items-center">
           <p className="rounded-sm bg-black/60 px-3 py-1.5 text-sm text-white">
-            This campaign has a video.
+            {t('hasVideo')}
           </p>
         </div>
       )}

@@ -1,4 +1,5 @@
 import type { CampaignFaq } from '../../lib/community/faqs';
+import { getTranslations } from 'next-intl/server';
 
 /**
  * §4.4's FAQ tab — issue #283, over the public read the service now publishes.
@@ -70,11 +71,13 @@ export interface CampaignFaqsProps {
   readonly faqs: readonly CampaignFaq[] | null;
 }
 
-export function CampaignFaqs({ faqs }: CampaignFaqsProps) {
+export async function CampaignFaqs({ faqs }: CampaignFaqsProps) {
+  const t = await getTranslations('campaign.faqs');
+
   return (
     <section aria-labelledby="campaign-faq" className="flex flex-col gap-6">
       <h2 id="campaign-faq" className="text-xl font-medium tracking-[-0.02em] text-white">
-        Frequently asked questions
+        {t('heading')}
       </h2>
 
       {faqs === null ? (
@@ -87,12 +90,11 @@ export function CampaignFaqs({ faqs }: CampaignFaqsProps) {
          * right to say it, this component must only say it when it is true.
          */
         <p className="text-sm text-white/64">
-          The questions and answers could not be loaded just now. Reload the page to try again.
+          {t('failed')}
         </p>
       ) : faqs.length === 0 ? (
         <p className="text-sm text-white/64">
-          This campaign has not answered any questions yet. Ask one in the comments and the
-          creator can add the answer here.
+          {t('empty')}
         </p>
       ) : (
         <ol className="flex flex-col gap-4">

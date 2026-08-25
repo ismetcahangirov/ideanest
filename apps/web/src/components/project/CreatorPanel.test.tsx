@@ -1,10 +1,43 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import type { ProjectPageResponse } from '../../lib/api/server';
 import type { CampaignPage } from '../../lib/projects/publicPage';
 import { readCampaignPage } from '../../lib/projects/publicPage';
 import type { CreatorProject, PublicProfile } from '../../lib/projects/creatorProfile';
 import { CreatorPanel } from './CreatorPanel';
+import CATALOGUE from '../../../messages/en.json';
+import { resolveServerTree } from '../../test-support/server-tree';
+
+/*
+ * The real catalogue, through next-intl's own formatter.
+ *
+ * `createTranslator` rather than a hand-rolled substitution, because these messages carry ICU
+ * plurals — `{days, plural, one {# day left} other {# days left}}` — and a regex that swapped
+ * `{days}` for a number would produce a sentence no language actually renders. Asserting
+ * against `messages/en.json` formatted the way the application formats it is what makes this
+ * suite fail when a translation is edited to something the component no longer draws.
+ */
+vi.mock('next-intl/server', async () => {
+  const { createTranslator } = await import('next-intl');
+
+  return {
+    getLocale: async () => 'en',
+    /*
+     * `namespace` is a plain string here and a union of every valid path in next-intl's own
+     * types. The cast is at the mock's edge rather than at each call: what a component asks
+     * for is whatever it asks for, and a namespace that does not exist fails as a missing
+     * message — which is the failure worth seeing.
+     */
+    getTranslations: async (namespace: string) =>
+      createTranslator({
+        locale: 'en',
+        messages: CATALOGUE,
+        namespace: namespace as never,
+      }),
+  };
+});
+
+
 
 /**
  * §4.4's Creator tab — #282.
@@ -72,46 +105,50 @@ const OTHER: CreatorProject = {
 afterEach(cleanup);
 
 describe('the creator tab', () => {
-  it('links the creator through to the profile route the profile epic owns', () => {
-    render(<CreatorPanel campaign={campaign()} profile={PROFILE} projects={[]} />);
+  it('links the creator through to the profile route the profile epic owns', async () => {
+    render(await resolveServerTree(<CreatorPanel campaign={campaign()} profile={PROFILE} projects={[]} />));
 
     expect(screen.getByRole('link', { name: /Ayan Q/u })).toHaveAttribute('href', '/en/u/ayan');
   });
 
-  it('shows the biography and the joining date the profile published', () => {
-    render(<CreatorPanel campaign={campaign()} profile={PROFILE} projects={[]} />);
+  it('shows the biography and the joining date the profile published', async () => {
+    render(await resolveServerTree(<CreatorPanel campaign={campaign()} profile={PROFILE} projects={[]} />));
 
     expect(screen.getByText('Photographer in Baku.')).toBeInTheDocument();
     expect(screen.getByText(/Member since/u)).toBeInTheDocument();
   });
 
-  it('omits the biography row rather than saying the creator has not written one', () => {
+  it('omits the biography row rather than saying the creator has not written one', async () => {
     render(
-      <CreatorPanel
+      await resolveServerTree(
+        <CreatorPanel
         campaign={campaign()}
         profile={{ ...PROFILE, bio: null }}
         projects={[]}
       />,
+      ),
     );
 
     expect(screen.queryByText(/biography/iu)).not.toBeInTheDocument();
     expect(screen.queryByText('Photographer in Baku.')).not.toBeInTheDocument();
   });
 
-  it('omits the joining date rather than printing an empty one', () => {
+  it('omits the joining date rather than printing an empty one', async () => {
     render(
-      <CreatorPanel
+      await resolveServerTree(
+        <CreatorPanel
         campaign={campaign()}
         profile={{ ...PROFILE, joinedAt: null }}
         projects={[]}
       />,
+      ),
     );
 
     expect(screen.queryByText(/Member since/u)).not.toBeInTheDocument();
   });
 
-  it('lists the creator’s other campaigns, each with its state as a word', () => {
-    render(<CreatorPanel campaign={campaign()} profile={PROFILE} projects={[OTHER]} />);
+  it('lists the creator’s other campaigns, each with its state as a word', async () => {
+    render(await resolveServerTree(<CreatorPanel campaign={campaign()} profile={PROFILE} projects={[OTHER]} />));
 
     expect(screen.getByRole('link', { name: /A folding bicycle/u })).toHaveAttribute('href', '/en/projects/ayan/a-folding-bicycle');
     // Never a hue on its own (§9.2): "Did not fund" is exactly the fact a reader must not
@@ -123,40 +160,46 @@ describe('the creator tab', () => {
    * The list is capped, so its length is not a count — and the profile publishes no count at
    * all, for a module-boundary reason that is not going to change soon.
    */
-  it('prints no total number of campaigns anywhere', () => {
+  it('prints no total number of campaigns anywhere', async () => {
     const { container } = render(
-      <CreatorPanel campaign={campaign()} profile={PROFILE} projects={[OTHER]} />,
+      await resolveServerTree(
+        <CreatorPanel campaign={campaign()} profile={PROFILE} projects={[OTHER]} />,
+      ),
     );
 
     expect(container.textContent).not.toMatch(/\d+\s+(campaigns|projects)/iu);
     expect(container.textContent).not.toMatch(/backed\s+\d+/iu);
   });
 
-  it('offers no way to contact the creator, because there is no endpoint behind one', () => {
-    render(<CreatorPanel campaign={campaign()} profile={PROFILE} projects={[OTHER]} />);
+  it('offers no way to contact the creator, because there is no endpoint behind one', async () => {
+    render(await resolveServerTree(<CreatorPanel campaign={campaign()} profile={PROFILE} projects={[OTHER]} />));
 
     expect(screen.queryByRole('link', { name: /contact/iu })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /contact|message/iu })).not.toBeInTheDocument();
   });
 
-  it('says nothing at all when the creator has no other campaigns', () => {
+  it('says nothing at all when the creator has no other campaigns', async () => {
     const { container } = render(
-      <CreatorPanel campaign={campaign()} profile={PROFILE} projects={[]} />,
+      await resolveServerTree(
+        <CreatorPanel campaign={campaign()} profile={PROFILE} projects={[]} />,
+      ),
     );
 
     expect(container.textContent).not.toMatch(/no previous|no other/iu);
   });
 
   describe('when the profile cannot be read', () => {
-    it('keeps the byline the campaign already carries', () => {
-      render(<CreatorPanel campaign={campaign()} profile={null} projects={[]} />);
+    it('keeps the byline the campaign already carries', async () => {
+      render(await resolveServerTree(<CreatorPanel campaign={campaign()} profile={null} projects={[]} />));
 
       expect(screen.getByText('Ayan Q')).toBeInTheDocument();
     });
 
-    it('offers no profile link and explains nothing, because 404 covers three cases', () => {
+    it('offers no profile link and explains nothing, because 404 covers three cases', async () => {
       const { container } = render(
-        <CreatorPanel campaign={campaign()} profile={null} projects={[]} />,
+        await resolveServerTree(
+          <CreatorPanel campaign={campaign()} profile={null} projects={[]} />,
+        ),
       );
 
       expect(screen.queryByRole('link', { name: /Ayan Q/u })).not.toBeInTheDocument();

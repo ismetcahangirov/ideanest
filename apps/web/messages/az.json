@@ -391,5 +391,87 @@
       "belowRewardPrice": "Bu mükafat {price} dəyərindədir. Bu qədər və ya daha çox verin, ya da daha ucuz mükafat seçin.",
       "destinationUnpriced": "Müəllif bu istiqamət üçün {lines} çatdırılma qiyməti təyin etməyib. Başqa yer seçin və ya onu dəstəyinizdən çıxarın."
     }
+  },
+  "campaign": {
+    "tabs": {
+      "label": "Kampaniya bölmələri",
+      "campaign": "Kampaniya",
+      "creator": "Müəllif",
+      "faq": "Suallar",
+      "updates": "Yeniliklər",
+      "comments": "Şərhlər"
+    },
+    "state": {
+      "PRELAUNCH": "Tezliklə",
+      "LIVE": "Aktiv",
+      "SUCCESSFUL": "Maliyyələşdi",
+      "LATE_PLEDGE": "Gecikmiş dəstək açıqdır",
+      "FULFILLING": "Yerinə yetirilir",
+      "COMPLETED": "Tamamlandı",
+      "UNSUCCESSFUL": "Maliyyələşmədi",
+      "CANCELED": "Ləğv edildi"
+    },
+    "daysLeft": "{days, plural, =0 {Son gün} other {# gün qaldı}}",
+    "backers": "{count, plural, =0 {Dəstəkçi yoxdur} other {# dəstəkçi}}",
+    "actions": {
+      "save": "Saxla",
+      "share": "Paylaş",
+      "remind": "Xatırlat"
+    },
+    "rewards": {
+      "heading": "Mükafatlar"
+    },
+    "media": {
+      "hasVideo": "Bu kampaniyanın videosu var."
+    },
+    "creator": {
+      "heading": "Müəllif haqqında",
+      "others": "Onun digər kampaniyaları"
+    },
+    "trust": {
+      "heading": "Maliyyələşdirmə burada necə işləyir",
+      "body": "Platforma müəlliflərlə dəstəkçiləri bir araya gətirir. Mükafatlar zəmanətli deyil, lakin müəlliflər dəstəkçiləri məlumatlandırmalıdır. Sizdən pul yalnız layihə son tarixədək hədəfinə çatdıqda tutulur."
+    },
+    "outcome": {
+      "funded": "Bu kampaniya maliyyələşdi",
+      "notFunded": "Bu kampaniya hədəfinə çatmadı",
+      "reached": "Son tarixdən əvvəl hədəfinə çatdı.",
+      "notReached": "Son tarixədək hədəfinə çata bilmədi.",
+      "raised": "Topladığı",
+      "closedOn": "{date} tarixində",
+      "settling": "Yuxarıdakı rəqəmlər kampaniyanın son tarixədək topladığıdır. Təsdiqlənmiş hər dəstək kampaniya bağlandıqdan sonra alınır, ona görə bu səhifənin başqa yerində görünən məbləğ həmin alınmalar tamamlandıqca dəyişə bilər.",
+      "nobodyCharged": "Heç kimdən pul tutulmadı. IdeaNest-də hədəfinə çatmayan kampaniya heç nə toplamır və heç bir komissiya ödəmir."
+    },
+    "faqs": {
+      "heading": "Tez-tez verilən suallar",
+      "failed": "Suallar və cavablar hal-hazırda yüklənə bilmədi. Yenidən cəhd üçün səhifəni yeniləyin.",
+      "empty": "Bu kampaniya hələ heç bir suala cavab verməyib. Şərhlərdə sual verin, müəllif cavabı burada əlavə edə bilər."
+    },
+    "updates": {
+      "heading": "Yeniliklər",
+      "failed": "Yeniliklər hal-hazırda yüklənə bilmədi. Yenidən cəhd üçün səhifəni yeniləyin.",
+      "older": "Köhnə yeniliklər",
+      "backersOnly": "Yalnız dəstəkçilər üçün"
+    },
+    "comments": {
+      "heading": "Şərhlər",
+      "all": "Bütün şərhlər",
+      "failed": "Şərhlər hal-hazırda yüklənə bilmədi. Yenidən cəhd üçün səhifəni yeniləyin.",
+      "empty": "Bu kampaniyaya hələ heç kim şərh yazmayıb.",
+      "showReplies": "Daha çox cavab göstər",
+      "older": "Köhnə şərhlər",
+      "withdrawn": "Bu şərh geri götürülüb.",
+      "fromCreator": "Kampaniyadan",
+      "composerLabel": "Şərh yazın",
+      "signedOut": "Şərh yazmaq üçün hesab lazımdır. Platforma bir nəfəri eyni adamın beş surətindən beləcə ayırd edir və müəllif sizə bu yolla cavab verə bilir.",
+      "signIn": "Şərh yazmaq üçün daxil olun",
+      "cancel": "İmtina",
+      "notPosted": "Göndərilə bilmədi",
+      "reply": "Cavab yaz",
+      "replyLabel": "Cavabınız",
+      "withdraw": "Geri götür",
+      "withdrawWarning": "Geri götürmək şərhin silindiyini bildirən qeyd buraxır. Ona yazılmış cavablar qalır və şərhi nə redaktə etmək, nə də geri qaytarmaq olur.",
+      "keep": "Qalsın"
+    }
   }
 }

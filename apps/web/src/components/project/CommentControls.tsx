@@ -8,6 +8,7 @@ import { deleteComment } from '../../lib/community/comments';
 import { ReportControl } from '../moderation/ReportControl';
 import { useSession } from '../session/SessionProvider';
 import { CommentComposer } from './CommentComposer';
+import type { CommentCopy } from '../../lib/i18n/campaign-copy';
 
 /**
  * What a signed-in reader may do about one comment — §4.9's C-03, C-07 and the withdrawal.
@@ -53,6 +54,8 @@ import { CommentComposer } from './CommentComposer';
  */
 
 export interface CommentControlsProps {
+  /** The words this control draws, resolved on the server. See `lib/i18n/campaign-copy.ts`. */
+  readonly copy: CommentCopy;
   readonly commentId: string;
   /** `null` on a tombstone. Compared with the signed-in account to place the withdrawal. */
   readonly authorId: string | null;
@@ -70,6 +73,7 @@ export function CommentControls({
   acceptsReplies,
   returnTo,
   campaignTitle,
+  copy,
 }: CommentControlsProps) {
   const router = useRouter();
   const { status, session } = useSession();
@@ -119,7 +123,7 @@ export function CommentControls({
             className="inline-flex items-center gap-1.5 rounded-sm text-xs text-white/64 transition-colors duration-150 ease-in-out hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
           >
             <Reply aria-hidden="true" className="size-3.5" />
-            Reply
+            {copy.reply}
           </button>
         )}
 
@@ -130,7 +134,7 @@ export function CommentControls({
             className="inline-flex items-center gap-1.5 rounded-sm text-xs text-white/64 transition-colors duration-150 ease-in-out hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
           >
             <Trash2 aria-hidden="true" className="size-3.5" />
-            Withdraw
+            {copy.withdraw}
           </button>
         )}
 
@@ -160,8 +164,7 @@ export function CommentControls({
         */
         <div className="flex flex-col gap-2 rounded-lg border border-white/8 bg-surface-3 p-3">
           <p className="text-xs text-reading">
-            Withdrawing leaves a note saying the comment was removed. Any replies to it stay,
-            and it cannot be edited or restored.
+            {copy.withdrawWarning}
           </p>
           <div className="flex flex-wrap gap-3">
             <button
@@ -177,7 +180,7 @@ export function CommentControls({
               onClick={() => setConfirming(false)}
               className="rounded-sm text-xs text-white/64 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
             >
-              Keep it
+              {copy.keep}
             </button>
           </div>
         </div>
@@ -191,9 +194,10 @@ export function CommentControls({
 
       {replying && (
         <CommentComposer
+          copy={copy}
           target={{ kind: 'reply', commentId }}
           returnTo={returnTo}
-          label="Your reply"
+          label={copy.replyLabel}
           submitLabel="Post reply"
           onPosted={() => setReplying(false)}
           onCancel={() => setReplying(false)}

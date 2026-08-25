@@ -1,6 +1,7 @@
 import { CircleCheck, CircleSlash } from 'lucide-react';
 import { formatMoney } from '../../lib/money';
 import type { CampaignPage } from '../../lib/projects/publicPage';
+import { getTranslations } from 'next-intl/server';
 
 /**
  * What happened at the deadline — §5.1, as a backer reads it.
@@ -31,7 +32,9 @@ export interface CampaignOutcomeNoticeProps {
   readonly campaign: CampaignPage;
 }
 
-export function CampaignOutcomeNotice({ campaign }: CampaignOutcomeNoticeProps) {
+export async function CampaignOutcomeNotice({ campaign }: CampaignOutcomeNoticeProps) {
+  const t = await getTranslations('campaign.outcome');
+
   const { outcome } = campaign;
   if (outcome === null) return null;
 
@@ -71,8 +74,7 @@ export function CampaignOutcomeNotice({ campaign }: CampaignOutcomeNoticeProps) 
             'It did not reach its goal before the deadline.'
           )
         ) : (
-          <>
-            It raised <strong className="font-medium text-white">{formatMoney(outcome.pledged)}</strong> of a{' '}
+          <>{t('raised')}<strong className="font-medium text-white">{formatMoney(outcome.pledged)}</strong> of a{' '}
             {formatMoney(outcome.goal)} goal from{' '}
             {outcome.backersCount === 1 ? '1 backer' : `${outcome.backersCount} backers`}
             {closedLabel === null ? '' : ` on ${closedLabel}`}.

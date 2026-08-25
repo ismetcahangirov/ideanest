@@ -1,5 +1,6 @@
 import { Link } from '../../i18n/navigation';
 import { CAMPAIGN_TABS, campaignTabHref, type CampaignTabId } from '../../lib/projects/tabs';
+import { getTranslations } from 'next-intl/server';
 
 /**
  * §4.4's tab list — issues #282, #283, #284 and #285, and the shell all four hang from.
@@ -47,9 +48,11 @@ export interface CampaignTabsProps {
   readonly path: string;
 }
 
-export function CampaignTabs({ active, path }: CampaignTabsProps) {
+export async function CampaignTabs({ active, path }: CampaignTabsProps) {
+  const t = await getTranslations('campaign.tabs');
+
   return (
-    <nav aria-label="Campaign sections" className="mt-10 border-b border-white/8">
+    <nav aria-label={t('label')} className="mt-10 border-b border-white/8">
       {/*
         THE ROW SCROLLS RATHER THAN WRAPPING, AND #283 IS THE DAY THAT STARTED MATTERING.
 

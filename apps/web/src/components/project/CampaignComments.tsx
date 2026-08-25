@@ -6,6 +6,8 @@ import type { CampaignComment, CampaignCommentPage } from '../../lib/community/c
 import { CommentComposer } from './CommentComposer';
 import { CommentControls } from './CommentControls';
 import { ViewerInstant } from './ViewerClock';
+import { getTranslations } from 'next-intl/server';
+import { commentCopy } from '../../lib/i18n/shell-copy.server';
 
 /**
  * §4.4's Comments tab — issue #285, over §4.9's C-01, C-02, C-03 and C-07.
@@ -91,7 +93,7 @@ export interface CampaignCommentsProps {
   readonly threadHrefs: Readonly<Record<string, string>>;
 }
 
-export function CampaignComments({
+export async function CampaignComments({
   page,
   projectId,
   campaignTitle,
@@ -101,10 +103,13 @@ export function CampaignComments({
   allThreadsHref,
   threadHrefs,
 }: CampaignCommentsProps) {
+  const t = await getTranslations('campaign.comments');
+  const copy = await commentCopy();
+
   return (
     <section aria-labelledby="campaign-comments" className="flex flex-col gap-6">
       <h2 id="campaign-comments" className="text-xl font-medium tracking-[-0.02em] text-white">
-        Comments
+        {t('heading')}
       </h2>
 
       {singleThread ? (
@@ -114,7 +119,7 @@ export function CampaignComments({
             scroll={false}
             className="rounded-sm text-sm text-white underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
           >
-            All comments
+            {t('all')}
           </Link>
         </p>
       ) : (
@@ -125,9 +130,10 @@ export function CampaignComments({
           far to find it may then be refused.
         */
         <CommentComposer
+          copy={copy}
           target={{ kind: 'campaign', projectId }}
           returnTo={returnTo}
-          label="Add a comment"
+          label={copy.composerLabel}
           submitLabel="Post comment"
         />
       )}
@@ -139,10 +145,10 @@ export function CampaignComments({
          * restarting service is a statement about the campaign that happens to be false.
          */
         <p className="text-sm text-white/64">
-          The comments could not be loaded just now. Reload the page to try again.
+          {t('failed')}
         </p>
       ) : page.threads.length === 0 ? (
-        <p className="text-sm text-white/64">Nobody has commented on this campaign yet.</p>
+        <p className="text-sm text-white/64">{t('empty')}</p>
       ) : (
         <ol className="flex flex-col gap-6">
           {page.threads.map((thread) => (
@@ -172,7 +178,7 @@ export function CampaignComments({
                         scroll={false}
                         className="rounded-sm text-xs text-white underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
                       >
-                        Show more replies
+                        {t('showReplies')}
                       </Link>
                     </li>
                   )}
@@ -190,7 +196,7 @@ export function CampaignComments({
             scroll={false}
             className="rounded-sm text-sm text-white underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
           >
-            Older comments
+            {t('older')}
           </Link>
         </p>
       )}
@@ -198,7 +204,7 @@ export function CampaignComments({
   );
 }
 
-function CommentEntry({
+async function CommentEntry({
   comment,
   campaignTitle,
   returnTo,
@@ -207,6 +213,13 @@ function CommentEntry({
   readonly campaignTitle: string;
   readonly returnTo: string;
 }) {
+  /*
+   * Its own lookup rather than a `t` threaded down from the section above it. Both are server
+   * components in the same module, so each reaching the request directly costs nothing and
+   * keeps the signature about the comment rather than about where its words came from.
+   */
+  const t = await getTranslations('campaign.comments');
+  const copy = await commentCopy();
   const serverInstant = formatInstant(comment.createdAt, SERVER_TIME_ZONE);
 
   if (comment.deleted) {
@@ -218,7 +231,7 @@ function CommentEntry({
           "removed" printed beside a name is an accusation published to everybody on the page.
           The tombstone says a comment was withdrawn and stops there.
         */}
-        <span>This comment was withdrawn.</span>
+        <span>{t('withdrawn')}</span>
       </div>
     );
   }
@@ -239,7 +252,7 @@ function CommentEntry({
             `default` rather than `success` or lime: this is an attribution, not a verdict and
             not an urgency.
           */
-          <Tag variant="default">From the campaign</Tag>
+          <Tag variant="default">{t('fromCreator')}</Tag>
         )}
 
         {serverInstant !== null && (
@@ -262,6 +275,7 @@ function CommentEntry({
       </p>
 
       <CommentControls
+        copy={copy}
         commentId={comment.id}
         authorId={comment.authorId}
         acceptsReplies={comment.acceptsReplies}

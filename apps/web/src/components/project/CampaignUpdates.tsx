@@ -4,6 +4,7 @@ import { Tag } from '@ideanest/ui/server';
 import { formatDay, SERVER_TIME_ZONE } from '../../lib/projects/deadline';
 import type { CampaignUpdate, CampaignUpdatePage } from '../../lib/community/updates';
 import { ViewerInstant } from './ViewerClock';
+import { getTranslations } from 'next-intl/server';
 
 /**
  * §4.4's Updates tab — issue #284, over §4.9's public update read.
@@ -64,11 +65,13 @@ export interface CampaignUpdatesProps {
   readonly paged: boolean;
 }
 
-export function CampaignUpdates({ page, olderHref, paged }: CampaignUpdatesProps) {
+export async function CampaignUpdates({ page, olderHref, paged }: CampaignUpdatesProps) {
+  const t = await getTranslations('campaign.updates');
+
   return (
     <section aria-labelledby="campaign-updates" className="flex flex-col gap-6">
       <h2 id="campaign-updates" className="text-xl font-medium tracking-[-0.02em] text-white">
-        Updates
+        {t('heading')}
       </h2>
 
       {page === null ? (
@@ -80,7 +83,7 @@ export function CampaignUpdates({ page, olderHref, paged }: CampaignUpdatesProps
          * section is.
          */
         <p className="text-sm text-white/64">
-          The updates could not be loaded just now. Reload the page to try again.
+          {t('failed')}
         </p>
       ) : page.updates.length === 0 ? (
         <p className="text-sm text-white/64">
@@ -105,7 +108,7 @@ export function CampaignUpdates({ page, olderHref, paged }: CampaignUpdatesProps
             scroll={false}
             className="rounded-sm text-sm text-white underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
           >
-            Older updates
+            {t('older')}
           </Link>
         </p>
       )}
@@ -113,7 +116,13 @@ export function CampaignUpdates({ page, olderHref, paged }: CampaignUpdatesProps
   );
 }
 
-function UpdateEntry({ update }: { readonly update: CampaignUpdate }) {
+async function UpdateEntry({ update }: { readonly update: CampaignUpdate }) {
+  /*
+   * Its own lookup rather than a `t` threaded down from the section above it. Both are server
+   * components in the same module, so each reaching the request directly costs nothing and
+   * keeps the signature about the comment rather than about where its words came from.
+   */
+  const t = await getTranslations('campaign.updates');
   const serverDay = formatDay(update.publishedAt, SERVER_TIME_ZONE);
 
   return (
@@ -140,7 +149,7 @@ function UpdateEntry({ update }: { readonly update: CampaignUpdate }) {
           */
           <Tag variant="warning" className="gap-1.5">
             <Lock aria-hidden="true" className="size-3" />
-            Backers only
+            {t('backersOnly')}
           </Tag>
         )}
       </div>
