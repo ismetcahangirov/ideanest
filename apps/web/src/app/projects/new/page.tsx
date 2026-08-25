@@ -16,7 +16,12 @@ export const metadata: Metadata = privatePageMetadata({
  */
 export default function NewProjectPage() {
   return (
-    <main className="mx-auto w-full max-w-[560px] px-5 py-10 sm:px-6 sm:py-14">
+    /*
+      A `<div>` and not a `<main>` since #347. `app/projects/new/layout.tsx` puts this page
+      inside `SiteShell`, which owns the only `<main>` on the document and is the skip link's
+      target. The column width and the padding stay here: the shell sets neither.
+    */
+    <div className="mx-auto w-full max-w-[560px] px-5 py-10 sm:px-6 sm:py-14">
       <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
         Start a project
       </h1>
@@ -26,6 +31,6 @@ export default function NewProjectPage() {
       </p>
 
       <NewProjectForm />
-    </main>
+    </div>
   );
 }
