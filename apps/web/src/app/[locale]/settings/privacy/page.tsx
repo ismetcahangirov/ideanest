@@ -4,12 +4,18 @@ import { ProfileVisibilityPanel } from '../../../../components/profile/ProfileVi
 import { AccountClosurePanel } from '../../../../components/settings/AccountClosurePanel';
 import { DataExportPanel } from '../../../../components/settings/DataExportPanel';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
+import { getTranslations } from 'next-intl/server';
 
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Privacy, data and closure',
-  description:
-    'Choose who can see your profile, download a copy of your IdeaNest data, or close your account.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('settings.pages.privacy');
+
+  /*
+   * A function rather than a `const` since #324: the tab title is the one piece of
+   * this screen a reader sees before the page paints, and it followed the build
+   * rather than the reader until the catalogue reached it.
+   */
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
 
 /**
  * `/settings/privacy` — §4.1 A-10 and A-11 and §4.2 P-07, issues #279 and #274.
@@ -39,12 +45,13 @@ export const metadata: Metadata = privatePageMetadata({
  * not: making somebody download a file before they may leave is a dark pattern wearing a
  * safety argument.
  */
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const t = await getTranslations('settings.pages.privacy');
+
   return (
     <>
-      <AccountPageHeader title="Privacy, data and closure">
-        Who can see you, everything IdeaNest holds about you, and what happens to it if you
-        leave.
+      <AccountPageHeader title={t('title')}>
+        {t('intro')}
       </AccountPageHeader>
 
       <div className="mt-8 flex flex-col gap-6">

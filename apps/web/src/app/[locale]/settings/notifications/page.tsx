@@ -3,11 +3,27 @@ import { Link } from '../../../../i18n/navigation';
 import { AccountPageHeader } from '../../../../components/account/AccountPageHeader';
 import { PreferencesPanel } from '../../../../components/notifications/PreferencesPanel';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
+import { getTranslations } from 'next-intl/server';
 
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Notification settings',
-  description: 'Choose what IdeaNest tells you, and how it reaches you.',
-});
+/**
+ * The one class an inline link inside a page's introduction carries.
+ *
+ * Named rather than repeated because these sentences are now built by `t.rich`, where each
+ * tag is a function and a class typed twice in two of them is a difference nobody sees until
+ * one of the links is underlined and the other is not.
+ */
+const INLINE_LINK = 'text-white underline underline-offset-4';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('settings.pages.notifications');
+
+  /*
+   * A function rather than a `const` since #324: the tab title is the one piece of
+   * this screen a reader sees before the page paints, and it followed the build
+   * rather than the reader until the catalogue reached it.
+   */
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
 
 /**
  * Per-category, per-channel delivery control — §4.10, and #89.
@@ -24,17 +40,20 @@ export const metadata: Metadata = privatePageMetadata({
  * `/settings/sessions` states: the account area's layout owns both, and `SiteShell` owns the
  * single `<main>` on the page.
  */
-export default function NotificationSettingsPage() {
+export default async function NotificationSettingsPage() {
+  const t = await getTranslations('settings.pages.notifications');
+
   return (
     <>
-      <AccountPageHeader title="Notifications">
-        Choose what you are told and how it reaches you. <strong>As it happens</strong> sends
-        each one on its own; <strong>daily digest</strong> collects them into one message a day,
-        where the channel supports it. <strong>In app</strong> is what fills your{' '}
-        <Link href="/notifications" className="text-white underline underline-offset-4">
-          notifications
-        </Link>
-        . Changes save as you make them.
+      <AccountPageHeader title={t('title')}>
+        {t.rich('intro', {
+          b: (chunks) => <strong>{chunks}</strong>,
+          inbox: (chunks) => (
+            <Link href="/notifications" className={INLINE_LINK}>
+              {chunks}
+            </Link>
+          ),
+        })}
       </AccountPageHeader>
 
       <div className="mt-8">

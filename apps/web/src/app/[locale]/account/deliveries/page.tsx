@@ -2,11 +2,17 @@ import type { Metadata } from 'next';
 import { AccountPageHeader } from '../../../../components/account/AccountPageHeader';
 import { DeliveryList } from '../../../../components/fulfilment/DeliveryList';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
+import { getTranslations } from 'next-intl/server';
 
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Deliveries',
-  description: 'Where each of your rewards is, and where it is going.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('account.pages.deliveries');
+
+  /*
+   * A function rather than a `const` since #324: the tab title is the one piece of
+   * this screen a reader sees before the page paints.
+   */
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
 
 /**
  * `/account/deliveries` — §4.8 PM-09 and PM-10, issue #290.
@@ -14,12 +20,13 @@ export const metadata: Metadata = privatePageMetadata({
  * A shell around a client boundary. Every row is one of this account's own pledges, behind a
  * bearer token.
  */
-export default function DeliveriesPage() {
+export default async function DeliveriesPage() {
+  const t = await getTranslations('account.pages.deliveries');
+
   return (
     <>
-      <AccountPageHeader title="Deliveries">
-        One row per reward you are owed. A creator records the carrier and the tracking number
-        as they pack, so a row with nothing under it has not been sent yet.
+      <AccountPageHeader title={t('title')}>
+        {t('intro')}
       </AccountPageHeader>
 
       <div className="mt-8">
