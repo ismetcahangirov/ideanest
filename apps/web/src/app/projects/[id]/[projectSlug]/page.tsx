@@ -241,7 +241,14 @@ export default async function CampaignPage({
   const faqs = await fetchProjectFaqs(campaign.id);
 
   return (
-    <main className="mx-auto w-full max-w-[1200px] px-5 py-10 sm:px-6">
+    /*
+      A `<div>` and not a `<main>` since #343. `app/projects/[id]/[projectSlug]/layout.tsx`
+      puts this page inside `SiteShell`, which owns the only `<main>` on the document and is
+      the skip link's target; a second one would make "jump to main" a question with two
+      answers. The column width and the padding stay here, because the shell deliberately
+      sets neither — every page inside it draws its own measure.
+    */
+    <div className="mx-auto w-full max-w-[1200px] px-5 py-10 sm:px-6">
       {/*
         The structured data was written before this page existed — `projectPageGraph` says
         so — and mounting it is the last step of #121. It is emitted outside every other
@@ -391,7 +398,7 @@ export default async function CampaignPage({
           returnTo={path}
         />
       </div>
-    </main>
+    </div>
   );
 }
 

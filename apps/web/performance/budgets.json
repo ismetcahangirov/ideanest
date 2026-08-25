@@ -49,7 +49,7 @@
     "/pledges": 634,
     "/pledges/[pledgeId]": 664,
     "/pledges/[pledgeId]/address": 605,
-    "/projects/[id]/[projectSlug]": 645,
+    "/projects/[id]/[projectSlug]": 681,
     "/projects/[id]/back": 642,
     "/projects/[id]/dashboard": 626,
     "/projects/[id]/dashboard/backers": 635,

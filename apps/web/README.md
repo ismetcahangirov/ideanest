@@ -96,8 +96,8 @@ the browser half of the auth flow work at all.
 | `/projects/[id]/edit/basics` | — | Title, summary, category, goal, duration, cover (#33) |
 | `/projects/[id]/edit/story` | — | Rich text story, risks, and version history (#35) |
 | `/projects/[id]/edit/prelaunch` | — | Open the pre-launch page, share the link, see who is waiting (#39) |
-| `/projects/[id]/prelaunch` | — | **Public.** The pre-launch page itself, and the reminder signup (#39) |
-| `/projects/[id]/[projectSlug]` | — | **Public.** The campaign page, server-rendered — §10.2's `/projects/{creatorSlug}/{projectSlug}` (#119). §4.4's header, media, trust block and controls (#281) and its four tabs at `?tab=` (#282, #284, #285) |
+| `/projects/[id]/prelaunch` | Site | **Public.** The pre-launch page itself, and the reminder signup (#39), in the site shell since #343 |
+| `/projects/[id]/[projectSlug]` | Site | **Public.** The campaign page, server-rendered — §10.2's `/projects/{creatorSlug}/{projectSlug}` (#119). §4.4's header, media, trust block and controls (#281) and its four tabs at `?tab=` (#282, #284, #285). In the site shell since #343 |
 | `/projects/[id]/back` | — | Reward selection, add-ons, destination, and confirmation (#54) |
 | `/projects/[id]/dashboard` | — | The creator dashboard shell and its overview panel -- CD-01's live totals (#93) |
 | `/projects/[id]/dashboard/charts` | — | CD-02's funding trend, CD-07's reward mix and CD-08's destinations (#96) |
@@ -121,7 +121,7 @@ the browser half of the auth flow work at all.
 | `/sitemap/[segment].xml` | — | **Public.** One sitemap segment — `pages`, `discovery`, `projects-N` (#122) |
 | `/api/rum` | — | **Public**, unauthenticated. The Core Web Vitals collection endpoint (#128) |
 
-### The two shells, and the routes that have neither yet
+### The three shells, which routes carry them, and how
 
 The **Shell** column is what §4.13 WS-01 and WS-02 describe. Three values:
 
@@ -132,15 +132,19 @@ The **Shell** column is what §4.13 WS-01 and WS-02 describe. Three values:
 | **Console** | A bar with a way back to the site, and a rail over the console's screens | `app/admin/layout.tsx` → `AdminArea` (#294) |
 | **—** | No shared chrome. The page draws its own | — |
 
-**Not every route that should carry the site shell does yet, and the gap is
-deliberate rather than forgotten.** #260 built the group; moving a route into it
-is that route's own issue, because each has a reason of its own:
+**A route does not have to live in `app/(site)` to carry the site shell.** Three
+do not, and each renders `SiteShell` from a four-line layout at its own segment:
+`/u/{slug}` (`app/u/layout.tsx`, #274), `/projects/[id]/[projectSlug]` and
+`/projects/[id]/prelaunch` (#343). All three sit under a dynamic segment shared
+with private routes — `/projects/[id]` also carries `/edit`, `/dashboard` and
+`/back` — and Next allows one slug name per level, so lifting the public half
+into the group would mean restructuring the private half with it. A leaf layout
+buys the same chrome and leaves the siblings alone.
 
-- `/projects/[id]/[projectSlug]` and `/projects/[id]/prelaunch` sit under a
-  dynamic segment that also carries `/edit`, `/dashboard` and `/back`. Next
-  allows one slug name per level, so the public half cannot be lifted into the
-  group without restructuring the private half with it. #281 rebuilds the
-  campaign page's header and owns the move.
+That is not only a convenience. It means chrome is opt-in per segment rather
+than opt-out, which is what keeps the next bullet true by default instead of by
+exception:
+
 - `/projects/[id]/back` should **not** get the site header. `docs/ui-kit.md`
   §8.5 makes the checkout the one screen a white panel dominates and
   `docs/motion-system.md` §5 gives it a motion budget of near zero; a collapsing
@@ -150,6 +154,10 @@ is that route's own issue, because each has a reason of its own:
   not `SiteShell`: the public header offers Discover, the categories, search and "Start a
   project", none of which a member of staff clearing a report queue wants, and `MinimalShell`
   records what importing that header costs a route which draws no navigation.
+
+**The campaign page and the pre-launch page moved into it with #343**, and each
+gave up a `<main>` of its own in the move, for the same reason the account
+screens did below: `SiteShell` owns the only one on the page.
 
 **The account area moved into the site shell with #275.** `/settings/*`, `/account/*` and
 `/pledges/*` share `AccountArea` — the site header and footer, plus a navigation over the
@@ -260,9 +268,10 @@ deliberately **not** `PRIVATE_PATH_PREFIXES` from the SEO module — "must not b
 indexed" and "requires a session" are different questions, and the pre-launch
 page and the checkout are in one list and not the other.
 
-Every route in the site shell — `/`, `/discover`, `/search`, `/categories` and
-its landing pages — works with no session at all, and so do the three
-authentication screens and `/projects/[id]/prelaunch`. `/projects/[id]/back` is the half-way case: its reward list is
+Every public route in the site shell — `/`, `/discover`, `/search`, `/categories`
+and its landing pages, `/u/{slug}`, the campaign page and
+`/projects/[id]/prelaunch` — works with no session at all, and so do the three
+authentication screens. `/projects/[id]/back` is the half-way case: its reward list is
 `permitAll` and reads through `publicFetch`, so the prices render for a visitor
 who has not registered, and only the two mutations need a session. For the pre-launch page the reason is the followers it exists to
 collect, who have not registered; for discovery it is that a visitor who has not
