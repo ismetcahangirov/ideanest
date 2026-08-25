@@ -473,5 +473,105 @@
       "withdrawWarning": "Geri götürmək şərhin silindiyini bildirən qeyd buraxır. Ona yazılmış cavablar qalır və şərhi nə redaktə etmək, nə də geri qaytarmaq olur.",
       "keep": "Qalsın"
     }
+  },
+  "static": {
+    "about": {
+      "metaTitle": "Haqqımızda",
+      "metaDescription": "IdeaNest nədir, «ya hamısı, ya heç nə» maliyyələşdirmə necə işləyir və nəyə başa gəlir.",
+      "title": "IdeaNest haqqında",
+      "summary": "Hələ mövcud olmayan şeyləri maliyyələşdirmək üçün yer — şərtlər hamı üçün eynidir.",
+      "intro": "IdeaNest mükafat əsaslı kütləvi maliyyələşdirmə platformasıdır. Müəllif hədəfi və son tarixi olan kampaniya yerləşdirir; həmin şeyin var olmasını istəyənlər ona dəstək olur; və hədəfə son tarixədək çatılırsa, dəstəklər toplanır və müəllif həmin şeyi hazırlayır. Çatılmırsa, heç kimdən pul tutulmur.",
+      "allOrNothing": {
+        "heading": "Ya hamısı, ya heç nə — və bu, xurdalaşa deyil",
+        "first": "Yarımıq maliyyələşən kampaniya heç maliyyələşməyəndən pisdir. Müəllifin əlində işi bitirməyə çatmayan pul, dəstəkçilərin əlində isə heç kəsin yerinə yetirə bilməyəcəyi vəd qalır. Ona görə hədəfinə çatmayan kampaniya heç nə toplamır, müəllifinə heç bir komissiya başa gəlmir və heç bir karta toxunulmur.",
+        "second": "Bunun nəticəsində son tarix real məna daşıyır. Son günündə 90 faizdə olan kampaniya həqiqətən risk altındadır və platforma bunu bəzəmədən beləcə deyir."
+      },
+      "cost": {
+        "heading": "Nəyə başa gəlir",
+        "successful": "<b>Uğurlu kampaniya</b> topladığı məbləğin 5 faizini, üstəlik ödəniş provayderinin öz komissiyasını ödəyir — təxminən 2,5–3 faiz və hər dəstək üzrə kiçik sabit məbləğ.",
+        "unsuccessful": "<b>Uğursuz kampaniya</b> heç nə ödəmir. Nə yerləşdirmə haqqı, nə platforma komissiyası, nə də emal haqqı.",
+        "note": "Dərəcələr kodda deyil, konfiqurasiyada saxlanılır, ona görə ayrıca kateqoriya və ya fərdi razılaşma başqa dərəcə daşıya bilər. Yuxarıdakı dərəcə standart cedvəldir."
+      },
+      "notAPurchase": {
+        "heading": "Dəstək almaq deyil",
+        "body": "Bu, iki dəfə oxunmağa ən çox dəyən cümlədir. Kampaniyanı dəstəkləmək bir cəhdi maliyyələşdirməkdir. Müəllif həmin cəhdə və işin necə getdiyini dəstəkçilərə düzgün çatdırmağa cavabdehdir; o, malı anbarda hazır saxlayan mağaza deyil. Hər kampaniya təqdim edilməzdən əvvəl öz risklərini və çətinliklərini dərc etməlidir — bu bölmə tövsiyə deyil, tələbdir."
+      },
+      "next": {
+        "heading": "Sonra hara",
+        "body": "<howItWorks>Necə işləyir</howItWorks> dəstək olmağı və kampaniya aparmağı addım-addım izah edir. <trustSafety>Etibar və təhlükəsizlik</trustSafety> yoxlamanı, şikayəti və məlumatlarınızla nə baş verdiyini əhatə edir."
+      }
+    },
+    "howItWorks": {
+      "metaTitle": "Necə işləyir",
+      "metaDescription": "Kampaniyaya dəstək olmaq, kampaniya aparmaq və IdeaNest-də dəstəklə bağlama arasında nə baş verir.",
+      "title": "Necə işləyir",
+      "summary": "Kampaniyanı tapmaqla onun maliyyələşdirdiyi şeyi əldə etmək arasında nə baş verir.",
+      "backing": {
+        "heading": "Əgər nəyisə dəstəkləyirsinizsə",
+        "first": "Mükafat pilləsi seçin və ya mükafatsız dəstək olun. Kartınız avtorizə edilir, lakin kampaniya davam etdiyi müddətdə <b>heç nə tutulmur</b> — son tarixədək dəstəyinizi dəyişə, başqa pilləyə keçə, əlavə seçə və ya tamamilə imtina edə bilərsiniz.",
+        "second": "Son tarixdə iki şeydən biri baş verir. Kampaniya hədəfinə çatıbsa, təsdiqlənmiş hər dəstək alınır və kampaniya yerinə yetirmə mərhələsinə keçir. Çatmayıbsa, heç nə alınmır, heç bir komissiya tutulmur və saxlanmış kart tokenləri otuz gün ərzində silinir.",
+        "third": "Kart alınma anında uyğunsuz çıxa bilər — müddəti bitib, vəsaiti çatmır və ya bank imtina edib. Dəstəkdən əl çəkilməzdən əvvəl yeddi gün ərzində təkrar cəhdlər edilir."
+      },
+      "surveys": {
+        "heading": "Sonra müəllif sizə bir neçə sual verir",
+        "first": "Əksər mükafatlar üçün kampaniya səhifəsinin bilə bilməyəcəyi məlumat lazımdır: ölçü, rəng, buraxılış və göndəriləcək ünvan. Bu, sorğu şəklində gəlir və hesabınızdakı <surveys>sorğular</surveys> bölməsində görünür. Çatdırılma ünvanınız cavablarınızdan ayrı saxlanılır və şifrələnir; əlavə olaraq o, hesabınıza deyil, dəstəyinizə aiddir — ona görə iki kampaniya iki ayrı ünvana gedə bilər.",
+        "second": "Bağlamalar yola düşdükcə <deliveries>çatdırılmalar</deliveries> bölməsi hər biri üçün daşıyıcını və izləmə nömrəsini göstərir."
+      },
+      "running": {
+        "heading": "Əgər kampaniya aparırsınızsa",
+        "draft": "<b>Layihəsini hazırlayın.</b> Başlıq, xülasə, kateqoriya, hədəf, bir ilə altmış gün arasında müddət və üz şəkli. Hekayə ən azı 500, risklər bölməsi ən azı 200 simvol olmalıdır — hər ikisi vacibdir.",
+        "rewards": "<b>Mükafatlar əlavə edin.</b> Yüzədək pillə, hər birinin qiyməti, içindəkiləri və hara göndərildiyi ilə. Kampaniya aktivləşdikdən sonra pillənin qiyməti dəyişdirilə bilməz, dəstəkçisi olan pillə isə silinə bilməz — yalnız gizlədilə bilər.",
+        "submit": "<b>Yoxlamaya göndərin.</b> Onu bir insan oxuyur. Təsdiqləyir, dəyişiklik istəyir və ya səbəbini bildirərək imtina edir.",
+        "launch": "<b>Başla-dın.</b> Bu andan hədəf və son tarix sabitlənir. Qalan hər şey — hekayə, yeniliklər, mükafat saylarının artırılması — redaktə edilə bilən qalır.",
+        "deliver": "<b>Çatdırın.</b> Sorğunu göndərin, ünvanları toplayın, etiket çapına başlayanda onları kilidləyin və bağlamalar yola düşdükcə izləmə nömrələrini qeyd edin."
+      },
+      "agreeing": {
+        "heading": "Dəstəkçi kimi nəyə razı olursunuz",
+        "first": "Dəstək hazır məhsulu almaq deyil, bir cəhdi maliyyələşdirməkdir. Müəllif sizə işin necə getdiyi barədə düzgün hesabat borçludur — kampaniya yenilikləri məhz bunun üçündür — platforma isə sizə bunu görmək və düz danışmayan kampaniyanı şikayət etmək vasitələrini borçludur. Bunların heç biri şeyin çatacagına zəmanət demək deyil.",
+        "second": "<trustSafety>Etibar və təhlükəsizlik</trustSafety> nəyin yoxlandığını və nə isə səhv olduqda nə etməli olduğunuzu izah edir."
+      }
+    },
+    "trustSafety": {
+      "metaTitle": "Etibar və təhlükəsizlik",
+      "metaDescription": "Kampaniyalar necə yoxlanılır, nəyə icazə verilmir, nəyi necə şikayət etmək olar və pulunuzla, məlumatlarınızla nə baş verir.",
+      "title": "Etibar və təhlükəsizlik",
+      "summary": "Nə yoxlanılır, nə yoxlanılmır və nə isə səhv görünəndə nə etməli.",
+      "review": {
+        "heading": "Hər kampaniya aktivləşməzdən əvvəl oxunur",
+        "first": "Kampaniya özünü dərc edə bilməz. O təqdim olunur, bir insan onu aşağıdakı qaydalara görə yoxlayır və kampaniya təsdiqlənir, dəyişiklik üçün geri qaytarılır və ya səbəbi bildirilərək rədd edilir. Platformada heç nə bunu keçmədən ictimaiyyətə çıxmır.",
+        "second": "Yoxlama təsdiqləmə deyil. Yoxlayan şəxs kampaniyanın özünü dediyi kimi təqdim etdiyini, maliyyələşdirilməsinə icazə verildiyini və başqasının işi olmadığını yoxlayır. Müəllifin çəkdiyi şeyi istehsal edə biləcəyini təsdiqləmək onın imkanında deyil — məhz buna görə dəstək bu platformada hər yerdə bir cəhdin maliyyələşdirilməsi kimi təsvir olunur."
+      },
+      "notAllowed": {
+        "heading": "Nəyə icazə verilmir",
+        "prohibited": "Qadağan olunmuş şeylər — platformanın ümumiyyətlə maliyyələşdirilməsinə icazə vermədiyi şeylər.",
+        "misrepresentation": "Yanlış təqdimat — özü barədə hansısa yalan məlumat verən kampaniya.",
+        "notOwn": "Müəllifin özünə aid olmayan iş və ya başqasının əqli mülkiyyətindən istifadə edən iş.",
+        "offensive": "Təhqiredici material və insanları kim olduqlarına görə hədəf alıb nəzərdə tutan məzmun.",
+        "spam": "Spam və başqa bir şeyi reklam etmək üçün açılmış kampaniyalar.",
+        "fraud": "Saxtakarlıq — heç kəsin öhdəliyini yerinə yetirmək niyyətində olmadığını düşünməyə əsas olduqda."
+      },
+      "reporting": {
+        "heading": "Nəyi isə şikayət etmək",
+        "first": "IdeaNest hesabı olan hər kəs kampaniyanı, şərhi və ya hesabı şikayət edə bilər. Şikayət avtomatik filtrə deyil, moderatora gedir: beş nəfər etiraz etdi deyə heç nə yox olmur, şikayət isə bir insanın baxması üçün müraciətdir.",
+        "second": "Eyni şeyi iki dəfə şikayət etmək çəki əlavə etmir — ikinci şikayət birincinin özünü qaytarır. Şikayətlər ictimai deyil və şikayət olunan hesaba onu kimin şikayət etdiyi bildirilmir."
+      },
+      "money": {
+        "heading": "Pulunuz",
+        "first": "Kart məlumatları heç vaxt IdeaNest-in öz serverlərinə çatmır; ödənişlər provayderin öz sahələri üzrə keçir. Kampaniya davam etdiyi müddətdə dəstəyiniz tutulma deyil, avtorizədir; hədəfinə çatmayan kampaniya isə heç nə almır.",
+        "second": "Hər ödəniş əməliyyatı idempotentdir — bu, cazibədar görünməyən, lakin ən vacib xassədir: əlaqə kəsildiyi üçün təkrarlanan sorğu iki deyil, bir dəstək və bir tutulma yaradır."
+      },
+      "account": {
+        "heading": "Hesabınız və məlumatlarınız",
+        "twoFactor": "<b>İki mərhələli doğrulama</b> hər hesabda mövcuddur və ödənişdən əvvəl tələb olunur. Onu <security>iki mərhələli doğrulama</security> bölməsində qurun.",
+        "devices": "<b>Daxil olmuş hər cihaz</b> <sessions>cihazlar</sessions> bölməsində siyahılanır və istənilən biri başqasından çıxarıla bilər.",
+        "addresses": "<b>Çatdırılma ünvanları</b> şifrələnmiş saxlanılır və müəllifə yalnız dəstəklədiyiniz kampaniya üzrə görünür.",
+        "data": "<b>Məlumatlarınızın surəti</b> yüklənə bilər; hesabınızı bağladıqda isə məlumatlar anonimləşdirilməzdən əvvəl otuz gün saxlanılır — beləcə həyəcanla və ya başqası tərəfindən edilmiş bağlama geri qaytarıla bilər. Hər ikisi <privacy>məlumatlar və hesabın bağlanması</privacy> bölməsindədir."
+      },
+      "limits": {
+        "heading": "Nə edə bilmərik",
+        "first": "IdeaNest kampaniyanı öhdəliyini yerinə yetirməyə məcbur edə bilməz. Edə bildiyi şey qeydi dürüst saxlamaqdır: kampaniyanın yenilikləri, şərhləri və onu şikayət etmək yolu — hamısı kampaniyanın öz səhifəsindədir, yəni onu dəstəkləyib-dəstəkləməməyi düşünən şəxsin görəcəyi yerdə.",
+        "second": "Müəllif öz kampaniyasındakı şərhləri moderasiya edə bilər, silinən şərh isə yox olmur — sətir qalır, silinmiş kimi işarələnir. Təmizlənmiş şərh axını buna görə yenə də təmizlənmiş kimi görünür, məsələ də budur: üzərində heç nə olmayan səhifə ilə on iki silinməsi olan səhifə ayrı şeylərdir və oxucunun bunları ayırd etməyə haqqı var."
+      }
+    }
   }
 }

@@ -18,6 +18,17 @@ const CATALOGUES: Record<Locale, unknown> = { az, en, ru, tr };
 const CYRILLIC = /[Ѐ-ӿ]/u;
 const LATIN_SCRIPT: readonly Locale[] = ['az', 'en', 'tr'];
 
+/**
+ * Greek, which none of the four languages uses at all.
+ *
+ * A separate check from the Cyrillic one because it catches a different accident. Cyrillic
+ * lands in Azerbaijani from a keyboard left in the wrong layout; Greek lands in **Russian**
+ * from a text editor's own substitution — ά, έ and ή are drawn almost identically to а, е
+ * and н at body size, and one of them replaced the ё in `вс ё` while this catalogue was
+ * being written. Neither block belongs anywhere here.
+ */
+const GREEK = /[Ͱ-Ͽἀ-῿]/u;
+
 function entries(value: unknown, path = ''): Array<[string, string]> {
   if (typeof value === 'string') return [[path, value]];
   if (typeof value !== 'object' || value === null) return [];
@@ -64,6 +75,12 @@ describe('the message catalogues', () => {
      */
     for (const [key, message] of entries(CATALOGUES[locale])) {
       expect(CYRILLIC.test(message), `${locale} ${key}: ${message}`).toBe(false);
+    }
+  });
+
+  it.each(SUPPORTED_LOCALES)('writes %s without a Greek character anywhere', (locale) => {
+    for (const [key, message] of entries(CATALOGUES[locale])) {
+      expect(GREEK.test(message), `${locale} ${key}: ${message}`).toBe(false);
     }
   });
 

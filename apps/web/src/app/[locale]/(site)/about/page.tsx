@@ -3,6 +3,8 @@ import { Link } from '../../../../i18n/navigation';
 import { StaticPage } from '../../../../components/content/StaticPage';
 import { localeOrDefault } from '../../../../lib/i18n/locale';
 import { publicPageMetadata } from '../../../../lib/seo/metadata';
+import { getTranslations } from 'next-intl/server';
+import type { ReactNode } from 'react';
 
 export async function generateMetadata({
   params,
@@ -10,6 +12,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations('static.about');
 
   /*
    * A function rather than a `const` since #123: the canonical and the `hreflang` cluster
@@ -17,10 +20,9 @@ export async function generateMetadata({
    * `searchParams` that would not.
    */
   return publicPageMetadata({
-  title: 'About',
-  description:
-    'IdeaNest is a reward-based crowdfunding platform. Creators publish campaigns, backers pledge, and nobody is charged unless a campaign reaches its goal by its deadline.',
-  path: '/about',
+    title: t('metaTitle'),
+    description: t('metaDescription'),
+    path: '/about',
     locale: localeOrDefault(locale),
   });
 }
@@ -45,67 +47,53 @@ export async function generateMetadata({
  * total raised — and a page that invented one would be inventing the only thing on it a reader
  * could not verify.
  */
-export default function AboutPage() {
+/**
+ * The two shapes a sentence on a static page takes besides plain text.
+ *
+ * Named rather than repeated because `t.rich` takes each tag as a function, and a class
+ * typed twice in two of them is a difference nobody sees until one link is underlined and
+ * the other is not. `BOLD` is `font-medium text-white` rather than a bare `<strong>`: these
+ * pages set body text in `text-reading`, so an unstyled strong is heavier but not brighter,
+ * which reads as a rendering fault rather than as emphasis.
+ */
+const INLINE_LINK = 'text-white underline underline-offset-4';
+const BOLD = (chunks: ReactNode) => <strong className="font-medium text-white">{chunks}</strong>;
+
+export default async function AboutPage() {
+  const t = await getTranslations('static.about');
+
   return (
-    <StaticPage
-      title="About IdeaNest"
-      summary="A place to fund things that do not exist yet, on terms that are the same for everybody."
-    >
-      <p>
-        IdeaNest is a reward-based crowdfunding platform. A creator publishes a campaign with a
-        goal and a deadline; people who want the thing to exist pledge towards it; and if the
-        goal is met by the deadline, the pledges are collected and the creator makes the thing.
-        If it is not, nobody is charged at all.
-      </p>
+    <StaticPage title={t('title')} summary={t('summary')}>
+      <p>{t('intro')}</p>
 
-      <h2>All or nothing, and why it is not a detail</h2>
-      <p>
-        A partly funded campaign is worse than an unfunded one. It leaves a creator holding
-        money that is not enough to finish with and backers holding a promise nobody can keep.
-        So a campaign that misses its goal collects nothing, costs its creator no fee, and
-        leaves every card untouched.
-      </p>
-      <p>
-        The consequence is that a deadline means something. A campaign at 90% on its last day is
-        genuinely at risk, and the platform says so rather than dressing it up.
-      </p>
+      <h2>{t('allOrNothing.heading')}</h2>
+      <p>{t('allOrNothing.first')}</p>
+      <p>{t('allOrNothing.second')}</p>
 
-      <h2>What it costs</h2>
+      <h2>{t('cost.heading')}</h2>
       <ul>
-        <li>
-          <strong className="font-medium text-white">A successful campaign</strong> pays 5% of
-          what it raised, plus the payment processor’s own fee — roughly 2.5–3% and a small
-          fixed amount per pledge.
-        </li>
-        <li>
-          <strong className="font-medium text-white">An unsuccessful campaign</strong> pays
-          nothing. No listing fee, no platform fee, no processing fee.
-        </li>
+        <li>{t.rich('cost.successful', { b: BOLD })}</li>
+        <li>{t.rich('cost.unsuccessful', { b: BOLD })}</li>
       </ul>
-      <p>
-        Rates are configuration rather than code, so a category or an individual agreement can
-        carry a different one. The rate above is the standard schedule.
-      </p>
+      <p>{t('cost.note')}</p>
 
-      <h2>A pledge is not a purchase</h2>
-      <p>
-        This is the sentence most worth reading twice. Backing a campaign funds an attempt. The
-        creator is accountable for the attempt and for telling backers honestly how it is going;
-        they are not a shop with the thing in a warehouse. Every campaign has to publish its
-        risks and challenges before it can be submitted, and that section is required rather
-        than encouraged.
-      </p>
+      <h2>{t('notAPurchase.heading')}</h2>
+      <p>{t('notAPurchase.body')}</p>
 
-      <h2>Where to go next</h2>
+      <h2>{t('next.heading')}</h2>
       <p>
-        <Link href="/how-it-works" className="text-white underline underline-offset-4">
-          How it works
-        </Link>{' '}
-        walks through backing and running a campaign step by step.{' '}
-        <Link href="/trust-safety" className="text-white underline underline-offset-4">
-          Trust and safety
-        </Link>{' '}
-        covers review, reporting, and what happens to your data.
+        {t.rich('next.body', {
+          howItWorks: (chunks) => (
+            <Link href="/how-it-works" className={INLINE_LINK}>
+              {chunks}
+            </Link>
+          ),
+          trustSafety: (chunks) => (
+            <Link href="/trust-safety" className={INLINE_LINK}>
+              {chunks}
+            </Link>
+          ),
+        })}
       </p>
     </StaticPage>
   );
