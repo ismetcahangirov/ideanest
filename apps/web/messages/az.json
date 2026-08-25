@@ -25,7 +25,7 @@
       "notifications": "Bildirişlər",
       "notificationSettings": "Bildiriş parametrləri",
       "sessions": "Cihazlar və sessiyalar",
-      "startCampaign": "Kampaniya başlat"
+      "startCampaign": "Kampaniya başladın"
     },
     "footer": {
       "label": "Altlıq",
@@ -43,7 +43,7 @@
         "categories": "Kateqoriyalar",
         "collections": "Kolleksiyalar",
         "search": "Axtarış",
-        "startCampaign": "Kampaniya başlat",
+        "startCampaign": "Kampaniya başladın",
         "notifications": "Bildirişlər",
         "saved": "Saxlanmış layihələr",
         "surveys": "Sorğular",
@@ -220,6 +220,65 @@
         "title": "Məxfilik, məlumatlar və hesabın bağlanması",
         "intro": "Sizi kimlərin görə biləcəyi, IdeaNest-in sizin haqqınızda saxladığı hər şey və siz ayrılsanız onlarla nə olacağı."
       }
+    }
+  },
+  "home": {
+    "metaTitle": "IdeaNest — mükafat əsaslı kütləvi maliyyələşdirmə",
+    "hero": {
+      "title": "Hələ mövcud olmayanı maliyyələşdirin",
+      "standfirst": "Müəlliflər hədəfi və son tarixi olan kampaniya yerləşdirir. Dəstəkçilər dəstək olur. Hədəfə vaxtında çatılmasa, heç kimdən pul alınmır — çatılmadıqda isə heç bir məbləğ tutulmur.",
+      "browse": "Kampaniyalara baxın",
+      "start": "Kampaniya başladın"
+    },
+    "closing": {
+      "heading": "Tezliklə bitənlər",
+      "standfirst": "Son tarixi ən yaxın olan kampaniyalar. «Ya hamısı, ya heç nə» qaydası deməkdir ki, dəstəyiniz ən çox məhz bunlarda nəyisə dəyişir.",
+      "link": "Tezliklə bitənlərin hamısına baxın",
+      "gridLabel": "Tezliklə bitən kampaniyalar"
+    },
+    "launched": {
+      "heading": "Yeni başlayanlar",
+      "standfirst": "Dəstəyə təzə açılmış kampaniyalar.",
+      "link": "Bütün aktiv kampaniyalara baxın",
+      "gridLabel": "Yeni başlayan kampaniyalar"
+    },
+    "categories": {
+      "heading": "Kateqoriyalar üzrə baxın",
+      "standfirst": "On beş kateqoriya, hər birinin öz səhifəsi — və hər birinin öz alt kateqoriyaları var.",
+      "link": "Bütün kateqoriyalara baxın"
+    },
+    "empty": {
+      "heading": "Hal-hazırda göstəriləcək kampaniya yoxdur",
+      "body": "Bu an dəstəyə açıq heç nə yoxdur. Lentə platformadakı hər şey, o cümlədən artıq başa çatmış kampaniyalar da daxildir.",
+      "action": "Lenti açın"
+    }
+  },
+  "discovery": {
+    "discover": {
+      "metaTitle": "Kəşf edin",
+      "metaDescription": "IdeaNest-dəki bütün kampaniyalara baxın və filtrləyin."
+    },
+    "categories": {
+      "metaTitle": "Kateqoriyalar",
+      "metaDescription": "IdeaNest-dəki hər kateqoriya və alt kateqoriya — hər birinin öz kampaniya səhifəsi var.",
+      "title": "Kateqoriyalar",
+      "intro": "Platformadakı bütün kateqoriyalar və onların içindəki alt kateqoriyalar. Hər birinin öz səhifəsi var.",
+      "feedLink": "Lent"
+    },
+    "collections": {
+      "metaTitle": "Kolleksiyalar",
+      "metaDescription": "IdeaNest-də redaksiya seçimləri, mövzu kolleksiyaları və açıq çağırışlar — hər birinin öz kampaniya səhifəsi var."
+    },
+    "search": {
+      "title": "Axtarış",
+      "resultsTitle": "“{query}” üçün nəticələr",
+      "prompt": "Axtardığınızı yazın — kampaniya, kateqoriya və ya müəllif. Ya da <feed>bütün lentə baxın</feed> və onu filtrlərlə daraltın.",
+      "count": "{count, plural, =0 {Heç bir kampaniya uyğun gəlmədi} other {# kampaniya}}",
+      "countMore": "{count, plural, =0 {Heç bir kampaniya uyğun gəlmədi} other {# kampaniya, lentdə daha çoxu var}}",
+      "emptyTitle": "“{query}” üzrə heç nə tapılmadı",
+      "emptyBody": "Yazılışı yoxlayın və ya daha qısa bir söz sınayın. Lenti ifadə əvəzinə kateqoriya, status və məbləğ üzrə daraltmaq olar.",
+      "emptyAction": "Lentə baxın",
+      "gridLabel": "“{query}” üçün axtarış nəticələri"
     }
   }
 }

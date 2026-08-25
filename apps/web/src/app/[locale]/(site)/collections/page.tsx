@@ -6,6 +6,7 @@ import { COLLECTIONS_PATH } from '../../../../lib/collections/api';
 import { collectionsIndexGraph } from '../../../../lib/seo/structured-data/graphs';
 import { localeOrDefault } from '../../../../lib/i18n/locale';
 import { publicPageMetadata } from '../../../../lib/seo/metadata';
+import { getTranslations } from 'next-intl/server';
 
 /**
  * `/collections` — D-08's index, §4.13 WS-04. Issue #266.
@@ -41,6 +42,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations('discovery.collections');
 
   /*
    * A function rather than a `const` since #123: the canonical and the `hreflang` cluster
@@ -48,10 +50,9 @@ export async function generateMetadata({
    * `searchParams` that would not.
    */
   return publicPageMetadata({
-  title: 'Collections',
-  description:
-    'Staff selections, themed collections, and open calls on IdeaNest — each with its own page of campaigns.',
-  path: COLLECTIONS_PATH,
+    title: t('metaTitle'),
+    description: t('metaDescription'),
+    path: COLLECTIONS_PATH,
     locale: localeOrDefault(locale),
   });
 }

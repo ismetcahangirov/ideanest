@@ -8,6 +8,7 @@ import { PAGE_SIZE } from '../../../../lib/discovery/api';
 import { NO_FILTERS, toHref } from '../../../../lib/discovery/filters';
 import { SEARCH_QUERY_PARAM, readSearchQuery } from '../../../../lib/search/query';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
+import { getTranslations } from 'next-intl/server';
 
 /**
  * `/search` — §4.13 WS-06, issue #262.
@@ -53,6 +54,7 @@ export default async function SearchPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const t = await getTranslations('discovery.search');
   const query = readSearchQuery(searchParamsOf(await searchParams));
 
   /*
@@ -70,7 +72,7 @@ export default async function SearchPage({
   return (
     <div className="mx-auto w-full max-w-[1400px] px-5 py-10 sm:px-6">
       <h1 className="text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">
-        {query === '' ? 'Search' : `Results for “${query}”`}
+        {query === '' ? t('title') : t('resultsTitle', { query })}
       </h1>
 
       <div className="mt-6 max-w-[560px]">
@@ -84,14 +86,16 @@ export default async function SearchPage({
 
       {query === '' ? (
         <p className="mt-6 max-w-[60ch] text-white/64">
-          Type what you are looking for — a campaign, a category, a maker. Or{' '}
-          <Link
-            href="/discover"
-            className="text-white underline underline-offset-4 hover:text-white/80"
-          >
-            browse the whole feed
-          </Link>{' '}
-          and narrow it with filters.
+          {t.rich('prompt', {
+            feed: (chunks) => (
+              <Link
+                href="/discover"
+                className="text-white underline underline-offset-4 hover:text-white/80"
+              >
+                {chunks}
+              </Link>
+            ),
+          })}
         </p>
       ) : (
         <>
@@ -101,11 +105,14 @@ export default async function SearchPage({
             count.
           */}
           <p className="mt-6 text-sm text-white/64 tabular-nums">
-            {results.length === 0
-              ? 'No campaigns matched'
-              : `${results.length} ${results.length === 1 ? 'campaign' : 'campaigns'}${
-                  hasMore ? ', with more in the feed' : ''
-                }`}
+            {/*
+              ICU PLURALS RATHER THAN A TERNARY. "campaign" against "campaigns" is the whole
+              of English and none of Russian, which has three forms and picks between them by
+              the last digit — 1 кампания, 2 кампании, 5 кампаний. A singular/plural split
+              would be wrong for most numbers in one of the four languages and there would be
+              nothing on screen to say so.
+            */}
+            {t(hasMore ? 'countMore' : 'count', { count: results.length })}
           </p>
 
           <div className="mt-8">
@@ -113,14 +120,14 @@ export default async function SearchPage({
               <EmptyState
                 variant="filtered"
                 headingLevel={2}
-                title={`Nothing matched “${query}”`}
-                description="Check the spelling, or try a shorter word. The feed can be narrowed by category, status and amount instead of by phrase."
+                title={t('emptyTitle', { query })}
+                description={t('emptyBody')}
                 action={
                   <Link
                     href="/discover"
                     className="inline-flex h-10 items-center rounded-full bg-white px-5 text-sm font-medium text-on-white transition-colors duration-150 ease-in-out hover:bg-[var(--white-muted)]"
                   >
-                    Browse the feed
+                    {t('emptyAction')}
                   </Link>
                 }
               />
@@ -129,7 +136,7 @@ export default async function SearchPage({
                 <CampaignGrid
                   campaigns={results}
                   priorityCount={3}
-                  label={`Search results for ${query}`}
+                  label={t('gridLabel', { query })}
                 />
 
                 {/*

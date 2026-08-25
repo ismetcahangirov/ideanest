@@ -12,6 +12,7 @@ import { localeOrDefault } from '../../../lib/i18n/locale';
 import { NO_FILTERS, toHref } from '../../../lib/discovery/filters';
 import { homePageMetadata } from '../../../lib/seo/metadata';
 import { homePageGraph } from '../../../lib/seo/structured-data/graphs';
+import { getTranslations } from 'next-intl/server';
 
 /**
  * `/` — §4.13 WS-04, issue #264.
@@ -66,6 +67,8 @@ export async function generateMetadata({
 const RAIL_SIZE = 6;
 
 export default async function HomePage() {
+  const t = await getTranslations('home');
+
   /*
    * Concurrently. They are independent reads and the page cannot paint until the slowest has
    * answered, so serialising them would add the other two round trips to the time to first
@@ -108,12 +111,10 @@ export default async function HomePage() {
         <FadeUpSection>
           <section className="pt-10 pb-14 sm:pt-16 sm:pb-20">
             <h1 className="max-w-[16ch] text-4xl font-semibold leading-[1.05] tracking-[-0.04em] text-white sm:text-6xl">
-              Fund what does not exist yet
+              {t('hero.title')}
             </h1>
             <p className="mt-6 max-w-[52ch] text-lg leading-relaxed text-white/64">
-              Creators publish a campaign with a goal and a deadline. Backers pledge. Nobody is
-              charged unless the goal is reached in time — and if it is not, nothing is
-              collected at all.
+              {t('hero.standfirst')}
             </p>
 
             <div className="mt-9 flex flex-wrap items-center gap-3">
@@ -121,14 +122,14 @@ export default async function HomePage() {
                 href="/discover"
                 className="inline-flex h-12 items-center gap-2 rounded-full bg-white px-6 text-base font-medium text-on-white transition-colors duration-150 ease-in-out hover:bg-[var(--white-muted)]"
               >
-                Browse campaigns
+                {t('hero.browse')}
                 <ArrowRight aria-hidden="true" className="size-4" />
               </Link>
               <Link
                 href="/projects/new"
                 className="inline-flex h-12 items-center rounded-full border border-white/16 px-6 text-base font-medium text-white transition-colors duration-150 ease-in-out hover:bg-surface-3"
               >
-                Start a campaign
+                {t('hero.start')}
               </Link>
             </div>
           </section>
@@ -136,37 +137,37 @@ export default async function HomePage() {
 
         {closing.length > 0 && (
           <HomeSection
-            heading="Ending soon"
-            standfirst="Campaigns whose deadline is closest. All-or-nothing means these are the ones a pledge still changes."
+            heading={t('closing.heading')}
+            standfirst={t('closing.standfirst')}
             href={toHref({ ...NO_FILTERS, statuses: ['live'], sort: 'ending_soon' })}
-            linkLabel="See everything ending soon"
+            linkLabel={t('closing.link')}
           >
             {/*
               The only grid on the page that fetches its covers eagerly. One of them is the
               largest contentful paint; putting the second rail in the same priority queue
               would make every image on the page later.
             */}
-            <CampaignGrid campaigns={closing} priorityCount={3} label="Campaigns ending soon" />
+            <CampaignGrid campaigns={closing} priorityCount={3} label={t('closing.gridLabel')} />
           </HomeSection>
         )}
 
         {launched.length > 0 && (
           <HomeSection
-            heading="Recently launched"
-            standfirst="The newest campaigns to open for pledges."
+            heading={t('launched.heading')}
+            standfirst={t('launched.standfirst')}
             href={toHref({ ...NO_FILTERS, statuses: ['live'], sort: 'newest' })}
-            linkLabel="See every live campaign"
+            linkLabel={t('launched.link')}
           >
-            <CampaignGrid campaigns={launched} label="Recently launched campaigns" />
+            <CampaignGrid campaigns={launched} label={t('launched.gridLabel')} />
           </HomeSection>
         )}
 
         {categories !== null && categories.length > 0 && (
           <HomeSection
-            heading="Browse by category"
-            standfirst="Fifteen categories, each with its own page — and each of those with its subcategories."
+            heading={t('categories.heading')}
+            standfirst={t('categories.standfirst')}
             href="/categories"
-            linkLabel="See all categories"
+            linkLabel={t('categories.link')}
           >
             <ul className="grid list-none grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               {categories.map((category) => (
@@ -193,16 +194,15 @@ export default async function HomePage() {
           */
           <section className="pb-20">
             <div className="rounded-lg border border-white/8 bg-surface-2 px-6 py-12 text-center">
-              <h2 className="text-xl font-medium text-white">No campaigns to show right now</h2>
+              <h2 className="text-xl font-medium text-white">{t('empty.heading')}</h2>
               <p className="mx-auto mt-2 max-w-[52ch] text-white/64">
-                Nothing is open for pledges at this moment. The feed carries everything on the
-                platform, including campaigns that have already closed.
+                {t('empty.body')}
               </p>
               <Link
                 href="/discover"
                 className="mt-6 inline-flex h-10 items-center rounded-full bg-white px-5 text-sm font-medium text-on-white transition-colors duration-150 ease-in-out hover:bg-[var(--white-muted)]"
               >
-                Open the feed
+                {t('empty.action')}
               </Link>
             </div>
           </section>
