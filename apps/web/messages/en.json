@@ -221,5 +221,64 @@
         "intro": "Who can see you, everything IdeaNest holds about you, and what happens to it if you leave."
       }
     }
+  },
+  "home": {
+    "metaTitle": "IdeaNest — reward-based crowdfunding",
+    "hero": {
+      "title": "Fund what does not exist yet",
+      "standfirst": "Creators publish a campaign with a goal and a deadline. Backers pledge. Nobody is charged unless the goal is reached in time — and if it is not, nothing is collected at all.",
+      "browse": "Browse campaigns",
+      "start": "Start a campaign"
+    },
+    "closing": {
+      "heading": "Ending soon",
+      "standfirst": "Campaigns whose deadline is closest. All-or-nothing means these are the ones a pledge still changes.",
+      "link": "See everything ending soon",
+      "gridLabel": "Campaigns ending soon"
+    },
+    "launched": {
+      "heading": "Recently launched",
+      "standfirst": "The newest campaigns to open for pledges.",
+      "link": "See every live campaign",
+      "gridLabel": "Recently launched campaigns"
+    },
+    "categories": {
+      "heading": "Browse by category",
+      "standfirst": "Fifteen categories, each with its own page — and each of those with its subcategories.",
+      "link": "See all categories"
+    },
+    "empty": {
+      "heading": "No campaigns to show right now",
+      "body": "Nothing is open for pledges at this moment. The feed carries everything on the platform, including campaigns that have already closed.",
+      "action": "Open the feed"
+    }
+  },
+  "discovery": {
+    "discover": {
+      "metaTitle": "Discover",
+      "metaDescription": "Browse and filter every campaign on IdeaNest."
+    },
+    "categories": {
+      "metaTitle": "Categories",
+      "metaDescription": "Every category and subcategory on IdeaNest, each with its own page of campaigns.",
+      "title": "Categories",
+      "intro": "Every category on the platform, and the subcategories inside them. Each has a page of its own.",
+      "feedLink": "The feed"
+    },
+    "collections": {
+      "metaTitle": "Collections",
+      "metaDescription": "Staff selections, themed collections, and open calls on IdeaNest — each with its own page of campaigns."
+    },
+    "search": {
+      "title": "Search",
+      "resultsTitle": "Results for “{query}”",
+      "prompt": "Type what you are looking for — a campaign, a category, a maker. Or <feed>browse the whole feed</feed> and narrow it with filters.",
+      "count": "{count, plural, =0 {No campaigns matched} one {# campaign} other {# campaigns}}",
+      "countMore": "{count, plural, =0 {No campaigns matched} one {# campaign, with more in the feed} other {# campaigns, with more in the feed}}",
+      "emptyTitle": "Nothing matched “{query}”",
+      "emptyBody": "Check the spelling, or try a shorter word. The feed can be narrowed by category, status and amount instead of by phrase.",
+      "emptyAction": "Browse the feed",
+      "gridLabel": "Search results for {query}"
+    }
   }
 }

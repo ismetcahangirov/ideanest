@@ -6,6 +6,7 @@ import { localeOrDefault } from '../../../../lib/i18n/locale';
 import { publicPageMetadata } from '../../../../lib/seo/metadata';
 import { categoryPageGraph } from '../../../../lib/seo/structured-data/graphs';
 import { StructuredData } from '../../../../components/seo/StructuredData';
+import { getTranslations } from 'next-intl/server';
 
 /**
  * `/categories` — the taxonomy's own page, and the index every category landing page hangs
@@ -33,6 +34,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations('discovery.categories');
 
   /*
    * A function rather than a `const` since #123: the canonical and the `hreflang` cluster
@@ -40,15 +42,16 @@ export async function generateMetadata({
    * `searchParams` that would not.
    */
   return publicPageMetadata({
-  title: 'Categories',
-  description:
-    'Every category and subcategory on IdeaNest, each with its own page of campaigns.',
-  path: '/categories',
+    title: t('metaTitle'),
+    description: t('metaDescription'),
+    path: '/categories',
     locale: localeOrDefault(locale),
   });
 }
 
 export default async function CategoriesPage() {
+  const t = await getTranslations('discovery.categories');
+
   const categories = await fetchCategories();
 
   return (
@@ -57,11 +60,10 @@ export default async function CategoriesPage() {
 
       <div className="mx-auto w-full max-w-[1400px] px-5 py-10 sm:px-6">
         <h1 className="text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">
-          Categories
+          {t('title')}
         </h1>
         <p className="mt-2 max-w-[60ch] text-white/64">
-          Every category on the platform, and the subcategories inside them. Each has a page of
-          its own.
+          {t('intro')}
         </p>
 
         {categories === null || categories.length === 0 ? (
@@ -75,9 +77,7 @@ export default async function CategoriesPage() {
             <Link
               href="/discover"
               className="text-white underline underline-offset-4 hover:text-white/80"
-            >
-              The feed
-            </Link>{' '}
+            >{t('feedLink')}</Link>{' '}
             carries every campaign on the platform and can be filtered by category there.
           </p>
         ) : (

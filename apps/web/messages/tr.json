@@ -221,5 +221,64 @@
         "intro": "Sizi kimlerin görebileceği, IdeaNest'in sizinle ilgili tuttuğu her şey ve siz ayrılırsanız bunlara ne olacağı."
       }
     }
+  },
+  "home": {
+    "metaTitle": "IdeaNest — ödül temelli kitlesel fonlama",
+    "hero": {
+      "title": "Henüz var olmayanı fonlayın",
+      "standfirst": "Üreticiler hedefi ve son tarihi olan bir kampanya yayımlar. Destekçiler söz verir. Hedefe zamanında ulaşılmadıkça kimseden ücret alınmaz — ulaşılamazsa da hiçbir tutar tahsil edilmez.",
+      "browse": "Kampanyalara göz atın",
+      "start": "Kampanya başlatın"
+    },
+    "closing": {
+      "heading": "Yakında bitenler",
+      "standfirst": "Son tarihi en yakın olan kampanyalar. Ya hep ya hiç kuralı, desteğinizin en çok bunlarda bir şeyi değiştirdiği anlamına gelir.",
+      "link": "Yakında bitenlerin tümünü görün",
+      "gridLabel": "Yakında biten kampanyalar"
+    },
+    "launched": {
+      "heading": "Yeni başlayanlar",
+      "standfirst": "Desteğe yeni açılmış kampanyalar.",
+      "link": "Tüm etkin kampanyaları görün",
+      "gridLabel": "Yeni başlayan kampanyalar"
+    },
+    "categories": {
+      "heading": "Kategorilere göre göz atın",
+      "standfirst": "On beş kategori, her birinin kendi sayfası — ve her birinin kendi alt kategorileri var.",
+      "link": "Tüm kategorileri görün"
+    },
+    "empty": {
+      "heading": "Şu anda gösterilecek kampanya yok",
+      "body": "Şu anda desteğe açık hiçbir şey yok. Akış, halihazırda kapanmış kampanyalar dahil olmak üzere platformdaki her şeyi içerir.",
+      "action": "Akışı açın"
+    }
+  },
+  "discovery": {
+    "discover": {
+      "metaTitle": "Keşfet",
+      "metaDescription": "IdeaNest'teki tüm kampanyalara göz atın ve filtreleyin."
+    },
+    "categories": {
+      "metaTitle": "Kategoriler",
+      "metaDescription": "IdeaNest'teki her kategori ve alt kategori — her birinin kendi kampanya sayfası var.",
+      "title": "Kategoriler",
+      "intro": "Platformdaki tüm kategoriler ve içlerindeki alt kategoriler. Her birinin kendi sayfası var.",
+      "feedLink": "Akış"
+    },
+    "collections": {
+      "metaTitle": "Koleksiyonlar",
+      "metaDescription": "IdeaNest'te editör seçkileri, temalı koleksiyonlar ve açık çağrılar — her birinin kendi kampanya sayfası var."
+    },
+    "search": {
+      "title": "Arama",
+      "resultsTitle": "“{query}” için sonuçlar",
+      "prompt": "Aradığınızı yazın — bir kampanya, bir kategori ya da bir üretici. Ya da <feed>tüm akışa göz atın</feed> ve filtrelerle daraltın.",
+      "count": "{count, plural, =0 {Hiçbir kampanya eşleşmedi} other {# kampanya}}",
+      "countMore": "{count, plural, =0 {Hiçbir kampanya eşleşmedi} other {# kampanya, akışta daha fazlası var}}",
+      "emptyTitle": "“{query}” ile hiçbir şey eşleşmedi",
+      "emptyBody": "Yazımı kontrol edin ya da daha kısa bir kelime deneyin. Akış, ifadeye göre değil kategoriye, duruma ve tutara göre daraltılabilir.",
+      "emptyAction": "Akışa göz atın",
+      "gridLabel": "“{query}” için arama sonuçları"
+    }
   }
 }

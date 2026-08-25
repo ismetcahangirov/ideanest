@@ -10,6 +10,7 @@ import type { SeededFeed } from '../../../../lib/discovery/useDiscoveryFeed';
 import { localeOrDefault } from '../../../../lib/i18n/locale';
 import { publicPageMetadata } from '../../../../lib/seo/metadata';
 import { discoverPageGraph } from '../../../../lib/seo/structured-data/graphs';
+import { getTranslations } from 'next-intl/server';
 
 /**
  * `/discover`, and every filtered variant of it, is one canonical URL.
@@ -33,6 +34,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations('discovery.discover');
 
   /*
    * A function rather than a `const` since #123: the canonical and the `hreflang` cluster
@@ -40,9 +42,9 @@ export async function generateMetadata({
    * `searchParams` that would not.
    */
   return publicPageMetadata({
-  title: 'Discover',
-  description: 'Browse and filter every campaign on IdeaNest.',
-  path: '/discover',
+    title: t('metaTitle'),
+    description: t('metaDescription'),
+    path: '/discover',
     locale: localeOrDefault(locale),
   });
 }

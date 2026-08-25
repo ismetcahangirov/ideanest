@@ -108,4 +108,29 @@ describe('the message catalogues', () => {
       }
     }
   });
+
+  it('never uses a word that is right in one sense and wrong in this one', () => {
+    /*
+     * A short list of confusions that read as fluent and mean something else. Each earned its
+     * place by being written, shipped past a first reading, and caught later.
+     *
+     * `təhsil` is Azerbaijani for *education*. It is a near-homograph of the Turkish
+     * `tahsil`, which does mean collecting a payment, and the borrowing is a natural mistake
+     * for anybody drafting the two languages side by side. Twice in this catalogue's history a
+     * pledge was described as being "educated" when a campaign closed — a sentence that
+     * parses, sounds official, and tells a backer nothing about their money.
+     *
+     * This is not a spell-checker and is not trying to be. It is a note-to-self with teeth,
+     * for the specific errors that have actually happened here.
+     */
+    const CONFUSIONS: ReadonlyArray<readonly [Locale, RegExp, string]> = [
+      ['az', /təhsil/iu, 'means education — for money use tutulur, çıxılır or alınır'],
+    ];
+
+    for (const [locale, pattern, why] of CONFUSIONS) {
+      for (const [key, message] of entries(CATALOGUES[locale])) {
+        expect(pattern.test(message), `${locale} ${key}: ${why}`).toBe(false);
+      }
+    }
+  });
 });
