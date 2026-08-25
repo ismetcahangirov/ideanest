@@ -7,6 +7,8 @@ import { EditorShell } from '../../../../../components/campaign-editor/EditorShe
 import { MAIN_CONTENT_ID } from '../../../../../components/shell/SkipLink';
 import CampaignEditorLayout from './layout';
 import NewProjectLayout from '../../new/layout';
+import MESSAGES from '../../../../../../messages/en.json';
+import { resolveServerTree } from '../../../../../test-support/server-tree';
 
 /**
  * The campaign editor and the create form carry the site shell — issue #347.
@@ -66,8 +68,12 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-function renderInLayout(Layout: (props: { children: ReactNode }) => ReactNode, body: ReactNode) {
-  return render(<SessionProvider>{Layout({ children: body })}</SessionProvider>);
+async function renderInLayout(
+  Layout: (props: { children: ReactNode }) => ReactNode,
+  body: ReactNode,
+) {
+  const tree = await resolveServerTree(Layout({ children: body }));
+  return render(<SessionProvider>{tree}</SessionProvider>);
 }
 
 describe('the campaign editor', () => {
@@ -77,8 +83,8 @@ describe('the campaign editor', () => {
     </EditorShell>
   );
 
-  it('renders inside the site header and footer', () => {
-    renderInLayout(CampaignEditorLayout, editor);
+  it('renders inside the site header and footer', async () => {
+    await renderInLayout(CampaignEditorLayout, editor);
 
     expect(screen.getByRole('banner')).toBeInTheDocument();
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();
@@ -87,8 +93,8 @@ describe('the campaign editor', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'A solar lamp' })).toBeInTheDocument();
   });
 
-  it("keeps EditorShell's header out of the banner role by nesting it inside main", () => {
-    renderInLayout(CampaignEditorLayout, editor);
+  it("keeps EditorShell's header out of the banner role by nesting it inside main", async () => {
+    await renderInLayout(CampaignEditorLayout, editor);
 
     // One site header, not two. `getByRole` throws on more than one match, so this is the
     // assertion — the editor's `<header>` must stay generic.
@@ -103,12 +109,31 @@ describe('the campaign editor', () => {
     // which is exactly what keeps `EditorShell`'s `<header>` generic.
     expect(mains[0]).not.toContainElement(banners[0] ?? null);
     expect(mains[0]).toContainElement(screen.getByRole('heading', { level: 1 }));
+
+/*
+ * The shell reads the catalogue on the server, so the frame under test is an async component.
+ * These two mocks are what let it resolve here: the real `messages/en.json`, reached the way
+ * `i18n/request.ts` reaches it, and `resolveServerTree` to await the component itself.
+ */
+vi.mock('next-intl/server', () => ({
+  getLocale: async () => 'en',
+  getTranslations: async (namespace: string) => (key: string) => {
+    let node: unknown = MESSAGES;
+    for (const segment of `${namespace}.${key}`.split('.')) {
+      if (typeof node !== 'object' || node === null) throw new Error(`no message at ${key}`);
+      node = (node as Record<string, unknown>)[segment];
+    }
+    if (typeof node !== 'string') throw new Error(`no message at ${namespace}.${key}`);
+    return node;
+  },
+}));
+
   });
 });
 
 describe('the create-a-campaign form', () => {
-  it('renders inside the site header and footer, with one main', () => {
-    renderInLayout(NewProjectLayout, <p>Give it a working title</p>);
+  it('renders inside the site header and footer, with one main', async () => {
+    await renderInLayout(NewProjectLayout, <p>Give it a working title</p>);
 
     expect(screen.getByRole('banner')).toBeInTheDocument();
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();

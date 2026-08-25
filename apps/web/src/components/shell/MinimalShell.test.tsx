@@ -4,6 +4,12 @@ import userEvent from '@testing-library/user-event';
 import { FailureAction, FailureState } from './FailureState';
 import { MinimalShell } from './MinimalShell';
 import { MAIN_CONTENT_ID } from './SkipLink';
+import en from '../../../messages/en.json';
+
+const FAILURE_COPY = {
+  elsewhere: en.shell.failure.elsewhere,
+  links: en.shell.failure.links,
+};
 
 /**
  * The minimal frame and the skip link inside it — §4.13 WS-01 and WS-09.
@@ -26,8 +32,9 @@ afterEach(cleanup);
 
 function renderShell() {
   return render(
-    <MinimalShell footer={<p>A footer line</p>}>
+    <MinimalShell skipToContent={en.shell.skipToContent} footer={<p>A footer line</p>}>
       <FailureState
+        copy={FAILURE_COPY}
         title="There is nothing at this address"
         description={<p>Try somewhere else.</p>}
         action={<FailureAction href="/">Go to the home page</FailureAction>}
@@ -77,7 +84,7 @@ describe('the frame', () => {
 
   it('renders no footer when it was given none', () => {
     render(
-      <MinimalShell>
+      <MinimalShell skipToContent={en.shell.skipToContent}>
         <p>Body</p>
       </MinimalShell>,
     );
@@ -107,8 +114,9 @@ describe('a failure state', () => {
 
   it('hides the elsewhere links when the page exists because everything is unavailable', () => {
     render(
-      <MinimalShell>
+      <MinimalShell skipToContent={en.shell.skipToContent}>
         <FailureState
+        copy={FAILURE_COPY}
           showLinks={false}
           title="IdeaNest is down for a short while"
           description={<p>Planned maintenance.</p>}

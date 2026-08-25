@@ -5,6 +5,64 @@
     "saving": "Kaydediliyor…",
     "tryAgain": "Tekrar deneyin"
   },
+  "shell": {
+    "skipToContent": "İçeriğe geç",
+    "tagline": "Ödül temelli kitlesel fonlama. Üreticiler kampanyalarını yayımlar, destekçiler söz verir ve bir kampanya son tarihine kadar hedefine ulaşmazsa kimseden ücret alınmaz.",
+    "nav": {
+      "label": "Birincil",
+      "discover": "Keşfet",
+      "categories": "Kategoriler"
+    },
+    "drawer": {
+      "open": "Menüyü aç",
+      "close": "Menüyü kapat",
+      "label": "Gezinme"
+    },
+    "actions": {
+      "signIn": "Giriş yap",
+      "register": "Kayıt ol",
+      "signOut": "Çıkış yap",
+      "notifications": "Bildirimler",
+      "notificationSettings": "Bildirim ayarları",
+      "sessions": "Cihazlar ve oturumlar",
+      "startCampaign": "Kampanya başlat"
+    },
+    "footer": {
+      "label": "Alt bilgi",
+      "languageHeading": "Dil",
+      "currencyHeading": "Para birimi",
+      "currencyValue": "Azerbaycan manatı (AZN)",
+      "groups": {
+        "explore": "Keşfet",
+        "creators": "Üreticiler",
+        "yourAccount": "Hesabınız",
+        "about": "Hakkında"
+      },
+      "links": {
+        "discover": "Keşfet",
+        "categories": "Kategoriler",
+        "collections": "Koleksiyonlar",
+        "search": "Arama",
+        "startCampaign": "Kampanya başlat",
+        "notifications": "Bildirimler",
+        "saved": "Kaydedilen projeler",
+        "surveys": "Anketler",
+        "deliveries": "Teslimatlar",
+        "settings": "Ayarlar",
+        "about": "IdeaNest hakkında",
+        "howItWorks": "Nasıl çalışır",
+        "trustSafety": "Güven ve güvenlik"
+      }
+    },
+    "failure": {
+      "elsewhere": "IdeaNest'teki diğer sayfalar",
+      "links": {
+        "browse": "Kampanyalara göz atın",
+        "categories": "Kategoriler",
+        "search": "Arama"
+      }
+    }
+  },
   "account": {
     "groups": {
       "yourAccount": "Hesabınız",

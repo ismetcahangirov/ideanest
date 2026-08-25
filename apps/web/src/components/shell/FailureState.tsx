@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { FailureCopy } from '../../lib/i18n/shell-copy';
 import { Link } from '../../i18n/navigation';
 
 /**
@@ -40,9 +41,21 @@ export interface FailureStateProps {
   readonly action: ReactNode;
   /** A short list of places to go instead. Omitted on the maintenance page. */
   readonly showLinks?: boolean;
+  /**
+   * The three words this component owns, resolved by the page that renders it. A failure page
+   * offers a deliberately shorter list than the footer does, which is why the routes are
+   * written here rather than taken from `FOOTER_GROUPS`.
+   */
+  readonly copy: FailureCopy;
 }
 
-export function FailureState({ title, description, action, showLinks = true }: FailureStateProps) {
+export function FailureState({
+  title,
+  description,
+  action,
+  showLinks = true,
+  copy,
+}: FailureStateProps) {
   return (
     <div className="mx-auto flex w-full max-w-[1400px] flex-col items-center px-5 py-24 text-center sm:px-6 sm:py-32">
       <h1 className="max-w-[20ch] text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">
@@ -53,12 +66,12 @@ export function FailureState({ title, description, action, showLinks = true }: F
       <div className="mt-9">{action}</div>
 
       {showLinks && (
-        <nav aria-label="Elsewhere on IdeaNest" className="mt-12">
+        <nav aria-label={copy.elsewhere} className="mt-12">
           <ul className="flex list-none flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm">
             {[
-              { href: '/discover', label: 'Browse campaigns' },
-              { href: '/categories', label: 'Categories' },
-              { href: '/search', label: 'Search' },
+              { href: '/discover', label: copy.links.browse },
+              { href: '/categories', label: copy.links.categories },
+              { href: '/search', label: copy.links.search },
             ].map((link) => (
               <li key={link.href}>
                 <Link

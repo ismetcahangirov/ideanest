@@ -5,6 +5,64 @@
     "saving": "Saving…",
     "tryAgain": "Try again"
   },
+  "shell": {
+    "skipToContent": "Skip to content",
+    "tagline": "Reward-based crowdfunding. Creators publish campaigns, backers pledge, and nobody is charged unless a campaign reaches its goal by its deadline.",
+    "nav": {
+      "label": "Primary",
+      "discover": "Discover",
+      "categories": "Categories"
+    },
+    "drawer": {
+      "open": "Open navigation",
+      "close": "Close navigation",
+      "label": "Navigation"
+    },
+    "actions": {
+      "signIn": "Sign in",
+      "register": "Register",
+      "signOut": "Sign out",
+      "notifications": "Notifications",
+      "notificationSettings": "Notification settings",
+      "sessions": "Devices and sessions",
+      "startCampaign": "Start a campaign"
+    },
+    "footer": {
+      "label": "Footer",
+      "languageHeading": "Language",
+      "currencyHeading": "Currency",
+      "currencyValue": "Azerbaijani manat (AZN)",
+      "groups": {
+        "explore": "Explore",
+        "creators": "Creators",
+        "yourAccount": "Your account",
+        "about": "About"
+      },
+      "links": {
+        "discover": "Discover",
+        "categories": "Categories",
+        "collections": "Collections",
+        "search": "Search",
+        "startCampaign": "Start a campaign",
+        "notifications": "Notifications",
+        "saved": "Saved projects",
+        "surveys": "Surveys",
+        "deliveries": "Deliveries",
+        "settings": "Settings",
+        "about": "About IdeaNest",
+        "howItWorks": "How it works",
+        "trustSafety": "Trust and safety"
+      }
+    },
+    "failure": {
+      "elsewhere": "Elsewhere on IdeaNest",
+      "links": {
+        "browse": "Browse campaigns",
+        "categories": "Categories",
+        "search": "Search"
+      }
+    }
+  },
   "account": {
     "groups": {
       "yourAccount": "Your account",

@@ -1,4 +1,5 @@
 import { FailureAction, FailureState } from '../../../components/shell/FailureState';
+import { failureCopy } from '../../../lib/i18n/shell-copy.server';
 
 /**
  * The 404 for a route inside the public site — §4.13 WS-09, issue #263.
@@ -24,9 +25,12 @@ import { FailureAction, FailureState } from '../../../components/shell/FailureSt
  * — a second declaration here would be a second place for it to be spelled. What differs
  * between the two files is the frame and nothing else.
  */
-export default function SiteNotFound() {
+export default async function SiteNotFound() {
+  const failure = await failureCopy();
+
   return (
     <FailureState
+        copy={failure}
       title="There is nothing at this address"
       description={
         <p>

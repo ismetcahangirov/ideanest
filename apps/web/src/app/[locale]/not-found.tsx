@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { FailureAction, FailureState } from '../../components/shell/FailureState';
 import { MinimalShell } from '../../components/shell/MinimalShell';
 import { privatePageMetadata } from '../../lib/seo/metadata';
+import { failureCopy } from '../../lib/i18n/shell-copy.server';
+import { shellCopy } from '../../lib/i18n/shell-copy.server';
 
 /**
  * The 404 for a request that matched no route at all — §4.13 WS-09, issue #263.
@@ -38,10 +40,14 @@ export const metadata: Metadata = privatePageMetadata({
   description: 'There is nothing at this address.',
 });
 
-export default function NotFound() {
+export default async function NotFound() {
+  const { skipToContent } = await shellCopy();
+  const failure = await failureCopy();
+
   return (
-    <MinimalShell>
+    <MinimalShell skipToContent={skipToContent}>
       <FailureState
+        copy={failure}
         title="There is nothing at this address"
         description={
           <p>

@@ -1,0 +1,147 @@
+import {
+  FOOTER_GROUPS,
+  PRIMARY_NAVIGATION,
+  type ResolvedFooterGroup,
+  type ResolvedNavigationLink,
+} from '../../components/shell/navigation';
+
+/**
+ * Every word the site shell draws, resolved on the server — issues #324 and #123.
+ *
+ * <h2>Why the copy is a prop and not a hook</h2>
+ *
+ * `SiteHeader`, `MobileNavDrawer` and `AccountMenu` are client components: they read the
+ * session, they open a drawer, they close a menu on a click outside. The obvious way to give
+ * them words is `useTranslations`, and that needs a `NextIntlClientProvider` above them —
+ * which means above `SiteShell`, which is every route on the site.
+ *
+ * `apps/web/README.md` records what that costs, because this repository has measured it:
+ * up to **27.4 KiB on every route in a group**, carried by routes that render none of the
+ * copy. The catalogue is also not small and grows with each of these, and a provider
+ * serialises the whole of it into the HTML for the client to parse.
+ *
+ * So the words are looked up here, once, on the server, and handed down as a plain object.
+ * The client bundle gains the strings it actually renders and nothing else — no catalogue,
+ * no provider, no `use-intl` runtime. `AccountArea` established the pattern for the account
+ * rail; this is the same move for the shell, and it is the pattern the rest of the
+ * application follows.
+ *
+ * <h2>One object rather than twenty props</h2>
+ *
+ * A flat prop list would put the whole shell's vocabulary in every component signature and
+ * would have to be edited in four files each time a word is added. Grouping by the component
+ * that draws it keeps each signature honest about what it needs.
+ */
+export interface ShellCopy {
+  readonly skipToContent: string;
+  readonly tagline: string;
+  readonly nav: {
+    readonly label: string;
+    readonly links: readonly ResolvedNavigationLink[];
+  };
+  readonly drawer: {
+    readonly open: string;
+    readonly close: string;
+    readonly label: string;
+  };
+  readonly actions: {
+    readonly signIn: string;
+    readonly register: string;
+    readonly signOut: string;
+    readonly notifications: string;
+    readonly notificationSettings: string;
+    readonly sessions: string;
+    readonly startCampaign: string;
+  };
+}
+
+/** The three words a failure page offers besides its own heading. */
+export interface FailureCopy {
+  readonly elsewhere: string;
+  readonly links: {
+    readonly browse: string;
+    readonly categories: string;
+    readonly search: string;
+  };
+}
+
+/** The footer's own words. Resolved separately because `SiteFooter` is a server component. */
+export interface FooterCopy {
+  readonly label: string;
+  readonly tagline: string;
+  readonly languageHeading: string;
+  readonly currencyHeading: string;
+  readonly currencyValue: string;
+  readonly groups: readonly ResolvedFooterGroup[];
+}
+
+/**
+ * A message lookup, narrowed to what these builders need.
+ *
+ * The builders take one rather than calling `getTranslations` themselves so that this module
+ * imports nothing from `next-intl/server` — which is what lets a component test build the
+ * same object from `messages/*.json` and assert against the words the application will
+ * actually draw, instead of against words retyped into the test.
+ */
+export type ShellTranslator = (key: string) => string;
+
+export function shellCopyFrom(t: ShellTranslator): ShellCopy {
+  return {
+    skipToContent: t('skipToContent'),
+    tagline: t('tagline'),
+    nav: {
+      label: t('nav.label'),
+      /*
+       * The routes live in `components/shell/navigation.ts` and the words live in the
+       * catalogue; this is the one place they meet, exactly as `AccountArea` joins
+       * `ACCOUNT_GROUPS` to `account.links.*`.
+       */
+      links: PRIMARY_NAVIGATION.map((link) => ({
+        href: link.href,
+        label: t(`nav.${link.key}`),
+      })),
+    },
+    drawer: {
+      open: t('drawer.open'),
+      close: t('drawer.close'),
+      label: t('drawer.label'),
+    },
+    actions: {
+      signIn: t('actions.signIn'),
+      register: t('actions.register'),
+      signOut: t('actions.signOut'),
+      notifications: t('actions.notifications'),
+      notificationSettings: t('actions.notificationSettings'),
+      sessions: t('actions.sessions'),
+      startCampaign: t('actions.startCampaign'),
+    },
+  };
+}
+
+export function footerCopyFrom(t: ShellTranslator): FooterCopy {
+  return {
+    label: t('footer.label'),
+    tagline: t('tagline'),
+    languageHeading: t('footer.languageHeading'),
+    currencyHeading: t('footer.currencyHeading'),
+    currencyValue: t('footer.currencyValue'),
+    groups: FOOTER_GROUPS.map((group) => ({
+      heading: t(`footer.groups.${group.headingKey}`),
+      links: group.links.map((link) => ({
+        href: link.href,
+        label: t(`footer.links.${link.key}`),
+      })),
+    })),
+  };
+}
+
+export function failureCopyFrom(t: ShellTranslator): FailureCopy {
+  return {
+    elsewhere: t('failure.elsewhere'),
+    links: {
+      browse: t('failure.links.browse'),
+      categories: t('failure.links.categories'),
+      search: t('failure.links.search'),
+    },
+  };
+}

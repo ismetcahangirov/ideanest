@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { FailureAction, FailureState } from '../../../../components/shell/FailureState';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
+import { failureCopy } from '../../../../lib/i18n/shell-copy.server';
 
 /**
  * `/maintenance` — §4.13 WS-09's third failure state, issue #263.
@@ -34,9 +35,12 @@ export const metadata: Metadata = privatePageMetadata({
   description: 'IdeaNest is briefly unavailable while we make a change.',
 });
 
-export default function MaintenancePage() {
+export default async function MaintenancePage() {
+  const failure = await failureCopy();
+
   return (
     <FailureState
+        copy={failure}
       showLinks={false}
       title="IdeaNest is down for a short while"
       description={

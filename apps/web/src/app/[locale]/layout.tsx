@@ -23,10 +23,24 @@ import '../globals.css';
  * blocking round trip to a third origin before the browser even learns which
  * `.woff2` to ask for, and it hands a third party a log line per visitor.
  *
- * SUBSETS. `latin` and `latin-ext`, and deliberately not the `cyrillic`,
+ * SUBSETS. `latin`, `latin-ext` and `cyrillic` — and deliberately not the
  * `cyrillic-ext`, `greek`, `greek-ext` or `vietnamese` cuts Google also
- * publishes — nothing in this product is written in them, and each one is
- * another file preloaded against the largest contentful paint.
+ * publishes, because nothing in this product is written in them and each one
+ * is another file preloaded against the largest contentful paint.
+ *
+ * **`cyrillic` WAS MISSING AND RUSSIAN WAS RENDERING IN THE FALLBACK FACE.**
+ * `messages/ru.json` has shipped since #324 and the account rail has been
+ * drawing Russian out of it, in Segoe UI on Windows and Roboto on Android,
+ * because Inter's `latin` and `latin-ext` cuts carry no Cyrillic at all. It
+ * did not look broken — it looked like a slightly different font — which is
+ * why it survived review. The type scale and the negative tracking in
+ * docs/ui-kit.md §5.3 were measured against Inter's metrics, so a quarter of
+ * the platform's readers were being shown a design nobody approved.
+ *
+ * The cut is `U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116` — the
+ * modern Russian alphabet, the stressed vowel, the Ukrainian ghe and the
+ * numero sign. It is preloaded like the others, and the cost is real: it is
+ * the price of the language being legible rather than approximately legible.
  *
  * Both of the two are needed, which is worth stating because dropping
  * `latin-ext` looks free and is not. Azerbaijani needs `ə ğ ı ö ş ü ç` and
@@ -51,7 +65,7 @@ import '../globals.css';
  * that call it resolves to Inter, which is exactly the substitution §5.1 names.
  */
 const inter = Inter({
-  subsets: ['latin', 'latin-ext'],
+  subsets: ['latin', 'latin-ext', 'cyrillic'],
   display: 'swap',
   variable: '--font-inter',
 });

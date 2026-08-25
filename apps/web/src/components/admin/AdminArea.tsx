@@ -2,6 +2,7 @@ import { Link } from '../../i18n/navigation';
 import type { ReactNode } from 'react';
 import { MAIN_CONTENT_ID, SkipLink } from '../shell/SkipLink';
 import { AdminNav } from './AdminNav';
+import { shellCopy } from '../../lib/i18n/shell-copy.server';
 
 /**
  * The frame every console screen renders inside — §4.11 and §4.13 WS-01, issue #294.
@@ -64,10 +65,17 @@ export interface AdminAreaProps {
   readonly children: ReactNode;
 }
 
-export function AdminArea({ children }: AdminAreaProps) {
+export async function AdminArea({ children }: AdminAreaProps) {
+  /*
+   * The console's own copy is still English (see `lib/admin/navigation.ts`), but the skip
+   * link is the shell's rather than the console's — it is the same control on every page of
+   * the platform and it is drawn from the same key.
+   */
+  const { skipToContent } = await shellCopy();
+
   return (
     <div className="relative flex min-h-dvh flex-col">
-      <SkipLink />
+      <SkipLink label={skipToContent} />
 
       {/*
         A bar rather than a header component: two links and a label. It is deliberately not

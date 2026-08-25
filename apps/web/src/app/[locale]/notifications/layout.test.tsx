@@ -4,6 +4,8 @@ import { fetchSession } from '../../../lib/session/session';
 import { SessionProvider } from '../../../components/session/SessionProvider';
 import { MAIN_CONTENT_ID } from '../../../components/shell/SkipLink';
 import NotificationsLayout from './layout';
+import MESSAGES from '../../../../messages/en.json';
+import { resolveServerTree } from '../../../test-support/server-tree';
 
 /**
  * The inbox carries the site shell — issue #345.
@@ -46,6 +48,25 @@ vi.mock('next/navigation', async (importOriginal) => ({
 vi.mock('../../../lib/session/session', () => ({ fetchSession: vi.fn() }));
 vi.mock('../../../lib/api/access-token', () => ({ signOut: vi.fn().mockResolvedValue(undefined) }));
 
+/*
+ * The shell reads the catalogue on the server, so the frame under test is an async component.
+ * These two mocks are what let it resolve here: the real `messages/en.json`, reached the way
+ * `i18n/request.ts` reaches it, and `resolveServerTree` to await the component itself.
+ */
+vi.mock('next-intl/server', () => ({
+  getLocale: async () => 'en',
+  getTranslations: async (namespace: string) => (key: string) => {
+    let node: unknown = MESSAGES;
+    for (const segment of `${namespace}.${key}`.split('.')) {
+      if (typeof node !== 'object' || node === null) throw new Error(`no message at ${key}`);
+      node = (node as Record<string, unknown>)[segment];
+    }
+    if (typeof node !== 'string') throw new Error(`no message at ${namespace}.${key}`);
+    return node;
+  },
+}));
+
+
 const sessionMock = vi.mocked(fetchSession);
 
 beforeEach(() => {
@@ -60,23 +81,22 @@ afterEach(cleanup);
  * not what is under test; mounting it would make this a test of the fetch mocks. What matters
  * is what the layout puts around whatever it is given.
  */
-function renderLayout() {
-  return render(
-    <SessionProvider>{NotificationsLayout({ children: <p>The inbox</p> })}</SessionProvider>,
-  );
+async function renderLayout() {
+  const tree = await resolveServerTree(NotificationsLayout({ children: <p>The inbox</p> }));
+  return render(<SessionProvider>{tree}</SessionProvider>);
 }
 
 describe('the notifications page', () => {
-  it('renders inside the site header and footer', () => {
-    renderLayout();
+  it('renders inside the site header and footer', async () => {
+    await renderLayout();
 
     expect(screen.getByRole('banner')).toBeInTheDocument();
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();
     expect(screen.getByText('The inbox')).toBeInTheDocument();
   });
 
-  it('has exactly one main landmark, and the skip link points at it', () => {
-    renderLayout();
+  it('has exactly one main landmark, and the skip link points at it', async () => {
+    await renderLayout();
 
     const mains = screen.getAllByRole('main');
     expect(mains).toHaveLength(1);
