@@ -21,6 +21,7 @@ import { PledgeSummary } from './PledgeSummary';
 import { RewardChoice } from './RewardChoice';
 import { NO_REWARD, useCheckout } from './useCheckout';
 import { useReservationClock } from './useReservationClock';
+import { type CheckoutCopy, fillPlaceholders } from '../../lib/i18n/checkout-copy';
 
 /**
  * The checkout — docs/architecture.md §4.5, PL-01 to PL-08 and PL-12.
@@ -64,11 +65,18 @@ import { useReservationClock } from './useReservationClock';
 /** Which of the three steps the backer is on. */
 type Step = 1 | 2 | 3;
 
-const STEP_NAMES: Readonly<Record<Step, string>> = {
-  1: 'Choose your reward',
-  2: 'Review and confirm',
-  3: 'Confirmed',
-};
+/*
+ * A function of the copy rather than a module constant. The names are words now, and words
+ * belong to the request rather than to the module: a constant here would be resolved once,
+ * in whatever language happened to render first, and then shown to everybody.
+ */
+function stepNames(copy: CheckoutCopy): Readonly<Record<Step, string>> {
+  return {
+    1: copy.steps.choose,
+    2: copy.steps.review,
+    3: copy.steps.confirmed,
+  };
+}
 
 /**
  * `parseAmount`'s rejection reasons, worded for THIS field.
@@ -77,36 +85,44 @@ const STEP_NAMES: Readonly<Record<Step, string>> = {
  * can say what it means here: the same `not-positive` is "a goal has to be more
  * than nothing" on a campaign form and this on a pledge.
  */
-function contributionMessage(reason: AmountRejection, minimum: string | null): string {
+function contributionMessage(
+  reason: AmountRejection,
+  minimum: string | null,
+  copy: CheckoutCopy,
+): string {
   switch (reason) {
     case 'empty':
       return minimum === null
-        ? 'Enter how much you would like to give.'
-        : `Enter how much you would like to give — at least ${minimum}.`;
+        ? copy.errors.amountMissing
+        : fillPlaceholders(copy.errors.amountMissingMinimum, { minimum });
     case 'comma':
-      return 'Use a full stop for the decimal point: 45.50, not 45,50.';
+      return copy.errors.amountComma;
     case 'not-a-number':
-      return 'Amounts are digits and at most one full stop, like 45.00.';
+      return copy.errors.amountNotANumber;
     case 'too-many-decimals':
-      return 'An amount can have at most two decimal places.';
+      return copy.errors.amountPrecision;
     case 'too-large':
-      return 'That is more than this platform can take in one pledge.';
+      return copy.errors.amountTooLarge;
     case 'not-positive':
-      return 'A pledge has to be more than nothing.';
+      return copy.errors.amountTooSmall;
   }
 }
 
 /** A quote refusal, worded for the control it belongs to. */
-function refusalMessage(refusal: QuoteRefusal): string {
+function refusalMessage(refusal: QuoteRefusal, copy: CheckoutCopy): string {
   switch (refusal.reason) {
     case 'contribution-below-price':
-      return `This reward costs ${formatMoney(refusal.price)}. Give that or more, or choose a cheaper reward.`;
+      return fillPlaceholders(copy.errors.belowRewardPrice, {
+        price: formatMoney(refusal.price),
+      });
     case 'destination-missing':
-      return 'Something in this pledge is posted, so the campaign needs to know where to send it.';
+      return copy.errors.destinationMissing;
     case 'destination-unpriced':
-      return `The creator has not set a delivery cost to this destination for ${refusal.lines.join(', ')}. Choose somewhere else, or take that out of your pledge.`;
+      return fillPlaceholders(copy.errors.destinationUnpriced, {
+        lines: refusal.lines.join(', '),
+      });
     case 'nothing-pledged':
-      return 'A pledge has to come to more than nothing.';
+      return copy.errors.totalTooSmall;
   }
 }
 
@@ -126,15 +142,18 @@ function refusalMessage(refusal: QuoteRefusal): string {
  * confirmation that implied otherwise would have somebody budgeting for money
  * that has not left their account.
  */
-function cardStatement(pledge: PledgeResponse): { readonly card: string; readonly method: string } {
+function cardStatement(
+  pledge: PledgeResponse,
+  copy: CheckoutCopy,
+): { readonly card: string; readonly method: string } {
   return {
     card: pledge.cardVerified
-      ? 'Your card was checked and released, not charged.'
-      : 'No card has been charged.',
+      ? copy.done.released
+      : copy.done.noCard,
     method:
       pledge.paymentMethodId == null
-        ? 'No payment method was collected, and nothing is taken unless the campaign reaches its goal by its deadline.'
-        : 'The payment method you gave is kept for later, and nothing is taken unless the campaign reaches its goal by its deadline.',
+        ? copy.done.noMethod
+        : copy.done.methodKept,
   };
 }
 
@@ -145,12 +164,14 @@ function FailureNotice({
   onChoose,
   onRetry,
   onReserveAgain,
+  copy,
 }: {
   failure: CheckoutFailure;
   alternatives: readonly PublicReward[];
   onChoose: (id: string) => void;
   onRetry: () => void;
   onReserveAgain: () => void;
+  copy: CheckoutCopy;
 }) {
   return (
     <InlineAlert variant="danger" title={failure.title}>
@@ -165,7 +186,7 @@ function FailureNotice({
       */}
       {alternatives.length > 0 && (
         <div className="mt-3 flex flex-col gap-2">
-          <p>Still available:</p>
+          <p>{copy.stillAvailable}</p>
           <div className="flex flex-wrap gap-2">
             {alternatives.map((reward) => (
               <Pill key={reward.id} size="sm" variant="ghost" onClick={() => onChoose(reward.id)}>
@@ -186,7 +207,7 @@ function FailureNotice({
       {(failure.recovery === 'retry' || failure.recovery === 'wait-and-retry') && (
         <div className="mt-3">
           <Pill size="sm" variant="ghost" onClick={onRetry}>
-            Try again
+            {copy.tryAgain}
           </Pill>
         </div>
       )}
@@ -194,7 +215,7 @@ function FailureNotice({
       {failure.recovery === 'redraft' && (
         <div className="mt-3">
           <Pill size="sm" variant="ghost" onClick={onReserveAgain}>
-            Reserve again
+            {copy.reserveAgain}
           </Pill>
         </div>
       )}
@@ -213,9 +234,16 @@ export interface CheckoutViewProps {
    * on it.
    */
   secretTokens?: readonly string[];
+  /**
+   * Every word this screen and its five children draw, resolved on the server by
+   * `app/[locale]/projects/[id]/back/page.tsx`. `lib/i18n/checkout-copy.ts` explains why it
+   * arrives whole rather than through `useTranslations`, and why on this screen in particular
+   * a missing string is a money question rather than a cosmetic one.
+   */
+  copy: CheckoutCopy;
 }
 
-export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps) {
+export function CheckoutView({ projectId, secretTokens = [], copy }: CheckoutViewProps) {
   const checkout = useCheckout(projectId, secretTokens);
   const clock = useReservationClock(checkout.pledge?.reservationExpiresAt);
 
@@ -291,7 +319,9 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
         ? toAmounts(quote.quote)
         : null;
 
-  const statement = checkout.pledge === null ? null : cardStatement(checkout.pledge);
+  const statement = checkout.pledge === null ? null : cardStatement(checkout.pledge, copy);
+
+  const stepName = stepNames(copy);
 
   const destinationLabel =
     checkout.destination === null ? null : countryName(checkout.destination, regionNames);
@@ -303,22 +333,23 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
         ? contributionMessage(
             checkout.contribution.reason,
             checkout.reward === null ? null : formatMoney(checkout.reward.price),
+            copy,
           )
         : refusal !== null &&
             (refusal.reason === 'contribution-below-price' || refusal.reason === 'nothing-pledged')
-          ? refusalMessage(refusal)
+          ? refusalMessage(refusal, copy)
           : null;
 
   const destinationError =
     refusal !== null && refusal.reason === 'destination-unpriced'
-      ? refusalMessage(refusal)
+      ? refusalMessage(refusal, copy)
       : checkout.attempted && refusal !== null && refusal.reason === 'destination-missing'
-        ? refusalMessage(refusal)
+        ? refusalMessage(refusal, copy)
         : null;
 
   return (
     <div className="mx-auto w-full max-w-[1100px] px-5 py-10 sm:px-6">
-      <p className="text-xs font-medium tracking-[0.06em] text-white/40 uppercase">Checkout</p>
+      <p className="text-xs font-medium tracking-[0.06em] text-white/40 uppercase">{copy.title}</p>
       {/*
         NO `outline-none` HERE. The global `:focus-visible` rule (docs/ui-kit.md
         §9.3) is the only focus ring in the system and suppressing it on the one
@@ -331,12 +362,12 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
         tabIndex={-1}
         className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl"
       >
-        {STEP_NAMES[step]}
+        {stepName[step]}
       </h1>
 
       {/* The step indicator is words as well as marks. A row of dots is colour
           and shape carrying meaning by itself, which §9.4 forbids outright. */}
-      <nav aria-label="Checkout progress" className="mt-4">
+      <nav aria-label={copy.progress} className="mt-4">
         <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-white/40">
           {([1, 2, 3] as const).map((index) => (
             <li key={index} className="flex items-center gap-2">
@@ -345,7 +376,7 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
                 aria-current={index === step ? 'step' : undefined}
                 className={index === step ? 'text-white' : undefined}
               >
-                {index}. {STEP_NAMES[index]}
+                {index}. {stepName[index]}
               </span>
             </li>
           ))}
@@ -360,7 +391,7 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
       */}
       <p role="status" aria-live="polite" className="sr-only">
         {checkout.phase === 'reserved'
-          ? 'Your reward is reserved for five minutes. Review your pledge and confirm it.'
+          ? copy.reserved
           : checkout.phase === 'confirmed' && statement !== null
             ? `Your pledge is confirmed. ${statement.card}`
             : ''}
@@ -372,6 +403,7 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
         <div className="flex min-w-0 flex-1 flex-col gap-6">
           {checkout.failure !== null && (
             <FailureNotice
+              copy={copy}
               failure={checkout.failure}
               alternatives={alternatives}
               onChoose={checkout.chooseReward}
@@ -383,7 +415,7 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
           {step === 1 && (
             <>
               {checkout.catalogueStatus === 'loading' && (
-                <SkeletonGroup label="Loading the rewards">
+                <SkeletonGroup label={copy.loading}>
                   <div className="flex flex-col gap-3">
                     <Skeleton height="5rem" />
                     <Skeleton height="5rem" />
@@ -397,7 +429,7 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
                   <p>{checkout.catalogueFailure.detail}</p>
                   <div className="mt-3">
                     <Pill size="sm" variant="ghost" onClick={checkout.reloadCatalogue}>
-                      Try again
+                      {copy.tryAgain}
                     </Pill>
                   </div>
                 </InlineAlert>
@@ -406,24 +438,25 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
               {checkout.catalogueStatus === 'ready' && catalogue !== null && (
                 <>
                   <RewardChoice
+                    copy={copy.reward}
                     rewards={catalogue.rewards}
                     value={checkout.choice}
                     onChange={checkout.chooseReward}
                   />
 
                   {checkout.attempted && checkout.choice === null && (
-                    <InlineAlert variant="warning" title="Choose one of the options above">
-                      Pick a reward, or choose to pledge without one — both are pledges.
+                    <InlineAlert variant="warning" title={copy.reward.chooseOne}>
+                      {copy.intro}
                     </InlineAlert>
                   )}
 
                   {checkout.choice !== null && (
                     <Field
-                      label={checkout.choice === NO_REWARD ? 'How much would you like to give?' : 'Your contribution'}
+                      label={checkout.choice === NO_REWARD ? 'How much would you like to give?' : copy.contribution.legend}
                       required
                       hint={
                         checkout.reward === null
-                          ? 'Every amount goes to the campaign.'
+                          ? copy.contribution.hint
                           : `This reward costs ${formatMoney(checkout.reward.price)}. Give more if you would like to; the extra is bonus support.`
                       }
                       error={contributionError}
@@ -443,6 +476,7 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
                   )}
 
                   <AddonChoice
+                    copy={copy.addons}
                     addons={catalogue.addons}
                     quantityOf={checkout.addonQuantity}
                     onChange={checkout.setAddonQuantity}
@@ -450,6 +484,7 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
 
                   {checkout.needsDestination && (
                     <DestinationField
+                      copy={copy.destination}
                       options={options}
                       value={checkout.destination}
                       onChange={checkout.setDestination}
@@ -460,7 +495,7 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
                   <Checkbox
                     checked={checkout.isAnonymous}
                     onChange={(event) => checkout.setAnonymous(event.currentTarget.checked)}
-                    label="Pledge anonymously"
+                    label={copy.anonymous.label}
                     /*
                       PL-12 says what it does and does not overstate it. Anonymous
                       means hidden from the campaign's public backer list. The
@@ -470,7 +505,7 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
                       the creator cannot see them would be the interface telling
                       a lie somebody might rely on.
                     */
-                    description="Your name is kept off this campaign's public backer list. The creator still sees it, and it stays on your own pledge record."
+                    description={copy.anonymous.hint}
                   />
                 </>
               )}
@@ -480,14 +515,13 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
           {step === 2 && checkout.pledge !== null && (
             <>
               {clock.expired ? (
-                <InlineAlert variant="warning" title="Your reward is no longer held">
+                <InlineAlert variant="warning" title={copy.done.expired}>
                   <p>
-                    A reservation lasts five minutes and this one has ended, so the stock has gone
-                    back to the campaign. Nothing was confirmed and no card was involved.
+                    {copy.expired}
                   </p>
                   <div className="mt-3">
                     <Pill size="sm" variant="ghost" onClick={() => checkout.reserve({ fresh: true })}>
-                      Reserve again
+                      {copy.reserveAgain}
                     </Pill>
                   </div>
                 </InlineAlert>
@@ -503,18 +537,18 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
 
               <section aria-labelledby="checkout-selection" className="flex flex-col gap-2">
                 <h2 id="checkout-selection" className="text-sm font-medium text-white">
-                  What you are backing
+                  {copy.review.heading}
                 </h2>
                 <dl className="flex flex-col gap-1 text-sm text-white/64">
                   <div className="flex gap-2">
-                    <dt>Reward</dt>
-                    <dd className="text-white">{rewardTitle ?? 'No reward — support only'}</dd>
+                    <dt>{copy.review.reward}</dt>
+                    <dd className="text-white">{rewardTitle ?? copy.review.noReward}</dd>
                   </div>
                   {checkout.pledge.addons.map((addon) => {
                     const named = catalogue?.addons.find((entry) => entry.id === addon.rewardTierId);
                     return (
                       <div key={addon.rewardTierId} className="flex gap-2">
-                        <dt>Add-on</dt>
+                        <dt>{copy.review.addon}</dt>
                         <dd className="text-white">
                           {addon.quantity} × {named?.title ?? 'Add-on'}
                         </dd>
@@ -523,30 +557,30 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
                   })}
                   {checkout.pledge.shippingCountry != null && (
                     <div className="flex gap-2">
-                      <dt>Delivered to</dt>
+                      <dt>{copy.review.deliveredTo}</dt>
                       <dd className="text-white">
                         {countryName(checkout.pledge.shippingCountry, regionNames)}
                       </dd>
                     </div>
                   )}
                   <div className="flex gap-2">
-                    <dt>Listed publicly as</dt>
+                    <dt>{copy.review.listedAs}</dt>
                     <dd className="text-white">
-                      {checkout.pledge.isAnonymous ? 'Anonymous' : 'Your name'}
+                      {checkout.pledge.isAnonymous ? copy.anonymous.shown : copy.anonymous.yourName}
                     </dd>
                   </div>
                 </dl>
               </section>
 
-              <PaymentStep />
+              <PaymentStep copy={copy.payment} />
             </>
           )}
 
           {step === 3 && checkout.pledge !== null && statement !== null && (
             <>
-              <InlineAlert variant="success" title="Your pledge is confirmed">
+              <InlineAlert variant="success" title={copy.done.announced}>
                 <p>
-                  The campaign has your pledge and your reward is yours if it reaches its goal.
+                  {copy.done.heading}
                 </p>
               </InlineAlert>
 
@@ -561,7 +595,7 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
               */}
               <section aria-labelledby="checkout-what-happens" className="flex flex-col gap-2">
                 <h2 id="checkout-what-happens" className="text-sm font-medium text-white">
-                  What happens now
+                  {copy.done.next}
                 </h2>
                 <p className="text-sm text-white/64">
                   <strong className="text-white">{statement.card}</strong> {statement.method} If it
@@ -572,23 +606,23 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
 
               <section aria-labelledby="checkout-confirmed-selection" className="flex flex-col gap-2">
                 <h2 id="checkout-confirmed-selection" className="text-sm font-medium text-white">
-                  What you backed
+                  {copy.done.backed}
                 </h2>
                 <dl className="flex flex-col gap-1 text-sm text-white/64">
                   <div className="flex gap-2">
-                    <dt>Reward</dt>
-                    <dd className="text-white">{rewardTitle ?? 'No reward — support only'}</dd>
+                    <dt>{copy.review.reward}</dt>
+                    <dd className="text-white">{rewardTitle ?? copy.review.noReward}</dd>
                   </div>
                   {checkout.pledge.shippingCountry != null && (
                     <div className="flex gap-2">
-                      <dt>Delivered to</dt>
+                      <dt>{copy.review.deliveredTo}</dt>
                       <dd className="text-white">
                         {countryName(checkout.pledge.shippingCountry, regionNames)}
                       </dd>
                     </div>
                   )}
                   <div className="flex gap-2">
-                    <dt>Pledge reference</dt>
+                    <dt>{copy.done.reference}</dt>
                     <dd className="text-white">{checkout.pledge.id}</dd>
                   </div>
                 </dl>
@@ -598,10 +632,11 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
         </div>
 
         <aside
-          aria-label="Pledge summary"
+          aria-label={copy.summary.label}
           className="w-full shrink-0 lg:sticky lg:top-6 lg:w-[360px] lg:self-start"
         >
           <PledgeSummary
+            copy={copy.summary}
             amounts={amounts}
             source={checkout.pledge === null ? 'preview' : 'quoted'}
             rewardTitle={rewardTitle}
@@ -614,7 +649,7 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
              */
             unavailable={
               checkout.pledge === null && refusal !== null
-                ? 'The total appears once the choices above are complete.'
+                ? copy.summary.pending
                 : null
             }
           >
@@ -634,7 +669,7 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
                 onClick={() => checkout.reserve()}
                 disabled={checkout.phase === 'reserving' || checkout.catalogueStatus !== 'ready'}
               >
-                {checkout.phase === 'reserving' ? 'Reserving…' : 'Reserve and review'}
+                {checkout.phase === 'reserving' ? 'Reserving…' : copy.review.reserve}
               </Pill>
             )}
 
@@ -647,20 +682,20 @@ export function CheckoutView({ projectId, secretTokens = [] }: CheckoutViewProps
                   onClick={checkout.confirm}
                   disabled={checkout.phase === 'confirming' || clock.expired}
                 >
-                  {checkout.phase === 'confirming' ? 'Confirming…' : 'Confirm pledge'}
+                  {checkout.phase === 'confirming' ? copy.review.confirming : copy.review.confirm}
                 </Pill>
                 <p className="text-[13px] text-on-white/64">
-                  Confirming records your pledge. It does not charge you.
+                  {copy.review.notCharged}
                 </p>
                 <Pill fullWidth variant="ghost" onClick={checkout.startOver}>
-                  Change what I chose
+                  {copy.review.change}
                 </Pill>
               </>
             )}
 
             {step === 3 && (
               <p className="text-[13px] text-on-white/64">
-                Keep the reference above if you need to write to the campaign about this pledge.
+                {copy.done.keepReference}
               </p>
             )}
           </PledgeSummary>

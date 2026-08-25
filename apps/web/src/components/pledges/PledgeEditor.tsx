@@ -35,6 +35,7 @@ import {
   type Selection,
 } from '../../lib/pledges/quote';
 import { formatMoney, parseAmount, toMoney, type AmountParse } from '../../lib/money';
+import type { CheckoutCopy } from '../../lib/i18n/checkout-copy';
 
 /**
  * §4.5's PL-09 — the backer changes their mind while the campaign runs. Issue #287.
@@ -173,12 +174,23 @@ function isEmpty(edit: PledgeEdit): boolean {
 }
 
 export interface PledgeEditorProps {
+  /**
+   * The checkout's words, threaded through from the page.
+   *
+   * This screen reuses `RewardChoice`, `AddonChoice`, `DestinationField` and `PledgeSummary`
+   * — the same controls the checkout draws, so they take the same copy. Sharing the object as
+   * well as the components is what keeps "Sold out" from being two different sentences on two
+   * screens that are visibly the same form.
+   */
+  readonly copy: CheckoutCopy;
   readonly pledge: PledgeResponse;
   /** Called with the whole pledge the service answered with. Never a merge. */
   readonly onSaved: (next: PledgeResponse) => void;
 }
 
-export function PledgeEditor({ pledge, onSaved }: PledgeEditorProps) {
+export function PledgeEditor({ pledge, onSaved,
+  copy,
+}: PledgeEditorProps) {
   const [catalogue, setCatalogue] = useState<PublicRewardList | null>(null);
   const [catalogueFailure, setCatalogueFailure] = useState<CheckoutFailure | null>(null);
   const [draft, setDraft] = useState<Draft>(() => draftOf(pledge));
@@ -323,6 +335,7 @@ export function PledgeEditor({ pledge, onSaved }: PledgeEditorProps) {
 
       <div className="mt-6 flex flex-col gap-6">
         <RewardChoice
+          copy={copy.reward}
           rewards={catalogue.rewards}
           value={draft.choice}
           onChange={(value) => setDraft((current) => ({ ...current, choice: value }))}
@@ -355,6 +368,7 @@ export function PledgeEditor({ pledge, onSaved }: PledgeEditorProps) {
         </Field>
 
         <AddonChoice
+          copy={copy.addons}
           addons={catalogue.addons}
           quantityOf={(rewardId) =>
             draft.addons.find((addon) => addon.rewardTierId === rewardId)?.quantity ?? 0
@@ -373,6 +387,7 @@ export function PledgeEditor({ pledge, onSaved }: PledgeEditorProps) {
 
         {needsDestination && (
           <DestinationField
+            copy={copy.destination}
             options={options}
             value={draft.destination}
             onChange={(code) => setDraft((current) => ({ ...current, destination: code }))}
@@ -394,6 +409,7 @@ export function PledgeEditor({ pledge, onSaved }: PledgeEditorProps) {
         />
 
         <PledgeSummary
+          copy={copy.summary}
           amounts={quote !== null && quote.ok ? toAmounts(quote.quote) : pledge.amounts}
           /* `preview` while the form differs from the pledge, `quoted` when it does not: the
              panel says which it is showing, and a client's arithmetic must never be presented

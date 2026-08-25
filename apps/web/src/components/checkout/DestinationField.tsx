@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { Field, Select } from '@ideanest/ui';
+import type { CheckoutCopy } from '../../lib/i18n/checkout-copy';
 
 /**
  * PL-05: where the pledge is going, and only when something in it is posted.
@@ -33,6 +34,11 @@ import { Field, Select } from '@ideanest/ui';
  */
 
 export interface DestinationFieldProps {
+  /**
+   * The words this control draws, resolved on the server and handed down by `CheckoutView`.
+   * `lib/i18n/checkout-copy.ts` explains why the checkout's copy travels as a prop.
+   */
+  copy: CheckoutCopy['destination'];
   /** ISO 3166-1 alpha-2 codes the creator has priced for the selected lines. */
   options: readonly string[];
   value: string | null;
@@ -60,6 +66,7 @@ export function DestinationField({
   onChange,
   error = null,
   disabled = false,
+  copy,
 }: DestinationFieldProps) {
   const display = useMemo(() => {
     try {
@@ -80,13 +87,13 @@ export function DestinationField({
 
   return (
     <Field
-      label="Where should this go?"
+      label={copy.label}
       required
-      hint="Delivery is charged per destination, and the creator sets the rate."
+      hint={copy.hint}
       error={error}
     >
       <Select
-        placeholder="Choose a destination"
+        placeholder={copy.placeholder}
         value={value ?? ''}
         disabled={disabled}
         onChange={(event) => {

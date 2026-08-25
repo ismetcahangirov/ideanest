@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { CheckoutView } from '../../../../../components/checkout/CheckoutView';
 import { privatePageMetadata } from '../../../../../lib/seo/metadata';
+import { checkoutCopy } from '../../../../../lib/i18n/shell-copy.server';
 
 /**
  * `/projects/{id}/back` — the pledge flow, docs/architecture.md §4.5.
@@ -74,9 +75,21 @@ export default async function BackProjectPage({
   const { id } = await params;
   const query = await searchParams;
 
+  /*
+   * The checkout's words, resolved here because every component below this line is a client
+   * component and none of them can reach the catalogue. `lib/i18n/checkout-copy.ts` explains
+   * why the whole object travels as one prop rather than through a provider, and why on this
+   * screen in particular a missing string is a money question rather than a cosmetic one.
+   */
+  const copy = await checkoutCopy();
+
   return (
     <main>
-      <CheckoutView projectId={id} secretTokens={secretTokens(query['token'])} />
+      <CheckoutView
+        projectId={id}
+        secretTokens={secretTokens(query['token'])}
+        copy={copy}
+      />
     </main>
   );
 }

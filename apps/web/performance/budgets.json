@@ -50,7 +50,7 @@
     "/[locale]/pledges/[pledgeId]": 655,
     "/[locale]/pledges/[pledgeId]/address": 590,
     "/[locale]/projects/[id]/[projectSlug]": 665,
-    "/[locale]/projects/[id]/back": 638,
+    "/[locale]/projects/[id]/back": 637,
     "/[locale]/projects/[id]/dashboard": 610,
     "/[locale]/projects/[id]/dashboard/backers": 620,
     "/[locale]/projects/[id]/dashboard/charts": 619,

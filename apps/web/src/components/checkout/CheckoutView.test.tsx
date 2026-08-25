@@ -10,6 +10,32 @@ import {
   type PublicReward,
 } from '../../lib/pledges/api';
 import { CheckoutView } from './CheckoutView';
+import MESSAGES from '../../../messages/en.json';
+import { checkoutCopyFrom } from '../../lib/i18n/checkout-copy';
+
+/*
+ * The copy the server would have resolved, built from `messages/en.json` by the same function
+ * the page calls. Retyping the words here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const COPY = checkoutCopyFrom(
+  Object.assign(
+    (key: string) => {
+      let node: unknown = MESSAGES.checkout;
+      for (const segment of key.split('.')) node = (node as Record<string, unknown>)[segment];
+      if (typeof node !== 'string') throw new Error(`no message at checkout.${key}`);
+      return node;
+    },
+    {
+      raw(key: string) {
+        let node: unknown = MESSAGES.checkout;
+        for (const segment of key.split('.')) node = (node as Record<string, unknown>)[segment];
+        return node;
+      },
+    },
+  ),
+);
+
 
 /**
  * The checkout end to end, with the three endpoints stubbed.
@@ -189,7 +215,7 @@ function draftKey(call: number): string | undefined {
 
 async function open(): Promise<UserEvent> {
   const user = userEvent.setup();
-  render(<CheckoutView projectId="project-1" />);
+  render(<CheckoutView projectId="project-1" copy={COPY} />);
   await screen.findByRole('radio', { name: /Pledge without a reward/ });
   return user;
 }
@@ -686,7 +712,7 @@ describe('a request whose first attempt is still running', () => {
 
   async function openWithTimers(): Promise<UserEvent> {
     const user = userEvent.setup({ advanceTimers: (ms) => void vi.advanceTimersByTime(ms) });
-    render(<CheckoutView projectId="project-1" />);
+    render(<CheckoutView projectId="project-1" copy={COPY} />);
     await tick();
     return user;
   }

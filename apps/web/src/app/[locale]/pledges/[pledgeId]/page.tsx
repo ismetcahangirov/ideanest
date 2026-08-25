@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { AccountPageHeader } from '../../../../components/account/AccountPageHeader';
 import { PledgeManager } from '../../../../components/pledges/PledgeManager';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
+import { checkoutCopy } from '../../../../lib/i18n/shell-copy.server';
 
 export const metadata: Metadata = privatePageMetadata({
   title: 'Your pledge',
@@ -51,7 +52,7 @@ export default async function PledgePage({
       </AccountPageHeader>
 
       <div className="mt-8">
-        <PledgeManager pledgeId={pledgeId} />
+        <PledgeManager pledgeId={pledgeId} copy={await checkoutCopy()} />
       </div>
     </>
   );

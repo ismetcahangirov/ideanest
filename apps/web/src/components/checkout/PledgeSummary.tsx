@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { FloatingPanel } from '@ideanest/ui';
 import { formatMoney, type Money } from '../../lib/money';
 import type { PledgeAmounts } from '../../lib/pledges/api';
+import type { CheckoutCopy } from '../../lib/i18n/checkout-copy';
 
 /**
  * PL-06: what this pledge comes to, broken into its lines, always on screen.
@@ -41,6 +42,11 @@ import type { PledgeAmounts } from '../../lib/pledges/api';
  */
 
 export interface PledgeSummaryProps {
+  /**
+   * The words this control draws, resolved on the server and handed down by `CheckoutView`.
+   * `lib/i18n/checkout-copy.ts` explains why the checkout's copy travels as a prop.
+   */
+  copy: CheckoutCopy['summary'];
   /** The six amounts, or null before there is anything to price. */
   amounts: PledgeAmounts | null;
   /** `preview` is the client's arithmetic; `quoted` is the server's answer. */
@@ -78,11 +84,12 @@ export function PledgeSummary({
   destination = null,
   unavailable = null,
   children,
+  copy,
 }: PledgeSummaryProps) {
   return (
-    <FloatingPanel title="Your pledge">
+    <FloatingPanel title={copy.pledge}>
       <p className="text-sm text-on-white/64">
-        {rewardTitle ?? 'Support with no reward'}
+        {rewardTitle ?? copy.noReward}
         {destination != null && <> · to {destination}</>}
       </p>
 
@@ -90,18 +97,18 @@ export function PledgeSummary({
         <div className="mt-4 text-sm text-on-white/64">{unavailable}</div>
       ) : amounts === null ? (
         <p className="mt-4 text-sm text-on-white/64">
-          Choose a reward, or choose to pledge without one, and the total appears here.
+          {copy.empty}
         </p>
       ) : (
         <div className="mt-4 flex flex-col gap-2">
           {/* The base line is always printed, even at the tier's bare price with
               nothing else: a total with no lines under it is a figure a backer
               cannot check. */}
-          <Line label={rewardTitle === null ? 'Your support' : 'Reward'} money={amounts.base} />
+          <Line label={rewardTitle === null ? copy.yourSupport : copy.rewardLine} money={amounts.base} />
 
-          {!isZero(amounts.addons) && <Line label="Add-ons" money={amounts.addons} />}
-          {!isZero(amounts.bonus) && <Line label="Bonus support" money={amounts.bonus} />}
-          {!isZero(amounts.shipping) && <Line label="Delivery" money={amounts.shipping} />}
+          {!isZero(amounts.addons) && <Line label={copy.addons} money={amounts.addons} />}
+          {!isZero(amounts.bonus) && <Line label={copy.bonus} money={amounts.bonus} />}
+          {!isZero(amounts.shipping) && <Line label={copy.delivery} money={amounts.shipping} />}
 
           {/*
             TAX IS PRINTED ONLY WHEN IT IS NOT ZERO, and it is zero on every
@@ -111,11 +118,11 @@ export function PledgeSummary({
             what?") and would go on inviting it for however long #78 takes. The
             line appears by itself the day the policy stops answering zero.
           */}
-          {!isZero(amounts.tax) && <Line label="Tax" money={amounts.tax} />}
+          {!isZero(amounts.tax) && <Line label={copy.tax} money={amounts.tax} />}
 
           <div className="mt-1 border-t border-black/10 pt-3">
             <div className="flex items-baseline justify-between gap-4">
-              <span className="font-medium text-on-white">Total</span>
+              <span className="font-medium text-on-white">{copy.total}</span>
               <span className="text-lg font-medium tabular-nums text-on-white">
                 {formatMoney(amounts.total)}
               </span>
