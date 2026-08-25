@@ -27,6 +27,15 @@ import { isCurrentAccountLink } from '../../lib/account/navigation';
  * on controls**. A navigation that animated between entries would be animating on every
  * screen in the area, on a surface whose whole job is to be worked in.
  *
+ * <h2>It scrolls on its own axis on both, and the reason differs</h2>
+ *
+ * On a wide viewport the rail is sticky, so a rail taller than the screen used to have a
+ * bottom nobody could reach: the page scrolled, the content on the right moved, and the rail
+ * stayed pinned with its last group below the fold. It is its own scroll container since
+ * #349, with `overscroll-contain` so reaching its end does not hand the wheel to the page.
+ * The class list below argues each part, including the padding that keeps the focus ring from
+ * being clipped by the container that fixed the first problem.
+ *
  * <h2>It scrolls sideways on a phone, rather than collapsing</h2>
  *
  * Below the breakpoint the two groups become one horizontally scrolling row. A drawer would
@@ -80,8 +89,38 @@ export function AccountNav({ label, groups }: AccountNavProps) {
   const pathname = usePathname();
 
   return (
-    <nav aria-label={label} className="lg:sticky lg:top-24">
-      <ul className="flex list-none gap-x-6 gap-y-8 overflow-x-auto pb-2 lg:flex-col lg:overflow-visible lg:pb-0">
+    <nav
+      aria-label={label}
+      className={[
+        'lg:sticky lg:top-24',
+        /*
+          THE RAIL SCROLLS ON ITS OWN Y AXIS — #349. `sticky` pins it below the header and
+          keeps it there while the page moves, which is the point of it; the consequence,
+          until this, was that a rail taller than the viewport had a bottom nobody could
+          reach. Scrolling the page moved the content on the right and left the rail exactly
+          where it was. Thirteen destinations at 150% zoom, or a laptop at 768px of height,
+          is enough for the last group to be unreachable.
+
+          `100dvh` and not `100vh`: the dynamic unit is the one that tracks a collapsing
+          browser toolbar, and `vh` here would size the rail to a viewport the reader does
+          not have. `8rem` is the `top-24` above it (6rem) plus 2rem so the last entry does
+          not sit flush against the bottom edge.
+
+          `overscroll-contain` is the half that makes it independent rather than merely
+          scrollable: without it, reaching the end of the rail hands the wheel to the page
+          and the reader scrolls the article they were not looking at.
+        */
+        'lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto lg:overscroll-contain',
+        /*
+          Room for the focus ring, which a scroll container would otherwise clip. The links
+          take `outline-2 outline-offset-2` — four pixels outside their own box — and
+          docs/ui-kit.md §9.3 requires that ring to be visible on every interactive element.
+          The negative margin gives the padding back, so nothing moves.
+        */
+        'lg:-mx-1 lg:px-1',
+      ].join(' ')}
+    >
+      <ul className="flex list-none gap-x-6 gap-y-8 overflow-x-auto pb-2 lg:flex-col lg:overflow-visible lg:pb-1">
         {groups.map((group) => (
           <li key={group.heading} className="min-w-max lg:min-w-0">
             <h2 className="px-3 text-xs font-medium tracking-[0.08em] text-white/40 uppercase">
