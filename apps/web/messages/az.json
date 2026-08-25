@@ -280,5 +280,116 @@
       "emptyAction": "Lentə baxın",
       "gridLabel": "“{query}” üçün axtarış nəticələri"
     }
+  },
+  "checkout": {
+    "title": "Ödəniş",
+    "progress": "Ödəniş mərhələləri",
+    "steps": {
+      "choose": "Mükafatınızı seçin",
+      "review": "Yoxlayın və təsdiqləyin",
+      "confirmed": "Təsdiqləndi"
+    },
+    "intro": "Mükafat seçin və ya mükafatsız dəstək olun — hər ikisi dəstəkdir.",
+    "loading": "Mükafatlar yüklənir",
+    "expired": "Rezerv beş dəqiqə davam edir və bu rezervin vaxtı bitdi, ona görə ehtiyat kampaniyaya qaytarıldı. Heç nə təsdiqlənmədi və heç bir kart istifadə olunmadı.",
+    "reserveAgain": "Yenidən rezerv edin",
+    "tryAgain": "Yenidən cəhd edin",
+    "stillAvailable": "Hələ mövcuddur:",
+    "reward": {
+      "legend": "Mükafat seçin",
+      "hint": "Hər dəstəyə bir mükafat. Əlavələr növbəti addımdadır.",
+      "none": "Mükafatsız dəstək olun",
+      "noneHint": "Kampaniyanı sadəcə var olmasını istədiyiniz üçün dəstəkləyin. Məbləği siz seçirsiniz və əvəzində mükafat almırsınız.",
+      "soldOut": "Tükənib",
+      "inPerson": "Şəxsən təhvil alınır",
+      "digital": "Rəqəmsal çatdırılır",
+      "earlyBird": "Erkən qiymət",
+      "featured": "Seçilmiş",
+      "chooseOne": "Yuxarıdakı variantlardan birini seçin",
+      "digitalItem": "rəqəmsal",
+      "estimatedDelivery": "Təxmini çatdırılma: {month}",
+      "postedDomestic": "Azərbaycan daxilində göndərilir",
+      "postedWorldwide": "Dünyanın hər yerinə göndərilir"
+    },
+    "addons": {
+      "heading": "Əlavələr",
+      "intro": "İstənilən mükafata və ya mükafatsız dəstəyə əlavə edə biləcəyiniz şeylər.",
+      "soldOut": "Tükənib"
+    },
+    "destination": {
+      "label": "Bu hara göndərilsin?",
+      "hint": "Çatdırılma hər istiqamət üzrə hesablanır və tarifi müəllif təyin edir.",
+      "placeholder": "İstiqamət seçin"
+    },
+    "contribution": {
+      "legend": "Sizin töhfəniz",
+      "hint": "Məbləğin hamısı kampaniyaya gedir."
+    },
+    "summary": {
+      "label": "Dəstəyin xülasəsi",
+      "empty": "Mükafat seçin və ya mükafatsız dəstək olmağı seçin — cəmi burada görünəcək.",
+      "pending": "Yuxarıdakı seçimlər tamamlanan kimi cəmi görünəcək.",
+      "pledge": "Dəstəyiniz",
+      "addons": "Əlavələr",
+      "bonus": "Əlavə dəstək",
+      "delivery": "Çatdırılma",
+      "tax": "Vergi",
+      "total": "Cəmi",
+      "noReward": "Mükafatsız dəstək",
+      "yourSupport": "Dəstək məbləği",
+      "rewardLine": "Mükafat"
+    },
+    "payment": {
+      "heading": "Ödəniş",
+      "none": "Hələlik kart alınmır",
+      "body": "Bu kampaniya ödəniş vasitəsi almadan dəstəyinizi qeyd edir. Bu səhifənin heç bir yerində kart məlumatları toplanmır və burada təsdiqlədiyiniz heç nə sizdən pul tutmur.",
+      "later": "Pul yalnız kampaniya hədəfinə çatdıqda alınır və bu baş verməzdən əvvəl sizə xəbər verilir."
+    },
+    "anonymous": {
+      "label": "Anonim dəstək olun",
+      "hint": "Adınız bu kampaniyada görünməyəcək",
+      "shown": "Anonim",
+      "yourName": "Adınız"
+    },
+    "reserved": "Mükafatınız beş dəqiqə rezerv edilib. Dəstəyinizi yoxlayın və təsdiqləyin.",
+    "review": {
+      "heading": "Nəyi dəstəkləyirsiniz",
+      "reward": "Mükafat",
+      "addon": "Əlavə",
+      "noReward": "Mükafatsız — yalnız dəstək",
+      "deliveredTo": "Çatdırılma ünvanı",
+      "listedAs": "İctimai siyahıda görünən ad",
+      "notCharged": "Təsdiq dəstəyinizi qeyd edir. Sizdən pul tutmur.",
+      "change": "Seçdiyimi dəyişim",
+      "reserve": "Rezerv edin və yoxlayın",
+      "confirm": "Dəstəyi təsdiqləyin",
+      "confirming": "Təsdiqlənir…"
+    },
+    "done": {
+      "announced": "Dəstəyiniz təsdiqləndi",
+      "heading": "Kampaniya dəstəyinizi aldı və hədəfinə çatsa, mükafat sizindir.",
+      "next": "İndi nə olacaq",
+      "backed": "Nəyi dəstəklədiniz",
+      "reference": "Dəstək nömrəsi",
+      "keepReference": "Bu dəstək barədə kampaniyaya yazmaq lazım gəlsə, yuxarıdakı nömrəni saxlayın.",
+      "released": "Kartınız yoxlanıldı və buraxıldı, ondan pul tutulmadı.",
+      "noCard": "Heç bir kartdan pul tutulmayıb.",
+      "noMethod": "Ödəniş vasitəsi alınmadı və kampaniya son tarixinədək hədəfinə çatmasa, heç nə tutulmayacaq.",
+      "methodKept": "Verdiyiniz ödəniş vasitəsi sonrası üçün saxlanılır və kampaniya son tarixinədək hədəfinə çatmasa, heç nə tutulmayacaq.",
+      "expired": "Mükafatınız artıq saxlanılmır"
+    },
+    "errors": {
+      "amountMissing": "Nə qədər vermək istədiyinizi yazın.",
+      "amountPrecision": "Məbləğdə ən çox iki onluq rəqəm ola bilər.",
+      "amountTooLarge": "Bu, platformanın bir dəstəkdə qəbul edə biləcəyindən çoxdur.",
+      "amountTooSmall": "Dəstək sıfırdan böyük olmalıdır.",
+      "destinationMissing": "Bu dəstəkdə göndəriləsi bir şey var, ona görə kampaniya onu hara göndərəcəyini bilməlidir.",
+      "totalTooSmall": "Dəstəyin cəmi sıfırdan böyük olmalıdır.",
+      "amountMissingMinimum": "Nə qədər vermək istədiyinizi yazın — ən azı {minimum}.",
+      "amountComma": "Onluq ayırıcı kimi nöqtə işlədin: 45.50, 45,50 yox.",
+      "amountNotANumber": "Məbləğ rəqəmlərdən və ən çox bir nöqtədən ibarət olur, məsələn 45.00.",
+      "belowRewardPrice": "Bu mükafat {price} dəyərindədir. Bu qədər və ya daha çox verin, ya da daha ucuz mükafat seçin.",
+      "destinationUnpriced": "Müəllif bu istiqamət üçün {lines} çatdırılma qiyməti təyin etməyib. Başqa yer seçin və ya onu dəstəyinizdən çıxarın."
+    }
   }
 }

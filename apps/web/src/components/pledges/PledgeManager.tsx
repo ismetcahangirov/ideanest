@@ -17,6 +17,7 @@ import { formatExactTime } from '../../lib/time';
 import { formatMoney } from '../../lib/money';
 import { CancelPledgePanel } from './CancelPledgePanel';
 import { PledgeEditor } from './PledgeEditor';
+import type { CheckoutCopy } from '../../lib/i18n/checkout-copy';
 
 /**
  * One of the caller's own pledges, with §4.5's PL-09 edit and PL-10 withdrawal. Issue #287.
@@ -68,9 +69,18 @@ type Status = 'loading' | 'ready' | 'failed';
 
 export interface PledgeManagerProps {
   readonly pledgeId: string;
+  /**
+   * The checkout's words, threaded through from the page.
+   *
+   * This screen reuses `RewardChoice`, `AddonChoice`, `DestinationField` and `PledgeSummary`
+   * — the same controls the checkout draws, so they take the same copy. Sharing the object as
+   * well as the components is what keeps "Sold out" from being two different sentences on two
+   * screens that are visibly the same form.
+   */
+  readonly copy: CheckoutCopy;
 }
 
-export function PledgeManager({ pledgeId }: PledgeManagerProps) {
+export function PledgeManager({ pledgeId, copy }: PledgeManagerProps) {
   const [status, setStatus] = useState<Status>('loading');
   const [pledge, setPledge] = useState<PledgeResponse | null>(null);
   const [summary, setSummary] = useState<BackerPledgeSummary | null>(null);
@@ -196,6 +206,7 @@ export function PledgeManager({ pledgeId }: PledgeManagerProps) {
 
         <div className="mt-6">
           <PledgeSummary
+            copy={copy.summary}
             amounts={pledge.amounts}
             /* The service's figures, always. This screen never previews. */
             source="quoted"
@@ -244,7 +255,7 @@ export function PledgeManager({ pledgeId }: PledgeManagerProps) {
 
       {editable ? (
         <>
-          <PledgeEditor pledge={pledge} onSaved={setPledge} />
+          <PledgeEditor pledge={pledge} onSaved={setPledge} copy={copy} />
           <CancelPledgePanel
             pledge={pledge}
             campaignTitle={campaignTitle}

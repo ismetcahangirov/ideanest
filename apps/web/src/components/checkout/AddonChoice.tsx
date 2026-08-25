@@ -5,6 +5,7 @@ import { Card, Select } from '@ideanest/ui';
 import { formatMoney } from '../../lib/money';
 import type { PublicReward } from '../../lib/pledges/api';
 import { isSoldOut } from './RewardChoice';
+import type { CheckoutCopy } from '../../lib/i18n/checkout-copy';
 
 /**
  * PL-04: add-ons, with quantities.
@@ -30,6 +31,11 @@ import { isSoldOut } from './RewardChoice';
 const UNLIMITED_DISPLAY_CAP = 10;
 
 export interface AddonChoiceProps {
+  /**
+   * The words this control draws, resolved on the server and handed down by `CheckoutView`.
+   * `lib/i18n/checkout-copy.ts` explains why the checkout's copy travels as a prop.
+   */
+  copy: CheckoutCopy['addons'];
   addons: readonly PublicReward[];
   quantityOf: (rewardId: string) => number;
   onChange: (rewardId: string, quantity: number) => void;
@@ -45,17 +51,19 @@ function optionsFor(addon: PublicReward): readonly number[] {
   return Array.from({ length: limit + 1 }, (_, index) => index);
 }
 
-export function AddonChoice({ addons, quantityOf, onChange, disabled = false }: AddonChoiceProps) {
+export function AddonChoice({ addons, quantityOf, onChange, disabled = false,
+  copy,
+}: AddonChoiceProps) {
   if (addons.length === 0) return null;
 
   return (
     <section aria-labelledby="checkout-addons" className="flex flex-col gap-3">
       <div>
         <h3 id="checkout-addons" className="text-sm font-medium text-white">
-          Add-ons
+          {copy.heading}
         </h3>
         <p className="mt-1 text-[13px] text-white/64">
-          Extras you can add to any reward, or to a pledge without one.
+          {copy.intro}
         </p>
       </div>
 
@@ -83,7 +91,7 @@ export function AddonChoice({ addons, quantityOf, onChange, disabled = false }: 
                  */
                 <p className="inline-flex items-center gap-1.5 text-[13px] text-white/64">
                   <Ban aria-hidden="true" className="size-3.5 shrink-0" />
-                  Sold out
+                  {copy.soldOut}
                 </p>
               ) : (
                 <label className="flex items-center gap-2 text-[13px] text-white/64">

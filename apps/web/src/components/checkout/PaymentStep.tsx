@@ -1,6 +1,7 @@
 'use client';
 
 import { InlineAlert } from '@ideanest/ui';
+import type { CheckoutCopy } from '../../lib/i18n/checkout-copy';
 
 /**
  * PL-07 and PL-08 — and this is where this issue stops.
@@ -34,11 +35,19 @@ import { InlineAlert } from '@ideanest/ui';
  * and the interface says exactly that rather than implying a charge that has not
  * happened and will not happen for weeks.
  */
-export function PaymentStep() {
+export interface PaymentStepProps {
+  /**
+   * The words this control draws, resolved on the server and handed down by `CheckoutView`.
+   * `lib/i18n/checkout-copy.ts` explains why the checkout's copy travels as a prop.
+   */
+  copy: CheckoutCopy['payment'];
+}
+
+export function PaymentStep({ copy }: PaymentStepProps) {
   return (
     <section aria-labelledby="checkout-payment" className="flex flex-col gap-3">
       <h3 id="checkout-payment" className="text-sm font-medium text-white">
-        Payment
+        {copy.heading}
       </h3>
 
       {/*
@@ -47,14 +56,12 @@ export function PaymentStep() {
         and docs/ui-kit.md §7.15 keeps `role="alert"` for the two variants that
         genuinely need to interrupt.
       */}
-      <InlineAlert variant="info" title="No card is collected yet">
+      <InlineAlert variant="info" title={copy.none}>
         <p>
-          This campaign records your pledge without taking a payment method. Card details are not
-          collected anywhere on this page, and nothing you confirm here charges you.
+          {copy.body}
         </p>
         <p className="mt-2">
-          Money is only ever collected if the campaign reaches its goal, and you will be told before
-          that happens.
+          {copy.later}
         </p>
       </InlineAlert>
     </section>

@@ -280,5 +280,116 @@
       "emptyAction": "Akışa göz atın",
       "gridLabel": "“{query}” için arama sonuçları"
     }
+  },
+  "checkout": {
+    "title": "Ödeme",
+    "progress": "Ödeme adımları",
+    "steps": {
+      "choose": "Ödülünüzü seçin",
+      "review": "Gözden geçirin ve onaylayın",
+      "confirmed": "Onaylandı"
+    },
+    "intro": "Bir ödül seçin ya da ödülsüz destek olun — ikisi de destektir.",
+    "loading": "Ödüller yükleniyor",
+    "expired": "Rezervasyon beş dakika sürer ve bu süre doldu, dolayısıyla stok kampanyaya geri döndü. Hiçbir şey onaylanmadı ve hiçbir kart kullanılmadı.",
+    "reserveAgain": "Yeniden rezerve edin",
+    "tryAgain": "Yeniden deneyin",
+    "stillAvailable": "Hâlâ mevcut:",
+    "reward": {
+      "legend": "Bir ödül seçin",
+      "hint": "Her destek için bir ödül. Ekler bir sonraki adımda.",
+      "none": "Ödülsüz destek olun",
+      "noneHint": "Kampanyayı yalnızca var olmasını istediğiniz için destekleyin. Tutarı siz seçersiniz ve karşılığında bir ödül almazsınız.",
+      "soldOut": "Tükendi",
+      "inPerson": "Elden teslim alınır",
+      "digital": "Dijital olarak teslim edilir",
+      "earlyBird": "Erken fiyat",
+      "featured": "Öne çıkan",
+      "chooseOne": "Yukarıdaki seçeneklerden birini seçin",
+      "digitalItem": "dijital",
+      "estimatedDelivery": "Tahmini teslimat: {month}",
+      "postedDomestic": "Azerbaycan içinde gönderilir",
+      "postedWorldwide": "Dünya geneline gönderilir"
+    },
+    "addons": {
+      "heading": "Ekler",
+      "intro": "Herhangi bir ödüle ya da ödülsüz bir desteğe ekleyebileceğiniz şeyler.",
+      "soldOut": "Tükendi"
+    },
+    "destination": {
+      "label": "Bu nereye gitsin?",
+      "hint": "Teslimat her varış noktasına göre hesaplanır ve tarifeyi üretici belirler.",
+      "placeholder": "Bir varış noktası seçin"
+    },
+    "contribution": {
+      "legend": "Katkınız",
+      "hint": "Tutarın tamamı kampanyaya gider."
+    },
+    "summary": {
+      "label": "Destek özeti",
+      "empty": "Bir ödül seçin ya da ödülsüz destek olmayı seçin — toplam burada görünür.",
+      "pending": "Yukarıdaki seçimler tamamlanınca toplam görünür.",
+      "pledge": "Desteğiniz",
+      "addons": "Ekler",
+      "bonus": "Ek destek",
+      "delivery": "Teslimat",
+      "tax": "Vergi",
+      "total": "Toplam",
+      "noReward": "Ödülsüz destek",
+      "yourSupport": "Destek tutarı",
+      "rewardLine": "Ödül"
+    },
+    "payment": {
+      "heading": "Ödeme",
+      "none": "Henüz kart alınmıyor",
+      "body": "Bu kampanya, bir ödeme yöntemi almadan desteğinizi kaydeder. Bu sayfanın hiçbir yerinde kart bilgisi toplanmaz ve burada onayladığınız hiçbir şey sizden ücret tahsil etmez.",
+      "later": "Para yalnızca kampanya hedefine ulaşırsa tahsil edilir ve bu gerçekleşmeden önce size bildirilir."
+    },
+    "anonymous": {
+      "label": "Anonim destek olun",
+      "hint": "Adınız bu kampanyada görünmez",
+      "shown": "Anonim",
+      "yourName": "Adınız"
+    },
+    "reserved": "Ödülünüz beş dakikalığına rezerve edildi. Desteğinizi gözden geçirip onaylayın.",
+    "review": {
+      "heading": "Neyi destekliyorsunuz",
+      "reward": "Ödül",
+      "addon": "Ek",
+      "noReward": "Ödülsüz — yalnızca destek",
+      "deliveredTo": "Teslimat adresi",
+      "listedAs": "Herkese açık olarak görünen ad",
+      "notCharged": "Onaylamak desteğinizi kaydeder. Sizden ücret tahsil etmez.",
+      "change": "Seçimimi değiştireceğim",
+      "reserve": "Rezerve edin ve gözden geçirin",
+      "confirm": "Desteği onaylayın",
+      "confirming": "Onaylanıyor…"
+    },
+    "done": {
+      "announced": "Desteğiniz onaylandı",
+      "heading": "Kampanya desteğinizi aldı ve hedefine ulaşırsa ödül sizin.",
+      "next": "Şimdi ne olacak",
+      "backed": "Neyi desteklediniz",
+      "reference": "Destek numarası",
+      "keepReference": "Bu destekle ilgili kampanyaya yazmanız gerekirse yukarıdaki numarayı saklayın.",
+      "released": "Kartınız kontrol edilip serbest bırakıldı, tahsilat yapılmadı.",
+      "noCard": "Hiçbir karttan tahsilat yapılmadı.",
+      "noMethod": "Ödeme yöntemi alınmadı ve kampanya son tarihine kadar hedefine ulaşmazsa hiçbir tutar tahsil edilmez.",
+      "methodKept": "Verdiğiniz ödeme yöntemi sonrası için saklanır ve kampanya son tarihine kadar hedefine ulaşmazsa hiçbir tutar tahsil edilmez.",
+      "expired": "Ödülünüz artık tutulmuyor"
+    },
+    "errors": {
+      "amountMissing": "Ne kadar vermek istediğinizi yazın.",
+      "amountPrecision": "Bir tutarda en fazla iki ondalık basamak olabilir.",
+      "amountTooLarge": "Bu, platformun tek bir destekte alabileceğinden fazlası.",
+      "amountTooSmall": "Bir destek sıfırdan büyük olmalı.",
+      "destinationMissing": "Bu destekte gönderilecek bir şey var, bu yüzden kampanyanın nereye göndereceğini bilmesi gerekir.",
+      "totalTooSmall": "Destek toplamı sıfırdan büyük olmalı.",
+      "amountMissingMinimum": "Ne kadar vermek istediğinizi yazın — en az {minimum}.",
+      "amountComma": "Ondalık ayırıcı olarak nokta kullanın: 45,50 değil 45.50.",
+      "amountNotANumber": "Tutarlar rakamlardan ve en fazla bir noktadan oluşur, örneğin 45.00.",
+      "belowRewardPrice": "Bu ödül {price} değerinde. Bu kadar ya da daha fazlasını verin veya daha ucuz bir ödül seçin.",
+      "destinationUnpriced": "Üretici bu varış noktası için {lines} teslimat ücreti belirlememiş. Başka bir yer seçin ya da bunu desteğinizden çıkarın."
+    }
   }
 }

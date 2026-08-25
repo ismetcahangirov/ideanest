@@ -1,4 +1,5 @@
 import { getTranslations } from 'next-intl/server';
+import { type CheckoutCopy, checkoutCopyFrom } from './checkout-copy';
 import {
   type FailureCopy,
   type FooterCopy,
@@ -30,4 +31,9 @@ export async function footerCopy(): Promise<FooterCopy> {
 
 export async function failureCopy(): Promise<FailureCopy> {
   return failureCopyFrom(await getTranslations('shell'));
+}
+
+/** The checkout's words. `checkout-copy.ts` explains why the whole of it is one prop. */
+export async function checkoutCopy(): Promise<CheckoutCopy> {
+  return checkoutCopyFrom(await getTranslations('checkout'));
 }

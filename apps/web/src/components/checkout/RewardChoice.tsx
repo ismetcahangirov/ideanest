@@ -5,6 +5,7 @@ import { Card, Field, Radio, RadioGroup, Tag } from '@ideanest/ui';
 import { formatMoney } from '../../lib/money';
 import { isShipped, type PublicReward } from '../../lib/pledges/api';
 import { NO_REWARD } from './useCheckout';
+import { type CheckoutCopy, fillPlaceholders } from '../../lib/i18n/checkout-copy';
 
 /**
  * PL-01, PL-02 and PL-15: the tiers, in the order the campaign put them in, with
@@ -35,6 +36,11 @@ import { NO_REWARD } from './useCheckout';
  */
 
 export interface RewardChoiceProps {
+  /**
+   * The words this control draws, resolved on the server and handed down by `CheckoutView`.
+   * `lib/i18n/checkout-copy.ts` explains why the checkout's copy travels as a prop.
+   */
+  copy: CheckoutCopy['reward'];
   rewards: readonly PublicReward[];
   /** The chosen tier id, `NO_REWARD`, or null when nothing is chosen yet. */
   value: string | null;
@@ -67,7 +73,13 @@ export function isSoldOut(reward: PublicReward): boolean {
   return reward.remainingQuantity === 0;
 }
 
-function StockLine({ reward }: { reward: PublicReward }) {
+function StockLine({
+  reward,
+  copy,
+}: {
+  reward: PublicReward;
+  copy: CheckoutCopy['reward'];
+}) {
   /*
    * NO COUNTER AT ALL FOR AN UNLIMITED TIER. `limitQuantity: null` means the
    * creator set no cap, and printing "unlimited" or an infinity glyph invents a
@@ -79,7 +91,7 @@ function StockLine({ reward }: { reward: PublicReward }) {
     return (
       <span className="inline-flex items-center gap-1.5 text-white/64">
         <Ban aria-hidden="true" className="size-3.5 shrink-0" />
-        Sold out
+        {copy.soldOut}
       </span>
     );
   }
@@ -91,7 +103,13 @@ function StockLine({ reward }: { reward: PublicReward }) {
   );
 }
 
-function RewardDetail({ reward }: { reward: PublicReward }) {
+function RewardDetail({
+  reward,
+  copy,
+}: {
+  reward: PublicReward;
+  copy: CheckoutCopy['reward'];
+}) {
   const delivery = reward.estimatedDelivery == null ? null : deliveryMonth(reward.estimatedDelivery);
 
   return (
@@ -103,32 +121,38 @@ function RewardDetail({ reward }: { reward: PublicReward }) {
           {reward.items.map((item) => (
             <span key={`${item.name}-${item.quantity}`}>
               {item.quantity} × {item.name}
-              {item.isDigital && <span className="text-white/40"> — digital</span>}
+              {item.isDigital && <span className="text-white/40"> — {copy.digitalItem}</span>}
             </span>
           ))}
         </span>
       )}
 
       <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        {delivery != null && <span className="text-white/64">Estimated delivery {delivery}</span>}
+        {delivery != null && (
+          <span className="text-white/64">
+            {fillPlaceholders(copy.estimatedDelivery, { month: delivery })}
+          </span>
+        )}
         {isShipped(reward.shippingType) ? (
           <span className="text-white/64">
-            {reward.shippingType === 'DOMESTIC' ? 'Posted within Azerbaijan' : 'Posted worldwide'}
+            {reward.shippingType === 'DOMESTIC' ? copy.postedDomestic : copy.postedWorldwide}
           </span>
         ) : reward.shippingType === 'LOCAL_PICKUP' ? (
-          <span className="text-white/64">Collected in person</span>
+          <span className="text-white/64">{copy.inPerson}</span>
         ) : reward.shippingType === 'DIGITAL' ? (
-          <span className="text-white/64">Delivered digitally</span>
+          <span className="text-white/64">{copy.digital}</span>
         ) : null}
-        <StockLine reward={reward} />
+        <StockLine reward={reward} copy={copy} />
       </span>
     </span>
   );
 }
 
-export function RewardChoice({ rewards, value, onChange, disabled = false }: RewardChoiceProps) {
+export function RewardChoice({ rewards, value, onChange, disabled = false,
+  copy,
+}: RewardChoiceProps) {
   return (
-    <Field grouped label="Choose a reward" hint="One reward per pledge. Add-ons come next.">
+    <Field grouped label={copy.legend} hint={copy.hint}>
       <RadioGroup value={value ?? ''} onValueChange={onChange}>
         {/*
           PL-02 IS FIRST AND IS A CHOICE. Support with no reward is how a good
@@ -140,8 +164,8 @@ export function RewardChoice({ rewards, value, onChange, disabled = false }: Rew
           <Radio
             value={NO_REWARD}
             disabled={disabled}
-            label="Pledge without a reward"
-            description="Back the campaign because you want it to exist. You choose the amount, and you get no reward in return."
+            label={copy.none}
+            description={copy.noneHint}
           />
         </Card>
 
@@ -169,11 +193,11 @@ export function RewardChoice({ rewards, value, onChange, disabled = false }: Rew
                   <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                     <span className="font-medium">{reward.title}</span>
                     <span className="tabular-nums text-white/64">{formatMoney(reward.price)}</span>
-                    {reward.isEarlyBird && <Tag>Early bird</Tag>}
-                    {reward.isFeatured && <Tag>Featured</Tag>}
+                    {reward.isEarlyBird && <Tag>{copy.earlyBird}</Tag>}
+                    {reward.isFeatured && <Tag>{copy.featured}</Tag>}
                   </span>
                 }
-                description={<RewardDetail reward={reward} />}
+                description={<RewardDetail reward={reward} copy={copy} />}
               />
             </Card>
           );

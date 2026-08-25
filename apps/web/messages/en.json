@@ -280,5 +280,116 @@
       "emptyAction": "Browse the feed",
       "gridLabel": "Search results for {query}"
     }
+  },
+  "checkout": {
+    "title": "Checkout",
+    "progress": "Checkout progress",
+    "steps": {
+      "choose": "Choose your reward",
+      "review": "Review and confirm",
+      "confirmed": "Confirmed"
+    },
+    "intro": "Pick a reward, or choose to pledge without one — both are pledges.",
+    "loading": "Loading the rewards",
+    "expired": "A reservation lasts five minutes and this one has ended, so the stock has gone back to the campaign. Nothing was confirmed and no card was involved.",
+    "reserveAgain": "Reserve again",
+    "tryAgain": "Try again",
+    "stillAvailable": "Still available:",
+    "reward": {
+      "legend": "Choose a reward",
+      "hint": "One reward per pledge. Add-ons come next.",
+      "none": "Pledge without a reward",
+      "noneHint": "Back the campaign because you want it to exist. You choose the amount, and you get no reward in return.",
+      "soldOut": "Sold out",
+      "inPerson": "Collected in person",
+      "digital": "Delivered digitally",
+      "earlyBird": "Early bird",
+      "featured": "Featured",
+      "chooseOne": "Choose one of the options above",
+      "digitalItem": "digital",
+      "estimatedDelivery": "Estimated delivery {month}",
+      "postedDomestic": "Posted within Azerbaijan",
+      "postedWorldwide": "Posted worldwide"
+    },
+    "addons": {
+      "heading": "Add-ons",
+      "intro": "Extras you can add to any reward, or to a pledge without one.",
+      "soldOut": "Sold out"
+    },
+    "destination": {
+      "label": "Where should this go?",
+      "hint": "Delivery is charged per destination, and the creator sets the rate.",
+      "placeholder": "Choose a destination"
+    },
+    "contribution": {
+      "legend": "Your contribution",
+      "hint": "Every amount goes to the campaign."
+    },
+    "summary": {
+      "label": "Pledge summary",
+      "empty": "Choose a reward, or choose to pledge without one, and the total appears here.",
+      "pending": "The total appears once the choices above are complete.",
+      "pledge": "Your pledge",
+      "addons": "Add-ons",
+      "bonus": "Bonus support",
+      "delivery": "Delivery",
+      "tax": "Tax",
+      "total": "Total",
+      "noReward": "Support with no reward",
+      "yourSupport": "Your support",
+      "rewardLine": "Reward"
+    },
+    "payment": {
+      "heading": "Payment",
+      "none": "No card is collected yet",
+      "body": "This campaign records your pledge without taking a payment method. Card details are not collected anywhere on this page, and nothing you confirm here charges you.",
+      "later": "Money is only ever collected if the campaign reaches its goal, and you will be told before that happens."
+    },
+    "anonymous": {
+      "label": "Pledge anonymously",
+      "hint": "Your name is kept off this campaign",
+      "shown": "Anonymous",
+      "yourName": "Your name"
+    },
+    "reserved": "Your reward is reserved for five minutes. Review your pledge and confirm it.",
+    "review": {
+      "heading": "What you are backing",
+      "reward": "Reward",
+      "addon": "Add-on",
+      "noReward": "No reward — support only",
+      "deliveredTo": "Delivered to",
+      "listedAs": "Listed publicly as",
+      "notCharged": "Confirming records your pledge. It does not charge you.",
+      "change": "Change what I chose",
+      "reserve": "Reserve and review",
+      "confirm": "Confirm pledge",
+      "confirming": "Confirming…"
+    },
+    "done": {
+      "announced": "Your pledge is confirmed",
+      "heading": "The campaign has your pledge and your reward is yours if it reaches its goal.",
+      "next": "What happens now",
+      "backed": "What you backed",
+      "reference": "Pledge reference",
+      "keepReference": "Keep the reference above if you need to write to the campaign about this pledge.",
+      "released": "Your card was checked and released, not charged.",
+      "noCard": "No card has been charged.",
+      "noMethod": "No payment method was collected, and nothing is taken unless the campaign reaches its goal by its deadline.",
+      "methodKept": "The payment method you gave is kept for later, and nothing is taken unless the campaign reaches its goal by its deadline.",
+      "expired": "Your reward is no longer held"
+    },
+    "errors": {
+      "amountMissing": "Enter how much you would like to give.",
+      "amountPrecision": "An amount can have at most two decimal places.",
+      "amountTooLarge": "That is more than this platform can take in one pledge.",
+      "amountTooSmall": "A pledge has to be more than nothing.",
+      "destinationMissing": "Something in this pledge is posted, so the campaign needs to know where to send it.",
+      "totalTooSmall": "A pledge has to come to more than nothing.",
+      "amountMissingMinimum": "Enter how much you would like to give — at least {minimum}.",
+      "amountComma": "Use a full stop for the decimal point: 45.50, not 45,50.",
+      "amountNotANumber": "Amounts are digits and at most one full stop, like 45.00.",
+      "belowRewardPrice": "This reward costs {price}. Give that or more, or choose a cheaper reward.",
+      "destinationUnpriced": "The creator has not set a delivery cost to this destination for {lines}. Choose somewhere else, or take that out of your pledge."
+    }
   }
 }
