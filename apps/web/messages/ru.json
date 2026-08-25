@@ -5,6 +5,64 @@
     "saving": "Сохранение…",
     "tryAgain": "Попробуйте ещё раз"
   },
+  "shell": {
+    "skipToContent": "Перейти к содержимому",
+    "tagline": "Краудфандинг с вознаграждениями. Авторы публикуют кампании, бэкеры оформляют взносы, и деньги не списываются, если кампания не достигнет цели к своему сроку.",
+    "nav": {
+      "label": "Основная",
+      "discover": "Обзор",
+      "categories": "Категории"
+    },
+    "drawer": {
+      "open": "Открыть меню",
+      "close": "Закрыть меню",
+      "label": "Навигация"
+    },
+    "actions": {
+      "signIn": "Войти",
+      "register": "Зарегистрироваться",
+      "signOut": "Выйти",
+      "notifications": "Уведомления",
+      "notificationSettings": "Настройки уведомлений",
+      "sessions": "Устройства и сеансы",
+      "startCampaign": "Создать кампанию"
+    },
+    "footer": {
+      "label": "Нижний колонтитул",
+      "languageHeading": "Язык",
+      "currencyHeading": "Валюта",
+      "currencyValue": "Азербайджанский манат (AZN)",
+      "groups": {
+        "explore": "Обзор",
+        "creators": "Авторам",
+        "yourAccount": "Ваш аккаунт",
+        "about": "О платформе"
+      },
+      "links": {
+        "discover": "Обзор",
+        "categories": "Категории",
+        "collections": "Подборки",
+        "search": "Поиск",
+        "startCampaign": "Создать кампанию",
+        "notifications": "Уведомления",
+        "saved": "Сохранённые проекты",
+        "surveys": "Опросы",
+        "deliveries": "Доставки",
+        "settings": "Настройки",
+        "about": "Об IdeaNest",
+        "howItWorks": "Как это работает",
+        "trustSafety": "Доверие и безопасность"
+      }
+    },
+    "failure": {
+      "elsewhere": "Другие разделы IdeaNest",
+      "links": {
+        "browse": "Смотреть кампании",
+        "categories": "Категории",
+        "search": "Поиск"
+      }
+    }
+  },
   "account": {
     "groups": {
       "yourAccount": "Ваш аккаунт",

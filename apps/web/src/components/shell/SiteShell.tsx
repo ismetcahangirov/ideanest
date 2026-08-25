@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { SiteFooter } from './SiteFooter';
 import { SiteHeader } from './SiteHeader';
 import { MAIN_CONTENT_ID, SkipLink } from './SkipLink';
+import { shellCopy } from '../../lib/i18n/shell-copy.server';
 
 /**
  * The frame every public page renders inside — §4.13 WS-01, WS-02, WS-09.
@@ -42,7 +43,15 @@ export interface SiteShellProps {
   readonly children: ReactNode;
 }
 
-export function SiteShell({ children }: SiteShellProps) {
+export async function SiteShell({ children }: SiteShellProps) {
+  /*
+   * The shell's words, looked up once here and handed to the client components below as a
+   * plain object. `lib/i18n/shell-copy.ts` explains why they are a prop rather than a hook:
+   * a `NextIntlClientProvider` above this component would be a provider above every route on
+   * the site, and this repository has already measured what that costs.
+   */
+  const copy = await shellCopy();
+
   return (
     /*
      * `flex-col` with the footer pushed down by `mt-24` on itself rather than by a spacer:
@@ -51,8 +60,8 @@ export function SiteShell({ children }: SiteShellProps) {
      * the column and `flex-1` on the main is what does it.
      */
     <div className="relative flex min-h-dvh flex-col">
-      <SkipLink />
-      <SiteHeader />
+      <SkipLink label={copy.skipToContent} />
+      <SiteHeader copy={copy} />
       <main id={MAIN_CONTENT_ID} tabIndex={-1} className="flex-1 focus:outline-none">
         {children}
       </main>

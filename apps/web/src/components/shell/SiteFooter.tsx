@@ -1,5 +1,7 @@
 import { Link } from '../../i18n/navigation';
-import { FOOTER_GROUPS } from './navigation';
+import { getLocale } from 'next-intl/server';
+import { LOCALE_NAMES, localeOrDefault } from '../../lib/i18n/locale';
+import { footerCopy } from '../../lib/i18n/shell-copy.server';
 
 /**
  * The global footer — §4.13 WS-02, docs/ui-kit.md §8.6.
@@ -49,11 +51,24 @@ import { FOOTER_GROUPS } from './navigation';
  * document that does not exist. `navigation.ts` records the same decision beside the data.
  */
 
-/** What this build actually serves. `lib/seo/metadata.ts` owns the language constant. */
-const CURRENCY_LABEL = 'Azerbaijani manat (AZN)';
-const LANGUAGE_LABEL = 'English';
+export async function SiteFooter() {
+  /*
+   * The footer's words, and the reader's own language name. The language line used to be the
+   * constant `'English'` — an honest statement while the site had one language and a lie the
+   * moment it had four, printed at the bottom of every Russian page. `LOCALE_NAMES` holds
+   * each language's name in itself, which is the only spelling worth showing here: a reader
+   * looking for их язык recognises "Русский" and not "Russian".
+   */
+  const [copy, locale] = await Promise.all([footerCopy(), getLocale()]);
 
-export function SiteFooter() {
+  /*
+   * `getLocale()` is typed as `string`, so it is narrowed rather than asserted. The value can
+   * only be one of the four — the layout calls `notFound()` on anything else before this
+   * renders — and narrowing costs nothing while a cast would be a lie the compiler stops
+   * checking.
+   */
+  const language = LOCALE_NAMES[localeOrDefault(locale)];
+
   return (
     <footer className="mt-24 border-t border-white/6 bg-surface-1">
       <div className="mx-auto w-full max-w-[1400px] px-5 py-14 sm:px-6">
@@ -65,14 +80,11 @@ export function SiteFooter() {
           */}
           <div className="max-w-[38ch]">
             <p className="text-lg font-medium tracking-[-0.02em] text-white">IdeaNest</p>
-            <p className="mt-3 text-[15px] leading-relaxed text-white/64">
-              Reward-based crowdfunding. Creators publish campaigns, backers pledge, and
-              nobody is charged unless a campaign reaches its goal by its deadline.
-            </p>
+            <p className="mt-3 text-[15px] leading-relaxed text-white/64">{copy.tagline}</p>
           </div>
 
-          <nav aria-label="Footer" className="grid grid-cols-2 gap-x-10 gap-y-10 sm:grid-cols-3">
-            {FOOTER_GROUPS.map((group) => (
+          <nav aria-label={copy.label} className="grid grid-cols-2 gap-x-10 gap-y-10 sm:grid-cols-3">
+            {copy.groups.map((group) => (
               <div key={group.heading}>
                 <h2 className="text-sm font-medium tracking-[-0.01em] text-white/64">
                   {group.heading}
@@ -105,12 +117,12 @@ export function SiteFooter() {
 
           <dl className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <div className="flex items-center gap-2">
-              <dt>Language</dt>
-              <dd className="text-white/64">{LANGUAGE_LABEL}</dd>
+              <dt>{copy.languageHeading}</dt>
+              <dd className="text-white/64">{language}</dd>
             </div>
             <div className="flex items-center gap-2">
-              <dt>Currency</dt>
-              <dd className="text-white/64">{CURRENCY_LABEL}</dd>
+              <dt>{copy.currencyHeading}</dt>
+              <dd className="text-white/64">{copy.currencyValue}</dd>
             </div>
           </dl>
         </div>

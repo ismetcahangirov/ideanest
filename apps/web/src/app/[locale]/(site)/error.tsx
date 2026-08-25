@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react';
 import { FailureState } from '../../../components/shell/FailureState';
+import { failureCopyOf } from '../../../lib/i18n/failure-copy.client';
+import { useLocale } from '../../../i18n/navigation';
 
 /**
  * The error boundary for the public site — §4.13 WS-09, issue #263.
@@ -30,12 +32,21 @@ export default function SiteError({
   readonly error: Error & { readonly digest?: string };
   readonly reset: () => void;
 }) {
+  /*
+   * An error boundary is a client component Next renders itself, so nothing can hand it
+   * words. `lib/i18n/failure-copy.client.ts` carries the eight it needs and explains why —
+   * the provider that would let it look them up was measured at +24.7 KiB on every route on
+   * the site, paid by every page for the benefit of this one.
+   */
+  const locale = useLocale();
+
   useEffect(() => {
     console.error('A page in the public site failed to render.', error);
   }, [error]);
 
   return (
     <FailureState
+        copy={failureCopyOf(locale)}
       title="Something went wrong on our side"
       description={
         <>

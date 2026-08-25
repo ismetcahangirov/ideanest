@@ -1,4 +1,5 @@
 import { FailureAction, FailureState } from '../../../components/shell/FailureState';
+import { failureCopy } from '../../../lib/i18n/shell-copy.server';
 
 /**
  * The 404 for `/u/{slug}` — §4.2 P-07, issue #274.
@@ -26,9 +27,12 @@ import { FailureAction, FailureState } from '../../../components/shell/FailureSt
  * No metadata. The root 404 declares the `noindex` shape and Next resolves metadata down the
  * segment tree; a second declaration here would be a second place for it to be spelled.
  */
-export default function ProfileNotFound() {
+export default async function ProfileNotFound() {
+  const failure = await failureCopy();
+
   return (
     <FailureState
+        copy={failure}
       title="There is no profile at this address"
       description={
         <p>

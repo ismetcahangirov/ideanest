@@ -6,6 +6,7 @@ import { usePathname } from '../../i18n/navigation';
 import { ChevronDown } from 'lucide-react';
 import { Avatar, cn, useDismiss } from '@ideanest/ui';
 import type { Session } from '../../lib/session/session';
+import type { ShellCopy } from '../../lib/i18n/shell-copy';
 
 /**
  * The signed-in reader's own corner of the header — §4.13 WS-01's "signed-in action pair".
@@ -41,12 +42,14 @@ import type { Session } from '../../lib/session/session';
 export interface AccountMenuProps {
   readonly session: Session;
   readonly onSignOut: () => Promise<void> | void;
+  /** The action words, resolved on the server. See `lib/i18n/shell-copy.ts`. */
+  readonly copy: ShellCopy['actions'];
 }
 
 const ROW =
   'block rounded-sm px-3 py-2.5 text-sm text-white/64 transition-colors duration-150 ease-in-out hover:bg-surface-3 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]';
 
-export function AccountMenu({ session, onSignOut }: AccountMenuProps) {
+export function AccountMenu({ session, onSignOut, copy }: AccountMenuProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
@@ -135,22 +138,22 @@ export function AccountMenu({ session, onSignOut }: AccountMenuProps) {
           <ul className="list-none">
             <li>
               <Link href="/notifications" className={ROW}>
-                Notifications
+                {copy.notifications}
               </Link>
             </li>
             <li>
               <Link href="/settings/notifications" className={ROW}>
-                Notification settings
+                {copy.notificationSettings}
               </Link>
             </li>
             <li>
               <Link href="/settings/sessions" className={ROW}>
-                Devices and sessions
+                {copy.sessions}
               </Link>
             </li>
             <li>
               <Link href="/projects/new" className={ROW}>
-                Start a campaign
+                {copy.startCampaign}
               </Link>
             </li>
           </ul>
@@ -164,7 +167,7 @@ export function AccountMenu({ session, onSignOut }: AccountMenuProps) {
               }}
               className={cn(ROW, 'w-full text-left')}
             >
-              Sign out
+              {copy.signOut}
             </button>
           </div>
         </div>

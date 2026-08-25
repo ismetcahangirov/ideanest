@@ -54,6 +54,16 @@ const SUBSET_RANGES: Record<string, ReadonlyArray<readonly [number, number]>> = 
     [0x02dd, 0x02ff],
     [0x1e00, 0x1e9f],
   ],
+  /* Google's `cyrillic` cut: the modern Russian alphabet, the stressed vowel, the Ukrainian
+   * ghe, and the numero sign. `cyrillic-ext` — the historic and minority-language letters —
+   * is a separate file and is not declared. */
+  cyrillic: [
+    [0x0301, 0x0301],
+    [0x0400, 0x045f],
+    [0x0490, 0x0491],
+    [0x04b0, 0x04b1],
+    [0x2116, 0x2116],
+  ],
 };
 
 /**
@@ -62,6 +72,12 @@ const SUBSET_RANGES: Record<string, ReadonlyArray<readonly [number, number]>> = 
  * Latin-only subset drops.
  */
 const AZERBAIJANI = [...'əğıöşüçƏĞİÖŞÜÇ'];
+
+/**
+ * Enough of Russian to catch the cut being dropped: both cases of а, б, я, ж, ю and ы, and
+ * `ё`, which sits at U+0451 and is the letter a narrower range is most likely to lose.
+ */
+const RUSSIAN = [...'абяжюыёАБЯЖЮЫЁ'];
 
 /** The subsets actually passed to `Inter()` in the root layout. */
 function declaredSubsets(): string[] {
@@ -78,7 +94,7 @@ function covers(subsets: readonly string[], codePoint: number): boolean {
 
 describe('Inter subsets', () => {
   it('declares every subset it needs and no more', () => {
-    expect(declaredSubsets().sort()).toEqual(['latin', 'latin-ext']);
+    expect(declaredSubsets().sort()).toEqual(['cyrillic', 'latin', 'latin-ext']);
   });
 
   it.each(AZERBAIJANI.map((character) => [character, character.codePointAt(0) as number]))(
@@ -91,13 +107,29 @@ describe('Inter subsets', () => {
     },
   );
 
+  it.each(RUSSIAN.map((character) => [character, character.codePointAt(0) as number]))(
+    'covers %s (U+%s)',
+    (character, codePoint) => {
+      /*
+       * `messages/ru.json` has shipped since #324 and, until the `cyrillic` cut was declared,
+       * every word of it rendered in the system fallback: Inter's Latin cuts carry no
+       * Cyrillic. It did not look broken, it looked like a slightly different font, which is
+       * exactly why it survived review for as long as it did.
+       */
+      expect(
+        covers(declaredSubsets(), codePoint),
+        `${character} is not in any declared subset`,
+      ).toBe(true);
+    },
+  );
+
   /**
    * Preloading a cut nothing is written in spends bandwidth the largest
-   * contentful paint needs. Cyrillic is the tempting one — Azerbaijani had a
-   * Cyrillic orthography until 1991 and it is not what anyone types today.
+   * contentful paint needs. `cyrillic-ext` is the tempting one now that
+   * `cyrillic` is declared — it carries the historic and minority-language
+   * letters, and §21.1's four languages need none of them.
    */
   it('declares none of the cuts this product never renders', () => {
-    expect(declaredSubsets()).not.toContain('cyrillic');
     expect(declaredSubsets()).not.toContain('cyrillic-ext');
     expect(declaredSubsets()).not.toContain('greek');
     expect(declaredSubsets()).not.toContain('greek-ext');

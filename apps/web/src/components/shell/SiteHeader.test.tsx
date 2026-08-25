@@ -1,9 +1,18 @@
+import az from '../../../messages/az.json';
+import en from '../../../messages/en.json';
+import ru from '../../../messages/ru.json';
+import tr from '../../../messages/tr.json';
+import { type Locale } from '../../lib/i18n/locale';
+import { type ShellCopy, shellCopyFrom } from '../../lib/i18n/shell-copy';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { fetchSession } from '../../lib/session/session';
 import { SessionProvider } from '../session/SessionProvider';
 import { SiteHeader } from './SiteHeader';
+
+const CATALOGUES: Record<Locale, typeof en> = { az, en, ru, tr };
+
 
 /**
  * The global header — §4.13 WS-01, docs/ui-kit.md §8.6.
@@ -55,13 +64,31 @@ const ACCOUNT = {
   emailVerified: true,
 };
 
-function renderHeader() {
+function renderHeader(at: Locale = 'en') {
   return render(
     <SessionProvider>
-      <SiteHeader />
+      <SiteHeader copy={copyFor(at)} />
     </SessionProvider>,
   );
 }
+
+/*
+ * The copy the server would have resolved, built from the real catalogue by the same function
+ * `SiteShell` calls. Retyping the words into this file would produce a test that passes
+ * whatever `messages/*.json` says, which is the opposite of what it is for.
+ */
+function copyFor(at: Locale): ShellCopy {
+  return shellCopyFrom((key) => {
+    let node: unknown = CATALOGUES[at].shell;
+    for (const segment of key.split('.')) {
+      if (typeof node !== 'object' || node === null) throw new Error(`no message at shell.${key}`);
+      node = (node as Record<string, unknown>)[segment];
+    }
+    if (typeof node !== 'string') throw new Error(`no message at shell.${key} in ${at}`);
+    return node;
+  });
+}
+
 
 beforeEach(() => {
   pathname = '/';

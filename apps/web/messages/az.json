@@ -5,6 +5,64 @@
     "saving": "Yadda saxlanılır…",
     "tryAgain": "Yenidən cəhd edin"
   },
+  "shell": {
+    "skipToContent": "Məzmuna keç",
+    "tagline": "Mükafat əsaslı kütləvi maliyyələşdirmə. Müəlliflər kampaniyalarını yerləşdirir, dəstəkçilər dəstək olur və kampaniya son tarixinədək hədəfinə çatmasa, heç kimdən pul alınmır.",
+    "nav": {
+      "label": "Əsas",
+      "discover": "Kəşf et",
+      "categories": "Kateqoriyalar"
+    },
+    "drawer": {
+      "open": "Naviqasiyanı aç",
+      "close": "Naviqasiyanı bağla",
+      "label": "Naviqasiya"
+    },
+    "actions": {
+      "signIn": "Daxil ol",
+      "register": "Qeydiyyatdan keç",
+      "signOut": "Çıxış et",
+      "notifications": "Bildirişlər",
+      "notificationSettings": "Bildiriş parametrləri",
+      "sessions": "Cihazlar və sessiyalar",
+      "startCampaign": "Kampaniya başlat"
+    },
+    "footer": {
+      "label": "Altlıq",
+      "languageHeading": "Dil",
+      "currencyHeading": "Valyuta",
+      "currencyValue": "Azərbaycan manatı (AZN)",
+      "groups": {
+        "explore": "Kəşf edin",
+        "creators": "Müəlliflər",
+        "yourAccount": "Hesabınız",
+        "about": "Haqqında"
+      },
+      "links": {
+        "discover": "Kəşf et",
+        "categories": "Kateqoriyalar",
+        "collections": "Kolleksiyalar",
+        "search": "Axtarış",
+        "startCampaign": "Kampaniya başlat",
+        "notifications": "Bildirişlər",
+        "saved": "Saxlanmış layihələr",
+        "surveys": "Sorğular",
+        "deliveries": "Çatdırılmalar",
+        "settings": "Parametrlər",
+        "about": "IdeaNest haqqında",
+        "howItWorks": "Necə işləyir",
+        "trustSafety": "Etibar və təhlükəsizlik"
+      }
+    },
+    "failure": {
+      "elsewhere": "IdeaNest-in digər səhifələri",
+      "links": {
+        "browse": "Kampaniyalara baxın",
+        "categories": "Kateqoriyalar",
+        "search": "Axtarış"
+      }
+    }
+  },
   "account": {
     "groups": {
       "yourAccount": "Hesabınız",

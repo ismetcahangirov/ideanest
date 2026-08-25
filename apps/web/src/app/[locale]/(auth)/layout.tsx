@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { MinimalShell } from '../../../components/shell/MinimalShell';
+import { shellCopy } from '../../../lib/i18n/shell-copy.server';
 
 /**
  * The frame the authentication screens render inside — §4.1, issues #267 to #270.
@@ -31,9 +32,11 @@ import { MinimalShell } from '../../../components/shell/MinimalShell';
  * label, a field and an error read as one column — about 26rem — which is why every one of
  * these pages is the same width whatever it contains.
  */
-export default function AuthLayout({ children }: { children: ReactNode }) {
+export default async function AuthLayout({ children }: { children: ReactNode }) {
+  const { skipToContent } = await shellCopy();
+
   return (
-    <MinimalShell
+    <MinimalShell skipToContent={skipToContent}
       centred
       footer={
         <p>
