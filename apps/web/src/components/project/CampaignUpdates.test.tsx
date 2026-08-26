@@ -4,6 +4,7 @@ import type { CampaignUpdate, CampaignUpdatePage } from '../../lib/community/upd
 import { CampaignUpdates } from './CampaignUpdates';
 import CATALOGUE from '../../../messages/en.json';
 import { resolveServerTree } from '../../test-support/server-tree';
+import { expectNoViolations } from '../../test-axe';
 
 /*
  * The real catalogue, through next-intl's own formatter.
@@ -185,5 +186,16 @@ describe('the updates tab', () => {
     render(await resolveServerTree(<CampaignUpdates page={page()} olderHref={null} paged={false} />));
 
     expect(screen.queryByRole('button', { name: /comment|reply/iu })).not.toBeInTheDocument();
+  });
+});
+
+describe('accessibility', () => {
+  /** #129. The timeline, where every entry carries a time element and a heading. */
+  it('leaves no automatically detectable violation', async () => {
+    const { container } = render(
+      await resolveServerTree(<CampaignUpdates page={page()} olderHref={null} paged={false} />),
+    );
+
+    await expectNoViolations(container);
   });
 });

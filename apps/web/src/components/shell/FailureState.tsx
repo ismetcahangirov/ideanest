@@ -76,7 +76,7 @@ export function FailureState({
               <li key={link.href}>
                 <Link
                   href={link.href}
-                  className="rounded-sm text-white/40 transition-colors duration-150 ease-in-out hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
+                  className="rounded-sm text-white/64 transition-colors duration-150 ease-in-out hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
                 >
                   {link.label}
                 </Link>

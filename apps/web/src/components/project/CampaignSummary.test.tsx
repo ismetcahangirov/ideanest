@@ -10,6 +10,7 @@ import { CampaignOutcomeNotice } from './CampaignOutcomeNotice';
 import { CampaignRewards } from './CampaignRewards';
 import CATALOGUE from '../../../messages/en.json';
 import { resolveServerTree } from '../../test-support/server-tree';
+import { expectNoViolations } from '../../test-axe';
 
 /*
  * The real catalogue, through next-intl's own formatter.
@@ -299,5 +300,50 @@ describe('the reward tiers', () => {
     const { container } = render(await resolveServerTree(<CampaignRewards tiers={[]} />));
 
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe('accessibility', () => {
+  /**
+   * #129. The panel a backer reads immediately before pressing the pledge button: the title,
+   * the progress figures, the countdown and the call to action. `src/test-axe.ts` says what an
+   * automated pass catches; what it cannot check is that the progress bar's number is
+   * announced rather than only drawn, which is asserted above by name.
+   */
+  it('leaves no automatically detectable violation on the summary, live or closed', async () => {
+    for (const page of [campaign(), campaign({ state: 'SUCCESSFUL' })]) {
+      const { container } = await renderSummary(page);
+      await expectNoViolations(container);
+      cleanup();
+    }
+  });
+
+  it('leaves none on the reward tiers, sold out or not', async () => {
+    const { container } = render(
+      await resolveServerTree(
+        <CampaignRewards
+          tiers={[
+            {
+              id: 'tier-1',
+              title: 'Early bird',
+              description: 'The book, signed.',
+              price: { amount: '45.00', currency: 'AZN' },
+              remainingQuantity: 0,
+              imageUrl: null,
+            },
+            {
+              id: 'tier-2',
+              title: 'Standard',
+              description: null,
+              price: { amount: '60.00', currency: 'AZN' },
+              remainingQuantity: null,
+              imageUrl: null,
+            },
+          ]}
+        />,
+      ),
+    );
+
+    await expectNoViolations(container);
   });
 });

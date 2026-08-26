@@ -88,6 +88,15 @@ function describeProblem(error: ApiError | null): { title: string; detail: strin
   };
 }
 
+/**
+ * What names the results list — #129.
+ *
+ * A constant rather than `useId()`: this is the only list on the surface and the identifier
+ * appears twice in one component, so a generated one would buy nothing and would make the
+ * markup differ between the server render and the hydration.
+ */
+const RESULTS_HEADING_ID = 'discovery-results-heading';
+
 export interface DiscoveryViewProps {
   /**
    * The first page of the feed, already fetched by the Server Component — #119.
@@ -189,10 +198,27 @@ export function DiscoveryView({ seeded }: DiscoveryViewProps = {}) {
         {/*
           A `div`, not a `main`. The site shell renders the page's one `<main>` and it is the
           skip link's target (§4.13 WS-01); a second landmark here would make "jump to main"
-          a question with two answers. This is the feed column, and it is named by the
-          heading above it.
+          a question with two answers. This is the feed column, and the heading below names it.
         */}
         <div className="min-w-0 flex-1">
+          {/*
+            #129. A HEADING THAT IS THERE FOR THE LADDER RATHER THAN FOR THE LAYOUT.
+
+            Every card title is an `<h3>`, and until this existed the nearest heading above
+            them was the page's `<h1>` — so a reader navigating by heading level went from
+            "Discover" straight into the first campaign, with two hundred `<h3>`s and nothing
+            naming what they were a list of. Making the cards `<h2>` was the other option and
+            it is worse: `ProjectCard` is the same component on the category landings and in a
+            collection, where an `<h2>` already names the section it sits in.
+
+            Visually hidden rather than drawn, because the column is obvious to anybody who
+            can see it and the design has no room for a second title. It is the `<ul>`'s
+            accessible name as well, so the list announces what it is a list of.
+          */}
+          <h2 id={RESULTS_HEADING_ID} className="sr-only">
+            Projects
+          </h2>
+
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <p className="text-sm text-white/64 tabular-nums">
@@ -327,7 +353,10 @@ export function DiscoveryView({ seeded }: DiscoveryViewProps = {}) {
 
             {feed.items.length > 0 && (
               <>
-                <ul className="grid list-none grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <ul
+                  aria-labelledby={RESULTS_HEADING_ID}
+                  className="grid list-none grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+                >
                   {feed.items.map((card, index) => (
                     <li key={card.id}>
                       {/*

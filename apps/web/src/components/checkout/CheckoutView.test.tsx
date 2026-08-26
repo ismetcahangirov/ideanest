@@ -9,6 +9,7 @@ import {
   type PledgeResponse,
   type PublicReward,
 } from '../../lib/pledges/api';
+import { expectNoViolations } from '../../test-axe';
 import { CheckoutView } from './CheckoutView';
 import MESSAGES from '../../../messages/en.json';
 import { checkoutCopyFrom } from '../../lib/i18n/checkout-copy';
@@ -973,5 +974,31 @@ describe('by keyboard alone', () => {
     // which drops them at the top of the document with nothing announced.
     const heading = await screen.findByRole('heading', { level: 1, name: 'Review and confirm' });
     await waitFor(() => expect(heading).toHaveFocus());
+  });
+});
+
+describe('accessibility', () => {
+  /**
+   * #129. Both steps, because they are two different trees: the choosing step is a radio
+   * group, a select and two checkboxes, and the review step replaces all of it. A pass over
+   * only the first would be a pass over the half of the checkout that costs nothing to get
+   * wrong.
+   *
+   * `src/test-axe.ts` says what this catches and what it cannot. Focus moving to the new
+   * step's heading, and the fact that both steps are reachable with the keyboard alone, are
+   * the two assertions above this one — neither is machine-checkable.
+   */
+  it('has no automatically detectable violation while choosing', async () => {
+    await open();
+
+    await expectNoViolations(document.body);
+  });
+
+  it('has none on the review step either', async () => {
+    const user = await open();
+    await reserveTheMug(user);
+    await screen.findByRole('heading', { level: 1, name: 'Review and confirm' });
+
+    await expectNoViolations(document.body);
   });
 });

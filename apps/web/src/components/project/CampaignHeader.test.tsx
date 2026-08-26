@@ -17,6 +17,7 @@ import MESSAGES from '../../../messages/en.json';
 import { campaignActionsCopyFrom } from '../../lib/i18n/campaign-copy';
 import CATALOGUE from '../../../messages/en.json';
 import { resolveServerTree } from '../../test-support/server-tree';
+import { expectNoViolations } from '../../test-axe';
 
 /*
  * The real catalogue, through next-intl's own formatter.
@@ -393,5 +394,57 @@ describe('the save, share and reminder controls', () => {
     expect(
       await screen.findByRole('button', { name: 'Remind me when A coffee table book opens' }),
     ).toBeInTheDocument();
+  });
+});
+
+describe('accessibility', () => {
+  /**
+   * #129. The three pieces of §4.4's header that a reader meets before deciding whether to
+   * send somebody money: the media, the tab strip that reaches the rest of the campaign, and
+   * the trust block that makes the promise about their card.
+   *
+   * They are asserted separately rather than as one tree because that is how the route
+   * composes them — `page.tsx` puts each in its own place — and a single combined render
+   * would be a fixture rather than the page. `src/test-axe.ts` says what an automated pass
+   * catches and what it cannot; the tab strip's "not an ARIA tab widget" argument above is
+   * exactly the kind of judgement no tool makes.
+   */
+  it('leaves no automatically detectable violation on the media, the tabs or the trust block', async () => {
+    const page = campaign();
+
+    const { container: media } = render(<CampaignMedia campaign={page} />);
+    await expectNoViolations(media);
+
+    const tabs = await resolveServerTree(<CampaignTabs active="campaign" path={PATH} />);
+    const { container: tabsContainer } = render(tabs);
+    await expectNoViolations(tabsContainer);
+
+    const trust = await resolveServerTree(<CampaignTrustBlock campaign={page} />);
+    const { container: trustContainer } = render(trust);
+    await expectNoViolations(trustContainer);
+  });
+
+  it('leaves none on the save, share and remind controls, signed in or out', async () => {
+    const page = campaign();
+
+    for (const session of [null, ACCOUNT]) {
+      sessionMock.mockResolvedValue(session);
+
+      const { container } = render(
+        <SessionProvider>
+          <CampaignActions
+            copy={ACTIONS_COPY}
+            projectId={page.id}
+            state={page.state}
+            title={page.title}
+            path={PATH}
+          />
+        </SessionProvider>,
+      );
+      await waitFor(() => expect(sessionMock).toHaveBeenCalled());
+
+      await expectNoViolations(container);
+      cleanup();
+    }
   });
 });

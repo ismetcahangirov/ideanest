@@ -533,6 +533,62 @@ the page never used. The stateless members are re-exported from
 reachable from it and fails if any of it acquires a hook. The rule used to be a
 comment in `app/discover/page.tsx` asking people not to; it is now a boundary.
 
+## Accessibility
+
+`docs/ui-kit.md` §9 and issue #129. The audit covered discovery, the campaign
+page and the checkout — the three surfaces a stranger walks through on the way
+to spending money — plus the shell that wraps all three.
+
+It found six defects, all invisible on screen.
+
+**Two heading ladders with a level skipped.** Discovery went from the page's
+`<h1>` straight into every campaign card's `<h3>`, so a reader navigating by
+heading met two hundred headings with nothing naming what they were a list of;
+the checkout went from its `<h1>` into "Add-ons" at level three. The first is
+fixed with a visually hidden `<h2>` that also names the results list, the second
+by promoting the section's own heading. Neither changes a pixel.
+
+**Four uses of `--text-tertiary` for text that has to be read**, at 3.8:1 —
+below WCAG 1.4.3's 4.5:1 for normal text. The footer's entire link list, the
+subcategory links on `/categories`, the not-found page's suggestions, and the
+sentence a profile shows when somebody has written no biography. All four had
+taken `docs/ui-kit.md` §9.1 at its word, and the table was wrong: it recorded
+that token at 4.9:1 and called it "AA at 16px+". The table is computed now, and
+the four are `--text-secondary` at 8.2:1.
+
+### What is enforced, and where
+
+| Check | Where | Why there |
+|---|---|---|
+| Automated rule pass (names, roles, labels, heading order, list structure) | `src/test-axe.ts`, called from the suites for the three flows and the shell | Runs against the same fixtures those suites already build, so a fixture that drifts drifts once |
+| Every click handler is on something a keyboard can reach | `src/accessibility-rules.test.ts` | A static scan, because a `<div onClick>` renders and behaves correctly for a mouse and no rendered check can see the difference |
+| No control is drawn in `--text-tertiary` or `--text-disabled` | `src/accessibility-rules.test.ts` | The same scan. Text inside a control clears 4.5:1 whatever its size, and hovering to make a link legible is not something a reader can be asked to do |
+| Contrast | `packages/ui/src/contrast.test.ts` | Computed from the tokens. jsdom applies no styles, so axe's colour rule is inert here and is disabled with a note saying so |
+| Focus order, focus movement between steps, keyboard operability of a specific control | Ordinary assertions in each flow's suite | Judgements. No tool decides whether the order is the *right* order |
+
+The automated pass deliberately runs a named rule set rather than the default
+one. The defaults include rules about a whole document — one `<main>`, a page
+title, a language on `<html>` — and every one of these tests renders a fragment
+into a bare `<div>`. A fragment failing "the page has no `<h1>`" is a true
+statement about a `<div>` and says nothing about the application, and a suite
+full of those is a suite people learn to ignore. The document-level rules are
+asserted where they belong, in the layout and shell suites.
+
+### Contrast is arithmetic now, not a promise
+
+`CLAUDE.md` says contrast failures are build errors, and until #129 nothing
+computed one. The token pairs the system actually draws are measured against
+WCAG 2.2 AA: 4.5:1 for body text, 3:1 for large text, focus rings and status
+marks. Translucent tokens are composited over a named surface first, because
+`rgba(255,255,255,0.64)` has no ratio of its own — what a reader sees is white
+over whichever surface is behind it, and the answer genuinely differs.
+
+The two failures the ui-kit warns about in prose are asserted as failures:
+`--lime-500` as text on white measures 1.28:1, and `text-white/64` on a lime
+card measures 1.16:1. Pinning them keeps the reason attached to the rule —
+somebody who changes the lime ramp and quietly "fixes" those tests has changed
+the brand, not the accessibility of one label.
+
 ## Caching and revalidation
 
 `docs/architecture.md` §4.13 and issue #127. Three layers, and each answers a

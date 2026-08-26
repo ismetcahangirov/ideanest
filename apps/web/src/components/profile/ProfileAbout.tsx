@@ -118,7 +118,7 @@ export function ProfileAbout({ profile, locale }: ProfileAboutProps) {
       <h2 className="text-lg font-medium tracking-[-0.02em] text-white">About {profile.name}</h2>
 
       {bio === '' ? (
-        <p className="mt-3 max-w-[62ch] text-[15px] leading-relaxed text-white/40">
+        <p className="mt-3 max-w-[62ch] text-[15px] leading-relaxed text-white/64">
           {profile.name} has not written anything here.
         </p>
       ) : (

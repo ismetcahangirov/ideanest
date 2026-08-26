@@ -10,6 +10,7 @@ import {
   type ProjectCard as ProjectCardData,
 } from '../../lib/discovery/api';
 import type { DiscoveryFilters } from '../../lib/discovery/filters';
+import { expectNoViolations } from '../../test-axe';
 import { DiscoveryView } from './DiscoveryView';
 
 /**
@@ -795,5 +796,26 @@ describe('the rail as a structure', () => {
     for (const absent of ['Country', 'City', 'Saved', 'Recommended', 'Featured', 'Near me']) {
       expect(screen.queryByRole('checkbox', { name: absent })).not.toBeInTheDocument();
     }
+  });
+});
+
+describe('accessibility', () => {
+  /**
+   * #129. The automated half of §9, over the whole discovery surface with a feed, a rail and
+   * an active filter on it — every state a reader actually meets. `src/test-axe.ts` says what
+   * this catches and, more importantly, what it cannot: focus order, keyboard reachability
+   * and whether a name is the *right* name are judgements, and they are the assertions above.
+   */
+  it('has no automatically detectable violation, with results and a filter applied', async () => {
+    await open('status=live&category=games');
+
+    await expectNoViolations(document.body);
+  });
+
+  it('has none in the empty state either, which is a different tree', async () => {
+    feedMock.mockResolvedValue({ items: [], nextCursor: null });
+    await open('q=nothing-matches-this');
+
+    await expectNoViolations(document.body);
   });
 });

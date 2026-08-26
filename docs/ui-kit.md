@@ -1189,17 +1189,32 @@ moves is chrome being noticed.
 
 ### 9.1 Measured contrast
 
+Computed, not estimated. `packages/ui/src/contrast.test.ts` derives every figure
+below from the token file with WCAG 2.x relative luminance, compositing a
+translucent foreground over the named surface first — so a pair that stops
+holding fails the build rather than quietly ageing in this table.
+
 | Pair | Ratio | Verdict |
 |---|---|---|
-| `#FFFFFF` on `#0D0D0D` | 20.4:1 | AAA |
-| `rgb(255 255 255 / .64)` on `#0D0D0D` | 9.2:1 | AAA |
-| `rgb(255 255 255 / .40)` on `#0D0D0D` | 4.9:1 | AA at 16px+ |
-| `#0A0A0A` on `#C6F432` | 15.8:1 | AAA |
-| `#C6F432` on `#0D0D0D` | 15.4:1 | AAA |
+| `#FFFFFF` on `#0D0D0D` | 19.4:1 | AAA |
+| `rgb(255 255 255 / .92)` on `#161616` | 15.4:1 | AAA |
+| `rgb(255 255 255 / .64)` on `#0D0D0D` | 8.2:1 | AAA |
+| **`rgb(255 255 255 / .40)` on `#0D0D0D`** | **3.8:1** | **Large text and non-text only** |
+| `#0A0A0A` on `#C6F432` | 15.5:1 | AAA |
+| `#C6F432` on `#0D0D0D` | 15.2:1 | AAA |
 | **`#C6F432` on `#FFFFFF`** | **1.3:1** | **Prohibited** |
-| `#FF4438` on `#0D0D0D` | 5.1:1 | AA |
-| `#34D058` on `#0D0D0D` | 8.9:1 | AAA |
-| `#34D058` on `#C6F432` | ~1.2:1 | **Prohibited** |
+| `#FF4438` on `#0D0D0D` | 5.7:1 | AA |
+| `#34D058` on `#0D0D0D` | 9.5:1 | AAA |
+| `#34D058` on `#C6F432` | 1.6:1 | **Prohibited** |
+| **`rgb(255 255 255 / .92)` on `#C6F432`** | **1.2:1** | **Prohibited** |
+
+> **`--text-tertiary` is not a body-text colour.** This table used to record it
+> at 4.9:1 and call it "AA at 16px+", and both halves were wrong: it measures
+> 3.8:1, which clears WCAG 1.4.3's large-text threshold and not its normal-text
+> one. Large means 18.66px bold or 24px regular. Below that it is for text that
+> repeats something already stated on the same card — a timestamp beside a date,
+> a count beside a bar — and never for a sentence somebody has to read.
+> `--text-secondary` is the minimum for anything else.
 
 ### 9.2 Prohibitions
 

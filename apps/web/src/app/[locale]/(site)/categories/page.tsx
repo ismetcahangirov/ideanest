@@ -100,7 +100,7 @@ export default async function CategoriesPage() {
                       <li key={subcategory.id}>
                         <Link
                           href={subcategoryPath(category.slug, subcategory.slug)}
-                          className="rounded-sm text-[15px] text-white/40 transition-colors duration-150 ease-in-out hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
+                          className="rounded-sm text-[15px] text-white/64 transition-colors duration-150 ease-in-out hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
                         >
                           {subcategory.name}
                         </Link>

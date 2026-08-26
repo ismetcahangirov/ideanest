@@ -59,9 +59,19 @@ export function AddonChoice({ addons, quantityOf, onChange, disabled = false,
   return (
     <section aria-labelledby="checkout-addons" className="flex flex-col gap-3">
       <div>
-        <h3 id="checkout-addons" className="text-sm font-medium text-white">
+        {/*
+        AN `<h2>`, NOT AN `<h3>` — #129. This section sits directly under the checkout's
+        `<h1>`; the reward chooser beside it is a labelled `radiogroup` rather than a headed
+        section, so this was the first heading on the step and it skipped a level. A reader
+        navigating by heading went from "Choose your reward" into "Add-ons" and was told,
+        wrongly, that they had descended two levels into something.
+
+        The size is unchanged: `text-sm` is what the design asks for here, and a heading's
+        level is its place in the document rather than its size on the page.
+      */}
+      <h2 id="checkout-addons" className="text-sm font-medium text-white">
           {copy.heading}
-        </h3>
+        </h2>
         <p className="mt-1 text-[13px] text-white/64">
           {copy.intro}
         </p>

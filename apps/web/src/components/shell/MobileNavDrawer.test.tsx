@@ -10,6 +10,7 @@ import userEvent from '@testing-library/user-event';
 import { fetchSession } from '../../lib/session/session';
 import { SessionProvider } from '../session/SessionProvider';
 import { MobileNavDrawer } from './MobileNavDrawer';
+import { expectNoViolations } from '../../test-axe';
 
 const CATALOGUES: Record<Locale, typeof en> = { az, en, ru, tr };
 
@@ -211,5 +212,26 @@ describe('the actions inside it', () => {
     expect(within(dialog).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
     expect(within(dialog).queryByRole('link', { name: 'Register' })).toBeNull();
     expect(dialog.querySelectorAll('[data-on-lime]')).toHaveLength(0);
+  });
+});
+
+describe('accessibility', () => {
+  /**
+   * #129. The drawer closed and open, because they are two different trees: open, it is a
+   * modal dialog that has to name itself, trap focus and be dismissible — three claims a
+   * `role="dialog"` makes on behalf of whatever is inside it.
+   */
+  it('leaves no automatically detectable violation, closed or open', async () => {
+    sessionMock.mockResolvedValue(ACCOUNT);
+
+    const { container } = renderDrawer();
+    await waitFor(() => expect(sessionMock).toHaveBeenCalled());
+    await expectNoViolations(container);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Open navigation' }));
+    await screen.findByRole('dialog');
+
+    await expectNoViolations(document.body);
   });
 });

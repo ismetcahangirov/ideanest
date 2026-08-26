@@ -94,7 +94,7 @@ export async function SiteFooter() {
                     <li key={link.href}>
                       <Link
                         href={link.href}
-                        className="text-base text-white/40 transition-colors duration-150 ease-in-out hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
+                        className="text-base text-white/64 transition-colors duration-150 ease-in-out hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
                       >
                         {link.label}
                       </Link>
