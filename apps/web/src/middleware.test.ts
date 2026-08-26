@@ -16,7 +16,7 @@ vi.mock('next-intl/middleware', () => ({
   default: () => () => NextResponse.next(),
 }));
 
-const { default: middleware } = await import('./middleware');
+const { default: middleware, config } = await import('./middleware');
 
 /**
  * What happens to a request with no language in its path — issue #123.
@@ -90,6 +90,71 @@ describe('the locale middleware', () => {
      */
     for (const path of ['/az', '/en/discover', '/ru/projects/aysel/kilims', '/tr/settings']) {
       expect(middleware(request(path, 'az')).headers.get('location')).toBeNull();
+    }
+  });
+});
+
+/**
+ * Which requests this file is asked about at all — the matcher.
+ *
+ * <h2>Why the matcher needs tests of its own</h2>
+ *
+ * Everything above tests the function. The function only ever sees the paths the matcher
+ * let through, so a path wrongly *inside* the matcher is invisible to those tests: the
+ * redirect they assert is correct is the very thing that breaks it.
+ *
+ * That is not hypothetical. `/v1/:path*` is rewritten to the service by `next.config.mjs`,
+ * and middleware runs before that rewrite. While `v1` was missing from the exclusions here,
+ * every call the browser made to the API was answered with `307 → /en/v1/...`, which matches
+ * no route and no rewrite. The sign-in and register forms both reported "the service could
+ * not be reached" — a network failure with a healthy service behind it, because `fetch`
+ * followed the redirect and was handed a 404 page instead of JSON.
+ *
+ * A page route is reachable in a browser, so a mistake in one is found by opening it. An
+ * excluded prefix is only ever exercised by a `fetch` that has already failed by the time
+ * anybody looks, which is why these are asserted rather than reviewed.
+ */
+describe('the paths the locale middleware is asked about', () => {
+  /*
+   * Next compiles the matcher itself. Anchoring the source is close enough to catch what
+   * this is for — a prefix that is in the exclusion list, or is missing from it.
+   */
+  const matches = (path: string): boolean => new RegExp(`^${config.matcher[0]}$`).test(path);
+
+  it('never sees a call to the service, because a redirect there is a failed request', () => {
+    for (const path of [
+      '/v1/auth/login',
+      '/v1/auth/register',
+      '/v1/auth/refresh',
+      '/v1/projects',
+    ]) {
+      expect(matches(path)).toBe(false);
+    }
+  });
+
+  it('never sees the beacon, build output or the addresses fixed by convention', () => {
+    for (const path of [
+      '/api/vitals',
+      '/_next/static/chunks/main.js',
+      '/robots.txt',
+      '/sitemap.xml',
+      '/sitemap_index.xml',
+      '/icon.svg',
+    ]) {
+      expect(matches(path)).toBe(false);
+    }
+  });
+
+  it('still sees every page, which is the whole point of it', () => {
+    for (const path of [
+      '/',
+      '/discover',
+      '/az/discover',
+      '/projects/aysel/kilims',
+      '/collections',
+      '/admin/payouts',
+    ]) {
+      expect(matches(path)).toBe(true);
     }
   });
 });
