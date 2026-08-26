@@ -106,6 +106,7 @@ the browser half of the auth flow work at all.
 | `/projects/[id]/dashboard` | — | The creator dashboard shell and its overview panel -- CD-01's live totals (#93) |
 | `/projects/[id]/dashboard/charts` | — | CD-02's funding trend, CD-07's reward mix and CD-08's destinations (#96) |
 | `/projects/[id]/dashboard/backers` | — | CD-10's backer report with saved segments, and CD-11's CSV export (#97, #79) |
+| `/projects/[id]/dashboard/finance` | — | CD-16's financial summary: gross, fees, tax, refunds, net, and the ledger underneath them (#99) |
 | `/projects/[id]/dashboard/surveys` | — | §4.8's survey manager — PM-01 to PM-04 (#73) |
 | `/admin` | Console | **Staff only.** §4.11's sixteen modules, which have a screen, and what the rest wait on (#294) |
 | `/admin/moderation` | Console | **Staff only.** The submission queue: approve, reject, request changes (#101) |
@@ -533,6 +534,32 @@ the page never used. The stateless members are re-exported from
 reachable from it and fails if any of it acquires a hook. The rule used to be a
 comment in `app/discover/page.tsx` asking people not to; it is now a boundary.
 
+## Running it in a container
+
+`ops/deploy/README.md` owns the deployment story; two things about the image
+belong here because they are properties of this application rather than of the
+pipeline.
+
+**`IDEANEST_SITE_URL` is a build argument, not an environment variable.**
+`lib/seo/metadata.ts` writes every canonical URL, `og:url`, sitemap entry and
+absolute social-image URL against it, and `output: 'standalone'` bakes it into
+the statically rendered pages. An image built with the default and deployed to
+production serves a sitemap full of `localhost`, which a crawler believes. One
+image per site URL is therefore unavoidable, and making it an argument is what
+stops somebody discovering that at run time.
+
+`IDEANEST_API_ORIGIN` is the opposite and is read at request time, so one image
+runs against staging and production alike.
+
+**The health check is `/en/about` and not `/`.** The root path is a 307 to a
+language. A check that follows redirects would pass on a broken application; one
+that does not would fail on a working one. A localised static page exercises the
+router, the middleware and a render, which is what the check is for.
+
+The build context is the repository root — this application compiles three
+source-only workspace packages — and `.dockerignore` is what keeps that context
+to a few megabytes instead of the whole checkout.
+
 ## Accessibility
 
 `docs/ui-kit.md` §9 and issue #129. The audit covered discovery, the campaign
@@ -588,6 +615,56 @@ The two failures the ui-kit warns about in prose are asserted as failures:
 card measures 1.16:1. Pinning them keeps the reason attached to the rule —
 somebody who changes the lime ramp and quietly "fixes" those tests has changed
 the brand, not the accessibility of one label.
+
+## The financial summary
+
+`docs/architecture.md` §4.7's CD-16 and issue #99. `/projects/[id]/dashboard/finance`,
+reading `GET /v1/projects/{id}/finance`, guarded by `VIEW_FINANCES` — the same
+capability the backer report takes, and for the same reason: this is money, and
+a collaborator brought on to write the story has no business reading it.
+
+### The whole breakdown, never the net alone
+
+A creator on this screen is asking "why was I paid this", which is five
+questions rather than one. So every deduction is a row and the rows add up in
+front of the reader, and the ledger's own balances are published underneath
+them — so the total can be checked against something rather than taken on trust.
+
+Nothing is added up in the browser. Every figure arrives as a decimal string and
+is printed; a panel that re-derived a net would be a second answer to a question
+the service already answered, and it would be an answer computed in a double.
+
+### `basis` is not decoration
+
+Before a payout has been calculated the fees are what §5.2's schedule *would*
+charge; afterwards they are what it *was* priced at, read from the payout row
+rather than worked out again. Those are different statements about somebody's
+money, so the panel carries a badge that says which, and the projected version
+says in a sentence that the figures can still move. A campaign that runs across
+a rate change is quoted at today's rate and paid at that day's, and the fee
+schedule's identifier is on both.
+
+### Two zeroes that are not the same zero
+
+**Tax.** §4.10 is #78 and is blocked on a legal answer, so nothing withholds any
+and the figure is zero on every campaign. A bare "− AZN 0.00" reads as "no tax
+is due on your earnings", which is not something this platform is in a position
+to say — so the row says that IdeaNest withholds none and that what is owed is
+between the creator and their tax authority.
+
+**`platform_fee` in the ledger.** It is zero for a different and worse reason:
+nothing posts the fee split. A collection debits escrow and credits the creator
+for the gross; a payout does the reverse for the net; the difference stays in
+escrow as a balance no account claims. `CollectionRun` and `PayoutPostings` each
+say the other one posts it. That is #69's to close, and the panel does not
+paper over it — the balances are published exactly as they are, which is what
+lets somebody see the gap.
+
+`reconciled` is therefore a narrower claim than it sounds: it says this
+campaign's entries sum to zero per currency, which a database trigger already
+enforces. It is worth showing because the one way it can be false is a row that
+arrived past both the application and that trigger — and that is the day
+somebody needs to see it rather than be reassured.
 
 ## Caching and revalidation
 

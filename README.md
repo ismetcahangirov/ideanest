@@ -105,10 +105,16 @@ ideanest/
 │   └── motion-system.md      Motion tokens, patterns, budgets
 ├── ops/
 │   ├── backup/               Backup and point-in-time recovery drill
+│   ├── deploy/               Environments, the release pipeline, and rolling back
+│   ├── observability/        Prometheus alert rules and a scrape configuration
 │   └── seed/                 Local demo data. Development only
 ├── CLAUDE.md                 Contribution and workflow rules
 └── .github/workflows/
     ├── ci.yml                Typecheck, tests, Storybook build and preview
+    ├── release.yml           Build once, deploy that build: staging on merge,
+    │                         production on a tag, rollback by digest
+    ├── deploy.yml            One environment's rollout. Called by release.yml
+    ├── restore-drill.yml     The quarterly restore rehearsal §19.4 requires
     └── storybook-preview-cleanup.yml
                               Deletes a preview when its pull request closes
 ```

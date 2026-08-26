@@ -1,0 +1,145 @@
+name: Deploy
+
+# One environment's rollout — issue #139. Called by `release.yml`; never triggered
+# on its own, because a deploy without a digest is a deploy of nothing.
+#
+# It is a reusable workflow rather than two copies of the same job because the
+# difference between staging and production must be the *environment* and nothing
+# else: the same digest, the same steps, the same verification. Two jobs that
+# drifted apart is how a release passes on staging and fails in production for a
+# reason nobody can reproduce.
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      api_digest:
+        required: true
+        type: string
+      web_digest:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # THE APPROVAL GATE, and it is the environment's rather than this file's.
+    # A GitHub Environment named `production` with required reviewers is what
+    # makes a tag wait for a person; one named `staging` with none is what makes
+    # a merge deploy itself. §19.2: "main to staging automatically; tag to
+    # production with approval".
+    #
+    # It is configured in repository settings rather than here on purpose — an
+    # approval rule that a pull request can edit is not an approval rule.
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ vars.ENVIRONMENT_URL }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # NO HOOK, NO DEPLOY, AND IT SAYS SO.
+      #
+      # This repository owns the pipeline and not the infrastructure. Until an
+      # operator configures `DEPLOY_HOOK_URL` for this environment there is
+      # nothing to call, and the honest response is to stop with an explanation —
+      # not to invent a `kubectl` context, and not to pass silently, which would
+      # make an unconfigured environment indistinguishable from a successful
+      # rollout.
+      - name: Check the environment is configured
+        id: configured
+        env:
+          HOOK: ${{ secrets.DEPLOY_HOOK_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${HOOK}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### ${{ inputs.environment }} is not configured"
+              echo
+              echo 'No `DEPLOY_HOOK_URL` secret is set for this environment, so nothing was deployed.'
+              echo 'The images are built and published; see `ops/deploy/README.md` for what to configure.'
+              echo
+              echo "| Image | Digest |"
+              echo "|---|---|"
+              echo "| api | \`${{ inputs.api_digest }}\` |"
+              echo "| web | \`${{ inputs.web_digest }}\` |"
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning title=Not deployed::${{ inputs.environment }} has no DEPLOY_HOOK_URL. See ops/deploy/README.md."
+            exit 0
+          fi
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+
+      # The hook takes the two digests and whatever the environment needs to turn
+      # them into a rollout. What it *is* — an Argo webhook, a Cloud Run
+      # deployment, an SSH-triggered compose pull — is the environment's
+      # business, and deliberately not this repository's: the contract is two
+      # digests and an environment name.
+      - name: Roll out
+        if: steps.configured.outputs.configured == 'true'
+        env:
+          HOOK: ${{ secrets.DEPLOY_HOOK_URL }}
+          TOKEN: ${{ secrets.DEPLOY_HOOK_TOKEN }}
+        run: |
+          set -euo pipefail
+          payload=$(jq -nc \
+            --arg environment '${{ inputs.environment }}' \
+            --arg api '${{ inputs.api_digest }}' \
+            --arg web '${{ inputs.web_digest }}' \
+            --arg ref '${{ github.sha }}' \
+            '{environment: $environment, images: {api: $api, web: $web}, ref: $ref}')
+
+          # `--fail-with-body`: a hook that answers 500 with an explanation must
+          # fail the step *and* print what it said. `--fail` alone discards the
+          # body, which is the one thing worth reading when a rollout is refused.
+          curl --fail-with-body --silent --show-error \
+            --max-time 300 \
+            --retry 2 --retry-connrefused \
+            --header 'content-type: application/json' \
+            ${TOKEN:+--header "authorization: Bearer ${TOKEN}"} \
+            --data "${payload}" \
+            "${HOOK}"
+
+      # A rollout that returned 200 is not a rollout that worked. The readiness
+      # probe is the service's own answer to "may I have traffic", and asking it
+      # from outside is what turns a green deploy into a verified one.
+      #
+      # It polls rather than checking once: a rolling update takes as long as it
+      # takes, and a single check a second after the hook returns is a check of
+      # the *old* instances.
+      - name: Wait for the environment to report ready
+        if: steps.configured.outputs.configured == 'true' && vars.HEALTH_URL != ''
+        env:
+          HEALTH: ${{ vars.HEALTH_URL }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error --max-time 5 "${HEALTH}" > /dev/null; then
+              echo "::notice title=Ready::${{ inputs.environment }} answered its readiness probe."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error title=Not ready::${{ inputs.environment }} did not become ready within five minutes."
+          echo 'Roll back with **Run workflow** and the previous digest — see ops/deploy/README.md.'
+          exit 1
+
+      - name: Record what was deployed
+        if: steps.configured.outputs.configured == 'true'
+        run: |
+          {
+            echo "### Deployed to ${{ inputs.environment }}"
+            echo
+            echo "| Image | Digest |"
+            echo "|---|---|"
+            echo "| api | \`${{ inputs.api_digest }}\` |"
+            echo "| web | \`${{ inputs.web_digest }}\` |"
+            echo
+            echo 'Keep these. A rollback is **Run workflow** with the digest that was here before.'
+          } >> "$GITHUB_STEP_SUMMARY"
