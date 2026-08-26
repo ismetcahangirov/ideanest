@@ -2292,6 +2292,22 @@ export interface paths {
         patch: operations["projectFaqReorder"];
         trace?: never;
     };
+    "/v1/projects/{projectId}/finance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["campaignFinanceFinance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{projectId}/fulfilments": {
         parameters: {
             query?: never;
@@ -3042,6 +3058,28 @@ export interface components {
             state?: string;
             title?: string;
         };
+        CampaignFinanceResponse: {
+            /** @enum {string} */
+            basis?: "PROJECTED" | "SETTLED";
+            /** Format: date-time */
+            computedAt?: string;
+            currency?: string;
+            /** Format: uuid */
+            feeScheduleId?: string;
+            gross?: components["schemas"]["Money"];
+            ledger?: components["schemas"]["LedgerBalanceRecord"][];
+            net?: components["schemas"]["Money"];
+            paidOut?: components["schemas"]["Money"];
+            payouts?: components["schemas"]["PayoutRecord"][];
+            platformFee?: components["schemas"]["Money"];
+            processingFee?: components["schemas"]["Money"];
+            /** Format: uuid */
+            projectId?: string;
+            reconciled?: boolean;
+            refunded?: components["schemas"]["Money"];
+            taxCollected?: boolean;
+            taxWithheld?: components["schemas"]["Money"];
+        };
         CampaignMessageListResponse: {
             items?: components["schemas"]["CampaignMessageResponse"][];
             nextCursor?: string;
@@ -3694,6 +3732,10 @@ export interface components {
             textual?: boolean;
             valueNode?: boolean;
         };
+        LedgerBalanceRecord: {
+            account?: string;
+            net?: components["schemas"]["Money"];
+        };
         Line: {
             account?: string;
             amount?: components["schemas"]["Money"];
@@ -3868,6 +3910,16 @@ export interface components {
             /** Format: int32 */
             page?: number;
             payouts?: components["schemas"]["PayoutSummary"][];
+        };
+        PayoutRecord: {
+            /** Format: date-time */
+            calculatedAt?: string;
+            /** Format: uuid */
+            id?: string;
+            net?: components["schemas"]["Money"];
+            /** Format: date-time */
+            sentAt?: string;
+            state?: string;
         };
         PayoutSummary: {
             /** Format: int32 */
@@ -5004,6 +5056,7 @@ export type SchemaBranch = components['schemas']['Branch'];
 export type SchemaBuyAddonsRequest = components['schemas']['BuyAddonsRequest'];
 export type SchemaCalculateRequest = components['schemas']['CalculateRequest'];
 export type SchemaCampaign = components['schemas']['Campaign'];
+export type SchemaCampaignFinanceResponse = components['schemas']['CampaignFinanceResponse'];
 export type SchemaCampaignMessageListResponse = components['schemas']['CampaignMessageListResponse'];
 export type SchemaCampaignMessageResponse = components['schemas']['CampaignMessageResponse'];
 export type SchemaCancelProjectRequest = components['schemas']['CancelProjectRequest'];
@@ -5081,6 +5134,7 @@ export type SchemaItemPatchRequest = components['schemas']['ItemPatchRequest'];
 export type SchemaItemResponse = components['schemas']['ItemResponse'];
 export type SchemaJob = components['schemas']['Job'];
 export type SchemaJsonNode = components['schemas']['JsonNode'];
+export type SchemaLedgerBalanceRecord = components['schemas']['LedgerBalanceRecord'];
 export type SchemaLine = components['schemas']['Line'];
 export type SchemaLocaleRequest = components['schemas']['LocaleRequest'];
 export type SchemaLocation = components['schemas']['Location'];
@@ -5106,6 +5160,7 @@ export type SchemaPage = components['schemas']['Page'];
 export type SchemaPatchPledgeRequest = components['schemas']['PatchPledgeRequest'];
 export type SchemaPayoutFile = components['schemas']['PayoutFile'];
 export type SchemaPayoutPage = components['schemas']['PayoutPage'];
+export type SchemaPayoutRecord = components['schemas']['PayoutRecord'];
 export type SchemaPayoutSummary = components['schemas']['PayoutSummary'];
 export type SchemaPlatformAnalyticsResponse = components['schemas']['PlatformAnalyticsResponse'];
 export type SchemaPledgeAddonBody = components['schemas']['PledgeAddonBody'];
@@ -9316,6 +9371,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectFaqListResponse"];
+                };
+            };
+        };
+    };
+    campaignFinanceFinance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignFinanceResponse"];
                 };
             };
         };
