@@ -87,6 +87,14 @@ export const config = {
    * `api/` is the RUM beacon. It is called by `WebVitals` from every page including the
    * localised ones, and a redirect on a `sendBeacon` is a measurement silently lost.
    *
+   * `v1/` is the service. `next.config.mjs` rewrites it to the API origin, and middleware
+   * runs before that rewrite — so a match here does not delay the call, it replaces it. While
+   * this prefix was missing, every request the browser made to the API was answered with a
+   * `307` to `/en/v1/...`, which matches no route and no rewrite. `fetch` follows the
+   * redirect, is handed a 404 page, and the form reports that the service could not be
+   * reached: a network failure with a healthy service behind it. Sign-in and register were
+   * both unusable in the browser while both worked when called directly.
+   *
    * `_next/` and anything with a dot in the last segment are build output and static files.
    * Prefixing a hashed chunk with a language would 404 it.
    *
@@ -95,5 +103,5 @@ export const config = {
    * has been given a file at an address it will not treat as authoritative. They stay at the
    * root and enumerate the localised pages from there.
    */
-  matcher: ['/((?!api|_next|robots\\.txt|sitemap\\.xml|sitemap_index\\.xml|.*\\.[\\w]+$).*)'],
+  matcher: ['/((?!api|v1|_next|robots\\.txt|sitemap\\.xml|sitemap_index\\.xml|.*\\.[\\w]+$).*)'],
 };
