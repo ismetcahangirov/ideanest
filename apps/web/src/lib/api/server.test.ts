@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_LOCALE } from '../i18n/locale';
 import {
   fetchCampaignPage,
   fetchCollection,
@@ -60,6 +61,24 @@ describe('the campaign read', () => {
     await fetchCampaignPage('ayan', 'book', { env: ENV, fetchImpl, locale: 'az' });
 
     expect(new Headers(calls[0]?.init?.headers).get('accept-language')).toBe('az');
+  });
+
+  /**
+   * #324. This read used to send no `Accept-Language` at all unless a caller passed one, and
+   * the reason was real while it lasted: negotiating meant reading a cookie, and a cookie
+   * makes a cached public render dynamic. #123 put the language in the path, so the header is
+   * now a constant per cache entry rather than a `Vary` — and the four data surfaces the
+   * service already translates finally follow the page they are rendered on.
+   *
+   * Outside a request there is no page and no language, which is what this asserts: the
+   * sitemap and these tests fall back to the platform default rather than throwing.
+   */
+  it('states a language even with no request to read one from', async () => {
+    const { calls, fetchImpl } = ok({ id: 'p1' });
+
+    await fetchCampaignPage('ayan', 'book', { env: ENV, fetchImpl });
+
+    expect(new Headers(calls[0]?.init?.headers).get('accept-language')).toBe(DEFAULT_LOCALE);
   });
 
   /**

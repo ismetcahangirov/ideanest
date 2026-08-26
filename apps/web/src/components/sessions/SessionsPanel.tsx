@@ -8,6 +8,7 @@ import { signOut as endThisSession } from '../../lib/api/access-token';
 import { listSessions, revokeSession, type SessionSummary } from '../../lib/sessions/api';
 import { deviceNameOf } from '../../lib/sessions/describe';
 import { SessionRow } from './SessionRow';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
 type Status = 'loading' | 'ready' | 'failed' | 'signed-out';
 
@@ -49,6 +50,7 @@ function wasAborted(cause: unknown): boolean {
  * which §8 rules out for lists regardless.
  */
 export function SessionsPanel() {
+  const locale = useRouteLocale();
   const [status, setStatus] = useState<Status>('loading');
   const [sessions, setSessions] = useState<readonly SessionSummary[]>([]);
   const [now, setNow] = useState<Date>(() => new Date());
@@ -265,6 +267,7 @@ export function SessionsPanel() {
               key={session.id}
               session={session}
               now={now}
+              locale={locale}
               busy={busyIds.has(session.id)}
               onSignOut={(row) => void endOneDevice(row)}
             />

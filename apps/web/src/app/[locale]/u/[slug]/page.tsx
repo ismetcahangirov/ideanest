@@ -129,8 +129,13 @@ function knownTotal(page: Page<ProfileProjectCard> | null): { count?: number } {
  * component that owns the list is the one that should say so.
  */
 
-export default async function ProfilePage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+export default async function ProfilePage({
+  params,
+}: {
+  params: Promise<{ locale: string; slug: string }>;
+}) {
+  const { locale: requested, slug } = await params;
+  const locale = localeOrDefault(requested);
 
   const profile: PublicProfile | null = await fetchPublicProfile(slug);
   if (profile === null) notFound();
@@ -161,7 +166,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ slug: 
     {
       key: 'about',
       label: 'About',
-      panel: <ProfileAbout profile={profile} />,
+      panel: <ProfileAbout profile={profile} locale={locale} />,
     },
   ];
 

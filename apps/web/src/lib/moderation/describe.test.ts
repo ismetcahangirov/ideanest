@@ -146,12 +146,13 @@ describe('moderation/describe', () => {
 
   describe('formatRelativeTime', () => {
     it('reads inside a sentence', () => {
-      expect(formatRelativeTime(hoursAgo(3), NOW)).toBe('3 hours ago');
-      expect(formatRelativeTime(NOW.toISOString(), NOW)).toBe('just now');
+      expect(formatRelativeTime(hoursAgo(3), NOW, 'en')).toBe('3 hours ago');
+      expect(formatRelativeTime(NOW.toISOString(), NOW, 'en')).toBe('now');
     });
 
     it('admits it does not know rather than printing "Invalid Date"', () => {
-      expect(formatRelativeTime('not a date', NOW)).toBe('an unknown time ago');
+      expect(formatRelativeTime('not a date', NOW, 'en')).toBe('an unknown time ago');
+      expect(formatRelativeTime('not a date', NOW, 'ru')).toBe('неизвестно когда');
     });
   });
 

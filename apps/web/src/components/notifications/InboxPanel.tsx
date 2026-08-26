@@ -12,6 +12,7 @@ import {
 } from '../../lib/notifications/api';
 import { CATEGORIES, categoryLabel, dayKeyOf, dayLabelOf } from '../../lib/notifications/describe';
 import { NotificationRow } from './NotificationRow';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
 type Status = 'loading' | 'ready' | 'failed' | 'signed-out';
 
@@ -88,6 +89,7 @@ function byDay(
  * docs/motion-system.md §8 rules out staggering a list regardless.
  */
 export function InboxPanel() {
+  const locale = useRouteLocale();
   const [status, setStatus] = useState<Status>('loading');
   const [notifications, setNotifications] = useState<readonly InboxNotification[]>([]);
   const [cursor, setCursor] = useState<InboxCursor | null>(null);
@@ -285,7 +287,7 @@ export function InboxPanel() {
                 id={`day-${key}`}
                 className="mb-2 text-xs font-medium tracking-[0.04em] text-white/56 uppercase"
               >
-                {dayLabelOf(rows[0]?.occurredAt ?? '', now)}
+                {dayLabelOf(rows[0]?.occurredAt ?? '', now, locale)}
               </h3>
               <ul className="divide-y divide-white/6 overflow-hidden rounded-lg border border-white/8 bg-surface-2">
                 {rows.map((row) => (
@@ -293,6 +295,7 @@ export function InboxPanel() {
                     key={row.id}
                     notification={row}
                     now={now}
+                    locale={locale}
                     busy={busyIds.has(row.id)}
                     onOpen={(target) => void open(target)}
                   />

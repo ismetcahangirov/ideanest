@@ -146,7 +146,7 @@ describe('how often the countdown has something new to say', () => {
 
 describe('writing an instant out', () => {
   it('always names the zone, because the hour alone is ambiguous', () => {
-    const text = formatInstant('2026-08-29T12:00:00Z', SERVER_TIME_ZONE);
+    const text = formatInstant('2026-08-29T12:00:00Z', SERVER_TIME_ZONE, 'en');
 
     expect(text).not.toBeNull();
     expect(text).toContain('29 August 2026');
@@ -154,8 +154,8 @@ describe('writing an instant out', () => {
   });
 
   it('writes the same instant differently in a different zone', () => {
-    const utc = formatInstant('2026-08-29T22:00:00Z', 'UTC');
-    const baku = formatInstant('2026-08-29T22:00:00Z', 'Asia/Baku');
+    const utc = formatInstant('2026-08-29T22:00:00Z', 'UTC', 'en');
+    const baku = formatInstant('2026-08-29T22:00:00Z', 'Asia/Baku', 'en');
 
     // Four hours ahead, so the campaign closes on the thirtieth for a reader in Baku. That
     // difference is the entire reason §4.4 asks for the reader's own zone.
@@ -164,7 +164,19 @@ describe('writing an instant out', () => {
   });
 
   it('omits the time where only the day says anything', () => {
-    expect(formatDay('2026-08-29T12:00:00Z', SERVER_TIME_ZONE)).toBe('29 August 2026');
+    expect(formatDay('2026-08-29T12:00:00Z', SERVER_TIME_ZONE, 'en')).toBe('29 August 2026');
+  });
+
+  /**
+   * #324. The pin to `en-GB` carried a note saying "when the language is chosen per reader,
+   * this constant is what a locale is threaded into"; #123 chose it, and this is the thread.
+   * The hydration argument the pin protected is unchanged — both renders read the same
+   * `[locale]` segment — so the zone is still the only thing allowed to differ between them.
+   */
+  it('writes the same instant in the reader’s own language', () => {
+    expect(formatDay('2026-08-29T12:00:00Z', SERVER_TIME_ZONE, 'az')).toBe('29 avqust 2026');
+    expect(formatDay('2026-08-29T12:00:00Z', SERVER_TIME_ZONE, 'tr')).toBe('29 Ağustos 2026');
+    expect(formatDay('2026-08-29T12:00:00Z', SERVER_TIME_ZONE, 'ru')).toBe('29 августа 2026 г.');
   });
 
   /**
@@ -173,7 +185,7 @@ describe('writing an instant out', () => {
    * sentence about somebody's deadline.
    */
   it('answers null for a zone the runtime refuses and for a value that is not an instant', () => {
-    expect(formatInstant('2026-08-29T12:00:00Z', 'Mars/Olympus_Mons')).toBeNull();
-    expect(formatInstant('soon', SERVER_TIME_ZONE)).toBeNull();
+    expect(formatInstant('2026-08-29T12:00:00Z', 'Mars/Olympus_Mons', 'en')).toBeNull();
+    expect(formatInstant('soon', SERVER_TIME_ZONE, 'en')).toBeNull();
   });
 });

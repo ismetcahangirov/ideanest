@@ -152,8 +152,11 @@ describe('the kind', () => {
 });
 
 describe('the window', () => {
+  /** The English catalogue's two terms. `discovery.collections.window`. */
+  const COPY = { closes: 'Closes', openSince: 'Open since' };
+
   it('states when an open call closes, which is the fact somebody acts on', () => {
-    const facts = windowFacts(collection({ closesAt: '2026-05-31T20:59:59Z' }));
+    const facts = windowFacts(collection({ closesAt: '2026-05-31T20:59:59Z' }), 'en', COPY);
 
     expect(facts).toHaveLength(1);
     expect(facts[0]?.term).toBe('Closes');
@@ -164,18 +167,31 @@ describe('the window', () => {
   it('puts the closing before the opening, because the deadline is the decision', () => {
     const facts = windowFacts(
       collection({ opensAt: '2026-03-01T00:00:00Z', closesAt: '2026-05-31T20:59:59Z' }),
+      'en',
+      COPY,
     );
 
     expect(facts.map((fact) => fact.term)).toEqual(['Closes', 'Open since']);
   });
 
   it('says nothing at all for a standing list', () => {
-    expect(windowFacts(collection())).toEqual([]);
+    expect(windowFacts(collection(), 'en', COPY)).toEqual([]);
   });
 
   it('drops an instant that is not a date, rather than putting Invalid Date in a time element', () => {
-    expect(formatWindowDate('soon')).toBeNull();
-    expect(windowFacts(collection({ closesAt: 'soon' }))).toEqual([]);
+    expect(formatWindowDate('soon', 'en')).toBeNull();
+    expect(windowFacts(collection({ closesAt: 'soon' }), 'en', COPY)).toEqual([]);
+  });
+
+  /**
+   * #324. The date was pinned to `en-GB` with a note saying the application could not
+   * localise it yet. It can, and the pin is gone; the terms beside it come from the
+   * catalogue rather than from a literal in this module.
+   */
+  it('writes the date in the reader’s own language', () => {
+    expect(formatWindowDate('2026-05-31T20:59:59Z', 'az')).toBe('31 may 2026');
+    expect(formatWindowDate('2026-05-31T20:59:59Z', 'ru')).toBe('31 мая 2026 г.');
+    expect(formatWindowDate('2026-05-31T20:59:59Z', 'tr')).toBe('31 Mayıs 2026');
   });
 });
 

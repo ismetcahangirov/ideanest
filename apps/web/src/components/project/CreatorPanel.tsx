@@ -6,7 +6,8 @@ import { canOptimise } from '../../lib/images/source';
 import { profileHref, type CreatorProject, type PublicProfile } from '../../lib/projects/creatorProfile';
 import type { CampaignPage } from '../../lib/projects/publicPage';
 import { ViewerInstant } from './ViewerClock';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { localeOrDefault } from '../../lib/i18n/locale';
 
 /**
  * §4.4's Creator tab — issue #282.
@@ -85,6 +86,7 @@ export interface CreatorPanelProps {
 }
 
 export async function CreatorPanel({ campaign, profile, projects }: CreatorPanelProps) {
+  const locale = localeOrDefault(await getLocale());
   const t = await getTranslations('campaign.creator');
 
   /*
@@ -96,7 +98,7 @@ export async function CreatorPanel({ campaign, profile, projects }: CreatorPanel
   const avatarUrl = profile?.avatarUrl ?? campaign.creator.avatarUrl;
 
   const joinedServerText =
-    profile?.joinedAt == null ? null : formatDay(profile.joinedAt, SERVER_TIME_ZONE);
+    profile?.joinedAt == null ? null : formatDay(profile.joinedAt, SERVER_TIME_ZONE, locale);
 
   return (
     <section aria-labelledby="campaign-creator" className="flex flex-col gap-8">

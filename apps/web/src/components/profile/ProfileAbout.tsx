@@ -1,4 +1,6 @@
 import { socialPlatformLabel, type PublicProfile } from '../../lib/profiles/api';
+import { dateTimeFormat } from '../../lib/i18n/formats';
+import type { Locale } from '../../lib/i18n/locale';
 
 /**
  * §4.2's P-06 — the About tab.
@@ -60,13 +62,19 @@ import { socialPlatformLabel, type PublicProfile } from '../../lib/profiles/api'
  * that parses.
  */
 
-const JOINED = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' });
-
-/** "March 2025", or nothing at all for an instant that will not parse. */
-function joinedMonth(iso: string): string | null {
+/**
+ * "March 2025", or nothing at all.
+ *
+ * Nothing for an instant that will not parse **and nothing for an absent one** — #323. The
+ * projection always sends `joinedAt`, and until the profile body was narrowed rather than cast
+ * this function was handed whatever arrived: `new Date(null)` is 1 January 1970, which would
+ * have printed "January 1970" under a stranger's name as confidently as a real date.
+ */
+function joinedMonth(iso: string | null, locale: Locale): string | null {
+  if (iso === null) return null;
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return null;
-  return JOINED.format(at);
+  return dateTimeFormat(locale, { month: 'long', year: 'numeric' }, 'joined-month').format(at);
 }
 
 /**
@@ -82,10 +90,19 @@ const LINK_CLASS =
 
 export interface ProfileAboutProps {
   readonly profile: PublicProfile;
+  /**
+   * The language the page is being rendered in — #324.
+   *
+   * A prop rather than `getLocale()` inside the component: this is a synchronous server
+   * component and its test renders it outside a request, where next-intl's request store does
+   * not exist. The route resolves the locale once and hands it down, which is how every other
+   * piece of localised data reaches this subtree.
+   */
+  readonly locale: Locale;
 }
 
-export function ProfileAbout({ profile }: ProfileAboutProps) {
-  const joined = joinedMonth(profile.joinedAt);
+export function ProfileAbout({ profile, locale }: ProfileAboutProps) {
+  const joined = joinedMonth(profile.joinedAt, locale);
   const bio = profile.bio === null ? '' : profile.bio.trim();
   /*
    * The service sends an empty array rather than a null, and this still tolerates a missing

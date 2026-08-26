@@ -35,6 +35,7 @@ import { projectPageRobots } from '../../../../../lib/seo/indexability';
 import { projectPageMetadata } from '../../../../../lib/seo/metadata';
 import { REALTIME_ORIGIN_VARIABLE } from '../../../../../lib/realtime/updates';
 import { projectPageGraph } from '../../../../../lib/seo/structured-data/graphs';
+import { graphContext } from '../../../../../lib/i18n/shell-copy.server';
 import { localeOrDefault } from '../../../../../lib/i18n/locale';
 
 /**
@@ -275,6 +276,7 @@ export default async function CampaignPage({
           deadline: campaign.deadline,
           tiers,
           faqs: faqs ?? [],
+          ...(await graphContext()),
         })}
       />
 

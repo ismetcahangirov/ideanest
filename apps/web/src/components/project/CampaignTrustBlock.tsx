@@ -3,7 +3,8 @@ import { formatInstant, SERVER_TIME_ZONE } from '../../lib/projects/deadline';
 import { formatMoney } from '../../lib/money';
 import type { CampaignPage } from '../../lib/projects/publicPage';
 import { ViewerInstant } from './ViewerClock';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { localeOrDefault } from '../../lib/i18n/locale';
 
 /**
  * §4.4's trust block — issue #281. Fixed copy on every project, plus the all-or-nothing
@@ -90,6 +91,7 @@ export interface CampaignTrustBlockProps {
 }
 
 export async function CampaignTrustBlock({ campaign }: CampaignTrustBlockProps) {
+  const locale = localeOrDefault(await getLocale());
   const t = await getTranslations('campaign.trust');
 
   const open = OPEN_STATES.includes(campaign.state);
@@ -101,7 +103,7 @@ export async function CampaignTrustBlock({ campaign }: CampaignTrustBlockProps) 
    * with no JavaScript keeps this string, which is a real instant with its zone named.
    */
   const serverDeadline =
-    campaign.deadline === null ? null : formatInstant(campaign.deadline, SERVER_TIME_ZONE);
+    campaign.deadline === null ? null : formatInstant(campaign.deadline, SERVER_TIME_ZONE, locale);
 
   return (
     <section

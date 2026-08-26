@@ -1,3 +1,6 @@
+import { dateTimeFormat } from '../i18n/formats';
+import type { Locale } from '../i18n/locale';
+
 /**
  * §4.4's live countdown and its "deadline in the viewer's timezone" — the arithmetic half.
  *
@@ -28,15 +31,16 @@
  * same fixed locale, so the only thing that differs between the two renders is the zone —
  * which is the one thing that is allowed to differ.
  *
- * <strong>The locale is pinned rather than left to the browser.</strong> `Intl` with an
- * undefined locale resolves to the reader's, and a server that resolved to a different one
- * would produce a hydration mismatch on the date itself rather than on the zone. The
- * interface ships in English and Azerbaijani (§21.1) and the language is not chosen per
- * browser today; when it is, this constant is what a locale is threaded into.
+ * <strong>The locale is passed in rather than left to the browser</strong>, and #324 is when
+ * it stopped being a constant. `Intl` with an undefined locale resolves to the reader's, and
+ * a server that resolved to a different one would produce a hydration mismatch on the date
+ * itself rather than on the zone — which is why this was pinned to `en-GB` with a note saying
+ * "when the language is chosen per reader, this constant is what a locale is threaded into".
+ *
+ * <p>It is threaded in now, and the hydration argument survives intact: both renders read the
+ * language off the same `[locale]` path segment, so they cannot disagree about it. The zone is
+ * still the only thing allowed to differ between them.
  */
-
-/** The fixed formatting locale. See the module comment for why it is not the browser's. */
-const LOCALE = 'en-GB';
 
 const MILLIS_PER_SECOND = 1_000;
 const SECONDS_PER_MINUTE = 60;
@@ -154,37 +158,40 @@ export function countdownIntervalMs(remaining: Remaining): number {
  * report a zone name a given ICU build does not know — so the caller falls back to what the
  * server already rendered rather than to the string "Invalid Date".
  */
-export function formatInstant(instant: string, timeZone: string): string | null {
+export function formatInstant(instant: string, timeZone: string, locale: Locale): string | null {
   const parsed = Date.parse(instant);
   if (Number.isNaN(parsed)) return null;
 
   try {
-    return new Intl.DateTimeFormat(LOCALE, {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      timeZoneName: 'short',
-      timeZone,
-    }).format(new Date(parsed));
+    return dateTimeFormat(
+      locale,
+      {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZoneName: 'short',
+        timeZone,
+      },
+      `instant:${timeZone}`,
+    ).format(new Date(parsed));
   } catch {
     return null;
   }
 }
 
 /** A date with no time — for an update's publication day, where the hour says nothing. */
-export function formatDay(instant: string, timeZone: string): string | null {
+export function formatDay(instant: string, timeZone: string, locale: Locale): string | null {
   const parsed = Date.parse(instant);
   if (Number.isNaN(parsed)) return null;
 
   try {
-    return new Intl.DateTimeFormat(LOCALE, {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      timeZone,
-    }).format(new Date(parsed));
+    return dateTimeFormat(
+      locale,
+      { day: 'numeric', month: 'long', year: 'numeric', timeZone },
+      `day:${timeZone}`,
+    ).format(new Date(parsed));
   } catch {
     return null;
   }

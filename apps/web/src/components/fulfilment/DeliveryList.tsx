@@ -8,6 +8,7 @@ import { ApiError } from '../../lib/api/problem';
 import { listMyFulfilments, type BackerFulfilment } from '../../lib/fulfilment/api';
 import { describeStatus, isFollowableTrackingUrl } from '../../lib/fulfilment/describe';
 import { formatExactTime } from '../../lib/time';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
 /**
  * §4.8's PM-09 and PM-10 from the backer's side — where each reward is. Issue #290.
@@ -35,6 +36,7 @@ import { formatExactTime } from '../../lib/time';
  * mean this list guessing at a state it has not read.
  */
 export function DeliveryList() {
+  const locale = useRouteLocale();
   const [status, setStatus] = useState<'loading' | 'ready' | 'failed' | 'signed-out'>('loading');
   const [rows, setRows] = useState<readonly BackerFulfilment[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -163,14 +165,14 @@ export function DeliveryList() {
               {row.fulfilment.shippedAt !== null && row.fulfilment.shippedAt !== '' && (
                 <div className="flex gap-2">
                   <dt className="text-white/40">Sent</dt>
-                  <dd className="text-white/64">{formatExactTime(row.fulfilment.shippedAt)}</dd>
+                  <dd className="text-white/64">{formatExactTime(row.fulfilment.shippedAt, locale)}</dd>
                 </div>
               )}
 
               {row.fulfilment.deliveredAt !== null && row.fulfilment.deliveredAt !== '' && (
                 <div className="flex gap-2">
                   <dt className="text-white/40">Arrived</dt>
-                  <dd className="text-white/64">{formatExactTime(row.fulfilment.deliveredAt)}</dd>
+                  <dd className="text-white/64">{formatExactTime(row.fulfilment.deliveredAt, locale)}</dd>
                 </div>
               )}
             </dl>

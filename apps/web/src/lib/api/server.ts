@@ -1,3 +1,4 @@
+import { getLocale } from 'next-intl/server';
 import { ApiError, createApiClient, type ApiClient, type components } from '@ideanest/api-client';
 import type { Category } from '../categories/api';
 import {
@@ -9,6 +10,7 @@ import {
   type CollectionPageQuery,
 } from '../collections/api';
 import type { DiscoveryFeed, ProjectCard } from '../discovery/api';
+import { DEFAULT_LOCALE } from '../i18n/locale';
 import type { EnvSource } from '../seo/metadata';
 import { apiOrigin } from '../seo/metadata-source';
 
@@ -86,29 +88,46 @@ function client(options: ServerReadOptions): ApiClient {
 }
 
 /**
- * <h2>WHY `locale` IS STILL NOT DEFAULTED HERE, AFTER #324</h2>
+ * <h2>THE LANGUAGE IS DEFAULTED HERE NOW, AND #123 IS WHAT MADE IT FREE</h2>
  *
- * The browser-side client now states the interface language on every request
- * (`lib/api/client.ts`), and this one deliberately does not. Negotiating a language on this
- * side means reading the cookie, and reading a cookie makes a render dynamic — these are
- * the public reads, and every one of them is cached for the minute below. A `Vary`
- * on a header we chose per visitor turns one shared render into one render each, on exactly
- * the routes a stranger meets first.
+ * This function used to send no `Accept-Language` at all, and the paragraph here explained
+ * why at length: negotiating one meant reading the locale cookie, reading a cookie makes a
+ * render dynamic, and these are the cached public reads a stranger meets first. The
+ * consequence was written down rather than hidden — the taxonomy names inside a cached
+ * public page followed whatever language the *server's* request happened to carry, on an
+ * otherwise English page, which is the asymmetry #324 was filed about.
  *
- * The consequence is written down rather than hidden: taxonomy names inside a **cached
- * public** page follow whatever the *server's* request carried, not the reader's preference.
- * The fix is one cached render per language keyed by the path, which is a locale-prefixed
- * URL — #123 — and is the same reason `src/i18n/request.ts` gives for leaving the public
- * shell in English.
+ * That argument is spent. The language is a path segment, so `/az/discover` and
+ * `/ru/discover` are two cached documents rather than one document with a `Vary` on it, and
+ * `getLocale()` reads the value `layout.tsx` already handed to `setRequestLocale`. No
+ * cookie, no header, no variance per visitor — one fixed language per cache entry, which is
+ * exactly what a shared cache wants.
  *
- * The parameter stays, because a caller inside an already-dynamic route may pass one and be
- * right to.
+ * <h2>The fallback is not decoration</h2>
+ *
+ * `getLocale()` throws outside a request scope, and this module is read from two of them:
+ * `app/sitemap.ts` and the unit tests. Neither is rendering a page for anybody, so neither
+ * has a language to speak — `DEFAULT_LOCALE` is the honest answer, and the same one the
+ * service's own RFC 4647 lookup would have arrived at from an absent header.
+ *
+ * An explicit `options.locale` still wins, because a caller inside an already-dynamic route
+ * may know better.
  */
-function readOptions(options: ServerReadOptions) {
+async function readOptions(options: ServerReadOptions) {
   return {
-    ...(options.locale === undefined ? {} : { headers: { 'accept-language': options.locale } }),
+    headers: { 'accept-language': await localeFor(options) },
     next: { revalidate: options.revalidateSeconds ?? PUBLIC_READ_REVALIDATE_SECONDS },
   };
+}
+
+async function localeFor(options: ServerReadOptions): Promise<string> {
+  if (options.locale !== undefined) return options.locale;
+
+  try {
+    return await getLocale();
+  } catch {
+    return DEFAULT_LOCALE;
+  }
 }
 
 /**
@@ -127,7 +146,7 @@ export async function fetchCampaignPage(
   try {
     return await client(options).get('/v1/projects/{creatorSlug}/{projectSlug}', {
       path: { creatorSlug, projectSlug },
-      ...readOptions(options),
+      ...(await readOptions(options)),
     });
   } catch (cause) {
     return refusalOrRethrow(cause);
@@ -152,7 +171,7 @@ export async function fetchPublicRewards(
   try {
     return await client(options).get('/v1/projects/{projectId}/rewards/public', {
       path: { projectId },
-      ...readOptions(options),
+      ...(await readOptions(options)),
     });
   } catch (cause) {
     return refusalOrRethrow(cause);
@@ -179,7 +198,7 @@ export async function fetchDiscoveryFeed(
   try {
     const feed = await client(options).get('/v1/discover', {
       query: parametersOf(query),
-      ...readOptions(options),
+      ...(await readOptions(options)),
     });
     /*
      * Cast to the module that owns the discovery wire types. The generated schema describes
@@ -215,7 +234,7 @@ export async function fetchSearchResults(
   try {
     const feed = await client(options).get('/v1/search', {
       query: parametersOf(query),
-      ...readOptions(options),
+      ...(await readOptions(options)),
     });
     // Cast for the reason the discovery reader gives: `lib/discovery/api.ts` owns the wire
     // shape, and the generated schema marks every field of it optional.
@@ -254,7 +273,7 @@ export async function fetchCategories(options: ServerReadOptions = {}): Promise<
   const withWindow: ServerReadOptions = { revalidateSeconds: TAXONOMY_REVALIDATE_SECONDS, ...options };
 
   try {
-    const tree = await client(withWindow).get('/v1/categories', readOptions(withWindow));
+    const tree = await client(withWindow).get('/v1/categories', await readOptions(withWindow));
     /*
      * Narrowed to the three fields the browse pages use, rather than cast wholesale.
      * `CategoryResponse` also carries `names`, `nameAz` and `nameEn`, which the controller
@@ -305,7 +324,7 @@ export async function fetchCollections(
   options: ServerReadOptions = {},
 ): Promise<readonly Collection[] | null> {
   try {
-    const index = await client(options).get('/v1/collections', readOptions(options));
+    const index = await client(options).get('/v1/collections', await readOptions(options));
     /*
      * Narrowed through `lib/collections/api.ts` rather than cast. The generated schema marks
      * every field optional — springdoc marks a record component required only when it can
@@ -348,7 +367,7 @@ export async function fetchCollection(
     const body = await client(options).get('/v1/collections/{slug}', {
       path: { slug },
       query: collectionQueryParams(page),
-      ...readOptions(options),
+      ...(await readOptions(options)),
     });
 
     const collection = body.collection === undefined ? null : collectionFrom(body.collection);

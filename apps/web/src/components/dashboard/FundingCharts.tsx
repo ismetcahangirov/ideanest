@@ -9,6 +9,7 @@ import { getTrend, type Trend } from '../../lib/dashboard/analytics';
 import { getBreakdown, type BackerBreakdown } from '../../lib/dashboard/backers';
 import { ShareBars, type ShareBar } from './ShareBars';
 import { TrendChart } from './TrendChart';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
 /**
  * §4.7's CD-02, CD-07 and CD-08 — issue 96: the funding trend, the reward mix, and where
@@ -62,6 +63,7 @@ export function FundingCharts({
   loadBreakdown,
   nowImpl,
 }: FundingChartsProps) {
+  const locale = useRouteLocale();
   const [trendStatus, setTrendStatus] = useState<Status>('loading');
   const [trend, setTrend] = useState<Trend | null>(null);
   const [trendFailure, setTrendFailure] = useState('');
@@ -137,7 +139,7 @@ export function FundingCharts({
             */}
             {trend.computedAt !== undefined ? (
               <p className="mt-2 text-sm text-white/64">
-                Aggregated {formatRelativeTime(trend.computedAt, (nowImpl ?? (() => new Date()))())}. The
+                Aggregated {formatRelativeTime(trend.computedAt, (nowImpl ?? (() => new Date()))(), locale)}. The
                 live totals on the overview are read at the moment you ask for them.
               </p>
             ) : null}

@@ -6,7 +6,8 @@ import type { CampaignComment, CampaignCommentPage } from '../../lib/community/c
 import { CommentComposer } from './CommentComposer';
 import { CommentControls } from './CommentControls';
 import { ViewerInstant } from './ViewerClock';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { localeOrDefault } from '../../lib/i18n/locale';
 import { commentCopy } from '../../lib/i18n/shell-copy.server';
 
 /**
@@ -220,7 +221,11 @@ async function CommentEntry({
    */
   const t = await getTranslations('campaign.comments');
   const copy = await commentCopy();
-  const serverInstant = formatInstant(comment.createdAt, SERVER_TIME_ZONE);
+  const serverInstant = formatInstant(
+    comment.createdAt,
+    SERVER_TIME_ZONE,
+    localeOrDefault(await getLocale()),
+  );
 
   if (comment.deleted) {
     return (

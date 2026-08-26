@@ -17,11 +17,14 @@ import {
   targetLabel,
 } from '../../lib/moderation/describe';
 import type { Decision } from './DecisionDialog';
+import type { Locale } from '../../lib/i18n/locale';
 
 export interface ReportCardProps {
   readonly report: QueuedReport;
   /** Pinned per load, so every card on one render ages from the same instant. */
   readonly now: Date;
+  /** Fixed by the caller for the same reason `now` is — #324. */
+  readonly locale: Locale;
   readonly busy: boolean;
   /**
    * The decision detail view for this report (#296), or absent where there is none.
@@ -59,7 +62,7 @@ function stateVariant(report: QueuedReport): 'success' | 'default' {
  * button cannot be aimed at. Hover is the standard 150ms colour change `Card`
  * already carries and nothing else moves.
  */
-export function ReportCard({ report, now, busy, detailHref, onDecide }: ReportCardProps) {
+export function ReportCard({ report, now, locale, busy, detailHref, onDecide }: ReportCardProps) {
   const kind = targetLabel(report.target.type);
   const target = `${kind} ${shortId(report.target.id)}`;
   const overdue = isOverdue(report, now);
@@ -126,8 +129,8 @@ export function ReportCard({ report, now, busy, detailHref, onDecide }: ReportCa
           <div className="flex gap-2">
             <dt className="text-white/40">Reported</dt>
             <dd className="text-white/64">
-              <time dateTime={report.createdAt} title={formatExactTime(report.createdAt)}>
-                {formatRelativeTime(report.createdAt, now)}
+              <time dateTime={report.createdAt} title={formatExactTime(report.createdAt, locale)}>
+                {formatRelativeTime(report.createdAt, now, locale)}
               </time>
             </dd>
           </div>
@@ -170,7 +173,7 @@ export function ReportCard({ report, now, busy, detailHref, onDecide }: ReportCa
               {STATE_LABELS[report.state]} by moderator{' '}
               <span className="font-mono">{shortId(report.resolution.moderatorId)}</span> on{' '}
               <time dateTime={report.resolution.at}>
-                {formatExactTime(report.resolution.at)}
+                {formatExactTime(report.resolution.at, locale)}
               </time>
               .
             </p>

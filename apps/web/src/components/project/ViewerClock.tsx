@@ -10,6 +10,7 @@ import {
   remainingUntil,
   viewerTimeZone,
 } from '../../lib/projects/deadline';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
 /**
  * The two things only the reader's browser knows: what time it is now, and what zone they
@@ -153,17 +154,25 @@ export interface ViewerInstantProps {
  */
 export function ViewerInstant({ instant, serverText, precision = 'instant' }: ViewerInstantProps) {
   const [text, setText] = useState(serverText);
+  /*
+   * The same language the server rendered `serverText` in — both read the `[locale]` segment,
+   * so the substitution below changes the zone and nothing else. That is the whole invariant
+   * this component rests on, and #324 is when the locale stopped being a constant that
+   * guaranteed it for free.
+   */
+  const locale = useRouteLocale();
 
   useEffect(() => {
     const zone = viewerTimeZone();
-    const formatted = precision === 'day' ? formatDay(instant, zone) : formatInstant(instant, zone);
+    const formatted =
+      precision === 'day' ? formatDay(instant, zone, locale) : formatInstant(instant, zone, locale);
     /*
      * `null` means the runtime refused the zone or the instant — a browser can report a zone
      * name a given ICU build does not know. The server's UTC rendering stays, which is
      * correct rather than merely present.
      */
     if (formatted !== null) setText(formatted);
-  }, [instant, precision]);
+  }, [instant, precision, locale]);
 
   return <time dateTime={instant}>{text}</time>;
 }

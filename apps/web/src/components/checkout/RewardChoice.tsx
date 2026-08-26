@@ -6,6 +6,9 @@ import { formatMoney } from '../../lib/money';
 import { isShipped, type PublicReward } from '../../lib/pledges/api';
 import { NO_REWARD } from './useCheckout';
 import { type CheckoutCopy, fillPlaceholders } from '../../lib/i18n/checkout-copy';
+import { dateTimeFormat } from '../../lib/i18n/formats';
+import type { Locale } from '../../lib/i18n/locale';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
 /**
  * PL-01, PL-02 and PL-15: the tiers, in the order the campaign put them in, with
@@ -57,15 +60,15 @@ export interface RewardChoiceProps {
  * the service stores a plain date and rendering it in the reader's zone would
  * move a first-of-the-month delivery into the month before it.
  */
-function deliveryMonth(date: string): string | null {
+function deliveryMonth(date: string, locale: Locale): string | null {
   const parsed = Date.parse(date);
   if (!Number.isFinite(parsed)) return null;
 
-  return new Intl.DateTimeFormat('en', {
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(parsed));
+  return dateTimeFormat(
+    locale,
+    { month: 'long', year: 'numeric', timeZone: 'UTC' },
+    'delivery-month',
+  ).format(new Date(parsed));
 }
 
 /** Whether the tier has run out. Absent stock is unlimited, never sold out. */
@@ -110,7 +113,9 @@ function RewardDetail({
   reward: PublicReward;
   copy: CheckoutCopy['reward'];
 }) {
-  const delivery = reward.estimatedDelivery == null ? null : deliveryMonth(reward.estimatedDelivery);
+  const locale = useRouteLocale();
+  const delivery =
+    reward.estimatedDelivery == null ? null : deliveryMonth(reward.estimatedDelivery, locale);
 
   return (
     <span className="flex flex-col gap-2">
