@@ -3,8 +3,6 @@ package az.ideanest.shared.cache;
 import az.ideanest.shared.outbox.OutboxMessage;
 import az.ideanest.shared.project.ProjectSummaries;
 import az.ideanest.shared.project.ProjectSummary;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -13,6 +11,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Which published events make a cached public page wrong — issue #127.
@@ -131,10 +132,18 @@ public class CacheInvalidationListener {
     }
 
     private UUID payloadProject(OutboxMessage message) {
+        /*
+         * `tools.jackson`, not `com.fasterxml.jackson`. Spring Boot 4 ships Jackson 3 and
+         * registers the bean under the new package; the old one is on the classpath as a
+         * transitive dependency and is not a bean, so importing it takes the whole context
+         * down at start-up with `ObjectMapper` reported missing.
+         */
         try {
             JsonNode field = json.readTree(message.payload()).get("projectId");
-            return field == null || !field.isTextual() ? null : UUID.fromString(field.asText());
-        } catch (RuntimeException | com.fasterxml.jackson.core.JsonProcessingException unreadable) {
+            // `isString`/`stringValue`, not the Jackson 2 spellings: `isTextual` and `asText`
+            // are deprecated in Jackson 3 and this build treats a warning as an error.
+            return field == null || !field.isString() ? null : UUID.fromString(field.stringValue());
+        } catch (JacksonException | IllegalArgumentException unreadable) {
             // A payload this cannot parse is one some other consumer can, and taking the
             // dispatch down over a cache hint is the failure this whole class avoids.
             return null;

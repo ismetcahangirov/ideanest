@@ -10,7 +10,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -48,8 +47,17 @@ import org.springframework.web.client.RestClient;
  * <p>Nothing, quietly, after saying so once at start-up. See
  * {@link CacheInvalidationProperties#isConfigured()}.
  */
+/*
+ * NO `@EnableConfigurationProperties` HERE, and the omission is load-bearing. That annotation
+ * is an `@Import`, which makes the class carrying it a configuration class — and a
+ * configuration class is instantiated during bean-factory post-processing, before Spring
+ * Boot's auto-configured beans exist. This one takes a `RestClient.Builder`, so adding it took
+ * the whole application context down at start-up with an unrelated bean reported missing.
+ *
+ * `IdeaNestApplication` already carries `@ConfigurationPropertiesScan`, which binds every
+ * `@ConfigurationProperties` record in the tree. There was nothing to enable.
+ */
 @Component
-@EnableConfigurationProperties(CacheInvalidationProperties.class)
 public class CacheInvalidator {
 
     private static final Logger log = LoggerFactory.getLogger(CacheInvalidator.class);

@@ -15,7 +15,6 @@ import az.ideanest.shared.cache.CacheTags;
 import az.ideanest.shared.outbox.OutboxMessage;
 import az.ideanest.shared.project.ProjectSummaries;
 import az.ideanest.shared.project.ProjectSummary;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -25,6 +24,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Which published events tell the web client to drop a cached page — issue #127.
