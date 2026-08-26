@@ -38,6 +38,200 @@ notification end to end.
 
 ---
 
+## The creator's financial summary
+
+`docs/architecture.md` §4.7's CD-16 and issue #99.
+`GET /v1/projects/{projectId}/finance`, guarded by
+`ProjectCapability.VIEW_FINANCES` — the same capability the backer report takes,
+and for the same reason: this is money.
+
+It lives in the payout module because everything it reports is already decided
+there. `PayoutService` prices a campaign against §5.2's schedule, takes the fees
+off the gross and the refunds off what is left, and stores all six figures on
+the row; `CampaignFinanceService` answers the same question one step earlier
+and, once a payout exists, answers it by reading that row rather than computing
+it again. A second implementation of the same arithmetic in a dashboard module
+would be a second answer to "what am I owed", and the two would disagree the
+first time §5.2's rates changed.
+
+### The ledger does not carry the fee split, and the response says so
+
+The response publishes this campaign's ledger balances beside its figures, so
+the totals can be checked rather than taken on trust. What that check reveals is
+worth stating plainly rather than leaving to be discovered:
+
+- **`platform_fee` has no writer.** A collection debits escrow and credits the
+  creator for the gross; a payout does the reverse for the *net*. The difference
+  stays in escrow as a balance no account claims, and the creator's account
+  keeps a residual credit equal to the fees for ever. `CollectionRun` says the
+  payout posts the split and `PayoutPostings` says the collection did; neither
+  does. That is #69's to close.
+- **`tax_payable` has no writer either**, for a better reason: §4.10's tax
+  collection is #78 and is blocked on a legal answer, so there is no tax to
+  post.
+
+`reconciled` on the response is therefore a narrower claim than it sounds. It
+means the campaign's entries balance, summed per currency — which V41's deferred
+constraint trigger already enforces, so it can only be false for a row that
+arrived past both the application and the trigger. That is precisely the day
+somebody needs to see it rather than be reassured.
+
+---
+
+## Metrics, tracing and alerting
+
+`docs/architecture.md` §18 and §8.4, issue #138.
+
+### Metrics
+
+`GET /actuator/prometheus`, in the Prometheus text format. Spring Boot's own
+binders publish HTTP, JDBC, JVM and Hikari; what this repository adds is what
+nothing else could know, and it is exactly the three things §8.4 asks to be
+alerted on.
+
+| Series | What it is | Bound from |
+|---|---|---|
+| `ideanest_ledger_reconciliation_findings` | Discrepancies the last reconciliation found | `ReconciliationStatusSource` (#70) |
+| `ideanest_ledger_reconciliation_age_seconds` | Seconds since it last ran on this instance | the same |
+| `ideanest_payment_collection_attempts_total{outcome}` | Collection attempts, by what came of them | `CollectionMetrics` |
+| `ideanest_provider_available{provider}` | 1 when a provider answers, 0 when the breaker is open | `ProviderStatusSource` (#316) |
+| `ideanest_queue_waiting{queue}` / `ideanest_queue_dead{queue}` | Every queue on the platform | `QueueDepthSource` (#316) |
+
+`PlatformMetrics` reads the same interfaces §4.11's health screen reads, on
+purpose: a dashboard that disagreed with an alert is a dashboard somebody checks
+after being paged and then distrusts. It is also what keeps that class in
+`shared` — it names three interfaces and no module.
+
+**A rate is not published; the counts are.** "Collection failure rate" needs a
+window, and a window is a decision about how long a bad minute has to last before
+it is a bad afternoon. `alerts.yml` divides them over fifteen minutes, which is
+where that decision belongs — changing it is editing a rule rather than deploying
+the service. Every outcome is counted, because ten declines out of ten thousand
+collections is a Tuesday and ten out of twelve is an incident.
+
+**Nothing with a person in it.** §17.4 keeps personal data out of the log stream,
+and a metric label is worse than a log line: retained longer, indexed, and shipped
+to whatever scrapes it. The only labels are a queue's name, a provider's name and
+an outcome.
+
+### The endpoint is not anonymous, and does not exist without a credential
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `METRICS_SCRAPE_USER` | `prometheus` | What the scraper sends. Not a secret |
+| `METRICS_SCRAPE_PASSWORD` | unset | The secret. **Unset means no metrics endpoint at all** |
+
+`MetricsScrapeSecurity` is conditional on a non-blank password and puts HTTP
+Basic in front of `/actuator/prometheus`. Without it the endpoint falls through
+to the API's own deny-by-default chain and answers `401`.
+
+Basic and not a bearer token, because a scraper has no account and no way to
+obtain one; giving it a long-lived JWT for a service account would be inventing
+an identity type to solve a scraping problem. Basic sends the credential on every
+request, so it is only as private as the transport — the service is behind TLS
+termination in every environment §19 describes, and `ops/observability/prometheus.example.yml`
+scrapes over `https` with a `password_file` rather than an inline secret.
+
+Metrics are not confidential the way a pledge is. They are a map: queue depths,
+provider availability, JVM internals, and every URI template this service serves.
+Read continuously by a stranger that is reconnaissance, and a rate-limit-free way
+to measure when the platform is under strain.
+
+### Tracing
+
+Off unless a collector is configured. `TRACING_ENABLED=true` turns it on,
+`OTLP_TRACES_ENDPOINT` says where, `TRACING_SAMPLE_RATE` how much (five per cent
+by default — enough to see the shape of a slow endpoint, few enough that the
+collector is not a second capacity problem).
+
+Off by default because the exporter would otherwise post to `localhost:4318`
+every few seconds and log a connection failure each time, which is a deployment
+that looks broken because of a feature nobody asked for.
+
+OpenTelemetry rather than Brave: `CorrelationFilter` already accepts and mints
+W3C `traceparent`, which is OTel's native propagation format. A service that
+spoke B3 on the wire and W3C in its logs would correlate with neither. Turning
+tracing on adds the spans; the correlation identifier in the logs is there
+either way.
+
+### The alert rules travel with the service
+
+`ops/observability/alerts.yml`. All three of §8.4's conditions, each with a
+second rule beside it for the failure people forget:
+
+| Alert | Catches |
+|---|---|
+| `LedgerImbalance` | The books do not reconcile |
+| `LedgerReconciliationStopped` | Nobody has checked for 36 hours, or ever on this fleet |
+| `CollectionFailureRate` | More than a quarter of collections failing over fifteen minutes |
+| `NoCollectionsAttempted` | The collection job publishing nothing at all |
+| `PaymentProviderUnavailable` | A breaker open for five minutes |
+| `QueueBacklog` / `QueueDeadLetters` | A queue that is not draining, and work that has been abandoned |
+
+A monitor that is silent because it is broken looks exactly like a monitor that
+is silent because everything is fine, which is why every condition has both
+halves. `ops/observability/prometheus.example.yml` is the scrape config to copy.
+
+---
+
+## Ledger reconciliation
+
+`docs/architecture.md` §8.4's `ledger-reconciliation` and issue #70. A daily pass
+that asks whether the platform's money adds up, at 02:30 UTC —
+`LEDGER_RECONCILIATION_SCHEDULE` overrides it, and `-` registers the job without
+scheduling it.
+
+### Three questions, each of which the others would miss
+
+1. **Do the books balance?** Summed per currency across every account, the
+   debits must equal the credits. V41's deferred constraint trigger refuses a
+   posting that does not, which is exactly why this is worth checking: it can
+   only fail for a row that arrived past both the application and the trigger.
+2. **Does any account hold a sign it cannot?** Escrow below zero is money
+   disbursed that was never taken. A creator's account above zero is a creator
+   paid more than they earned — `AccountTotal` names that one as worth an alert.
+   Neither is caught by the first check, because two errors of opposite sign
+   balance perfectly.
+3. **Does the ledger agree with the record of what moved?** `escrow + psp_fee`
+   must equal the settled charges less the payouts and the money returned. The
+   left side comes from the ledger and the right from `transactions`, so this is
+   the only one of the three that catches a posting the application never made.
+
+`psp_fee` is added back to escrow because a chargeback's fee is taken from the
+platform's balance rather than from a backer's card: it is the one movement with
+a ledger posting and no transaction row, and adding it back puts both sides in
+the same terms.
+
+### It reports and never repairs
+
+Nothing writes to the ledger. A correcting entry depends on which of a dozen
+things went wrong, and a job that guessed would turn a detectable problem into
+an undetectable one. A finding is an `ERROR` line per discrepancy, which is one
+of §8.4's three alerting conditions, plus the last report held in memory — so
+that a reconciliation which has silently stopped running is visible too. A check
+that has not run since Tuesday is a finding of its own.
+
+**A discrepancy is not a failed job.** Throwing is how a `ScheduledJob` reports
+that it could not run: the runner counts the attempt, backs off and eventually
+stops scheduling it. A pass that ran perfectly and found something has not
+failed, and treating it as a failure would make the platform stop looking.
+
+### There is no comparison against a provider's settlement report
+
+Because there is no provider. §9.3's choice is #60 and carries
+`status: needs-decision`; `PaymentProviders` discovers no implementation, and
+hosted card tokenisation (#55) is blocked behind the same decision. A settlement
+comparison written now would be a parser for a file format nobody has agreed to,
+checked against a fixture this repository invented — which is worse than an
+absence, because it would look like coverage.
+
+Check three is the shape that comparison will take, against the one counterparty
+that exists today: the platform's own record of every transaction it believes
+settled. When a provider is chosen, its report becomes a fourth source on the
+same right-hand side and the arithmetic does not change.
+
+---
+
 ## Cache invalidation
 
 `docs/architecture.md` §4.13 and issue #127. The web client caches its public

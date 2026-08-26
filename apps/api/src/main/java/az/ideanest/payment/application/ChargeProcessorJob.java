@@ -54,6 +54,7 @@ public class ChargeProcessorJob implements ScheduledJob {
     private final CampaignCollections campaigns;
     private final CollectionOpening opening;
     private final CollectionRun collection;
+    private final CollectionMetrics metrics;
     private final PaymentProperties.Collection properties;
     private final Clock clock;
 
@@ -61,11 +62,13 @@ public class ChargeProcessorJob implements ScheduledJob {
             CampaignCollections campaigns,
             CollectionOpening opening,
             CollectionRun collection,
+            CollectionMetrics metrics,
             PaymentProperties properties,
             Clock clock) {
         this.campaigns = campaigns;
         this.opening = opening;
         this.collection = collection;
+        this.metrics = metrics;
         this.properties = properties.collection();
         this.clock = clock;
     }
@@ -144,6 +147,12 @@ public class ChargeProcessorJob implements ScheduledJob {
         int charged = 0;
         for (int attempted = 0; attempted < properties.chargesPerPass(); attempted++) {
             CollectionOutcome outcome = collection.collectNext(CollectionStage.INITIAL, now);
+            /*
+             * Counted here rather than inside `collectNext` — #138. That method runs in the
+             * transaction that moves somebody's money, and a meter registry does not belong
+             * on that path: a counter that threw would roll back a charge that succeeded.
+             */
+            metrics.record(outcome);
             if (outcome == CollectionOutcome.COLLECTED) {
                 charged++;
             }

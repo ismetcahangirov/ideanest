@@ -1,0 +1,60 @@
+# A scrape configuration for the IdeaNest API — issue #138.
+#
+# An EXAMPLE and not the deployment's own file: where Prometheus runs, how it
+# discovers instances and where it sends alerts are all decisions that belong to
+# whoever operates the environment. What this repository owns is the shape of the
+# target — the path, the credential, and the rules in `alerts.yml` beside it.
+#
+# Copy it, replace the static target with whatever discovery the environment has,
+# and keep `rule_files` pointing at `alerts.yml` so that the three conditions
+# §8.4 names travel with the service rather than with the monitoring stack.
+
+global:
+  # Fifteen seconds. Every rule in alerts.yml has a `for` clause measured in
+  # minutes, so this is about resolution rather than about how fast anything
+  # fires — and a gauge set once a day by the reconciliation job does not need
+  # to be asked more often than the ones set continuously.
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+scrape_configs:
+  - job_name: ideanest-api
+    metrics_path: /actuator/prometheus
+
+    # The endpoint requires HTTP Basic and does not exist at all when the service
+    # has no credential configured — see apps/api's MetricsScrapeSecurity. The
+    # password here is the same value the service reads from
+    # METRICS_SCRAPE_PASSWORD.
+    #
+    # `password_file` rather than an inline password: this file is checked in, and
+    # a secret in a checked-in file is a secret that is in the history for ever
+    # even after somebody deletes the line.
+    basic_auth:
+      username: prometheus
+      password_file: /etc/prometheus/ideanest-scrape-password
+
+    # HTTPS, because Basic sends the credential on every request and a scrape is
+    # every fifteen seconds. Inside a private network an operator may decide plain
+    # HTTP is acceptable; that is their decision to make deliberately rather than
+    # by copying this file unchanged.
+    scheme: https
+
+    static_configs:
+      - targets:
+          - api.ideanest.az:443
+        labels:
+          environment: production
+
+    # Every series the service publishes already carries `application`, from
+    # `management.metrics.tags`. This adds the environment, so one Prometheus
+    # holding staging and production keeps them apart — and so an alert says which
+    # one woke somebody up.

@@ -112,7 +112,14 @@ management:
       exposure:
         # Only what the platform needs. Every other endpoint stays closed until
         # there is a reason and an access control story for it.
-        include: health
+        #
+        # `prometheus` has both -- §18's reason and #138's access control story:
+        # MetricsScrapeSecurity puts HTTP Basic in front of it and exists only when
+        # ideanest.metrics.scrape.password is configured. Exposing the endpoint here
+        # and guarding it there is the arrangement that fails safe: without the
+        # credential the chain is absent, the endpoint answers 401 from the API's own
+        # deny-by-default chain, and nothing is published to a stranger.
+        include: health,prometheus
   endpoint:
     health:
       # Kubernetes reads /actuator/health/liveness and /readiness separately: a
@@ -122,6 +129,31 @@ management:
         enabled: true
       show-details: never
       show-components: never
+
+  # Every series this service publishes carries the application's name, so one
+  # scrape target holding two services is still two sets of graphs.
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+  # §18's distributed tracing, OFF UNLESS A COLLECTOR IS CONFIGURED. The exporter
+  # would otherwise post spans to localhost:4318 every few seconds and log a
+  # connection failure each time, which is a deployment that looks broken because
+  # of a feature nobody asked for.
+  #
+  # CorrelationFilter already accepts and mints W3C `traceparent`, so a request that
+  # arrives with one keeps its trace identifier in the logs whether or not spans are
+  # being exported. Turning this on adds the spans; it does not add the correlation.
+  tracing:
+    enabled: ${TRACING_ENABLED:false}
+    sampling:
+      # Five per cent. Enough to see the shape of a slow endpoint, few enough that a
+      # collector is not a second capacity problem. An incident raises it; a steady
+      # state does not need it.
+      probability: ${TRACING_SAMPLE_RATE:0.05}
+  otlp:
+    tracing:
+      endpoint: ${OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
 
 # §10.1's OpenAPI 3.1 document (#136). OpenApiConfiguration holds everything a
 # scanner cannot infer; what is here is how the document itself is served.
@@ -153,6 +185,20 @@ springdoc:
   writer-with-default-pretty-printer: true
 
 ideanest:
+  # §18's metrics endpoint -- issue #138. Both halves come from the deployment and
+  # there is no default password: MetricsScrapeSecurity exists only when one is set,
+  # so a deployment that configures nothing gets no metrics endpoint rather than an
+  # unauthenticated one.
+  #
+  # Metrics are not confidential the way a pledge is, and they are a map: queue
+  # depths, provider availability, JVM internals, and every URI template this service
+  # serves. Read continuously by a stranger that is reconnaissance, and a
+  # rate-limit-free way to measure when the platform is under strain.
+  metrics:
+    scrape:
+      username: ${METRICS_SCRAPE_USER:prometheus}
+      password: ${METRICS_SCRAPE_PASSWORD:}
+
   # §4.13's caching, from the service's side -- issue #127. The web client caches its
   # public reads for a minute; this is how it is told which campaign stopped being
   # true before the minute is up. See az.ideanest.shared.cache.
@@ -387,6 +433,20 @@ ideanest:
       primary-key-id: ~
 
   payment:
+    # §8.4's `ledger-reconciliation` -- issue #70. A daily pass that asks whether the
+    # platform's money adds up: the books balance, no account holds a sign it cannot,
+    # and the ledger agrees with the record of what actually moved.
+    #
+    # IT REPORTS AND NEVER REPAIRS. A correcting entry depends on which of a dozen
+    # things went wrong, and a job that guessed would turn a detectable problem into
+    # an undetectable one. What it produces is a log line at ERROR -- one of §8.4's
+    # three alerting conditions -- and the last report, which the health screen reads
+    # so that a reconciliation which has silently stopped running is visible too.
+    reconciliation:
+      # Half past two, and deliberately not midnight: midnight is when every other
+      # daily job on every other system runs, and a reconciliation competing with a
+      # backup for the same connections is slow for a reason nobody will find.
+      schedule: ${LEDGER_RECONCILIATION_SCHEDULE:0 30 2 * * *}
     provider:
       # Which adapter the platform charges through, and it is deliberately empty.
       #

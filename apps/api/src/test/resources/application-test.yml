@@ -42,6 +42,18 @@ spring:
           writetimeout: 5000
 
 ideanest:
+  # A scrape credential, so that the suite exercises the whole of #138: the endpoint
+  # is exposed, MetricsScrapeSecurity exists, and HealthEndpointTests asserts both
+  # that an anonymous caller is refused and that this credential is accepted.
+  #
+  # In the shared profile rather than on one test class, for AbstractIntegrationTest's
+  # reason: a class with a property source of its own gets a context of its own and a
+  # second PostgreSQL container with it.
+  metrics:
+    scrape:
+      username: prometheus
+      password: scrape-me
+
   abuse:
     # The suite shares one process, one limiter, and one client address: every
     # request in it comes from 127.0.0.1. A realistic per-address budget would
@@ -157,6 +169,12 @@ ideanest:
       # unanswered. A deployed environment leaves this empty and collects nothing --
       # see application.yml.
       primary: PAYRIFF
+    reconciliation:
+      # `-`, like every other job's schedule in this profile. A pass firing in the
+      # background reads the very ledger rows a payment test is in the middle of
+      # writing, and would report an imbalance that is a half-finished fixture.
+      # The tests drive LedgerReconciliationJob directly.
+      schedule: "-"
     collection:
       # Both `-`, like every other job's schedule in this profile. A timer firing in
       # the background of a test suite would charge the very pledges a test is about

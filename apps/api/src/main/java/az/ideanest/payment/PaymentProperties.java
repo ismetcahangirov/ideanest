@@ -14,7 +14,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  */
 @ConfigurationProperties(prefix = "ideanest.payment")
 public record PaymentProperties(
-        Provider provider, Collection collection, CircuitBreaker circuitBreaker, Webhooks webhooks) {
+        Provider provider,
+        Collection collection,
+        CircuitBreaker circuitBreaker,
+        Webhooks webhooks,
+        Reconciliation reconciliation) {
 
     public PaymentProperties {
         // A deployment that configures none of these still starts, for ProjectProperties'
@@ -25,6 +29,29 @@ public record PaymentProperties(
         collection = collection == null ? Collection.defaults() : collection;
         circuitBreaker = circuitBreaker == null ? CircuitBreaker.defaults() : circuitBreaker;
         webhooks = webhooks == null ? Webhooks.defaults() : webhooks;
+        reconciliation = reconciliation == null ? Reconciliation.defaults() : reconciliation;
+    }
+
+    /**
+     * §8.4's {@code ledger-reconciliation} — issue #70.
+     *
+     * @param schedule when the pass fires, as a UTC cron expression, or {@code -} to register
+     *     the job without scheduling it. §8.4 says daily; the hour is deliberately not
+     *     midnight, because midnight is when every other daily job on every other system runs
+     *     and a reconciliation that competes with the nightly backup for the same connections
+     *     is a reconciliation that is slow for a reason nobody will find
+     */
+    public record Reconciliation(String schedule) {
+
+        private static final String DEFAULT_SCHEDULE = "0 30 2 * * *";
+
+        public static Reconciliation defaults() {
+            return new Reconciliation(DEFAULT_SCHEDULE);
+        }
+
+        public Reconciliation {
+            schedule = schedule == null || schedule.isBlank() ? DEFAULT_SCHEDULE : schedule;
+        }
     }
 
     /**
