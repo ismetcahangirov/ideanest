@@ -25,6 +25,11 @@ import { TwoFactorPanel } from './TwoFactorPanel';
  *     carries no `twoFactorEnabled`.
  *   - disabling costs the password and a proof, because otherwise the whole feature is worth
  *     exactly one password.
+ *   - **the step's heading has focus before control comes back.** #322: the move used to be
+ *     scheduled for the next frame, which is after the browser has already delivered the next
+ *     keystroke, so a reader who typed straight away lost everything past the first character
+ *     to the heading. The test below pins the timing rather than the symptom, because the
+ *     symptom only appears on a machine slow enough to lose the race.
  */
 
 vi.mock('../../lib/auth/twoFactor', () => ({
@@ -153,5 +158,63 @@ describe('disabling', () => {
 
     // Without a code the feature would be worth exactly one password.
     expect(disableMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('moving between steps', () => {
+  /*
+   * #322. `requestAnimationFrame` is stubbed to capture rather than to run, so that the
+   * frame the old implementation scheduled its focus move on can be landed by hand — in the
+   * middle of a word, which is what a loaded CI runner does by accident. Without that control
+   * the race resolves the friendly way almost every time, which is why the defect read as a
+   * flaky test for a fortnight instead of as the input-eating bug it is for anybody typing a
+   * password rather than pasting one.
+   */
+  function heldFrames(): { land: () => void; restore: () => void } {
+    const pending: FrameRequestCallback[] = [];
+    const spy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      pending.push(callback);
+      return pending.length;
+    });
+    return {
+      land: () => pending.splice(0).forEach((callback) => callback(0)),
+      restore: () => spy.mockRestore(),
+    };
+  }
+
+  it('has moved focus to the new heading before the next frame, not on it', async () => {
+    const frames = heldFrames();
+    try {
+      const user = userEvent.setup();
+      render(<TwoFactorPanel />);
+
+      await user.click(screen.getByRole('button', { name: 'Turn it off' }));
+
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { name: 'Turn two-factor authentication off' }),
+      );
+    } finally {
+      frames.restore();
+    }
+  });
+
+  it('does not take the field away from a reader who starts typing straight away', async () => {
+    const frames = heldFrames();
+    try {
+      const user = userEvent.setup();
+      render(<TwoFactorPanel />);
+
+      await user.click(screen.getByRole('button', { name: 'Turn it off' }));
+      const password = screen.getByLabelText(/Current password/u);
+      await user.type(password, 'correct');
+
+      // The frame the transition would have asked for lands here, mid-word.
+      frames.land();
+      await user.keyboard(' horse');
+
+      expect((password as HTMLInputElement).value).toBe('correct horse');
+    } finally {
+      frames.restore();
+    }
   });
 });
