@@ -153,6 +153,35 @@ springdoc:
   writer-with-default-pretty-printer: true
 
 ideanest:
+  # §4.13's caching, from the service's side -- issue #127. The web client caches its
+  # public reads for a minute; this is how it is told which campaign stopped being
+  # true before the minute is up. See az.ideanest.shared.cache.
+  #
+  # A DEPLOYMENT THAT SETS NEITHER OF THESE DOES NOTHING AND IS CORRECT. Every cached
+  # read on the far side already carries its own window, so invalidation shortens a
+  # staleness that was always bounded -- it does not create correctness that would
+  # otherwise be missing. Both halves are required together: an endpoint with no secret
+  # is a call the far side answers 401 to, every time, in a log line per event.
+  cache:
+    invalidation:
+      # The full URL of the web client's endpoint, e.g.
+      # https://ideanest.az/api/cache/revalidate
+      endpoint: ${CACHE_REVALIDATE_URL:}
+      # The shared secret, sent as a bearer token, and the same value the web client
+      # reads from IDEANEST_REVALIDATE_SECRET. It is not protecting confidential data --
+      # the tags name public pages -- it is protecting the cache: an endpoint that
+      # evicts by name and asks for no proof is a request anybody can send in a loop to
+      # turn every cached render into an origin fetch.
+      secret: ${CACHE_REVALIDATE_SECRET:}
+      # Short, because the call is made from a pool the outbox relay feeds. Long enough
+      # to cross a datacentre and not long enough to matter if the far side is wedged.
+      connect-timeout: PT2S
+      read-timeout: PT3S
+      # How many batches may wait before new ones are dropped. A backlog means the far
+      # side is unreachable, and a hint that arrives ten minutes late has already been
+      # overtaken by the window it was meant to shorten.
+      queue-capacity: 256
+
   # §17.3's limits on the public reads. Everything else in that table guards a
   # module's own endpoint and is configured beside it; these guard endpoints that
   # take no token at all, so they are counted per client address -- an office or a

@@ -2,6 +2,7 @@ import type { Page } from '../community/signals';
 import type { EnvSource } from '../seo/metadata';
 import { apiOrigin } from '../seo/metadata-source';
 import { PROFILE_PAGE_SIZE, type ProfileProjectCard, type PublicProfile } from './api';
+import { profile as profileTag } from '../cache/tags';
 import { readProjectCardPage, readPublicProfile } from './wire';
 
 /**
@@ -69,14 +70,20 @@ export interface ProfileReadOptions {
  */
 const PROFILE_REVALIDATE_SECONDS = 60;
 
-async function read(path: string, options: ProfileReadOptions): Promise<unknown | null> {
+async function read(
+  path: string,
+  options: ProfileReadOptions,
+  tag: string,
+): Promise<unknown | null> {
   const fetchImpl = options.fetchImpl ?? fetch;
 
   try {
     const response = await fetchImpl(`${apiOrigin(options.env)}${path}`, {
       credentials: 'omit',
       headers: { accept: 'application/json' },
-      next: { revalidate: PROFILE_REVALIDATE_SECONDS },
+      // #127. A profile's own fields move twice a year and the two lists on it move whenever
+      // one of its campaigns launches, so the tag is what makes the shared window survivable.
+      next: { revalidate: PROFILE_REVALIDATE_SECONDS, tags: [tag] },
       ...(options.signal === undefined ? {} : { signal: options.signal }),
     });
 
@@ -105,7 +112,7 @@ export async function fetchPublicProfile(
   slug: string,
   options: ProfileReadOptions = {},
 ): Promise<PublicProfile | null> {
-  return readPublicProfile(await read(`/v1/users/${encodeURIComponent(slug)}`, options));
+  return readPublicProfile(await read(`/v1/users/${encodeURIComponent(slug)}`, options, profileTag(slug)));
 }
 
 /**
@@ -117,9 +124,10 @@ export async function fetchPublicProfile(
  */
 async function readFirstPage(
   path: string,
+  slug: string,
   options: ProfileReadOptions,
 ): Promise<Page<ProfileProjectCard> | null> {
-  const body = await read(`${path}?limit=${PROFILE_PAGE_SIZE}`, options);
+  const body = await read(`${path}?limit=${PROFILE_PAGE_SIZE}`, options, profileTag(slug));
   if (body === null) return null;
 
   return readProjectCardPage(body);
@@ -136,7 +144,7 @@ export function fetchCreatedProjects(
   slug: string,
   options: ProfileReadOptions = {},
 ): Promise<Page<ProfileProjectCard> | null> {
-  return readFirstPage(`/v1/users/${encodeURIComponent(slug)}/projects`, options);
+  return readFirstPage(`/v1/users/${encodeURIComponent(slug)}/projects`, slug, options);
 }
 
 /**
@@ -153,5 +161,5 @@ export function fetchBackedProjects(
   slug: string,
   options: ProfileReadOptions = {},
 ): Promise<Page<ProfileProjectCard> | null> {
-  return readFirstPage(`/v1/users/${encodeURIComponent(slug)}/backed`, options);
+  return readFirstPage(`/v1/users/${encodeURIComponent(slug)}/backed`, slug, options);
 }

@@ -1,5 +1,6 @@
 import createIntlMiddleware from 'next-intl/middleware';
 import { type NextRequest, NextResponse } from 'next/server';
+import { publicCacheControl } from './lib/cache/publicRoutes';
 import { LOCALE_COOKIE, isLocale, localeOrDefault } from './lib/i18n/locale';
 import { routing } from './i18n/routing';
 
@@ -29,6 +30,18 @@ import { routing } from './i18n/routing';
  * still mirrors the account's column into it on bootstrap, so the preference survives a new
  * device; that mechanism is untouched.
  *
+ * <h2>It is also where a public page is marked cacheable — #127</h2>
+ *
+ * Every server render in this application is anonymous: the refresh cookie lives on
+ * `Path=/v1/auth`, so a page request carries no session, and nothing under `src/` reads
+ * `next/headers` at all. That makes the HTML of a public page shareable, which the framework
+ * cannot infer — a dynamic route is `private, no-store` by default, whatever it rendered.
+ *
+ * `lib/cache/publicRoutes.ts` decides which paths qualify and why the decision is a function
+ * rather than a pattern in `next.config.mjs`. It is applied here because this is the one place
+ * every request already passes through, and because a header set beside the redirect that
+ * created the address cannot drift away from it.
+ *
  * <h2>307 AND NOT 308, DELIBERATELY</h2>
  *
  * The destination depends on a cookie, so it is not permanent and must never be recorded as
@@ -45,7 +58,14 @@ export default function middleware(request: NextRequest): NextResponse {
    * `/az/discover` splits to `['', 'az', 'discover']`, so the candidate is always index 1.
    * A path that already names a language is next-intl's to handle.
    */
-  if (isLocale(pathname.split('/')[1])) return intlMiddleware(request);
+  if (isLocale(pathname.split('/')[1])) {
+    const response = intlMiddleware(request);
+
+    const cacheControl = publicCacheControl(pathname);
+    if (cacheControl !== null) response.headers.set('cache-control', cacheControl);
+
+    return response;
+  }
 
   const locale = localeOrDefault(request.cookies.get(LOCALE_COOKIE)?.value);
   const destination = request.nextUrl.clone();

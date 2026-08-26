@@ -2,6 +2,7 @@ import type { Page } from '../community/signals';
 import type { ProfileProjectCard, PublicProfile } from '../profiles/api';
 import { profileHref } from '../profiles/api';
 import { fetchPublicProfile as readProfile, type ProfileReadOptions } from '../profiles/server';
+import { profile as profileTag } from '../cache/tags';
 import { readProjectCardPage } from '../profiles/wire';
 import type { EnvSource } from '../seo/metadata';
 import { apiOrigin } from '../seo/metadata-source';
@@ -141,7 +142,12 @@ export async function fetchCreatorProjects(
     const response = await impl(`${apiOrigin(options.env)}${path}`, {
       credentials: 'omit',
       headers: { accept: 'application/json' },
-      next: { revalidate: options.revalidateSeconds ?? PUBLIC_READ_REVALIDATE_SECONDS },
+      // The same tag the profile page's own read carries — #127. One creator publishing a
+      // campaign should refresh both the Creator tab and `/u/{slug}`, not one of them.
+      next: {
+        revalidate: options.revalidateSeconds ?? PUBLIC_READ_REVALIDATE_SECONDS,
+        tags: [profileTag(slug)],
+      },
       /*
        * `RequestInit` has no `next` in the DOM library — it is Next's extension of it — so
        * the object is widened here rather than the whole module being typed against a

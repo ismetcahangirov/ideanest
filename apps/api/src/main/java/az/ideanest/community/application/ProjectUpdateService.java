@@ -12,6 +12,7 @@ import az.ideanest.project.application.ProjectAccess;
 import az.ideanest.project.application.ProjectNotFoundException;
 import az.ideanest.project.application.PublicProjects;
 import az.ideanest.shared.access.ProjectCapability;
+import az.ideanest.shared.outbox.Outbox;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -136,6 +137,7 @@ public class ProjectUpdateService {
     private final ProjectAccess access;
     private final PublicProjects publicProjects;
     private final AuditLog audit;
+    private final Outbox outbox;
     private final Clock clock;
 
     public ProjectUpdateService(
@@ -143,12 +145,14 @@ public class ProjectUpdateService {
             ProjectAccess access,
             PublicProjects publicProjects,
             AuditLog audit,
+            Outbox outbox,
             Clock clock) {
 
         this.updates = updates;
         this.access = access;
         this.publicProjects = publicProjects;
         this.audit = audit;
+        this.outbox = outbox;
         this.clock = clock;
     }
 
@@ -198,6 +202,18 @@ public class ProjectUpdateService {
                 publishAt);
 
         ProjectUpdate stored = save(projectId, update);
+
+        /*
+         * Through §8.3's outbox rather than an in-process event, for `Outbox`'s reason: an
+         * update that rolled back must be one nothing was told about. #127's cache
+         * invalidation is the only consumer today; `ProjectUpdatePublishedEvent` says what it
+         * deliberately is not.
+         */
+        outbox.record(
+                ProjectUpdatePublishedEvent.AGGREGATE_TYPE,
+                projectId,
+                ProjectUpdatePublishedEvent.EVENT_TYPE,
+                ProjectUpdatePublishedEvent.of(stored));
 
         audit.record(
                 AuditAction.PROJECT_UPDATE_PUBLISHED,

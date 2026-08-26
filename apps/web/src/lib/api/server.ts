@@ -11,6 +11,14 @@ import {
 } from '../collections/api';
 import type { DiscoveryFeed, ProjectCard } from '../discovery/api';
 import { DEFAULT_LOCALE } from '../i18n/locale';
+import {
+  COLLECTIONS,
+  DISCOVERY,
+  TAXONOMY,
+  campaignAddress,
+  collection as collectionTag,
+  project,
+} from '../cache/tags';
 import type { EnvSource } from '../seo/metadata';
 import { apiOrigin } from '../seo/metadata-source';
 
@@ -113,10 +121,21 @@ function client(options: ServerReadOptions): ApiClient {
  * An explicit `options.locale` still wins, because a caller inside an already-dynamic route
  * may know better.
  */
-async function readOptions(options: ServerReadOptions) {
+async function readOptions(options: ServerReadOptions, ...tags: readonly string[]) {
   return {
     headers: { 'accept-language': await localeFor(options) },
-    next: { revalidate: options.revalidateSeconds ?? PUBLIC_READ_REVALIDATE_SECONDS },
+    /*
+     * THE TAGS ARE WHAT MAKE THE WINDOW ABOVE SURVIVABLE — #127. Sixty seconds is a
+     * strategy for load and not for correctness: a backer watches the total they just moved
+     * sit unchanged for up to a minute on the page where the number is the point. A tag lets
+     * the service name the campaign that changed, so the minute stays for everything nobody
+     * touched. `lib/cache/tags.ts` holds the vocabulary and says what is deliberately not
+     * invalidated.
+     */
+    next: {
+      revalidate: options.revalidateSeconds ?? PUBLIC_READ_REVALIDATE_SECONDS,
+      tags: [...tags],
+    },
   };
 }
 
@@ -146,7 +165,7 @@ export async function fetchCampaignPage(
   try {
     return await client(options).get('/v1/projects/{creatorSlug}/{projectSlug}', {
       path: { creatorSlug, projectSlug },
-      ...(await readOptions(options)),
+      ...(await readOptions(options, campaignAddress(creatorSlug, projectSlug))),
     });
   } catch (cause) {
     return refusalOrRethrow(cause);
@@ -171,7 +190,7 @@ export async function fetchPublicRewards(
   try {
     return await client(options).get('/v1/projects/{projectId}/rewards/public', {
       path: { projectId },
-      ...(await readOptions(options)),
+      ...(await readOptions(options, project(projectId))),
     });
   } catch (cause) {
     return refusalOrRethrow(cause);
@@ -198,7 +217,7 @@ export async function fetchDiscoveryFeed(
   try {
     const feed = await client(options).get('/v1/discover', {
       query: parametersOf(query),
-      ...(await readOptions(options)),
+      ...(await readOptions(options, DISCOVERY)),
     });
     /*
      * Cast to the module that owns the discovery wire types. The generated schema describes
@@ -234,7 +253,7 @@ export async function fetchSearchResults(
   try {
     const feed = await client(options).get('/v1/search', {
       query: parametersOf(query),
-      ...(await readOptions(options)),
+      ...(await readOptions(options, DISCOVERY)),
     });
     // Cast for the reason the discovery reader gives: `lib/discovery/api.ts` owns the wire
     // shape, and the generated schema marks every field of it optional.
@@ -273,7 +292,7 @@ export async function fetchCategories(options: ServerReadOptions = {}): Promise<
   const withWindow: ServerReadOptions = { revalidateSeconds: TAXONOMY_REVALIDATE_SECONDS, ...options };
 
   try {
-    const tree = await client(withWindow).get('/v1/categories', await readOptions(withWindow));
+    const tree = await client(withWindow).get('/v1/categories', await readOptions(withWindow, TAXONOMY));
     /*
      * Narrowed to the three fields the browse pages use, rather than cast wholesale.
      * `CategoryResponse` also carries `names`, `nameAz` and `nameEn`, which the controller
@@ -324,7 +343,7 @@ export async function fetchCollections(
   options: ServerReadOptions = {},
 ): Promise<readonly Collection[] | null> {
   try {
-    const index = await client(options).get('/v1/collections', await readOptions(options));
+    const index = await client(options).get('/v1/collections', await readOptions(options, COLLECTIONS));
     /*
      * Narrowed through `lib/collections/api.ts` rather than cast. The generated schema marks
      * every field optional — springdoc marks a record component required only when it can
@@ -367,7 +386,12 @@ export async function fetchCollection(
     const body = await client(options).get('/v1/collections/{slug}', {
       path: { slug },
       query: collectionQueryParams(page),
-      ...(await readOptions(options)),
+      /*
+       * Both, because the landing page is two facts: the collection's own fields, which the
+       * index also renders, and the campaigns in it, which staff add and remove one at a
+       * time. Adding a campaign to Spring 2027 must not evict every other collection's page.
+       */
+      ...(await readOptions(options, COLLECTIONS, collectionTag(slug))),
     });
 
     const collection = body.collection === undefined ? null : collectionFrom(body.collection);

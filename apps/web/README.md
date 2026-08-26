@@ -27,6 +27,7 @@ cd apps/api && ./gradlew bootRun       # http://localhost:8080
 |---|---|---|
 | `IDEANEST_API_ORIGIN` | `http://localhost:8080` | Where `/v1/*` is proxied. Read at build time on the server only — the browser never learns it. The sitemap also reads the service directly through it |
 | `IDEANEST_SITE_URL` | `http://localhost:3000` | This application's public origin. **Must be set in any deployed environment** — every `robots.txt` entry, sitemap URL, canonical URL, `og:url`, and absolute social-image URL is written against it. Server-only, and read at build time by the statically rendered pages, so changing it means rebuilding. A value that is set but is not an absolute `http(s)` URL is refused rather than fallen back on |
+| `IDEANEST_REVALIDATE_SECRET` | unset | The shared secret the service presents to `POST /api/cache/revalidate`. **Unset refuses every call**, rather than allowing them: an endpoint that evicts cached pages by name and asks for no proof is a request anybody can send in a loop to turn every cached render into an origin fetch. Same value as the service's `CACHE_REVALIDATE_SECRET`. See [Caching and revalidation](#caching-and-revalidation) |
 | `NEXT_PUBLIC_IDEANEST_RUM_SAMPLE_RATE` | `1` | Fraction of sessions whose Core Web Vitals are reported. `0` collects nothing at all. `NEXT_PUBLIC_`, so it is inlined at build time and changing it means rebuilding. See [Real user monitoring](#real-user-monitoring) |
 | `IDEANEST_RUM_LOCAL_SINK` | on outside production | The in-memory buffer behind `GET /api/rum`. `next start` runs as production on a laptop too, so set `true` to keep the table there |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | unset | Google's OAuth client identifier (§4.1 A-04). **Unset means the Google button is not rendered at all** — the service answers 501 for a provider it has no configuration for, and a button that always fails is worst of all on the sign-in screen. A client identifier is public by construction; the client *secret* is the service's and neither of these flows uses one |
@@ -531,6 +532,80 @@ the page never used. The stateless members are re-exported from
 `@ideanest/ui/server`, and `packages/ui/src/server.test.ts` walks everything
 reachable from it and fails if any of it acquires a hook. The rule used to be a
 comment in `app/discover/page.tsx` asking people not to; it is now a boundary.
+
+## Caching and revalidation
+
+`docs/architecture.md` §4.13 and issue #127. Three layers, and each answers a
+question the one above it cannot.
+
+### The data cache, and why sixty seconds is not enough on its own
+
+Every public read carries `next: { revalidate: 60 }`, matching the
+`Cache-Control` the service puts on the same read. That bounds load and it does
+not bound *wrongness*: a backer who pledges watches the total they just moved sit
+unchanged for up to a minute on the one page where the number is the point, and a
+creator who publishes an update sends people to a page that does not have it yet.
+
+Shortening the window is the wrong fix. It costs every reader of every campaign a
+request to make the one campaign that changed correct sooner, and it still does
+not make it correct *now*.
+
+So every public read is also tagged. `src/lib/cache/tags.ts` holds the
+vocabulary — the campaign by address and by identifier, the taxonomy, the
+collections, one profile — and the service names the campaign that changed.
+
+**A pledge deliberately does not invalidate the discovery feed.** A pledge
+changes the amount raised, which changes the ordering of a feed sorted by
+momentum, so on paper every pledge on the platform invalidates every feed page.
+That is a cache which is empty at any interesting traffic level, bought with a
+reader seeing a slightly older ordering of campaigns they have not chosen yet.
+The feed keeps its minute, and `discovery` is evicted only by the events that
+change what is *in* it — a launch, and the two ways a campaign ends.
+
+### `POST /api/cache/revalidate`
+
+Authenticated with a shared secret in `IDEANEST_REVALIDATE_SECRET`, compared in
+constant time. **With no secret configured it refuses everything**, rather than
+allowing everything: a deployment that lost the variable would otherwise come up
+with the door open and nothing would say so.
+
+The secret is not protecting confidential data — the tags name public pages — it
+is protecting the cache. An endpoint that evicts by name and asks for no proof is
+a request anybody can send in a loop to turn every cached render into an origin
+fetch, which is a denial-of-service against the service the cache exists to
+shield.
+
+The tag vocabulary is closed and an unrecognised tag is **named in the response**
+rather than ignored, because a caller whose tag was silently dropped would
+believe the page had been refreshed and would go looking for the fault on the
+wrong side. The realistic threat is a caller with the secret and a bug: an empty
+string, or a wildcard, both of which would evict everything.
+
+The far side is `az.ideanest.shared.cache` in `apps/api`, which is configured
+with `CACHE_REVALIDATE_URL` and `CACHE_REVALIDATE_SECRET`. Everything it does is
+a hint: it never throws, it never blocks the outbox relay that feeds it, and it
+drops rather than queues when the web client is unreachable. A hint that is lost
+costs a page that is briefly stale, which is what the window above already
+guarantees.
+
+### `Cache-Control` for a shared cache
+
+`src/lib/cache/publicRoutes.ts`, applied in `middleware.ts`. Public pages are
+served `public, s-maxage=60, stale-while-revalidate=600`; everything else keeps
+the framework's `private, no-store`.
+
+This is safe because **every server render in this application is anonymous**,
+and that is a property rather than a coincidence: the refresh cookie is issued on
+`Path=/v1/auth`, so a page request carries no session, and nothing under `src/`
+calls `next/headers` at all. A signed-in reader and a stranger are served the
+same HTML and the difference appears after hydration.
+
+It is an allow-list of path shapes rather than a deny-list, and it is a function
+rather than a `headers()` entry in `next.config.mjs`, because the campaign's
+public page is `/{locale}/projects/{id}/{projectSlug}` and the creator's editor is
+`/{locale}/projects/{id}/edit`. A path pattern that matches the first matches the
+second, and the shape of that mistake — a creator's draft marked publicly
+cacheable — is invisible in review and obvious in production.
 
 ## Metadata and social previews
 

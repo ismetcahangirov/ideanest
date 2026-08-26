@@ -38,6 +38,58 @@ notification end to end.
 
 ---
 
+## Cache invalidation
+
+`docs/architecture.md` §4.13 and issue #127. The web client caches its public
+reads for a minute; this is how it is told which campaign stopped being true
+before the minute is up. `az.ideanest.shared.cache` is the whole of it.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `CACHE_REVALIDATE_URL` | unset | The web client's endpoint, e.g. `https://ideanest.az/api/cache/revalidate` |
+| `CACHE_REVALIDATE_SECRET` | unset | The shared secret, sent as a bearer token. The same value the web client reads from `IDEANEST_REVALIDATE_SECRET` |
+
+**A deployment that sets neither does nothing, and is correct.** Every cached
+read on the far side already carries its own window, so invalidation shortens a
+staleness that was always bounded — it does not create correctness that would
+otherwise be missing. The service says which state it is in once at start-up and
+then stops mentioning it.
+
+Both halves are required together: an endpoint with no secret is a call the far
+side answers `401` to, every time, in a log line per event.
+
+### It is a hint, and everything about it follows from that
+
+`CacheInvalidationListener` hangs off the outbox relay, which means it runs
+inside the relay's dispatch transaction. `OutboxDispatcher`'s contract is
+explicit about what an exception there costs: the row stays pending and the whole
+event is delivered again, including the notification fan-out that already
+succeeded. Failing a real delivery to retry a cache hint is the wrong way round.
+
+So `CacheInvalidator` never throws, never makes the call on the relay's thread —
+which Spring shares with every other scheduled job — and drops rather than queues
+when the web client is unreachable. A hint that is lost costs a page that is
+stale for up to a minute and then correct on its own.
+
+### Which events, and the one distinction that matters
+
+Money arriving (`pledge.confirmed`, `pledge.collected`), the team speaking
+(`project.update_published`), the audience speaking (`comment.posted`), and the
+campaign's own state changing.
+
+`project.approved` is deliberately absent — approval is not publication, and a
+page that does not exist yet has no cache entry to drop. So are `pledge.edited`
+and the payment failures, which arrive in bursts and would each evict a campaign
+page for a change of a few manat in a figure rounded to the nearest whole one on
+screen.
+
+**The discovery feed is invalidated by membership and never by ordering.** A
+launch and the two ways a campaign ends change what is *in* the feed; a pledge
+changes only where a campaign sits in it, and evicting every feed page for that
+is a cache that is empty at any interesting traffic level.
+
+---
+
 ## Email
 
 `NotificationChannel.EMAIL` has a transport since #86 (§12.3). The parts worth
