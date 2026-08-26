@@ -1,4 +1,6 @@
-import { canonicalUrl, type EnvSource } from '../metadata';
+import type { Locale } from '../../i18n/locale';
+import { canonicalUrl, sitePath, type EnvSource } from '../metadata';
+import { localePath } from '../sitemap/localised';
 import type { JsonLdNode } from './document';
 
 /**
@@ -30,16 +32,41 @@ export interface Crumb {
 }
 
 /**
+ * WHAT THE FIXED STEPS ARE CALLED, IN THE LANGUAGE OF THE PAGE THEY ARE ON — #123.
+ *
+ * These were four frozen constants with English names in them, which was correct while the
+ * application had one language. It has four, and a `BreadcrumbList` reading `Home → Discover`
+ * on `/ru/discover` is a machine-readable claim contradicting the words a reader can see two
+ * inches above it. Google's own guidance is that the markup must describe the page as it is
+ * presented; four crumbs it never localised are four sentences the page does not say.
+ *
+ * <p>The words arrive from the catalogue through `lib/i18n/trail-copy.ts`, resolved on the
+ * server by the route, exactly the way every other piece of localised copy reaches a component
+ * in this application — not read here, because this module is the bottom of the SEO layer and
+ * a `getTranslations` call at the bottom of it would make eight pure functions async.
+ */
+export interface TrailCopy {
+  readonly home: string;
+  readonly discover: string;
+  readonly categories: string;
+  readonly collections: string;
+}
+
+/**
  * The site itself.
  *
  * It was named here before the route existed, on the argument that this file states the
  * platform's public URL contract rather than an inventory of the routes that happen to be
- * built. #264 built it, so the crumb now points at a page rather than at a promise.
+ * built. #264 built it, so the crumb points at a page rather than at a promise.
  */
-export const HOME_CRUMB: Crumb = Object.freeze({ name: 'Home', path: '/' });
+export function homeCrumb(copy: TrailCopy): Crumb {
+  return { name: copy.home, path: '/' };
+}
 
 /** The feed. The one discovery URL that is indexable — see `DISCOVERY_PATHS`. */
-export const DISCOVER_CRUMB: Crumb = Object.freeze({ name: 'Discover', path: '/discover' });
+export function discoverCrumb(copy: TrailCopy): Crumb {
+  return { name: copy.discover, path: '/discover' };
+}
 
 /**
  * The taxonomy's index — §4.13 WS-05, issue #265.
@@ -48,23 +75,27 @@ export const DISCOVER_CRUMB: Crumb = Object.freeze({ name: 'Discover', path: '/d
  * the only address for a category was `/discover?category=…`, which robots.txt disallows;
  * `/categories/games` is a page, so a trail through it is a claim that is true.
  */
-export const CATEGORIES_CRUMB: Crumb = Object.freeze({ name: 'Categories', path: '/categories' });
+export function categoriesCrumb(copy: TrailCopy): Crumb {
+  return { name: copy.categories, path: '/categories' };
+}
 
 /**
  * Curation's index — D-08, §4.13 WS-04, issue #266.
  *
- * `CATEGORIES_CRUMB`'s argument, one vocabulary over: an open call's only address used to be
+ * `categoriesCrumb`'s argument, one vocabulary over: an open call's only address used to be
  * `/discover?programme=…`, which robots.txt disallows wholesale, so a crumb naming a
  * collection had nowhere true to point. `/collections/spring-2027` is a page, so the trail
  * through `/collections` is a claim that holds.
  *
  * The path is duplicated from `lib/collections/api.ts`'s `COLLECTIONS_PATH` rather than
- * imported, exactly as the two above are literals rather than imports from their own feature
+ * imported, exactly as the three above are literals rather than imports from their own feature
  * modules. This module is the bottom of the SEO layer and reaching up into a feature to
  * build a trail would invert that — and a route's own module is not where "what does a
  * crawler call this step" is decided.
  */
-export const COLLECTIONS_CRUMB: Crumb = Object.freeze({ name: 'Collections', path: '/collections' });
+export function collectionsCrumb(copy: TrailCopy): Crumb {
+  return { name: copy.collections, path: '/collections' };
+}
 
 /**
  * Whitespace collapsed and trimmed.
@@ -90,6 +121,7 @@ function collapsed(text: string): string {
  */
 export function breadcrumbNode(
   trail: readonly Crumb[],
+  locale: Locale,
   env: EnvSource = process.env,
 ): JsonLdNode | null {
   const steps = trail
@@ -109,8 +141,19 @@ export function breadcrumbNode(
        * origin. A crumb whose path arrived from a request — a slug, a title —
        * therefore cannot point the trail at another host, and the URL in the
        * trail is character for character the one in the `<link rel=canonical>`.
+       *
+       * `localePath` in the middle, since #123. Without it every step named
+       * the un-prefixed address, which `middleware.ts` answers with a 307 — so a
+       * trail whose whole purpose is to name the pages a reader came through
+       * would have named four redirects, and the last step would have
+       * contradicted the canonical of the page it was emitted on.
+       *
+       * The order matters and `sitePath` is why it is safe: the path is reduced
+       * to our own origin BEFORE the language is prefixed, so a crumb whose
+       * path arrived as `https://elsewhere.example/steal` becomes `/en/steal`
+       * rather than `/en` glued to somebody else's URL.
        */
-      item: canonicalUrl(crumb.path, env),
+      item: canonicalUrl(localePath(sitePath(crumb.path, env), locale), env),
     })),
   };
 }

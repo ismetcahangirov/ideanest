@@ -44,8 +44,40 @@ class HealthEndpointTests extends AbstractIntegrationTest {
                 .isEqualTo(HttpStatus.OK);
     }
 
+    /**
+     * #138 exposed {@code /actuator/prometheus} and guarded it with HTTP Basic.
+     *
+     * <p>The refusal is the half worth pinning hardest. Metrics are not confidential the way a
+     * pledge is, and they are a map: queue depths, provider availability, JVM internals, and
+     * every URI template this service serves. Read continuously by a stranger that is
+     * reconnaissance, and a rate-limit-free way to measure when the platform is under strain.
+     */
     @Test
-    @DisplayName("no endpoint beyond health is exposed")
+    @DisplayName("the metrics endpoint refuses a caller with no credential")
+    void metricsAreNotAnonymous() {
+        assertThat(rest.getForEntity("/actuator/prometheus", String.class).getStatusCode())
+                .isIn(HttpStatus.UNAUTHORIZED, HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("the metrics endpoint answers the scraper, with §8.4's three conditions in it")
+    void metricsAnswerTheScraper() {
+        ResponseEntity<String> response = rest.withBasicAuth("prometheus", "scrape-me")
+                .getForEntity("/actuator/prometheus", String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        String body = response.getBody();
+        assertThat(body).isNotNull();
+        // The three §8.4 alerts read these three families. A rename that broke `alerts.yml`
+        // would otherwise be invisible until the night somebody needed the alert.
+        assertThat(body).contains("ideanest_ledger_reconciliation_findings");
+        assertThat(body).contains("ideanest_payment_collection_attempts_total");
+        assertThat(body).contains("ideanest_queue_waiting");
+    }
+
+    @Test
+    @DisplayName("no endpoint beyond health and metrics is exposed")
     void otherEndpointsStayClosed() {
         // env and configprops print configuration, which includes the database
         // password. beans and mappings describe the attack surface.

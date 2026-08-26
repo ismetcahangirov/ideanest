@@ -1,5 +1,6 @@
 import { Monitor, Smartphone } from 'lucide-react';
 import { Pill, Tag } from '@ideanest/ui';
+import type { Locale } from '../../lib/i18n/locale';
 import type { SessionSummary } from '../../lib/sessions/api';
 import {
   browserOf,
@@ -14,6 +15,15 @@ export interface SessionRowProps {
   session: SessionSummary;
   /** Fixed by the caller so every row in a render agrees on "ago". */
   now: Date;
+  /**
+   * Fixed by the caller for the same reason `now` is — #324.
+   *
+   * A prop rather than `useRouteLocale()` here: this component is a pure row and its test
+   * renders it outside a router, where `useParams` answers `null`. The panel above it is the
+   * one component in the pair that is mounted on a route, so it is the one that reads the
+   * segment.
+   */
+  locale: Locale;
   busy: boolean;
   onSignOut: (session: SessionSummary) => void;
 }
@@ -31,7 +41,7 @@ export interface SessionRowProps {
  * hurry about — the same reasoning that keeps the active page in a paginator
  * white rather than lime. Colour alone would carry nothing anyway (§9.2).
  */
-export function SessionRow({ session, now, busy, onSignOut }: SessionRowProps) {
+export function SessionRow({ session, now, locale, busy, onSignOut }: SessionRowProps) {
   const name = deviceNameOf(session);
   const platform = platformOf(session.userAgent);
   const address = locationOf(session);
@@ -75,12 +85,12 @@ export function SessionRow({ session, now, busy, onSignOut }: SessionRowProps) {
         */}
         <p className="mt-0.5 text-sm text-white/64">
           {'Last active '}
-          <time dateTime={session.lastSeenAt} title={formatExactTime(session.lastSeenAt)}>
-            {formatRelativeTime(session.lastSeenAt, now)}
+          <time dateTime={session.lastSeenAt} title={formatExactTime(session.lastSeenAt, locale)}>
+            {formatRelativeTime(session.lastSeenAt, now, locale)}
           </time>
           {' · signed in '}
-          <time dateTime={session.createdAt} title={formatExactTime(session.createdAt)}>
-            {formatRelativeTime(session.createdAt, now)}
+          <time dateTime={session.createdAt} title={formatExactTime(session.createdAt, locale)}>
+            {formatRelativeTime(session.createdAt, now, locale)}
           </time>
         </p>
       </div>

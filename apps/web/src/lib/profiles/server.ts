@@ -2,6 +2,8 @@ import type { Page } from '../community/signals';
 import type { EnvSource } from '../seo/metadata';
 import { apiOrigin } from '../seo/metadata-source';
 import { PROFILE_PAGE_SIZE, type ProfileProjectCard, type PublicProfile } from './api';
+import { profile as profileTag } from '../cache/tags';
+import { readProjectCardPage, readPublicProfile } from './wire';
 
 /**
  * The profile page's server reads — §4.2 P-04 to P-06, issue #274.
@@ -36,6 +38,13 @@ import { PROFILE_PAGE_SIZE, type ProfileProjectCard, type PublicProfile } from '
  * what a stranger may see, and a server render that varied by session would be a page no
  * shared cache could hold and — worse — a page whose 404 depended on who asked.
  *
+ * <h2>The body is narrowed rather than cast — #323</h2>
+ *
+ * This module used to cast, on the argument that a `fetch` against a service in the same
+ * repository knows the shape it is getting. `lib/profiles/wire.ts` is where that argument
+ * stopped being free: the three reads below share their narrowing with the campaign page's
+ * Creator tab, which had written the same reader independently and had a test for it.
+ *
  * <h2>Failure is `null`, and the caller decides what that means</h2>
  *
  * The same rule `lib/api/server.ts` states. For the profile, `null` is `notFound()`. For a
@@ -61,19 +70,25 @@ export interface ProfileReadOptions {
  */
 const PROFILE_REVALIDATE_SECONDS = 60;
 
-async function read<T>(path: string, options: ProfileReadOptions): Promise<T | null> {
+async function read(
+  path: string,
+  options: ProfileReadOptions,
+  tag: string,
+): Promise<unknown | null> {
   const fetchImpl = options.fetchImpl ?? fetch;
 
   try {
     const response = await fetchImpl(`${apiOrigin(options.env)}${path}`, {
       credentials: 'omit',
       headers: { accept: 'application/json' },
-      next: { revalidate: PROFILE_REVALIDATE_SECONDS },
+      // #127. A profile's own fields move twice a year and the two lists on it move whenever
+      // one of its campaigns launches, so the tag is what makes the shared window survivable.
+      next: { revalidate: PROFILE_REVALIDATE_SECONDS, tags: [tag] },
       ...(options.signal === undefined ? {} : { signal: options.signal }),
     });
 
     if (!response.ok) return null;
-    return (await response.json()) as T;
+    return (await response.json()) as unknown;
   } catch {
     /*
      * Every failure is the same answer here, unlike `lib/api/server.ts`, which rethrows what
@@ -93,26 +108,29 @@ async function read<T>(path: string, options: ProfileReadOptions): Promise<T | n
  * `lib/profiles/api.ts`: the service answers 404 for all three so that the client cannot be
  * used to tell them apart, and this function does not undo that by inspecting the status.
  */
-export function fetchPublicProfile(
+export async function fetchPublicProfile(
   slug: string,
   options: ProfileReadOptions = {},
 ): Promise<PublicProfile | null> {
-  return read<PublicProfile>(`/v1/users/${encodeURIComponent(slug)}`, options);
+  return readPublicProfile(await read(`/v1/users/${encodeURIComponent(slug)}`, options, profileTag(slug)));
 }
 
-interface RawProjectPage {
-  readonly projects?: readonly ProfileProjectCard[];
-  readonly nextCursor?: string | null;
-}
-
+/**
+ * One page, or `null` for a refusal.
+ *
+ * The two are different answers and the difference survives the narrowing: an unreadable body
+ * is an empty page, and a request that did not succeed is `null`. A caller that collapsed them
+ * would print "no campaigns yet" over a service that was restarting.
+ */
 async function readFirstPage(
   path: string,
+  slug: string,
   options: ProfileReadOptions,
 ): Promise<Page<ProfileProjectCard> | null> {
-  const body = await read<RawProjectPage>(`${path}?limit=${PROFILE_PAGE_SIZE}`, options);
+  const body = await read(`${path}?limit=${PROFILE_PAGE_SIZE}`, options, profileTag(slug));
   if (body === null) return null;
 
-  return { items: body.projects ?? [], nextCursor: body.nextCursor ?? null };
+  return readProjectCardPage(body);
 }
 
 /**
@@ -126,7 +144,7 @@ export function fetchCreatedProjects(
   slug: string,
   options: ProfileReadOptions = {},
 ): Promise<Page<ProfileProjectCard> | null> {
-  return readFirstPage(`/v1/users/${encodeURIComponent(slug)}/projects`, options);
+  return readFirstPage(`/v1/users/${encodeURIComponent(slug)}/projects`, slug, options);
 }
 
 /**
@@ -143,5 +161,5 @@ export function fetchBackedProjects(
   slug: string,
   options: ProfileReadOptions = {},
 ): Promise<Page<ProfileProjectCard> | null> {
-  return readFirstPage(`/v1/users/${encodeURIComponent(slug)}/backed`, options);
+  return readFirstPage(`/v1/users/${encodeURIComponent(slug)}/backed`, slug, options);
 }

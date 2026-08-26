@@ -142,6 +142,43 @@ const nextConfig = {
   images,
 
   /**
+   * A self-contained server directory, for the container — issue #139.
+   *
+   * Without it an image has to carry `node_modules`, which for this workspace is
+   * a pnpm store full of symlinks that do not survive a `COPY`. With it, `next
+   * build` traces what the server actually imports and writes exactly that into
+   * `.next/standalone` — a few megabytes rather than a few hundred, and no
+   * install step in the runtime stage.
+   *
+   * It changes nothing about the client bundles, so the First Load JS budgets
+   * measure the same bytes they did before, and `next start` still works for the
+   * Lighthouse run in CI.
+   */
+  output: 'standalone',
+
+  /**
+   * WHAT THE TRACER MISSES UNDER pnpm, AND HOW THIS WAS FOUND.
+   *
+   * `output: 'standalone'` traces what the server imports and copies exactly
+   * that. It traced `@swc/helpers`' CommonJS build and not its ESM one, and
+   * `apps/web` is `"type": "module"` — so the container started, resolved
+   * `@swc/helpers/esm/_interop_require_default.js`, and exited 1 before serving
+   * a request.
+   *
+   * It is a trace-time miss rather than a missing dependency: the package is
+   * installed and its `cjs/` half was copied. Naming the whole package here is
+   * what makes both halves travel.
+   *
+   * The path is relative to this directory and reaches the workspace store,
+   * because pnpm does not hoist. The version is a glob so that a dependency
+   * bump does not silently stop matching — a stale exact version here would
+   * fail the same way, at run time, in an image somebody had already shipped.
+   */
+  outputFileTracingIncludes: {
+    '**/*': ['../../node_modules/.pnpm/@swc+helpers@*/node_modules/@swc/helpers/**/*'],
+  },
+
+  /**
    * `@ideanest/ui` and `@ideanest/design-tokens` are source-only packages —
    * their `exports` point straight at `.ts`/`.tsx`. Next has to compile them
    * rather than assume a built `dist`.

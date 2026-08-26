@@ -12,6 +12,7 @@ import { localeOrDefault } from '../../../lib/i18n/locale';
 import { NO_FILTERS, toHref } from '../../../lib/discovery/filters';
 import { homePageMetadata } from '../../../lib/seo/metadata';
 import { homePageGraph } from '../../../lib/seo/structured-data/graphs';
+import { graphContext } from '../../../lib/i18n/shell-copy.server';
 import { getTranslations } from 'next-intl/server';
 
 /**
@@ -94,7 +95,7 @@ export default async function HomePage() {
         the entry page while this one did not exist — `lib/seo/structured-data/identity.ts`
         says a home page is where it belongs and `graphs.ts` records the move.
       */}
-      <StructuredData nodes={homePageGraph()} />
+      <StructuredData nodes={homePageGraph(await graphContext())} />
 
       <div className="mx-auto w-full max-w-[1400px] px-5 sm:px-6">
         {/*

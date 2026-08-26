@@ -1,3 +1,5 @@
+import { dateTimeFormat } from '../i18n/formats';
+import type { Locale } from '../i18n/locale';
 import { publicFetch } from '../api/client';
 import { errorFrom } from '../api/problem';
 import { PAGE_SIZE, type ProjectCard } from '../discovery/api';
@@ -308,15 +310,15 @@ export function campaignCount(count: number): string {
  * ---------------------------------------------------------------------- */
 
 /**
- * The date format the window is stated in.
- *
  * A DATE AND NOT A TIME. `lib/time.ts` prints an exact timestamp for a session or a
  * notification, where the minute is the fact somebody is checking. A collection's window is a
- * period measured in weeks, and a closing time of "20:59" is an invitation to read a timezone
- * into a string this application cannot localise yet — `lib/time.ts` records that the locale is
- * pinned to English until §21.1's routing lands, and the same limitation applies here.
+ * period measured in weeks, and a closing time of "20:59" invites a reader to work out a
+ * timezone that the date alone does not raise. UTC, stated as a plain date, is the honest
+ * shape.
+ *
+ * <p>The language was pinned to `en-GB` with a note pointing at §21.1's routing; that landed
+ * with #123, so the reader's own language is what this is built in now.
  */
-const WINDOW_DATE = new Intl.DateTimeFormat('en-GB', { dateStyle: 'long', timeZone: 'UTC' });
 
 /** One end of a collection's window: what it is called, when it is, and the machine form. */
 export interface WindowFact {
@@ -329,9 +331,11 @@ export interface WindowFact {
 }
 
 /** An instant a reader can be shown, or `null` when the value is not a date at all. */
-export function formatWindowDate(iso: string): string | null {
+export function formatWindowDate(iso: string, locale: Locale): string | null {
   const at = new Date(iso);
-  return Number.isNaN(at.getTime()) ? null : WINDOW_DATE.format(at);
+  return Number.isNaN(at.getTime())
+    ? null
+    : dateTimeFormat(locale, { dateStyle: 'long', timeZone: 'UTC' }, 'window').format(at);
 }
 
 /**
@@ -346,22 +350,32 @@ export function formatWindowDate(iso: string): string | null {
  * An unparseable instant is dropped rather than shown. `Invalid Date` in a `<time>` element is
  * a machine-readable statement that is wrong, which is worse than the absence of one.
  */
-export function windowFacts(collection: Collection): readonly WindowFact[] {
+export function windowFacts(
+  collection: Collection,
+  locale: Locale,
+  copy: WindowCopy,
+): readonly WindowFact[] {
   const facts: WindowFact[] = [];
 
   const closes = collection.closesAt;
   if (closes !== null) {
-    const date = formatWindowDate(closes);
-    if (date !== null) facts.push({ term: 'Closes', iso: closes, date });
+    const date = formatWindowDate(closes, locale);
+    if (date !== null) facts.push({ term: copy.closes, iso: closes, date });
   }
 
   const opens = collection.opensAt;
   if (opens !== null) {
-    const date = formatWindowDate(opens);
-    if (date !== null) facts.push({ term: 'Open since', iso: opens, date });
+    const date = formatWindowDate(opens, locale);
+    if (date !== null) facts.push({ term: copy.openSince, iso: opens, date });
   }
 
   return facts;
+}
+
+/** The two terms, resolved by the route. `discovery.collections.window` in the catalogue. */
+export interface WindowCopy {
+  readonly closes: string;
+  readonly openSince: string;
 }
 
 /* -------------------------------------------------------------------------

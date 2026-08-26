@@ -85,6 +85,11 @@ const PROFILE: PublicProfile = {
   avatarUrl: null,
   bio: 'Photographer in Baku.',
   joinedAt: '2024-02-01T00:00:00Z',
+  // §4.2 P-02 and P-03. The Creator tab renders none of the three — it links to the profile
+  // for them — and they are here because #323 made this one shape rather than two.
+  websiteUrl: null,
+  location: null,
+  socialLinks: [],
 };
 
 const OTHER: CreatorProject = {

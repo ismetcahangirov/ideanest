@@ -141,6 +141,30 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     java.math.BigDecimal collectedOn(@Param("pledgeId") UUID pledgeId);
 
     /**
+     * What has actually moved, per kind and per currency — §8.4's
+     * {@code ledger-reconciliation}, issue #70.
+     *
+     * <p>An aggregate rather than a scan, because this runs daily over every transaction the
+     * platform has ever recorded and the point of it is to be cheap enough to keep running as
+     * that number grows. Grouped by currency and never summed across it, for §21.2's reason.
+     *
+     * <p><strong>{@code SUCCEEDED} only.</strong> A declined charge moved nothing and has no
+     * ledger posting; counting it would make every failed collection look like an imbalance.
+     * {@code PENDING} is excluded for the same reason and a sharper one — money the provider
+     * has accepted and not settled is money in neither place yet, and a reconciliation that
+     * counted it would fire every night between the two.
+     */
+    @Query(
+            """
+            SELECT new az.ideanest.payment.application.SettledTotal(t.type, t.currency, COALESCE(SUM(t.amount), 0))
+            FROM PaymentTransaction t
+            WHERE t.status = az.ideanest.payment.domain.TransactionStatus.SUCCEEDED
+            GROUP BY t.type, t.currency
+            ORDER BY t.currency, t.type
+            """)
+    List<az.ideanest.payment.application.SettledTotal> settledTotals();
+
+    /**
      * Every settled charge on a campaign — #69's payout calculation.
      *
      * <p>The gross a payout is computed from. Ordered so that a payout's own record of

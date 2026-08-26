@@ -6,6 +6,17 @@ import type { PublicRewardTier } from './product';
 import { categoryPageGraph, discoverPageGraph, homePageGraph, projectPageGraph } from './graphs';
 
 const env = { IDEANEST_SITE_URL: 'https://ideanest.az' } as const;
+
+/** The English catalogue's words. `trail-copy.test.ts` is what checks they are the real ones. */
+const trailCopy = {
+  home: 'Home',
+  discover: 'Discover',
+  categories: 'Categories',
+  collections: 'Collections',
+} as const;
+
+/** What every builder needs to name a page in its own language — #123. */
+const context = { locale: 'en', trailCopy, env } as const;
 const now = new Date('2026-08-18T09:00:00Z');
 const path = '/projects/ayan/studio';
 
@@ -36,11 +47,11 @@ const tier: PublicRewardTier = {
 
 describe('homePageGraph', () => {
   it('carries the site identity, because the home page is the entry page', () => {
-    expect(types(homePageGraph(env))).toEqual(['Organization', 'WebSite']);
+    expect(types(homePageGraph(context))).toEqual(['Organization', 'WebSite']);
   });
 
   it('claims no trail, because a single-item one says "you got here from here"', () => {
-    expect(types(homePageGraph(env))).not.toContain('BreadcrumbList');
+    expect(types(homePageGraph(context))).not.toContain('BreadcrumbList');
   });
 });
 
@@ -51,7 +62,7 @@ describe('discoverPageGraph', () => {
    * as a stand-in only while there was no route at the origin.
    */
   it('carries the trail and no longer the site identity', () => {
-    expect(types(discoverPageGraph(env))).toEqual(['BreadcrumbList']);
+    expect(types(discoverPageGraph(context))).toEqual(['BreadcrumbList']);
   });
 });
 
@@ -59,7 +70,7 @@ describe('categoryPageGraph', () => {
   it('is a trail through the categories index and nothing else', () => {
     const [breadcrumb] = categoryPageGraph({
       trail: [{ name: 'Games', path: '/categories/games' }],
-      env,
+      ...context,
     });
 
     expect(breadcrumb?.['@type']).toBe('BreadcrumbList');
@@ -72,14 +83,14 @@ describe('categoryPageGraph', () => {
         { name: 'Games', path: '/categories/games' },
         { name: 'Tabletop', path: '/categories/games/tabletop' },
       ],
-      env,
+      ...context,
     });
 
     expect(names(breadcrumb)).toEqual(['Home', 'Categories', 'Games', 'Tabletop']);
   });
 
   it('is still a trail on the index itself, where there is nothing below Categories', () => {
-    const [breadcrumb] = categoryPageGraph({ trail: [], env });
+    const [breadcrumb] = categoryPageGraph({ trail: [], ...context });
 
     expect(names(breadcrumb)).toEqual(['Home', 'Categories']);
   });
@@ -99,8 +110,8 @@ describe('projectPageGraph', () => {
       deadline: '2026-09-08T20:59:59Z',
       tiers: [tier],
       faqs: [{ question: 'When does it ship?', answer: 'March 2027.' }],
-      env,
       now,
+      ...context,
       ...overrides,
     });
   }

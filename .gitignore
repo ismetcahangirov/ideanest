@@ -33,3 +33,9 @@ coverage/
 
 # agent worktrees, created by the tooling and never part of the repository
 .claude/worktrees/
+
+# Machine-local Spring config overrides (see apps/api/config/application-local.yml)
+apps/api/config/
+
+# Local credential notes. Never committed
+hesablar.txt

@@ -1,6 +1,7 @@
 import { ApiError, createApiClient } from '@ideanest/api-client';
 import type { ServerReadOptions } from '../api/server';
 import { apiOrigin } from '../seo/metadata-source';
+import { project } from '../cache/tags';
 
 /**
  * §4.4's Updates tab and §4.9's half of #83 — the numbered announcements on a campaign.
@@ -118,7 +119,12 @@ export async function fetchProjectUpdates(
       path: { projectId },
       query: cursor === null ? { limit: UPDATE_PAGE_SIZE } : { cursor, limit: UPDATE_PAGE_SIZE },
       ...(options.locale === undefined ? {} : { headers: { 'accept-language': options.locale } }),
-      next: { revalidate: options.revalidateSeconds ?? PUBLIC_READ_REVALIDATE_SECONDS },
+      // #127. The service names the campaign when a comment, an update or a question
+      // moves; without the tag this list is only ever as fresh as the window above.
+      next: {
+        revalidate: options.revalidateSeconds ?? PUBLIC_READ_REVALIDATE_SECONDS,
+        tags: [project(projectId)],
+      },
     });
     return readUpdatePage(body);
   } catch (cause) {

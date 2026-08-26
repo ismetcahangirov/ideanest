@@ -12,6 +12,7 @@ import { SessionProvider } from '../session/SessionProvider';
 import { CampaignComments } from './CampaignComments';
 import CATALOGUE from '../../../messages/en.json';
 import { resolveServerTree } from '../../test-support/server-tree';
+import { expectNoViolations } from '../../test-axe';
 
 /*
  * The real catalogue, through next-intl's own formatter.
@@ -353,5 +354,22 @@ describe('withdrawing a comment', () => {
 
     await waitFor(() => expect(deleteMock).toHaveBeenCalledWith('c1'));
     expect(refresh).toHaveBeenCalled();
+  });
+});
+
+describe('accessibility', () => {
+  /**
+   * #129. The composer and a loaded thread, which is where the page's only free-text control
+   * and its only nested list live. `src/test-axe.ts` says what an automated pass catches.
+   */
+  it('leaves no automatically detectable violation with threads or without', async () => {
+    sessionMock.mockResolvedValue(ACCOUNT);
+
+    const { container } = await renderTab(page([thread()]));
+    await expectNoViolations(container);
+    cleanup();
+
+    const { container: empty } = await renderTab(page([]));
+    await expectNoViolations(empty);
   });
 });

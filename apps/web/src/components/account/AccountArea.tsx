@@ -56,19 +56,19 @@ import { AccountNav, type AccountNavGroup } from './AccountNav';
  * now no `NextIntlClientProvider` anywhere in this subtree: nothing under this frame calls
  * `useTranslations`, and anything that starts to should be given props rather than a provider.
  *
- * **`lang` ON THIS `<div>`, DELIBERATELY NOT ON `<html>`.** `app/layout.tsx` hard-codes
- * `lang={SITE_LANGUAGE}`, and it must keep doing so: that layout wraps the cached public
- * routes as well as this one, and reading a locale there would make every route on the site
- * dynamic — the exact cost `i18n/request.ts` documents refusing to pay for a navigation bar.
- * So the document stays `en` and this subtree overrides it, which is not a workaround but the
- * mechanism HTML provides for a page in more than one language.
+ * **`lang` ON THIS `<div>`, AND WHY IT SURVIVED #123.** This paragraph used to say the
+ * attribute was an override: `app/layout.tsx` hard-coded `lang="en"` because reading a locale
+ * there would have made every cached public route dynamic, so the document said English and
+ * this subtree corrected it. That is no longer the arrangement. The language is a path
+ * segment, `app/[locale]/layout.tsx` renders `<html lang={locale}>` from it, and the shell
+ * around this `<div>` is drawn from the catalogue rather than from English literals.
  *
- * And this page IS in more than one language, which is why the attribute cannot simply be
- * left off. `SiteShell` renders the header and the footer as siblings of this `<div>`, and
- * both are still English literals; the content inside it is drawn from the catalogue. Without
- * the override a screen reader pronounces Russian navigation with English phonetics, which
- * does not read as a translation defect to the person hearing it — it reads as noise. With
- * it, each half is announced in the language it is actually written in.
+ * So the attribute now restates what the document already says instead of contradicting it,
+ * and it is kept rather than deleted because it is a claim this component can make about
+ * itself: the frame declares the language of the copy it resolved, whatever it is mounted
+ * inside. Nesting a matching `lang` is inert in every user agent — an override that agrees
+ * with its parent changes nothing — so the cost is one attribute and the benefit is that the
+ * claim does not depend on a layout two directories up.
  */
 export interface AccountAreaProps {
   readonly children: ReactNode;

@@ -66,6 +66,39 @@ public class LedgerReader {
         return new LedgerView(scope, postings, nextCursor, balancesFor(scope));
     }
 
+    /**
+     * Every account's position on one campaign — issue #99.
+     *
+     * <p>The same rows {@link #page} puts under the explorer, without the postings above them.
+     * §4.7's CD-16 shows a creator what came in and what came off it, and publishing the
+     * balances beside those figures is what makes them checkable rather than asserted: a
+     * summary a creator cannot reconcile against anything is a number they have to take on
+     * trust, and this is the one screen where that is not good enough.
+     *
+     * <p>Grouped by currency and never summed across it, for §21.2's reason — so a campaign
+     * that somehow held two would answer with two rows for one account rather than with a
+     * total that means nothing.
+     */
+    @Transactional(readOnly = true)
+    public List<LedgerBalance> balancesOf(UUID projectId) {
+        return entries.balancesOfProject(projectId).stream().map(LedgerBalance::of).toList();
+    }
+
+    /**
+     * Every account's position across the platform — §8.4's {@code ledger-reconciliation},
+     * issue #70.
+     *
+     * <p>One aggregate over the whole table, which is what makes a daily check affordable as
+     * that table grows. §22.1's regulatory position is argued from the escrow figure this
+     * returns, and {@code LedgerReconciliation} is what checks the rest of it adds up.
+     *
+     * <p>Grouped by currency and never summed across it, for §21.2's reason.
+     */
+    @Transactional(readOnly = true)
+    public List<LedgerBalance> balances() {
+        return entries.balances().stream().map(LedgerBalance::of).toList();
+    }
+
     private List<PostingHead> headsFor(LedgerScope scope, Long before, int limit) {
         PageRequest page = PageRequest.ofSize(limit);
         if (scope.account() != null) {

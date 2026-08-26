@@ -1,3 +1,6 @@
+import { relativeTimeFormat, dateTimeFormat, UNKNOWN_TIME } from './i18n/formats';
+import type { Locale } from './i18n/locale';
+
 /**
  * Rendering an instant for a reader.
  *
@@ -8,12 +11,22 @@
  *
  * `lib/sessions/describe.ts` re-exports both, so its own callers and tests are unchanged.
  *
- * The locale is pinned to English until internationalised routing lands (#123). That is a
- * limitation rather than a decision: these strings are the only record on screen of when
- * something happened, and a reader in Azerbaijani currently gets them in English.
+ * <h2>THE LOCALE IS A PARAMETER NOW, AND IT IS NOT OPTIONAL — #324</h2>
+ *
+ * Both functions were pinned to English with the limitation written down: "these strings are
+ * the only record on screen of when something happened, and a reader in Azerbaijani currently
+ * gets them in English." The pin was waiting on #123's locale-prefixed routing, which has
+ * landed, so it is gone.
+ *
+ * <p>It is a required parameter rather than one defaulting to `DEFAULT_LOCALE` on purpose. A
+ * default would have compiled every existing call site unchanged and left seventy of them
+ * quietly English — the same defect, now invisible instead of documented. Making it required
+ * is what turned "find every screen that prints a time" from an audit into a typecheck.
+ *
+ * <p>Server components read the locale from `getLocale()`; client components read it from
+ * `useRouteLocale()`, which takes it off the matched route segment. Neither reads a cookie,
+ * so neither makes a render dynamic.
  */
-
-const RELATIVE = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
 
 const DIVISIONS: ReadonlyArray<readonly [amount: number, unit: Intl.RelativeTimeFormatUnit]> = [
   [60, 'second'],
@@ -26,37 +39,42 @@ const DIVISIONS: ReadonlyArray<readonly [amount: number, unit: Intl.RelativeTime
 ];
 
 /**
- * "3 hours ago", "yesterday", "just now".
+ * "3 hours ago", "dünən", "5 месяцев назад".
  *
  * `now` is a parameter rather than a call to `Date.now()` so that the function is pure and
  * the tests do not have to freeze the clock.
  */
-export function formatRelativeTime(iso: string, now: Date): string {
+export function formatRelativeTime(iso: string, now: Date, locale: Locale): string {
+  const relative = relativeTimeFormat(locale, { numeric: 'auto' }, 'relative');
+
   const then = new Date(iso);
-  if (Number.isNaN(then.getTime())) return 'Unknown';
+  if (Number.isNaN(then.getTime())) return UNKNOWN_TIME[locale];
 
   let duration = (then.getTime() - now.getTime()) / 1000;
 
-  // Under a minute, a rounded figure is noise.
-  //
-  // Lower case, because every string this returns is read inside a sentence:
-  // "Last active just now", "3 hours ago".
-  if (Math.abs(duration) < 45) return 'just now';
+  /*
+   * Under a minute, a rounded figure is noise.
+   *
+   * `format(0, 'second')` rather than the literal "just now" this used to return: with
+   * `numeric: 'auto'` it is the language's own word for the present moment — "now", "indi",
+   * "сейчас", "şimdi" — which is one fewer string to translate and one fewer to get wrong.
+   * It is lower case in all four, which matters because every string this returns is read
+   * inside a sentence: "Last active just now", "3 hours ago".
+   */
+  if (Math.abs(duration) < 45) return relative.format(0, 'second');
 
   for (const [amount, unit] of DIVISIONS) {
-    if (Math.abs(duration) < amount) return RELATIVE.format(Math.round(duration), unit);
+    if (Math.abs(duration) < amount) return relative.format(Math.round(duration), unit);
     duration /= amount;
   }
 
-  return RELATIVE.format(Math.round(duration), 'year');
+  return relative.format(Math.round(duration), 'year');
 }
 
 /** The exact timestamp, for the `title` of the relative one. */
-const EXACT = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
-
-export function formatExactTime(iso: string): string {
+export function formatExactTime(iso: string, locale: Locale): string {
   const at = new Date(iso);
-  if (Number.isNaN(at.getTime())) return 'Unknown';
+  if (Number.isNaN(at.getTime())) return UNKNOWN_TIME[locale];
 
-  return EXACT.format(at);
+  return dateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }, 'exact').format(at);
 }

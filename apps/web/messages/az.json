@@ -3,7 +3,13 @@
     "save": "Yadda saxla",
     "cancel": "İmtina",
     "saving": "Yadda saxlanılır…",
-    "tryAgain": "Yenidən cəhd edin"
+    "tryAgain": "Yenidən cəhd edin",
+    "trail": {
+      "home": "Ana səhifə",
+      "discover": "Kəşf et",
+      "categories": "Kateqoriyalar",
+      "collections": "Kolleksiyalar"
+    }
   },
   "shell": {
     "skipToContent": "Məzmuna keç",
@@ -267,7 +273,11 @@
     },
     "collections": {
       "metaTitle": "Kolleksiyalar",
-      "metaDescription": "IdeaNest-də redaksiya seçimləri, mövzu kolleksiyaları və açıq çağırışlar — hər birinin öz kampaniya səhifəsi var."
+      "metaDescription": "IdeaNest-də redaksiya seçimləri, mövzu kolleksiyaları və açıq çağırışlar — hər birinin öz kampaniya səhifəsi var.",
+      "window": {
+        "closes": "Bağlanır",
+        "openSince": "Açıqdır"
+      }
     },
     "search": {
       "title": "Axtarış",

@@ -8,7 +8,9 @@ import {
   rewardProductNodes,
 } from './product';
 
-const campaignUrl = 'https://ideanest.az/projects/ayan/studio';
+const campaignUrl = 'https://ideanest.az/en/projects/ayan/studio';
+/** The campaign's name rather than one of its four addresses — see `RewardProductsInput`. */
+const campaignId = 'https://ideanest.az/projects/ayan/studio';
 
 /** A deadline three weeks out, and a clock that agrees. */
 const deadline = '2026-09-08T20:59:59Z';
@@ -29,6 +31,7 @@ function tier(overrides: Partial<PublicRewardTier> = {}): PublicRewardTier {
 function nodes(overrides: Partial<RewardProductsInput> = {}): readonly JsonLdNode[] {
   return rewardProductNodes({
     campaignUrl,
+    campaignId,
     campaignState: 'LIVE',
     deadline,
     tiers: [tier()],
@@ -70,13 +73,13 @@ describe('rewardProductNodes', () => {
 
   it('identifies each tier under the campaign it belongs to', () => {
     expect(nodes()[0]?.['@id']).toBe(
-      `${campaignUrl}#reward-ffa5a1e2-0000-7000-8000-000000000001`,
+      `${campaignId}#reward-ffa5a1e2-0000-7000-8000-000000000001`,
     );
   });
 
   it('escapes an identifier that would otherwise malform the fragment', () => {
     expect(nodes({ tiers: [tier({ id: 'a b#c' })] })[0]?.['@id']).toBe(
-      `${campaignUrl}#reward-a%20b%23c`,
+      `${campaignId}#reward-a%20b%23c`,
     );
   });
 
@@ -156,7 +159,7 @@ describe('rewardProductNodes', () => {
       tier({ id: '5', price: { amount: '85.00', currency: 'AZN' } }),
     ];
 
-    expect(nodes({ tiers }).map((node) => node['@id'])).toEqual([`${campaignUrl}#reward-5`]);
+    expect(nodes({ tiers }).map((node) => node['@id'])).toEqual([`${campaignId}#reward-5`]);
   });
 
   it('drops a tier whose currency is not a currency code', () => {

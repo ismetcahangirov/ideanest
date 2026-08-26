@@ -4,6 +4,7 @@ import type { CampaignFaq } from '../../lib/community/faqs';
 import { CampaignFaqs } from './CampaignFaqs';
 import CATALOGUE from '../../../messages/en.json';
 import { resolveServerTree } from '../../test-support/server-tree';
+import { expectNoViolations } from '../../test-axe';
 
 /*
  * The real catalogue, through next-intl's own formatter.
@@ -159,5 +160,14 @@ describe('the FAQ tab', () => {
     expect(container.querySelector('details')).toBeNull();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
     expect(screen.getByText('Yes — shipping is calculated at checkout.')).toBeVisible();
+  });
+});
+
+describe('accessibility', () => {
+  /** #129. A list of question-and-answer pairs, which is where a heading ladder goes wrong. */
+  it('leaves no automatically detectable violation', async () => {
+    const { container } = render(await resolveServerTree(<CampaignFaqs faqs={[faq()]} />));
+
+    await expectNoViolations(container);
   });
 });

@@ -13,6 +13,7 @@ import {
 } from '../../lib/pledges/backer';
 import { formatMoney } from '../../lib/money';
 import { formatExactTime } from '../../lib/time';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
 /**
  * Every pledge this account has made — the way in to §4.5's PL-09 and PL-10. Issue #287.
@@ -72,6 +73,7 @@ function momentOf(pledge: BackerPledgeSummary): { readonly label: string; readon
 }
 
 export function PledgeList() {
+  const locale = useRouteLocale();
   const { status, items, hasMore, loadingMore, error, loadMore } = useCursorList<BackerPledgeSummary>(
     useCallback((cursor, signal) => listMyPledges(cursor, signal), []),
   );
@@ -143,7 +145,7 @@ export function PledgeList() {
                   {moment !== null && (
                     <>
                       {' · '}
-                      {moment.label} {formatExactTime(moment.at)}
+                      {moment.label} {formatExactTime(moment.at, locale)}
                     </>
                   )}
                 </p>

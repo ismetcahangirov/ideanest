@@ -249,16 +249,27 @@ describe('grouping by day', () => {
   });
 
   it('reads today and yesterday by name', () => {
-    expect(dayLabelOf(NOW.toISOString(), NOW)).toBe('Today');
-    expect(dayLabelOf('2026-08-19T09:00:00.000Z', NOW)).toBe('Yesterday');
+    expect(dayLabelOf(NOW.toISOString(), NOW, 'en')).toBe('Today');
+    expect(dayLabelOf('2026-08-19T09:00:00.000Z', NOW, 'en')).toBe('Yesterday');
   });
 
   it('reads anything older as a date', () => {
-    expect(dayLabelOf('2026-08-01T09:00:00.000Z', NOW)).toContain('2026');
+    expect(dayLabelOf('2026-08-01T09:00:00.000Z', NOW, 'en')).toContain('2026');
   });
 
   it('does not throw on an instant it cannot read', () => {
     expect(dayKeyOf('not a date')).toBe('unknown');
-    expect(dayLabelOf('not a date', NOW)).toBe('Undated');
+    expect(dayLabelOf('not a date', NOW, 'en')).toBe('Undated');
+  });
+
+  /**
+   * #324. The heading is a heading, so it is capitalised — in the reader's own language,
+   * because `toUpperCase` turns Turkish `içinde` into `Içinde`, which is a different word.
+   */
+  it('names the day in the reader’s language, capitalised the way that language does it', () => {
+    expect(dayLabelOf(NOW.toISOString(), NOW, 'az')).toBe('Bu gün');
+    expect(dayLabelOf(NOW.toISOString(), NOW, 'ru')).toBe('Сегодня');
+    expect(dayLabelOf(NOW.toISOString(), NOW, 'tr')).toBe('Bugün');
+    expect(dayLabelOf('2026-08-19T09:00:00.000Z', NOW, 'ru')).toBe('Вчера');
   });
 });

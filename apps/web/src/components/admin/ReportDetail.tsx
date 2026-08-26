@@ -29,6 +29,7 @@ import {
 } from '../../lib/moderation/describe';
 import { DecisionDialog, type Decision } from '../moderation/DecisionDialog';
 import { ConsoleRefusal } from './ConsoleRefusal';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
 const SUBJECT = 'this report';
 
@@ -75,6 +76,7 @@ export interface ReportDetailProps {
  * surface, and the same one the queue keeps.
  */
 export function ReportDetail({ reportId }: ReportDetailProps) {
+  const locale = useRouteLocale();
   const [status, setStatus] = useState<ConsoleStatus>('loading');
   const [report, setReport] = useState<QueuedReport | null>(null);
   const [history, setHistory] = useState<readonly AuditEntry[] | null>(null);
@@ -263,8 +265,8 @@ export function ReportDetail({ reportId }: ReportDetailProps) {
           <div className="flex gap-2">
             <dt className="text-white/40">Reported</dt>
             <dd className="text-white/64">
-              <time dateTime={report.createdAt} title={formatExactTime(report.createdAt)}>
-                {formatRelativeTime(report.createdAt, now)}
+              <time dateTime={report.createdAt} title={formatExactTime(report.createdAt, locale)}>
+                {formatRelativeTime(report.createdAt, now, locale)}
               </time>
             </dd>
           </div>
@@ -300,7 +302,7 @@ export function ReportDetail({ reportId }: ReportDetailProps) {
               <span className="font-mono" title={report.resolution.moderatorId}>
                 {shortId(report.resolution.moderatorId)}
               </span>{' '}
-              on <time dateTime={report.resolution.at}>{formatExactTime(report.resolution.at)}</time>.
+              on <time dateTime={report.resolution.at}>{formatExactTime(report.resolution.at, locale)}</time>.
             </p>
             {report.resolution.note != null && report.resolution.note !== '' ? (
               <p className="mt-2 text-sm text-white/64">{report.resolution.note}</p>

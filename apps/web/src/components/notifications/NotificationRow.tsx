@@ -2,6 +2,7 @@
 
 import { Link } from '../../i18n/navigation';
 import { Pill, Tag } from '@ideanest/ui';
+import type { Locale } from '../../lib/i18n/locale';
 import type { InboxNotification } from '../../lib/notifications/api';
 import { categoryLabel, describeNotification } from '../../lib/notifications/describe';
 import { formatExactTime, formatRelativeTime } from '../../lib/time';
@@ -10,6 +11,11 @@ export interface NotificationRowProps {
   readonly notification: InboxNotification;
   /** Pinned per load, so every row's "ago" is measured from one instant. */
   readonly now: Date;
+  /**
+   * Fixed by the caller for the same reason `now` is — #324. `InboxPanel` is the component
+   * mounted on a route, so it is the one that reads the language off the segment.
+   */
+  readonly locale: Locale;
   readonly busy: boolean;
   readonly onOpen: (notification: InboxNotification) => void;
 }
@@ -38,7 +44,7 @@ export interface NotificationRowProps {
  * working through a list, not exploring, so it gets colour on hover and nothing else. §8
  * rules out staggering a list regardless.
  */
-export function NotificationRow({ notification, now, busy, onOpen }: NotificationRowProps) {
+export function NotificationRow({ notification, now, locale, busy, onOpen }: NotificationRowProps) {
   const view = describeNotification(notification);
   const unread = notification.readAt === undefined || notification.readAt === null;
 
@@ -72,8 +78,8 @@ export function NotificationRow({ notification, now, busy, onOpen }: Notificatio
 
         <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-white/56">
           <Tag>{categoryLabel(notification.category)}</Tag>
-          <time dateTime={notification.occurredAt} title={formatExactTime(notification.occurredAt)}>
-            {formatRelativeTime(notification.occurredAt, now)}
+          <time dateTime={notification.occurredAt} title={formatExactTime(notification.occurredAt, locale)}>
+            {formatRelativeTime(notification.occurredAt, now, locale)}
           </time>
           {unread && <span className="text-white/72">Unread</span>}
         </p>

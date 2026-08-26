@@ -1,11 +1,20 @@
-import { canonicalUrl, isPubliclyVisible, type EnvSource, type PublicProjectPreview } from '../metadata';
+import type { Locale } from '../../i18n/locale';
 import {
-  CATEGORIES_CRUMB,
-  COLLECTIONS_CRUMB,
-  DISCOVER_CRUMB,
-  HOME_CRUMB,
+  canonicalUrl,
+  isPubliclyVisible,
+  sitePath,
+  type EnvSource,
+  type PublicProjectPreview,
+} from '../metadata';
+import { localePath } from '../sitemap/localised';
+import {
   breadcrumbNode,
+  categoriesCrumb,
+  collectionsCrumb,
+  discoverCrumb,
+  homeCrumb,
   type Crumb,
+  type TrailCopy,
 } from './breadcrumb';
 import type { JsonLdNode } from './document';
 import { faqPageNode, type FaqEntry } from './faq';
@@ -21,6 +30,15 @@ import { rewardProductNodes, type PublicRewardTier } from './product';
  * page say about itself" is one function rather than a component that a later
  * page forgets to copy — the same rule `lib/seo/metadata.ts` states for `<meta>`
  * tags, applied to the machine-readable half of the same job.
+ *
+ * <h2>EVERY BUILDER TAKES THE ROUTE'S LOCALE SINCE #123</h2>
+ *
+ * Not decoration. A graph names URLs, and every URL on this platform now carries a language
+ * segment; a node that named the un-prefixed one would be pointing a crawler at a 307. It
+ * also names the page's language outright on `WebSite`, and it names the fixed breadcrumb
+ * steps in words — both of which were English constants on all four languages until this
+ * change. Structured data that contradicts the visible page is worse than none, because a
+ * search engine that catches it once has grounds to discount the rest.
  */
 
 /**
@@ -36,8 +54,11 @@ import { rewardProductNodes, type PublicRewardTier } from './product';
  * `BreadcrumbList`, which `breadcrumbNode` refuses for the reason it gives — "you got here
  * from here" is not navigation.
  */
-export function homePageGraph(env: EnvSource = process.env): readonly JsonLdNode[] {
-  return [...siteIdentityNodes(env)];
+export function homePageGraph(input: {
+  readonly locale: Locale;
+  readonly env?: EnvSource;
+}): readonly JsonLdNode[] {
+  return [...siteIdentityNodes(input.locale, input.env ?? process.env)];
 }
 
 /**
@@ -48,8 +69,16 @@ export function homePageGraph(env: EnvSource = process.env): readonly JsonLdNode
  * argues against. What is left is the trail, which is what this page actually has to say
  * about itself.
  */
-export function discoverPageGraph(env: EnvSource = process.env): readonly JsonLdNode[] {
-  const breadcrumb = breadcrumbNode([HOME_CRUMB, DISCOVER_CRUMB], env);
+export function discoverPageGraph(input: {
+  readonly locale: Locale;
+  readonly trailCopy: TrailCopy;
+  readonly env?: EnvSource;
+}): readonly JsonLdNode[] {
+  const breadcrumb = breadcrumbNode(
+    [homeCrumb(input.trailCopy), discoverCrumb(input.trailCopy)],
+    input.locale,
+    input.env ?? process.env,
+  );
 
   return breadcrumb === null ? [] : [breadcrumb];
 }
@@ -71,9 +100,15 @@ export function discoverPageGraph(env: EnvSource = process.env): readonly JsonLd
  */
 export function categoryPageGraph(input: {
   readonly trail: readonly Crumb[];
+  readonly locale: Locale;
+  readonly trailCopy: TrailCopy;
   readonly env?: EnvSource;
 }): readonly JsonLdNode[] {
-  const breadcrumb = breadcrumbNode([HOME_CRUMB, CATEGORIES_CRUMB, ...input.trail], input.env ?? process.env);
+  const breadcrumb = breadcrumbNode(
+    [homeCrumb(input.trailCopy), categoriesCrumb(input.trailCopy), ...input.trail],
+    input.locale,
+    input.env ?? process.env,
+  );
   return breadcrumb === null ? [] : [breadcrumb];
 }
 
@@ -83,8 +118,16 @@ export function categoryPageGraph(input: {
  * Home, then here: two steps, which is the fewest a trail may have and the reason
  * `breadcrumbNode` refuses one.
  */
-export function collectionsIndexGraph(env: EnvSource = process.env): readonly JsonLdNode[] {
-  const breadcrumb = breadcrumbNode([HOME_CRUMB, COLLECTIONS_CRUMB], env);
+export function collectionsIndexGraph(input: {
+  readonly locale: Locale;
+  readonly trailCopy: TrailCopy;
+  readonly env?: EnvSource;
+}): readonly JsonLdNode[] {
+  const breadcrumb = breadcrumbNode(
+    [homeCrumb(input.trailCopy), collectionsCrumb(input.trailCopy)],
+    input.locale,
+    input.env ?? process.env,
+  );
   return breadcrumb === null ? [] : [breadcrumb];
 }
 
@@ -105,10 +148,13 @@ export function collectionsIndexGraph(env: EnvSource = process.env): readonly Js
 export function collectionPageGraph(input: {
   readonly title: string;
   readonly path: string;
+  readonly locale: Locale;
+  readonly trailCopy: TrailCopy;
   readonly env?: EnvSource;
 }): readonly JsonLdNode[] {
   const breadcrumb = breadcrumbNode(
-    [HOME_CRUMB, COLLECTIONS_CRUMB, { name: input.title, path: input.path }],
+    [homeCrumb(input.trailCopy), collectionsCrumb(input.trailCopy), { name: input.title, path: input.path }],
+    input.locale,
     input.env ?? process.env,
   );
   return breadcrumb === null ? [] : [breadcrumb];
@@ -124,6 +170,8 @@ export interface ProjectPageGraphInput {
   readonly tiers: readonly PublicRewardTier[];
   /** The pairs the page actually renders. See `faq.ts`. */
   readonly faqs: readonly FaqEntry[];
+  readonly locale: Locale;
+  readonly trailCopy: TrailCopy;
   readonly env?: EnvSource;
   /** Injected in tests; the wall clock otherwise. */
   readonly now?: Date;
@@ -175,10 +223,19 @@ export function projectPageGraph(input: ProjectPageGraphInput): readonly JsonLdN
   if (preview === null || !isPubliclyVisible(preview.state)) return [];
 
   const env = input.env ?? process.env;
-  const campaignUrl = canonicalUrl(input.path, env);
+  /*
+   * The localised address, so that the `Product` nodes' `url`, the `FAQPage`'s `@id` and the
+   * last crumb all name the document this graph is embedded in rather than the 307 in front
+   * of it — #123.
+   */
+  const campaignPath = sitePath(input.path, env);
+  const campaignUrl = canonicalUrl(localePath(campaignPath, input.locale), env);
+  /* The name of the campaign, as opposed to the address of one of its four documents. */
+  const campaignId = canonicalUrl(campaignPath, env);
 
   const breadcrumb = breadcrumbNode(
-    [HOME_CRUMB, DISCOVER_CRUMB, { name: preview.title, path: input.path }],
+    [homeCrumb(input.trailCopy), discoverCrumb(input.trailCopy), { name: preview.title, path: input.path }],
+    input.locale,
     env,
   );
   const faq = faqPageNode(input.faqs, campaignUrl);
@@ -187,6 +244,7 @@ export function projectPageGraph(input: ProjectPageGraphInput): readonly JsonLdN
     ...(breadcrumb === null ? [] : [breadcrumb]),
     ...rewardProductNodes({
       campaignUrl,
+      campaignId,
       campaignState: preview.state,
       deadline: input.deadline,
       tiers: input.tiers,

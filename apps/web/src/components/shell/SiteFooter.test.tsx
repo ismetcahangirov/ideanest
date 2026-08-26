@@ -7,6 +7,7 @@ import tr from '../../../messages/tr.json';
 import { SUPPORTED_LOCALES, type Locale } from '../../lib/i18n/locale';
 import { FOOTER_GROUPS } from './navigation';
 import { SiteFooter } from './SiteFooter';
+import { expectNoViolations } from '../../test-axe';
 
 /**
  * The global footer — §4.13 WS-02, and since #324 the first shell surface drawn from the
@@ -183,5 +184,14 @@ describe('the footer', () => {
 
     expect(screen.getByText('© IdeaNest')).toBeInTheDocument();
     expect(screen.queryByText(/©.*20\d\d/u)).toBeNull();
+  });
+});
+
+describe('accessibility', () => {
+  /** #129. Four link groups, each of which needs to be a named list rather than a heap. */
+  it('leaves no automatically detectable violation', async () => {
+    const { container } = render(await SiteFooter());
+
+    await expectNoViolations(container);
   });
 });

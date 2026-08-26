@@ -2,6 +2,8 @@ import { Link } from '../../i18n/navigation';
 import { EmptyState } from '@ideanest/ui/server';
 import type { Collection } from '../../lib/collections/api';
 import { CollectionCard } from './CollectionCard';
+import type { WindowCopy } from '../../lib/collections/api';
+import type { Locale } from '../../lib/i18n/locale';
 
 /**
  * The body of `/collections` — D-08, §4.13 WS-04.
@@ -41,11 +43,21 @@ import { CollectionCard } from './CollectionCard';
  */
 
 export interface CollectionIndexProps {
+  /**
+   * The language the page is in, and the two words the window is stated with — #324.
+   *
+   * Props rather than a `getLocale()`/`getTranslations()` pair inside the component: these are
+   * synchronous server components with tests that render them directly, and an async component
+   * cannot be rendered by Testing Library. The route resolves both once and hands them down,
+   * which is the arrangement every other localised value in this tree already uses.
+   */
+  readonly locale: Locale;
+  readonly windowCopy: WindowCopy;
   /** `null` when the read was refused. See the component comment. */
   readonly collections: readonly Collection[] | null;
 }
 
-export function CollectionIndex({ collections }: CollectionIndexProps) {
+export function CollectionIndex({ collections, locale, windowCopy }: CollectionIndexProps) {
   const items = collections ?? [];
 
   return (
@@ -92,7 +104,12 @@ export function CollectionIndex({ collections }: CollectionIndexProps) {
               <li key={collection.id} className="flex">
                 <div className="flex w-full">
                   {/* The first row is above the fold at every breakpoint this grid has. */}
-                  <CollectionCard collection={collection} priority={index < 3} />
+                  <CollectionCard
+                    collection={collection}
+                    locale={locale}
+                    windowCopy={windowCopy}
+                    priority={index < 3}
+                  />
                 </div>
               </li>
             ))}

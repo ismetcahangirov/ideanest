@@ -1,6 +1,7 @@
 import { ApiError, createApiClient } from '@ideanest/api-client';
 import type { ServerReadOptions } from '../api/server';
 import { apiOrigin } from '../seo/metadata-source';
+import { project } from '../cache/tags';
 
 /**
  * §4.4's FAQ tab — issue #283, over the public read the service now publishes.
@@ -106,7 +107,12 @@ export async function fetchProjectFaqs(
     const body = await client.get('/v1/projects/{projectId}/faqs', {
       path: { projectId },
       ...(options.locale === undefined ? {} : { headers: { 'accept-language': options.locale } }),
-      next: { revalidate: options.revalidateSeconds ?? PUBLIC_READ_REVALIDATE_SECONDS },
+      // #127. The service names the campaign when a comment, an update or a question
+      // moves; without the tag this list is only ever as fresh as the window above.
+      next: {
+        revalidate: options.revalidateSeconds ?? PUBLIC_READ_REVALIDATE_SECONDS,
+        tags: [project(projectId)],
+      },
     });
     return readFaqList(body);
   } catch (cause) {

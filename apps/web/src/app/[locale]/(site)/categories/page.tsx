@@ -5,6 +5,7 @@ import { categoryPath, subcategoryPath } from '../../../../lib/categories/api';
 import { localeOrDefault } from '../../../../lib/i18n/locale';
 import { publicPageMetadata } from '../../../../lib/seo/metadata';
 import { categoryPageGraph } from '../../../../lib/seo/structured-data/graphs';
+import { graphContext } from '../../../../lib/i18n/shell-copy.server';
 import { StructuredData } from '../../../../components/seo/StructuredData';
 import { getTranslations } from 'next-intl/server';
 
@@ -56,7 +57,7 @@ export default async function CategoriesPage() {
 
   return (
     <>
-      <StructuredData nodes={categoryPageGraph({ trail: [] })} />
+      <StructuredData nodes={categoryPageGraph({ trail: [], ...(await graphContext()) })} />
 
       <div className="mx-auto w-full max-w-[1400px] px-5 py-10 sm:px-6">
         <h1 className="text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">
@@ -99,7 +100,7 @@ export default async function CategoriesPage() {
                       <li key={subcategory.id}>
                         <Link
                           href={subcategoryPath(category.slug, subcategory.slug)}
-                          className="rounded-sm text-[15px] text-white/40 transition-colors duration-150 ease-in-out hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
+                          className="rounded-sm text-[15px] text-white/64 transition-colors duration-150 ease-in-out hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
                         >
                           {subcategory.name}
                         </Link>

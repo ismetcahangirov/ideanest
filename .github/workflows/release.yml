@@ -1,0 +1,198 @@
+name: Release
+
+# Build once, deploy that build — docs/architecture.md §19.2, issue #139.
+#
+# THE PROPERTY THAT MAKES A DEPLOY REVERSIBLE IS THAT NOTHING IS BUILT TWICE.
+# Every image is tagged with the commit that produced it and pushed by digest;
+# staging deploys a digest, production deploys the *same* digest, and a rollback
+# is a deploy of a digest that was running yesterday. A pipeline that rebuilt
+# from a tag would produce a different image from the same source — different
+# base layers, different transitive dependencies — and "roll back to what was
+# working" would be a hope rather than an instruction.
+#
+# WHAT IS DELIBERATELY NOT HERE: a cluster. This repository does not own one,
+# and a workflow that ran `kubectl apply` against a context nobody has
+# configured would fail on every push while looking like infrastructure. The
+# deploy step calls an environment's own hook and SAYS SO AND STOPS when none is
+# configured — the same rule the metrics endpoint and the cache invalidator
+# follow. `ops/deploy/README.md` is what an operator fills in.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  # Rollback, and the only reason this workflow is manually dispatchable. See
+  # `ops/deploy/README.md`: pick the environment and paste the digest that was
+  # running before.
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Which environment to deploy
+        required: true
+        type: choice
+        options: [staging, production]
+      digest:
+        description: 'Image digest to deploy, e.g. sha256:… (leave empty to build this ref)'
+        required: false
+        type: string
+
+concurrency:
+  # One deploy at a time per environment. Two overlapping rollouts of different
+  # digests is how an environment ends up serving both.
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  NODE_VERSION: '22'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Build
+  # ---------------------------------------------------------------------------
+  images:
+    name: Build and publish images
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Skipped entirely for a dispatch that named a digest: the whole point of a
+    # rollback is that the image already exists.
+    if: github.event_name != 'workflow_dispatch' || inputs.digest == ''
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      api: ${{ steps.digests.outputs.api }}
+      web: ${{ steps.digests.outputs.web }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Sign in to the registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      # `IDEANEST_SITE_URL` is baked into the web image, because
+      # `lib/seo/metadata.ts` writes every canonical URL, sitemap entry and
+      # `og:url` against it and the statically rendered pages hold it. One image
+      # per site URL is therefore unavoidable; this builds the production one,
+      # and `ops/deploy/README.md` says how to build a staging image when
+      # staging serves a different host.
+      - name: Build and push the API image
+        id: api
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/api
+          file: apps/api/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ github.repository }}/api:${{ github.sha }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+
+      - name: Build and push the web image
+        id: web
+        uses: docker/build-push-action@v6
+        with:
+          # The repository root, because `@ideanest/web` compiles three
+          # source-only workspace packages. `.dockerignore` is what keeps the
+          # context from being the whole checkout.
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ github.repository }}/web:${{ github.sha }}
+          build-args: |
+            IDEANEST_SITE_URL=${{ vars.SITE_URL || 'http://localhost:3000' }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
+
+      - name: Record the digests
+        id: digests
+        run: |
+          set -euo pipefail
+          echo "api=${{ steps.api.outputs.digest }}" >> "$GITHUB_OUTPUT"
+          echo "web=${{ steps.web.outputs.digest }}" >> "$GITHUB_OUTPUT"
+          {
+            echo '### Images'
+            echo
+            echo "| Image | Digest |"
+            echo "|---|---|"
+            echo "| api | \`${{ steps.api.outputs.digest }}\` |"
+            echo "| web | \`${{ steps.web.outputs.digest }}\` |"
+            echo
+            echo 'Deploy either of these by hand with **Run workflow** and the digest above.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # Migration dry run — §19.2's `migrate` step
+  # ---------------------------------------------------------------------------
+  migrations:
+    name: Migration dry run
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name != 'workflow_dispatch' || inputs.digest == ''
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      # §19.3's rules are what this proves, and it proves them against a
+      # container rather than against staging: `MigrationConventionTests` refuses
+      # a migration that is misnamed, reuses a version, or carries no reversal,
+      # and the schema test applies every migration in order to a real
+      # PostgreSQL. Running them here rather than only in `ci.yml` is what stops
+      # a merge queue from deploying a migration that has never been applied.
+      - name: Apply every migration to a clean database
+        working-directory: apps/api
+        run: ./gradlew --no-daemon test --tests '*Migration*' --tests '*Schema*'
+
+  # ---------------------------------------------------------------------------
+  # Staging — automatic, on every merge to main
+  # ---------------------------------------------------------------------------
+  staging:
+    name: Deploy to staging
+    needs: [images, migrations]
+    if: >-
+      always()
+      && (needs.images.result == 'success' || needs.images.result == 'skipped')
+      && (needs.migrations.result == 'success' || needs.migrations.result == 'skipped')
+      && (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        || (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging')
+      )
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: staging
+      api_digest: ${{ inputs.digest || needs.images.outputs.api }}
+      web_digest: ${{ inputs.digest || needs.images.outputs.web }}
+    secrets: inherit
+
+  # ---------------------------------------------------------------------------
+  # Production — on a tag, behind an approval
+  # ---------------------------------------------------------------------------
+  production:
+    name: Deploy to production
+    needs: [images, migrations]
+    if: >-
+      always()
+      && (needs.images.result == 'success' || needs.images.result == 'skipped')
+      && (needs.migrations.result == 'success' || needs.migrations.result == 'skipped')
+      && (
+        startsWith(github.ref, 'refs/tags/v')
+        || (github.event_name == 'workflow_dispatch' && inputs.environment == 'production')
+      )
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
+      api_digest: ${{ inputs.digest || needs.images.outputs.api }}
+      web_digest: ${{ inputs.digest || needs.images.outputs.web }}
+    secrets: inherit

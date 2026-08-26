@@ -4,6 +4,7 @@ import { EyeOff } from 'lucide-react';
 import { formatExactTime } from '../../lib/time';
 import { formatMoney } from '../../lib/money';
 import type { Backer } from '../../lib/dashboard/backers';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
 /**
  * §4.7's CD-10 as a table: who backed the campaign, and what each of them took.
@@ -40,6 +41,7 @@ export interface BackerTableProps {
 }
 
 export function BackerTable({ backers, label }: BackerTableProps) {
+  const locale = useRouteLocale();
   return (
     <div
       role="region"
@@ -93,7 +95,7 @@ export function BackerTable({ backers, label }: BackerTableProps) {
               <td className="px-4 py-3 text-white/64">{stateLabel(backer.state)}</td>
               <td className="px-4 py-3 text-white/64">{backer.country ?? '—'}</td>
               <td className="px-4 py-3 text-white/64">
-                <time dateTime={backer.backedAt}>{formatExactTime(backer.backedAt)}</time>
+                <time dateTime={backer.backedAt}>{formatExactTime(backer.backedAt, locale)}</time>
               </td>
             </tr>
           ))}

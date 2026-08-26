@@ -11,6 +11,7 @@ import {
 } from '../../lib/community/signals';
 import { formatRelativeTime } from '../../lib/time';
 import { useCursorList } from './useCursorList';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
 /**
  * §4.9's C-10 — the creators this account follows. Issue #288.
@@ -36,6 +37,7 @@ import { useCursorList } from './useCursorList';
  * they are.
  */
 export function FollowingPanel() {
+  const locale = useRouteLocale();
   const { status, items, hasMore, loadingMore, error, loadMore, remove } =
     useCursorList<FollowedCreator>(
       useCallback((cursor, signal) => listFollowing(cursor, signal), []),
@@ -126,7 +128,7 @@ export function FollowingPanel() {
                   {creator.name}
                 </p>
                 <p className="mt-1 text-sm text-white/40">
-                  {creator.slug} · following since {formatRelativeTime(creator.followedAt, now)}
+                  {creator.slug} · following since {formatRelativeTime(creator.followedAt, now, locale)}
                 </p>
               </div>
             </div>

@@ -1,0 +1,37 @@
+# What never belongs in a build context — issue #139.
+#
+# Not a tidiness list. `apps/web/Dockerfile` is built from the repository root,
+# because the application depends on three source-only workspace packages, and
+# without this the context is the entire checkout: two `node_modules` trees, two
+# build outputs and the git history. That is hundreds of megabytes sent to the
+# daemon before the first instruction runs, and it is also how a stale `.next`
+# from somebody's laptop ends up inside an image.
+
+.git
+.github
+.claude
+
+# Build output and installed dependencies. Both are produced inside the image.
+node_modules
+**/node_modules
+apps/web/.next
+apps/api/build
+apps/api/.gradle
+packages/*/dist
+**/*.tsbuildinfo
+
+# Local-only configuration and notes. `apps/api/config` holds machine-local
+# Spring overrides; hesablar.txt is a credential note that is git-ignored too.
+apps/api/config
+hesablar.txt
+
+# Storybook's build, the Playwright cache, coverage. None of it runs in a
+# container.
+packages/ui/storybook-static
+.playwright-mcp
+coverage
+
+# Documentation and images are read by people, not by a build.
+docs
+README.md
+CLAUDE.md

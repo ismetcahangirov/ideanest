@@ -77,8 +77,20 @@ export interface PublicRewardTier {
 }
 
 export interface RewardProductsInput {
-  /** The campaign page's canonical URL, from `canonicalUrl`. */
+  /** The campaign page's canonical URL in THIS language, from `canonicalUrl`. */
   readonly campaignUrl: string;
+  /**
+   * The campaign's language-independent address, used only as an identifier — #123.
+   *
+   * <p>A reward tier is one thing that four documents describe, so it gets one `@id`. Deriving
+   * the identifier from `campaignUrl` instead would mint four `Product` nodes for one boxed
+   * set, one per language, the same way it would have minted four `Organization` nodes for one
+   * company; `identity.ts` sets out that argument and this is the same one, a level down.
+   *
+   * <p>It is deliberately an address nothing serves — `middleware.ts` answers it with a 307 —
+   * because an `@id` is a name and not a link. `url` beside it is the document.
+   */
+  readonly campaignId: string;
   /** One of §6.1's sixteen states, as text. */
   readonly campaignState: string;
   /** ISO 8601, or `null` for a campaign that has not launched. */
@@ -190,7 +202,7 @@ function rewardProductNode(
     // The identifier is a fragment on the campaign's URL. Encoded, because an
     // identifier that arrived from the service is not a URL component until it
     // has been made into one.
-    '@id': `${input.campaignUrl}#reward-${encodeURIComponent(tier.id)}`,
+    '@id': `${input.campaignId}#reward-${encodeURIComponent(tier.id)}`,
     name,
     description: description === '' ? undefined : description,
     image,

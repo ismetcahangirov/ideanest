@@ -3,6 +3,9 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import type { Collection } from '../../lib/collections/api';
 import { CollectionHeader } from './CollectionHeader';
 
+/** The English catalogue's `discovery.collections.window`. */
+const WINDOW_COPY = { closes: 'Closes', openSince: 'Open since' };
+
 /**
  * The head of a collection landing page — D-08, issue #266.
  *
@@ -38,7 +41,7 @@ afterEach(cleanup);
 
 describe('a collection header', () => {
   it('names the collection and shows the trail it sits in', () => {
-    render(<CollectionHeader collection={collection()} />);
+    render(<CollectionHeader locale="en" windowCopy={WINDOW_COPY} collection={collection()} />);
 
     expect(screen.getByRole('heading', { level: 1, name: 'Spring 2026' })).toBeInTheDocument();
 
@@ -47,19 +50,19 @@ describe('a collection header', () => {
   });
 
   it('prints the curator’s standfirst rather than paraphrasing it', () => {
-    render(<CollectionHeader collection={collection()} />);
+    render(<CollectionHeader locale="en" windowCopy={WINDOW_COPY} collection={collection()} />);
 
     expect(screen.getByText('Applications for the spring programme.')).toBeInTheDocument();
   });
 
   it('says what an open call is, because it is the one kind a creator can act on', () => {
-    render(<CollectionHeader collection={collection()} />);
+    render(<CollectionHeader locale="en" windowCopy={WINDOW_COPY} collection={collection()} />);
 
     expect(screen.getByText(/programme campaigns can be submitted to/u)).toBeInTheDocument();
   });
 
   it('states the closing date, machine-readable, and never as a countdown', () => {
-    render(<CollectionHeader collection={collection()} />);
+    render(<CollectionHeader locale="en" windowCopy={WINDOW_COPY} collection={collection()} />);
 
     expect(screen.getByText('Closes')).toBeInTheDocument();
 
@@ -72,7 +75,7 @@ describe('a collection header', () => {
   });
 
   it('states the collection’s own size as text', () => {
-    render(<CollectionHeader collection={collection({ projectCount: 3 })} />);
+    render(<CollectionHeader locale="en" windowCopy={WINDOW_COPY} collection={collection({ projectCount: 3 })} />);
 
     expect(screen.getByText('3 campaigns')).toBeInTheDocument();
   });
@@ -80,6 +83,8 @@ describe('a collection header', () => {
   it('says nothing about a window a standing collection does not have', () => {
     render(
       <CollectionHeader
+        locale="en"
+        windowCopy={WINDOW_COPY}
         collection={collection({ kind: 'staff_selection', opensAt: null, closesAt: null })}
       />,
     );
@@ -91,13 +96,13 @@ describe('a collection header', () => {
 
 describe('the editorial badge', () => {
   it('is stated in words when membership grants it', () => {
-    render(<CollectionHeader collection={collection({ grantsBadge: true })} />);
+    render(<CollectionHeader locale="en" windowCopy={WINDOW_COPY} collection={collection({ grantsBadge: true })} />);
 
     expect(screen.getByText(/carry the IdeaNest editorial badge/u)).toBeInTheDocument();
   });
 
   it('says nothing when it does not', () => {
-    render(<CollectionHeader collection={collection({ grantsBadge: false })} />);
+    render(<CollectionHeader locale="en" windowCopy={WINDOW_COPY} collection={collection({ grantsBadge: false })} />);
 
     expect(screen.queryByText(/editorial badge/u)).toBeNull();
   });
@@ -107,6 +112,8 @@ describe('the cover', () => {
   it('is decorative, so a screen reader does not read out a file name', () => {
     const { container } = render(
       <CollectionHeader
+        locale="en"
+        windowCopy={WINDOW_COPY}
         collection={collection({
           image: { url: 'https://example.test/cover.jpg', width: 1600, height: 900 },
         })}
@@ -119,7 +126,7 @@ describe('the cover', () => {
   });
 
   it('is simply absent when there is none, rather than a broken element', () => {
-    const { container } = render(<CollectionHeader collection={collection()} />);
+    const { container } = render(<CollectionHeader locale="en" windowCopy={WINDOW_COPY} collection={collection()} />);
 
     expect(container.querySelector('img')).toBeNull();
   });

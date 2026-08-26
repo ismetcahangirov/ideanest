@@ -4,7 +4,8 @@ import { Tag } from '@ideanest/ui/server';
 import { formatDay, SERVER_TIME_ZONE } from '../../lib/projects/deadline';
 import type { CampaignUpdate, CampaignUpdatePage } from '../../lib/community/updates';
 import { ViewerInstant } from './ViewerClock';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { localeOrDefault } from '../../lib/i18n/locale';
 
 /**
  * §4.4's Updates tab — issue #284, over §4.9's public update read.
@@ -123,7 +124,11 @@ async function UpdateEntry({ update }: { readonly update: CampaignUpdate }) {
    * keeps the signature about the comment rather than about where its words came from.
    */
   const t = await getTranslations('campaign.updates');
-  const serverDay = formatDay(update.publishedAt, SERVER_TIME_ZONE);
+  const serverDay = formatDay(
+    update.publishedAt,
+    SERVER_TIME_ZONE,
+    localeOrDefault(await getLocale()),
+  );
 
   return (
     <article

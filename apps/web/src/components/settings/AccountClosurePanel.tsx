@@ -6,6 +6,7 @@ import { ApiError } from '../../lib/api/problem';
 import { cancelDeletion, requestDeletion } from '../../lib/account/closure';
 import { formatExactTime } from '../../lib/time';
 import { useSession } from '../session/SessionProvider';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
 /**
  * §4.1's A-10 — closing an account, with the thirty-day delay made explicit before it is
@@ -44,6 +45,7 @@ import { useSession } from '../session/SessionProvider';
  * animates is one somebody is still watching when they press it.
  */
 export function AccountClosurePanel() {
+  const locale = useRouteLocale();
   const { session, refresh } = useSession();
 
   const [password, setPassword] = useState('');
@@ -148,7 +150,7 @@ export function AccountClosurePanel() {
           <InlineAlert variant="warning" title="This account is scheduled to close">
             <p>
               It will be anonymised on{' '}
-              <strong className="font-medium text-white">{formatExactTime(scheduledFor)}</strong>.
+              <strong className="font-medium text-white">{formatExactTime(scheduledFor, locale)}</strong>.
               Until then you can still sign in, and cancelling below puts everything back.
             </p>
           </InlineAlert>

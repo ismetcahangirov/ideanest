@@ -12,6 +12,8 @@ import {
 } from '../../lib/collections/api';
 import { DISCOVERY_CARD_SIZES } from '../../lib/images/sizes';
 import { canOptimise } from '../../lib/images/source';
+import type { WindowCopy } from '../../lib/collections/api';
+import type { Locale } from '../../lib/i18n/locale';
 
 /**
  * One collection in the index — D-08, §4.13 WS-04.
@@ -68,6 +70,16 @@ function kindIcon(kind: string): ReactNode {
 }
 
 export interface CollectionCardProps {
+  /**
+   * The language the page is in, and the two words the window is stated with — #324.
+   *
+   * Props rather than a `getLocale()`/`getTranslations()` pair inside the component: these are
+   * synchronous server components with tests that render them directly, and an async component
+   * cannot be rendered by Testing Library. The route resolves both once and hands them down,
+   * which is the arrangement every other localised value in this tree already uses.
+   */
+  readonly locale: Locale;
+  readonly windowCopy: WindowCopy;
   readonly collection: Collection;
   /**
    * Loads the cover eagerly. True for the first row of the index and nothing else — one of
@@ -77,10 +89,15 @@ export interface CollectionCardProps {
   readonly priority?: boolean;
 }
 
-export function CollectionCard({ collection, priority = false }: CollectionCardProps) {
+export function CollectionCard({
+  collection,
+  locale,
+  windowCopy,
+  priority = false,
+}: CollectionCardProps) {
   const label = kindLabel(collection.kind);
   const icon = kindIcon(collection.kind);
-  const facts = windowFacts(collection);
+  const facts = windowFacts(collection, locale, windowCopy);
 
   return (
     <article className="group relative flex h-full flex-col overflow-hidden rounded-lg border border-white/8 bg-surface-2 transition-colors duration-300 ease-in-out hover:bg-surface-3">

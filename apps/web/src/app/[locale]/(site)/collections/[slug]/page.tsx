@@ -9,12 +9,16 @@ import {
   resolveCollectionLanding,
 } from '../../../../../lib/collections/landing';
 import { collectionPageGraph } from '../../../../../lib/seo/structured-data/graphs';
+import { graphContext } from '../../../../../lib/i18n/shell-copy.server';
 import { localeOrDefault } from '../../../../../lib/i18n/locale';
 import {
   isFetchableImageUrl,
   privatePageMetadata,
   publicPageMetadata,
 } from '../../../../../lib/seo/metadata';
+import { getLocale, getTranslations } from 'next-intl/server';
+import type { WindowCopy } from '../../../../../lib/collections/api';
+import type { Locale } from '../../../../../lib/i18n/locale';
 
 /**
  * `/collections/{slug}` — D-08's landing page, §4.13 WS-04. Issue #266.
@@ -96,8 +100,25 @@ export async function generateMetadata({ params }: RouteParams): Promise<Metadat
   });
 }
 
+
+/**
+ * The window's two terms and the language to write its dates in — #324.
+ *
+ * `getLocale` rather than `params`, for `graphContext`'s reason: `layout.tsx` has already
+ * handed the segment to `setRequestLocale`, so this reads a value the router resolved and
+ * leaves the render as static as it found it.
+ */
+async function windowContext(): Promise<{ locale: Locale; windowCopy: WindowCopy }> {
+  const t = await getTranslations('discovery.collections.window');
+  return {
+    locale: localeOrDefault(await getLocale()),
+    windowCopy: { closes: t('closes'), openSince: t('openSince') },
+  };
+}
+
 export default async function CollectionPage({ params }: RouteParams) {
   const { slug } = await params;
+  const { locale, windowCopy } = await windowContext();
   const landing = await resolveCollectionLanding(slug);
 
   if (landing.kind === 'not-found') notFound();
@@ -110,11 +131,12 @@ export default async function CollectionPage({ params }: RouteParams) {
         nodes={collectionPageGraph({
           title: collection.title,
           path: collectionPath(collection.slug),
+          ...(await graphContext()),
         })}
       />
 
       <div className="mx-auto w-full max-w-[1400px] px-5 py-10 sm:px-6">
-        <CollectionHeader collection={collection} />
+        <CollectionHeader collection={collection} locale={locale} windowCopy={windowCopy} />
 
         <div className="mt-12">
           <CollectionCampaigns

@@ -52,17 +52,20 @@ public class ChargeRetryJob implements ScheduledJob {
     private final PledgeCollection pledges;
     private final CollectionDrop drop;
     private final PaymentProperties.Collection properties;
+    private final CollectionMetrics metrics;
     private final Clock clock;
 
     public ChargeRetryJob(
             CollectionRun collection,
             PledgeCollection pledges,
             CollectionDrop drop,
+            CollectionMetrics metrics,
             PaymentProperties properties,
             Clock clock) {
         this.collection = collection;
         this.pledges = pledges;
         this.drop = drop;
+        this.metrics = metrics;
         this.properties = properties.collection();
         this.clock = clock;
     }
@@ -99,6 +102,9 @@ public class ChargeRetryJob implements ScheduledJob {
         int collected = 0;
         for (int attempted = 0; attempted < properties.chargesPerPass(); attempted++) {
             CollectionOutcome outcome = collection.collectNext(CollectionStage.RETRY, now);
+            // Counted on both passes, so §8.4's failure rate covers a retry that keeps
+            // failing as well as a first attempt that does — #138.
+            metrics.record(outcome);
             if (outcome == CollectionOutcome.COLLECTED) {
                 collected++;
             }

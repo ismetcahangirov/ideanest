@@ -18,6 +18,7 @@ import { formatMoney } from '../../lib/money';
 import { CancelPledgePanel } from './CancelPledgePanel';
 import { PledgeEditor } from './PledgeEditor';
 import type { CheckoutCopy } from '../../lib/i18n/checkout-copy';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
 /**
  * One of the caller's own pledges, with §4.5's PL-09 edit and PL-10 withdrawal. Issue #287.
@@ -81,6 +82,7 @@ export interface PledgeManagerProps {
 }
 
 export function PledgeManager({ pledgeId, copy }: PledgeManagerProps) {
+  const locale = useRouteLocale();
   const [status, setStatus] = useState<Status>('loading');
   const [pledge, setPledge] = useState<PledgeResponse | null>(null);
   const [summary, setSummary] = useState<BackerPledgeSummary | null>(null);
@@ -193,12 +195,12 @@ export function PledgeManager({ pledgeId, copy }: PledgeManagerProps) {
 
             {pledge.confirmedAt != null && (
               <p className="mt-3 text-sm text-white/40">
-                Confirmed {formatExactTime(pledge.confirmedAt)}
+                Confirmed {formatExactTime(pledge.confirmedAt, locale)}
               </p>
             )}
             {pledge.canceledAt != null && (
               <p className="mt-3 text-sm text-white/40">
-                Withdrawn {formatExactTime(pledge.canceledAt)}
+                Withdrawn {formatExactTime(pledge.canceledAt, locale)}
               </p>
             )}
           </div>
@@ -240,7 +242,7 @@ export function PledgeManager({ pledgeId, copy }: PledgeManagerProps) {
                 <li key={supplement.id} className="flex items-baseline justify-between gap-4">
                   <span className="text-white/64">
                     {supplement.kind === 'UPGRADE' ? 'Reward upgrade' : 'Extra add-ons'} ·{' '}
-                    {formatExactTime(supplement.createdAt)}
+                    {formatExactTime(supplement.createdAt, locale)}
                   </span>
                   <span className="tabular-nums text-white">{formatMoney(supplement.amount)}</span>
                 </li>

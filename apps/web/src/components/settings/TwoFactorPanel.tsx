@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type FormEvent } from 'react';
+import { useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { Checkbox, Field, InlineAlert, Pill, TextInput } from '@ideanest/ui';
 import { ApiError } from '../../lib/api/problem';
 import {
@@ -93,12 +93,35 @@ export function TwoFactorPanel() {
    */
   const headingRef = useRef<HTMLHeadingElement>(null);
 
+  /*
+   * THE MOVE HAPPENS IN A LAYOUT EFFECT AND NOT IN A `requestAnimationFrame`, AND #322 IS
+   * WHY. A frame callback is scheduled for the next paint, which is after the browser has
+   * already delivered whatever the reader typed in the meantime. Someone who presses "Turn
+   * it off" and starts typing their password immediately gets the first character into the
+   * field and the rest into the heading, because focus is taken out from under them a frame
+   * later. On a loaded machine that frame is long enough to swallow a whole password, which
+   * is how the flake in #322 read: `'correct horse'` arriving as `'c'`, the six-digit code
+   * beside it intact because by then the move had already happened.
+   *
+   * A layout effect runs synchronously after the commit that rendered the new step and
+   * before the browser paints or dispatches another input event, so there is no window to
+   * lose a keystroke in. `moved` gates it: the effect must not fire on mount, where nobody
+   * asked for focus and stealing it would drag the page down to this panel on load.
+   */
+  const moved = useRef(false);
+
+  useLayoutEffect(() => {
+    if (!moved.current) return;
+    moved.current = false;
+    headingRef.current?.focus();
+  }, [step]);
+
   function go(next: Step): void {
     setStep(next);
     setError(null);
     setCode('');
     setRecoveryCode('');
-    requestAnimationFrame(() => headingRef.current?.focus());
+    moved.current = true;
   }
 
   async function begin(event: FormEvent<HTMLFormElement>): Promise<void> {

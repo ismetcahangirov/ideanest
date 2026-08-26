@@ -2,6 +2,7 @@ import { authorizedFetch, publicFetch } from '../api/client';
 import { ApiError, errorFrom } from '../api/problem';
 import type { Page } from '../community/signals';
 import type { Money } from '../money';
+import { readProjectCardPage } from './wire';
 
 /**
  * §4.2's public profile — P-04, P-05, P-06 and P-07, issue #274.
@@ -184,8 +185,15 @@ export interface PublicProfile {
   readonly avatarUrl: string | null;
   /** §4.2 P-02. Plain text. `null` is a person who has written none, not a missing field. */
   readonly bio: string | null;
-  /** ISO-8601 instant, UTC. */
-  readonly joinedAt: string;
+  /**
+   * ISO-8601 instant, UTC.
+   *
+   * `null` only for a body that did not carry one. The projection always sends it, and this
+   * type says `string | null` anyway because #323's narrowing is what enforces the shape now
+   * and it cannot invent an instant it was not given. A renderer that treated the absence as a
+   * date printed **January 1970** on somebody's profile; see `lib/profiles/wire.ts`.
+   */
+  readonly joinedAt: string | null;
   /** §4.2 P-02. `https://` only, and never fetched by the service that stores it. */
   readonly websiteUrl: string | null;
   /** §4.2 P-02. One of V16's eighteen places, or `null` for somebody who has not said. */
@@ -233,12 +241,6 @@ export interface ProfileProjectCard {
  */
 export const PROFILE_PAGE_SIZE = 24;
 
-/** The wire shape of both lists. `projects`, not `items` — see `pageOf`. */
-interface RawProjectPage {
-  readonly projects?: readonly ProfileProjectCard[];
-  readonly nextCursor?: string | null;
-}
-
 /**
  * A list response as `useCursorList` reads it.
  *
@@ -247,10 +249,6 @@ interface RawProjectPage {
  * fix and is not this client's to make; renaming the hook's would be a change to two screens
  * that already ship.
  */
-function pageOf(body: RawProjectPage): Page<ProfileProjectCard> {
-  return { items: body.projects ?? [], nextCursor: body.nextCursor ?? null };
-}
-
 async function readProjectPage(
   path: string,
   cursor: string | null,
@@ -262,7 +260,12 @@ async function readProjectPage(
   const response = await publicFetch(`${path}?${query.toString()}`, { signal });
   if (!response.ok) throw await errorFrom(response);
 
-  return pageOf((await response.json()) as RawProjectPage);
+  /*
+   * The same narrowing the server render used for the first page — #323. The browser fetching
+   * page two from the same endpoint through a different reader is how the two halves of one
+   * list come to disagree about what a row with no slug is.
+   */
+  return readProjectCardPage((await response.json()) as unknown);
 }
 
 /** The public address of a profile. §10.2 addresses a person by slug and so does this. */

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiError } from '../../lib/api/problem';
+import { DEFAULT_LOCALE } from '../../lib/i18n/locale';
 import { cancelDeletion, requestDeletion } from '../../lib/account/closure';
 import { fetchSession, type Session } from '../../lib/session/session';
 import { formatExactTime } from '../../lib/time';
@@ -143,7 +144,7 @@ describe('an account already scheduled to close', () => {
     expect(await screen.findByText('This account is scheduled to close')).toBeInTheDocument();
     // Through the same formatter the panel uses: a literal here would pass in GMT+4 and fail
     // on a runner in UTC, which is a flake rather than a check.
-    expect(screen.getByText(formatExactTime('2026-09-22T09:00:00Z'))).toBeInTheDocument();
+    expect(screen.getByText(formatExactTime('2026-09-22T09:00:00Z', DEFAULT_LOCALE))).toBeInTheDocument();
     expect(document.body.textContent).not.toContain('in thirty days');
   });
 

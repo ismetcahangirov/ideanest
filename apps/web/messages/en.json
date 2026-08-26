@@ -3,7 +3,13 @@
     "save": "Save",
     "cancel": "Cancel",
     "saving": "Saving…",
-    "tryAgain": "Try again"
+    "tryAgain": "Try again",
+    "trail": {
+      "home": "Home",
+      "discover": "Discover",
+      "categories": "Categories",
+      "collections": "Collections"
+    }
   },
   "shell": {
     "skipToContent": "Skip to content",
@@ -267,7 +273,11 @@
     },
     "collections": {
       "metaTitle": "Collections",
-      "metaDescription": "Staff selections, themed collections, and open calls on IdeaNest — each with its own page of campaigns."
+      "metaDescription": "Staff selections, themed collections, and open calls on IdeaNest — each with its own page of campaigns.",
+      "window": {
+        "closes": "Closes",
+        "openSince": "Open since"
+      }
     },
     "search": {
       "title": "Search",

@@ -45,6 +45,17 @@ vi.mock('next/navigation', async (importOriginal) => ({
   },
 }));
 
+/**
+ * The request-scoped half of next-intl, which only exists inside a Next render — #324. The
+ * page resolves the window's two terms and the page's language from it, and the answers here
+ * are what `i18n/request.ts` would have produced for the English catalogue.
+ */
+vi.mock('next-intl/server', () => ({
+  getLocale: () => Promise.resolve('en'),
+  getTranslations: () =>
+    Promise.resolve((key: string) => (key === 'closes' ? 'Closes' : 'Open since')),
+}));
+
 const fetchMock = vi.mocked(fetchCollection);
 
 const COLLECTION: Collection = {

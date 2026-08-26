@@ -24,6 +24,39 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+
+    // §18's metrics -- issue #138. Micrometer is already on the path through the
+    // actuator; this is the registry that renders it in the format a scraper reads.
+    // Prometheus and not a hosted vendor's SDK: the exposition format is text over
+    // HTTP with no agent, no queue and no credential in the application, so a
+    // deployment that changes where metrics go changes a scrape config rather than
+    // this build file.
+    implementation("io.micrometer:micrometer-registry-prometheus")
+
+    // `RestClient.Builder`, which #127's cache invalidator injects.
+    //
+    // EXPLICIT BECAUSE THE TESTS CANNOT CATCH ITS ABSENCE. Spring Boot 4 split
+    // autoconfiguration into per-technology modules and `spring-boot-starter-web`
+    // does not bring this one; `spring-boot-starter-test` does, transitively,
+    // through `spring-boot-resttestclient`. So the whole integration suite loaded
+    // the context happily and the built jar refused to start:
+    //
+    //   Parameter 1 of constructor in CacheInvalidator required a bean of type
+    //   'org.springframework.web.client.RestClient$Builder' that could not be found.
+    //
+    // Found by running the image rather than by reading the build file, which is
+    // the only place it was ever going to show up.
+    implementation("org.springframework.boot:spring-boot-restclient")
+
+    // §18's tracing. The bridge turns Micrometer's observations into OpenTelemetry
+    // spans and the exporter ships them; both are inert until a collector endpoint
+    // is configured, which is why they cost a deployment nothing to have.
+    //
+    // OpenTelemetry rather than Brave: `CorrelationFilter` already accepts and mints
+    // W3C `traceparent`, which is OTel's native propagation format, and a service
+    // that spoke B3 on the wire and W3C in its logs would correlate with neither.
+    implementation("io.micrometer:micrometer-tracing-bridge-otel")
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-security")
     // Validates the access token on every request, and signs it. Nimbus

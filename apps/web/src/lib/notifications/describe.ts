@@ -1,3 +1,5 @@
+import { capitalised, dateTimeFormat, relativeTimeFormat, UNDATED } from '../i18n/formats';
+import type { Locale } from '../i18n/locale';
 import { formatMoney, type Money } from '../money';
 import type {
   DeliveryMode,
@@ -331,24 +333,35 @@ function dayKeyOfDate(at: Date): string {
   return `${at.getFullYear()}-${at.getMonth() + 1}-${at.getDate()}`;
 }
 
-const DAY = new Intl.DateTimeFormat('en-GB', { dateStyle: 'full' });
-
 /**
- * "Today", "Yesterday", or the date — the heading above one group of rows.
+ * "Today", "Dünən", "Вчера", or the date — the heading above one group of rows.
  *
  * `now` is a parameter for `formatRelativeTime`'s reason: a function that reads the clock
  * cannot be tested without freezing it.
+ *
+ * <h2>The two words come from `Intl` rather than from the catalogue — #324</h2>
+ *
+ * `RelativeTimeFormat` with `numeric: 'auto'` already knows every language's word for today
+ * and for yesterday, and it is the same formatter the rest of the application's relative
+ * times come out of. Two keys in `messages/*.json` would be two translations to keep in step
+ * with a library that ships them — and would be one more thing for this module, which is
+ * imported by a client component with no provider above it, to have to be handed.
+ *
+ * <p>The output is lower case in all four languages and this is a heading, so it goes through
+ * `capitalised`, which upper-cases in the reader's own language. That distinction is not
+ * pedantry: `toUpperCase` turns Turkish `içinde` into `Içinde`, which is a different word.
  */
-export function dayLabelOf(iso: string, now: Date): string {
+export function dayLabelOf(iso: string, now: Date, locale: Locale): string {
   const at = new Date(iso);
-  if (Number.isNaN(at.getTime())) return 'Undated';
+  if (Number.isNaN(at.getTime())) return UNDATED[locale];
 
+  const relative = relativeTimeFormat(locale, { numeric: 'auto' }, 'relative');
   const key = dayKeyOfDate(at);
-  if (key === dayKeyOfDate(now)) return 'Today';
+  if (key === dayKeyOfDate(now)) return capitalised(relative.format(0, 'day'), locale);
 
   const yesterday = new Date(now.getTime());
   yesterday.setDate(yesterday.getDate() - 1);
-  if (key === dayKeyOfDate(yesterday)) return 'Yesterday';
+  if (key === dayKeyOfDate(yesterday)) return capitalised(relative.format(-1, 'day'), locale);
 
-  return DAY.format(at);
+  return dateTimeFormat(locale, { dateStyle: 'full' }, 'day-heading').format(at);
 }

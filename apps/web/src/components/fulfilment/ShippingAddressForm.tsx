@@ -10,6 +10,7 @@ import {
   type PostalAddress,
 } from '../../lib/fulfilment/api';
 import { formatExactTime } from '../../lib/time';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
 /**
  * §4.8's PM-07 — where one pledge's reward goes. Issue #290.
@@ -87,6 +88,7 @@ const FIELDS: ReadonlyArray<{
 ];
 
 export function ShippingAddressForm({ pledgeId }: ShippingAddressFormProps) {
+  const locale = useRouteLocale();
   const [status, setStatus] = useState<Status>('loading');
   const [address, setAddress] = useState<PostalAddress>(EMPTY_ADDRESS);
   const [locked, setLocked] = useState(false);
@@ -210,7 +212,7 @@ export function ShippingAddressForm({ pledgeId }: ShippingAddressFormProps) {
         <InlineAlert variant="warning" title="This address is locked">
           <p>
             The creator has closed changes
-            {lockedAt !== null && lockedAt !== '' ? ` on ${formatExactTime(lockedAt)}` : ''}, which
+            {lockedAt !== null && lockedAt !== '' ? ` on ${formatExactTime(lockedAt, locale)}` : ''}, which
             usually means labels are being printed. Message them through the campaign if it is
             wrong.
           </p>
@@ -234,7 +236,7 @@ export function ShippingAddressForm({ pledgeId }: ShippingAddressFormProps) {
           <p>
             This is where the reward goes
             {updatedAt !== null && updatedAt !== ''
-              ? `, as of ${formatExactTime(updatedAt)}`
+              ? `, as of ${formatExactTime(updatedAt, locale)}`
               : ''}
             .
           </p>

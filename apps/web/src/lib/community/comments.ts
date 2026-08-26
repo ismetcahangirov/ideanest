@@ -3,6 +3,7 @@ import { authorizedFetch } from '../api/client';
 import { errorFrom } from '../api/problem';
 import type { ServerReadOptions } from '../api/server';
 import { apiOrigin } from '../seo/metadata-source';
+import { project } from '../cache/tags';
 
 /**
  * §4.4's Comments tab — §4.9's C-01, C-02 and C-03, behind the community module's endpoints.
@@ -156,7 +157,12 @@ export async function fetchCommentThreads(
         ...(cursor == null ? {} : { cursor }),
       },
       ...(options.locale === undefined ? {} : { headers: { 'accept-language': options.locale } }),
-      next: { revalidate: options.revalidateSeconds ?? PUBLIC_READ_REVALIDATE_SECONDS },
+      // #127. The service names the campaign when a comment, an update or a question
+      // moves; without the tag this list is only ever as fresh as the window above.
+      next: {
+        revalidate: options.revalidateSeconds ?? PUBLIC_READ_REVALIDATE_SECONDS,
+        tags: [project(projectId)],
+      },
     });
     return readCommentPage(body);
   } catch (cause) {

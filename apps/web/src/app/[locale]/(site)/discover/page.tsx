@@ -10,6 +10,7 @@ import type { SeededFeed } from '../../../../lib/discovery/useDiscoveryFeed';
 import { localeOrDefault } from '../../../../lib/i18n/locale';
 import { publicPageMetadata } from '../../../../lib/seo/metadata';
 import { discoverPageGraph } from '../../../../lib/seo/structured-data/graphs';
+import { graphContext } from '../../../../lib/i18n/shell-copy.server';
 import { getTranslations } from 'next-intl/server';
 
 /**
@@ -116,7 +117,7 @@ export default async function DiscoverPage({
 
   return (
     <>
-      <StructuredData nodes={discoverPageGraph()} />
+      <StructuredData nodes={discoverPageGraph(await graphContext())} />
       <Suspense
         fallback={
           <div className="mx-auto w-full max-w-[1400px] px-5 py-10 sm:px-6">

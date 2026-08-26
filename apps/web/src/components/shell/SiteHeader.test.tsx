@@ -10,6 +10,7 @@ import userEvent from '@testing-library/user-event';
 import { fetchSession } from '../../lib/session/session';
 import { SessionProvider } from '../session/SessionProvider';
 import { SiteHeader } from './SiteHeader';
+import { expectNoViolations } from '../../test-axe';
 
 const CATALOGUES: Record<Locale, typeof en> = { az, en, ru, tr };
 
@@ -226,5 +227,24 @@ describe('the search entry', () => {
     expect(
       within(searches[0] as HTMLElement).getByRole('searchbox', { name: 'Search campaigns' }),
     ).toBeInTheDocument();
+  });
+});
+
+describe('accessibility', () => {
+  /**
+   * #129. The header is on every page in all three flows, signed in and signed out, and it is
+   * where the icon-only controls live — a notification bell and an account menu, both of which
+   * are exactly the shape that ships with no accessible name.
+   */
+  it('leaves no automatically detectable violation, signed out or in', async () => {
+    for (const session of [null, ACCOUNT]) {
+      sessionMock.mockResolvedValue(session);
+
+      const { container } = renderHeader();
+      await waitFor(() => expect(sessionMock).toHaveBeenCalled());
+
+      await expectNoViolations(container);
+      cleanup();
+    }
   });
 });

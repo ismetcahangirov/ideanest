@@ -12,6 +12,7 @@ import {
 } from '../../lib/community/signals';
 import { formatRelativeTime } from '../../lib/time';
 import { useCursorList } from './useCursorList';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
 /**
  * §4.9's C-10 — the campaigns this account saved. Issue #288.
@@ -41,6 +42,7 @@ import { useCursorList } from './useCursorList';
  * regardless.
  */
 export function SavedProjectsPanel() {
+  const locale = useRouteLocale();
   const { status, items, hasMore, loadingMore, error, loadMore, remove } =
     useCursorList<SavedCampaign>(useCallback((cursor, signal) => listSaved(cursor, signal), []));
 
@@ -131,7 +133,7 @@ export function SavedProjectsPanel() {
                 {campaign.title}
               </Link>
               <p className="mt-1 text-sm text-white/40">
-                Saved {formatRelativeTime(campaign.savedAt, now)} · by {campaign.creatorSlug}
+                Saved {formatRelativeTime(campaign.savedAt, now, locale)} · by {campaign.creatorSlug}
               </p>
             </div>
 

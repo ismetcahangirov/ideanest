@@ -27,6 +27,7 @@ import {
 } from '../../lib/moderation/describe';
 import { DecisionDialog, type Decision } from './DecisionDialog';
 import { ReportCard } from './ReportCard';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
 type Status = 'loading' | 'ready' | 'failed' | 'signed-out' | 'forbidden';
 
@@ -141,6 +142,7 @@ export interface ModerationQueueProps {
  * and §8 forbids animation in long lists regardless.
  */
 export function ModerationQueue({ pinnedTarget, detailHrefBase }: ModerationQueueProps = {}) {
+  const locale = useRouteLocale();
   const [status, setStatus] = useState<Status>('loading');
   const [filters, setFilters] = useState<QueueFilters>(() =>
     pinnedTarget === undefined ? DEFAULT_FILTERS : { ...DEFAULT_FILTERS, target: pinnedTarget },
@@ -487,6 +489,7 @@ export function ModerationQueue({ pinnedTarget, detailHrefBase }: ModerationQueu
               key={report.id}
               report={report}
               now={now}
+              locale={locale}
               busy={busyIds.has(report.id)}
               detailHref={
                 detailHrefBase === undefined

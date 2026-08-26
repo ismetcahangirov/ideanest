@@ -1,3 +1,5 @@
+import type { Locale } from '../i18n/locale';
+import { formatRelativeTime as baseRelativeTime } from '../time';
 import type {
   CampaignOutcome,
   QueuedReport,
@@ -206,54 +208,44 @@ export function targetParameter(filter: TargetFilter): ReportTargetType | null {
  * Time
  * ---------------------------------------------------------------------- */
 
-const RELATIVE = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
-
-const DIVISIONS: ReadonlyArray<readonly [amount: number, unit: Intl.RelativeTimeFormatUnit]> = [
-  [60, 'second'],
-  [60, 'minute'],
-  [24, 'hour'],
-  [7, 'day'],
-  [4.34524, 'week'],
-  [12, 'month'],
-  [Number.POSITIVE_INFINITY, 'year'],
-];
+/**
+ * "3 hours ago", "yesterday", "just now" — the same two functions `lib/time.ts` exports,
+ * re-exported here.
+ *
+ * <h2>THEY WERE A SECOND COPY, AND #324 IS WHERE THE COPY STOPPED PAYING</h2>
+ *
+ * This module held its own `Intl.RelativeTimeFormat`, its own division table and its own
+ * `en-GB` timestamp formatter, all identical to `lib/time.ts`'s. Two copies of a formatter
+ * pinned to one language cost nothing; two copies that each have to be threaded a locale,
+ * cached per language and tested in four is a duplication with a price. So this delegates,
+ * and the one thing that genuinely differed is kept below.
+ */
+export { formatExactTime } from '../time';
 
 /**
- * "3 hours ago", "yesterday", "just now".
+ * `lib/time.ts`'s relative time, with this module's own answer for an instant that will not
+ * parse.
  *
- * Lower case, because every string this returns is read inside a sentence:
- * "Reported 3 hours ago".
+ * "an unknown time ago" rather than "Unknown", because every string this returns is read
+ * inside a sentence — "Reported 3 hours ago" — and a moderation queue that read "Reported
+ * Unknown" would look like a rendering bug rather than like a report whose timestamp is
+ * broken. It is the one difference between the two modules and it is the reason this is a
+ * wrapper rather than a re-export.
  */
-export function formatRelativeTime(iso: string, now: Date): string {
+export function formatRelativeTime(iso: string, now: Date, locale: Locale): string {
   const then = new Date(iso);
-  if (Number.isNaN(then.getTime())) return 'an unknown time ago';
+  if (Number.isNaN(then.getTime())) return UNREADABLE_INSTANT[locale];
 
-  let duration = (then.getTime() - now.getTime()) / 1000;
-  if (Math.abs(duration) < 45) return 'just now';
-
-  for (const [amount, unit] of DIVISIONS) {
-    if (Math.abs(duration) < amount) return RELATIVE.format(Math.round(duration), unit);
-    duration /= amount;
-  }
-
-  return RELATIVE.format(Math.round(duration), 'year');
+  return baseRelativeTime(iso, now, locale);
 }
 
-/**
- * The exact timestamp, for the `title` of the relative one.
- *
- * A relative string is never the only record of when a privileged decision was
- * taken. The locale is pinned until internationalised routing lands (#123),
- * matching `lib/sessions/describe.ts`.
- */
-const EXACT = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
-
-export function formatExactTime(iso: string): string {
-  const at = new Date(iso);
-  if (Number.isNaN(at.getTime())) return 'Unknown';
-
-  return EXACT.format(at);
-}
+/** "an unknown time ago", in each of §21.1's four. */
+const UNREADABLE_INSTANT: Readonly<Record<Locale, string>> = {
+  az: 'naməlum vaxt öncə',
+  en: 'an unknown time ago',
+  ru: 'неизвестно когда',
+  tr: 'bilinmeyen bir zaman önce',
+};
 
 /**
  * A campaign state as a sentence fragment: `CHANGES_REQUESTED` → "changes

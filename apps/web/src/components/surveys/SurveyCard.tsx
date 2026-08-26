@@ -12,6 +12,7 @@ import {
 } from '../../lib/surveys/api';
 import { formatExactTime } from '../../lib/time';
 import { SurveyQuestionField } from './SurveyQuestionField';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
 /**
  * One survey, and the form that answers it — §4.8 PM-05 and PM-06. Issue #289.
@@ -49,6 +50,7 @@ function draftFrom(survey: BackerSurvey): Record<string, readonly string[]> {
 }
 
 export function SurveyCard({ survey: initial }: SurveyCardProps) {
+  const locale = useRouteLocale();
   const [survey, setSurvey] = useState(initial);
   const [draft, setDraft] = useState<Record<string, readonly string[]>>(() => draftFrom(initial));
   const [errors, setErrors] = useState<Readonly<Record<string, string>>>({});
@@ -133,10 +135,10 @@ export function SurveyCard({ survey: initial }: SurveyCardProps) {
 
       <p className="mt-3 text-sm text-white/40">
         {survey.respondBy !== null && survey.respondBy !== ''
-          ? `Asked for by ${formatExactTime(survey.respondBy)}.`
+          ? `Asked for by ${formatExactTime(survey.respondBy, locale)}.`
           : 'No date was set for this one.'}
         {survey.answered && survey.submittedAt !== null
-          ? ` You answered on ${formatExactTime(survey.submittedAt)}.`
+          ? ` You answered on ${formatExactTime(survey.submittedAt, locale)}.`
           : ''}
       </p>
 

@@ -48,6 +48,19 @@ public interface PayoutRepository extends JpaRepository<Payout, UUID> {
     Optional<Payout> inFlightFor(@Param("projectId") UUID projectId);
 
     /**
+     * Every payout a campaign has ever had, newest first — issue #99.
+     *
+     * <p><strong>Every state, including {@code CANCELLED} and {@code FAILED}.</strong> The
+     * creator's financial summary answers "where is my money", and a payout that was
+     * calculated and then cancelled is part of that answer rather than noise: a creator who
+     * saw one and then saw nothing would have no way to tell a cancellation from a screen
+     * that had stopped working. What was paid is the {@code PAID} rows; what is on its way is
+     * {@link #inFlightFor}; the rest is history, and the summary says which is which.
+     */
+    @Query("SELECT p FROM Payout p WHERE p.projectId = :projectId ORDER BY p.calculatedAt DESC")
+    List<Payout> historyOf(@Param("projectId") UUID projectId);
+
+    /**
      * The queue: everything still on its way somewhere, oldest first.
      *
      * <p>Includes payouts whose hold has not expired, because the screen's job is to show

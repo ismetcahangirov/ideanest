@@ -14,6 +14,8 @@ import {
 } from '../../lib/collections/api';
 import { COLLECTION_COVER_SIZES } from '../../lib/images/sizes';
 import { canOptimise } from '../../lib/images/source';
+import type { WindowCopy } from '../../lib/collections/api';
+import type { Locale } from '../../lib/i18n/locale';
 
 /**
  * The head of a collection landing page — D-08, §4.13 WS-04.
@@ -88,13 +90,23 @@ function kindSentence(collection: Collection): string | null {
 }
 
 export interface CollectionHeaderProps {
+  /**
+   * The language the page is in, and the two words the window is stated with — #324.
+   *
+   * Props rather than a `getLocale()`/`getTranslations()` pair inside the component: these are
+   * synchronous server components with tests that render them directly, and an async component
+   * cannot be rendered by Testing Library. The route resolves both once and hands them down,
+   * which is the arrangement every other localised value in this tree already uses.
+   */
+  readonly locale: Locale;
+  readonly windowCopy: WindowCopy;
   readonly collection: Collection;
 }
 
-export function CollectionHeader({ collection }: CollectionHeaderProps) {
+export function CollectionHeader({ collection, locale, windowCopy }: CollectionHeaderProps) {
   const label = kindLabel(collection.kind);
   const icon = kindIcon(collection.kind);
-  const facts = windowFacts(collection);
+  const facts = windowFacts(collection, locale, windowCopy);
   const sentence = kindSentence(collection);
 
   return (

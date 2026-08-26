@@ -5685,6 +5685,33 @@
         "tags" : [ "project-faq-controller" ]
       }
     },
+    "/v1/projects/{projectId}/finance" : {
+      "get" : {
+        "operationId" : "campaignFinanceFinance",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CampaignFinanceResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "campaign-finance-controller" ]
+      }
+    },
     "/v1/projects/{projectId}/fulfilments" : {
       "get" : {
         "operationId" : "fulfilmentOfCampaign",
@@ -7945,6 +7972,69 @@
           }
         }
       },
+      "CampaignFinanceResponse" : {
+        "type" : "object",
+        "properties" : {
+          "basis" : {
+            "type" : "string",
+            "enum" : [ "PROJECTED", "SETTLED" ]
+          },
+          "computedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "currency" : {
+            "type" : "string"
+          },
+          "feeScheduleId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "gross" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "ledger" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LedgerBalanceRecord"
+            }
+          },
+          "net" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "paidOut" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "payouts" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PayoutRecord"
+            }
+          },
+          "platformFee" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "processingFee" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "reconciled" : {
+            "type" : "boolean"
+          },
+          "refunded" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "taxCollected" : {
+            "type" : "boolean"
+          },
+          "taxWithheld" : {
+            "$ref" : "#/components/schemas/Money"
+          }
+        }
+      },
       "CampaignMessageListResponse" : {
         "type" : "object",
         "properties" : {
@@ -9768,6 +9858,17 @@
           }
         }
       },
+      "LedgerBalanceRecord" : {
+        "type" : "object",
+        "properties" : {
+          "account" : {
+            "type" : "string"
+          },
+          "net" : {
+            "$ref" : "#/components/schemas/Money"
+          }
+        }
+      },
       "Line" : {
         "type" : "object",
         "properties" : {
@@ -10244,6 +10345,29 @@
             "items" : {
               "$ref" : "#/components/schemas/PayoutSummary"
             }
+          }
+        }
+      },
+      "PayoutRecord" : {
+        "type" : "object",
+        "properties" : {
+          "calculatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "net" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "sentAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "state" : {
+            "type" : "string"
           }
         }
       },

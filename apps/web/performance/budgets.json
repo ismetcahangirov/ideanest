@@ -54,6 +54,7 @@
     "/[locale]/projects/[id]/dashboard": 610,
     "/[locale]/projects/[id]/dashboard/backers": 620,
     "/[locale]/projects/[id]/dashboard/charts": 619,
+    "/[locale]/projects/[id]/dashboard/finance": 615,
     "/[locale]/projects/[id]/dashboard/surveys": 582,
     "/[locale]/projects/[id]/edit": 582,
     "/[locale]/projects/[id]/edit/basics": 646,

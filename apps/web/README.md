@@ -27,6 +27,7 @@ cd apps/api && ./gradlew bootRun       # http://localhost:8080
 |---|---|---|
 | `IDEANEST_API_ORIGIN` | `http://localhost:8080` | Where `/v1/*` is proxied. Read at build time on the server only — the browser never learns it. The sitemap also reads the service directly through it |
 | `IDEANEST_SITE_URL` | `http://localhost:3000` | This application's public origin. **Must be set in any deployed environment** — every `robots.txt` entry, sitemap URL, canonical URL, `og:url`, and absolute social-image URL is written against it. Server-only, and read at build time by the statically rendered pages, so changing it means rebuilding. A value that is set but is not an absolute `http(s)` URL is refused rather than fallen back on |
+| `IDEANEST_REVALIDATE_SECRET` | unset | The shared secret the service presents to `POST /api/cache/revalidate`. **Unset refuses every call**, rather than allowing them: an endpoint that evicts cached pages by name and asks for no proof is a request anybody can send in a loop to turn every cached render into an origin fetch. Same value as the service's `CACHE_REVALIDATE_SECRET`. See [Caching and revalidation](#caching-and-revalidation) |
 | `NEXT_PUBLIC_IDEANEST_RUM_SAMPLE_RATE` | `1` | Fraction of sessions whose Core Web Vitals are reported. `0` collects nothing at all. `NEXT_PUBLIC_`, so it is inlined at build time and changing it means rebuilding. See [Real user monitoring](#real-user-monitoring) |
 | `IDEANEST_RUM_LOCAL_SINK` | on outside production | The in-memory buffer behind `GET /api/rum`. `next start` runs as production on a laptop too, so set `true` to keep the table there |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | unset | Google's OAuth client identifier (§4.1 A-04). **Unset means the Google button is not rendered at all** — the service answers 501 for a provider it has no configuration for, and a button that always fails is worst of all on the sign-in screen. A client identifier is public by construction; the client *secret* is the service's and neither of these flows uses one |
@@ -105,6 +106,7 @@ the browser half of the auth flow work at all.
 | `/projects/[id]/dashboard` | — | The creator dashboard shell and its overview panel -- CD-01's live totals (#93) |
 | `/projects/[id]/dashboard/charts` | — | CD-02's funding trend, CD-07's reward mix and CD-08's destinations (#96) |
 | `/projects/[id]/dashboard/backers` | — | CD-10's backer report with saved segments, and CD-11's CSV export (#97, #79) |
+| `/projects/[id]/dashboard/finance` | — | CD-16's financial summary: gross, fees, tax, refunds, net, and the ledger underneath them (#99) |
 | `/projects/[id]/dashboard/surveys` | — | §4.8's survey manager — PM-01 to PM-04 (#73) |
 | `/admin` | Console | **Staff only.** §4.11's sixteen modules, which have a screen, and what the rest wait on (#294) |
 | `/admin/moderation` | Console | **Staff only.** The submission queue: approve, reject, request changes (#101) |
@@ -531,6 +533,212 @@ the page never used. The stateless members are re-exported from
 `@ideanest/ui/server`, and `packages/ui/src/server.test.ts` walks everything
 reachable from it and fails if any of it acquires a hook. The rule used to be a
 comment in `app/discover/page.tsx` asking people not to; it is now a boundary.
+
+## Running it in a container
+
+`ops/deploy/README.md` owns the deployment story; two things about the image
+belong here because they are properties of this application rather than of the
+pipeline.
+
+**`IDEANEST_SITE_URL` is a build argument, not an environment variable.**
+`lib/seo/metadata.ts` writes every canonical URL, `og:url`, sitemap entry and
+absolute social-image URL against it, and `output: 'standalone'` bakes it into
+the statically rendered pages. An image built with the default and deployed to
+production serves a sitemap full of `localhost`, which a crawler believes. One
+image per site URL is therefore unavoidable, and making it an argument is what
+stops somebody discovering that at run time.
+
+`IDEANEST_API_ORIGIN` is the opposite and is read at request time, so one image
+runs against staging and production alike.
+
+**The health check is `/en/about` and not `/`.** The root path is a 307 to a
+language. A check that follows redirects would pass on a broken application; one
+that does not would fail on a working one. A localised static page exercises the
+router, the middleware and a render, which is what the check is for.
+
+The build context is the repository root — this application compiles three
+source-only workspace packages — and `.dockerignore` is what keeps that context
+to a few megabytes instead of the whole checkout.
+
+## Accessibility
+
+`docs/ui-kit.md` §9 and issue #129. The audit covered discovery, the campaign
+page and the checkout — the three surfaces a stranger walks through on the way
+to spending money — plus the shell that wraps all three.
+
+It found six defects, all invisible on screen.
+
+**Two heading ladders with a level skipped.** Discovery went from the page's
+`<h1>` straight into every campaign card's `<h3>`, so a reader navigating by
+heading met two hundred headings with nothing naming what they were a list of;
+the checkout went from its `<h1>` into "Add-ons" at level three. The first is
+fixed with a visually hidden `<h2>` that also names the results list, the second
+by promoting the section's own heading. Neither changes a pixel.
+
+**Four uses of `--text-tertiary` for text that has to be read**, at 3.8:1 —
+below WCAG 1.4.3's 4.5:1 for normal text. The footer's entire link list, the
+subcategory links on `/categories`, the not-found page's suggestions, and the
+sentence a profile shows when somebody has written no biography. All four had
+taken `docs/ui-kit.md` §9.1 at its word, and the table was wrong: it recorded
+that token at 4.9:1 and called it "AA at 16px+". The table is computed now, and
+the four are `--text-secondary` at 8.2:1.
+
+### What is enforced, and where
+
+| Check | Where | Why there |
+|---|---|---|
+| Automated rule pass (names, roles, labels, heading order, list structure) | `src/test-axe.ts`, called from the suites for the three flows and the shell | Runs against the same fixtures those suites already build, so a fixture that drifts drifts once |
+| Every click handler is on something a keyboard can reach | `src/accessibility-rules.test.ts` | A static scan, because a `<div onClick>` renders and behaves correctly for a mouse and no rendered check can see the difference |
+| No control is drawn in `--text-tertiary` or `--text-disabled` | `src/accessibility-rules.test.ts` | The same scan. Text inside a control clears 4.5:1 whatever its size, and hovering to make a link legible is not something a reader can be asked to do |
+| Contrast | `packages/ui/src/contrast.test.ts` | Computed from the tokens. jsdom applies no styles, so axe's colour rule is inert here and is disabled with a note saying so |
+| Focus order, focus movement between steps, keyboard operability of a specific control | Ordinary assertions in each flow's suite | Judgements. No tool decides whether the order is the *right* order |
+
+The automated pass deliberately runs a named rule set rather than the default
+one. The defaults include rules about a whole document — one `<main>`, a page
+title, a language on `<html>` — and every one of these tests renders a fragment
+into a bare `<div>`. A fragment failing "the page has no `<h1>`" is a true
+statement about a `<div>` and says nothing about the application, and a suite
+full of those is a suite people learn to ignore. The document-level rules are
+asserted where they belong, in the layout and shell suites.
+
+### Contrast is arithmetic now, not a promise
+
+`CLAUDE.md` says contrast failures are build errors, and until #129 nothing
+computed one. The token pairs the system actually draws are measured against
+WCAG 2.2 AA: 4.5:1 for body text, 3:1 for large text, focus rings and status
+marks. Translucent tokens are composited over a named surface first, because
+`rgba(255,255,255,0.64)` has no ratio of its own — what a reader sees is white
+over whichever surface is behind it, and the answer genuinely differs.
+
+The two failures the ui-kit warns about in prose are asserted as failures:
+`--lime-500` as text on white measures 1.28:1, and `text-white/64` on a lime
+card measures 1.16:1. Pinning them keeps the reason attached to the rule —
+somebody who changes the lime ramp and quietly "fixes" those tests has changed
+the brand, not the accessibility of one label.
+
+## The financial summary
+
+`docs/architecture.md` §4.7's CD-16 and issue #99. `/projects/[id]/dashboard/finance`,
+reading `GET /v1/projects/{id}/finance`, guarded by `VIEW_FINANCES` — the same
+capability the backer report takes, and for the same reason: this is money, and
+a collaborator brought on to write the story has no business reading it.
+
+### The whole breakdown, never the net alone
+
+A creator on this screen is asking "why was I paid this", which is five
+questions rather than one. So every deduction is a row and the rows add up in
+front of the reader, and the ledger's own balances are published underneath
+them — so the total can be checked against something rather than taken on trust.
+
+Nothing is added up in the browser. Every figure arrives as a decimal string and
+is printed; a panel that re-derived a net would be a second answer to a question
+the service already answered, and it would be an answer computed in a double.
+
+### `basis` is not decoration
+
+Before a payout has been calculated the fees are what §5.2's schedule *would*
+charge; afterwards they are what it *was* priced at, read from the payout row
+rather than worked out again. Those are different statements about somebody's
+money, so the panel carries a badge that says which, and the projected version
+says in a sentence that the figures can still move. A campaign that runs across
+a rate change is quoted at today's rate and paid at that day's, and the fee
+schedule's identifier is on both.
+
+### Two zeroes that are not the same zero
+
+**Tax.** §4.10 is #78 and is blocked on a legal answer, so nothing withholds any
+and the figure is zero on every campaign. A bare "− AZN 0.00" reads as "no tax
+is due on your earnings", which is not something this platform is in a position
+to say — so the row says that IdeaNest withholds none and that what is owed is
+between the creator and their tax authority.
+
+**`platform_fee` in the ledger.** It is zero for a different and worse reason:
+nothing posts the fee split. A collection debits escrow and credits the creator
+for the gross; a payout does the reverse for the net; the difference stays in
+escrow as a balance no account claims. `CollectionRun` and `PayoutPostings` each
+say the other one posts it. That is #69's to close, and the panel does not
+paper over it — the balances are published exactly as they are, which is what
+lets somebody see the gap.
+
+`reconciled` is therefore a narrower claim than it sounds: it says this
+campaign's entries sum to zero per currency, which a database trigger already
+enforces. It is worth showing because the one way it can be false is a row that
+arrived past both the application and that trigger — and that is the day
+somebody needs to see it rather than be reassured.
+
+## Caching and revalidation
+
+`docs/architecture.md` §4.13 and issue #127. Three layers, and each answers a
+question the one above it cannot.
+
+### The data cache, and why sixty seconds is not enough on its own
+
+Every public read carries `next: { revalidate: 60 }`, matching the
+`Cache-Control` the service puts on the same read. That bounds load and it does
+not bound *wrongness*: a backer who pledges watches the total they just moved sit
+unchanged for up to a minute on the one page where the number is the point, and a
+creator who publishes an update sends people to a page that does not have it yet.
+
+Shortening the window is the wrong fix. It costs every reader of every campaign a
+request to make the one campaign that changed correct sooner, and it still does
+not make it correct *now*.
+
+So every public read is also tagged. `src/lib/cache/tags.ts` holds the
+vocabulary — the campaign by address and by identifier, the taxonomy, the
+collections, one profile — and the service names the campaign that changed.
+
+**A pledge deliberately does not invalidate the discovery feed.** A pledge
+changes the amount raised, which changes the ordering of a feed sorted by
+momentum, so on paper every pledge on the platform invalidates every feed page.
+That is a cache which is empty at any interesting traffic level, bought with a
+reader seeing a slightly older ordering of campaigns they have not chosen yet.
+The feed keeps its minute, and `discovery` is evicted only by the events that
+change what is *in* it — a launch, and the two ways a campaign ends.
+
+### `POST /api/cache/revalidate`
+
+Authenticated with a shared secret in `IDEANEST_REVALIDATE_SECRET`, compared in
+constant time. **With no secret configured it refuses everything**, rather than
+allowing everything: a deployment that lost the variable would otherwise come up
+with the door open and nothing would say so.
+
+The secret is not protecting confidential data — the tags name public pages — it
+is protecting the cache. An endpoint that evicts by name and asks for no proof is
+a request anybody can send in a loop to turn every cached render into an origin
+fetch, which is a denial-of-service against the service the cache exists to
+shield.
+
+The tag vocabulary is closed and an unrecognised tag is **named in the response**
+rather than ignored, because a caller whose tag was silently dropped would
+believe the page had been refreshed and would go looking for the fault on the
+wrong side. The realistic threat is a caller with the secret and a bug: an empty
+string, or a wildcard, both of which would evict everything.
+
+The far side is `az.ideanest.shared.cache` in `apps/api`, which is configured
+with `CACHE_REVALIDATE_URL` and `CACHE_REVALIDATE_SECRET`. Everything it does is
+a hint: it never throws, it never blocks the outbox relay that feeds it, and it
+drops rather than queues when the web client is unreachable. A hint that is lost
+costs a page that is briefly stale, which is what the window above already
+guarantees.
+
+### `Cache-Control` for a shared cache
+
+`src/lib/cache/publicRoutes.ts`, applied in `middleware.ts`. Public pages are
+served `public, s-maxage=60, stale-while-revalidate=600`; everything else keeps
+the framework's `private, no-store`.
+
+This is safe because **every server render in this application is anonymous**,
+and that is a property rather than a coincidence: the refresh cookie is issued on
+`Path=/v1/auth`, so a page request carries no session, and nothing under `src/`
+calls `next/headers` at all. A signed-in reader and a stranger are served the
+same HTML and the difference appears after hydration.
+
+It is an allow-list of path shapes rather than a deny-list, and it is a function
+rather than a `headers()` entry in `next.config.mjs`, because the campaign's
+public page is `/{locale}/projects/{id}/{projectSlug}` and the creator's editor is
+`/{locale}/projects/{id}/edit`. A path pattern that matches the first matches the
+second, and the shape of that mistake — a creator's draft marked publicly
+cacheable — is invisible in review and obvious in production.
 
 ## Metadata and social previews
 

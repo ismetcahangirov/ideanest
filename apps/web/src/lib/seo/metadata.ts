@@ -167,22 +167,33 @@ export function metadataBase(env: EnvSource = process.env): URL {
  * arrived from a request cannot redirect a canonical to another host.
  */
 export function canonicalUrl(path: string, env: EnvSource = process.env): string {
-  const base = siteUrl(env);
+  return absoluteUrl(sitePath(path, env), siteUrl(env));
+}
 
+/**
+ * The route path a value reduces to on our own origin: query string dropped, host discarded,
+ * trailing slash removed.
+ *
+ * <p>Split out of {@link canonicalUrl} for #123, and the reason is a bug the split fixes.
+ * A locale segment has to be inserted **after** this reduction and not before: prefixing
+ * `https://elsewhere.example/steal` with `/en` produces `/enhttps://elsewhere.example/steal`,
+ * which `new URL` then resolves as a relative path on our own origin — a crumb pointing at a
+ * nonsense address instead of at the campaign. Callers that localise a path therefore reduce
+ * it here first, and compose afterwards.
+ */
+export function sitePath(path: string, env: EnvSource = process.env): string {
   /*
    * `new URL(path, …)` is used to PARSE rather than to compose. It is what drops
    * the query string and what forces a value that arrived looking like
    * `https://elsewhere.example/x` down to its path, so a canonical cannot be
-   * pointed at another host. The result is then composed with `absoluteUrl`,
+   * pointed at another host. The result is composed by `absoluteUrl`,
    * which is the same function the sitemap composes with — a base carrying a
-   * path (`https://ideanest.az/az`) has to survive here exactly as it survives
-   * there, and `new URL('/discover', base)` would have discarded it.
+   * path (`https://ideanest.az/az`) has to survive there exactly as it survives
+   * here, and `new URL('/discover', base)` would have discarded it.
    */
-  const { pathname } = new URL(path, `${base}/`);
+  const { pathname } = new URL(path, `${siteUrl(env)}/`);
 
-  const trimmed = pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
-
-  return absoluteUrl(trimmed, base);
+  return pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
 }
 
 /* -------------------------------------------------------------------------
@@ -365,7 +376,7 @@ export function publicPageMetadata(input: PublicPageInput): Metadata {
    * across the four would be a declaration that they are the same document, and a crawler
    * that believed it would index one and drop three.
    */
-  const canonical = canonicalUrl(localePath(input.path, input.locale), env);
+  const canonical = canonicalUrl(localePath(sitePath(input.path, env), input.locale), env);
 
   /*
    * The `hreflang` cluster, built by the same function the sitemap uses so the two documents
