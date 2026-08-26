@@ -1,7 +1,10 @@
+import type { Page } from '../community/signals';
+import type { ProfileProjectCard, PublicProfile } from '../profiles/api';
+import { profileHref } from '../profiles/api';
+import { fetchPublicProfile as readProfile, type ProfileReadOptions } from '../profiles/server';
+import { readProjectCardPage } from '../profiles/wire';
 import type { EnvSource } from '../seo/metadata';
 import { apiOrigin } from '../seo/metadata-source';
-import type { Money } from '../money';
-import type { ProjectState } from './api';
 
 /**
  * §4.4's Creator tab, read from §4.2's public profile — issue #282.
@@ -36,66 +39,45 @@ import type { ProjectState } from './api';
  *       service published. The cards carry their own state and say it themselves.
  * </ul>
  *
- * <h2>The two endpoints, and why they are read with a bare `fetch`</h2>
+ * <h2>ONE READER FOR THE PROFILE, AND IT IS NOT THIS FILE — #323</h2>
  *
- * `GET /v1/users/{slug}` and `GET /v1/users/{slug}/projects` land in this same pull request,
- * from the service side. They are therefore <em>not</em> in `packages/api-client`'s generated
- * `schema.ts` yet — that file is regenerated from `apps/api/openapi.json` by whoever
- * assembles the branch — so the typed client cannot name these paths and would fail the
- * typecheck if it tried.
+ * This module and `lib/profiles/` were written in parallel during #321 and both read
+ * `GET /v1/users/{slug}`. Neither was wrong and neither survived as it was: the narrowing this
+ * file had — field by field, with a test — moved to `lib/profiles/wire.ts`, and the anonymous
+ * server read this file had written out longhand moved to `lib/profiles/server.ts`, which was
+ * already sending the `credentials: 'omit'` that this one only argued for in a comment.
  *
- * This is the one honest way through, and it is deliberately the smallest one: the same
- * origin resolution (`apiOrigin`), the same anonymous read, the same revalidation window and
- * the same `null`-on-refusal rule as every other server read in the application, expressed
- * without the generated types. <strong>It is not a new fetch layer</strong> and must not
- * become one — when the schema is regenerated, the two calls below become
- * `client.get('/v1/users/{slug}')` and the readers underneath them do not change.
+ * <p>What is left here is what the Creator tab actually needs on top of that: a shorter list
+ * than a profile page shows, asked for with one extra row so that dropping the campaign the
+ * reader is already on still leaves the tab full. The types and the address are re-exported
+ * rather than restated, so a component importing `PublicProfile` from here and one importing
+ * it from `lib/profiles/api.ts` cannot come to mean two different things.
  *
  * <h2>404 is the whole of the error handling, and that is by design</h2>
  *
  * The profile endpoint answers 404 — never 403 — for an unknown slug, a deleted account and
  * an account whose `profile_visibility` is `PRIVATE`. That is an oracle-free refusal: a 403
  * would confirm that a slug belongs to somebody who has chosen to be private, which is
- * exactly what choosing to be private is meant to prevent. So this module treats every
- * refusal identically and answers `null`, and the tab renders what the campaign response
- * already carries — the creator's name and avatar — with no profile link and no explanation
- * of why there is none. A sentence saying "this creator's profile is private" would rebuild
- * the oracle in the interface.
+ * exactly what choosing to be private is meant to prevent. So every refusal is `null` alike,
+ * and the tab renders what the campaign response already carries — the creator's name and
+ * avatar — with no profile link and no explanation of why there is none. A sentence saying
+ * "this creator's profile is private" would rebuild the oracle in the interface.
  */
+
+/** §4.2's public profile. One shape, defined in `lib/profiles/api.ts`. */
+export type { PublicProfile } from '../profiles/api';
 
 /**
- * §4.2's public profile — `GET /v1/users/{slug}`.
+ * One campaign on a creator's list.
  *
- * Five fields, which is all the endpoint publishes. `bio` and `avatarUrl` arrive as an
- * explicit `null` rather than being absent when the creator has set neither, so `null` here
- * means "they have not written one" and never "it has not arrived yet" — the tab renders the
- * empty state for it rather than a placeholder.
+ * `ProfileProjectCard` under the name this tab's components already use. It was a separate
+ * interface with the same fields until #323; the only difference was that this one narrowed
+ * `state` to `ProjectState`, which claimed a closed vocabulary the service is free to add to.
+ * `CreatorPanel` already renders an unrecognised state as its raw identifier rather than as a
+ * blank, so widening it costs nothing and stops a tenth state from being a type error in the
+ * one place that handles it correctly.
  */
-export interface PublicProfile {
-  readonly slug: string;
-  readonly name: string;
-  readonly avatarUrl: string | null;
-  /** The creator's own words. `null` when they have written none. */
-  readonly bio: string | null;
-  /** ISO-8601 instant, UTC. `null` when the service did not send one. */
-  readonly joinedAt: string | null;
-}
-
-/** One campaign on a creator's list — `ProfileProjectCard`. */
-export interface CreatorProject {
-  readonly id: string;
-  readonly title: string;
-  readonly slug: string;
-  readonly creatorSlug: string;
-  readonly blurb: string | null;
-  readonly state: ProjectState;
-  readonly goal: Money | null;
-  readonly pledged: Money | null;
-  readonly backersCount: number;
-  readonly deadline: string | null;
-  readonly launchedAt: string | null;
-  readonly coverImage: { readonly url: string; readonly width: number; readonly height: number } | null;
-}
+export type CreatorProject = ProfileProjectCard;
 
 export interface CreatorProjectPage {
   readonly projects: readonly CreatorProject[];
@@ -111,7 +93,7 @@ export interface CreatorProjectPage {
  */
 export const CREATOR_PROJECT_LIMIT = 6;
 
-/** A minute, matching `lib/api/server.ts` and the service's own `Cache-Control`. */
+/** A minute, matching `lib/profiles/server.ts` and the service's own `Cache-Control`. */
 const PUBLIC_READ_REVALIDATE_SECONDS = 60;
 
 export interface CreatorReadOptions {
@@ -121,24 +103,43 @@ export interface CreatorReadOptions {
   readonly revalidateSeconds?: number;
 }
 
-/**
- * The public address of a creator's profile.
- *
- * One function, so the Creator tab, the byline and anything else that grows a link cannot
- * come to two spellings of it. The route itself belongs to #274 and is not created here.
- */
-export function profileHref(slug: string): string {
-  return `/u/${encodeURIComponent(slug)}`;
+/** The public address of a creator's profile. One spelling, in `lib/profiles/api.ts`. */
+export { profileHref };
+
+/** The creator's profile, or `null` for every refusal alike. */
+export function fetchPublicProfile(
+  slug: string,
+  options: CreatorReadOptions = {},
+): Promise<PublicProfile | null> {
+  const forwarded: ProfileReadOptions = {
+    ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
+    ...(options.env === undefined ? {} : { env: options.env }),
+  };
+  return readProfile(slug, forwarded);
 }
 
-async function readJson(
-  path: string,
-  options: CreatorReadOptions,
-): Promise<unknown | null> {
+/**
+ * The creator's public campaigns, newest first, or `null` for every refusal alike.
+ *
+ * The service already restricts this to §6.1's nine public states, so nothing below filters
+ * by state. The campaign currently being read is dropped by the component rather than here:
+ * this function answers "what has this person made", and which of those the reader is
+ * already looking at is the caller's question.
+ *
+ * <p>Not `lib/profiles/server.ts`'s `fetchCreatedProjects`, and the difference is the whole
+ * reason this function exists: that one asks for a profile page's twenty-four, and this one
+ * asks for {@link CREATOR_PROJECT_LIMIT} plus the row the tab is about to remove.
+ */
+export async function fetchCreatorProjects(
+  slug: string,
+  options: CreatorReadOptions = {},
+): Promise<CreatorProjectPage | null> {
   const impl = options.fetchImpl ?? fetch;
+  const path = `/v1/users/${encodeURIComponent(slug)}/projects?limit=${CREATOR_PROJECT_LIMIT + 1}`;
 
   try {
     const response = await impl(`${apiOrigin(options.env)}${path}`, {
+      credentials: 'omit',
       headers: { accept: 'application/json' },
       next: { revalidate: options.revalidateSeconds ?? PUBLIC_READ_REVALIDATE_SECONDS },
       /*
@@ -152,7 +153,7 @@ async function readJson(
     // Every refusal is one answer. See the module comment on why 404 is the only one the
     // profile endpoints make, and why this must not distinguish them.
     if (!response.ok) return null;
-    return (await response.json()) as unknown;
+    return pageOf(readProjectCardPage((await response.json()) as unknown));
   } catch {
     /*
      * A service that cannot be reached is the case a public page must survive, and `fetch`
@@ -163,155 +164,7 @@ async function readJson(
   }
 }
 
-/** The creator's profile, or `null` for every refusal alike. */
-export async function fetchPublicProfile(
-  slug: string,
-  options: CreatorReadOptions = {},
-): Promise<PublicProfile | null> {
-  return readProfile(await readJson(`/v1/users/${encodeURIComponent(slug)}`, options));
-}
-
-/**
- * The creator's public campaigns, newest first, or `null` for every refusal alike.
- *
- * The service already restricts this to §6.1's nine public states, so nothing below filters
- * by state. The campaign currently being read is dropped by the component rather than here:
- * this function answers "what has this person made", and which of those the reader is
- * already looking at is the caller's question.
- */
-export async function fetchCreatorProjects(
-  slug: string,
-  options: CreatorReadOptions = {},
-): Promise<CreatorProjectPage | null> {
-  const body = await readJson(
-    `/v1/users/${encodeURIComponent(slug)}/projects?limit=${CREATOR_PROJECT_LIMIT + 1}`,
-    options,
-  );
-  return body === null ? null : readProjectPage(body);
-}
-
-/* -------------------------------------------------------------------------
- * Reading one body
- *
- * The same narrowing `lib/projects/publicPage.ts` argues for at length: the wire shapes are
- * optional field by field, and a component that narrowed at every use would eventually skip
- * a check and print `undefined` into somebody's profile. It happens once, here.
- * ---------------------------------------------------------------------- */
-
-/** Exported for the test, which is the only way to state the omission rules without a network. */
-export function readProfile(value: unknown): PublicProfile | null {
-  if (value === null || typeof value !== 'object') return null;
-
-  const source = value as Record<string, unknown>;
-  const slug = text(source['slug']);
-  const name = text(source['name']);
-  // A profile with no handle or no name is not a weaker profile; it is a body this tab
-  // cannot address or introduce, and the campaign's own creator fields are the better answer.
-  if (slug === null || name === null) return null;
-
-  return {
-    slug,
-    name,
-    avatarUrl: text(source['avatarUrl']),
-    bio: text(source['bio']),
-    joinedAt: text(source['joinedAt']),
-  };
-}
-
-/** Exported for the test. */
-export function readProjectPage(value: unknown): CreatorProjectPage {
-  if (value === null || typeof value !== 'object') return { projects: [], nextCursor: null };
-
-  const source = value as Record<string, unknown>;
-  const rows = source['projects'];
-
-  const projects: CreatorProject[] = [];
-  if (Array.isArray(rows)) {
-    for (const row of rows as readonly unknown[]) {
-      const project = readProject(row);
-      if (project !== null) projects.push(project);
-    }
-  }
-
-  return { projects, nextCursor: text(source['nextCursor']) };
-}
-
-function readProject(value: unknown): CreatorProject | null {
-  if (value === null || typeof value !== 'object') return null;
-
-  const source = value as Record<string, unknown>;
-  const id = text(source['id']);
-  const title = text(source['title']);
-  const slug = text(source['slug']);
-  const creatorSlug = text(source['creatorSlug']);
-  const state = text(source['state']);
-  // Without all five there is no link to make and nothing to call it, which is a row that
-  // would render as an unlabelled hole in a list of somebody's work.
-  if (id === null || title === null || slug === null || creatorSlug === null || state === null) {
-    return null;
-  }
-
-  return {
-    id,
-    title,
-    slug,
-    creatorSlug,
-    blurb: text(source['blurb']),
-    state: state as ProjectState,
-    goal: money(source['goal']),
-    pledged: money(source['pledged']),
-    backersCount: count(source['backersCount']) ?? 0,
-    deadline: text(source['deadline']),
-    launchedAt: text(source['launchedAt']),
-    coverImage: readCoverImage(source['coverImage']),
-  };
-}
-
-function readCoverImage(value: unknown): CreatorProject['coverImage'] {
-  if (value === null || typeof value !== 'object') return null;
-
-  const source = value as Record<string, unknown>;
-  const url = text(source['url']);
-  const { width, height } = source;
-  // The three columns are written together or not at all, and the dimensions are what let a
-  // card reserve its box before the photograph decodes.
-  if (url === null || typeof width !== 'number' || typeof height !== 'number') return null;
-  if (width <= 0 || height <= 0) return null;
-
-  return { url, width, height };
-}
-
-/**
- * `{"amount": "599.00", "currency": "AZN"}`, or null.
- *
- * The amount stays the string it arrived as. CLAUDE.md §3: money never becomes a number on
- * the way in, because a number is where the precision goes.
- */
-function money(value: unknown): Money | null {
-  if (value === null || typeof value !== 'object') return null;
-
-  const source = value as Record<string, unknown>;
-  const amount = source['amount'];
-  const currency = source['currency'];
-  if (typeof amount !== 'string' || typeof currency !== 'string') return null;
-
-  return { amount, currency };
-}
-
-/**
- * A non-negative whole number, or `null`.
- *
- * `null` rather than zero for an absent count. "0 campaigns" and "the service did not say"
- * are different statements, and the tab omits the row for the second rather than printing
- * the first.
- */
-function count(value: unknown): number | null {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return null;
-  return Math.floor(value);
-}
-
-function text(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed === '' ? null : trimmed;
+/** `items` as the tab's `projects`. `useCursorList`'s name on one side, the wire's on the other. */
+function pageOf(page: Page<ProfileProjectCard>): CreatorProjectPage {
+  return { projects: page.items, nextCursor: page.nextCursor };
 }

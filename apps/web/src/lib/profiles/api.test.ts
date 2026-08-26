@@ -49,15 +49,37 @@ afterEach(() => {
 });
 
 describe('the profile lists', () => {
+  const CARD = {
+    id: 'p1',
+    title: 'A thing',
+    slug: 'a-thing',
+    creatorSlug: 'aysel',
+    state: 'LIVE',
+  };
+
   it('reads the service’s `projects` array as the paginator’s `items`', async () => {
-    publicMock.mockResolvedValue(
-      json({ projects: [{ id: 'p1', title: 'A thing' }], nextCursor: 'abc' }),
-    );
+    publicMock.mockResolvedValue(json({ projects: [CARD], nextCursor: 'abc' }));
 
     const page = await listCreatedProjects('aysel');
 
     expect(page.items).toHaveLength(1);
     expect(page.nextCursor).toBe('abc');
+  });
+
+  /**
+   * #323. Page one is narrowed on the server and page two is narrowed here, by the same
+   * reader — which is the point of having one. A row with no slug has no address, and a list
+   * that rendered it after a "show more" would put an unlabelled hole under rows that had been
+   * filtered.
+   */
+  it('drops a row the first page would have dropped too', async () => {
+    publicMock.mockResolvedValue(
+      json({ projects: [{ id: 'p2', title: 'No slug' }, CARD], nextCursor: null }),
+    );
+
+    const page = await listCreatedProjects('aysel');
+
+    expect(page.items.map((item) => item.id)).toEqual(['p1']);
   });
 
   it('reads a missing array as an empty page rather than throwing', async () => {
