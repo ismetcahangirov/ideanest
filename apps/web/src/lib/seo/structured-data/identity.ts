@@ -1,10 +1,6 @@
-import {
-  SITE_DESCRIPTION,
-  SITE_LANGUAGE,
-  SITE_NAME,
-  canonicalUrl,
-  type EnvSource,
-} from '../metadata';
+import type { Locale } from '../../i18n/locale';
+import { SITE_DESCRIPTION, SITE_NAME, canonicalUrl, type EnvSource } from '../metadata';
+import { localePath } from '../sitemap/localised';
 import { withoutAbsent, type JsonLdNode } from './document';
 
 /**
@@ -67,39 +63,64 @@ function siteHomeUrl(env: EnvSource): string {
   return canonicalUrl('/', env);
 }
 
-export function organizationNode(env: EnvSource = process.env): JsonLdNode {
-  const url = siteHomeUrl(env);
+/**
+ * The home page a reader of THIS language would be sent to — #123.
+ *
+ * `/` is no longer a document: `middleware.ts` answers it with a 307 to whichever language
+ * the reader's cookie names. So `url` names the localised home, which resolves with a 200,
+ * while `@id` stays on the bare origin below.
+ */
+function localisedHomeUrl(locale: Locale, env: EnvSource): string {
+  return canonicalUrl(localePath('/', locale), env);
+}
+
+/**
+ * THE IDENTIFIERS ARE NOT LOCALISED, AND THAT IS THE WHOLE POINT OF THEM.
+ *
+ * `@id` is a name for a thing, not an address to fetch. There is one IdeaNest and one website
+ * at this origin, described in four languages; giving each language its own `@id` would put
+ * four `Organization` nodes into the crawl for one organisation — the exact duplication
+ * `graphs.ts` moved these nodes off `/discover` to avoid. So the fragment hangs off the bare
+ * origin on every page in every language, and `url` beside it is the localised document.
+ */
+export function organizationNode(locale: Locale, env: EnvSource = process.env): JsonLdNode {
+  const identity = siteHomeUrl(env);
 
   return withoutAbsent({
     '@type': 'Organization',
-    '@id': `${url}${ORGANIZATION_FRAGMENT}`,
+    '@id': `${identity}${ORGANIZATION_FRAGMENT}`,
     name: SITE_NAME,
-    url,
+    url: localisedHomeUrl(locale, env),
     description: SITE_DESCRIPTION,
   });
 }
 
-export function webSiteNode(env: EnvSource = process.env): JsonLdNode {
-  const url = siteHomeUrl(env);
+export function webSiteNode(locale: Locale, env: EnvSource = process.env): JsonLdNode {
+  const identity = siteHomeUrl(env);
 
   return withoutAbsent({
     '@type': 'WebSite',
-    '@id': `${url}${WEBSITE_FRAGMENT}`,
+    '@id': `${identity}${WEBSITE_FRAGMENT}`,
     name: SITE_NAME,
-    url,
+    url: localisedHomeUrl(locale, env),
     description: SITE_DESCRIPTION,
     /*
-     * The same constant `<html lang>` and `og:locale` are built from, so the
-     * language this page announces to a screen reader, to an unfurler and to a
-     * crawler cannot drift apart.
+     * THE ROUTE'S OWN LANGUAGE, not a site-wide constant — #123. It used to be
+     * `SITE_LANGUAGE`, on the argument that `<html lang>` and `og:locale` were built from
+     * the same value and the three must not drift apart. They no longer are: both follow the
+     * `[locale]` segment, and this was the one of the three left behind, telling a crawler
+     * that `/ru/` is in English.
      */
-    inLanguage: SITE_LANGUAGE,
+    inLanguage: locale,
     // By reference, not by value: one `Organization` on the site, pointed at.
-    publisher: { '@id': `${url}${ORGANIZATION_FRAGMENT}` },
+    publisher: { '@id': `${identity}${ORGANIZATION_FRAGMENT}` },
   });
 }
 
 /** Both identity nodes, in the order a reader of the document would want them. */
-export function siteIdentityNodes(env: EnvSource = process.env): readonly JsonLdNode[] {
-  return [organizationNode(env), webSiteNode(env)];
+export function siteIdentityNodes(
+  locale: Locale,
+  env: EnvSource = process.env,
+): readonly JsonLdNode[] {
+  return [organizationNode(locale, env), webSiteNode(locale, env)];
 }

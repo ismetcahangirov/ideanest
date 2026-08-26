@@ -8,12 +8,16 @@ import { privatePageMetadata } from '../../../../lib/seo/metadata';
 /**
  * THE METADATA IS ENGLISH WHILE THE PAGE IS NOT, and that is a choice rather than an omission.
  *
- * `lib/seo/metadata.ts` builds one title template, one description and one `og:locale` for the
- * whole application, and `SITE_LANGUAGE` there records why the document stays `lang="en"`: the
- * public routes are cached shared renders and #123's locale-prefixed URLs are what a
- * translated one would need. A `generateMetadata` here would translate the browser tab of a
- * `noindex, nofollow` page — nothing reads it but the reader, and the one string it would
- * change is already the `<h1>` below in their own language.
+ * Not for the reason this paragraph used to give. It said the document stayed `lang="en"`
+ * because the public routes were cached shared renders; #123 shipped the locale-prefixed URLs
+ * that removed that constraint, and `app/[locale]/layout.tsx` declares the route's own
+ * language now.
+ *
+ * What is left is a smaller and still sufficient reason: this page is `noindex, nofollow`, so
+ * the only reader of its title is the person who opened it, and the one string a
+ * `generateMetadata` would change is already the `<h1>` below in their own language. A browser
+ * tab is not worth a per-route metadata function; when the settings area grows one for its own
+ * sake, this comes with it.
  */
 export const metadata: Metadata = privatePageMetadata({
   title: 'Language',

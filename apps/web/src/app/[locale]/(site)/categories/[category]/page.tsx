@@ -6,6 +6,7 @@ import { categoryPath } from '../../../../../lib/categories/api';
 import { resolveCategoryLanding } from '../../../../../lib/categories/landing';
 import { privatePageMetadata, publicPageMetadata } from '../../../../../lib/seo/metadata';
 import { categoryPageGraph } from '../../../../../lib/seo/structured-data/graphs';
+import { graphContext } from '../../../../../lib/i18n/shell-copy.server';
 import { localeOrDefault } from '../../../../../lib/i18n/locale';
 
 /**
@@ -73,6 +74,7 @@ export default async function CategoryPage({ params }: RouteParams) {
       <StructuredData
         nodes={categoryPageGraph({
           trail: [{ name: category.name, path: categoryPath(category.slug) }],
+          ...(await graphContext()),
         })}
       />
       <CategoryLanding category={category} campaigns={campaigns} hasMore={hasMore} />

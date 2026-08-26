@@ -14,11 +14,12 @@ import { AccountArea } from './AccountArea';
  *
  * WHAT THIS COVERS.
  *
- * `app/layout.tsx` announces `lang="en"` on `<html>` and has to keep doing so: it wraps the
- * cached public routes, and reading a locale there would make every one of them dynamic. So
- * the account subtree overrides the document, and this file asserts that it does — an override
- * that silently stopped being emitted would leave a Russian navigation pronounced with English
- * phonetics, which is a defect nobody sees in a screenshot.
+ * The frame declares the language of the copy it resolved. That used to be an override of an
+ * `<html lang="en">` the root layout hard-coded; since #123 the document carries the route's
+ * own locale and this restates it. The assertion is unchanged and still worth making — it says
+ * the element wrapping the translated navigation announces the language that navigation is
+ * written in, which is what stops a screen reader pronouncing Russian with English phonetics,
+ * and it is a defect nobody sees in a screenshot.
  *
  * It also covers the lookup itself, which moved here when the client provider was removed.
  * `AccountNav` is handed strings now, so this frame is the only place a key becomes a

@@ -3,7 +3,13 @@
     "save": "Kaydet",
     "cancel": "Vazgeç",
     "saving": "Kaydediliyor…",
-    "tryAgain": "Tekrar deneyin"
+    "tryAgain": "Tekrar deneyin",
+    "trail": {
+      "home": "Ana sayfa",
+      "discover": "Keşfet",
+      "categories": "Kategoriler",
+      "collections": "Koleksiyonlar"
+    }
   },
   "shell": {
     "skipToContent": "İçeriğe geç",
@@ -267,7 +273,11 @@
     },
     "collections": {
       "metaTitle": "Koleksiyonlar",
-      "metaDescription": "IdeaNest'te editör seçkileri, temalı koleksiyonlar ve açık çağrılar — her birinin kendi kampanya sayfası var."
+      "metaDescription": "IdeaNest'te editör seçkileri, temalı koleksiyonlar ve açık çağrılar — her birinin kendi kampanya sayfası var.",
+      "window": {
+        "closes": "Kapanıyor",
+        "openSince": "Açık"
+      }
     },
     "search": {
       "title": "Arama",
