@@ -332,6 +332,22 @@ public enum AuditAction {
     LEDGER_READ("ledger.read", "account"),
 
     /**
+     * §4.11's AD-02 (#108): staff read the fraud queue, or marked one of its rows seen.
+     *
+     * <p>The same argument as {@link #PAYMENT_LOG_READ}, and one that is sharper. This
+     * queue is a list of people the platform's own arithmetic has found suspicious, on
+     * numbers nobody has yet measured against a real chargeback rate. A list like that is
+     * one whose readers should be known — both because §17.4 requires it of a read this
+     * privileged, and because the first question after somebody is wrongly treated as a
+     * fraudster is who saw the score.
+     *
+     * <p>The entity is the staff account rather than a subject, following
+     * {@link #AUDIT_TRAIL_READ}: a read of a list has no single subject, and a detail that
+     * reproduced the queue would be a second copy of it with no retention rule.
+     */
+    RISK_QUEUE_READ("risk.queue_read", "account"),
+
+    /**
      * §4.11's role model (#295): somebody was given an authority over the platform.
      *
      * <p><strong>The most privileged action there is</strong>, because it is the one that
@@ -420,6 +436,8 @@ public enum AuditAction {
 
     /** The money left (#69, #306). */
     PAYOUT_SENT("payout.sent", "payout");
+
+
 
     private final String action;
     private final String entityType;
