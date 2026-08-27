@@ -33,6 +33,30 @@ jest.mock('react-native-mmkv', () => ({
 }));
 
 /**
+ * `expo-glass-effect` is a native view with no JavaScript implementation on iOS,
+ * and Expo Router imports it from its native stack — so anything that renders a
+ * `Link` reaches it.
+ *
+ * <p>Its `GlassView.ios.tsx` calls `requireNativeViewManager` at module load and
+ * throws "are you sure you've linked all the native dependencies properly?".
+ * Which of its two files is resolved depends on the default platform, so a suite
+ * without this mock passes on one operating system and fails on another — which
+ * is exactly what happened between this machine and the Linux runner.
+ *
+ * A plain `View` is the honest replacement: that is what the package's own
+ * non-iOS implementation is.
+ */
+jest.mock('expo-glass-effect', () => {
+  const { View } = require('react-native');
+  return {
+    GlassView: View,
+    GlassContainer: View,
+    isLiquidGlassAvailable: () => false,
+    isGlassEffectAPIAvailable: () => false,
+  };
+});
+
+/**
  * Reanimated is NOT mocked here, and that is deliberate.
  *
  * `react-native-reanimated/mock` re-exports the real module before replacing

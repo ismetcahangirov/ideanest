@@ -26,44 +26,22 @@ module.exports = {
    */
   resolver: require.resolve('react-native-worklets/jest/resolver.js'),
   /*
-   * WHAT HAS TO BE TRANSFORMED, AND WHY THE PRESET'S OWN LIST IS NOT ENOUGH.
+   * NOTHING IS OVERRIDDEN HERE, AND THAT IS THE FIX RATHER THAN THE OMISSION.
    *
-   * React Native and most of the Expo SDK ship untranspiled — Flow annotations
-   * and ESM — and are compiled by `babel-preset-expo` on the way in. `jest-expo`
-   * carries a pattern for that, written against a flat `node_modules`. pnpm does
-   * not flatten: every package lives at
-   * `node_modules/.pnpm/<name>@<version>/node_modules/<name>`, which that pattern
-   * does not reach, so nothing is transformed and the first import of the
-   * framework fails with `Cannot use import statement outside a module`.
+   * React Native and most of the Expo SDK ship untranspiled and are compiled on
+   * the way in by `babel-preset-expo`. `jest-expo`'s preset already carries the
+   * pattern for that AND already knows about pnpm — its list begins
+   * `/node_modules/(?!(.pnpm|react-native|...`, so every package inside the
+   * store is transformed.
    *
-   * The list is by SCOPE rather than by package, so that a transitive dependency
-   * of Expo Router — `standard-navigation` was the one that found this — does not
-   * have to be added the day it appears. Everything named here is part of the
-   * React Native toolchain and ships source; nothing else in the store is
-   * touched, which is what keeps a cold CI run from transforming the world.
-   *
-   * The terminator is `[@/+]`, and the `+` is not decoration: pnpm writes a
-   * scoped package's store directory as `@react-native+jest-preset@0.86.3`, so a
-   * pattern that only accepted `@` or `/` after the scope silently excluded every
-   * scoped package in the toolchain.
+   * A hand-written `transformIgnorePatterns` here replaces that wholesale, which
+   * is what happened first: the list had to name each package, `standard-navigation`
+   * had to be added when Expo Router pulled it in, and scoped packages needed a
+   * `+` in the terminator because pnpm writes their directories as
+   * `@react-native+jest-preset@0.86.3`. All of that was rebuilding something the
+   * preset already had, and getting a different answer from it on a different
+   * operating system.
    */
-  transformIgnorePatterns: [
-    'node_modules/(?!(?:\.pnpm/)?(?:' +
-      [
-        '(?:jest-)?react-native',
-        'react-native-.*',
-        '@react-native(?:-community)?',
-        '@react-navigation',
-        'standard-navigation',
-        'expo',
-        'expo-.*',
-        '@expo',
-        '@shopify',
-        '@tanstack',
-        '@testing-library',
-      ].join('|') +
-      ')(?:[@/+]|$))',
-  ],
   moduleNameMapper: {
     '^@/(.*)$': path.join(__dirname, 'src/$1'),
   },
