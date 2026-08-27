@@ -162,6 +162,19 @@ ideanest:
       keys:
         test: "dGVzdC1vbmx5LWFkZHJlc3Mta2V5LTMyLWJ5dGVzISE="
 
+  verification:
+    documents:
+      # A key that exists only here, so that #105's encryption is exercised by the
+      # suite rather than skipped by it -- an unconfigured deployment refuses a
+      # submission with a 503, which would make every test in
+      # IdentityVerificationTests assert the refusal instead of the feature.
+      #
+      # Thirty-two bytes of base64, and deliberately not a value anything would
+      # mistake for a real one. The same argument the address key above makes.
+      primary-key-id: test
+      keys:
+        test: "dGVzdC1vbmx5LWRvY3VtZW50LWtleS0zMi1ieXRlcyE="
+
   payment:
     provider:
       # The suite registers its own PaymentProvider bean and names it here, which is
