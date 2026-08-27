@@ -708,6 +708,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/reconciliation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["reconciliationLatest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/reconciliation/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reconciliationRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/refunds": {
         parameters: {
             query?: never;
@@ -1588,6 +1620,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/exchange-rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["exchangeRateRates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/faqs/{id}": {
         parameters: {
             query?: never;
@@ -1650,6 +1698,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/me/currency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["currencyPreferenceSetCurrency"];
         trace?: never;
     };
     "/v1/me/deletion": {
@@ -3503,6 +3567,9 @@ export interface components {
             name?: string;
             slug?: string;
         };
+        CurrencyRequest: {
+            currency: string;
+        };
         DailyPoint: {
             /** Format: date */
             day?: string;
@@ -3694,6 +3761,12 @@ export interface components {
         Feed: {
             items?: components["schemas"]["Card"][];
             nextCursor?: string;
+        };
+        Finding: {
+            currency?: string;
+            detail?: string;
+            /** @enum {string} */
+            kind?: "UNBALANCED" | "IMPOSSIBLE_SIGN" | "DISAGREES_WITH_PAYMENTS";
         };
         Flag: {
             description?: string;
@@ -3925,6 +3998,7 @@ export interface components {
             stillEditable?: number;
         };
         MeResponse: {
+            currency?: string;
             /** Format: date-time */
             deletionScheduledAt?: string;
             email?: string;
@@ -4141,6 +4215,8 @@ export interface components {
             cardVerified?: boolean;
             /** Format: date-time */
             confirmedAt?: string;
+            displayCurrency?: string;
+            displayRate?: string;
             /** Format: uuid */
             id?: string;
             isAnonymous?: boolean;
@@ -4463,6 +4539,18 @@ export interface components {
             /** @enum {string} */
             subjectType?: "NONE" | "PROJECT" | "PLEDGE" | "ACCOUNT";
         };
+        Rate: {
+            currency?: string;
+            /** Format: date-time */
+            fetchedAt?: string;
+            /** Format: date */
+            publishedFor?: string;
+            rate?: string;
+        };
+        RatesResponse: {
+            base?: string;
+            rates?: components["schemas"]["Rate"][];
+        };
         RecoveryCodesResponse: {
             recoveryCodes?: string[];
         };
@@ -4570,6 +4658,15 @@ export interface components {
         ReplyRequest: {
             body: string;
             internal?: boolean;
+        };
+        Report: {
+            /** Format: int32 */
+            accountsChecked?: number;
+            balanced?: boolean;
+            findings?: components["schemas"]["Finding"][];
+            hasRun?: boolean;
+            /** Format: date-time */
+            runAt?: string;
         };
         ReportQueueResponse: {
             /** Format: uuid */
@@ -5271,6 +5368,7 @@ export type SchemaCreateItemRequest = components['schemas']['CreateItemRequest']
 export type SchemaCreateProjectRequest = components['schemas']['CreateProjectRequest'];
 export type SchemaCreateRewardRequest = components['schemas']['CreateRewardRequest'];
 export type SchemaCreator = components['schemas']['Creator'];
+export type SchemaCurrencyRequest = components['schemas']['CurrencyRequest'];
 export type SchemaDailyPoint = components['schemas']['DailyPoint'];
 export type SchemaDashboardResponse = components['schemas']['DashboardResponse'];
 export type SchemaDay = components['schemas']['Day'];
@@ -5293,6 +5391,7 @@ export type SchemaExportBackersRequest = components['schemas']['ExportBackersReq
 export type SchemaFacets = components['schemas']['Facets'];
 export type SchemaFaqPatchRequest = components['schemas']['FaqPatchRequest'];
 export type SchemaFeed = components['schemas']['Feed'];
+export type SchemaFinding = components['schemas']['Finding'];
 export type SchemaFlag = components['schemas']['Flag'];
 export type SchemaFlagList = components['schemas']['FlagList'];
 export type SchemaFollowStateResponse = components['schemas']['FollowStateResponse'];
@@ -5375,6 +5474,8 @@ export type SchemaPublishUpdateRequest = components['schemas']['PublishUpdateReq
 export type SchemaQueue = components['schemas']['Queue'];
 export type SchemaQueuedReportResponse = components['schemas']['QueuedReportResponse'];
 export type SchemaRaiseRequest = components['schemas']['RaiseRequest'];
+export type SchemaRate = components['schemas']['Rate'];
+export type SchemaRatesResponse = components['schemas']['RatesResponse'];
 export type SchemaRecoveryCodesResponse = components['schemas']['RecoveryCodesResponse'];
 export type SchemaReferralVisitResponse = components['schemas']['ReferralVisitResponse'];
 export type SchemaReferrerReportResponse = components['schemas']['ReferrerReportResponse'];
@@ -5392,6 +5493,7 @@ export type SchemaReorderProjects = components['schemas']['ReorderProjects'];
 export type SchemaReorderRewardsRequest = components['schemas']['ReorderRewardsRequest'];
 export type SchemaReplaceRequest = components['schemas']['ReplaceRequest'];
 export type SchemaReplyRequest = components['schemas']['ReplyRequest'];
+export type SchemaReport = components['schemas']['Report'];
 export type SchemaReportQueueResponse = components['schemas']['ReportQueueResponse'];
 export type SchemaReportRequest = components['schemas']['ReportRequest'];
 export type SchemaReportResolutionRequest = components['schemas']['ReportResolutionRequest'];
@@ -6677,6 +6779,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WeightsResponse"];
+                };
+            };
+        };
+    };
+    reconciliationLatest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
+                };
+            };
+        };
+    };
+    reconciliationRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
                 };
             };
         };
@@ -8160,6 +8302,26 @@ export interface operations {
             };
         };
     };
+    exchangeRateRates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RatesResponse"];
+                };
+            };
+        };
+    };
     projectFaqDelete: {
         parameters: {
             query?: never;
@@ -8291,6 +8453,28 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["MeResponse"];
                 };
+            };
+        };
+    };
+    currencyPreferenceSetCurrency: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CurrencyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

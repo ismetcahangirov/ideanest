@@ -22,6 +22,21 @@ public class TestDoublesConfiguration {
     }
 
     /**
+     * §21.2's rate source, scripted rather than fetched — issue #327.
+     *
+     * <p>The suite must never reach cbar.az: a test that fetched a public website would fail
+     * for reasons that are not ours, on somebody else's schedule. It also could not produce
+     * the cases that matter — a source that is down, one serving Friday's rates on Sunday,
+     * a rate that has aged past its limit. The XML parsing is tested separately against a
+     * document on disk, which is where a parser belongs.
+     */
+    @Bean
+    @Primary
+    ScriptedRateSource scriptedRateSource() {
+        return new ScriptedRateSource();
+    }
+
+    /**
      * The collaborator invitation notifier, remembering rather than logging.
      *
      * <p>Here for the same reason as the one above: there is no mail transport, so a

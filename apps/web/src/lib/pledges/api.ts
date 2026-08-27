@@ -264,6 +264,21 @@ export interface PledgeResponse {
   confirmedAt?: string | null;
   canceledAt?: string | null;
   /**
+   * §21.2's rate retention (#327): the currency this pledge was approximated in at
+   * confirmation, and the rate it was approximated at.
+   *
+   * Both null together for most pledges, and that is the record rather than a gap: a backer
+   * reading amounts in the campaign's own currency was shown no approximation, and the
+   * service refuses to record a rate of 1 for a conversion that did not happen.
+   *
+   * **The rate and never the converted amount.** The amount is a product of `amounts.total`
+   * and this, and carrying both would be carrying a figure that can disagree with its own
+   * inputs. `@ideanest/money`'s `approximate` is what multiplies, once, where it is drawn.
+   */
+  displayCurrency?: string | null;
+  /** A decimal string. Units of `amounts.total`'s currency per ONE unit of `displayCurrency`. */
+  displayRate?: string | null;
+  /**
    * What the backer said to charge later, echoed back. Null until #55 exists to
    * give them one, and null on every pledge this build can make.
    *

@@ -169,7 +169,7 @@ Marked `[W]` web, `[M]` mobile, `[A]` admin.
 | A-11 | Personal data export | W | Machine-readable archive |
 | A-12 | Email change | W, M | Confirmation to both addresses |
 | A-13 | Password change | W, M | Requires the current password |
-| A-14 | Biometric unlock | M | Refresh token in secure device storage |
+| A-14 | Biometric unlock | M | **Built (#29)** at `/account`. The refresh token moves into a `requireAuthentication` keychain entry, so the platform — not the application — refuses to hand it over without a prompt. §17.1 has the full argument, including why it is a local gate and not a second factor |
 
 > **The web client cannot read a session on the server, and that is a property
 > of the cookie rather than of the client.** The refresh token is issued on
@@ -258,7 +258,7 @@ Marked `[W]` web, `[M]` mobile, `[A]` admin.
 | P-07 | Profile visibility | W, M |
 | P-08 | Blocked users | W |
 | P-09 | Notification preferences | W, M |
-| P-10 | Language and currency | W, M |
+| P-10 | Language and currency. **Both halves built** — the language with #280 and #324, the display currency with #327 | W, M |
 
 > **The web client's account area is one navigation over two prefixes**, built by
 > #275: `/settings/*` for what somebody decides — notifications, devices,
@@ -302,13 +302,25 @@ Marked `[W]` web, `[M]` mobile, `[A]` admin.
 > somebody stranded in a script they cannot read needs to find their own, and
 > "Azerbaijani" spelled in Russian is unreadable to exactly that person.
 >
-> **The currency is still stated rather than offered, and no amount of front-end
-> work changes that.** §21.2's display currency is an approximation from
-> central-bank rates; the service has no rate source, no rate table, and
-> `SUPPORTED_CURRENCY = "AZN"` in three of its services, so the control would
-> convert AZN to AZN. The screen says so in a sentence instead of drawing a
-> `<select>` with one option, which is the same rule the site header follows: an
-> entry pointing at a page that cannot work is worse than no entry.
+> **The currency is a control since #327, and the argument it replaces was about a
+> rate rather than about a second project currency.** This paragraph used to say a
+> selector would convert AZN to AZN, because §21.2's approximation needs a
+> published rate and the service had none. #327 built one: the Central Bank of
+> Azerbaijan's daily publication, refreshed hourly into `exchange_rates`, with the
+> rate a backer was shown stamped on their pledge.
+>
+> The two currencies are not the same currency. The **project** currency is what a
+> creator sets a goal in and what a card is charged in, it is pinned to manat under
+> phase 1, and nothing here changes it. The **display** currency is a property of
+> the reader: a backer in Istanbul looking at a manat campaign wants to know
+> roughly what it costs in lira, and that is answerable today.
+>
+> `PATCH /v1/me/currency` writes it, and refuses what the platform cannot price —
+> which is a property of what a central bank published and when the platform last
+> reached it, so the refusal carries the list of what it can. On a deployment whose
+> source is unreachable, or one with the feature switched off, the panel is a
+> sentence again. That is #280's shape, and the reason it was right: a control with
+> one option is a control that cannot be used.
 >
 > **What the language does not yet change is the public site**, which is still
 > English. §21.1 explains why — a per-visitor language on a cached route turns one
@@ -1303,7 +1315,7 @@ Preferences are per category and per channel, with a digest option.
 | AD-02 | Trust and safety | Report queue, fraud signals, suspension. Reporting and the queue are built (#102, §7.2's `content_reports`), **suspension is built (#103)**, and **fraud signals are built (#108)** — `risk_assessments`, a queue at `/v1/admin/risk/queue`, and the identity review at `/v1/admin/verifications/queue` (#105). The signals **advise and do not decide**: nothing refuses a pledge or suspends an account on a score. See §17.2 |
 | AD-03 | Curation | Editorial badges, collections, open calls, placement. The endpoints arrived with #48; **the four screens are built (#300 to #303)** at `/admin/curation` and its three siblings |
 | AD-04 | User management | Search, inspect, ban, verification status, audited impersonation. **Search, inspect and the ban are built (#104)**, and **`/admin/staff` is built (#295)** — the role model that replaced the configured list. Impersonation is not, and is the one thing in this table still waiting on a decision (#299) |
-| AD-05 | Finance | Payment log, ledger, payout queue, approvals, disputes. **All of it is built**: the log and the ledger with #304 and #305, the payout queue and its dual approval with #69 and #306 |
+| AD-05 | Finance | Payment log, ledger, payout queue, approvals, disputes, and whether the sum of them is right. **All of it is built**: the log and the ledger with #304 and #305, the payout queue and its dual approval with #69 and #306, and the reconciliation with #106 at `/admin/reconciliation`. That last screen is what kept "financial operations tooling" open with the other three built — #70's nightly pass answered "do the books balance" to a log line and a Prometheus gauge and to nobody who works in this console. It reports and never repairs, so there is no control on it that corrects anything |
 | AD-06 | Refunds | Full and partial with reason codes. **Built (#67, #307)** at `/admin/refunds`. The decision — reason code, author, state — is `refunds`; the money is a `REFUND` transaction and a ledger posting, and the two are deliberately separate tables |
 | AD-07 | Chargebacks | Notification, evidence, outcome. **Built (#68, #308)** at `/admin/disputes`. Intake is a provider webhook and no endpoint opens one; evidence is recorded here and still submitted through the provider's own console, because §9.3's interface has no upload |
 | AD-08 | Taxonomy | Category and tag management with translations. **Built (#309)** at `/admin/taxonomy`. Handles are permanent — they are in the public URL of every campaign filed under them — and nothing can be retired, because `projects.category_id` references these rows |
@@ -1491,7 +1503,7 @@ Preferences are per category and per channel, with a digest option.
 |---|---|
 | MB-01 | Push notifications |
 | MB-02 | Deep links and universal links |
-| MB-03 | Biometric authentication |
+| MB-03 | Biometric authentication. **Built (#29)** — and the name is wrong in a way worth keeping: it re-opens a session rather than proving anything to the service. See A-14 and §17.1 |
 | MB-04 | Offline cache for saved projects and pledges |
 | MB-05 | Native share sheet |
 | MB-06 | Camera capture for avatars |
@@ -2705,6 +2717,7 @@ load profile).
 | `survey-nudge` | Daily | Chase non-responders (#74). The `survey_nudges` row is the claim -- written in the same transaction as the outbox event, so a crash leaves somebody either unchased and unclaimed or chased and claimed. Without it the sweep's question is true for as long as they have not answered, and every pass is another email. Bounded per pass and by a configured number of attempts: one is a reminder and five is a campaign of its own |
 | `ledger-reconciliation` | Daily | Verify the balance invariant, compare to settlement |
 | `token-cleaner` | Daily | Purge tokens from unsuccessful campaigns |
+| `exchange-rate-refresh` | Hourly | §21.2's display currency (#327): fetch the central bank's publication and store what is new. **Hourly over a source that publishes daily is not a contradiction** — the hour is how quickly the platform notices a new publication, and eleven of the twelve passes write nothing because V59's unique index over `(source, base, quote, published_for)` already holds the day. An unreachable source is a `WARN` and not a thrown run: throwing would make `JobRunner` back the job off and eventually stop it, so a central bank's bad afternoon would permanently disable a feature whose failure mode is a missing figure. What makes that safe is the age check on the other side — a rate past `max-age` stops being offered, so a source that is genuinely gone takes the approximation off the screen within days |
 | `denormalization-sync` | Hourly | Correct cached counters |
 | `account-anonymiser` | Hourly | Anonymise accounts whose deletion grace period has elapsed |
 | `idempotency-key-cleaner` | Hourly | Remove idempotency keys past §17.2's 24-hour retention |
@@ -3235,6 +3248,7 @@ GET    /v1/me/profile                       # P-01..P-03 (#276); the owner's edi
 PATCH  /v1/me/profile                       # P-01..P-03 (#276); named, not a general PATCH /v1/me
 PATCH  /v1/me/profile-visibility            # P-07 (#274); the profile page's one switch
 PATCH  /v1/me/locale                        # P-10's language half (#324); az|en|ru|tr, 204
+PATCH  /v1/me/currency                      # P-10's currency half (#327); refused unless the platform can price it
 GET    /v1/users/{slug}                     # P-06 (#274); 404 for a private profile, never 403
 GET    /v1/users/{slug}/projects            # P-05 (#274); public states only
 GET    /v1/users/{slug}/backed              # P-04 (#274); no amounts, anonymous pledges omitted
@@ -3385,6 +3399,11 @@ POST   /v1/admin/finance/payouts/{id}/approve
 POST   /v1/admin/finance/refunds
 GET    /v1/admin/payments                # AD-05 (#304); charges, provider references, declines
 GET    /v1/admin/ledger                  # AD-05 (#305); postings with both sides, and balances
+GET    /v1/exchange-rates                # §21.2 (#327); public, cacheable. Empty when the platform can offer nothing
+PATCH  /v1/me/currency                   # §4.2 P-10 (#327); the currency this reader sees amounts in
+
+GET    /v1/admin/reconciliation          # AD-05 (#106); the last pass this replica made
+POST   /v1/admin/reconciliation/runs     # AD-05 (#106); one now. VIEW_FINANCE; writes nothing
 GET    /v1/admin/audit                   # AD-14 (#314); the trail, newest first
 GET    /v1/admin/collections
 POST   /v1/admin/collections
@@ -4694,6 +4713,7 @@ ideanest/
 │   │   │   ├── payment/
 │   │   │   │   └── provider/         one adapter per provider
 │   │   │   ├── ledger/
+│   │   │   ├── fx/                   §21.2's display currency (#327)
 │   │   │   ├── payout/
 │   │   │   ├── discovery/
 │   │   │   ├── pledgemanager/
@@ -4864,7 +4884,8 @@ report, bounded by the number of tiers a campaign has rather than by its backers
 | Access token revocation | Not possible before expiry. Verification reads no state, so revoking a session takes effect within the access token's lifetime and not sooner. That window is the reason the lifetime is fifteen minutes |
 | Client requirement | Refresh must be **single-flight**. Two concurrent refreshes present the same token, which is indistinguishable from theft and signs the user out |
 | Web storage | Refresh in an httpOnly, secure, same-site cookie; access in memory, never local storage |
-| Mobile storage | Platform secure storage |
+| Mobile storage | Platform secure storage: Keychain Services on iOS, the Android Keystore behind `EncryptedSharedPreferences`. The access token is held in memory and never written down, exactly as on the web |
+| **Biometric unlock** | **Built (#29).** With the lock on, the refresh token is written with `requireAuthentication`, so the *operating system* refuses to return it until a prompt succeeds — the gate is a property of where the credential is kept rather than a check the application performs and could forget. It is a **local gate and never a factor**: the service is not told the prompt happened, and §17.1's TOTP remains the only second factor. Turning it off requires passing the prompt, because reading the token is what the prompt guards. The two states are two keychain entries, not a flag on one — an authenticated entry is generated against its own key and cannot share a `keychainService` with an unauthenticated one — so switching is a move, and `apps/mobile/src/lib/session.ts` orders it so no failure loses the session |
 | Two-factor | Time-based one-time password: RFC 6238, HMAC-SHA1, six digits, thirty-second steps, one step of skew either side. Enrolment does not enable it — a current code must be entered first, or a phone that dies mid-flow is a lockout |
 | Two-factor sign-in | A correct password returns a **single-use challenge and no session**. The second call spends the challenge with a code. A code cannot be replayed inside its own window: the accepted time step is recorded and only a strictly greater one is taken |
 | Two-factor guessing | Five code attempts per challenge; a new challenge costs the password again. This is *the* control on a six-digit secret — three codes are valid at any moment once skew is allowed |
@@ -5245,7 +5266,7 @@ collection failure.
 | Discovery feed | 1,000 requests/second, p99 under 300ms |
 | Project page | 2,000 requests/second, p99 under 200ms cached |
 | Pledge creation | 100 requests/second, p99 under 1s |
-| **Campaign close** | 10,000 collections within 10 minutes |
+| **Campaign close** | 10,000 collections within 10 minutes. **Measured on every build (#141)**: `CollectionLoadTests` closes a six-hundred-backer campaign from eight threads at once and asserts that the platform's own half of that path clears the 16.7-a-second floor with the provider answering instantly — around 240 a second in practice. It deliberately publishes **no end-to-end SLO**, because the remaining variable is a provider #60 has not chosen; what it does assert exactly is that nothing is collected twice, nothing is lost, the ledger matches to the minor unit, and §5.1's outcome is never revisited by a collection that failed |
 
 ---
 
@@ -5306,12 +5327,43 @@ it was written in.
 | Project currency | Chosen by the creator, immutable after launch |
 | Phase 1 | AZN |
 | Phase 2 | AZN, USD, EUR, TRY, RUB |
-| Display currency | User preference, shown as an **approximation**; collection occurs in the project currency |
-| Rate source | Central bank rates, cached hourly |
-| Rate retention | The rate used is stored on the pledge, for audit |
+| Display currency | User preference, shown as an **approximation**; collection occurs in the project currency. **Built (#327)**: `users.currency`, `PATCH /v1/me/currency`, and a panel on `/settings/language`. It is a property of the **reader** and never of the campaign — phase 1's campaigns are all funded in manat and this does not change that |
+| Rate source | Central bank rates, cached hourly. **Built (#327)**: the Central Bank of Azerbaijan's daily publication at `cbar.az/currencies/{dd.MM.yyyy}.xml`, refreshed by `exchange-rate-refresh` into `exchange_rates` (V59). **Off by default** — `IDEANEST_FX_ENABLED` — because turning it on means the service calls a third party on a timer, which a deployment must decide rather than inherit from an upgrade |
+| Rate retention | The rate used is stored on the pledge, for audit. **Built (#327)**: `pledges.display_rate` and `pledges.display_currency` (V60), written at confirmation and never again. The **rate** and never the converted amount — the amount is a product of `total_amount` and this, and storing both would be storing a figure that can disagree with its own inputs |
 | **Rounding** | **`HALF_EVEN`, at the currency's minor unit.** Declared once, in `MoneyRounding`, and applied by everything that touches money |
 | Splitting | `Money.allocate` — the parts always sum to the whole; a remainder is handed out one minor unit at a time |
 | Mixed currencies | Never combined. Any arithmetic or comparison between two currencies is refused, because §21.2's rate is an approximation shown to a user and never the basis of a collection |
+
+> **EVERYTHING ABOUT THE DISPLAY CURRENCY DEGRADES TO ABSENCE, NEVER TO A GUESS** (#327).
+> A source that cannot be reached, a currency with no published rate, a rate older than
+> `ideanest.fx.max-age`, and a deployment with the feature off all produce the same
+> answer: no approximation on the screen and no rate on the pledge. A figure computed
+> from a stale or invented rate is worse than no figure, because a backer acts on it —
+> so every conversion returns an `Optional` and there is no fallback rate anywhere.
+>
+> **The direction is the one mistake this feature can make.** One unit of the quoted
+> currency is worth `rate` units of the base, so an amount in the base is *divided*.
+> On the dollar at 1.70 a multiplication is merely wrong; on the lira at 0.0354 it is
+> out by a factor of thirty. It is asserted at three levels — the service, the shared
+> money package, and the adapter — each against a figure computed by hand.
+>
+> **The rate is not money and is not rounded like it.** `numeric(20,10)`, because
+> `MoneyRounding`'s two places would turn the lira's 0.0354 into 0.04 — a thirteen per
+> cent error in every figure computed from it. Only the converted amount is rounded, once,
+> at the end, to the target currency's own minor unit and by `HALF_EVEN` like everything
+> else here.
+>
+> **`Money` is never asked to cross a currency.** It refuses with
+> `CurrencyMismatchException` and that refusal is correct; the division happens on a plain
+> `BigDecimal` and a `Money` is constructed from the result, so two amounts in different
+> currencies never meet. What comes back is an `Approximation`, which carries the exact
+> amount beside the approximate one so that nothing downstream can put the wrong one on a
+> receipt.
+>
+> **A backer whose display currency is the campaign's is shown no approximation**, and
+> their pledge records none: `pledges_display_currency_differs` refuses a rate of 1,
+> because recording one would be recording a conversion that did not happen. That is most
+> backers, which makes it the ordinary case rather than the edge one.
 
 **Why `HALF_EVEN` and not `HALF_UP`** (#133): the values being rounded are computed
 ones — §5.2's 5% platform fee, the per-collection processing fee, §9.5's split of a

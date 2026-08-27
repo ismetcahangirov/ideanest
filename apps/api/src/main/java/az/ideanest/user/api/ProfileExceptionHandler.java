@@ -41,6 +41,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
             PublicProfileController.class,
             ProfileVisibilityController.class,
             LocalePreferenceController.class,
+            CurrencyPreferenceController.class,
             OwnProfileController.class
         })
 public class ProfileExceptionHandler {
@@ -104,6 +105,27 @@ public class ProfileExceptionHandler {
     }
 
     /** One body, so that the two above cannot drift apart. */
+    /**
+     * A display currency this deployment cannot honour — issue #327.
+     *
+     * <p>400 and not 422: the field is well formed and the platform simply cannot do it, and
+     * §10.4's vocabulary treats "this value is not one I accept" as a bad request throughout.
+     *
+     * <p>The available list travels in {@code meta} because the client cannot work it out —
+     * it changes with what a central bank published and when the platform last reached it,
+     * so a list cached at build time is wrong on exactly the day this refusal happens.
+     */
+    @ExceptionHandler(UnsupportedDisplayCurrencyException.class)
+    public ProblemDetail handleUnsupportedCurrency(UnsupportedDisplayCurrencyException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("https://ideanest.az/problems/display-currency-unavailable"));
+        problem.setTitle("Currency not available");
+        problem.setDetail(exception.getMessage());
+        problem.setProperty("code", "DISPLAY_CURRENCY_UNAVAILABLE");
+        problem.setProperty("meta", Map.of("available", exception.available()));
+        return problem;
+    }
+
     private static ProblemDetail notFound() {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
         problem.setType(URI.create("https://ideanest.az/problems/user-not-found"));

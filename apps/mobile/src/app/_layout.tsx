@@ -1,4 +1,5 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
@@ -9,6 +10,7 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { siteUrl } from '../api/config';
 import { destinationFor } from '../lib/links';
 import { createQueryClient, persistOptions } from '../lib/offline';
+import { lockNow } from '../lib/session';
 import { colors } from '../theme';
 
 /**
@@ -36,7 +38,25 @@ import { colors } from '../theme';
  * `url` event for a link that arrives while the application is already open —
  * because a link that works only when the app is already running is the bug
  * #114 is most often filed about.
+ *
+ * <h2>The re-lock is here for the same reason — nothing else sees the process</h2>
+ *
+ * #29's gate fires when the refresh token is read, and the access token it
+ * produces then lives in memory for fifteen minutes. A phone handed to somebody
+ * else inside that window reaches the pledge list without a prompt. `AppState`
+ * is the only signal that the application was put away, and the root is the only
+ * place with one listener rather than one per screen.
  */
+
+/**
+ * How long the application may be away before the gate re-arms.
+ *
+ * <p>Long enough that answering a message or checking a boarding pass does not
+ * cost a prompt, short enough that a phone left on a table is closed. Below
+ * `AppState` fires on notification shades and control centres on both platforms
+ * as well, so a threshold of zero would prompt for pulling down a notification.
+ */
+const RELOCK_AFTER_MS = 2 * 60 * 1000;
 
 const queryClient = createQueryClient();
 
@@ -58,6 +78,31 @@ function urlFromNotification(
 export default function RootLayout() {
   const router = useRouter();
   const host = useMemo(() => new URL(siteUrl()).host, []);
+  const leftAt = useRef<number | null>(null);
+
+  useEffect(() => {
+    const changed = (state: AppStateStatus) => {
+      if (state === 'active') {
+        const away = leftAt.current;
+        leftAt.current = null;
+        /*
+         * `lockNow` is a no-op when the lock is off, so this costs nothing on a
+         * phone that never turned it on. Date.now() rather than a clock from
+         * anywhere: this measures wall time across a suspension, which is the
+         * one thing a monotonic timer inside a suspended process cannot.
+         */
+        if (away !== null && Date.now() - away >= RELOCK_AFTER_MS) lockNow();
+        return;
+      }
+      // `background` on both platforms, and `inactive` on iOS for the app
+      // switcher and an incoming call. The first of the two is what to
+      // remember: going inactive then background must not reset the clock.
+      leftAt.current ??= Date.now();
+    };
+
+    const subscription = AppState.addEventListener('change', changed);
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     let live = true;
@@ -118,6 +163,17 @@ export default function RootLayout() {
             }}
           >
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            {/*
+              A modal, because signing in is an interruption of whatever somebody
+              was doing rather than a place they navigated to — and because the
+              swipe that dismisses it is the "not now" this screen must always
+              offer. Nothing on this platform requires an account to be useful.
+            */}
+            <Stack.Screen
+              name="sign-in"
+              options={{ presentation: 'modal', title: 'Sign in' }}
+            />
+            <Stack.Screen name="account" options={{ title: 'Account' }} />
           </Stack>
         </PersistQueryClientProvider>
       </SafeAreaProvider>

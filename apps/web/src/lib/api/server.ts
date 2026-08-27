@@ -1,5 +1,6 @@
 import { getLocale } from 'next-intl/server';
 import { ApiError, createApiClient, type ApiClient, type components } from '@ideanest/api-client';
+import type { ExchangeRate } from '@ideanest/money';
 import type { Category } from '../categories/api';
 import {
   collectionFrom,
@@ -455,4 +456,67 @@ function parametersOf(query: string): Record<string, string | string[]> {
 function refusalOrRethrow(cause: unknown): null {
   if (cause instanceof ApiError || cause instanceof TypeError) return null;
   throw cause;
+}
+
+/**
+ * §21.2's display currencies, and what one unit of each is worth — issue #327.
+ *
+ * <h2>Read on the server, and it is one of the few reads that genuinely should be</h2>
+ *
+ * Everything else in this module is public because the *page* is public. This is public
+ * because the *answer* is: it is what a central bank published, it names nobody, and it
+ * changes once a day. The service marks it `public, max-age=600`, so Next's own cache and
+ * every hop in front of it may hold one copy for everybody.
+ *
+ * That is also why it does not go through the client. A settings screen that fetched it in
+ * the browser would spend a round trip after hydration to draw a `<select>` whose options
+ * were known before the first byte.
+ *
+ * <h2>Ten minutes, and it is the service's own figure rather than this module's</h2>
+ *
+ * The refresh runs hourly, so a shorter window would be requests spent to be told the same
+ * number and a longer one would hide a new publication behind a cached copy of the old one.
+ * `PUBLIC_READ_REVALIDATE_SECONDS` is a minute because a campaign's pledged total moves
+ * continuously; a rate does not, and holding the two to one figure would be this module
+ * having an opinion the service already has a better one about.
+ *
+ * <h2>An empty list is the answer, and null is a failure</h2>
+ *
+ * A deployment with the feature off, one whose source has been unreachable past its limit,
+ * and one that has not refreshed yet all answer `{ base, rates: [] }` — which a caller reads
+ * as "no display currency is offered" and draws nothing for. `null` is reserved for the
+ * service being unreachable, which is a different fact and one a screen may want to retry.
+ */
+export interface ExchangeRatesResponse {
+  /** The currency every rate is expressed in. Sent rather than assumed — see the endpoint. */
+  readonly base: string;
+  readonly rates: readonly ExchangeRate[];
+}
+
+export async function fetchExchangeRates(
+  options: ServerReadOptions = {},
+): Promise<ExchangeRatesResponse | null> {
+  try {
+    const body = await client(options).get('/v1/exchange-rates', {
+      ...(await readOptions({ ...options, revalidateSeconds: options.revalidateSeconds ?? 600 })),
+    });
+    return {
+      base: body.base ?? '',
+      rates: (body.rates ?? []).flatMap((rate) =>
+        rate.currency == null || rate.rate == null || rate.publishedFor == null
+          ? []
+          : [{ currency: rate.currency, rate: rate.rate, publishedFor: rate.publishedFor }],
+      ),
+    };
+  } catch (cause) {
+    /*
+     * Every failure is the same absence here, deliberately. There is no 404 to distinguish
+     * — the endpoint always answers — so anything that reaches this line is the service
+     * being unreachable, and a settings screen that showed an error where a currency list
+     * should be would be reporting an outage about a control the reader can simply not use
+     * for a moment.
+     */
+    if (cause instanceof ApiError) return null;
+    throw cause;
+  }
 }

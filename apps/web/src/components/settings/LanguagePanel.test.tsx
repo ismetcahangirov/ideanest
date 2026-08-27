@@ -43,9 +43,6 @@ const COPY: LanguagePanelCopy = {
   saving: messages.common.saving,
   saved: language.saved,
   failed: language.failed,
-  currencyHeading: language.currencyHeading,
-  currencyValue: language.currencyValue,
-  currencyNote: language.currencyNote,
 };
 
 const refresh = vi.fn();
@@ -273,18 +270,22 @@ describe('when the save fails', () => {
 });
 
 describe('the currency', () => {
-  it('is stated as a fact', () => {
+  /*
+   * IT USED TO BE STATED HERE, AND THE TWO TESTS THAT ASSERTED SO ARE GONE WITH IT — #327.
+   *
+   * They were right at the time: #280 rendered the currency as a sentence because §21.2's
+   * display currency needs a rate source and the service had none, so "a selector here would
+   * offer to convert manat into manat". #327 built the source, and the control moved to
+   * `CurrencyPanel` — which has its own tests, including the one that keeps #280's argument
+   * alive: a platform with nothing to offer draws a sentence rather than a `<select>` with a
+   * single option.
+   *
+   * What is asserted here now is only that this panel has stopped claiming to own the
+   * subject. A form that grew a second field would be one Save over two unrelated writes.
+   */
+  it('is no longer this panel\u2019s subject', () => {
     renderPanel();
 
-    expect(screen.getByRole('heading', { name: language.currencyHeading })).toBeInTheDocument();
-    expect(screen.getByText(language.currencyValue)).toBeInTheDocument();
-    expect(screen.getByText(language.currencyNote)).toBeInTheDocument();
-  });
-
-  it('is not a control, because there is nothing to convert manat into', () => {
-    renderPanel();
-
-    // One combobox on the screen, and it is the language one.
     const comboboxes = screen.getAllByRole('combobox');
     expect(comboboxes).toHaveLength(1);
     expect(comboboxes[0]).toHaveAccessibleName(language.fieldLabel);

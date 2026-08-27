@@ -37,7 +37,16 @@ public record UserAccount(
         boolean emailVerified,
         Instant deletionScheduledAt,
         Instant suspendedAt,
-        String locale) {
+        String locale,
+        /**
+         * §4.2's P-10, the other half — the currency this account reads amounts in (#327).
+         *
+         * <p>A display preference and never a settlement currency: §21.2 collects in the
+         * campaign's currency whatever this says. Equal to the platform's own base currency
+         * for every account that has not chosen otherwise, which is the value V2 has
+         * defaulted since the first migration.
+         */
+        String currency) {
 
     /** Whether this account is inside its grace period and awaiting anonymisation. */
     public boolean deletionPending() {

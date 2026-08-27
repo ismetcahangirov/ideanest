@@ -127,8 +127,8 @@
         "summary": "Verilerinizin bir kopyasını alın veya hesabı kapatın."
       },
       "language": {
-        "label": "Dil",
-        "summary": "IdeaNest'in size hangi dilde yazdığı."
+        "label": "Dil ve para birimi",
+        "summary": "IdeaNest'in size yazdığı dil ve tutarların gösterildiği para birimi."
       }
     },
     "pages": {
@@ -172,16 +172,24 @@
   },
   "settings": {
     "language": {
-      "title": "Dil",
-      "intro": "IdeaNest'in size hangi dilde yazacağını seçin.",
+      "title": "Dil ve para birimi",
+      "intro": "IdeaNest'in size nasıl yazdığı ve tutarları hangi para biriminde okuduğunuz.",
       "fieldLabel": "Arayüz dili",
       "fieldHint": "Hesap sayfalarınıza hemen uygulanır. Çevirinin geri kalanı yazılana kadar herkese açık site İngilizce kalır.",
       "save": "Dili kaydet",
       "saved": "Dil kaydedildi.",
       "failed": "Dil kaydedilemedi. Tekrar deneyin.",
-      "currencyHeading": "Para birimi",
-      "currencyValue": "Azerbaycan manatı (AZN)",
-      "currencyNote": "Bugün IdeaNest'teki bütün kampanyalar manat ile finanse ediliyor, bu yüzden burada seçilecek bir şey yok. Görüntüleme para birimi ikincisiyle birlikte gelecek."
+      "languageHeading": "Dil"
+    },
+    "currency": {
+      "title": "Para birimi",
+      "intro": "Tutarların size hangi para biriminde gösterileceğini seçin. Kampanyalar yine manat ile finanse edilir.",
+      "fieldLabel": "Görüntüleme para birimi",
+      "fieldHint": "Azerbaycan Merkez Bankası’nın günlük kurundan çevrilmiş yaklaşık bir tutar. Bütün kampanyalar manat ile finanse edilir ve kartınızdan manat çekilir.",
+      "save": "Para birimini kaydet",
+      "saved": "Para birimi kaydedildi.",
+      "failed": "Para birimi kaydedilemedi. Sayfayı yenileyip tekrar deneyin.",
+      "unavailable": "Tutarlar Azerbaycan manatı ile gösteriliyor. Şu anda seçilebilecek başka bir para birimi yok — görüntüleme para birimi yayımlanmış bir kur gerektirir ve platformun bugün kullanabileceği bir kur yok."
     },
     "pages": {
       "profile": {

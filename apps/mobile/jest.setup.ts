@@ -86,11 +86,104 @@ jest.mock('expo-image', () => {
  */
 jest.mock('expo-secure-store', () => {
   const items = new Map<string, string>();
+
+  /**
+   * Whether the simulated device owner passes the prompt.
+   *
+   * <p>The default is `true` — a test that says nothing gets a phone whose owner
+   * is present, which is the ordinary case. `__setBiometryAllowed(false)` is how
+   * a test produces a dismissed prompt, and #29's whole point is that the
+   * keychain, not this application, is what refuses.
+   */
+  let biometryAllowed = true;
+
+  /**
+   * The map is keyed by service AND key, because that is what the platform does.
+   * `session.ts` keeps the locked entry under its own `keychainService`, and a
+   * mock that ignored the service would let the two entries overwrite each other
+   * — turning "the token moved" into "the token is in both places", which is the
+   * one property `enableLock` exists to have.
+   */
+  const at = (key: string, options?: { keychainService?: string }) =>
+    `${options?.keychainService ?? ''}:${key}`;
+
+  const guard = (options?: { requireAuthentication?: boolean }) => {
+    if (options?.requireAuthentication === true && !biometryAllowed) {
+      throw new Error('User canceled the authentication');
+    }
+  };
+
   return {
     WHEN_UNLOCKED_THIS_DEVICE_ONLY: 'whenUnlockedThisDeviceOnly',
-    getItemAsync: async (key: string) => items.get(key) ?? null,
-    setItemAsync: async (key: string, value: string) => void items.set(key, value),
-    deleteItemAsync: async (key: string) => void items.delete(key),
+    WHEN_PASSCODE_SET_THIS_DEVICE_ONLY: 'whenPasscodeSetThisDeviceOnly',
+    getItemAsync: async (key: string, options?: Record<string, unknown>) => {
+      guard(options);
+      return items.get(at(key, options)) ?? null;
+    },
+    setItemAsync: async (key: string, value: string, options?: Record<string, unknown>) => {
+      // Deliberately NOT guarded. iOS prompts on a read or an update of an
+      // existing value and not on creation, and a mock that asked on every write
+      // would make `enableLock` untestable in the state it is meant for.
+      void items.set(at(key, options), value);
+    },
+    deleteItemAsync: async (key: string, options?: Record<string, unknown>) => {
+      void items.delete(at(key, options));
+    },
+    /** Test controls. Not part of the module's API; see the note above. */
+    __setBiometryAllowed: (allowed: boolean) => {
+      biometryAllowed = allowed;
+    },
+    __reset: () => {
+      items.clear();
+      biometryAllowed = true;
+    },
+    __entries: () => [...items.keys()],
+  };
+});
+
+/**
+ * `expo-local-authentication` — issue #29's capability probe and in-app prompt.
+ *
+ * <p>Native at module load like the rest, and mocked for the same reason. The
+ * default is a phone with a fingerprint reader and a finger enrolled, which is
+ * the configuration most tests want to assume; `__setBiometrics` is how a test
+ * asks for a device with no scanner or with nothing enrolled, which are the two
+ * states the account screen has to describe rather than offer.
+ */
+jest.mock('expo-local-authentication', () => {
+  const AuthenticationType = { FINGERPRINT: 1, FACIAL_RECOGNITION: 2, IRIS: 3 };
+  let hardware = true;
+  let enrolled = true;
+  let kinds: number[] = [AuthenticationType.FINGERPRINT];
+  let succeeds = true;
+
+  return {
+    AuthenticationType,
+    SecurityLevel: { NONE: 0, SECRET: 1, BIOMETRIC_WEAK: 2, BIOMETRIC_STRONG: 3 },
+    hasHardwareAsync: async () => hardware,
+    isEnrolledAsync: async () => enrolled,
+    supportedAuthenticationTypesAsync: async () => kinds,
+    getEnrolledLevelAsync: async () => (enrolled ? 3 : 0),
+    authenticateAsync: async () =>
+      succeeds ? { success: true } : { success: false, error: 'user_cancel' },
+    cancelAuthenticate: async () => {},
+    __setBiometrics: (state: {
+      hardware?: boolean;
+      enrolled?: boolean;
+      kinds?: number[];
+      succeeds?: boolean;
+    }) => {
+      hardware = state.hardware ?? hardware;
+      enrolled = state.enrolled ?? enrolled;
+      kinds = state.kinds ?? kinds;
+      succeeds = state.succeeds ?? succeeds;
+    },
+    __reset: () => {
+      hardware = true;
+      enrolled = true;
+      kinds = [AuthenticationType.FINGERPRINT];
+      succeeds = true;
+    },
   };
 });
 

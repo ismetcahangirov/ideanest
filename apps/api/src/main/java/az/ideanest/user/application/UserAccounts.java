@@ -133,6 +133,29 @@ public class UserAccounts {
     }
 
     /**
+     * §4.2's P-10, the currency half (#327): which currency this account reads amounts in.
+     *
+     * <p>Everything {@link #setLocale} says applies unchanged — the entity rather than an
+     * UPDATE so the check constraint sees the write, idempotent so a retry is harmless, and
+     * no audit row because this is somebody choosing how their own screen reads.
+     *
+     * <p><strong>What is NOT here is the question of whether the platform can honour it.</strong>
+     * {@code users_currency_shape} accepts any three letters and this method accepts anything
+     * that constraint does. Which currencies are actually offered is a property of the
+     * deployment's rate source rather than of an account — a currency that was available last
+     * week is not this week if the source stopped publishing it — so it is checked at the
+     * edge, by {@code CurrencyPreferenceController}, against what {@code ExchangeRates} can
+     * currently answer. Putting it here would make this module depend on a rate table to
+     * store a three-letter code.
+     */
+    @Transactional
+    public void setCurrency(UUID accountId, String currency) {
+        User account = users.findByIdAndDeletedAtIsNull(accountId)
+                .orElseThrow(() -> new AccountNotFoundException(accountId));
+        account.setCurrency(currency);
+    }
+
+    /**
      * §4.1's A-12 (#277): moves the account to an address that has just proved itself.
      *
      * <p><strong>The uniqueness check is here and it is not the one that decides.</strong>
@@ -210,6 +233,7 @@ public class UserAccounts {
                 user.isEmailVerified(),
                 user.getDeletionScheduledAt(),
                 user.getSuspendedAt(),
-                user.getLocale());
+                user.getLocale(),
+                user.getCurrency());
     }
 }

@@ -3,7 +3,7 @@
 import Decimal from 'decimal.js';
 import type { ReactNode } from 'react';
 import { FloatingPanel } from '@ideanest/ui';
-import { formatMoney, type Money } from '../../lib/money';
+import { formatApproximate, formatMoney, type Money } from '../../lib/money';
 import type { PledgeAmounts } from '../../lib/pledges/api';
 import type { CheckoutCopy } from '../../lib/i18n/checkout-copy';
 
@@ -55,6 +55,21 @@ export interface PledgeSummaryProps {
   rewardTitle: string | null;
   /** Where it is going, already turned into a name. */
   destination?: string | null;
+  /**
+   * §21.2's display currency (#327): what the total is roughly worth in the currency this
+   * backer reads amounts in, or null when there is nothing to say.
+   *
+   * <p>Null is the ordinary case, not the exceptional one — most backers read amounts in the
+   * campaign's own currency and were shown no approximation. It is also what a deployment
+   * with no rate source answers, and what a pledge confirmed before the rate existed
+   * carries. All three draw nothing.
+   *
+   * <p>It is handed down rather than computed here, because the two callers get it from
+   * different places and neither of them is this component's business: the pledge screen
+   * reads the rate the service <em>stored on the pledge</em>, which is the figure that backer
+   * was actually quoted, and a checkout would read today's.
+   */
+  approximateTotal?: Money | null;
   /** Shown in place of the lines when the selection cannot be priced. */
   unavailable?: ReactNode;
   /** The action for this step, and any note beneath it. */
@@ -82,6 +97,7 @@ export function PledgeSummary({
   source,
   rewardTitle,
   destination = null,
+  approximateTotal = null,
   unavailable = null,
   children,
   copy,
@@ -127,6 +143,28 @@ export function PledgeSummary({
                 {formatMoney(amounts.total)}
               </span>
             </div>
+
+            {/*
+              §21.2's approximation, and everything about how it is drawn says it is one.
+
+              UNDER the total and never beside it, at a smaller size, in the muted tone: the
+              figure a card is charged is the one a reader's eye lands on. `≈` is a character
+              rather than a word so it needs no translation in any of §21.1's four languages,
+              and `aria-label` is what says the same thing to a screen reader, which would
+              otherwise announce the glyph as nothing at all.
+
+              `text-on-white/64` and not `text-white/64`: this panel is the white surface, and
+              CLAUDE.md §2 names that exact confusion — the same token is invisible on one of
+              the two.
+            */}
+            {approximateTotal != null && (
+              <p
+                className="mt-1 text-right text-[13px] tabular-nums text-on-white/64"
+                aria-label={`Approximately ${formatMoney(approximateTotal)}`}
+              >
+                {formatApproximate(approximateTotal)}
+              </p>
+            )}
           </div>
 
           <p className="mt-1 text-[13px] text-on-white/64">

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { colors, radius, size, spacing } from '../theme';
 import { Body, Meta, Subheading } from './text';
@@ -45,14 +46,25 @@ export function Loading({ label }: { readonly label: string }) {
 export function EmptyState({
   title,
   detail,
+  action,
 }: {
   readonly title: string;
   readonly detail: string;
+  /**
+   * The one thing to do about it, when there is one — issue #29.
+   *
+   * <p>Optional, because most empty states have no answer: "nothing saved yet"
+   * is resolved by saving something on a screen that is not this one. The
+   * signed-out states do have one, and an invitation to sign in with no way to
+   * do it is the shape this prop exists to stop.
+   */
+  readonly action?: ReactNode;
 }) {
   return (
     <View style={styles.centre}>
       <Subheading>{title}</Subheading>
       <Body style={{ textAlign: 'center' }}>{detail}</Body>
+      {action}
     </View>
   );
 }

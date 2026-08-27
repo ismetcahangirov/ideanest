@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { AccountPageHeader } from '../../../../components/account/AccountPageHeader';
+import { CurrencyPanel } from '../../../../components/settings/CurrencyPanel';
 import { LanguagePanel } from '../../../../components/settings/LanguagePanel';
+import { fetchExchangeRates } from '../../../../lib/api/server';
+import { DEFAULT_CURRENCY } from '@ideanest/money';
 import { localeOrDefault } from '../../../../lib/i18n/locale';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 
@@ -20,8 +23,8 @@ import { privatePageMetadata } from '../../../../lib/seo/metadata';
  * sake, this comes with it.
  */
 export const metadata: Metadata = privatePageMetadata({
-  title: 'Language',
-  description: 'Choose the language IdeaNest writes to you in.',
+  title: 'Language and currency',
+  description: 'Choose the language IdeaNest writes to you in, and the currency it shows amounts in.',
 });
 
 /**
@@ -61,28 +64,69 @@ export const metadata: Metadata = privatePageMetadata({
  */
 export default async function LanguageSettingsPage() {
   const t = await getTranslations('settings.language');
+  const currency = await getTranslations('settings.currency');
   const common = await getTranslations('common');
   const locale = localeOrDefault(await getLocale());
+
+  /*
+   * READ ON THE SERVER, AND IT COSTS THIS ROUTE NOTHING — #327.
+   *
+   * `/v1/exchange-rates` is public and marked `public, max-age=600`, so Next holds one copy
+   * for everybody rather than one per reader. Fetching it in the browser instead would spend
+   * a round trip after hydration to draw a `<select>` whose options were known before the
+   * first byte.
+   *
+   * `null` is the service being unreachable and an empty list is the platform having nothing
+   * to offer, and both come to the same thing here: one currency, which `CurrencyPanel` draws
+   * as a sentence rather than as a control that cannot be used.
+   */
+  const rates = await fetchExchangeRates();
+  const baseCurrency = rates?.base ?? DEFAULT_CURRENCY;
+  const currencies = [baseCurrency, ...(rates?.rates ?? []).map((rate) => rate.currency)];
 
   return (
     <>
       <AccountPageHeader title={t('title')}>{t('intro')}</AccountPageHeader>
 
       <div className="mt-8">
-        <LanguagePanel
-          serverLocale={locale}
-          copy={{
-            fieldLabel: t('fieldLabel'),
-            fieldHint: t('fieldHint'),
-            save: t('save'),
-            saving: common('saving'),
-            saved: t('saved'),
-            failed: t('failed'),
-            currencyHeading: t('currencyHeading'),
-            currencyValue: t('currencyValue'),
-            currencyNote: t('currencyNote'),
-          }}
-        />
+        <h2 className="text-lg font-medium tracking-[-0.02em] text-white">
+          {t('languageHeading')}
+        </h2>
+
+        <div className="mt-4">
+          <LanguagePanel
+            serverLocale={locale}
+            copy={{
+              fieldLabel: t('fieldLabel'),
+              fieldHint: t('fieldHint'),
+              save: t('save'),
+              saving: common('saving'),
+              saved: t('saved'),
+              failed: t('failed'),
+            }}
+          />
+        </div>
+      </div>
+
+      <div className="mt-10">
+        <h2 className="text-lg font-medium tracking-[-0.02em] text-white">{currency('title')}</h2>
+        <p className="mt-2 max-w-[62ch] text-sm text-white/64">{currency('intro')}</p>
+
+        <div className="mt-4">
+          <CurrencyPanel
+            currencies={currencies}
+            baseCurrency={baseCurrency}
+            copy={{
+              fieldLabel: currency('fieldLabel'),
+              fieldHint: currency('fieldHint'),
+              save: currency('save'),
+              saving: common('saving'),
+              saved: currency('saved'),
+              failed: currency('failed'),
+              unavailable: currency('unavailable'),
+            }}
+          />
+        </div>
       </div>
     </>
   );

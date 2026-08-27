@@ -127,8 +127,8 @@
         "summary": "Məlumatlarınızın surətini götürün və ya hesabı bağlayın."
       },
       "language": {
-        "label": "Dil",
-        "summary": "IdeaNest-in sizə hansı dildə yazdığı."
+        "label": "Dil və valyuta",
+        "summary": "IdeaNest-in sizə yazdığı dil və məbləğlərin göstərildiyi valyuta."
       }
     },
     "pages": {
@@ -172,16 +172,24 @@
   },
   "settings": {
     "language": {
-      "title": "Dil",
-      "intro": "IdeaNest-in sizə hansı dildə yazacağını seçin.",
+      "title": "Dil və valyuta",
+      "intro": "IdeaNest sizə necə yazır və məbləğləri hansı valyutada oxuyursunuz.",
       "fieldLabel": "İnterfeys dili",
       "fieldHint": "Hesab səhifələrinizə dərhal tətbiq olunur. Tərcümənin qalanı yazılana qədər ictimai sayt ingiliscə qalır.",
       "save": "Dili yadda saxla",
       "saved": "Dil yadda saxlanıldı.",
       "failed": "Dil yadda saxlanıla bilmədi. Yenidən cəhd edin.",
-      "currencyHeading": "Valyuta",
-      "currencyValue": "Azərbaycan manatı (AZN)",
-      "currencyNote": "Bu gün IdeaNest-dəki bütün kampaniyalar manatla maliyyələşdirilir, ona görə də burada seçiləcək bir şey yoxdur. Göstərmə valyutası ikincisi ilə birlikdə gələcək."
+      "languageHeading": "Dil"
+    },
+    "currency": {
+      "title": "Valyuta",
+      "intro": "Məbləğlərin sizə hansı valyutada göstəriləcəyini seçin. Kampaniyalar yenə manatla maliyyələşdirilir.",
+      "fieldLabel": "Göstərmə valyutası",
+      "fieldHint": "Azərbaycan Mərkəzi Bankının günlük məzənnəsindən çevrilmiş təxmini rəqəm. Bütün kampaniyalar manatla maliyyələşdirilir və kartınızdan manatla silinir.",
+      "save": "Valyutanı yadda saxla",
+      "saved": "Valyuta yadda saxlanıldı.",
+      "failed": "Valyuta yadda saxlanıla bilmədi. Səhifəni yeniləyib yenidən cəhd edin.",
+      "unavailable": "Məbləğlər Azərbaycan manatı ilə göstərilir. Hazırda seçiləcək başqa valyuta yoxdur — göstərmə valyutası dərc olunmuş məzənnə tələb edir və platformanın bu gün istifadə edə biləcəyi məzənnə yoxdur."
     },
     "pages": {
       "profile": {

@@ -81,7 +81,7 @@ the browser half of the auth flow work at all.
 | `/settings/profile` | Site | §4.2 P-01 to P-03: name, biography, picture, website, location and links (#276). The picture is an address, not an upload — §13.1 |
 | `/settings/email` | Site | §4.1 A-12: asks to move the account. Says plainly that nothing has changed yet (#277) |
 | `/settings/password` | Site | §4.1 A-13: replaces the password. Signs the reader out, and says so before they submit (#277) |
-| `/settings/language` | Site | §4.2 P-10: the interface language, from §21.1's four (#280). The currency is stated rather than offered — §21.2 has one currency and no rate source |
+| `/settings/language` | Site | §4.2 P-10, both halves: the interface language from §21.1's four (#280), and the display currency the reader sees amounts in (#327). The currency is a control when the platform has a published rate to offer and a sentence when it does not |
 | `/account` | Site | Redirects to `/account/saved` (#275) |
 | `/account/saved` | Site | §4.9 C-10: the campaigns this account saved (#288) |
 | `/account/following` | Site | §4.9 C-10: the creators it follows (#288) |
@@ -120,6 +120,20 @@ the browser half of the auth flow work at all.
 | `/admin/curation/placements` | Console | **Staff only.** The order curated collections appear in (#303) |
 | `/admin/payments` | Console | **Staff only.** Every provider call, its reference, and why the refused ones failed (#304) |
 | `/admin/ledger` | Console | **Staff only.** The double-entry ledger, both sides of each posting, and the balances (#305) |
+| `/admin/reconciliation` | Console | **Staff only.** Whether the platform's money adds up, and what is wrong when it does not. Reports and never repairs (#106) |
+| `/admin/payouts` | Console | **Staff only.** What each creator is owed, the hold it is under, and the two signatures before it leaves (#306) |
+| `/admin/refunds` | Console | **Staff only.** Full and partial refunds, with a reason code and a ledger posting behind each (#307) |
+| `/admin/disputes` | Console | **Staff only.** Chargebacks: notification, evidence, outcome, and the deadline each runs against (#308) |
+| `/admin/fees` | Console | **Staff only.** Platform and processing rates. There is no edit — a change closes one schedule and opens another (#311) |
+| `/admin/moderation/content` | Console | **Staff only.** Complaints about comments and campaign updates (#297) |
+| `/admin/staff` | Console | **Staff only.** Who works here, and which of §4.11's capabilities each of them holds (#295) |
+| `/admin/support` | Console | **Staff only.** Tickets with the account context and the history of what was done (#310) |
+| `/admin/taxonomy` | Console | **Staff only.** Categories, subcategories and tags, with a translation per locale (#309) |
+| `/admin/analytics` | Console | **Staff only.** Volume, success rate and average pledge across the platform (#313) |
+| `/admin/email-templates` | Console | **Staff only.** Every transactional type, and which have been edited (#315) |
+| `/admin/email-templates/[type]` | Console | **Staff only.** One template: edit, preview, test send, and every version an edit produced (#86, #315) |
+| `/admin/flags` | Console | **Staff only.** Gradual rollout, with a kill switch that means what it says (#312) |
+| `/admin/health` | Console | **Staff only.** Queue depth, failed jobs and provider status, measured when you open it. It does not alert (#316) |
 | `/admin/audit` | Console | **Staff only.** Every privileged action the platform has recorded (#314) |
 | `/robots.txt` | — | **Public.** Crawl directives, and the pointer to the sitemap index (#122) |
 | `/sitemap_index.xml` | — | **Public.** The index over the sitemap segments (#122) |
@@ -265,6 +279,28 @@ asking — the build output prints four `●` prerenders per static route where 
 longer needs its `<div lang>` override, and `SITE_LANGUAGE` survives only in
 `app/global-error.tsx`, which replaces the document after the layout that would have known
 the language failed. `docs/architecture.md` §21.1 carries the full argument.
+
+**`/settings/language` carries both halves of §4.2's P-10 since #327.** It was one
+preference and a sentence: the currency was stated as a fact, because §21.2's display
+currency needs a published rate and the service had none. #327 built the source — the
+Central Bank of Azerbaijan's daily publication, refreshed hourly — so the sentence became
+a control, on the same page rather than a route of its own. Two Saves over two writes,
+because a language that failed to save because a currency did would be one form doing two
+unrelated things.
+
+The options come from `GET /v1/exchange-rates`, read **on the server**: it is public and
+marked `public, max-age=600`, so Next holds one copy for everybody and the `<select>` is
+drawn from the first byte rather than after a round trip. A deployment that can offer
+nothing — the feature off, the source unreachable past its limit — gets the sentence back,
+which is #280's shape and the reason it was right.
+
+**The public site shows no approximation, and that is a performance decision rather than a
+gap.** A figure beside a campaign's goal would have to know who is reading, and `/`, the
+category landings and the campaign pages are cached shared renders — the same argument
+`src/i18n/request.ts` makes about the language, which #123 answered with a path segment. A
+currency has no equivalent: `/az/usd/discover` is a cache entry per pair. So the
+approximation belongs on the routes that are already per-person, and `@ideanest/money`'s
+`approximate` is what draws it there.
 
 **There is no route for the two-factor challenge (#272).** It is a state of the sign-in form.
 The challenge `POST /v1/auth/login` returns is a credential for the next few minutes — the

@@ -432,6 +432,67 @@ ideanest:
       #   IDEANEST_PLEDGEMANAGER_ADDRESSES_KEYS_2026-08=<32 bytes, base64>
       primary-key-id: ~
 
+  fx:
+    # §21.2's display currency: central bank rates, cached hourly -- issue #327.
+    #
+    # OFF BY DEFAULT, AND THAT IS THE ONE DEFAULT HERE THAT IS NOT MERELY
+    # CONSERVATIVE. Turning it on means this service makes an outbound HTTP call
+    # to a third party on a timer, and a deployment that has not decided to do
+    # that must not start doing it because it upgraded. Set IDEANEST_FX_ENABLED
+    # to true, deliberately.
+    #
+    # Everything degrades to absence and never to a guess. A source that cannot
+    # be reached, a currency with no published rate, and a rate older than
+    # `max-age` all produce the same answer: no approximation on the screen. A
+    # figure computed from a stale rate is worse than no figure, because a backer
+    # acts on it.
+    #
+    # NOTHING HERE DECIDES WHAT ANYBODY IS CHARGED. §21.2: the display currency
+    # is an approximation and collection happens in the project's currency. The
+    # rate a backer was shown is stamped on their pledge at confirmation (V60),
+    # which is the audit §21.2 asks for and is never an amount.
+    enabled: ${IDEANEST_FX_ENABLED:false}
+    # The Central Bank of Azerbaijan's daily publication. §21.2 says "central
+    # bank rates" and §22.1 names this institution as the regulator, so it is the
+    # source the specification means rather than a convenient one: public, no
+    # key, one document per working day at a path carrying the date.
+    #
+    # Configurable so that an environment which must not reach the internet can
+    # be pointed at a mirror or a fixture. `{date}` is required and start-up
+    # fails without it -- a URL with no date in it would fetch the same document
+    # every hour for ever and nobody would notice the rates had stopped moving.
+    source-url: ${IDEANEST_FX_SOURCE_URL:https://www.cbar.az/currencies/{date}.xml}
+    # What the source prices everything in, and what a display currency
+    # approximates FROM. Manat, because §21.2 phase 1 collects in manat.
+    base-currency: ${IDEANEST_FX_BASE_CURRENCY:AZN}
+    # A closed set, and not "whatever the source published". The document lists
+    # about forty currencies including gold and platinum, and a settings screen
+    # offering to price a campaign in troy ounces is a screen nobody designed.
+    #
+    # The same four §21.2's phase 2 names, minus the manat: a reader who can be
+    # shown a campaign in dollars today is the reader who will be able to back
+    # one in dollars when phase 2 lands, and two lists that drifted apart would
+    # mean a display currency nobody can ever pledge in.
+    display-currencies: ${IDEANEST_FX_DISPLAY_CURRENCIES:USD,EUR,TRY,RUB}
+    # §21.2's hourly cache over a source that publishes daily. Those are not in
+    # conflict: the hour is how quickly the platform notices a new publication.
+    # Five past rather than on the hour, like every other schedule in §8.4 -- a
+    # fleet whose jobs all fire at :00 is a fleet whose database sees one spike.
+    refresh-schedule: ${IDEANEST_FX_REFRESH_SCHEDULE:0 5 * * * *}
+    # How old a published rate may be and still be shown. Four days: long enough
+    # to survive a long weekend, since the source publishes on working days and a
+    # Friday rate is the newest until Monday; short enough that a source which has
+    # genuinely stopped answering takes the approximation off the screen within
+    # the week rather than leaving whatever the platform last saw on it.
+    #
+    # Measured on the publication date and not on the fetch. A source answering
+    # every hour with last Tuesday's rates has a fresh fetch and a stale rate,
+    # and it is the rate a reader is shown.
+    max-age: ${IDEANEST_FX_MAX_AGE:P4D}
+    # Nothing waits on this: the job runs on a timer and a missed pass costs an
+    # hour of freshness.
+    request-timeout: ${IDEANEST_FX_REQUEST_TIMEOUT:PT10S}
+
   payment:
     # §8.4's `ledger-reconciliation` -- issue #70. A daily pass that asks whether the
     # platform's money adds up: the books balance, no account holds a sign it cannot,

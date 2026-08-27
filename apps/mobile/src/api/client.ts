@@ -1,6 +1,7 @@
-import { createApiClient, type ApiClient } from '@ideanest/api-client';
+import { createApiClient, type ApiClient, type Fetch } from '@ideanest/api-client';
 import { apiOrigin, deviceLocale } from './config';
-import { currentAccessToken } from '../lib/session';
+import { refreshAccessToken } from '../lib/auth';
+import { currentAccessToken, hasStoredSession } from '../lib/session';
 
 /**
  * The service, as this application talks to it.
@@ -21,14 +22,75 @@ import { currentAccessToken } from '../lib/session';
  * import — which, for the language, is before the first screen has rendered.
  * Constructing one is an object literal and a closure; it is not worth caching
  * something that would be wrong.
+ *
+ * <h2>#29: the session lives in the `fetch`, not in the headers</h2>
+ *
+ * The access token is set on the request by {@link sessionFetch} rather than
+ * passed to `createApiClient`, and that is the difference between a client that
+ * works for fifteen minutes and one that works. A header fixed at construction
+ * is a header fixed *before* the refresh that a 401 triggers, so a retry would
+ * present the token that had just been refused. Reading it inside the fetch
+ * means the retry carries the token the refresh produced.
+ *
+ * <p>It also puts the whole of the session's request behaviour in one place: a
+ * cold start with no token in memory refreshes *before* the first call rather
+ * than spending a guaranteed 401 to discover it, and a 401 refreshes and retries
+ * exactly once. `@ideanest/api-client` stays what it says it is — headers in,
+ * bodies out — and this is the seam it left open.
  */
+
+/**
+ * `fetch`, with the session on it.
+ *
+ * <h2>One retry, never two</h2>
+ *
+ * A second 401 after a successful refresh is a **refusal**, not an expiry: the
+ * token was minted moments ago, so the service is saying this account may not
+ * have that resource. Retrying again would be a loop against an answer that will
+ * not change, and the caller gets the 401 to render. `apps/web`'s
+ * `authorizedFetch` draws the line in the same place and for the same reason.
+ */
+const sessionFetch: Fetch = async (url, init) => {
+  let token = currentAccessToken();
+
+  /*
+   * A cold start has a keychain and no access token. Refreshing here rather than
+   * after the inevitable 401 saves a round trip on the first screen somebody
+   * sees, and — with #29's lock on — means the biometric prompt appears once, at
+   * the moment the first private read is made, rather than after a failure.
+   */
+  if (token === null && hasStoredSession()) {
+    token = await refreshAccessToken();
+  }
+
+  const response = await fetch(url, withBearer(init, token));
+  if (response.status !== 401 || !hasStoredSession()) return response;
+
+  const refreshed = await refreshAccessToken();
+  if (refreshed === null) return response;
+
+  return await fetch(url, withBearer(init, refreshed));
+};
+
+function withBearer(init: RequestInit | undefined, token: string | null): RequestInit {
+  const headers = new Headers(init?.headers);
+  if (token === null) {
+    /*
+     * Deleted rather than left alone. `init` is reused across the retry, and a
+     * stale `Authorization` on a request made after the session ended would be a
+     * dead credential sent to the service on every subsequent call.
+     */
+    headers.delete('Authorization');
+  } else {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  return { ...init, headers };
+}
+
 export function api(): ApiClient {
-  const token = currentAccessToken();
   return createApiClient({
     baseUrl: apiOrigin(),
-    headers: {
-      'Accept-Language': deviceLocale(),
-      ...(token === null ? {} : { Authorization: `Bearer ${token}` }),
-    },
+    headers: { 'Accept-Language': deviceLocale() },
+    fetch: sessionFetch,
   });
 }

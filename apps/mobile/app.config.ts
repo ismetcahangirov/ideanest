@@ -101,7 +101,41 @@ const config: ExpoConfig = {
 
   plugins: [
     'expo-router',
-    'expo-secure-store',
+    [
+      'expo-secure-store',
+      {
+        /**
+         * `NSFaceIDUsageDescription`, and it is the one string in this file a
+         * stranger reads.
+         *
+         * iOS refuses to present a Face ID prompt at all without it — the call
+         * fails rather than the sheet appearing — so #29's whole feature is one
+         * missing Info.plist key away from being silently unavailable on every
+         * iPhone. The plugin's own default says "access your Face ID biometric
+         * data", which is both alarming and untrue: the application never sees
+         * biometric data, it asks the operating system whether the device owner
+         * is present. This says what actually happens and why.
+         */
+        faceIDPermission: 'IdeaNest uses Face ID to unlock the session kept on this device.',
+      },
+    ],
+    [
+      'expo-local-authentication',
+      {
+        /**
+         * The same sentence as `expo-secure-store` above, and it has to be the
+         * same sentence.
+         *
+         * Both plugins write `NSFaceIDUsageDescription`, and Expo's permissions
+         * plugin lets the last one win. Two different descriptions would mean
+         * the prompt saying whichever of them the plugin order happened to
+         * leave in the plist — a string a reviewer reads once and a user reads
+         * every time — so it is stated identically rather than left to that
+         * ordering.
+         */
+        faceIDPermission: 'IdeaNest uses Face ID to unlock the session kept on this device.',
+      },
+    ],
     [
       'expo-notifications',
       {

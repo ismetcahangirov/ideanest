@@ -20,6 +20,7 @@ pnpm --filter @ideanest/mobile start   # a development build, not Expo Go
 | Lists | **FlashList** |
 | Animation | **Reanimated 4** |
 | Push | **Expo notifications** |
+| Session | Refresh token in the keychain, behind an optional biometric gate (#29) |
 | Tests | **jest-expo** — the one package in this repository not on vitest |
 
 ## Where it differs from §14.3, and why
@@ -133,6 +134,46 @@ current.
 default pauses a query when the device reports no connection, so a cached
 campaign would sit behind a spinner that never resolves.
 
+## Signing in, and the biometric lock (#29)
+
+`src/app/sign-in.tsx` is an address, a password, and §17.1's second factor when
+the account has one. Registration, password reset and the provider buttons stay
+on the web, which is where a verification email lands anyway.
+
+It asks for `tokenDelivery: "body"` — the shape #24 built for a native client —
+and the refresh token goes into the platform keychain. **Refresh is
+single-flight**, which §17.1 requires of every client and which a phone tests
+harder than a browser: six persisted queries refetch in the same tick when a
+phone is unlocked, and two concurrent refreshes present the same rotated token,
+which is indistinguishable from theft and revokes the session family.
+`src/lib/auth.test.ts` drives twenty simultaneous callers and asserts one
+request.
+
+### The lock is the keychain's, not this application's
+
+With it on, the refresh token lives in an entry written with
+`requireAuthentication`, so **the operating system** refuses to return the bytes
+until a prompt succeeds. Nothing in JavaScript can go around that, which is the
+reason to prefer it to an `if`.
+
+| Property | Why |
+|---|---|
+| Two entries, never one | An authenticated entry is generated against its own key and cannot share a `keychainService` with an unauthenticated one — Expo's own note says so. Turning the lock on is a **move**, ordered so that a failure half-way leaves a readable session rather than none |
+| Presence is answered from MMKV | "Is anybody signed in" is asked by two tabs on mount. Answering it from the keychain would show a Face ID sheet to somebody who opened the Saved tab. The boolean is not a credential; the token is fetched only when a request needs one |
+| A dismissed prompt is not a sign-out | "Not now" must not mean "sign in again". The session stays; only this attempt fails |
+| Turning it off needs the prompt | Reading the token is what the prompt guards, so somebody holding a phone they did not unlock cannot remove the thing stopping them |
+| It re-arms on resume | The access token lives in memory for fifteen minutes, so the gate alone would let a phone handed over inside that window through. `src/app/_layout.tsx` drops it after two minutes in the background — nothing is revoked, so being wrong costs one prompt |
+| Signing out erases the offline cache | `saved` and `pledges` are one account's and are persisted to MMKV. The in-memory cache is cleared **and** the document removed, rather than waiting a second for the persister's throttle |
+
+The switch is offered only when the device can honour it. A phone with a scanner
+and nothing enrolled says so and points at the phone's settings, because a
+switch that turns on and then fails looks like a lost session later.
+
+**It cannot be verified in CI, and never will be.** Biometric enrolment needs a
+real device; what the suite covers is the keychain choreography and the refusal
+paths, with `expo-secure-store` and `expo-local-authentication` replaced by
+doubles that can refuse.
+
 ## Builds and releases (#116)
 
 `eas.json` has three profiles and `.github/workflows/mobile-release.yml` drives
@@ -151,11 +192,11 @@ consequence of a workflow finishing.
 
 ## What is not built
 
-**Sign-in.** There is no form. `src/lib/use-session.ts` answers whether a refresh
-token is in the keychain and the screens that need one say so; §4.2's mobile
-authentication sits with the checkout work (#58), which is blocked on the payment
-provider decision (#60). A sign-in form whose next screen cannot exist is a
-promise the application does not keep.
+**Registration, password reset and provider sign-in.** #29 built the sign-in
+form and deliberately stopped there. Registration ends in a verification email,
+a reset ends in a link, and both are a browser either way; the provider buttons
+need the Google and Apple native SDKs and a signed build to test against.
+`sign-in.tsx` says where to go for all three rather than pretending.
 
 **Checkout.** #58, blocked behind #60. The campaign page's call to action opens
 the web checkout, which works today.

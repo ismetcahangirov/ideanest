@@ -64,6 +64,15 @@ import { LOCALE_NAMES, SUPPORTED_LOCALES, isLocale, type Locale } from '../../li
  * behind them — `lib/auth/credentials.ts`, `lib/account/closure.ts` — have one because they
  * translate several problem codes into several field errors.
  *
+ * <h2>The currency moved out of this file with #327</h2>
+ *
+ * It used to end with three lines of copy stating the currency as a fact, and an argument
+ * for why: §21.2 describes a display currency converted from central-bank rates, the service
+ * had no rate source and no rate table, and "a selector here would offer to convert manat
+ * into manat". That was right, and #327 built the rate source — so it is a control now, in
+ * `CurrencyPanel`, and a separate one rather than a second field on this form. Two
+ * preferences with one Save would mean a language that failed to save because a currency did.
+ *
  * <h2>Success and failure are text plus an icon, never a colour</h2>
  *
  * docs/ui-kit.md §9.2. `InlineAlert` pairs each variant with its own icon, so the message
@@ -91,9 +100,6 @@ export interface LanguagePanelCopy {
   readonly saving: string;
   readonly saved: string;
   readonly failed: string;
-  readonly currencyHeading: string;
-  readonly currencyValue: string;
-  readonly currencyNote: string;
 }
 
 export interface LanguagePanelProps {
@@ -221,29 +227,6 @@ export function LanguagePanel({ copy, serverLocale }: LanguagePanelProps) {
           </Pill>
         </div>
       </form>
-
-      {/*
-        THE CURRENCY IS STATED, NOT OFFERED, AND THAT IS THE HONEST HALF OF #280.
-
-        §21.2 describes a display currency as an approximation converted from central-bank
-        rates. The service has no rate source, no rate table and no second currency: three of
-        its services — `ReservationService`, `ProjectEditingService` and `RewardService` —
-        each pin `SUPPORTED_CURRENCY = "AZN"`, and the last two refuse a goal or a reward
-        price stated in anything else. A selector here would offer to convert manat into
-        manat.
-
-        The three ways to build it were: a control with one option, which is a control that
-        cannot be used; a control with several options and a rate somebody invented, which
-        would put a wrong number next to somebody's pledge and is the failure CLAUDE.md's money
-        rule exists to prevent; or a sentence. This is the sentence. `SiteFooter` states the
-        same fact in the same words for the same reason, and it becomes a control on the day
-        there is a rate source and a second currency to convert into.
-      */}
-      <div className="mt-8 border-t border-white/8 pt-6">
-        <h2 className="text-sm font-medium text-white">{copy.currencyHeading}</h2>
-        <p className="mt-1 text-[15px] text-white">{copy.currencyValue}</p>
-        <p className="mt-2 max-w-[58ch] text-sm text-white/64">{copy.currencyNote}</p>
-      </div>
     </section>
   );
 }

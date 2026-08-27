@@ -118,6 +118,33 @@ public class Pledge {
     @Column(name = "currency", nullable = false)
     private String currency;
 
+    /**
+     * §21.2's rate retention (#327): what this pledge was approximated in, if anything.
+     *
+     * <p>Null for a backer who was shown the campaign's own currency, which is most of them
+     * and is the honest record — there was no approximation to keep. V60's
+     * {@code pledges_display_currency_differs} refuses the case where it would equal
+     * {@link #currency}, because recording a rate of 1 would be recording a conversion that
+     * did not happen.
+     */
+    @Column(name = "display_currency")
+    private String displayCurrency;
+
+    /**
+     * Units of {@link #currency} per ONE unit of {@link #displayCurrency}, as of confirmation.
+     *
+     * <p><strong>The rate and never the converted amount.</strong> The amount is a product of
+     * {@link #totalAmount} and this, and storing both would be storing a figure that can
+     * disagree with its own inputs — which is the failure the generated column above exists
+     * to prevent and which no constraint could catch here.
+     *
+     * <p>Not rounded like money and deliberately not a {@code Money}: it is a ratio at ten
+     * decimal places, and {@code MoneyRounding} would take it to two and put a thirteen per
+     * cent error into the lira.
+     */
+    @Column(name = "display_rate")
+    private BigDecimal displayRate;
+
     /** No reference yet: {@code payment_methods} is #55, blocked on #60. See V17. */
     @Column(name = "payment_method_id")
     private UUID paymentMethodId;
@@ -703,6 +730,48 @@ public class Pledge {
 
     public String getCurrency() {
         return currency;
+    }
+
+    /** §21.2 (#327): the currency this pledge was approximated in, or null. */
+    public String getDisplayCurrency() {
+        return displayCurrency;
+    }
+
+    /** §21.2 (#327): units of {@link #getCurrency()} per one unit of the display currency. */
+    public BigDecimal getDisplayRate() {
+        return displayRate;
+    }
+
+    /**
+     * Records the approximation this backer was shown — §21.2's rate retention (#327).
+     *
+     * <p>Written at confirmation and never again. It is a fact about a moment: "this is what
+     * we told them it would cost", asked months later by somebody holding a complaint that
+     * the figure moved. A later refresh of the rate must not rewrite it, which is why there
+     * is no path to this method outside {@code PledgeService#confirm}.
+     *
+     * <p>Both halves together or neither. A currency with no rate beside it would be a claim
+     * that an approximation was shown without saying what it was, and V60's
+     * {@code pledges_display_rate_is_whole} refuses it — this refuses it earlier, with a
+     * message naming the values.
+     */
+    public void recordDisplayRate(String displayCurrency, BigDecimal displayRate) {
+        if ((displayCurrency == null) != (displayRate == null)) {
+            throw new IllegalArgumentException(
+                    "A display currency and its rate are recorded together, and this is "
+                            + displayCurrency + " at " + displayRate);
+        }
+        if (displayCurrency != null && displayCurrency.equals(currency)) {
+            // An amount is not an approximation of itself. ExchangeRates answers that case
+            // with an empty Optional, so reaching here means a caller went around it.
+            throw new IllegalArgumentException(
+                    "A pledge in " + currency + " was not approximated in " + displayCurrency);
+        }
+        if (displayRate != null && displayRate.signum() <= 0) {
+            throw new IllegalArgumentException("A rate is positive, and this one is " + displayRate.toPlainString());
+        }
+        this.displayCurrency = displayCurrency;
+        this.displayRate = displayRate;
     }
 
     public UUID getPaymentMethodId() {

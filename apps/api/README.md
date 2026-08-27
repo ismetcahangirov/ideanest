@@ -230,6 +230,124 @@ that exists today: the platform's own record of every transaction it believes
 settled. When a provider is chosen, its report becomes a fourth source on the
 same right-hand side and the arithmetic does not change.
 
+### Somebody can now read it, which is #106
+
+Until then the answer to "do the platform's books balance?" was reachable in
+exactly two places: a log line at 02:30 and a Prometheus gauge. Neither is where
+the person who has to act on it works, and that is what kept "build financial
+operations tooling" open with the payout queue, refunds and chargebacks all
+built — AD-05 had every financial operation except the one that checks the sum
+of them.
+
+| Call | What it does |
+|---|---|
+| `GET /v1/admin/reconciliation` | The last pass **this replica** made |
+| `POST /v1/admin/reconciliation/runs` | One now, and answers what it found |
+
+Both need `VIEW_FINANCE` and neither needs more. A pass is two aggregate queries
+that write nothing, so the worst a caller can do with the second is spend them —
+and gating it behind an approval authority would mean the person who noticed a
+discrepancy needs somebody else before they can confirm it. Running one **is**
+audited even so, as `ledger.reconciled`: it is what somebody does when they
+suspect the books are wrong, and "who last checked, and when" is the question
+asked afterwards. Reading the held report is not audited, because it is a count
+and a timestamp with nobody's name in it.
+
+**The second call exists because of what the first cannot promise.** The report
+lives in the process that made it, deliberately — see above — so a console
+request lands on one replica and a fleet redeployed this morning answers "never
+run" until tonight. `hasRun` is on the response for that reason and the console
+leads with it: `balanced: true, findings: []` is also what a check that stopped
+running produces, and a screen that collapsed the two would report a platform
+nobody has looked at as one whose books are fine.
+
+---
+
+## Display currency (#327)
+
+§21.2's "display currency, shown as an approximation, converted from central bank
+rates cached hourly, with the rate used stored on the pledge for audit". All four
+halves of that sentence are built.
+
+**NOTHING HERE DECIDES WHAT ANYBODY IS CHARGED.** Collection happens in the
+campaign's currency, which is manat under phase 1 and stays manat whatever a
+reader chooses. What this produces is the "≈ $29.41" beside "₼50.00".
+
+| Piece | Where |
+|---|---|
+| The source | `CentralBankRates` — `cbar.az/currencies/{dd.MM.yyyy}.xml`, public, no key |
+| The table | `exchange_rates` (V59). One row per publication per currency, kept rather than overwritten |
+| The refresh | `exchange-rate-refresh`, hourly. Eleven of the twelve daily passes write nothing |
+| The conversion | `ExchangeRates#approximate` |
+| The preference | `users.currency`, `PATCH /v1/me/currency` |
+| The audit | `pledges.display_currency` and `pledges.display_rate` (V60), stamped at confirmation |
+| The public read | `GET /v1/exchange-rates` |
+
+### Off by default, and that default is not merely conservative
+
+`IDEANEST_FX_ENABLED` is `false`. Turning it on means this service makes an
+outbound HTTP call to a third party on a timer, and a deployment that has not
+decided to do that must not start doing it because it upgraded. A disabled
+deployment still **registers** the job — so `/admin/health` lists it — and the
+pass returns without a request.
+
+### The date in the document is believed and the date in the request is not
+
+Asking cbar.az for a Sunday returns a document whose own `Date` attribute is the
+preceding Friday: it serves the last published day rather than refusing. A client
+that assumed the requested date would write three identical rows over a weekend,
+each claiming to be that day's official rate, and the Sunday row would be a claim
+the central bank never made.
+
+### Nominals are normalised once, at the edge
+
+The rouble is quoted per **hundred**: `<Nominal>100</Nominal><Value>2.0484</Value>`.
+The adapter divides before anything is stored, so every row in the table is per one
+unit. Carrying the nominal instead would push that division into every reader, and
+the reader that forgot it would be out by a factor of a hundred.
+
+### It degrades to absence, never to a guess
+
+A source that cannot be reached, a currency with no published rate, a rate older
+than `ideanest.fx.max-age`, and a deployment with the feature off all produce the
+same answer: **no approximation, and no rate on the pledge**. There is no fallback
+rate anywhere in the module and there must never be one — a figure computed from a
+stale rate is worse than no figure, because a backer acts on it.
+
+The age is measured on the **publication date** and not on the fetch. A source
+answering every hour with last month's rates has a fresh fetch and a stale rate,
+and it is the rate a reader is shown.
+
+### The parser refuses a doctype outright
+
+This is the only XML in the service and it comes from outside it. The factory sets
+`FEATURE_SECURE_PROCESSING`, disables external general and parameter entities, and
+disallows doctype declarations entirely — which closes XXE and entity expansion by
+removing the class rather than mitigating it. A rates document has no DTD, so
+refusing every one costs nothing.
+
+### The rate is not money and is not rounded like it
+
+`numeric(20,10)`. `MoneyRounding`'s two places would turn the lira's `0.0354` into
+`0.04` — a thirteen per cent error in every figure computed from it. Only the
+converted **amount** is rounded, once, at the end, to the target currency's own
+minor unit, by the same `HALF_EVEN` §21.2 declares for everything else.
+
+`Money` is never asked to cross a currency: it refuses with
+`CurrencyMismatchException` and that refusal is correct. The division happens on a
+plain `BigDecimal` and a `Money` is constructed from the result, so two amounts in
+different currencies never meet. `Approximation` carries the exact amount beside
+the approximate one, so nothing downstream can put the wrong one on a receipt.
+
+### The rate on a pledge is resolved by the service, not sent by the client
+
+The obvious design is for the checkout to send back the rate it drew — it is the
+thing that drew it. It is also the design in which the one number nobody can check
+is supplied by the party with an interest in it. The server reads the same hourly
+cache the display read, so the two agree except across an hour boundary; across
+one, the server's answer is the one that can be reconciled against
+`exchange_rates`.
+
 ---
 
 ## Fraud signals
@@ -500,6 +618,35 @@ Integration tests run under the `test` profile, which mirrors deployed
 configuration rather than the developer's — a health endpoint that hides detail
 in production and shows it locally has to be asserted against the production
 shape or the assertion proves nothing.
+
+#### The campaign-close load test (#141)
+
+`CollectionLoadTests` closes a six-hundred-backer campaign and drains it from
+eight threads at once, which is what two replicas do to one queue. It runs on
+every build; it is a load test rather than a benchmark, and the difference is
+what it asserts.
+
+**What it asserts exactly** are the properties whose absence is expensive:
+one charge per pledge and one `transactions` row per pledge — the failure that
+charges somebody twice — no pledge left in either queue, distinct idempotency
+keys, the ledger equal to a `BigDecimal` sum rather than a double, §9.6's next
+slot at +24 hours on every refused card, and §5.1's frozen outcome unchanged by
+a collection that failed.
+
+**What it measures and does not turn into an SLO** is throughput. §20.4 asks for
+10,000 collections in ten minutes — 16.7 a second sustained — and that figure has
+two owners. Ours is everything between "a pledge is due" and "the money is
+recorded, posted and announced"; the provider's is latency, rate limiting and
+retry semantics, and #60 has not chosen one. So the test runs against a provider
+that answers instantly and asserts only that **our** half clears §20.4's floor —
+below which no provider could make the target reachable — and logs the measured
+rate, which is around 240 a second on a developer machine.
+
+§9.6 puts 5–15% of a campaign's cards on the failure path, and a stub that always
+approves never exercises the retry schedule. The decline is therefore a rule —
+one pledge in ten, by a function of its identifier — rather than a queued script,
+because the threads claim pledges in an order nobody controls and a script would
+make the outcome depend on it.
 
 ---
 

@@ -1,5 +1,7 @@
-import { Tabs } from 'expo-router';
-import { colors, fontSize, fontWeight } from '../../theme';
+import { Pressable, StyleSheet } from 'react-native';
+import { Link, Tabs } from 'expo-router';
+import { Meta } from '../../components/text';
+import { colors, fontSize, fontWeight, radius, size, spacing } from '../../theme';
 
 /**
  * The four things somebody does on a phone — issue #110's navigation.
@@ -18,7 +20,50 @@ import { colors, fontSize, fontWeight } from '../../theme';
  * cheapest way to satisfy it is not to have icon-only controls. A visible label
  * also survives the case an icon never does: somebody using the application in a
  * language whose conventions the icon was not drawn for.
+ *
+ * <h2>Account is in the header, not in the tab bar — issue #29</h2>
+ *
+ * The four above are things somebody does. Signing in, turning on the biometric
+ * lock and signing out are settings a phone owes, and a fifth tab for them would
+ * make the tab bar a list of five things of which one is not like the others.
+ * The header is where both platforms already put it, and it is on every tab
+ * rather than on one so that "where do I sign in" has the same answer from
+ * wherever somebody happens to be when they ask.
  */
+
+const styles = StyleSheet.create({
+  account: {
+    minHeight: size.touchTarget,
+    // Height rather than a square: a 44pt-wide target around a word this short
+    // would clip it, and the platform header already spaces the sides.
+    justifyContent: 'center',
+    paddingHorizontal: spacing[4],
+    borderRadius: radius.full,
+  },
+  accountPressed: { backgroundColor: colors.surface3 },
+});
+
+/**
+ * The header control.
+ *
+ * <p>A word rather than a glyph, for the same reason the tabs below carry
+ * labels: CLAUDE.md §2 requires an accessible name on an icon-only control, and
+ * the cheapest way to satisfy that is not to have one.
+ */
+function AccountLink() {
+  return (
+    <Link href="/account" asChild>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Account"
+        style={({ pressed }) => [styles.account, pressed && styles.accountPressed]}
+      >
+        <Meta tone="secondary">Account</Meta>
+      </Pressable>
+    </Link>
+  );
+}
+
 export default function TabsLayout() {
   return (
     <Tabs
@@ -34,6 +79,7 @@ export default function TabsLayout() {
         tabBarActiveTintColor: colors.lime500,
         tabBarInactiveTintColor: colors.textTertiary,
         tabBarLabelStyle: { fontSize: fontSize.xxs, fontWeight: fontWeight.medium },
+        headerRight: () => <AccountLink />,
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Discover' }} />

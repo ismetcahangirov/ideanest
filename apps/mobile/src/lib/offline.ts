@@ -119,6 +119,26 @@ export function createQueryClient(): QueryClient {
   });
 }
 
+/**
+ * Erases the persisted cache from the device, now — issue #29.
+ *
+ * <h2>Why `queryClient.clear()` is not enough on its own</h2>
+ *
+ * Clearing the client empties memory and lets the persister write the emptied
+ * cache back — after {@link WRITE_THROTTLE_MS}. Two of the three persisted roots
+ * are private: `saved` and `pledges` are one account's, and leaving them on disk
+ * for a second after a sign-out means an application killed inside that second
+ * leaves them there for ever. So the document is removed directly as well, which
+ * is synchronous because MMKV is.
+ *
+ * <p>Both are done rather than only this one: removing the file without clearing
+ * the client would leave the data in memory, and the next settled query would
+ * write it straight back.
+ */
+export function forgetPersistedCache(store: KeyValueStore = deviceStore): void {
+  store.remove(CACHE_KEY);
+}
+
 /** What `PersistQueryClientProvider` is given. One place, so the screens cannot disagree. */
 export function persistOptions(store?: KeyValueStore, throttleTime?: number) {
   return {

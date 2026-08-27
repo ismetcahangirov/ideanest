@@ -100,7 +100,22 @@ export const CONSOLE_MODULES: readonly ConsoleModule[] = Object.freeze([
     summary: 'Complaints about campaigns, and the suspension that answers the worst of them.',
     state: 'partial',
     href: '/admin/moderation',
-    waitingOn: 'Fraud signals are unbuilt; the queue and the suspension are not.',
+    /*
+     * THE NOTE WAS STALE, WHICH IS THE ONE FAILURE THIS FILE EXISTS TO PREVENT.
+     *
+     * It read "fraud signals are unbuilt" until #106, and #108 had built them: there are
+     * `risk_assessments`, a scored queue at `GET /v1/admin/risk/queue`, and the identity
+     * review beside it at `/v1/admin/verifications/queue`. A member of staff was being told
+     * something false about the platform they operate, which is worse than being told
+     * nothing.
+     *
+     * It is still `partial`, and the reason has moved rather than gone: both queues are
+     * endpoints with no screen in this console, so the only way to work them today is the
+     * API. That is the gap, and it is a smaller one than the sentence it replaces.
+     */
+    waitingOn:
+      'Fraud signals and the identity review are built and scored (#108, #105), and neither ' +
+      'has a screen here yet — both queues are reachable only through the API.',
     issue: 103,
   },
   {
@@ -142,10 +157,19 @@ export const CONSOLE_MODULES: readonly ConsoleModule[] = Object.freeze([
   {
     code: 'AD-05',
     title: 'Finance',
-    summary: 'Every charge and posting, what each creator is owed, and the signatures before it leaves.',
+    summary:
+      'Every charge and posting, what each creator is owed, whether it all adds up, and the ' +
+      'signatures before it leaves.',
     state: 'built',
     href: '/admin/payments',
-    otherScreens: ['/admin/ledger', '/admin/payouts'],
+    /*
+     * Four screens since #106, and the fourth is the one that checks the other three.
+     * `/admin/reconciliation` was the gap that kept "build financial operations tooling"
+     * open with the payout queue, refunds and chargebacks all built: #70's nightly pass
+     * answered "do the books balance" to a log line and a Prometheus gauge, and to nobody
+     * who works in this console.
+     */
+    otherScreens: ['/admin/ledger', '/admin/payouts', '/admin/reconciliation'],
     issue: 306,
   },
   {
@@ -327,6 +351,7 @@ export const CONSOLE_GROUPS: readonly ConsoleGroup[] = Object.freeze([
     links: [
       { href: '/admin/payments', label: 'Payment log' },
       { href: '/admin/ledger', label: 'Ledger' },
+      { href: '/admin/reconciliation', label: 'Reconciliation' },
       { href: '/admin/payouts', label: 'Payouts' },
       { href: '/admin/refunds', label: 'Refunds' },
       { href: '/admin/disputes', label: 'Chargebacks' },

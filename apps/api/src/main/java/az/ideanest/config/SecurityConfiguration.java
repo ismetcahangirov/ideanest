@@ -113,6 +113,26 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/v1/locations")
                         .permitAll()
                         // ---- end #276 -------------------------------------
+                        // ---- §21.2's display currency (#327) --------------
+                        //
+                        // Public because the reader who most wants it has not
+                        // signed in: somebody sent a campaign link, they think
+                        // in dollars, and "≈ $29" beside the goal is the whole
+                        // point. A token requirement would mean the
+                        // approximation appeared only after registering.
+                        //
+                        // There is nothing personal in the answer. It is what a
+                        // central bank published, which is why it is also one
+                        // of the few reads on this platform a shared cache may
+                        // hold.
+                        //
+                        // GET and nothing else, for the reason above it: a rate
+                        // is written by a scheduled job reading a central bank,
+                        // never by a caller, and a write method under this path
+                        // later must not inherit this.
+                        .requestMatchers(HttpMethod.GET, "/v1/exchange-rates")
+                        .permitAll()
+                        // ---- end #327 -------------------------------------
                         // Browsing, and the counts beside it. Public because
                         // discovery is the front door: a visitor who has not
                         // registered is exactly the audience it exists for, and

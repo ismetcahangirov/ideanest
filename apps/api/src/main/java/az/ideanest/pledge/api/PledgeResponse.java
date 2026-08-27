@@ -68,6 +68,30 @@ public record PledgeResponse(
         UUID paymentMethodId,
         boolean cardVerified,
         boolean latePledge,
+        /**
+         * §21.2's rate retention (#327): the currency this pledge was approximated in at
+         * confirmation, or null when the backer was shown the campaign's own.
+         *
+         * <p>Null for most pledges, and that is the honest record rather than a missing
+         * value — there was no approximation to keep. V60's
+         * {@code pledges_display_currency_differs} refuses the case where it would equal
+         * {@link Amounts}' currency.
+         */
+        String displayCurrency,
+        /**
+         * Units of the pledge's currency per ONE unit of {@link #displayCurrency}, as a
+         * string.
+         *
+         * <p>A string for the reason every amount on this platform is one: a JSON number is
+         * an IEEE 754 double, and a rate is what money is computed from — so it crosses as
+         * text for the same reason an amount does, one step earlier.
+         *
+         * <p><strong>The rate and never the converted amount.</strong> The amount is a
+         * product of {@code amounts.total} and this, and sending both would be sending a
+         * figure that can disagree with its own inputs. The client multiplies once, when it
+         * draws it.
+         */
+        String displayRate,
         List<PledgeSupplementBody> supplements) {
 
     /**
@@ -120,6 +144,12 @@ public record PledgeResponse(
                 // client so that #55 changes one expression here and nothing there.
                 false,
                 pledge.isLatePledge(),
+                pledge.getDisplayCurrency(),
+                // `toPlainString` and never `toString`: a BigDecimal whose scale and
+                // precision line up renders in scientific notation, and a client parsing
+                // `2.0484E-2` with a decimal library that does not accept exponents gets
+                // nothing rather than a rate.
+                pledge.getDisplayRate() == null ? null : pledge.getDisplayRate().toPlainString(),
                 PledgeSupplementBody.of(detail));
     }
 }
