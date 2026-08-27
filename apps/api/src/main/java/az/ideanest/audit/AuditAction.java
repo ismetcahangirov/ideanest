@@ -332,6 +332,22 @@ public enum AuditAction {
     LEDGER_READ("ledger.read", "account"),
 
     /**
+     * §4.11's AD-02 (#108): staff read the fraud queue, or marked one of its rows seen.
+     *
+     * <p>The same argument as {@link #PAYMENT_LOG_READ}, and one that is sharper. This
+     * queue is a list of people the platform's own arithmetic has found suspicious, on
+     * numbers nobody has yet measured against a real chargeback rate. A list like that is
+     * one whose readers should be known — both because §17.4 requires it of a read this
+     * privileged, and because the first question after somebody is wrongly treated as a
+     * fraudster is who saw the score.
+     *
+     * <p>The entity is the staff account rather than a subject, following
+     * {@link #AUDIT_TRAIL_READ}: a read of a list has no single subject, and a detail that
+     * reproduced the queue would be a second copy of it with no retention rule.
+     */
+    RISK_QUEUE_READ("risk.queue_read", "account"),
+
+    /**
      * §4.11's role model (#295): somebody was given an authority over the platform.
      *
      * <p><strong>The most privileged action there is</strong>, because it is the one that
@@ -419,7 +435,45 @@ public enum AuditAction {
     PAYOUT_APPROVED("payout.approved", "payout"),
 
     /** The money left (#69, #306). */
-    PAYOUT_SENT("payout.sent", "payout");
+    PAYOUT_SENT("payout.sent", "payout"),
+
+    /**
+     * §22.1's anti-money-laundering row (#105): a creator submitted an identity document.
+     *
+     * <p>The entity is the creator and not a member of staff, because "a photograph of my
+     * passport was stored" is an event about the person in the photograph. §17.4 is why it
+     * is recorded at all: a platform that holds an identity document should be able to say
+     * when it started.
+     */
+    IDENTITY_DOCUMENT_SUBMITTED("identity.document_submitted", "account"),
+
+    /**
+     * <strong>Somebody looked at an identity document</strong> — #105.
+     *
+     * <p>The most sensitive read on the platform, and the reason
+     * {@code IdentityVerifications.openDocument} is the only route to a document's bytes.
+     * "Who has looked at my passport" is a question a creator is entitled to have answered,
+     * and it is unanswerable unless every opening writes a row.
+     *
+     * <p>The entity is the creator, so that "what has been done to this account" answers
+     * it; the actor is the member of staff. The detail names the kind of document and
+     * never anything from inside it.
+     */
+    IDENTITY_DOCUMENT_READ("identity.document_read", "account"),
+
+    /** #105: a member of staff was satisfied by a creator's documents. */
+    IDENTITY_VERIFICATION_APPROVED("identity.verification_approved", "account"),
+
+    /**
+     * #105: a member of staff was not satisfied.
+     *
+     * <p>The reason is on the verification and deliberately not in this detail: the closed
+     * set of reasons is shown to the creator, and an audit row that repeated it would be a
+     * second copy in a table with a different retention rule.
+     */
+    IDENTITY_VERIFICATION_REJECTED("identity.verification_rejected", "account");
+
+
 
     private final String action;
     private final String entityType;

@@ -7,7 +7,7 @@ import {
   parseAmount,
   toMoney,
   toWireAmount,
-} from './money';
+} from './index';
 
 /**
  * Money arithmetic is not optional to test (CLAUDE.md §3): it fails silently

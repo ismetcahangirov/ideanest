@@ -740,6 +740,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/risk/pledges/{pledgeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["riskHistoryOf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/risk/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["riskQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/risk/{assessmentId}/reviewed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["riskMarkReviewed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/staff": {
         parameters: {
             query?: never;
@@ -1038,6 +1086,70 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["adminUserReinstate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/verifications/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["verificationAdminQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/verifications/{verificationId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["verificationAdminApprove"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/verifications/{verificationId}/documents/{documentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["verificationAdminDocument"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/verifications/{verificationId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["verificationAdminReject"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1556,6 +1668,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["deviceRegister"];
+        delete: operations["deviceForget"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/export": {
         parameters: {
             query?: never;
@@ -1742,6 +1870,22 @@ export interface paths {
         get: operations["backerSurveyMine"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["verificationMine"];
+        put?: never;
+        post: operations["verificationSubmit"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3408,6 +3552,15 @@ export interface components {
             /** Format: date-time */
             scheduledFor?: string;
         };
+        DeviceResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: date-time */
+            lastSeenAt?: string;
+            platform?: string;
+            /** Format: date-time */
+            registeredAt?: string;
+        };
         DisableTwoFactorRequest: {
             code?: string;
             password: string;
@@ -3444,6 +3597,16 @@ export interface components {
             hasMore?: boolean;
             /** Format: int32 */
             page?: number;
+        };
+        Document: {
+            /** Format: int32 */
+            byteLength?: number;
+            contentType?: string;
+            /** Format: uuid */
+            id?: string;
+            kind?: string;
+            /** Format: date-time */
+            uploadedAt?: string;
         };
         Draft: {
             locale?: string;
@@ -4271,12 +4434,7 @@ export interface components {
             visibility: "PUBLIC" | "BACKERS_ONLY";
         };
         Queue: {
-            /** Format: int64 */
-            dead?: number;
-            name?: string;
-            status?: string;
-            /** Format: int64 */
-            waiting?: number;
+            verifications?: components["schemas"]["Verification"][];
         };
         QueuedReportResponse: {
             /** Format: date-time */
@@ -4356,6 +4514,12 @@ export interface components {
             /** Format: int32 */
             page?: number;
             refunds?: components["schemas"]["Refund"][];
+        };
+        RegisterDeviceRequest: {
+            appVersion?: string;
+            deviceName?: string;
+            platform: string;
+            token: string;
         };
         RegistrationRequest: {
             /** Format: email */
@@ -4963,6 +5127,21 @@ export interface components {
             count?: number;
             value?: string;
         };
+        Verification: {
+            accepts?: string[];
+            documents?: components["schemas"]["Document"][];
+            /** Format: date-time */
+            documentsErasedAt?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+            /** Format: uuid */
+            id?: string;
+            rejectionReason?: string;
+            /** Format: date-time */
+            reviewedAt?: string;
+            state?: string;
+            subjectKind?: string;
+        };
         VerificationRecord: {
             /** Format: date-time */
             consumedAt?: string;
@@ -5097,9 +5276,11 @@ export type SchemaDashboardResponse = components['schemas']['DashboardResponse']
 export type SchemaDay = components['schemas']['Day'];
 export type SchemaDeleteAccountRequest = components['schemas']['DeleteAccountRequest'];
 export type SchemaDeletionScheduledResponse = components['schemas']['DeletionScheduledResponse'];
+export type SchemaDeviceResponse = components['schemas']['DeviceResponse'];
 export type SchemaDisableTwoFactorRequest = components['schemas']['DisableTwoFactorRequest'];
 export type SchemaDispute = components['schemas']['Dispute'];
 export type SchemaDisputePage = components['schemas']['DisputePage'];
+export type SchemaDocument = components['schemas']['Document'];
 export type SchemaDraft = components['schemas']['Draft'];
 export type SchemaDraftPledgeRequest = components['schemas']['DraftPledgeRequest'];
 export type SchemaEditRequest = components['schemas']['EditRequest'];
@@ -5200,6 +5381,7 @@ export type SchemaReferrerReportResponse = components['schemas']['ReferrerReport
 export type SchemaRefreshRequest = components['schemas']['RefreshRequest'];
 export type SchemaRefund = components['schemas']['Refund'];
 export type SchemaRefundPage = components['schemas']['RefundPage'];
+export type SchemaRegisterDeviceRequest = components['schemas']['RegisterDeviceRequest'];
 export type SchemaRegistrationRequest = components['schemas']['RegistrationRequest'];
 export type SchemaRemainder = components['schemas']['Remainder'];
 export type SchemaRemindRequest = components['schemas']['RemindRequest'];
@@ -5281,6 +5463,7 @@ export type SchemaUpdateNotificationPreferencesRequest = components['schemas']['
 export type SchemaUpdateRequest = components['schemas']['UpdateRequest'];
 export type SchemaUpgradePledgeRequest = components['schemas']['UpgradePledgeRequest'];
 export type SchemaValueCount = components['schemas']['ValueCount'];
+export type SchemaVerification = components['schemas']['Verification'];
 export type SchemaVerificationRecord = components['schemas']['VerificationRecord'];
 export type SchemaVerifyEmailRequest = components['schemas']['VerifyEmailRequest'];
 export type SchemaVerifyTwoFactorRequest = components['schemas']['VerifyTwoFactorRequest'];
@@ -6569,6 +6752,70 @@ export interface operations {
             };
         };
     };
+    riskHistoryOf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pledgeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Queue"];
+                };
+            };
+        };
+    };
+    riskQueue: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Queue"];
+                };
+            };
+        };
+    };
+    riskMarkReviewed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assessmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     staffRoster: {
         parameters: {
             query?: never;
@@ -7091,6 +7338,97 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminUserResponse"];
+                };
+            };
+        };
+    };
+    verificationAdminQueue: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Queue"];
+                };
+            };
+        };
+    };
+    verificationAdminApprove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                verificationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Verification"];
+                };
+            };
+        };
+    };
+    verificationAdminDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                verificationId: string;
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    verificationAdminReject: {
+        parameters: {
+            query: {
+                reason: string;
+            };
+            header?: never;
+            path: {
+                verificationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Verification"];
                 };
             };
         };
@@ -7998,6 +8336,52 @@ export interface operations {
             };
         };
     };
+    deviceRegister: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterDeviceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceResponse"];
+                };
+            };
+        };
+    };
+    deviceForget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterDeviceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     accountExportExport: {
         parameters: {
             query?: never;
@@ -8301,6 +8685,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BackerSurveyListResponse"];
+                };
+            };
+        };
+    };
+    verificationMine: {
+        parameters: {
+            query?: {
+                subjectKind?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Verification"];
+                };
+            };
+        };
+    };
+    verificationSubmit: {
+        parameters: {
+            query: {
+                kind: string;
+                subjectKind?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Verification"];
                 };
             };
         };

@@ -1,0 +1,55 @@
+{
+  "cli": {
+    "version": ">= 18.0.0",
+    "appVersionSource": "remote",
+    "requireCommit": true
+  },
+  "build": {
+    "base": {
+      "node": "22.20.0",
+      "env": {
+        "IDEANEST_SITE_URL": "https://ideanest.az"
+      }
+    },
+    "development": {
+      "extends": "base",
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "development",
+      "env": {
+        "IDEANEST_API_ORIGIN": "http://localhost:8080",
+        "IDEANEST_SITE_URL": "http://localhost:3001"
+      },
+      "ios": { "simulator": true },
+      "android": { "buildType": "apk" }
+    },
+    "preview": {
+      "extends": "base",
+      "distribution": "internal",
+      "channel": "preview",
+      "env": {
+        "IDEANEST_API_ORIGIN": "https://staging-api.ideanest.az",
+        "IDEANEST_SITE_URL": "https://staging.ideanest.az"
+      },
+      "android": { "buildType": "apk" }
+    },
+    "production": {
+      "extends": "base",
+      "distribution": "store",
+      "channel": "production",
+      "autoIncrement": true,
+      "env": {
+        "IDEANEST_API_ORIGIN": "https://api.ideanest.az"
+      },
+      "android": { "buildType": "app-bundle" }
+    }
+  },
+  "submit": {
+    "production": {
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    }
+  }
+}

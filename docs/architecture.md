@@ -1300,7 +1300,7 @@ Preferences are per category and per channel, with a digest option.
 | # | Module | Capabilities |
 |---|---|---|
 | AD-01 | Project moderation | Queue, approve, reject, request changes, notes, history |
-| AD-02 | Trust and safety | Report queue, fraud signals, suspension. Reporting and the queue are built (#102, §7.2's `content_reports`); **suspension is built (#103)** and fraud signals are not |
+| AD-02 | Trust and safety | Report queue, fraud signals, suspension. Reporting and the queue are built (#102, §7.2's `content_reports`), **suspension is built (#103)**, and **fraud signals are built (#108)** — `risk_assessments`, a queue at `/v1/admin/risk/queue`, and the identity review at `/v1/admin/verifications/queue` (#105). The signals **advise and do not decide**: nothing refuses a pledge or suspends an account on a score. See §17.2 |
 | AD-03 | Curation | Editorial badges, collections, open calls, placement. The endpoints arrived with #48; **the four screens are built (#300 to #303)** at `/admin/curation` and its three siblings |
 | AD-04 | User management | Search, inspect, ban, verification status, audited impersonation. **Search, inspect and the ban are built (#104)**, and **`/admin/staff` is built (#295)** — the role model that replaced the configured list. Impersonation is not, and is the one thing in this table still waiting on a decision (#299) |
 | AD-05 | Finance | Payment log, ledger, payout queue, approvals, disputes. **All of it is built**: the log and the ledger with #304 and #305, the payout queue and its dual approval with #69 and #306 |
@@ -2711,6 +2711,8 @@ load profile).
 | `outbox-relay` | Every second | Publish recorded events, in order within an aggregate |
 | `notification-sender` | Every second | Send what §12.2's fan-out queued, one row per transaction |
 | `notification-digest` | Hourly | Combine what §12.2's fan-out held, one message per recipient and channel |
+| `push-device-retention` | Daily | Forget push registrations nobody has refreshed (#87). §17.4 applied to addresses: the application re-registers on every cold start, so a registration older than the window is a phone that has not opened it since. It is the only sweep that can catch that case — a sign-out deletes its row and an uninstall is discovered the first time a send is refused, but a phone nobody opens again produces no signal at all |
+| `identity-document-retention` | Daily | Destroy identity documents past their limit, and expire approvals past their life (#105). **The backstop rather than the ordinary path**: a decision erases the documents behind it in the same transaction, so this exists for the submission nobody ever decides — which is what turns a review queue into an archive of passports — and for a document whose decision erased nothing. The age is measured on the document rather than on its verification, so it does not depend on the state machine being right |
 
 > **The scheduler underneath all of them is built (#134).** Every trigger in this
 > table now claims a lease in `scheduled_jobs` before it runs, so a job fires once
@@ -3802,7 +3804,7 @@ terms is exactly what the sentence above exists to prevent.
 | `w5` view-to-pledge | **inert** | — | #95 — nothing records a view |
 | `w6` personalisation | **inert** | — | D-07 — the feed is anonymous and publicly cached |
 | `w7` recency decay | **live** | `launched_at` | — |
-| `w8` spam signal | **inert** | — | #108 — no automated fraud signal exists |
+| `w8` spam signal | **inert** | — | #108 built the signals and they score a *pledge*, not a campaign. A ranking term needs "is this campaign spam", and what `risk_assessments` answers is "did this backer behave like a card tester". Wiring the second into the first would demote a campaign for the behaviour of the people backing it, which is the wrong direction — an attacker would suppress a rival by pledging to it badly |
 | `w0` **text match** | **live** | `search_vector` (#43) | — |
 
 **There is a ninth term, `w0`, and it is not in the formula above by oversight.**
@@ -4509,16 +4511,42 @@ product. Public read surfaces — discovery, prelaunch — go through it.
 
 | Concern | Choice |
 |---|---|
-| Framework | **React Native 0.76** (new architecture) |
-| Toolchain | **Expo SDK 52** |
+| Framework | **React Native 0.86** (new architecture) |
+| Toolchain | **Expo SDK 57** |
 | Navigation | **Expo Router** |
-| Styling | **NativeWind 4** on the same tokens |
-| Server state | **TanStack Query 5** — shared queries with web |
-| Storage | **MMKV**, secure store for tokens |
+| Styling | **`StyleSheet` over `@ideanest/design-tokens`** — see below |
+| Server state | **TanStack Query 5** — shared queries with web, persisted to MMKV (#115) |
+| Storage | **MMKV** for the cache, the platform keychain for the session |
 | Lists | **FlashList** |
-| Animation | **Reanimated 3** |
-| Push | Expo notifications over the platform services |
+| Animation | **Reanimated 4** |
+| Push | Expo notifications over the platform services (#87) |
 | Payments | Provider SDK or a hosted page in a web view |
+
+**The SDK moved from 52 to 57 when `apps/mobile` was actually built (#110).** 52
+was current when this section was written and reached end of life in 2025; it
+pins React 18, and the New Architecture it describes as a choice is no longer
+optional. Starting a new application on it would be starting it two years behind.
+
+**NativeWind is not used, and that is a deviation with a date on it.** NativeWind
+4 drives Tailwind 3. This repository is on Tailwind 4 everywhere — `apps/web` and
+`packages/ui` both — and NativeWind's Tailwind 4 release is `5.0.0-preview`. The
+two available options were a second, older Tailwind major with its own config
+dialect living beside the current one, or a preview dependency underneath every
+screen in a new application.
+
+Neither buys anything `StyleSheet` over the tokens does not: the values are
+identical either way, and the class names would be a second spelling of them
+rather than a second source. `apps/mobile/src/theme/theme.test.ts` enforces the
+rule that actually matters — **no colour anywhere under `src/` that is not a
+token** — which is the same guard `packages/ui` runs over its own source.
+
+Revisit when `nativewind@5` is stable. The revisit is cheap because the screens
+import the tokens rather than class names.
+
+**Tests run on `jest-expo` rather than vitest**, which every other workspace uses.
+React Native ships untranspiled source with Flow annotations and the transform
+that strips them is `babel-preset-expo` — the same one Metro uses — so a runner
+that does not go through Babel stops at the first import of the framework.
 
 ### 14.4 Data and infrastructure
 
@@ -4674,6 +4702,8 @@ ideanest/
 │   │   │   ├── media/
 │   │   │   ├── moderation/
 │   │   │   ├── analytics/
+│   │   │   ├── risk/                 fraud signals (#108)
+│   │   │   ├── verification/         identity documents (#105)
 │   │   │   ├── admin/
 │   │   │   └── shared/               money, outbox, idempotency, audit
 │   │   │       └── access/           the cross-module permission contract (§16.1)
@@ -4683,12 +4713,16 @@ ideanest/
 │   │   └── src/app/
 │   │       ├── (public)/             the shell in §4.13: header, footer, home
 │   │       └── (admin)/admin/        the internal console in §4.11
-│   └── mobile/                       Expo
+│   └── mobile/                       Expo — built (#110)
+│       ├── src/app/                  Expo Router: (tabs) and projects/
+│       ├── src/theme/                the tokens, and the test that keeps them the only palette
+│       └── src/lib/                  links (#114), offline (#115), push (#87)
 │
 ├── packages/
 │   ├── design-tokens/
 │   ├── ui/
 │   ├── api-client/                   generated from OpenAPI
+│   ├── money/                        the money rules, shared by web and mobile
 │   ├── schemas/                      shared Zod schemas
 │   └── config/
 │
@@ -4910,7 +4944,7 @@ Apple requires to revoke the token.
 | Webhooks | HMAC signature, timestamp check against replay, source allowlist |
 | Idempotency | Required on all payment mutations; keys retained 24 hours |
 | Payout approval | Dual approval above a configured threshold |
-| Fraud signals | Velocity, geography mismatch, new-account risk |
+| Fraud signals | Velocity, geography mismatch, new-account risk. **Built (#108)**, with one signal reported unavailable rather than passing: geography mismatch needs an IP-to-country source, no vendor is chosen and none ships with the service, so every assessment records that it could not be evaluated. A low score with an unavailable signal is a different statement from a low score without one. The other four — pledge velocity per account, pledge velocity per source address, account age, and an address the account has never been seen from — are live and advisory |
 
 ### 17.3 Application
 
@@ -5320,7 +5354,7 @@ statute's scope.
 | **Merchant of record** | If the platform is the seller of record, who bears the VAT obligation? | Critical |
 | **Value added tax** | Is a reward a supply of goods? Is the platform fee separately taxable? | Critical |
 | **Withholding** | Must tax be withheld on payouts to individuals as distinct from companies? | Critical |
-| **Anti-money laundering** | Identity verification thresholds for creators | High |
+| **Anti-money laundering** | Identity verification thresholds for creators | High. **The mechanism is built (#105) and the threshold is not**: a creator can be asked for a document, the document is encrypted at rest, only platform staff can open one and every opening is audited, and a retention sweep destroys it. What nobody may decide here is *who has to* — `ideanest.verification.required` is off, nothing on the platform is gated on the outcome, and turning it on is the change this row unblocks |
 | **Consumer protection** | Platform liability where a reward is never delivered | High |
 | **Personal data** | Registration obligations under the data protection statute | High |
 | **Cross-border** | Who is the importer of record for international reward delivery? | Medium |
@@ -5397,7 +5431,7 @@ API. Analytics warehouse. Experimentation platform.
 | R3 | **Mass collection failure at close** | High | Batching, rate limiting, a seven-day retry window, and a second provider |
 | R4 | **Ledger imbalance** | High | Double entry, database constraints, daily reconciliation, severity-one alert |
 | R5 | Stock race conditions | Medium | Optimistic locking, reservations, and concurrency tests |
-| R6 | Fraudulent creators | Medium | Identity verification, moderation, payout hold, backer reporting |
+| R6 | Fraudulent creators | Medium | Identity verification (#105, mechanism only — the threshold is §22.1's), moderation, payout hold, backer reporting. §17.2's automated signals (#108) score a *backer's* behaviour rather than a creator's, so they are not this control |
 | R7 | Chargeback wave | Medium | Hold period, evidence collection, deduction from payout |
 | R8 | Viral traffic | Medium | Edge caching, read replicas, autoscaling, event aggregation |
 | R9 | Store rejection over digital rewards | Low | Review in-app purchase policy before submission |

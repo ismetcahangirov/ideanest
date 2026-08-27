@@ -5,18 +5,13 @@ import az.ideanest.notification.application.NotificationDigest;
 import az.ideanest.notification.application.NotificationMessage;
 import az.ideanest.notification.application.TemplateOverrides;
 import az.ideanest.notification.domain.NotificationType;
-import az.ideanest.shared.money.Money;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Component;
-import org.springframework.web.util.UriUtils;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * What an email says, decided per notification type.
@@ -81,7 +76,7 @@ public class EmailComposer {
     private static final String NAMED = ".named";
 
     private final MessageSource messages;
-    private final ObjectMapper json;
+    private final NotificationFacts facts;
     private final NotificationProperties properties;
 
     /**
@@ -95,11 +90,11 @@ public class EmailComposer {
 
     public EmailComposer(
             MessageSource messages,
-            ObjectMapper json,
+            NotificationFacts facts,
             NotificationProperties properties,
             TemplateOverrides overrides) {
         this.messages = messages;
-        this.json = json;
+        this.facts = facts;
         this.properties = properties;
         this.overrides = overrides;
     }
@@ -110,8 +105,8 @@ public class EmailComposer {
      * @param recipientName the name on the recipient's account, for the greeting
      */
     public EmailContent compose(NotificationMessage message, String recipientName) {
-        JsonNode params = read(message.params());
-        EmailFacts facts = factsFor(message.type(), params, recipientName);
+        JsonNode params = this.facts.paramsOf(message.params());
+        EmailFacts facts = this.facts.factsFor(message.type(), params, recipientName);
         String action = actionUrl(message.type(), params, message.subjectType(), message.subjectId());
         String base = PREFIX + message.type().name() + ".";
 
@@ -140,8 +135,8 @@ public class EmailComposer {
     public EmailContent compose(NotificationDigest digest, String recipientName) {
         List<EmailContent.Item> items = new ArrayList<>(digest.notifications().size());
         for (NotificationMessage member : digest.notifications()) {
-            JsonNode params = read(member.params());
-            EmailFacts facts = factsFor(member.type(), params, recipientName);
+            JsonNode params = this.facts.paramsOf(member.params());
+            EmailFacts facts = this.facts.factsFor(member.type(), params, recipientName);
             items.add(new EmailContent.Item(
                     copy(PREFIX + member.type().name() + ".line", facts),
                     actionUrl(member.type(), params, member.subjectType(), member.subjectId())));
@@ -167,132 +162,28 @@ public class EmailComposer {
     }
 
     /**
-     * Which facts this type's copy may refer to.
+     * Where the button goes: {@link NotificationFacts#pathFor}, resolved against this
+     * deployment's own origin.
      *
-     * <p>Only the keys the producing event actually writes are read. A type whose
-     * producer does not exist yet reads nothing and gets copy that needs nothing, rather
-     * than a guess about the shape of a payload nobody has written.
+     * <p>The path is shared with push (#87) and the origin is not. A preview
+     * environment's mail must not send its readers to production, and the mobile
+     * application resolves the same path against its own scheme rather than against any
+     * origin at all.
      */
-    private EmailFacts factsFor(NotificationType type, JsonNode params, String recipientName) {
-        // Read for every type rather than per branch, because it is not a fact any one type
-        // carries -- it is what the message is about, and the branch below is only about
-        // which further facts the copy may mention. Absent on a row written before #249, on
-        // a message that is not about a campaign at all, and on one whose campaign could not
-        // be found; in all three the `.named` copy is simply not used.
-        EmailFacts facts = EmailFacts.of(recipientName).about(text(params, "projectTitle"));
-
-        return switch (type) {
-            // Produced today. The params are NotificationEventListener's, and the
-            // names below are the names it writes.
-            case PLEDGE_CONFIRMED, PLEDGE_EDITED -> facts.withAmount(money(params, "total"));
-            case PAYMENT_FAILED -> facts.withAmount(money(params, "amount"))
-                    .withDetail(text(params, "attempt"));
-            case GOAL_REACHED -> facts.withAmount(money(params, "goal"));
-            case CAMPAIGN_SUCCEEDED, CAMPAIGN_UNSUCCESSFUL -> facts.withAmount(money(params, "pledged"))
-                    .withDetail(text(params, "backersCount"));
-            case PROJECT_APPROVED -> facts;
-            // Produced since #64 and #65 built the collection. The two lines below did not
-            // change when the producer arrived, which was the point of writing them
-            // against the params the future event was going to carry: `amount` and
-            // `attempt` are what `CollectionEvents` writes, and the copy in
-            // `messages.properties` was already written to read them.
-            case PAYMENT_COLLECTED -> facts.withAmount(money(params, "amount"));
-            case FINAL_PAYMENT_WARNING -> facts.withAmount(money(params, "amount"))
-                    .withDetail(text(params, "attempt"));
-
-            // Not produced yet. #69 owns the payout, #74 the surveys, #80 fulfilment, #83
-            // updates, #84 comments, #90 saving and following, and #87 the push half of
-            // all of them. Each reads the amount its future event will carry where an
-            // amount is the point of the message, and nothing where it is not — see the
-            // class comment for why these are written before they are reachable.
-            case PAYOUT_SENT -> facts.withAmount(money(params, "amount"));
-            case NEW_UPDATE_PUBLISHED,
-                    COMMENT_REPLY,
-                    DIRECT_MESSAGE,
-                    SURVEY_AVAILABLE,
-                    SURVEY_OVERDUE,
-                    REWARD_SHIPPED,
-                    FOLLOWED_CREATOR_LAUNCHED,
-                    LAUNCH_REMINDER,
-                    SAVED_PROJECT_ENDING_SOON,
-                    NEW_DEVICE_SIGN_IN -> facts;
-
-            // The deadline reminders need no fact: how long is left is what the type is,
-            // so the copy says it rather than reading it out of a document.
-            //
-            // DEADLINE_24H is here and has copy, and it can never be sent — §4.10 gives
-            // it no email column and NotificationType agrees, so no email row of this
-            // type is ever written and EmailTemplates leaves it out of the previews. It
-            // is covered because the switch is exhaustive and an unreachable branch is a
-            // cheaper way to say that than a default clause, which would also swallow
-            // every genuinely new type.
-            case DEADLINE_48H, DEADLINE_24H -> facts;
-        };
+    private String actionUrl(NotificationType type, JsonNode params, String subjectType, UUID subjectId) {
+        return properties.email().baseUrl() + trimRoot(facts.pathFor(type, params, subjectType, subjectId));
     }
 
     /**
-     * Where the button goes.
+     * {@code "/"} becomes the empty string, so that the site link is {@code base} rather
+     * than {@code base + "/"}.
      *
-     * <p>Five sources, in this order, and the order is the point:
-     *
-     * <ol>
-     *   <li>The type, when the message is not about a campaign at all. Only
-     *       {@code NEW_DEVICE_SIGN_IN} is: it is about the account, and what a person who
-     *       did not recognise that sign-in needs is the session list.
-     *   <li>The campaign's public path, {@code /projects/{creatorSlug}/{projectSlug}}, from
-     *       the two slugs #249 puts in {@code params}. <strong>This is the only one of
-     *       these that addresses the campaign page</strong> — see below.
-     *   <li>{@code params.projectId}, which the pledge-shaped types carry — a message
-     *       about a pledge is best answered by the campaign page, and a pledge has no
-     *       page of its own on the web application yet.
-     *   <li>The subject, when it is a campaign.
-     *   <li>The site. A message with nowhere specific to go still gives the reader
-     *       somewhere to go, and a button pointing at nothing is worse than the home page.
-     * </ol>
-     *
-     * <p><strong>The third and fourth are kept, and they are wrong.</strong> §10.2's
-     * campaign page takes two slugs, so {@code /projects/{uuid}} matches no route and
-     * answers 404 — which is what every email the platform had sent did, and what the rows
-     * written before #249 will keep doing, because their documents hold no slugs and
-     * nothing here can invent them. Removing them would send those readers to the home page
-     * instead; that is arguably better and it is a change to what old messages do, so it is
-     * left to whoever decides that rather than taken quietly here. Every row written from
-     * now on takes the second branch.
-     *
-     * <p><strong>Every destination here is a route that exists.</strong> That is a
-     * constraint on the copy as much as on this method: a button labelled "update your
-     * payment method" would need {@code /settings/payment-methods}, which is #55's and is
-     * not built, so the copy asks the reader to sign in and the button goes to the
-     * campaign. A live-looking button that 404s is the one outcome worse than a plain one.
-     *
-     * <p>Every one of them is resolved against {@code ideanest.notification.email.base-url}
-     * so that a preview environment's mail does not send its readers to production.
+     * <p>{@code NotificationProperties.Email} already strips a trailing slash from the
+     * configured origin precisely so that every template can concatenate; appending a bare
+     * slash here would put one back on the one destination that has no path.
      */
-    private String actionUrl(NotificationType type, JsonNode params, String subjectType, UUID subjectId) {
-        String base = properties.email().baseUrl();
-
-        if (type == NotificationType.NEW_DEVICE_SIGN_IN) {
-            return base + "/settings/sessions";
-        }
-
-        String creatorSlug = text(params, "creatorSlug");
-        String projectSlug = text(params, "projectSlug");
-        if (!creatorSlug.isEmpty() && !projectSlug.isEmpty()) {
-            // Encoded although the shape check on both columns already restricts them to
-            // lowercase, digits and hyphens. The value reaches here through a jsonb
-            // document, and a link built by concatenation is the wrong place to rely on a
-            // constraint several tables away.
-            return base + "/projects/" + encode(creatorSlug) + "/" + encode(projectSlug);
-        }
-
-        UUID projectId = uuid(params);
-        if (projectId != null) {
-            return base + "/projects/" + projectId;
-        }
-        if ("project".equals(subjectType) && subjectId != null) {
-            return base + "/projects/" + subjectId;
-        }
-        return base;
+    private static String trimRoot(String path) {
+        return "/".equals(path) ? "" : path;
     }
 
     /**
@@ -371,82 +262,4 @@ public class EmailComposer {
         return messages.getMessage(key, facts.arguments(), null, Locale.ROOT);
     }
 
-    /**
-     * An amount from the document, formatted for reading, or empty when it is not there.
-     *
-     * <p>{@code amount + " " + currency}: unambiguous, stable, and free of the locale
-     * question above. A currency symbol and a thousands separator are a rendering decision
-     * that differs per reader, and the reader here has no locale attached.
-     *
-     * <p>Read through the application's {@code ObjectMapper} so that {@link Money}'s own
-     * deserialiser applies — §10.3 puts the amount in the document as a string, and
-     * reading it as anything else is how a pledge becomes a double.
-     */
-    private String money(JsonNode params, String field) {
-        JsonNode node = params.get(field);
-        if (node == null || node.isNull()) {
-            return "";
-        }
-        try {
-            Money money = json.treeToValue(node, Money.class);
-            return money.amount().toPlainString() + " " + money.currency();
-        } catch (JacksonException notMoney) {
-            // Not fatal, and deliberately so: the alternative is that one malformed
-            // rendering document stops a person being told their payment failed. The
-            // email goes out with the amount missing rather than not at all, and the
-            // document is on the notification row for whoever investigates.
-            return "";
-        }
-    }
-
-    /**
-     * One path segment, safe to concatenate.
-     *
-     * <p>{@link java.net.URLEncoder} is not used: it is written for form bodies, so it
-     * encodes a space as {@code +}, which in a path is a plus sign rather than a space.
-     */
-    private static String encode(String segment) {
-        return UriUtils.encodePathSegment(segment, StandardCharsets.UTF_8);
-    }
-
-    /** A scalar from the document as text, or empty when it is not there. */
-    private static String text(JsonNode params, String field) {
-        JsonNode node = params.get(field);
-        return node == null || node.isNull() ? "" : node.asString();
-    }
-
-    /** {@code params.projectId} as an identifier, or null when it is absent or not one. */
-    private static UUID uuid(JsonNode params) {
-        JsonNode node = params.get("projectId");
-        if (node == null || !node.isString()) {
-            return null;
-        }
-        try {
-            return UUID.fromString(node.asString());
-        } catch (IllegalArgumentException notAnIdentifier) {
-            // Same argument as money() above: a link that falls back to the site is a
-            // worse email, and no email at all is a worse outcome than a worse email.
-            return null;
-        }
-    }
-
-    /**
-     * The rendering document.
-     *
-     * <p>An unreadable one yields an empty object rather than throwing, so that the
-     * message still goes out — with the facts missing and the copy's fallbacks showing.
-     * The schema already refuses a non-object ({@code notifications_params_is_an_object}),
-     * so reaching this means something rewrote the column by hand.
-     */
-    private JsonNode read(String params) {
-        if (params == null || params.isBlank()) {
-            return json.createObjectNode();
-        }
-        try {
-            JsonNode node = json.readTree(params);
-            return node == null || !node.isObject() ? json.createObjectNode() : node;
-        } catch (JacksonException malformed) {
-            return json.createObjectNode();
-        }
-    }
 }
