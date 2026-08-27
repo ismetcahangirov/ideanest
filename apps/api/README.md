@@ -232,6 +232,105 @@ same right-hand side and the arithmetic does not change.
 
 ---
 
+## Fraud signals
+
+§17.2's "velocity, geography mismatch, new-account risk" — issue #108.
+
+Every confirmed pledge is scored. The score is written whatever it is, because
+"was this flagged at the time" is the question asked after a chargeback and "we
+did not write it down because it looked fine" is not an answer.
+
+| Signal | What it catches | Weight |
+|---|---|---|
+| Pledge velocity, per account | Card testing: a stolen card tried against small pledges in quick succession | 30 |
+| Pledge velocity, per source address | The same pattern spread over ten accounts, which is invisible per account | 30 |
+| Unfamiliar address | A pledge from an address this account has never signed in from. §4.10 already thinks that is worth telling somebody about | 20 |
+| Geography mismatch | §17.2's, and **unavailable on every deployment** — see below | 20 |
+| New account | Not evidence on its own. Everybody's account is new once | 10 |
+
+Weights add and the total is clamped to 100. Addition rather than multiplication
+because the first question about a flagged pledge is *which signal fired*, and
+with addition the answer is the findings list.
+
+### It advises. It does not decide.
+
+Nothing refuses a pledge, holds money, or suspends an account. Blocking on an
+automated score needs a false-positive rate somebody has measured, an appeal path
+for whoever it gets wrong, and a policy for a campaign whose funding our
+arithmetic suppressed. The first is unmeasurable until [#60](https://github.com/ismetcahangirov/ideanest/issues/60) chooses a provider.
+
+Advisory is genuinely useful here rather than merely safe: §9.5 does not charge a
+confirmed pledge until the campaign reaches its goal at its deadline, so the gap
+between "flagged" and "money moves" is days.
+
+### A signal can be unavailable, and that is not a zero
+
+Geography needs an IP-to-country database. No vendor is chosen and none ships
+with the service, so `UnresolvedAddressGeography` — named for what it is —
+resolves nothing and the finding records `UNAVAILABLE`.
+
+A signal that quietly scored zero would be indistinguishable from one that looked
+and found nothing. `signals_unavailable` sits beside the score for exactly that
+reason: **a low score with two unavailable signals is telling the truth about
+what it knows.**
+
+A real implementation is a `@Component` implementing `AddressGeography`;
+`RiskScorer` already carries the comparison.
+
+## Identity verification
+
+§22.1's anti-money-laundering row and §5.4's R6 — issue #105. **Document capture,
+restricted access, and a retention limit.**
+
+### The threshold is not here, deliberately
+
+§22.1 lists "identity verification thresholds for creators" among the questions
+requiring a specific legal answer, and [#71](https://github.com/ismetcahangirov/ideanest/issues/71) carries `status: needs-decision`. So
+a creator can be asked for a document and a decision can be recorded, and
+**nothing on the platform is gated on the outcome**: a campaign launches, a pledge
+is taken and a payout is calculated exactly as before.
+
+`ideanest.verification.required` is off and must stay off until somebody may
+decide otherwise. A threshold invented here would be a compliance position this
+repository made up, and it is the one a regulator would read back to us.
+
+### Restricted access
+
+- A creator reaches their own verification and nobody else's. There is no
+  endpoint that takes a verification identifier from a creator
+- **Only platform staff open a document, and every opening writes an audit row**
+  against the *creator* — `identity.document_read`. "Who has looked at my
+  passport" is unanswerable otherwise
+- Nothing lists documents across people. The repository has no such query, so a
+  screen that wanted one could not be written by accident
+- Documents are served `Content-Disposition: attachment` and never `inline`. The
+  media type comes from the magic bytes (§17.3), and a stored file served inline
+  on the console's own origin is one upload away from a script running there
+
+### The retention limit
+
+A decision destroys the documents behind it in the same transaction — a reviewer
+who has finished looking has no further need of the photograph, and "just in
+case" is how seven days becomes a year.
+
+`identity-document-retention` is the **backstop**, not the ordinary path. It
+covers the submission nobody ever decides, which is what turns a review queue
+into an archive of passports, and it measures the age on the document rather than
+on its verification so that it does not depend on the state machine being right.
+
+### Where the bytes are
+
+AES-256-GCM in `identity_documents`, under a key the application holds — the same
+envelope and the same argument as V36's shipping addresses. There is no object
+storage on this platform (§13.1), and the alternative was building it for this
+feature; a bounded number of small, short-lived blobs in Postgres is a table that
+stays small by construction.
+
+**There is no default key.** An unconfigured deployment starts normally, serves
+every other endpoint, and refuses a submission with **503** — not 500, because a
+creator told there was a server error tries again for ever and one told the
+service is not taking documents asks somebody.
+
 ## Cache invalidation
 
 `docs/architecture.md` §4.13 and issue #127. The web client caches its public
@@ -449,6 +548,8 @@ az.ideanest
 ├── media             uploads, validation, transcoding state
 ├── moderation        reports, review queues, suspension
 ├── analytics         campaign metric aggregation
+├── risk              §17.2's fraud signals: velocity, account age, address familiarity
+├── verification      §22.1's identity documents: capture, restricted access, retention
 ├── admin             internal operations tooling
 └── shared            money, outbox, idempotency, audit
 ```
@@ -839,7 +940,10 @@ other way would be a cycle. The dependency is inverted instead.
 | A postal address in §4.7's CD-11 backer export (#79). The file carries the name, the email, the tier, the amounts, the state, the destination **country** and the instant — every fact the platform holds about a backer of a running campaign. `pledges` has no street, because §4.8's PM-07 collects one after the campaign closes; a column of blanks would look like the backers declined to give one | [#75](https://github.com/ismetcahangirov/ideanest/issues/75) |
 | §4.7's CD-16 financial summary. Gross, fees, tax and net cannot be stated: there is no `ledger_entries`, no `transactions`, and no processing fee to subtract until a provider is chosen. A "net payout" computed from the 5% platform fee alone would be a number a creator would plan around and would be wrong by the processing fee | [#99](https://github.com/ismetcahangirov/ideanest/issues/99), [#62](https://github.com/ismetcahangirov/ideanest/issues/62), [#60](https://github.com/ismetcahangirov/ideanest/issues/60) |
 | Job queue and scheduler | [#134](https://github.com/ismetcahangirov/ideanest/issues/134) |
-| Push notifications. Email is real since #86; push is still `UndeliverableChannelSender`, which writes a log line and returns | [#87](https://github.com/ismetcahangirov/ideanest/issues/87) |
+| A comparison of the fraud score against a real chargeback rate, and therefore any decision made on it. `RiskAssessments` **advises and never blocks**: a false-positive rate nobody has measured is not one a platform should refuse pledges on, and the rate is unmeasurable until a provider is chosen. The score is written for every confirmed pledge and read by staff | [#60](https://github.com/ismetcahangirov/ideanest/issues/60) |
+| An IP-to-country source, and with it §17.2's geography-mismatch signal. `UnresolvedAddressGeography` is named for what it is and reports the signal **unavailable** on every assessment rather than clearing it — a low score with an unavailable signal is a different statement from a low score without one | no issue yet |
+| Any gate on identity verification. #105 built the capture, the restricted access and the retention limit; **who has to verify** is §22.1's legal question and `ideanest.verification.required` is off | [#71](https://github.com/ismetcahangirov/ideanest/issues/71) |
+| Object storage for identity documents. They are AES-256-GCM ciphertext in `identity_documents`, which is affordable because they are small, few per creator, and destroyed within days — see V58. When §13.1's ingestion lands they move | [#139](https://github.com/ismetcahangirov/ideanest/issues/139) |
 | A Redis relay behind §12.1's socket (#91). A broadcast reaches the sessions the receiving process holds, so on N replicas a reader is told about roughly one event in N. That is a degraded live counter rather than a wrong page -- the server-rendered numbers are correct and refresh on navigation, and nothing on the platform reads state from that module. The follow-up is one class: a publish to Redis instead of a loop, and a subscriber that calls the loop | [#139](https://github.com/ismetcahangirov/ideanest/issues/139) |
 | §12.1's authenticated channels. `user:{id}` carries a person's own notifications and `project:{id}:dashboard` a creator's live metrics; the socket takes no credential, so `RealtimeChannel` has no constant for either -- a value in a published vocabulary is one a caller writes code against | no issue yet |
 | A fan-out chunked across several transactions. Every computed audience is bounded at `ideanest.audience.max-recipients`, and exceeding it logs at `ERROR` naming the campaign and the count. Raising the number is not the fix; chunking is | no issue yet |

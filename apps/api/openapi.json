@@ -1739,6 +1739,80 @@
         "tags" : [ "refund-controller" ]
       }
     },
+    "/v1/admin/risk/pledges/{pledgeId}" : {
+      "get" : {
+        "operationId" : "riskHistoryOf",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "pledgeId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Queue"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "risk-controller" ]
+      }
+    },
+    "/v1/admin/risk/queue" : {
+      "get" : {
+        "operationId" : "riskQueue",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Queue"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "risk-controller" ]
+      }
+    },
+    "/v1/admin/risk/{assessmentId}/reviewed" : {
+      "post" : {
+        "operationId" : "riskMarkReviewed",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "assessmentId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "risk-controller" ]
+      }
+    },
     "/v1/admin/staff" : {
       "get" : {
         "operationId" : "staffRoster",
@@ -2454,6 +2528,130 @@
           }
         },
         "tags" : [ "admin-user-controller" ]
+      }
+    },
+    "/v1/admin/verifications/queue" : {
+      "get" : {
+        "operationId" : "verificationAdminQueue",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Queue"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "verification-admin-controller" ]
+      }
+    },
+    "/v1/admin/verifications/{verificationId}/approve" : {
+      "post" : {
+        "operationId" : "verificationAdminApprove",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "verificationId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Verification"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "verification-admin-controller" ]
+      }
+    },
+    "/v1/admin/verifications/{verificationId}/documents/{documentId}" : {
+      "get" : {
+        "operationId" : "verificationAdminDocument",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "verificationId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "path",
+          "name" : "documentId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "verification-admin-controller" ]
+      }
+    },
+    "/v1/admin/verifications/{verificationId}/reject" : {
+      "post" : {
+        "operationId" : "verificationAdminReject",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "verificationId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "reason",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Verification"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "verification-admin-controller" ]
       }
     },
     "/v1/auth/2fa/confirm" : {
@@ -4206,6 +4404,79 @@
           }
         },
         "tags" : [ "backer-survey-controller" ]
+      }
+    },
+    "/v1/me/verification" : {
+      "get" : {
+        "operationId" : "verificationMine",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "subjectKind",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Verification"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "verification-controller" ]
+      },
+      "post" : {
+        "operationId" : "verificationSubmit",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "kind",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "subjectKind",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  }
+                },
+                "required" : [ "file" ]
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Verification"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "verification-controller" ]
       }
     },
     "/v1/pledges/draft" : {
@@ -9103,6 +9374,29 @@
           }
         }
       },
+      "Document" : {
+        "type" : "object",
+        "properties" : {
+          "byteLength" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "contentType" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "uploadedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
       "Draft" : {
         "type" : "object",
         "properties" : {
@@ -11368,19 +11662,11 @@
       "Queue" : {
         "type" : "object",
         "properties" : {
-          "dead" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "status" : {
-            "type" : "string"
-          },
-          "waiting" : {
-            "type" : "integer",
-            "format" : "int64"
+          "verifications" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Verification"
+            }
           }
         }
       },
@@ -13264,6 +13550,48 @@
             "format" : "int64"
           },
           "value" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Verification" : {
+        "type" : "object",
+        "properties" : {
+          "accepts" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "documents" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Document"
+            }
+          },
+          "documentsErasedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "rejectionReason" : {
+            "type" : "string"
+          },
+          "reviewedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "subjectKind" : {
             "type" : "string"
           }
         }
