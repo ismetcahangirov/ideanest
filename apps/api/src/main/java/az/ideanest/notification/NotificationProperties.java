@@ -22,10 +22,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     relay itself is {@code spring.mail}, because it is Spring's to configure and an
  *     operator setting a host and a password should not have to learn a second place to
  *     put them
+ * @param push #87's transport: where Expo's push service is and how long to wait for it
  */
 @ConfigurationProperties(prefix = "ideanest.notification")
 public record NotificationProperties(
-        Delivery delivery, Digest digest, Inbox inbox, RateLimit rateLimit, Email email) {
+        Delivery delivery, Digest digest, Inbox inbox, RateLimit rateLimit, Email email, Push push) {
 
     public NotificationProperties {
         // A nested record binds to null when its whole block is absent, and a null here
@@ -36,6 +37,7 @@ public record NotificationProperties(
         inbox = inbox == null ? Inbox.defaults() : inbox;
         rateLimit = rateLimit == null ? RateLimit.defaults() : rateLimit;
         email = email == null ? Email.defaults() : email;
+        push = push == null ? Push.defaults() : push;
     }
 
     /**
@@ -259,14 +261,24 @@ public record NotificationProperties(
      *     the number
      * @param window the period that budget is counted over
      */
-    public record RateLimit(int preferenceUpdatesPerUser, Duration window) {
+    public record RateLimit(int preferenceUpdatesPerUser, int deviceRegistrationsPerUser, Duration window) {
 
         private static final int DEFAULT_UPDATES_PER_USER = 60;
+
+        /**
+         * #87's budget, and it is smaller than the preference one on purpose.
+         *
+         * <p>A phone registers on every cold start, which is a handful of writes a day for
+         * somebody who uses the application constantly. Twenty a minute is far above any
+         * legitimate pattern and low enough that a client stuck in a registration loop —
+         * the realistic failure, not an attacker — stops writing before it fills the table.
+         */
+        private static final int DEFAULT_REGISTRATIONS_PER_USER = 20;
 
         private static final Duration DEFAULT_WINDOW = Duration.ofMinutes(1);
 
         static RateLimit defaults() {
-            return new RateLimit(DEFAULT_UPDATES_PER_USER, DEFAULT_WINDOW);
+            return new RateLimit(DEFAULT_UPDATES_PER_USER, DEFAULT_REGISTRATIONS_PER_USER, DEFAULT_WINDOW);
         }
 
         public RateLimit {
@@ -275,10 +287,15 @@ public record NotificationProperties(
             // "unlimited".
             preferenceUpdatesPerUser =
                     preferenceUpdatesPerUser == 0 ? DEFAULT_UPDATES_PER_USER : preferenceUpdatesPerUser;
+            deviceRegistrationsPerUser =
+                    deviceRegistrationsPerUser == 0 ? DEFAULT_REGISTRATIONS_PER_USER : deviceRegistrationsPerUser;
             window = window == null ? DEFAULT_WINDOW : window;
 
             if (preferenceUpdatesPerUser < 1) {
                 throw new IllegalArgumentException("A caller may change at least one preference a window");
+            }
+            if (deviceRegistrationsPerUser < 1) {
+                throw new IllegalArgumentException("A caller may register at least one device a window");
             }
             if (!window.isPositive()) {
                 throw new IllegalArgumentException("A rate-limit window is a positive duration");
@@ -350,6 +367,102 @@ public record NotificationProperties(
          */
         public String messageIdDomain() {
             return from.substring(from.indexOf('@') + 1);
+        }
+    }
+
+    /**
+     * #87's transport: Expo's push service.
+     *
+     * <p>There is no "enabled" flag. A deployment with no registered devices sends
+     * nothing because there is nothing to send to, which is the same outcome a flag would
+     * produce and one fewer thing that can be wrong — a switch left off in production is
+     * the failure mode of every feature flag over a transport.
+     *
+     * @param endpoint where the service is. Configurable so that a test can point it at a
+     *     local stub rather than at Expo, and so that a deployment behind an egress proxy
+     *     can name it
+     * @param accessToken Expo's optional project credential, required by any project with
+     *     enhanced security switched on. Null when unset, and pointedly not the empty
+     *     string — Expo reads an empty bearer as a malformed credential and refuses the
+     *     call, which would turn an unconfigured deployment's push into a 400 rather than
+     *     a send
+     * @param timeToLive how long the platform services may hold an undelivered message. A
+     *     day: a pledge confirmation reaching a phone that was off for a week is a message
+     *     about something the person has already seen in the application, and the services
+     *     queue rather than drop unless told
+     * @param connectTimeout and
+     * @param readTimeout both set because the platform default is none, and a request with
+     *     no read timeout against a service that accepted the connection and stopped
+     *     answering holds the notification sender's thread for ever
+     * @param forgetAfter §17.4 applied to addresses: how long a registration may go
+     *     unrefreshed before it is deleted. The application re-registers on every cold
+     *     start, so anything approaching this is a phone that has not opened it since
+     * @param forgetSchedule when the sweep runs. A property rather than a constant so that
+     *     the test profile can set it to {@code -}, Spring's own value for "do not
+     *     schedule this" — a retention sweep firing in the background of a suite deletes
+     *     the very rows a test is about to assert are there
+     */
+    public record Push(
+            String endpoint,
+            String accessToken,
+            Duration timeToLive,
+            Duration connectTimeout,
+            Duration readTimeout,
+            Duration forgetAfter,
+            String forgetSchedule) {
+
+        private static final String DEFAULT_ENDPOINT = "https://exp.host/--/api/v2/push/send";
+
+        /**
+         * Daily, a little after four in the morning.
+         *
+         * <p>Not on the hour, for the reason every other job in this service is not: a
+         * platform whose jobs all fire at {@code :00} is a platform whose database is
+         * briefly busy at {@code :00}. The work is one indexed range delete over a table
+         * with one row per installation, so the hour matters less here than the habit.
+         */
+        private static final String DEFAULT_FORGET_SCHEDULE = "0 20 4 * * *";
+
+        private static final Duration DEFAULT_TIME_TO_LIVE = Duration.ofDays(1);
+
+        private static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(5);
+
+        private static final Duration DEFAULT_READ_TIMEOUT = Duration.ofSeconds(10);
+
+        private static final Duration DEFAULT_FORGET_AFTER = Duration.ofDays(180);
+
+        static Push defaults() {
+            return new Push(
+                    DEFAULT_ENDPOINT,
+                    null,
+                    DEFAULT_TIME_TO_LIVE,
+                    DEFAULT_CONNECT_TIMEOUT,
+                    DEFAULT_READ_TIMEOUT,
+                    DEFAULT_FORGET_AFTER,
+                    DEFAULT_FORGET_SCHEDULE);
+        }
+
+        public Push {
+            endpoint = endpoint == null || endpoint.isBlank() ? DEFAULT_ENDPOINT : endpoint.trim();
+            // Blank becomes null rather than staying blank. See the parameter note: an
+            // empty bearer is worse than no bearer.
+            accessToken = accessToken == null || accessToken.isBlank() ? null : accessToken.trim();
+            timeToLive = timeToLive == null ? DEFAULT_TIME_TO_LIVE : timeToLive;
+            connectTimeout = connectTimeout == null ? DEFAULT_CONNECT_TIMEOUT : connectTimeout;
+            readTimeout = readTimeout == null ? DEFAULT_READ_TIMEOUT : readTimeout;
+            forgetAfter = forgetAfter == null ? DEFAULT_FORGET_AFTER : forgetAfter;
+            forgetSchedule =
+                    forgetSchedule == null || forgetSchedule.isBlank() ? DEFAULT_FORGET_SCHEDULE : forgetSchedule.trim();
+
+            if (!timeToLive.isPositive()) {
+                throw new IllegalArgumentException("A push notification is worth delivering for some time");
+            }
+            if (!connectTimeout.isPositive() || !readTimeout.isPositive()) {
+                throw new IllegalArgumentException("A timeout of zero is no timeout at all");
+            }
+            if (!forgetAfter.isPositive()) {
+                throw new IllegalArgumentException("A registration is kept for some time");
+            }
         }
     }
 }

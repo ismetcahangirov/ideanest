@@ -5,6 +5,8 @@ import az.ideanest.notification.application.InboxQueryInvalidException;
 import az.ideanest.notification.application.NotificationNotFoundException;
 import az.ideanest.notification.application.PreferenceContendedException;
 import az.ideanest.notification.application.PreferenceNotChangeableException;
+import az.ideanest.notification.application.UnknownDevicePlatformException;
+import az.ideanest.notification.application.UnusableDeviceTokenException;
 import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -22,7 +24,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * as the same failure answering differently depending on which endpoint produced it.
  */
 @RestControllerAdvice(
-        assignableTypes = {NotificationInboxController.class, NotificationPreferenceController.class})
+        assignableTypes = {
+            DeviceController.class,
+            NotificationInboxController.class,
+            NotificationPreferenceController.class
+        })
 public class NotificationExceptionHandler {
 
     /**
@@ -135,6 +141,52 @@ public class NotificationExceptionHandler {
         problem.setTitle("Those preferences were being changed");
         problem.setDetail(exception.getMessage());
         problem.setProperty("code", "PREFERENCE_CONTENDED");
+        return problem;
+    }
+
+    /**
+     * 400 for a push token this service could not send to — issue #87.
+     *
+     * <p><strong>The value is not echoed.</strong> A problem detail is a document a client
+     * may log and a support agent may paste, and the value in question is an address
+     * somebody can send notifications to. The field is named instead, which is what a
+     * client needs to fix it.
+     *
+     * <p>Refused rather than stored because Expo rejects an entire batch containing one
+     * malformed token: a single bad registration would stop everybody else in that batch
+     * being told anything.
+     */
+    @ExceptionHandler(UnusableDeviceTokenException.class)
+    public ProblemDetail handleUnusableDeviceToken(UnusableDeviceTokenException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("https://ideanest.az/problems/unusable-device-token"));
+        problem.setTitle("That is not a push token");
+        problem.setDetail(exception.getMessage());
+        problem.setProperty("code", "UNUSABLE_DEVICE_TOKEN");
+        problem.setProperty("field", "token");
+        return problem;
+    }
+
+    /**
+     * 400 for a platform this build does not record — issue #87.
+     *
+     * <p>Carries the set it does record, so that a client author can see what changed
+     * without reading this service's source. A registration naming something else is
+     * usually a client deployed ahead of the service rather than an attack, and the
+     * difference between a 400 that names the values and one that does not is an
+     * afternoon.
+     */
+    @ExceptionHandler(UnknownDevicePlatformException.class)
+    public ProblemDetail handleUnknownDevicePlatform(UnknownDevicePlatformException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("https://ideanest.az/problems/unknown-device-platform"));
+        problem.setTitle("Unknown platform");
+        problem.setDetail(exception.getMessage());
+        problem.setProperty("code", "UNKNOWN_DEVICE_PLATFORM");
+        problem.setProperty("field", "platform");
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("platforms", java.util.List.of("ios", "android"));
+        problem.setProperty("meta", meta);
         return problem;
     }
 }

@@ -1,34 +1,24 @@
 package az.ideanest.notification.infrastructure;
 
-import az.ideanest.notification.application.ChannelSender;
-import az.ideanest.notification.domain.NotificationChannel;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
 /**
- * The channel with nothing behind it.
+ * Nothing, now — and the file stays for what it records.
  *
- * <p>One, now: #86 landed, and this class is the record of what that took. The email
- * bean here was a {@link UndeliverableChannelSender} and is gone —
- * {@code EmailChannelSender} is a {@code @Component} implementing {@link ChannelSender}
- * and returning {@link NotificationChannel#EMAIL}, and <strong>deleting the bean was
- * genuinely the whole of the wiring</strong>. Nothing else in the module changed:
- * {@code NotificationDispatch} indexes senders by channel and knows nothing about any of
- * them.
+ * <p>It held one bean per channel with no transport behind it. Email lost its when #86
+ * landed and push lost its when #87 did, and in both cases <strong>deleting the bean was
+ * genuinely the whole of the wiring</strong>: a {@code @Component} implementing
+ * {@link az.ideanest.notification.application.ChannelSender} and returning its channel is
+ * found by {@code NotificationDispatch}, which indexes senders by channel and knows
+ * nothing about any of them.
  *
- * <p>A bean rather than a {@code @Component} class, still, because
- * {@link UndeliverableChannelSender} is one class registered for a channel rather than a
- * class per channel — see it for why. A subclass named {@code PushChannelSender} would
- * put back exactly the misreading it exists to prevent.
+ * <p>{@link UndeliverableChannelSender} is still here and is still worth reading. It is
+ * the argument for why a class named after a transport that logs and returns is worse
+ * than one named for what it actually is, and it is what a fourth channel should be
+ * registered as on the day {@code NotificationChannel} grows one — a channel with a name
+ * and no transport is a channel that reports success for messages nobody received.
  *
- * <p><strong>#87 is the same three lines in reverse.</strong>
+ * <p>The class is kept rather than deleted because that argument has nowhere else to live
+ * and because the next channel needs the three lines back. Spring instantiates it and it
+ * does nothing, which costs one object at start-up.
  */
-@Configuration(proxyBeanMethods = false)
-public class ChannelSenderConfiguration {
-
-    /** Push, over Expo and the platform services — #87, §14.4. */
-    @Bean
-    ChannelSender pushChannelSender() {
-        return new UndeliverableChannelSender(NotificationChannel.PUSH, "#87");
-    }
-}
+@org.springframework.context.annotation.Configuration(proxyBeanMethods = false)
+public class ChannelSenderConfiguration {}

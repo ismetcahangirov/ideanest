@@ -1556,6 +1556,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["deviceRegister"];
+        delete: operations["deviceForget"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/export": {
         parameters: {
             query?: never;
@@ -3408,6 +3424,15 @@ export interface components {
             /** Format: date-time */
             scheduledFor?: string;
         };
+        DeviceResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: date-time */
+            lastSeenAt?: string;
+            platform?: string;
+            /** Format: date-time */
+            registeredAt?: string;
+        };
         DisableTwoFactorRequest: {
             code?: string;
             password: string;
@@ -4357,6 +4382,12 @@ export interface components {
             page?: number;
             refunds?: components["schemas"]["Refund"][];
         };
+        RegisterDeviceRequest: {
+            appVersion?: string;
+            deviceName?: string;
+            platform: string;
+            token: string;
+        };
         RegistrationRequest: {
             /** Format: email */
             email: string;
@@ -5097,6 +5128,7 @@ export type SchemaDashboardResponse = components['schemas']['DashboardResponse']
 export type SchemaDay = components['schemas']['Day'];
 export type SchemaDeleteAccountRequest = components['schemas']['DeleteAccountRequest'];
 export type SchemaDeletionScheduledResponse = components['schemas']['DeletionScheduledResponse'];
+export type SchemaDeviceResponse = components['schemas']['DeviceResponse'];
 export type SchemaDisableTwoFactorRequest = components['schemas']['DisableTwoFactorRequest'];
 export type SchemaDispute = components['schemas']['Dispute'];
 export type SchemaDisputePage = components['schemas']['DisputePage'];
@@ -5200,6 +5232,7 @@ export type SchemaReferrerReportResponse = components['schemas']['ReferrerReport
 export type SchemaRefreshRequest = components['schemas']['RefreshRequest'];
 export type SchemaRefund = components['schemas']['Refund'];
 export type SchemaRefundPage = components['schemas']['RefundPage'];
+export type SchemaRegisterDeviceRequest = components['schemas']['RegisterDeviceRequest'];
 export type SchemaRegistrationRequest = components['schemas']['RegistrationRequest'];
 export type SchemaRemainder = components['schemas']['Remainder'];
 export type SchemaRemindRequest = components['schemas']['RemindRequest'];
@@ -7988,6 +8021,52 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deviceRegister: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterDeviceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceResponse"];
+                };
+            };
+        };
+    };
+    deviceForget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterDeviceRequest"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {
