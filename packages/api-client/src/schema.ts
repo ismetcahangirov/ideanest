@@ -708,6 +708,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/reconciliation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["reconciliationLatest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/reconciliation/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reconciliationRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/refunds": {
         parameters: {
             query?: never;
@@ -3695,6 +3727,12 @@ export interface components {
             items?: components["schemas"]["Card"][];
             nextCursor?: string;
         };
+        Finding: {
+            currency?: string;
+            detail?: string;
+            /** @enum {string} */
+            kind?: "UNBALANCED" | "IMPOSSIBLE_SIGN" | "DISAGREES_WITH_PAYMENTS";
+        };
         Flag: {
             description?: string;
             enabled?: boolean;
@@ -4571,6 +4609,15 @@ export interface components {
             body: string;
             internal?: boolean;
         };
+        Report: {
+            /** Format: int32 */
+            accountsChecked?: number;
+            balanced?: boolean;
+            findings?: components["schemas"]["Finding"][];
+            hasRun?: boolean;
+            /** Format: date-time */
+            runAt?: string;
+        };
         ReportQueueResponse: {
             /** Format: uuid */
             nextCursor?: string;
@@ -5293,6 +5340,7 @@ export type SchemaExportBackersRequest = components['schemas']['ExportBackersReq
 export type SchemaFacets = components['schemas']['Facets'];
 export type SchemaFaqPatchRequest = components['schemas']['FaqPatchRequest'];
 export type SchemaFeed = components['schemas']['Feed'];
+export type SchemaFinding = components['schemas']['Finding'];
 export type SchemaFlag = components['schemas']['Flag'];
 export type SchemaFlagList = components['schemas']['FlagList'];
 export type SchemaFollowStateResponse = components['schemas']['FollowStateResponse'];
@@ -5392,6 +5440,7 @@ export type SchemaReorderProjects = components['schemas']['ReorderProjects'];
 export type SchemaReorderRewardsRequest = components['schemas']['ReorderRewardsRequest'];
 export type SchemaReplaceRequest = components['schemas']['ReplaceRequest'];
 export type SchemaReplyRequest = components['schemas']['ReplyRequest'];
+export type SchemaReport = components['schemas']['Report'];
 export type SchemaReportQueueResponse = components['schemas']['ReportQueueResponse'];
 export type SchemaReportRequest = components['schemas']['ReportRequest'];
 export type SchemaReportResolutionRequest = components['schemas']['ReportResolutionRequest'];
@@ -6677,6 +6726,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WeightsResponse"];
+                };
+            };
+        };
+    };
+    reconciliationLatest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
+                };
+            };
+        };
+    };
+    reconciliationRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
                 };
             };
         };

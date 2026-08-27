@@ -332,6 +332,17 @@ public enum AuditAction {
     LEDGER_READ("ledger.read", "account"),
 
     /**
+     * A reconciliation somebody asked for, rather than the nightly one — #106.
+     *
+     * <p>Recorded because it is a decision as much as a read: it is what a member of
+     * finance does when they suspect the books are wrong, and "when did anybody last
+     * check, and who" is precisely the question asked afterwards. The nightly pass writes
+     * no audit row, deliberately — it has no actor, and a scheduled job filling this table
+     * every night would bury the passes a person asked for.
+     */
+    LEDGER_RECONCILED("ledger.reconciled", "account"),
+
+    /**
      * §4.11's AD-02 (#108): staff read the fraud queue, or marked one of its rows seen.
      *
      * <p>The same argument as {@link #PAYMENT_LOG_READ}, and one that is sharper. This

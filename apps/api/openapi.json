@@ -1640,6 +1640,42 @@
         "tags" : [ "admin-ranking-controller" ]
       }
     },
+    "/v1/admin/reconciliation" : {
+      "get" : {
+        "operationId" : "reconciliationLatest",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Report"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "reconciliation-controller" ]
+      }
+    },
+    "/v1/admin/reconciliation/runs" : {
+      "post" : {
+        "operationId" : "reconciliationRun",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Report"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "reconciliation-controller" ]
+      }
+    },
     "/v1/admin/refunds" : {
       "get" : {
         "operationId" : "refundList",
@@ -9684,6 +9720,21 @@
           }
         }
       },
+      "Finding" : {
+        "type" : "object",
+        "properties" : {
+          "currency" : {
+            "type" : "string"
+          },
+          "detail" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string",
+            "enum" : [ "UNBALANCED", "IMPOSSIBLE_SIGN", "DISAGREES_WITH_PAYMENTS" ]
+          }
+        }
+      },
       "Flag" : {
         "type" : "object",
         "properties" : {
@@ -12062,6 +12113,31 @@
           }
         },
         "required" : [ "body" ]
+      },
+      "Report" : {
+        "type" : "object",
+        "properties" : {
+          "accountsChecked" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "balanced" : {
+            "type" : "boolean"
+          },
+          "findings" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Finding"
+            }
+          },
+          "hasRun" : {
+            "type" : "boolean"
+          },
+          "runAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
       },
       "ReportQueueResponse" : {
         "type" : "object",

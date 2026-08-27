@@ -1303,7 +1303,7 @@ Preferences are per category and per channel, with a digest option.
 | AD-02 | Trust and safety | Report queue, fraud signals, suspension. Reporting and the queue are built (#102, §7.2's `content_reports`), **suspension is built (#103)**, and **fraud signals are built (#108)** — `risk_assessments`, a queue at `/v1/admin/risk/queue`, and the identity review at `/v1/admin/verifications/queue` (#105). The signals **advise and do not decide**: nothing refuses a pledge or suspends an account on a score. See §17.2 |
 | AD-03 | Curation | Editorial badges, collections, open calls, placement. The endpoints arrived with #48; **the four screens are built (#300 to #303)** at `/admin/curation` and its three siblings |
 | AD-04 | User management | Search, inspect, ban, verification status, audited impersonation. **Search, inspect and the ban are built (#104)**, and **`/admin/staff` is built (#295)** — the role model that replaced the configured list. Impersonation is not, and is the one thing in this table still waiting on a decision (#299) |
-| AD-05 | Finance | Payment log, ledger, payout queue, approvals, disputes. **All of it is built**: the log and the ledger with #304 and #305, the payout queue and its dual approval with #69 and #306 |
+| AD-05 | Finance | Payment log, ledger, payout queue, approvals, disputes, and whether the sum of them is right. **All of it is built**: the log and the ledger with #304 and #305, the payout queue and its dual approval with #69 and #306, and the reconciliation with #106 at `/admin/reconciliation`. That last screen is what kept "financial operations tooling" open with the other three built — #70's nightly pass answered "do the books balance" to a log line and a Prometheus gauge and to nobody who works in this console. It reports and never repairs, so there is no control on it that corrects anything |
 | AD-06 | Refunds | Full and partial with reason codes. **Built (#67, #307)** at `/admin/refunds`. The decision — reason code, author, state — is `refunds`; the money is a `REFUND` transaction and a ledger posting, and the two are deliberately separate tables |
 | AD-07 | Chargebacks | Notification, evidence, outcome. **Built (#68, #308)** at `/admin/disputes`. Intake is a provider webhook and no endpoint opens one; evidence is recorded here and still submitted through the provider's own console, because §9.3's interface has no upload |
 | AD-08 | Taxonomy | Category and tag management with translations. **Built (#309)** at `/admin/taxonomy`. Handles are permanent — they are in the public URL of every campaign filed under them — and nothing can be retired, because `projects.category_id` references these rows |
@@ -3385,6 +3385,8 @@ POST   /v1/admin/finance/payouts/{id}/approve
 POST   /v1/admin/finance/refunds
 GET    /v1/admin/payments                # AD-05 (#304); charges, provider references, declines
 GET    /v1/admin/ledger                  # AD-05 (#305); postings with both sides, and balances
+GET    /v1/admin/reconciliation          # AD-05 (#106); the last pass this replica made
+POST   /v1/admin/reconciliation/runs     # AD-05 (#106); one now. VIEW_FINANCE; writes nothing
 GET    /v1/admin/audit                   # AD-14 (#314); the trail, newest first
 GET    /v1/admin/collections
 POST   /v1/admin/collections

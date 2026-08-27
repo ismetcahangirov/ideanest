@@ -16,17 +16,20 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
- * AD-06's and AD-07's refusals — issues #307 and #308.
+ * AD-05's, AD-06's and AD-07's refusals — issues #106, #307 and #308.
  *
- * <p>One advice over both controllers, because the two screens are one workflow: a
- * chargeback is often answered by issuing a refund, and a console handling one meets the
- * refusals of the other.
+ * <p>One advice over the three controllers, because their screens are one workflow: a
+ * chargeback is often answered by issuing a refund, a reconciliation finding is what sends
+ * somebody to the payment log, and a console handling one meets the refusals of the
+ * others. All three refuse in the same two ways — not staff, and staff without
+ * {@code VIEW_FINANCE} — so a second advice would be a second copy of those two handlers.
  *
  * <p>Scoped to those two rather than applied globally, for the reason every advice in this
  * service gives — and deliberately not extended to {@code ProviderWebhookController},
  * which has its own and whose caller is a provider rather than a person.
  */
-@RestControllerAdvice(assignableTypes = {RefundController.class, DisputeController.class})
+@RestControllerAdvice(
+        assignableTypes = {RefundController.class, DisputeController.class, ReconciliationController.class})
 public class PaymentAdminExceptionHandler {
 
     @ExceptionHandler(NotAModeratorException.class)

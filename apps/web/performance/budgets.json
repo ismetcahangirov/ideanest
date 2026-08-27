@@ -31,6 +31,7 @@
     "/[locale]/admin/moderation/profiles": 723,
     "/[locale]/admin/payments": 620,
     "/[locale]/admin/payouts": 624,
+    "/[locale]/admin/reconciliation": 585,
     "/[locale]/admin/refunds": 621,
     "/[locale]/admin/staff": 588,
     "/[locale]/admin/support": 588,

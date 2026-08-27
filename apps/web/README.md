@@ -120,6 +120,20 @@ the browser half of the auth flow work at all.
 | `/admin/curation/placements` | Console | **Staff only.** The order curated collections appear in (#303) |
 | `/admin/payments` | Console | **Staff only.** Every provider call, its reference, and why the refused ones failed (#304) |
 | `/admin/ledger` | Console | **Staff only.** The double-entry ledger, both sides of each posting, and the balances (#305) |
+| `/admin/reconciliation` | Console | **Staff only.** Whether the platform's money adds up, and what is wrong when it does not. Reports and never repairs (#106) |
+| `/admin/payouts` | Console | **Staff only.** What each creator is owed, the hold it is under, and the two signatures before it leaves (#306) |
+| `/admin/refunds` | Console | **Staff only.** Full and partial refunds, with a reason code and a ledger posting behind each (#307) |
+| `/admin/disputes` | Console | **Staff only.** Chargebacks: notification, evidence, outcome, and the deadline each runs against (#308) |
+| `/admin/fees` | Console | **Staff only.** Platform and processing rates. There is no edit — a change closes one schedule and opens another (#311) |
+| `/admin/moderation/content` | Console | **Staff only.** Complaints about comments and campaign updates (#297) |
+| `/admin/staff` | Console | **Staff only.** Who works here, and which of §4.11's capabilities each of them holds (#295) |
+| `/admin/support` | Console | **Staff only.** Tickets with the account context and the history of what was done (#310) |
+| `/admin/taxonomy` | Console | **Staff only.** Categories, subcategories and tags, with a translation per locale (#309) |
+| `/admin/analytics` | Console | **Staff only.** Volume, success rate and average pledge across the platform (#313) |
+| `/admin/email-templates` | Console | **Staff only.** Every transactional type, and which have been edited (#315) |
+| `/admin/email-templates/[type]` | Console | **Staff only.** One template: edit, preview, test send, and every version an edit produced (#86, #315) |
+| `/admin/flags` | Console | **Staff only.** Gradual rollout, with a kill switch that means what it says (#312) |
+| `/admin/health` | Console | **Staff only.** Queue depth, failed jobs and provider status, measured when you open it. It does not alert (#316) |
 | `/admin/audit` | Console | **Staff only.** Every privileged action the platform has recorded (#314) |
 | `/robots.txt` | — | **Public.** Crawl directives, and the pointer to the sitemap index (#122) |
 | `/sitemap_index.xml` | — | **Public.** The index over the sitemap segments (#122) |

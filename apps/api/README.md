@@ -230,6 +230,37 @@ that exists today: the platform's own record of every transaction it believes
 settled. When a provider is chosen, its report becomes a fourth source on the
 same right-hand side and the arithmetic does not change.
 
+### Somebody can now read it, which is #106
+
+Until then the answer to "do the platform's books balance?" was reachable in
+exactly two places: a log line at 02:30 and a Prometheus gauge. Neither is where
+the person who has to act on it works, and that is what kept "build financial
+operations tooling" open with the payout queue, refunds and chargebacks all
+built — AD-05 had every financial operation except the one that checks the sum
+of them.
+
+| Call | What it does |
+|---|---|
+| `GET /v1/admin/reconciliation` | The last pass **this replica** made |
+| `POST /v1/admin/reconciliation/runs` | One now, and answers what it found |
+
+Both need `VIEW_FINANCE` and neither needs more. A pass is two aggregate queries
+that write nothing, so the worst a caller can do with the second is spend them —
+and gating it behind an approval authority would mean the person who noticed a
+discrepancy needs somebody else before they can confirm it. Running one **is**
+audited even so, as `ledger.reconciled`: it is what somebody does when they
+suspect the books are wrong, and "who last checked, and when" is the question
+asked afterwards. Reading the held report is not audited, because it is a count
+and a timestamp with nobody's name in it.
+
+**The second call exists because of what the first cannot promise.** The report
+lives in the process that made it, deliberately — see above — so a console
+request lands on one replica and a fleet redeployed this morning answers "never
+run" until tonight. `hasRun` is on the response for that reason and the console
+leads with it: `balanced: true, findings: []` is also what a check that stopped
+running produces, and a screen that collapsed the two would report a platform
+nobody has looked at as one whose books are fine.
+
 ---
 
 ## Fraud signals
