@@ -18,12 +18,14 @@ import az.ideanest.payment.domain.TokenizationResult;
 import az.ideanest.payment.domain.TokenizationSession;
 import az.ideanest.shared.money.Money;
 import java.time.Instant;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -65,8 +67,16 @@ public class ScriptedPaymentProvider implements PaymentProvider {
      */
     private static final ProviderName NAME = ProviderName.PAYRIFF;
 
-    private final Deque<Object> scripted = new ArrayDeque<>();
-    private final List<StoredCardChargeRequest> charges = new ArrayList<>();
+    /**
+     * Both collections are concurrent, because {@code CollectionLoadTests} drives
+     * {@code CollectionRun} from several threads at once — which is what two replicas do
+     * (#141). An {@code ArrayDeque} and an {@code ArrayList} corrupt silently under that,
+     * and the failure would be an assertion about the code under test.
+     */
+    private final Deque<Object> scripted = new ConcurrentLinkedDeque<>();
+
+    private final List<StoredCardChargeRequest> charges = Collections.synchronizedList(new ArrayList<>());
+
     private final AtomicInteger providerTransactionCounter = new AtomicInteger();
 
     /** The standing answer, once the queue is empty. Approving, so a test that says nothing gets the happy path. */
@@ -105,6 +115,39 @@ public class ScriptedPaymentProvider implements PaymentProvider {
         standing = Unavailable.INSTANCE;
     }
 
+    /**
+     * §9.6's decline band, as a rule rather than as a script — issue #141.
+     *
+     * <p>A load test cannot queue an answer per charge: it does not know the order the
+     * threads will claim pledges in, and a queue would make the outcome depend on that
+     * order. What it needs is a rule that is <strong>a function of the pledge</strong>, so
+     * that the same run produces the same set of declines however the work is distributed
+     * and the test can compute the expected totals exactly.
+     *
+     * <p>Only the FIRST attempt is refused. §9.6's whole point is that a refused card gets
+     * three more chances, and a rule that refused every attempt would measure a schedule
+     * that ends in four drops rather than one that ends in a collection.
+     *
+     * @param oneIn roughly one pledge in this many is refused. §9.6 puts the real figure at
+     *     5–15%, so ten is the middle of the band
+     */
+    public void willDeclineFirstAttemptForOneIn(int oneIn, String code) {
+        declineCode = code;
+        standing = new DeclineOneIn(oneIn);
+    }
+
+    /**
+     * The rule {@link #willDeclineFirstAttemptForOneIn} applies, so that a test can compute
+     * the same answer without asking the provider.
+     *
+     * <p>Public and static because the alternative is the test asserting against whatever
+     * the provider happened to do, which asserts nothing. {@code floorMod} rather than
+     * {@code %}: a hash code is signed, and a negative remainder would never equal zero.
+     */
+    public static boolean declinesFirstAttempt(UUID pledgeId, int oneIn) {
+        return Math.floorMod(pledgeId.hashCode(), oneIn) == 0;
+    }
+
     /** One answer, used by the next charge only. Queued behind any others already added. */
     public void nextCharge(ProviderOutcome outcome) {
         scripted.addLast(outcome);
@@ -138,7 +181,11 @@ public class ScriptedPaymentProvider implements PaymentProvider {
 
     /** Every charge this provider was asked to make, in order. */
     public List<StoredCardChargeRequest> charges() {
-        return List.copyOf(charges);
+        // `synchronized` and not `List.copyOf` alone: a synchronized list's iterator is
+        // not, and copying one while another thread appends throws.
+        synchronized (charges) {
+            return List.copyOf(charges);
+        }
     }
 
     /** How many charges were attempted. The assertion most tests actually want. */
@@ -148,7 +195,7 @@ public class ScriptedPaymentProvider implements PaymentProvider {
 
     /** The idempotency keys, in order. What proves a retry of one attempt is not a second charge. */
     public List<String> idempotencyKeys() {
-        return charges.stream().map(StoredCardChargeRequest::idempotencyKey).toList();
+        return charges().stream().map(StoredCardChargeRequest::idempotencyKey).toList();
     }
 
     // ------------------------------------------------------------------
@@ -166,6 +213,9 @@ public class ScriptedPaymentProvider implements PaymentProvider {
         Object answer = scripted.isEmpty() ? standing : scripted.pollFirst();
         if (answer == Unavailable.INSTANCE) {
             throw new ProviderUnavailableException(NAME, "The scripted provider is unavailable");
+        }
+        if (answer instanceof DeclineOneIn rule) {
+            answer = rule.appliesTo(request) ? ProviderOutcome.DECLINED : ProviderOutcome.APPROVED;
         }
         ProviderOutcome outcome = (ProviderOutcome) answer;
         return switch (outcome) {
@@ -236,6 +286,14 @@ public class ScriptedPaymentProvider implements PaymentProvider {
     /** A sentinel for "throw", so that the script can hold outcomes and failures in one queue. */
     private enum Unavailable {
         INSTANCE
+    }
+
+    /** The standing answer set by {@link #willDeclineFirstAttemptForOneIn}. */
+    private record DeclineOneIn(int oneIn) {
+
+        boolean appliesTo(StoredCardChargeRequest request) {
+            return request.attemptNumber() == 1 && declinesFirstAttempt(request.pledgeId(), oneIn);
+        }
     }
 
     /** Convenience for a test that wants to assert on an amount without rebuilding one. */

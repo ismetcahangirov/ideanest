@@ -5246,7 +5246,7 @@ collection failure.
 | Discovery feed | 1,000 requests/second, p99 under 300ms |
 | Project page | 2,000 requests/second, p99 under 200ms cached |
 | Pledge creation | 100 requests/second, p99 under 1s |
-| **Campaign close** | 10,000 collections within 10 minutes |
+| **Campaign close** | 10,000 collections within 10 minutes. **Measured on every build (#141)**: `CollectionLoadTests` closes a six-hundred-backer campaign from eight threads at once and asserts that the platform's own half of that path clears the 16.7-a-second floor with the provider answering instantly — around 240 a second in practice. It deliberately publishes **no end-to-end SLO**, because the remaining variable is a provider #60 has not chosen; what it does assert exactly is that nothing is collected twice, nothing is lost, the ledger matches to the minor unit, and §5.1's outcome is never revisited by a collection that failed |
 
 ---
 

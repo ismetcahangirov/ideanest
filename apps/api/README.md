@@ -501,6 +501,35 @@ configuration rather than the developer's — a health endpoint that hides detai
 in production and shows it locally has to be asserted against the production
 shape or the assertion proves nothing.
 
+#### The campaign-close load test (#141)
+
+`CollectionLoadTests` closes a six-hundred-backer campaign and drains it from
+eight threads at once, which is what two replicas do to one queue. It runs on
+every build; it is a load test rather than a benchmark, and the difference is
+what it asserts.
+
+**What it asserts exactly** are the properties whose absence is expensive:
+one charge per pledge and one `transactions` row per pledge — the failure that
+charges somebody twice — no pledge left in either queue, distinct idempotency
+keys, the ledger equal to a `BigDecimal` sum rather than a double, §9.6's next
+slot at +24 hours on every refused card, and §5.1's frozen outcome unchanged by
+a collection that failed.
+
+**What it measures and does not turn into an SLO** is throughput. §20.4 asks for
+10,000 collections in ten minutes — 16.7 a second sustained — and that figure has
+two owners. Ours is everything between "a pledge is due" and "the money is
+recorded, posted and announced"; the provider's is latency, rate limiting and
+retry semantics, and #60 has not chosen one. So the test runs against a provider
+that answers instantly and asserts only that **our** half clears §20.4's floor —
+below which no provider could make the target reachable — and logs the measured
+rate, which is around 240 a second on a developer machine.
+
+§9.6 puts 5–15% of a campaign's cards on the failure path, and a stub that always
+approves never exercises the retry schedule. The decline is therefore a rule —
+one pledge in ten, by a function of its identifier — rather than a queued script,
+because the threads claim pledges in an order nobody controls and a script would
+make the outcome depend on it.
+
 ---
 
 ## Health
