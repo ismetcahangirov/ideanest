@@ -68,6 +68,16 @@ describe('CampaignList', () => {
     expect(getByLabelText('Campaign 0, by Aysel')).toBeTruthy();
   });
 
+  it('points each card at the campaign it is about', async () => {
+    const { getAllByTestId } = await render(<CampaignList cards={cards(2)} />);
+
+    // The path both halves of #114 agree on: `apps/web` serves a campaign here and
+    // `lib/links.ts` resolves an incoming link to the same string.
+    expect(getAllByTestId('link')[0].props.accessibilityValue.text).toBe(
+      '/projects/aysel/campaign-0',
+    );
+  });
+
   it('formats the pledged amount through the shared money rules', async () => {
     const { getByText } = await render(<CampaignList cards={cards(1)} />);
 
