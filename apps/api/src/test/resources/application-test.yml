@@ -175,6 +175,20 @@ ideanest:
       keys:
         test: "dGVzdC1vbmx5LWRvY3VtZW50LWtleS0zMi1ieXRlcyE="
 
+  fx:
+    # ON in the suite, and the source is a test double rather than cbar.az. A
+    # suite that reached a public website would fail for reasons that are not
+    # ours, on somebody else's schedule -- `ScriptedRateSource` is registered by
+    # `TestDoublesConfiguration` and is what the fx tests script.
+    enabled: true
+    # Never fetched, because the source is replaced. Present because
+    # FxProperties refuses a URL with no {date} in it, and a suite that skipped
+    # the check would not be running the configuration a deployment runs.
+    source-url: https://rates.test.invalid/{date}.xml
+    # `-`, like every other job's schedule in this profile. A refresh firing in
+    # the background would write rows a test is about to assert are absent.
+    refresh-schedule: "-"
+
   payment:
     provider:
       # The suite registers its own PaymentProvider bean and names it here, which is

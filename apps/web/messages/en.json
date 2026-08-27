@@ -127,8 +127,8 @@
         "summary": "Take a copy of your data, or close the account."
       },
       "language": {
-        "label": "Language",
-        "summary": "Which language IdeaNest writes to you in."
+        "label": "Language and currency",
+        "summary": "The language IdeaNest writes to you in, and the currency amounts are shown in."
       }
     },
     "pages": {
@@ -172,16 +172,24 @@
   },
   "settings": {
     "language": {
-      "title": "Language",
-      "intro": "Choose the language IdeaNest writes to you in.",
+      "title": "Language and currency",
+      "intro": "How IdeaNest writes to you, and the currency you read amounts in.",
       "fieldLabel": "Interface language",
       "fieldHint": "Applies to your account pages straight away. The public site is still in English while the rest of the translation is written.",
       "save": "Save language",
       "saved": "Language saved.",
       "failed": "That language could not be saved. Try again.",
-      "currencyHeading": "Currency",
-      "currencyValue": "Azerbaijani manat (AZN)",
-      "currencyNote": "Every campaign on IdeaNest is funded in manat today, so there is nothing here to choose between. A display currency arrives with the second one."
+      "languageHeading": "Language"
+    },
+    "currency": {
+      "title": "Currency",
+      "intro": "Choose the currency amounts are shown to you in. Campaigns are still funded in manat.",
+      "fieldLabel": "Display currency",
+      "fieldHint": "An approximation, converted from the Central Bank of Azerbaijan’s daily rate. Every campaign is funded in manat and your card is charged in manat.",
+      "save": "Save currency",
+      "saved": "Currency saved.",
+      "failed": "That currency could not be saved. Reload the page and try again.",
+      "unavailable": "Amounts are shown in Azerbaijani manat. There is no other currency to choose from right now — a display currency needs a published exchange rate, and the platform has none it can use today."
     },
     "pages": {
       "profile": {

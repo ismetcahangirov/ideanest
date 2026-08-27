@@ -258,7 +258,7 @@ Marked `[W]` web, `[M]` mobile, `[A]` admin.
 | P-07 | Profile visibility | W, M |
 | P-08 | Blocked users | W |
 | P-09 | Notification preferences | W, M |
-| P-10 | Language and currency | W, M |
+| P-10 | Language and currency. **Both halves built** — the language with #280 and #324, the display currency with #327 | W, M |
 
 > **The web client's account area is one navigation over two prefixes**, built by
 > #275: `/settings/*` for what somebody decides — notifications, devices,
@@ -302,13 +302,25 @@ Marked `[W]` web, `[M]` mobile, `[A]` admin.
 > somebody stranded in a script they cannot read needs to find their own, and
 > "Azerbaijani" spelled in Russian is unreadable to exactly that person.
 >
-> **The currency is still stated rather than offered, and no amount of front-end
-> work changes that.** §21.2's display currency is an approximation from
-> central-bank rates; the service has no rate source, no rate table, and
-> `SUPPORTED_CURRENCY = "AZN"` in three of its services, so the control would
-> convert AZN to AZN. The screen says so in a sentence instead of drawing a
-> `<select>` with one option, which is the same rule the site header follows: an
-> entry pointing at a page that cannot work is worse than no entry.
+> **The currency is a control since #327, and the argument it replaces was about a
+> rate rather than about a second project currency.** This paragraph used to say a
+> selector would convert AZN to AZN, because §21.2's approximation needs a
+> published rate and the service had none. #327 built one: the Central Bank of
+> Azerbaijan's daily publication, refreshed hourly into `exchange_rates`, with the
+> rate a backer was shown stamped on their pledge.
+>
+> The two currencies are not the same currency. The **project** currency is what a
+> creator sets a goal in and what a card is charged in, it is pinned to manat under
+> phase 1, and nothing here changes it. The **display** currency is a property of
+> the reader: a backer in Istanbul looking at a manat campaign wants to know
+> roughly what it costs in lira, and that is answerable today.
+>
+> `PATCH /v1/me/currency` writes it, and refuses what the platform cannot price —
+> which is a property of what a central bank published and when the platform last
+> reached it, so the refusal carries the list of what it can. On a deployment whose
+> source is unreachable, or one with the feature switched off, the panel is a
+> sentence again. That is #280's shape, and the reason it was right: a control with
+> one option is a control that cannot be used.
 >
 > **What the language does not yet change is the public site**, which is still
 > English. §21.1 explains why — a per-visitor language on a cached route turns one
@@ -2705,6 +2717,7 @@ load profile).
 | `survey-nudge` | Daily | Chase non-responders (#74). The `survey_nudges` row is the claim -- written in the same transaction as the outbox event, so a crash leaves somebody either unchased and unclaimed or chased and claimed. Without it the sweep's question is true for as long as they have not answered, and every pass is another email. Bounded per pass and by a configured number of attempts: one is a reminder and five is a campaign of its own |
 | `ledger-reconciliation` | Daily | Verify the balance invariant, compare to settlement |
 | `token-cleaner` | Daily | Purge tokens from unsuccessful campaigns |
+| `exchange-rate-refresh` | Hourly | §21.2's display currency (#327): fetch the central bank's publication and store what is new. **Hourly over a source that publishes daily is not a contradiction** — the hour is how quickly the platform notices a new publication, and eleven of the twelve passes write nothing because V59's unique index over `(source, base, quote, published_for)` already holds the day. An unreachable source is a `WARN` and not a thrown run: throwing would make `JobRunner` back the job off and eventually stop it, so a central bank's bad afternoon would permanently disable a feature whose failure mode is a missing figure. What makes that safe is the age check on the other side — a rate past `max-age` stops being offered, so a source that is genuinely gone takes the approximation off the screen within days |
 | `denormalization-sync` | Hourly | Correct cached counters |
 | `account-anonymiser` | Hourly | Anonymise accounts whose deletion grace period has elapsed |
 | `idempotency-key-cleaner` | Hourly | Remove idempotency keys past §17.2's 24-hour retention |
@@ -3235,6 +3248,7 @@ GET    /v1/me/profile                       # P-01..P-03 (#276); the owner's edi
 PATCH  /v1/me/profile                       # P-01..P-03 (#276); named, not a general PATCH /v1/me
 PATCH  /v1/me/profile-visibility            # P-07 (#274); the profile page's one switch
 PATCH  /v1/me/locale                        # P-10's language half (#324); az|en|ru|tr, 204
+PATCH  /v1/me/currency                      # P-10's currency half (#327); refused unless the platform can price it
 GET    /v1/users/{slug}                     # P-06 (#274); 404 for a private profile, never 403
 GET    /v1/users/{slug}/projects            # P-05 (#274); public states only
 GET    /v1/users/{slug}/backed              # P-04 (#274); no amounts, anonymous pledges omitted
@@ -3385,6 +3399,9 @@ POST   /v1/admin/finance/payouts/{id}/approve
 POST   /v1/admin/finance/refunds
 GET    /v1/admin/payments                # AD-05 (#304); charges, provider references, declines
 GET    /v1/admin/ledger                  # AD-05 (#305); postings with both sides, and balances
+GET    /v1/exchange-rates                # §21.2 (#327); public, cacheable. Empty when the platform can offer nothing
+PATCH  /v1/me/currency                   # §4.2 P-10 (#327); the currency this reader sees amounts in
+
 GET    /v1/admin/reconciliation          # AD-05 (#106); the last pass this replica made
 POST   /v1/admin/reconciliation/runs     # AD-05 (#106); one now. VIEW_FINANCE; writes nothing
 GET    /v1/admin/audit                   # AD-14 (#314); the trail, newest first
@@ -4696,6 +4713,7 @@ ideanest/
 │   │   │   ├── payment/
 │   │   │   │   └── provider/         one adapter per provider
 │   │   │   ├── ledger/
+│   │   │   ├── fx/                   §21.2's display currency (#327)
 │   │   │   ├── payout/
 │   │   │   ├── discovery/
 │   │   │   ├── pledgemanager/
@@ -5309,12 +5327,43 @@ it was written in.
 | Project currency | Chosen by the creator, immutable after launch |
 | Phase 1 | AZN |
 | Phase 2 | AZN, USD, EUR, TRY, RUB |
-| Display currency | User preference, shown as an **approximation**; collection occurs in the project currency |
-| Rate source | Central bank rates, cached hourly |
-| Rate retention | The rate used is stored on the pledge, for audit |
+| Display currency | User preference, shown as an **approximation**; collection occurs in the project currency. **Built (#327)**: `users.currency`, `PATCH /v1/me/currency`, and a panel on `/settings/language`. It is a property of the **reader** and never of the campaign — phase 1's campaigns are all funded in manat and this does not change that |
+| Rate source | Central bank rates, cached hourly. **Built (#327)**: the Central Bank of Azerbaijan's daily publication at `cbar.az/currencies/{dd.MM.yyyy}.xml`, refreshed by `exchange-rate-refresh` into `exchange_rates` (V59). **Off by default** — `IDEANEST_FX_ENABLED` — because turning it on means the service calls a third party on a timer, which a deployment must decide rather than inherit from an upgrade |
+| Rate retention | The rate used is stored on the pledge, for audit. **Built (#327)**: `pledges.display_rate` and `pledges.display_currency` (V60), written at confirmation and never again. The **rate** and never the converted amount — the amount is a product of `total_amount` and this, and storing both would be storing a figure that can disagree with its own inputs |
 | **Rounding** | **`HALF_EVEN`, at the currency's minor unit.** Declared once, in `MoneyRounding`, and applied by everything that touches money |
 | Splitting | `Money.allocate` — the parts always sum to the whole; a remainder is handed out one minor unit at a time |
 | Mixed currencies | Never combined. Any arithmetic or comparison between two currencies is refused, because §21.2's rate is an approximation shown to a user and never the basis of a collection |
+
+> **EVERYTHING ABOUT THE DISPLAY CURRENCY DEGRADES TO ABSENCE, NEVER TO A GUESS** (#327).
+> A source that cannot be reached, a currency with no published rate, a rate older than
+> `ideanest.fx.max-age`, and a deployment with the feature off all produce the same
+> answer: no approximation on the screen and no rate on the pledge. A figure computed
+> from a stale or invented rate is worse than no figure, because a backer acts on it —
+> so every conversion returns an `Optional` and there is no fallback rate anywhere.
+>
+> **The direction is the one mistake this feature can make.** One unit of the quoted
+> currency is worth `rate` units of the base, so an amount in the base is *divided*.
+> On the dollar at 1.70 a multiplication is merely wrong; on the lira at 0.0354 it is
+> out by a factor of thirty. It is asserted at three levels — the service, the shared
+> money package, and the adapter — each against a figure computed by hand.
+>
+> **The rate is not money and is not rounded like it.** `numeric(20,10)`, because
+> `MoneyRounding`'s two places would turn the lira's 0.0354 into 0.04 — a thirteen per
+> cent error in every figure computed from it. Only the converted amount is rounded, once,
+> at the end, to the target currency's own minor unit and by `HALF_EVEN` like everything
+> else here.
+>
+> **`Money` is never asked to cross a currency.** It refuses with
+> `CurrencyMismatchException` and that refusal is correct; the division happens on a plain
+> `BigDecimal` and a `Money` is constructed from the result, so two amounts in different
+> currencies never meet. What comes back is an `Approximation`, which carries the exact
+> amount beside the approximate one so that nothing downstream can put the wrong one on a
+> receipt.
+>
+> **A backer whose display currency is the campaign's is shown no approximation**, and
+> their pledge records none: `pledges_display_currency_differs` refuses a rate of 1,
+> because recording one would be recording a conversion that did not happen. That is most
+> backers, which makes it the ordinary case rather than the edge one.
 
 **Why `HALF_EVEN` and not `HALF_UP`** (#133): the values being rounded are computed
 ones — §5.2's 5% platform fee, the per-collection processing fee, §9.5's split of a

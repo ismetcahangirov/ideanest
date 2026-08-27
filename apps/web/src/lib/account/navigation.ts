@@ -62,12 +62,18 @@
  * is a page rather than a promise. The entry is now the correct one and its absence would be
  * the defect.
  *
- * **P-10's other half — display currency — is still stated rather than offered, and that is
- * not a page waiting to be written.** §21.2 gives the platform one currency and no rate
- * source, so a chooser would convert AZN to AZN: a menu with a single entry in it, implying
- * a second that nothing in the system can compute. `lib/money.ts` formats against the
- * campaign's currency for the same reason — the currency is a property of the project and
- * never of the reader. It arrives with a second currency, not with a control.
+ * **P-10's other half — display currency — is a control on the same page since #327, and the
+ * argument it replaces was about a rate rather than about a second project currency.** This
+ * note used to say a chooser would convert AZN to AZN, because §21.2's approximation needs a
+ * published rate and the service had none. It has one now: the Central Bank of Azerbaijan's
+ * daily publication, refreshed hourly, with the rate a backer was shown stamped on their
+ * pledge for audit.
+ *
+ * The campaign's currency is unchanged and always will be under phase 1 — it is a property of
+ * the project, never of the reader, and `@ideanest/money` still formats every chargeable
+ * amount against it. What the reader now chooses is the currency of the "≈" beside it. On a
+ * deployment whose rate source is unreachable the panel is a sentence again, which is the
+ * shape #280 chose and the reason it was right.
  *
  * <h2>Interface text lives in the catalogue, not here — §21.1</h2>
  *

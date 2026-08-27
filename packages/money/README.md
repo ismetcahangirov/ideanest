@@ -34,6 +34,7 @@ move. New code should import `@ideanest/money`.
 | `toWireAmount`, `toMoney` | A `Decimal` back to the fixed scale the API expects |
 | `formatMoney` | Grouped digits and the ISO code, never a symbol. There is no agreed symbol for the manat in either language the product ships in (§21.1), and `Intl`'s answer differs by locale |
 | `SUPPORTED_CURRENCIES` | One entry, because phase 1 collects in AZN only (§21.2). Still a list, because the project currency is a real choice that phase 2 widens |
+| `approximate`, `formatApproximate`, `rateFor` | §21.2's display currency (#327). One amount converted at a rate the service published, formatted with `≈` so nothing on a screen can be mistaken for what will be charged |
 
 ## What is deliberately not in it
 
@@ -42,8 +43,18 @@ scale, none of which needs a global precision or rounding mode. Configuring the
 constructor from a leaf module would change the behaviour of every other
 consumer that imports `decimal.js`.
 
-**No currency conversion.** §21.2's display currency needs a rate source, and
-there is none — issue #327 owns it. A converter here would convert AZN to AZN.
+**No arithmetic between currencies.** `approximate` divides one amount by one
+rate and stops. It never adds two currencies, never sums approximations, and
+never produces a value the API will accept back — the server refuses
+cross-currency arithmetic for the same reason (`CurrencyMismatchException`), and
+§21.2 is explicit that the display currency is an approximation while collection
+happens in the project's currency.
+
+The direction is documented at every level and asserted against a figure computed
+by hand, because it is the one mistake this feature can make: **one unit of the
+quoted currency is worth `rate` of the base**, so an amount in the base is
+*divided*. On the dollar at 1.70 a multiplication is merely wrong; on the lira at
+0.0354 it is out by a factor of thirty.
 
 ## Tests
 

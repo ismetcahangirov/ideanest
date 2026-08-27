@@ -4,10 +4,10 @@ import { ApiError } from '../api/problem';
 /**
  * The signed-in account, as `GET /v1/me` describes it — `MeController.MeResponse`.
  *
- * Six fields, all of them the reader's own. `email` is returned in full because the person
- * reading it is the person it belongs to, and `deletionScheduledAt` is here because an
- * account that has been closed and can still sign in has to say so — a client that hid it
- * would leave somebody assuming the deletion silently failed.
+ * All of them the reader's own. `email` is returned in full because the person reading it is
+ * the person it belongs to, and `deletionScheduledAt` is here because an account that has
+ * been closed and can still sign in has to say so — a client that hid it would leave somebody
+ * assuming the deletion silently failed.
  */
 export interface Session {
   readonly id: string;
@@ -17,6 +17,18 @@ export interface Session {
   readonly emailVerified: boolean;
   /** Absent unless a deletion has been requested (§4.1 A-10). Absent means absent. */
   readonly deletionScheduledAt?: string | null;
+  /**
+   * §4.2's P-10 currency half (#327): the currency this reader sees amounts in.
+   *
+   * **A display preference and never a settlement currency.** §21.2 collects in the
+   * campaign's currency whatever this says, so a figure computed from it is an
+   * approximation and is drawn with a `≈` in front of it.
+   *
+   * Optional because a service that has not shipped #327 answers without it, and because
+   * absent and "the platform's own" are the same thing to every reader: there is nothing to
+   * approximate.
+   */
+  readonly currency?: string | null;
 }
 
 /**

@@ -3848,6 +3848,24 @@
         "tags" : [ "discovery-controller" ]
       }
     },
+    "/v1/exchange-rates" : {
+      "get" : {
+        "operationId" : "exchangeRateRates",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RatesResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "exchange-rate-controller" ]
+      }
+    },
     "/v1/faqs/{id}" : {
       "delete" : {
         "operationId" : "projectFaqDelete",
@@ -4000,6 +4018,27 @@
           }
         },
         "tags" : [ "me-controller" ]
+      }
+    },
+    "/v1/me/currency" : {
+      "patch" : {
+        "operationId" : "currencyPreferenceSetCurrency",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CurrencyRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "currency-preference-controller" ]
       }
     },
     "/v1/me/deletion" : {
@@ -9166,6 +9205,17 @@
           }
         }
       },
+      "CurrencyRequest" : {
+        "type" : "object",
+        "properties" : {
+          "currency" : {
+            "type" : "string",
+            "minLength" : 1,
+            "pattern" : "[A-Z]{3}"
+          }
+        },
+        "required" : [ "currency" ]
+      },
       "DailyPoint" : {
         "type" : "object",
         "properties" : {
@@ -10355,6 +10405,9 @@
       "MeResponse" : {
         "type" : "object",
         "properties" : {
+          "currency" : {
+            "type" : "string"
+          },
           "deletionScheduledAt" : {
             "type" : "string",
             "format" : "date-time"
@@ -10927,6 +10980,12 @@
           "confirmedAt" : {
             "type" : "string",
             "format" : "date-time"
+          },
+          "displayCurrency" : {
+            "type" : "string"
+          },
+          "displayRate" : {
+            "type" : "string"
           },
           "id" : {
             "type" : "string",
@@ -11788,6 +11847,39 @@
           }
         },
         "required" : [ "body", "requesterId", "subject" ]
+      },
+      "Rate" : {
+        "type" : "object",
+        "properties" : {
+          "currency" : {
+            "type" : "string"
+          },
+          "fetchedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "publishedFor" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "rate" : {
+            "type" : "string"
+          }
+        }
+      },
+      "RatesResponse" : {
+        "type" : "object",
+        "properties" : {
+          "base" : {
+            "type" : "string"
+          },
+          "rates" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Rate"
+            }
+          }
+        }
       },
       "RecoveryCodesResponse" : {
         "type" : "object",

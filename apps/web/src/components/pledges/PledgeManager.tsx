@@ -14,7 +14,7 @@ import {
 } from '../../lib/pledges/backer';
 import { describeFailure, type CheckoutFailure } from '../../lib/pledges/failure';
 import { formatExactTime } from '../../lib/time';
-import { formatMoney } from '../../lib/money';
+import { approximate, formatMoney, type ExchangeRate } from '../../lib/money';
 import { CancelPledgePanel } from './CancelPledgePanel';
 import { PledgeEditor } from './PledgeEditor';
 import type { CheckoutCopy } from '../../lib/i18n/checkout-copy';
@@ -214,6 +214,20 @@ export function PledgeManager({ pledgeId, copy }: PledgeManagerProps) {
             source="quoted"
             rewardTitle={rewardTitle}
             destination={destination}
+            /*
+             * §21.2's approximation, from THE RATE THIS PLEDGE WAS CONFIRMED AT — #327.
+             *
+             * Not today's rate, and the difference is the whole reason V60 stores one. This
+             * screen answers "what did I agree to", asked weeks later; today's rate would
+             * answer a question nobody is asking and would move every time the reader opened
+             * the page. The service stamped `displayRate` at confirmation and never touches
+             * it again.
+             *
+             * Null for most pledges — a backer reading amounts in the campaign's own currency
+             * was shown no approximation — and `approximate` answers null for all of them, so
+             * `PledgeSummary` simply draws nothing.
+             */
+            approximateTotal={approximate(pledge.amounts.total, quotedRate(pledge))}
           >
             {destination !== null && (
               <p className="text-sm text-on-white/64">
@@ -287,4 +301,23 @@ export function PledgeManager({ pledgeId, copy }: PledgeManagerProps) {
       </div>
     </div>
   );
+}
+
+/**
+ * The rate this pledge was quoted at, as `@ideanest/money` takes one — issue #327.
+ *
+ * <p>`publishedFor` is empty because the pledge does not carry it and does not need to:
+ * `approximate` reads the rate and the currency, and the date on the response would be a
+ * fourth thing to keep in step for a field nothing here draws. The day it is drawn — "at the
+ * rate on 27 August" — is the day it belongs on the response.
+ *
+ * <p>Null unless both halves are present. V60 refuses a currency without its rate, so a
+ * response carrying one and not the other is a service that predates #327 rather than a
+ * pledge in a half state, and drawing an approximation from half of it would be inventing
+ * the other half.
+ */
+function quotedRate(pledge: PledgeResponse): ExchangeRate | null {
+  const currency = pledge.displayCurrency;
+  const rate = pledge.displayRate;
+  return currency == null || rate == null ? null : { currency, rate, publishedFor: '' };
 }

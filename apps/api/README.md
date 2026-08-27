@@ -263,6 +263,93 @@ nobody has looked at as one whose books are fine.
 
 ---
 
+## Display currency (#327)
+
+§21.2's "display currency, shown as an approximation, converted from central bank
+rates cached hourly, with the rate used stored on the pledge for audit". All four
+halves of that sentence are built.
+
+**NOTHING HERE DECIDES WHAT ANYBODY IS CHARGED.** Collection happens in the
+campaign's currency, which is manat under phase 1 and stays manat whatever a
+reader chooses. What this produces is the "≈ $29.41" beside "₼50.00".
+
+| Piece | Where |
+|---|---|
+| The source | `CentralBankRates` — `cbar.az/currencies/{dd.MM.yyyy}.xml`, public, no key |
+| The table | `exchange_rates` (V59). One row per publication per currency, kept rather than overwritten |
+| The refresh | `exchange-rate-refresh`, hourly. Eleven of the twelve daily passes write nothing |
+| The conversion | `ExchangeRates#approximate` |
+| The preference | `users.currency`, `PATCH /v1/me/currency` |
+| The audit | `pledges.display_currency` and `pledges.display_rate` (V60), stamped at confirmation |
+| The public read | `GET /v1/exchange-rates` |
+
+### Off by default, and that default is not merely conservative
+
+`IDEANEST_FX_ENABLED` is `false`. Turning it on means this service makes an
+outbound HTTP call to a third party on a timer, and a deployment that has not
+decided to do that must not start doing it because it upgraded. A disabled
+deployment still **registers** the job — so `/admin/health` lists it — and the
+pass returns without a request.
+
+### The date in the document is believed and the date in the request is not
+
+Asking cbar.az for a Sunday returns a document whose own `Date` attribute is the
+preceding Friday: it serves the last published day rather than refusing. A client
+that assumed the requested date would write three identical rows over a weekend,
+each claiming to be that day's official rate, and the Sunday row would be a claim
+the central bank never made.
+
+### Nominals are normalised once, at the edge
+
+The rouble is quoted per **hundred**: `<Nominal>100</Nominal><Value>2.0484</Value>`.
+The adapter divides before anything is stored, so every row in the table is per one
+unit. Carrying the nominal instead would push that division into every reader, and
+the reader that forgot it would be out by a factor of a hundred.
+
+### It degrades to absence, never to a guess
+
+A source that cannot be reached, a currency with no published rate, a rate older
+than `ideanest.fx.max-age`, and a deployment with the feature off all produce the
+same answer: **no approximation, and no rate on the pledge**. There is no fallback
+rate anywhere in the module and there must never be one — a figure computed from a
+stale rate is worse than no figure, because a backer acts on it.
+
+The age is measured on the **publication date** and not on the fetch. A source
+answering every hour with last month's rates has a fresh fetch and a stale rate,
+and it is the rate a reader is shown.
+
+### The parser refuses a doctype outright
+
+This is the only XML in the service and it comes from outside it. The factory sets
+`FEATURE_SECURE_PROCESSING`, disables external general and parameter entities, and
+disallows doctype declarations entirely — which closes XXE and entity expansion by
+removing the class rather than mitigating it. A rates document has no DTD, so
+refusing every one costs nothing.
+
+### The rate is not money and is not rounded like it
+
+`numeric(20,10)`. `MoneyRounding`'s two places would turn the lira's `0.0354` into
+`0.04` — a thirteen per cent error in every figure computed from it. Only the
+converted **amount** is rounded, once, at the end, to the target currency's own
+minor unit, by the same `HALF_EVEN` §21.2 declares for everything else.
+
+`Money` is never asked to cross a currency: it refuses with
+`CurrencyMismatchException` and that refusal is correct. The division happens on a
+plain `BigDecimal` and a `Money` is constructed from the result, so two amounts in
+different currencies never meet. `Approximation` carries the exact amount beside
+the approximate one, so nothing downstream can put the wrong one on a receipt.
+
+### The rate on a pledge is resolved by the service, not sent by the client
+
+The obvious design is for the checkout to send back the rate it drew — it is the
+thing that drew it. It is also the design in which the one number nobody can check
+is supplied by the party with an interest in it. The server reads the same hourly
+cache the display read, so the two agree except across an hour boundary; across
+one, the server's answer is the one that can be reconciled against
+`exchange_rates`.
+
+---
+
 ## Fraud signals
 
 §17.2's "velocity, geography mismatch, new-account risk" — issue #108.

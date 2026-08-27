@@ -38,11 +38,17 @@ import { footerCopy } from '../../lib/i18n/shell-copy.server';
  *
  * So what the footer states remains true: this build serves the public site in English.
  *
- * THE CURRENCY IS NOT OFFERED ANYWHERE, and that is not a staging decision. §21.2's display
- * currency is an approximation from central-bank rates, and the service has no rate source,
- * no rate table and one currency — `SUPPORTED_CURRENCY = "AZN"` in three of its services. A
- * selector would convert manat to manat. The settings screen states it as a fact for the
- * same reason this does.
+ * THE CURRENCY IS A CONTROL NOW, AND IT IS STILL NOT HERE. #327 built the rate source §21.2
+ * asks for — the Central Bank of Azerbaijan's daily publication, refreshed hourly — so
+ * `/settings/language`'s currency panel is a real choice rather than the sentence #280 could honestly
+ * offer. This footer keeps the statement, for the language's reason rather than for the old
+ * one: a control here would have to know who is reading, and this component is on cached
+ * shared renders.
+ *
+ * What it states is what every visitor is charged in, which does not vary by reader: §21.2
+ * collects in the campaign's currency, and phase 1's campaigns are all in manat. A display
+ * currency is an approximation laid over that, and it belongs where somebody has already
+ * said who they are.
  *
  * <h2>There is no Legal column</h2>
  *

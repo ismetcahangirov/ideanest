@@ -2,11 +2,15 @@ import Decimal from 'decimal.js';
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_CURRENCY,
+  approximate,
+  formatApproximate,
   formatMoney,
   isSupportedCurrency,
   parseAmount,
+  rateFor,
   toMoney,
   toWireAmount,
+  type ExchangeRate,
 } from './index';
 
 /**
@@ -162,5 +166,109 @@ describe('currency', () => {
     expect(isSupportedCurrency(DEFAULT_CURRENCY)).toBe(true);
     expect(isSupportedCurrency('USD')).toBe(false);
     expect(isSupportedCurrency('')).toBe(false);
+  });
+});
+
+/**
+ * §21.2's display currency — issue #327.
+ *
+ * The two assertions this whole feature rests on are the direction and the
+ * precision, and both are asserted against figures computed by hand:
+ *
+ *   * **Direction.** One dollar is worth 1.70 manat, so ₼50.00 is *less* than
+ *     fifty dollars. Multiplying instead of dividing gives $85.00, and on a
+ *     rate near one nobody notices until somebody pledges in lira.
+ *   * **Precision.** 0.0354 manat per lira. A rate rounded to two decimal
+ *     places is 0.04, which makes a ₼50 campaign look 13% cheaper than it is.
+ *
+ * Everything else here is the same rule stated once: an approximation that
+ * cannot be computed honestly is absent, never a fallback.
+ */
+describe('approximate', () => {
+  const usd: ExchangeRate = { currency: 'USD', rate: '1.7000000000', publishedFor: '2026-08-27' };
+  const lira: ExchangeRate = { currency: 'TRY', rate: '0.0354000000', publishedFor: '2026-08-27' };
+
+  it('divides by the rate, and rounds once at the end', () => {
+    // 50 / 1.7 = 29.41176…
+    expect(approximate({ amount: '50.00', currency: 'AZN' }, usd)).toEqual({
+      amount: '29.41',
+      currency: 'USD',
+    });
+  });
+
+  it('keeps the rate at full precision', () => {
+    // 50 / 0.0354 = 1412.4293…, and never the 1250 a two-place rate would give.
+    expect(approximate({ amount: '50.00', currency: 'AZN' }, lira)).toEqual({
+      amount: '1412.43',
+      currency: 'TRY',
+    });
+  });
+
+  it('rounds half to even, like every other amount on this platform', () => {
+    // 0.025 / 1 -> 0.02, not 0.03. §21.2 declares HALF_EVEN once, in
+    // MoneyRounding, and a display currency that rounded away from zero would
+    // be a second rule nobody wrote down.
+    const one: ExchangeRate = { currency: 'USD', rate: '1', publishedFor: '2026-08-27' };
+    expect(approximate({ amount: '0.025', currency: 'AZN' }, one)).toBeNull();
+    expect(approximate({ amount: '0.05', currency: 'AZN' }, { ...one, rate: '2' })).toEqual({
+      amount: '0.02',
+      currency: 'USD',
+    });
+  });
+
+  it('shows nothing rather than a guess when there is no rate', () => {
+    expect(approximate({ amount: '50.00', currency: 'AZN' }, null)).toBeNull();
+    expect(approximate(null, usd)).toBeNull();
+  });
+
+  it('refuses a rate that is not a decimal string', () => {
+    // `Decimal`'s own constructor accepts these, which is exactly why it is not
+    // the check. A rate of `1e5` would produce a figure nobody quoted.
+    for (const rate of ['1e5', '0x10', '', '-1.7', 'nineteen']) {
+      expect(approximate({ amount: '50.00', currency: 'AZN' }, { ...usd, rate })).toBeNull();
+    }
+  });
+
+  it('refuses to make an amount an approximation of itself', () => {
+    // "₼50 ≈ ₼50" reads as a conversion that went wrong rather than as one that
+    // was not needed.
+    expect(
+      approximate({ amount: '50.00', currency: 'AZN' }, { ...usd, currency: 'AZN' }),
+    ).toBeNull();
+  });
+
+  it('refuses an amount that is not a wire amount', () => {
+    expect(approximate({ amount: '1,50', currency: 'AZN' }, usd)).toBeNull();
+  });
+});
+
+describe('formatApproximate', () => {
+  it('marks the figure as approximate, in a character rather than a word', () => {
+    // The almost-equal sign is the only thing on the screen saying this is not
+    // what will be charged, and it needs no translation in §21.1's four
+    // languages.
+    expect(formatApproximate({ amount: '1412.43', currency: 'TRY' })).toBe('≈ 1,412.43 TRY');
+  });
+
+  it('draws nothing when there is nothing to draw', () => {
+    expect(formatApproximate(null)).toBe('');
+    expect(formatApproximate(undefined)).toBe('');
+  });
+});
+
+describe('rateFor', () => {
+  const rates: ExchangeRate[] = [
+    { currency: 'USD', rate: '1.7', publishedFor: '2026-08-27' },
+    { currency: 'EUR', rate: '1.9877', publishedFor: '2026-08-27' },
+  ];
+
+  it('finds a currency, and answers null for one that is not there', () => {
+    expect(rateFor(rates, 'EUR')?.rate).toBe('1.9877');
+    // A currency somebody chose last month whose source has since stopped
+    // publishing it. Every caller has to handle this, which is why it is null
+    // rather than undefined from a `find`.
+    expect(rateFor(rates, 'GBP')).toBeNull();
+    expect(rateFor(null, 'USD')).toBeNull();
+    expect(rateFor(rates, null)).toBeNull();
   });
 });

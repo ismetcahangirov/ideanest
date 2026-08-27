@@ -48,6 +48,13 @@ public class MeController {
             String name,
             String slug,
             String locale,
+            /**
+             * §4.2's P-10's currency half (#327): the currency this account reads amounts
+             * in. The platform's own base currency for anybody who has not chosen, and a
+             * display preference either way — collection happens in the campaign's currency
+             * whatever this says.
+             */
+            String currency,
             boolean emailVerified,
             Instant deletionScheduledAt) {
     }
@@ -74,6 +81,7 @@ public class MeController {
                 account.name(),
                 account.slug(),
                 account.locale(),
+                account.currency(),
                 account.emailVerified(),
                 account.deletionScheduledAt());
     }

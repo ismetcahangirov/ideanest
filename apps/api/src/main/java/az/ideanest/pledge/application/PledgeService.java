@@ -72,6 +72,7 @@ public class PledgeService {
     private final PledgeAddonRepository addons;
     private final PledgeDetails details;
     private final Outbox outbox;
+    private final DisplayRates displayRates;
     private final Clock clock;
 
     public PledgeService(
@@ -81,6 +82,7 @@ public class PledgeService {
             PledgeAddonRepository addons,
             PledgeDetails details,
             Outbox outbox,
+            DisplayRates displayRates,
             Clock clock) {
         this.reservations = reservations;
         this.acceptance = acceptance;
@@ -88,6 +90,7 @@ public class PledgeService {
         this.addons = addons;
         this.details = details;
         this.outbox = outbox;
+        this.displayRates = displayRates;
         this.clock = clock;
     }
 
@@ -214,6 +217,26 @@ public class PledgeService {
         List<PledgeAddon> heldAddons = addons.findByPledge(pledgeId);
 
         Pledge confirmed = reservations.confirm(pledge, heldAddons, now, paymentMethodId);
+
+        /*
+         * §21.2's rate retention (#327): "the rate used is stored on the pledge, for audit".
+         *
+         * <p>Resolved here rather than taken from the request, and that is the choice worth
+         * defending. What §21.2 wants recorded is the approximation the backer was shown, and
+         * the client is the thing that showed it — so the obvious design is for the checkout
+         * to send back the rate it drew. It is also the design in which the one number nobody
+         * can check is supplied by the party with an interest in it: a client that sent a
+         * different rate would produce a pledge whose audit record says the platform quoted a
+         * figure it never quoted.
+         *
+         * <p>The server reads the same hourly cache the display read, so the two agree except
+         * across an hour boundary — and across one, the server's answer is the one that can be
+         * reconciled against `exchange_rates`. `DisplayRates` returns nothing at all when the
+         * backer reads amounts in the campaign's own currency, which is most of them.
+         */
+        displayRates
+                .forBacker(backerId, confirmed.getCurrency())
+                .ifPresent(rate -> confirmed.recordDisplayRate(rate.currency(), rate.rate()));
 
         // In this transaction, which is the whole guarantee. The instant is read back
         // off the row rather than taken from `now` again, so the event and

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ValCurs [
+  <!ENTITY lol "lol">
+  <!ENTITY lol1 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">
+  <!ENTITY lol2 "&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;">
+]>
+<ValCurs Date="27.08.2026">
+  <ValType Type="Xarici valyutalar">
+    <Valute Code="USD">
+      <Nominal>1</Nominal>
+      <Name>&lol2;</Name>
+      <Value>1.7</Value>
+    </Valute>
+  </ValType>
+</ValCurs>
