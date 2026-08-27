@@ -13,6 +13,7 @@
   "dependencies": {
     "@ideanest/api-client": "workspace:*",
     "@ideanest/design-tokens": "workspace:*",
+    "@ideanest/money": "workspace:*",
     "@ideanest/ui": "workspace:*",
     "decimal.js": "^10.6.0",
     "lucide-react": "^1.33.0",
