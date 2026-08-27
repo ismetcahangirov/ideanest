@@ -145,6 +145,22 @@ describe('the paths the locale middleware is asked about', () => {
     }
   });
 
+  /*
+   * The regression this exists for is not the redirect. It is that
+   * `apple-app-site-association` is the one fixed address on the site with no
+   * extension, so the clause that spares `/robots.txt` and `/icon.svg` does not
+   * spare it — and Apple's fetcher does not follow redirects, so the failure is
+   * "universal links stopped working" with nothing on the site to look at.
+   */
+  it('never sees the mobile association files, which cannot be localised (#114)', () => {
+    for (const path of [
+      '/.well-known/apple-app-site-association',
+      '/.well-known/assetlinks.json',
+    ]) {
+      expect(matches(path)).toBe(false);
+    }
+  });
+
   it('still sees every page, which is the whole point of it', () => {
     for (const path of [
       '/',

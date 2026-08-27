@@ -102,6 +102,18 @@ export const config = {
    * rather than by this application, and a crawler that follows a redirect to `/en/robots.txt`
    * has been given a file at an address it will not treat as authoritative. They stay at the
    * root and enumerate the localised pages from there.
+   *
+   * `.well-known/` is the same rule with sharper consequences — issue #114. It carries the
+   * two files that let a link on this site open the mobile application, and one of them,
+   * `apple-app-site-association`, has NO EXTENSION: the `.*\.[\w]+$` clause above is what
+   * spares every other fixed address, and it is precisely what does not spare this one.
+   * Apple's fetcher does not follow a redirect, so a `307` to `/en/.well-known/...` reads to
+   * it as "this site has no association" — universal links then never activate, silently,
+   * with nothing broken on the site itself to notice. The whole prefix is excluded rather
+   * than that one file, because every address under it is fixed by a specification rather
+   * than by this application and none of them may be localised.
    */
-  matcher: ['/((?!api|v1|_next|robots\\.txt|sitemap\\.xml|sitemap_index\\.xml|.*\\.[\\w]+$).*)'],
+  matcher: [
+    '/((?!api|v1|_next|\\.well-known|robots\\.txt|sitemap\\.xml|sitemap_index\\.xml|.*\\.[\\w]+$).*)',
+  ],
 };

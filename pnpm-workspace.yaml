@@ -15,3 +15,46 @@ allowBuilds:
   # Next's image optimiser. Arrives as an optional dependency of `next` and
   # needs its native binding built.
   sharp: true
+  # jest-resolve@30 reaches for a native Rust resolver. Its install script only
+  # compiles one when no prebuilt binary matches the platform, which is not this
+  # one, so it is refused for `@swc/core`'s reason and the prebuilt binding that
+  # arrives as an optional dependency is what gets used.
+  unrs-resolver: false
+# pnpm refuses a package published within the last day, which is the cheapest
+# defence there is against a compromised release: an account takeover is
+# usually found and yanked within hours, and a lockfile that cannot reach a
+# version that new never sees it. Expo SDK 57 was cut the day before
+# `apps/mobile` was added, so `pnpm install` admitted these exact versions and
+# wrote down which ones. The list is an audit record and not a pin: it stops
+# mattering once the versions age past the window, and the next person to
+# change a version here should delete the line that names the old one rather
+# than add a second.
+minimumReleaseAgeExclude:
+  - '@expo/cli@57.0.19'
+  - '@expo/inline-modules@0.1.7'
+  - '@expo/local-build-cache-provider@57.0.8'
+  - '@expo/log-box@57.0.4'
+  - '@expo/metro-config@57.0.11'
+  - '@expo/metro-runtime@57.0.14'
+  - '@expo/prebuild-config@57.0.15'
+  - '@expo/router-server@57.0.8'
+  - '@expo/ui@57.0.14'
+  - '@tanstack/query-core@5.102.7'
+  - '@tanstack/query-persist-client-core@5.102.7'
+  - '@tanstack/query-sync-storage-persister@5.102.7'
+  - '@tanstack/react-query-persist-client@5.102.7'
+  - '@tanstack/react-query@5.102.7'
+  - babel-preset-expo@57.0.9
+  - expo-asset@57.0.15
+  - expo-constants@57.0.15
+  - expo-file-system@57.0.6
+  - expo-linking@57.0.8
+  - expo-modules-autolinking@57.0.12
+  - expo-modules-core@57.0.14
+  - expo-modules-jsi@57.0.6
+  - expo-notifications@57.0.15
+  - expo-router@57.0.17
+  - expo-secure-store@57.0.2
+  - expo-system-ui@57.0.3
+  - expo@57.0.17
+  - jest-expo@57.0.5

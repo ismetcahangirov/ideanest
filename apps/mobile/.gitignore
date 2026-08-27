@@ -1,0 +1,19 @@
+# Expo's build state and the generated route types. Both are derived from
+# `app.config.ts` and `src/app/`, and both are rewritten on every `expo start`.
+.expo/
+expo-env.d.ts
+
+# Native projects. `expo prebuild` generates them from `app.config.ts`, which is
+# the file that is reviewed; a committed `ios/` and `android/` are two more
+# copies of the same configuration, and they are the copies that drift. EAS
+# runs prebuild itself (see `eas.json`).
+/ios
+/android
+
+# Build output
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
