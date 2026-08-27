@@ -73,9 +73,8 @@ describe('CampaignList', () => {
 
     // The path both halves of #114 agree on: `apps/web` serves a campaign here and
     // `lib/links.ts` resolves an incoming link to the same string.
-    expect(getAllByTestId('link')[0].props.accessibilityValue.text).toBe(
-      '/projects/aysel/campaign-0',
-    );
+    const [first] = getAllByTestId('link');
+    expect(first?.props.accessibilityValue.text).toBe('/projects/aysel/campaign-0');
   });
 
   it('formats the pledged amount through the shared money rules', async () => {
