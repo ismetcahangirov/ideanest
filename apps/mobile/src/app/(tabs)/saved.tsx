@@ -1,7 +1,8 @@
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSavedProjects } from '../../api/queries';
+import { Button } from '../../components/form';
 import { EmptyState, ErrorState, Loading, OfflineNotice } from '../../components/states';
 import { CardTitle, Meta } from '../../components/text';
 import { useSession } from '../../lib/use-session';
@@ -42,6 +43,7 @@ const styles = StyleSheet.create({
 });
 
 export default function SavedScreen() {
+  const router = useRouter();
   const { signedIn } = useSession();
   const saved = useSavedProjects(signedIn);
 
@@ -50,6 +52,9 @@ export default function SavedScreen() {
       <EmptyState
         title="Sign in to see what you saved"
         detail="Saved campaigns follow the account rather than the phone."
+        // #29: the invitation now has a way to accept it. Until sign-in existed
+        // on this platform, this screen could only state the condition.
+        action={<Button label="Sign in" onPress={() => router.push('/sign-in')} />}
       />
     );
   }

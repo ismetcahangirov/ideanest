@@ -1,7 +1,9 @@
 import { FlashList } from '@shopify/flash-list';
+import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { formatMoney } from '@ideanest/money';
 import { usePledges } from '../../api/queries';
+import { Button } from '../../components/form';
 import { EmptyState, ErrorState, Loading, OfflineNotice } from '../../components/states';
 import { Body, CardTitle, Meta } from '../../components/text';
 import { useSession } from '../../lib/use-session';
@@ -62,6 +64,7 @@ function readableState(state: string | undefined): string {
 }
 
 export default function PledgesScreen() {
+  const router = useRouter();
   const { signedIn } = useSession();
   const pledges = usePledges(signedIn);
 
@@ -70,6 +73,7 @@ export default function PledgesScreen() {
       <EmptyState
         title="Sign in to see your pledges"
         detail="Your pledges belong to your account, not to this phone."
+        action={<Button label="Sign in" onPress={() => router.push('/sign-in')} />}
       />
     );
   }

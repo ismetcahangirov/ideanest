@@ -169,7 +169,7 @@ Marked `[W]` web, `[M]` mobile, `[A]` admin.
 | A-11 | Personal data export | W | Machine-readable archive |
 | A-12 | Email change | W, M | Confirmation to both addresses |
 | A-13 | Password change | W, M | Requires the current password |
-| A-14 | Biometric unlock | M | Refresh token in secure device storage |
+| A-14 | Biometric unlock | M | **Built (#29)** at `/account`. The refresh token moves into a `requireAuthentication` keychain entry, so the platform — not the application — refuses to hand it over without a prompt. §17.1 has the full argument, including why it is a local gate and not a second factor |
 
 > **The web client cannot read a session on the server, and that is a property
 > of the cookie rather than of the client.** The refresh token is issued on
@@ -1491,7 +1491,7 @@ Preferences are per category and per channel, with a digest option.
 |---|---|
 | MB-01 | Push notifications |
 | MB-02 | Deep links and universal links |
-| MB-03 | Biometric authentication |
+| MB-03 | Biometric authentication. **Built (#29)** — and the name is wrong in a way worth keeping: it re-opens a session rather than proving anything to the service. See A-14 and §17.1 |
 | MB-04 | Offline cache for saved projects and pledges |
 | MB-05 | Native share sheet |
 | MB-06 | Camera capture for avatars |
@@ -4864,7 +4864,8 @@ report, bounded by the number of tiers a campaign has rather than by its backers
 | Access token revocation | Not possible before expiry. Verification reads no state, so revoking a session takes effect within the access token's lifetime and not sooner. That window is the reason the lifetime is fifteen minutes |
 | Client requirement | Refresh must be **single-flight**. Two concurrent refreshes present the same token, which is indistinguishable from theft and signs the user out |
 | Web storage | Refresh in an httpOnly, secure, same-site cookie; access in memory, never local storage |
-| Mobile storage | Platform secure storage |
+| Mobile storage | Platform secure storage: Keychain Services on iOS, the Android Keystore behind `EncryptedSharedPreferences`. The access token is held in memory and never written down, exactly as on the web |
+| **Biometric unlock** | **Built (#29).** With the lock on, the refresh token is written with `requireAuthentication`, so the *operating system* refuses to return it until a prompt succeeds — the gate is a property of where the credential is kept rather than a check the application performs and could forget. It is a **local gate and never a factor**: the service is not told the prompt happened, and §17.1's TOTP remains the only second factor. Turning it off requires passing the prompt, because reading the token is what the prompt guards. The two states are two keychain entries, not a flag on one — an authenticated entry is generated against its own key and cannot share a `keychainService` with an unauthenticated one — so switching is a move, and `apps/mobile/src/lib/session.ts` orders it so no failure loses the session |
 | Two-factor | Time-based one-time password: RFC 6238, HMAC-SHA1, six digits, thirty-second steps, one step of skew either side. Enrolment does not enable it — a current code must be entered first, or a phone that dies mid-flow is a lockout |
 | Two-factor sign-in | A correct password returns a **single-use challenge and no session**. The second call spends the challenge with a code. A code cannot be replayed inside its own window: the accepted time step is recorded and only a strictly greater one is taken |
 | Two-factor guessing | Five code attempts per challenge; a new challenge costs the password again. This is *the* control on a six-digit secret — three codes are valid at any moment once skew is allowed |
