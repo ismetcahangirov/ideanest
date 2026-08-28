@@ -104,7 +104,7 @@ public class EmailComposer {
      *
      * @param recipientName the name on the recipient's account, for the greeting
      */
-    public EmailContent compose(NotificationMessage message, String recipientName) {
+    public EmailContent compose(NotificationMessage message, String recipientName, Locale locale) {
         JsonNode params = this.facts.paramsOf(message.params());
         EmailFacts facts = this.facts.factsFor(message.type(), params, recipientName);
         String action = actionUrl(message.type(), params, message.subjectType(), message.subjectId());
@@ -116,10 +116,14 @@ public class EmailComposer {
         String type = message.type().name();
 
         return EmailContent.of(
-                overridden(overrides.subjectFor(type, TemplateOverrides.RENDER_LOCALE), base + "subject", facts),
-                copy(base + "headline", facts),
-                overriddenParagraphs(type, base, facts),
-                copy(base + "action", facts),
+                overridden(
+                        overrides.subjectFor(type, TemplateOverrides.RENDER_LOCALE),
+                        base + "subject",
+                        facts,
+                        locale),
+                copy(base + "headline", facts, locale),
+                overriddenParagraphs(type, base, facts, locale),
+                copy(base + "action", facts, locale),
                 action);
     }
 
@@ -132,13 +136,13 @@ public class EmailComposer {
      * members are already ordered by when they happened; nothing is regrouped here,
      * because a digest that reordered its contents would not match the inbox beside it.
      */
-    public EmailContent compose(NotificationDigest digest, String recipientName) {
+    public EmailContent compose(NotificationDigest digest, String recipientName, Locale locale) {
         List<EmailContent.Item> items = new ArrayList<>(digest.notifications().size());
         for (NotificationMessage member : digest.notifications()) {
             JsonNode params = this.facts.paramsOf(member.params());
             EmailFacts facts = this.facts.factsFor(member.type(), params, recipientName);
             items.add(new EmailContent.Item(
-                    copy(PREFIX + member.type().name() + ".line", facts),
+                    copy(PREFIX + member.type().name() + ".line", facts, locale),
                     actionUrl(member.type(), params, member.subjectType(), member.subjectId())));
         }
 
@@ -153,9 +157,9 @@ public class EmailComposer {
         // that produced the digest, is #89's page and does not exist; pointing at it
         // would be a dead link in every message the platform sends daily.
         return new EmailContent(
-                copy(DIGEST + "subject", facts),
-                copy(DIGEST + "headline", facts),
-                List.of(copy(DIGEST + "body", facts)),
+                copy(DIGEST + "subject", facts, locale),
+                copy(DIGEST + "headline", facts, locale),
+                List.of(copy(DIGEST + "body", facts, locale)),
                 null,
                 null,
                 items);
@@ -193,24 +197,28 @@ public class EmailComposer {
      * message §4.10 asks for without inventing a list format in a properties file. A type
      * needing three would add {@code .body3} here; none does.
      */
-    private List<String> paragraphs(String base, EmailFacts facts) {
+    private List<String> paragraphs(String base, EmailFacts facts, Locale locale) {
         // Through the same `.named` preference as everything else, so that a second
         // paragraph is not the one place in the file where naming the campaign silently
         // does nothing. `.body2.named` without `.body2` would drop the paragraph for a row
         // that has no title; `EmailCopyTests` holds that every `.named` key has its plain
         // counterpart, which is the property that makes this safe.
-        String second = facts.projectTitle().isEmpty() ? null : optional(base + "body2" + NAMED, facts);
+        String second =
+                facts.projectTitle().isEmpty() ? null : optional(base + "body2" + NAMED, facts, locale);
         if (second == null) {
-            second = optional(base + "body2", facts);
+            second = optional(base + "body2", facts, locale);
         }
-        return second == null ? List.of(copy(base + "body", facts)) : List.of(copy(base + "body", facts), second);
+        return second == null
+                ? List.of(copy(base + "body", facts, locale))
+                : List.of(copy(base + "body", facts, locale), second);
     }
 
     /** An edited string when there is one, and the catalogue's otherwise. */
-    private String overridden(java.util.Optional<String> override, String key, EmailFacts facts) {
+    private String overridden(
+            java.util.Optional<String> override, String key, EmailFacts facts, Locale locale) {
         return override
                 .map(text -> java.text.MessageFormat.format(text, facts.arguments()))
-                .orElseGet(() -> copy(key, facts));
+                .orElseGet(() -> copy(key, facts, locale));
     }
 
     /**
@@ -221,13 +229,14 @@ public class EmailComposer {
      * offering it for editing would mean an administrator writing copy that appears for
      * some recipients and not others, with nothing on the screen to say which.
      */
-    private List<String> overriddenParagraphs(String type, String base, EmailFacts facts) {
+    private List<String> overriddenParagraphs(
+            String type, String base, EmailFacts facts, Locale locale) {
         java.util.Optional<String> body = overrides.bodyFor(type, TemplateOverrides.RENDER_LOCALE);
         if (body.isEmpty()) {
-            return paragraphs(base, facts);
+            return paragraphs(base, facts, locale);
         }
 
-        List<String> shipped = paragraphs(base, facts);
+        List<String> shipped = paragraphs(base, facts, locale);
         List<String> edited = new ArrayList<>(shipped.size());
         edited.add(java.text.MessageFormat.format(body.get(), facts.arguments()));
         edited.addAll(shipped.subList(1, shipped.size()));
@@ -237,29 +246,35 @@ public class EmailComposer {
     /**
      * One line of copy.
      *
-     * <p>{@link Locale#ROOT} rather than a request locale, and that is a limitation stated
-     * rather than hidden: this runs on a background sender with no request and no reader
-     * attached, and {@code users} has a {@code locale} column nothing here reads yet.
-     * Sending in the recipient's language is #123's, which is where the message bundles
-     * grow their per-language files — the keys are already in the shape that needs.
+     * <p><strong>In the recipient's language since #324.</strong> It used to resolve against
+     * {@link Locale#ROOT}, with a note saying that {@code users} had a {@code locale} column
+     * nothing here read. It reads it now: {@code EmailChannelSender} takes it off the
+     * {@code UserAccount} it already loaded for the address and hands it down, so the language
+     * comes from the account rather than from a request — which is the right source, because
+     * this runs on a background sender where there is no request, and because the person who
+     * triggered the event is frequently not the person being written to.
+     *
+     * <p>A bundle with no row for a key falls back to {@code messages.properties}, which is
+     * English. That is a half-translated email and it is the reason {@code EmailCopyTests}
+     * asks for every key of every type in all four languages rather than only the default.
      *
      * <p>A missing key throws. It is caught by {@code EmailCopyTests}, which asks for
      * every key of every type, so a missing one is a build failure rather than an email
      * that goes out with a placeholder in it.
      */
-    private String copy(String key, EmailFacts facts) {
+    private String copy(String key, EmailFacts facts, Locale locale) {
         if (!facts.projectTitle().isEmpty()) {
-            String named = optional(key + NAMED, facts);
+            String named = optional(key + NAMED, facts, locale);
             if (named != null) {
                 return named;
             }
         }
-        return messages.getMessage(key, facts.arguments(), Locale.ROOT);
+        return messages.getMessage(key, facts.arguments(), locale);
     }
 
     /** The same, for a key a type may legitimately not have. */
-    private String optional(String key, EmailFacts facts) {
-        return messages.getMessage(key, facts.arguments(), null, Locale.ROOT);
+    private String optional(String key, EmailFacts facts, Locale locale) {
+        return messages.getMessage(key, facts.arguments(), null, locale);
     }
 
 }

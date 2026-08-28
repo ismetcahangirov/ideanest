@@ -9,6 +9,7 @@ import az.ideanest.notification.infrastructure.EmailComposer;
 import az.ideanest.notification.infrastructure.EmailContent;
 import az.ideanest.notification.infrastructure.EmailRenderer;
 import az.ideanest.notification.infrastructure.RenderedEmail;
+import az.ideanest.shared.ReaderLocale;
 import az.ideanest.support.AbstractIntegrationTest;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -83,6 +84,34 @@ class EmailCopyTests extends AbstractIntegrationTest {
 
     private static final String RECIPIENT = "Aysel";
 
+    /**
+     * §21.1's four, as {@code EmailChannelSender} builds them off the recipient's account.
+     *
+     * <p>Every rendering check below runs against all four rather than against the default
+     * bundle alone — issue #324. A bundle with no row for a key falls back to
+     * {@code messages.properties}, so a Turkish email missing one line is an email that is
+     * three-quarters Turkish and reads as a bug in the platform rather than in a file; and a
+     * translated line referring to a fact its type does not carry leaves the same invisible gap
+     * the English one would, in a language nobody on the team is reading.
+     */
+    private static final List<Locale> LANGUAGES =
+            ReaderLocale.SUPPORTED.stream().map(Locale::forLanguageTag).toList();
+
+    /** The primary language, for the assertions that are about one rendering rather than four. */
+    private static final Locale PRIMARY = Locale.forLanguageTag(ReaderLocale.PRIMARY);
+
+    /**
+     * The languages that have a file of their own.
+     *
+     * <p>English is not one: it lives in {@code messages.properties} itself, so that a key no
+     * translation has still resolves to a finished sentence rather than to a missing-key throw.
+     * That is also why {@code spring.messages.fallback-to-system-locale} is off — with it on, a
+     * request for English would fall past the absent {@code messages_en} to the JVM's own
+     * language, and an English reader on a Turkish host would be sent Turkish.
+     */
+    private static final List<String> TRANSLATED =
+            ReaderLocale.SUPPORTED.stream().filter(tag -> !"en".equals(tag)).toList();
+
     @Autowired
     private EmailComposer composer;
 
@@ -97,15 +126,17 @@ class EmailCopyTests extends AbstractIntegrationTest {
     @EnumSource(NotificationType.class)
     @DisplayName("every notification type renders a complete email")
     void everyTypeRenders(NotificationType type) {
-        EmailContent content = composer.compose(message(type), RECIPIENT);
-        RenderedEmail email = renderer.render(content);
+        for (Locale locale : LANGUAGES) {
+            EmailContent content = composer.compose(message(type), RECIPIENT, locale);
+            RenderedEmail email = renderer.render(content, locale);
 
-        assertThat(email.subject()).as("%s has a subject", type).isNotBlank();
-        assertThat(content.headline()).as("%s opens with something", type).isNotBlank();
-        assertThat(content.paragraphs()).as("%s has a body", type).isNotEmpty();
-        assertThat(content.paragraphs()).allSatisfy(paragraph -> assertThat(paragraph)
-                .as("%s has no empty paragraph", type)
-                .isNotBlank());
+            assertThat(email.subject()).as("%s has a subject in %s", type, locale).isNotBlank();
+            assertThat(content.headline()).as("%s opens with something in %s", type, locale).isNotBlank();
+            assertThat(content.paragraphs()).as("%s has a body in %s", type, locale).isNotEmpty();
+            assertThat(content.paragraphs()).allSatisfy(paragraph -> assertThat(paragraph)
+                    .as("%s has no empty paragraph in %s", type, locale)
+                    .isNotBlank());
+        }
     }
 
     /**
@@ -121,25 +152,27 @@ class EmailCopyTests extends AbstractIntegrationTest {
     @EnumSource(NotificationType.class)
     @DisplayName("no rendered email leaves a placeholder, a null, or a gap where a fact should be")
     void nothingIsLeftUnfilled(NotificationType type) {
-        EmailContent content = composer.compose(message(type), RECIPIENT);
-        RenderedEmail email = renderer.render(content);
+        for (Locale locale : LANGUAGES) {
+            EmailContent content = composer.compose(message(type), RECIPIENT, locale);
+            RenderedEmail email = renderer.render(content, locale);
 
-        for (String part : List.of(email.subject(), email.text(), email.html())) {
-            assertThat(part)
-                    .as("%s renders every argument its copy refers to", type)
-                    .doesNotContainPattern("\\{\\d}");
-            assertThat(part).as("%s has no null fact", type).doesNotContain("null");
+            for (String part : List.of(email.subject(), email.text(), email.html())) {
+                assertThat(part)
+                        .as("%s renders every argument its %s copy refers to", type, locale)
+                        .doesNotContainPattern("\\{\\d}");
+                assertThat(part).as("%s has no null fact in %s", type, locale).doesNotContain("null");
+            }
+
+            // The gap check is against the sentences rather than the rendered parts: both
+            // layouts are indented, so runs of spaces are ordinary there and would make this
+            // assertion fire on the whitespace of the template instead of on the copy.
+            List<String> sentences = new java.util.ArrayList<>(content.paragraphs());
+            sentences.add(content.subject());
+            sentences.add(content.headline());
+            assertThat(sentences).allSatisfy(sentence -> assertThat(sentence)
+                    .as("%s refers to no fact it does not carry in %s -- see EmailFacts", type, locale)
+                    .doesNotContain(EmailFactsHole.DOUBLE_SPACE));
         }
-
-        // The gap check is against the sentences rather than the rendered parts: both
-        // layouts are indented, so runs of spaces are ordinary there and would make this
-        // assertion fire on the whitespace of the template instead of on the copy.
-        List<String> sentences = new java.util.ArrayList<>(content.paragraphs());
-        sentences.add(content.subject());
-        sentences.add(content.headline());
-        assertThat(sentences).allSatisfy(sentence -> assertThat(sentence)
-                .as("%s refers to no fact it does not carry -- see EmailFacts", type)
-                .doesNotContain(EmailFactsHole.DOUBLE_SPACE));
     }
 
     /**
@@ -154,8 +187,8 @@ class EmailCopyTests extends AbstractIntegrationTest {
     @EnumSource(NotificationType.class)
     @DisplayName("the plain-text part carries the same headline and destination as the HTML")
     void bothPartsAgree(NotificationType type) {
-        EmailContent content = composer.compose(message(type), RECIPIENT);
-        RenderedEmail email = renderer.render(content);
+        EmailContent content = composer.compose(message(type), RECIPIENT, PRIMARY);
+        RenderedEmail email = renderer.render(content, PRIMARY);
 
         assertThat(email.text()).as("%s: headline in the text part", type).contains(content.headline());
         assertThat(email.html()).as("%s: headline in the HTML part", type).contains(content.headline());
@@ -181,7 +214,7 @@ class EmailCopyTests extends AbstractIntegrationTest {
     @Test
     @DisplayName("a pledge confirmation links to the campaign it is about")
     void thePledgeConfirmationLinksToItsCampaign() {
-        EmailContent content = composer.compose(message(NotificationType.PLEDGE_CONFIRMED), RECIPIENT);
+        EmailContent content = composer.compose(message(NotificationType.PLEDGE_CONFIRMED), RECIPIENT, PRIMARY);
 
         assertThat(content.actionUrl()).endsWith("/projects/01890000-0000-7000-8000-000000000001");
     }
@@ -195,7 +228,7 @@ class EmailCopyTests extends AbstractIntegrationTest {
     @Test
     @DisplayName("a new-device alert links to the session list rather than to a campaign")
     void theSecurityAlertLinksToTheSessions() {
-        EmailContent content = composer.compose(message(NotificationType.NEW_DEVICE_SIGN_IN), RECIPIENT);
+        EmailContent content = composer.compose(message(NotificationType.NEW_DEVICE_SIGN_IN), RECIPIENT, PRIMARY);
 
         assertThat(content.actionUrl()).endsWith("/settings/sessions");
     }
@@ -211,8 +244,8 @@ class EmailCopyTests extends AbstractIntegrationTest {
     @Test
     @DisplayName("an amount is rendered exactly as it was stored, to the currency's scale")
     void anAmountIsNotRounded() {
-        RenderedEmail email =
-                renderer.render(composer.compose(message(NotificationType.PLEDGE_CONFIRMED), RECIPIENT));
+        RenderedEmail email = renderer.render(
+                composer.compose(message(NotificationType.PLEDGE_CONFIRMED), RECIPIENT, PRIMARY), PRIMARY);
 
         assertThat(email.text()).contains("120.00 AZN").doesNotContain("120.0 ").doesNotContain("120 AZN");
     }
@@ -230,7 +263,7 @@ class EmailCopyTests extends AbstractIntegrationTest {
     @Test
     @DisplayName("copy names the campaign when the document carries its title")
     void namedCopyIsUsedWhenThereIsATitle() {
-        EmailContent content = composer.compose(named(NotificationType.GOAL_REACHED), RECIPIENT);
+        EmailContent content = composer.compose(named(NotificationType.GOAL_REACHED), RECIPIENT, PRIMARY);
 
         assertThat(content.subject()).contains(TITLE);
         assertThat(content.headline()).contains(TITLE);
@@ -249,7 +282,8 @@ class EmailCopyTests extends AbstractIntegrationTest {
     @Test
     @DisplayName("copy without a title falls back to the sentence that needs none")
     void plainCopyIsUsedWhenThereIsNoTitle() {
-        EmailContent content = composer.compose(message(NotificationType.GOAL_REACHED), RECIPIENT);
+        EmailContent content =
+                composer.compose(message(NotificationType.GOAL_REACHED), RECIPIENT, Locale.ENGLISH);
 
         assertThat(content.subject()).isEqualTo("The goal has been reached");
         assertThat(content.paragraphs()).allSatisfy(paragraph -> assertThat(paragraph)
@@ -296,22 +330,24 @@ class EmailCopyTests extends AbstractIntegrationTest {
     @EnumSource(NotificationType.class)
     @DisplayName("the campaign-naming copy leaves no placeholder, null or gap either")
     void namedCopyIsAlsoComplete(NotificationType type) {
-        EmailContent content = composer.compose(named(type), RECIPIENT);
-        RenderedEmail email = renderer.render(content);
+        for (Locale locale : LANGUAGES) {
+            EmailContent content = composer.compose(named(type), RECIPIENT, locale);
+            RenderedEmail email = renderer.render(content, locale);
 
-        for (String part : List.of(email.subject(), email.text(), email.html())) {
-            assertThat(part)
-                    .as("%s renders every argument its named copy refers to", type)
-                    .doesNotContainPattern("\\{\\d}");
-            assertThat(part).as("%s has no null fact", type).doesNotContain("null");
+            for (String part : List.of(email.subject(), email.text(), email.html())) {
+                assertThat(part)
+                        .as("%s renders every argument its named %s copy refers to", type, locale)
+                        .doesNotContainPattern("\\{\\d}");
+                assertThat(part).as("%s has no null fact in %s", type, locale).doesNotContain("null");
+            }
+
+            List<String> sentences = new java.util.ArrayList<>(content.paragraphs());
+            sentences.add(content.subject());
+            sentences.add(content.headline());
+            assertThat(sentences).allSatisfy(sentence -> assertThat(sentence)
+                    .as("%s refers to no fact it does not carry in %s -- see EmailFacts", type, locale)
+                    .doesNotContain(EmailFactsHole.DOUBLE_SPACE));
         }
-
-        List<String> sentences = new java.util.ArrayList<>(content.paragraphs());
-        sentences.add(content.subject());
-        sentences.add(content.headline());
-        assertThat(sentences).allSatisfy(sentence -> assertThat(sentence)
-                .as("%s refers to no fact it does not carry -- see EmailFacts", type)
-                .doesNotContain(EmailFactsHole.DOUBLE_SPACE));
     }
 
     /**
@@ -325,7 +361,7 @@ class EmailCopyTests extends AbstractIntegrationTest {
     @Test
     @DisplayName("a campaign message links to the two-segment public path")
     void theButtonUsesThePublicPath() {
-        EmailContent content = composer.compose(named(NotificationType.PLEDGE_CONFIRMED), RECIPIENT);
+        EmailContent content = composer.compose(named(NotificationType.PLEDGE_CONFIRMED), RECIPIENT, PRIMARY);
 
         assertThat(content.actionUrl()).endsWith("/projects/aysel-studio/xari-bulbul-ceramics");
     }
@@ -348,9 +384,89 @@ class EmailCopyTests extends AbstractIntegrationTest {
                 .as("§4.10 gives the twenty-four hour reminder push and in-app only")
                 .doesNotContain(NotificationChannel.EMAIL);
 
-        assertThat(renderer.render(composer.compose(message(NotificationType.DEADLINE_24H), RECIPIENT))
+        assertThat(renderer.render(
+                                composer.compose(message(NotificationType.DEADLINE_24H), RECIPIENT, PRIMARY),
+                                PRIMARY)
                         .subject())
                 .isNotBlank();
+    }
+
+    // ------------------------------------------------------------------
+    // The bundles themselves -- #324
+    // ------------------------------------------------------------------
+
+    /**
+     * That every language holds every key English does.
+     *
+     * <p>A missing row does not throw: {@code ResourceBundle} falls back to the default bundle,
+     * so the email goes out with one English sentence in the middle of it. That is the defect
+     * this asserts against, and it is invisible to everybody who reads the language the file was
+     * written in.
+     */
+    @Test
+    @DisplayName("every language carries every key the English bundle does")
+    void everyLanguageIsComplete() throws java.io.IOException {
+        java.util.Properties english = bundleFile("messages.properties");
+
+        for (String tag : TRANSLATED) {
+            java.util.Properties translated = bundleFile("messages_" + tag + ".properties");
+
+            List<String> missing = english.stringPropertyNames().stream()
+                    .filter(key -> key.startsWith("email."))
+                    .filter(key -> !translated.containsKey(key))
+                    .sorted()
+                    .toList();
+
+            assertThat(missing)
+                    .withFailMessage(
+                            "The %s bundle has no row for these keys, so an email in that language"
+                                    + " would carry English sentences:%n  %s",
+                            tag, String.join(System.lineSeparator() + "  ", missing))
+                    .isEmpty();
+        }
+    }
+
+    /**
+     * That no translation carries a lone apostrophe.
+     *
+     * <p>Every row is a {@code MessageFormat} pattern, where a single quote opens a literal
+     * section: a Turkish sentence written {@code IdeaNest'e {1} geldi} prints the placeholder
+     * as four characters rather than substituting the campaign. Turkish attaches case suffixes
+     * to proper nouns with an apostrophe, so this is a trap the language walks into by writing
+     * ordinary prose, and the failure lands in a subject line.
+     *
+     * <p>Doubling the quote is the escape and is allowed; what is refused is a lone one.
+     */
+    @Test
+    @DisplayName("no translated line carries a lone apostrophe, which would swallow a placeholder")
+    void noTranslationOpensALiteralSection() throws java.io.IOException {
+        for (String tag : TRANSLATED) {
+            java.util.Properties translated = bundleFile("messages_" + tag + ".properties");
+
+            for (String key : translated.stringPropertyNames()) {
+                assertThat(translated.getProperty(key).replace("''", ""))
+                        .as("%s %s opens a MessageFormat literal section", tag, key)
+                        .doesNotContain("'");
+            }
+        }
+    }
+
+    /**
+     * One bundle, read as the file it is rather than through {@link ResourceBundle}.
+     *
+     * <p>{@code ResourceBundle} falls back to the default bundle for a key a translation is
+     * missing, which is exactly the behaviour the first of these two tests exists to detect —
+     * asking it whether a key is present would always answer yes.
+     */
+    private static java.util.Properties bundleFile(String name) throws java.io.IOException {
+        java.util.Properties properties = new java.util.Properties();
+
+        try (java.io.InputStream in = EmailCopyTests.class.getResourceAsStream("/" + name)) {
+            assertThat(in).as("%s is on the classpath", name).isNotNull();
+            properties.load(new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8));
+        }
+
+        return properties;
     }
 
     // ------------------------------------------------------------------

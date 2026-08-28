@@ -132,6 +132,16 @@ class EmailTransportTests extends AbstractIntegrationTest {
         now = Instant.now().truncatedTo(ChronoUnit.MICROS);
         handle = "email-" + SEQUENCE.incrementAndGet();
         backerId = Campaigns.creator(dataSource, handle);
+
+        /*
+         * THE FIXTURE'S LANGUAGE IS STATED RATHER THAN INHERITED -- issue #324. Emails go out
+         * in the recipient's own language now, and `users.locale` defaults to `az`, so a suite
+         * about transport that asserted an English subject would be asserting the column's
+         * default. It is English here because the assertions below are written in English;
+         * `theLanguageFollowsTheAccount` is the test that is actually about the language.
+         */
+        new JdbcTemplate(dataSource).update("UPDATE users SET locale = 'en' WHERE id = ?", backerId);
+
         projectId = Campaigns.seed(dataSource, backerId, handle)
                 .state("LIVE")
                 .title(CAMPAIGN)
@@ -153,6 +163,29 @@ class EmailTransportTests extends AbstractIntegrationTest {
     // ------------------------------------------------------------------
     // What arrives
     // ------------------------------------------------------------------
+
+    /**
+     * That the language comes off the account rather than off the platform — issue #324.
+     *
+     * <p>The one assertion in this suite that is about the language rather than about the
+     * transport, and the reason the fixture above states its own: {@code EmailChannelSender}
+     * reads {@code users.locale} off the {@code UserAccount} it already loaded for the address,
+     * so changing the column changes the message. Before #324 every email came out of the root
+     * bundle and this test would have passed with the same English subject as the one below.
+     */
+    @Test
+    @DisplayName("the language of an email is the recipient's, not the platform's")
+    void theLanguageFollowsTheAccount() throws Exception {
+        new JdbcTemplate(dataSource).update("UPDATE users SET locale = 'az' WHERE id = ?", backerId);
+
+        confirm();
+        drain();
+
+        MimeMessage received = MailServerStub.awaitOne();
+        assertThat(received.getSubject())
+                .as("the same notification, in the language the account reads")
+                .isEqualTo(CAMPAIGN + " kampaniyasına dəstəyiniz təsdiqləndi");
+    }
 
     @Test
     @DisplayName("a pending email notification reaches the relay as a message with both parts")

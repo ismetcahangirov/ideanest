@@ -1,5 +1,6 @@
 package az.ideanest.project.application;
 
+import az.ideanest.shared.ReaderLocale;
 import az.ideanest.project.domain.Category;
 import az.ideanest.project.domain.CategoryTranslation;
 import az.ideanest.project.domain.Subcategory;
@@ -59,7 +60,7 @@ public class Taxonomy {
      * §21.1. Azerbaijani is the primary language, which is what makes it the
      * fallback rather than English.
      */
-    public static final String PRIMARY_LOCALE = "az";
+    public static final String PRIMARY_LOCALE = ReaderLocale.PRIMARY;
 
     /**
      * The four codes of §21.1, in phase order, and the same set the database
@@ -67,7 +68,7 @@ public class Taxonomy {
      * language the platform does not ship resolves to the primary one rather
      * than to a locale nothing will ever have rows for.
      */
-    public static final List<String> SUPPORTED_LOCALES = List.of("az", "en", "ru", "tr");
+    public static final List<String> SUPPORTED_LOCALES = ReaderLocale.SUPPORTED;
 
     /**
      * @param name resolved against the requested locale, never null
