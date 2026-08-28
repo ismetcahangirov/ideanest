@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { ConsoleIndex } from '../../../components/admin/ConsoleIndex';
 import { privatePageMetadata } from '../../../lib/seo/metadata';
+import { consoleIndexCopy } from '../../../lib/i18n/shell-copy.server';
 
 /**
  * The console's front door — §4.11, issue #294.
@@ -15,11 +17,11 @@ import { privatePageMetadata } from '../../../lib/seo/metadata';
  * administration surface has no business in an index, so this emits `noindex, nofollow` and
  * no social card.
  */
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Administration console',
-  description: 'The platform modules, which of them have a screen, and what the rest wait on.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('admin.index');
+  return privatePageMetadata({ title: t('title'), description: t('metaDescription') });
+}
 
-export default function AdminConsolePage() {
-  return <ConsoleIndex />;
+export default async function AdminConsolePage() {
+  return <ConsoleIndex copy={await consoleIndexCopy()} />;
 }

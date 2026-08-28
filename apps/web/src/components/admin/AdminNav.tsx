@@ -3,6 +3,7 @@
 import { Link } from '../../i18n/navigation';
 import { usePathname } from '../../i18n/navigation';
 import { CONSOLE_GROUPS, isCurrentConsoleLink } from '../../lib/admin/navigation';
+import type { AdminShellCopy } from '../../lib/i18n/admin-copy';
 
 /**
  * The console's own navigation — §4.11, issue #294.
@@ -33,24 +34,29 @@ import { CONSOLE_GROUPS, isCurrentConsoleLink } from '../../lib/admin/navigation
  * settings — none, beyond 150ms of colour on a control. A console is worked in, and a rail
  * that animated would animate on every screen in it.
  */
-export function AdminNav() {
+export interface AdminNavProps {
+  /** The rail's words, resolved by the layout — see `lib/i18n/admin-copy.ts`. */
+  readonly copy: AdminShellCopy;
+}
+
+export function AdminNav({ copy }: AdminNavProps) {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Administration console" className="lg:sticky lg:top-8">
+    <nav aria-label={copy.navLabel} className="lg:sticky lg:top-8">
       <ul className="flex list-none gap-x-6 gap-y-8 overflow-x-auto pb-2 lg:flex-col lg:overflow-visible lg:pb-0">
         {CONSOLE_GROUPS.map((group) => (
           <li key={group.heading} className="min-w-max lg:min-w-0">
             <h2 className="px-3 text-xs font-medium tracking-[0.08em] text-white/40 uppercase">
-              {group.heading}
+              {copy.groups[group.heading]}
             </h2>
             <ul className="mt-2 flex list-none gap-1 lg:flex-col">
               {group.links.map((link) => {
-                const current = isCurrentConsoleLink(link.href, pathname);
+                const current = isCurrentConsoleLink(link, pathname);
                 return (
-                  <li key={link.href}>
+                  <li key={link}>
                     <Link
-                      href={link.href}
+                      href={link}
                       aria-current={current ? 'page' : undefined}
                       className={[
                         'block rounded-lg border-l-2 px-3 py-2 text-[15px] transition-colors duration-150 ease-in-out',
@@ -60,7 +66,7 @@ export function AdminNav() {
                           : 'border-transparent text-white/64 hover:bg-surface-2 hover:text-white',
                       ].join(' ')}
                     >
-                      {link.label}
+                      {copy.links[link]}
                     </Link>
                   </li>
                 );

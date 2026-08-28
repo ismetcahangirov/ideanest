@@ -2,7 +2,7 @@ import { Link } from '../../i18n/navigation';
 import type { ReactNode } from 'react';
 import { MAIN_CONTENT_ID, SkipLink } from '../shell/SkipLink';
 import { AdminNav } from './AdminNav';
-import { shellCopy } from '../../lib/i18n/shell-copy.server';
+import { adminShellCopy, shellCopy } from '../../lib/i18n/shell-copy.server';
 
 /**
  * The frame every console screen renders inside — §4.11 and §4.13 WS-01, issue #294.
@@ -67,11 +67,13 @@ export interface AdminAreaProps {
 
 export async function AdminArea({ children }: AdminAreaProps) {
   /*
-   * The console's own copy is still English (see `lib/admin/navigation.ts`), but the skip
-   * link is the shell's rather than the console's — it is the same control on every page of
-   * the platform and it is drawn from the same key.
+   * The skip link is the shell's rather than the console's: it is the same control on every
+   * page of the platform and it is drawn from the same key. Everything else on this frame is
+   * the console's own, and translated since #324 — `lib/i18n/admin-copy.ts` records why the
+   * earlier decision to leave it English was reversed, and what is still English inside it.
    */
   const { skipToContent } = await shellCopy();
+  const copy = await adminShellCopy();
 
   return (
     <div className="relative flex min-h-dvh flex-col">
@@ -89,7 +91,7 @@ export async function AdminArea({ children }: AdminAreaProps) {
             className="rounded-lg text-sm font-semibold tracking-[-0.01em] text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
           >
             IdeaNest{' '}
-            <span className="font-normal text-white/48">Console</span>
+            <span className="font-normal text-white/48">{copy.console}</span>
           </Link>
 
           {/*
@@ -101,7 +103,7 @@ export async function AdminArea({ children }: AdminAreaProps) {
             href="/"
             className="rounded-lg text-sm text-white/64 transition-colors duration-150 ease-in-out hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
           >
-            Back to the site
+            {copy.backToSite}
           </Link>
         </div>
       </div>
@@ -113,7 +115,7 @@ export async function AdminArea({ children }: AdminAreaProps) {
       >
         <div className="flex flex-col gap-10 lg:flex-row lg:gap-14">
           <div className="lg:w-[15rem] lg:shrink-0">
-            <AdminNav />
+            <AdminNav copy={copy} />
           </div>
           {/*
             `min-w-0` so a ledger table or a provider reference scrolls inside its own

@@ -27,6 +27,12 @@ import { type ProfileCopy, profileCopyFrom } from './profile-copy';
 import { type ProjectCardCopy, projectCardCopyFrom } from './card-copy';
 import { type FeedCopy, feedCopyFrom } from './feed-copy';
 import {
+  type AdminShellCopy,
+  type ConsoleIndexCopy,
+  adminShellCopyFrom,
+  consoleIndexCopyFrom,
+} from './admin-copy';
+import {
   type EmailChangePanelCopy,
   type PasswordChangePanelCopy,
   emailChangePanelCopyFrom,
@@ -165,6 +171,20 @@ export async function feedCopy(): Promise<FeedCopy> {
     await getTranslations('discovery.filters'),
     await getTranslations('discovery.suggest'),
   );
+}
+
+/**
+ * The administration console's frame — `admin-copy.ts` records the decision behind it.
+ *
+ * Two accessors because two routes need different halves: every console route renders the
+ * bar and the rail, and only `/admin` renders the index that describes the sixteen modules.
+ */
+export async function adminShellCopy(): Promise<AdminShellCopy> {
+  return adminShellCopyFrom(await getTranslations('admin'));
+}
+
+export async function consoleIndexCopy(): Promise<ConsoleIndexCopy> {
+  return consoleIndexCopyFrom(await getTranslations('admin'));
 }
 
 /** The checkout's words. `checkout-copy.ts` explains why the whole of it is one prop. */

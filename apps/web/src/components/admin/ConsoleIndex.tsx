@@ -1,4 +1,6 @@
 import { Link } from '../../i18n/navigation';
+import type { ConsoleIndexCopy } from '../../lib/i18n/admin-copy';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import {
   CONSOLE_MODULES,
   builtModuleCount,
@@ -51,12 +53,11 @@ import {
  * second component in the kit whose only purpose is to be importable from a server.
  */
 
-/** What a reader is told the module's state is. Words, because colour is not enough. */
-const STATE_LABELS: Readonly<Record<ModuleState, string>> = {
-  built: 'Built',
-  partial: 'Part built',
-  blocked: 'Not built',
-};
+/*
+ * WHAT A READER IS TOLD THE STATE IS lives in `admin.states` since #324. Words, because
+ * colour is not enough (docs/ui-kit.md §9.2) — the tone below sits beside the word and never
+ * instead of it.
+ */
 
 /**
  * The second signal, never the only one.
@@ -78,11 +79,18 @@ function issueHref(issue: number): string {
   return `https://github.com/ismetcahangirov/ideanest/issues/${issue}`;
 }
 
-function ModuleRow({ module }: { readonly module: ConsoleModule }) {
+function ModuleRow({
+  module,
+  copy,
+}: {
+  readonly module: ConsoleModule;
+  readonly copy: ConsoleIndexCopy;
+}) {
+  const words = copy.modules[module.code];
   const heading = (
     <span className="text-[15px] font-medium text-white">
       <span className="mr-2 font-mono text-xs tracking-[0.04em] text-white/40">{module.code}</span>
-      {module.title}
+      {words?.title}
     </span>
   );
 
@@ -100,20 +108,20 @@ function ModuleRow({ module }: { readonly module: ConsoleModule }) {
           </Link>
         )}
         <span className={`${TAG} ${STATE_TONES[module.state]}`}>
-          {STATE_LABELS[module.state]}
+          {copy.states[module.state]}
         </span>
       </div>
 
-      <p className="mt-2 max-w-[68ch] text-sm text-white/64">{module.summary}</p>
+      <p className="mt-2 max-w-[68ch] text-sm text-white/64">{words?.summary}</p>
 
-      {module.waitingOn === undefined ? null : (
+      {words?.waitingOn === undefined ? null : (
         <p className="mt-2 max-w-[68ch] text-sm text-white/48">
-          {module.waitingOn}{' '}
+          {words.waitingOn}{' '}
           <a
             href={issueHref(module.issue)}
             className="text-white/64 underline underline-offset-2 transition-colors duration-150 ease-in-out hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
           >
-            Issue #{module.issue}
+            {fillPlaceholders(copy.issue, { issue: String(module.issue) })}
           </a>
         </p>
       )}
@@ -121,32 +129,33 @@ function ModuleRow({ module }: { readonly module: ConsoleModule }) {
   );
 }
 
-export function ConsoleIndex() {
+export interface ConsoleIndexProps {
+  /** The page's words, resolved by the route — see `lib/i18n/admin-copy.ts`. */
+  readonly copy: ConsoleIndexCopy;
+}
+
+export function ConsoleIndex({ copy }: ConsoleIndexProps) {
   const built = builtModuleCount();
 
   return (
     <div>
       <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
-        Administration console
+        {copy.title}
       </h1>
       <p className="mt-2 max-w-[68ch] text-sm text-white/64">
-        The {CONSOLE_MODULES.length} modules §4.11 describes. {built} of them have a screen;
-        the rest say what they are waiting for, because a backlog that reads as though the
-        console were nearly finished is worse than one that names the gap.
+        {fillPlaceholders(copy.standfirst, {
+          total: String(CONSOLE_MODULES.length),
+          built: String(built),
+        })}
       </p>
 
       <ul className="mt-8 flex list-none flex-col gap-3">
         {CONSOLE_MODULES.map((module) => (
-          <ModuleRow key={module.code} module={module} />
+          <ModuleRow key={module.code} module={module} copy={copy} />
         ))}
       </ul>
 
-      <p className="mt-8 max-w-[68ch] text-sm text-white/48">
-        No screen here is a gate. Until there is a role model in the access token, every
-        endpoint the console calls refuses a caller who is not platform staff, and each screen
-        renders that refusal — a check in the browser would be a second, weaker copy of one
-        the service already makes correctly.
-      </p>
+      <p className="mt-8 max-w-[68ch] text-sm text-white/48">{copy.footnote}</p>
     </div>
   );
 }

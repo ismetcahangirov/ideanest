@@ -248,6 +248,130 @@
       }
     }
   },
+  "admin": {
+    "console": "Konsol",
+    "backToSite": "Sayta qayıt",
+    "navLabel": "İdarəetmə konsolu",
+    "groups": {
+      "content": "Məzmun",
+      "curation": "Kurasiya",
+      "people": "İnsanlar",
+      "money": "Pul",
+      "platform": "Platforma"
+    },
+    "links": {
+      "/admin/moderation": "Moderasiya növbəsi",
+      "/admin/moderation/content": "Məzmun şikayətləri",
+      "/admin/moderation/profiles": "Profil şikayətləri",
+      "/admin/curation": "Kolleksiyalar",
+      "/admin/curation/badges": "Redaksiya nişanları",
+      "/admin/curation/open-calls": "Açıq çağırışlar",
+      "/admin/curation/placements": "Yerləşdirmə",
+      "/admin/taxonomy": "Taksonomiya",
+      "/admin/users": "Hesablar",
+      "/admin/support": "Dəstək",
+      "/admin/staff": "İşçilər və rollar",
+      "/admin/payments": "Ödəniş jurnalı",
+      "/admin/ledger": "Baş kitab",
+      "/admin/reconciliation": "Uzlaşdırma",
+      "/admin/payouts": "Ödənişlər",
+      "/admin/refunds": "Geri qaytarmalar",
+      "/admin/disputes": "Ödəniş mübahisələri",
+      "/admin/fees": "Komissiyalar",
+      "/admin/analytics": "Analitika",
+      "/admin/audit": "Audit jurnalı",
+      "/admin/email-templates": "E-poçt şablonları",
+      "/admin/flags": "Funksiya bayraqları",
+      "/admin/health": "Sistem vəziyyəti"
+    },
+    "states": {
+      "built": "Hazırdır",
+      "partial": "Qismən hazırdır",
+      "blocked": "Hazır deyil"
+    },
+    "index": {
+      "title": "İdarəetmə konsolu",
+      "metaDescription": "Platforma modulları, hansılarının ekranı var və qalanların nəyi gözlədiyi.",
+      "standfirst": "§4.11-in təsvir etdiyi {total} modul. Onlardan {built} ədədinin ekranı var; qalanları nəyi gözlədiyini bildirir, çünki konsolun az qala bitdiyi təəssüratını yaradan siyahı, boşluğu adı ilə çağıran siyahıdan pisdir.",
+      "issue": "Məsələ #{issue}",
+      "footnote": "Buradakı heç bir ekran keçid nəzarəti deyil. Giriş tokenində rol modeli olana qədər konsolun müraciət etdiyi hər son nöqtə platforma işçisi olmayan çağırışı rədd edir və hər ekran həmin rəddi göstərir — brauzerdəki yoxlama, xidmətin onsuz da düzgün etdiyi yoxlamanın ikinci, daha zəif surəti olardı."
+    },
+    "modules": {
+      "AD-01": {
+        "title": "Layihə moderasiyası",
+        "summary": "Təqdimat növbəsi, onun üç nəticəsi və hər birinin arxasındakı qərar."
+      },
+      "AD-02": {
+        "title": "Etibar və təhlükəsizlik",
+        "summary": "Kampaniyalar barədə şikayətlər və ən ağırlarına cavab verən dayandırma.",
+        "waitingOn": "Fırıldaq siqnalları və şəxsiyyət yoxlaması qurulub və qiymətləndirilir (#108, #105), lakin heç birinin burada ekranı yoxdur — hər iki növbə yalnız API vasitəsilə əlçatandır."
+      },
+      "AD-03": {
+        "title": "Kurasiya",
+        "summary": "Redaksiya kolleksiyaları, verdikləri nişanlar, açıq çağırışlar və harada göründükləri."
+      },
+      "AD-04": {
+        "title": "İstifadəçi idarəetməsi",
+        "summary": "Hesabı axtar, vəziyyətini oxu, dayandır, geri burax — və burada kimin işlədiyini bildir.",
+        "waitingOn": "Auditlə müşayiət olunan təqlid siyasət cavabına dayanır: başqasının adına verilmiş seansın nə edə bilməyəcəyi §17-nin həll etmədiyi sualdır (#299)."
+      },
+      "AD-05": {
+        "title": "Maliyyə",
+        "summary": "Hər ödəniş və mühasibat yazılışı, hər müəllifə nə borclu olduğumuz, hamısının uzlaşıb-uzlaşmadığı və pul çıxmazdan əvvəlki imzalar."
+      },
+      "AD-06": {
+        "title": "Geri qaytarmalar",
+        "summary": "Tam və qismən, səbəb kodları və hər birinin arxasında bir mühasibat yazılışı ilə."
+      },
+      "AD-07": {
+        "title": "Ödəniş mübahisələri",
+        "summary": "Bildiriş, sübutlar, nəticə — və hər birinin qarşısındakı son tarix.",
+        "waitingOn": "Sübutlar burada qeyd olunur və provayder vasitəsilə təqdim edilir: §9.3 provayder interfeysinə sübut yükləməsi vermir, ona görə sənədlər hələ də onların konsolundan keçir (#308)."
+      },
+      "AD-08": {
+        "title": "Taksonomiya",
+        "summary": "Kateqoriyalar, alt kateqoriyalar və etiketlər, hər dil üçün tərcüməsi ilə.",
+        "waitingOn": "Heç nə arxivə salına bilmir: kampaniyalar bu sətirlərə istinad edir və birini redaktordan gizlədib kampaniyaları onun altında saxlamaq üçün V6-da olmayan sütun lazımdır (#309)."
+      },
+      "AD-09": {
+        "title": "Məzmun moderasiyası",
+        "summary": "Şərhlər, kampaniya yenilikləri və insanlar barədə şikayətlər."
+      },
+      "AD-10": {
+        "title": "Dəstək",
+        "summary": "Hesab konteksti və nə edildiyinin tarixçəsi ilə müraciətlər.",
+        "waitingOn": "İşçilər söhbəti hesaba qarşı qeyd edir; hələ ictimai forma yoxdur, bu isə öz sürət məhdudiyyəti və anonim göndərən sualı olan ayrıca səthdir (#310)."
+      },
+      "AD-11": {
+        "title": "Komissiya konfiqurasiyası",
+        "summary": "Platforma və emal dərəcələri, onların istisnaları və indiyədək tətbiq olunmuş bütün şərtlər."
+      },
+      "AD-12": {
+        "title": "Funksiya bayraqları",
+        "summary": "Tədricən yayım və dediyini edən dayandırma açarı.",
+        "waitingOn": "Yayım qurulub, eksperimentlər yox — variantı qiymətləndirmək üçün metrik lazımdır, heç nə isə onu ölçmür (#312)."
+      },
+      "AD-13": {
+        "title": "Analitika",
+        "summary": "Bütün platforma üzrə həcm, uğur nisbəti və orta dəstək məbləği.",
+        "waitingOn": "Kohortlar üçün dəstəkçinin ilk dəstəyinə əsaslanan yığım, huni üçün isə ziyarətdən dəstəyə gedən yol lazımdır; heç biri mövcud deyil və ekran onları təxmin etmək əvəzinə bunu bildirir (#313)."
+      },
+      "AD-14": {
+        "title": "Audit jurnalı",
+        "summary": "Hər imtiyazlı əməliyyatın dəyişdirilə bilməyən qeydi, ən yenisi əvvəldə."
+      },
+      "AD-15": {
+        "title": "E-poçt şablonları",
+        "summary": "Redaktə, ilkin baxış və sınaq göndərişi, hər redaktənin yaratdığı versiya ilə.",
+        "waitingOn": "Mövzu və birinci abzas redaktə oluna bilər; başlıq, düymə yazısı və növün şərtli ikinci abzası tədarük olunan kataloqda qalır (#315)."
+      },
+      "AD-16": {
+        "title": "Sistem vəziyyəti",
+        "summary": "Növbə dərinliyi, uğursuz işlər və provayder vəziyyəti, siz açanda ölçülür.",
+        "waitingOn": "Burada heç nə xəbərdarlıq etmir. #138 §18-in müşahidə işidir və kimisə oyadacaq olan hələ də odur; bu səhifə izlənilmir, oxunur (#316)."
+      }
+    }
+  },
   "settings": {
     "language": {
       "title": "Dil və valyuta",

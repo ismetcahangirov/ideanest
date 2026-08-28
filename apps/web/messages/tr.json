@@ -248,6 +248,130 @@
       }
     }
   },
+  "admin": {
+    "console": "Konsol",
+    "backToSite": "Siteye dön",
+    "navLabel": "Yönetim konsolu",
+    "groups": {
+      "content": "İçerik",
+      "curation": "Küratörlük",
+      "people": "Kişiler",
+      "money": "Para",
+      "platform": "Platform"
+    },
+    "links": {
+      "/admin/moderation": "Denetim kuyruğu",
+      "/admin/moderation/content": "İçerik şikâyetleri",
+      "/admin/moderation/profiles": "Profil şikâyetleri",
+      "/admin/curation": "Derlemeler",
+      "/admin/curation/badges": "Editör rozetleri",
+      "/admin/curation/open-calls": "Açık çağrılar",
+      "/admin/curation/placements": "Yerleşim",
+      "/admin/taxonomy": "Taksonomi",
+      "/admin/users": "Hesaplar",
+      "/admin/support": "Destek",
+      "/admin/staff": "Çalışanlar ve roller",
+      "/admin/payments": "Ödeme günlüğü",
+      "/admin/ledger": "Defter",
+      "/admin/reconciliation": "Mutabakat",
+      "/admin/payouts": "Ödemeler",
+      "/admin/refunds": "İadeler",
+      "/admin/disputes": "Ters ibrazlar",
+      "/admin/fees": "Ücretler",
+      "/admin/analytics": "Analitik",
+      "/admin/audit": "Denetim günlüğü",
+      "/admin/email-templates": "E-posta şablonları",
+      "/admin/flags": "Özellik bayrakları",
+      "/admin/health": "Sistem durumu"
+    },
+    "states": {
+      "built": "Hazır",
+      "partial": "Kısmen hazır",
+      "blocked": "Hazır değil"
+    },
+    "index": {
+      "title": "Yönetim konsolu",
+      "metaDescription": "Platform modülleri, hangilerinin ekranı var ve geri kalanı neyi bekliyor.",
+      "standfirst": "§4.11 bölümünün tarif ettiği {total} modül. Bunlardan {built} tanesinin bir ekranı var; geri kalanı neyi beklediğini söylüyor, çünkü konsolu neredeyse bitmiş gibi gösteren bir liste, boşluğu adıyla anan bir listeden kötüdür.",
+      "issue": "Konu #{issue}",
+      "footnote": "Buradaki hiçbir ekran bir kapı değil. Erişim jetonunda bir rol modeli olana dek konsolun çağırdığı her uç nokta, platform çalışanı olmayan bir çağıranı reddeder ve her ekran bu reddi gösterir — tarayıcıdaki bir denetim, servisin zaten doğru yaptığı denetimin ikinci ve daha zayıf bir kopyası olurdu."
+    },
+    "modules": {
+      "AD-01": {
+        "title": "Proje denetimi",
+        "summary": "Başvuru kuyruğu, üç sonucu ve her birinin ardındaki karar."
+      },
+      "AD-02": {
+        "title": "Güven ve güvenlik",
+        "summary": "Kampanyalar hakkındaki şikâyetler ve en ağırlarına yanıt veren askıya alma.",
+        "waitingOn": "Dolandırıcılık sinyalleri ve kimlik incelemesi kuruldu ve puanlanıyor (#108, #105), ancak hiçbirinin burada ekranı yok — iki kuyruğa da yalnızca API üzerinden ulaşılıyor."
+      },
+      "AD-03": {
+        "title": "Küratörlük",
+        "summary": "Editör derlemeleri, verdikleri rozetler, açık çağrılar ve nerede göründükleri."
+      },
+      "AD-04": {
+        "title": "Kullanıcı yönetimi",
+        "summary": "Bir hesabı ara, durumunu oku, durdur, geri al — ve burada kimin çalıştığını söyle.",
+        "waitingOn": "Denetlenen kimliğe bürünme bir politika yanıtına takılı: başkasının adına açılmış bir oturumun neleri yapamayacağı §17 bölümünün çözmediği bir soru (#299)."
+      },
+      "AD-05": {
+        "title": "Finans",
+        "summary": "Her tahsilat ve kayıt, her üreticiye ne borçlu olunduğu, hepsinin tutup tutmadığı ve para çıkmadan önceki imzalar."
+      },
+      "AD-06": {
+        "title": "İadeler",
+        "summary": "Tam ve kısmi, gerekçe kodlarıyla ve her birinin ardında bir defter kaydıyla."
+      },
+      "AD-07": {
+        "title": "Ters ibrazlar",
+        "summary": "Bildirim, kanıt, sonuç — ve her birinin karşısındaki süre.",
+        "waitingOn": "Kanıtlar burada kaydediliyor ve sağlayıcı üzerinden sunuluyor: §9.3 sağlayıcı arayüzüne kanıt yükleme vermiyor, bu yüzden belgeler hâlâ onların konsolundan geçiyor (#308)."
+      },
+      "AD-08": {
+        "title": "Taksonomi",
+        "summary": "Kategoriler, alt kategoriler ve etiketler, her dil için bir çeviriyle.",
+        "waitingOn": "Hiçbir şey kullanımdan kaldırılamıyor: kampanyalar bu satırlara başvuruyor ve birini düzenleyiciden gizleyip kampanyaları altında bırakmak için V6 sürümünde olmayan bir sütun gerekiyor (#309)."
+      },
+      "AD-09": {
+        "title": "İçerik denetimi",
+        "summary": "Yorumlar, kampanya güncellemeleri ve kişiler hakkındaki şikâyetler."
+      },
+      "AD-10": {
+        "title": "Destek",
+        "summary": "Hesap bağlamı ve yapılanların geçmişiyle birlikte talepler.",
+        "waitingOn": "Çalışanlar bir görüşmeyi hesabın altına kaydediyor; henüz herkese açık bir form yok, o da kendi hız sınırı ve anonim gönderen sorusu olan ayrı bir yüzey (#310)."
+      },
+      "AD-11": {
+        "title": "Ücret yapılandırması",
+        "summary": "Platform ve işlem oranları, istisnaları ve bugüne dek uygulanmış bütün koşullar."
+      },
+      "AD-12": {
+        "title": "Özellik bayrakları",
+        "summary": "Kademeli yayma ve dediğini yapan bir kapatma anahtarı.",
+        "waitingOn": "Yayma kuruldu, deneyler değil — bir varyantı yargılamak için bir ölçüt gerekiyor ve hiçbir şey onu ölçmüyor (#312)."
+      },
+      "AD-13": {
+        "title": "Analitik",
+        "summary": "Platformun tamamında hacim, başarı oranı ve ortalama destek.",
+        "waitingOn": "Kohortlar için destekçinin ilk desteğine dayalı bir toplama, huniler için ziyaretten desteğe giden yol gerekiyor; ikisi de yok ve ekran onları yaklaştırmak yerine bunu söylüyor (#313)."
+      },
+      "AD-14": {
+        "title": "Denetim günlüğü",
+        "summary": "Her ayrıcalıklı işlemin değiştirilemez kaydı, en yenisi başta."
+      },
+      "AD-15": {
+        "title": "E-posta şablonları",
+        "summary": "Düzenleme, önizleme ve deneme gönderimi, her düzenlemenin ürettiği sürümle.",
+        "waitingOn": "Konu ve ilk paragraf düzenlenebilir; başlık, düğme yazısı ve bir türün koşullu ikinci paragrafı gelen katalogda kalır (#315)."
+      },
+      "AD-16": {
+        "title": "Sistem durumu",
+        "summary": "Kuyruk derinliği, başarısız işler ve sağlayıcı durumu, siz açtığınızda ölçülür.",
+        "waitingOn": "Burada hiçbir şey uyarı vermiyor. #138, §18 bölümünün gözlemlenebilirlik işi ve birini uyandıracak olan hâlâ o; bu sayfa izlenmez, okunur (#316)."
+      }
+    }
+  },
   "settings": {
     "language": {
       "title": "Dil ve para birimi",

@@ -248,6 +248,130 @@
       }
     }
   },
+  "admin": {
+    "console": "Console",
+    "backToSite": "Back to the site",
+    "navLabel": "Administration console",
+    "groups": {
+      "content": "Content",
+      "curation": "Curation",
+      "people": "People",
+      "money": "Money",
+      "platform": "Platform"
+    },
+    "links": {
+      "/admin/moderation": "Moderation queue",
+      "/admin/moderation/content": "Content reports",
+      "/admin/moderation/profiles": "Profile reports",
+      "/admin/curation": "Collections",
+      "/admin/curation/badges": "Editorial badges",
+      "/admin/curation/open-calls": "Open calls",
+      "/admin/curation/placements": "Placement",
+      "/admin/taxonomy": "Taxonomy",
+      "/admin/users": "Accounts",
+      "/admin/support": "Support",
+      "/admin/staff": "Staff and roles",
+      "/admin/payments": "Payment log",
+      "/admin/ledger": "Ledger",
+      "/admin/reconciliation": "Reconciliation",
+      "/admin/payouts": "Payouts",
+      "/admin/refunds": "Refunds",
+      "/admin/disputes": "Chargebacks",
+      "/admin/fees": "Fees",
+      "/admin/analytics": "Analytics",
+      "/admin/audit": "Audit log",
+      "/admin/email-templates": "Email templates",
+      "/admin/flags": "Feature flags",
+      "/admin/health": "System health"
+    },
+    "states": {
+      "built": "Built",
+      "partial": "Part built",
+      "blocked": "Not built"
+    },
+    "index": {
+      "title": "Administration console",
+      "metaDescription": "The platform modules, which of them have a screen, and what the rest wait on.",
+      "standfirst": "The {total} modules §4.11 describes. {built} of them have a screen; the rest say what they are waiting for, because a backlog that reads as though the console were nearly finished is worse than one that names the gap.",
+      "issue": "Issue #{issue}",
+      "footnote": "No screen here is a gate. Until there is a role model in the access token, every endpoint the console calls refuses a caller who is not platform staff, and each screen renders that refusal — a check in the browser would be a second, weaker copy of one the service already makes correctly."
+    },
+    "modules": {
+      "AD-01": {
+        "title": "Project moderation",
+        "summary": "The submission queue, its three outcomes, and the decision behind each one."
+      },
+      "AD-02": {
+        "title": "Trust and safety",
+        "summary": "Complaints about campaigns, and the suspension that answers the worst of them.",
+        "waitingOn": "Fraud signals and the identity review are built and scored (#108, #105), and neither has a screen here yet — both queues are reachable only through the API."
+      },
+      "AD-03": {
+        "title": "Curation",
+        "summary": "Editorial collections, the badges they grant, open calls, and where they appear."
+      },
+      "AD-04": {
+        "title": "User management",
+        "summary": "Search an account, read its standing, stop it, let it back in — and say who works here.",
+        "waitingOn": "Audited impersonation is blocked on a policy answer: what a session issued in somebody else’s name may not do is a question §17 does not settle (#299)."
+      },
+      "AD-05": {
+        "title": "Finance",
+        "summary": "Every charge and posting, what each creator is owed, whether it all adds up, and the signatures before it leaves."
+      },
+      "AD-06": {
+        "title": "Refunds",
+        "summary": "Full and partial, with reason codes and a ledger entry behind each."
+      },
+      "AD-07": {
+        "title": "Chargebacks",
+        "summary": "Notification, evidence, outcome — and the deadline each one runs against.",
+        "waitingOn": "Evidence is recorded here and submitted through the provider: §9.3 gives the provider interface no evidence upload, so the documents still go through their console (#308)."
+      },
+      "AD-08": {
+        "title": "Taxonomy",
+        "summary": "Categories, subcategories and tags, with a translation per locale.",
+        "waitingOn": "Nothing can be retired: campaigns reference these rows, and hiding one from the editor while leaving them filed under it needs a column V6 does not have (#309)."
+      },
+      "AD-09": {
+        "title": "Content moderation",
+        "summary": "Complaints about comments, campaign updates, and people."
+      },
+      "AD-10": {
+        "title": "Support",
+        "summary": "Tickets with the account context and the history of what was done.",
+        "waitingOn": "Staff record a conversation against an account; there is no public form yet, which is a surface with its own rate limiting and anonymous-sender question (#310)."
+      },
+      "AD-11": {
+        "title": "Fee configuration",
+        "summary": "Platform and processing rates, their exceptions, and every set of terms ever charged."
+      },
+      "AD-12": {
+        "title": "Feature flags",
+        "summary": "Gradual rollout, with a kill switch that means what it says.",
+        "waitingOn": "Rollout is built; experiments are not — a variant needs a metric to judge it by, and nothing measures one (#312)."
+      },
+      "AD-13": {
+        "title": "Analytics",
+        "summary": "Volume, success rate and average pledge, across the whole platform.",
+        "waitingOn": "Cohorts need a rollup keyed on a backer’s first pledge and funnels need the visit-to-pledge path; neither exists, and the screen says so rather than approximating them (#313)."
+      },
+      "AD-14": {
+        "title": "Audit log",
+        "summary": "The immutable record of every privileged action, newest first."
+      },
+      "AD-15": {
+        "title": "Email templates",
+        "summary": "Edit, preview and test send, with every version an edit has produced.",
+        "waitingOn": "The subject and first paragraph are editable; the headline, button label and a type’s conditional second paragraph stay in the shipped catalogue (#315)."
+      },
+      "AD-16": {
+        "title": "System health",
+        "summary": "Queue depth, failed jobs and provider status, measured when you open it.",
+        "waitingOn": "Nothing here alerts. #138 is §18’s observability work and is still what will wake somebody; this page is read rather than watched (#316)."
+      }
+    }
+  },
   "settings": {
     "language": {
       "title": "Language and currency",
