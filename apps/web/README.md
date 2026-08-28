@@ -225,8 +225,10 @@ message catalogue lives in `messages/{az,en,ru,tr}.json` and covers, in full:
 - the checkout, and the public campaign page;
 - the account area: the frame, all thirteen screens' headings, the notifications inbox and
   its settings, and the two fulfilment screens;
-- the administration console's **frame** — the bar, the rail, and the index that lists
-  §4.11's sixteen modules with what each one is waiting for.
+- the administration console, **in full** — the bar, the rail, the index that lists §4.11's
+  sixteen modules, the metadata and standfirst of all twenty-eight routes, and the twenty-six
+  screens inside them. `lib/i18n/admin/` holds the copy, grouped as `CONSOLE_GROUPS` groups
+  the rail; `lib/i18n/admin/console.server.ts` is where a route resolves it.
 
 What is still English:
 
@@ -234,12 +236,20 @@ What is still English:
 |---|---|
 | The campaign editor | `components/campaign-editor` |
 | The creator dashboard | `components/dashboard` |
-| The console's twenty-six screens | `components/admin`, except `AdminArea`, `AdminNav` and `ConsoleIndex` |
 | The panels below eleven account headings | `components/settings`, `components/sessions`, `components/surveys`, `components/pledges`, `components/profile`'s editor |
+| The public report dialog | `components/moderation/ReportControl` |
 
-`ConsoleRefusal` is the one of those that cannot move on its own: its sentence names the
-thing a screen was about to show — "…to read the audit trail" — and the noun comes from the
-screen, so it is translated when that screen is.
+`ReportControl` is the reason `lib/moderation/describe.ts` still exports `REASON_LABELS`: the
+console reads the same nine reasons from `admin.moderation.reason`, and the two say the same
+words in English until that dialog is translated too. `lib/i18n/wording.test.ts` asserts they
+match, so the duplication cannot drift while it lasts.
+
+**Three kinds of value in the console stay in the service's own spelling, deliberately.** A
+provider name (`PAYRIFF`), a card network's reason code and a staff capability
+(`ISSUE_REFUND`) are each quoted into a support conversation, a dispute or a request to an
+administrator, and a translated copy would be a string nothing else in the system answers to.
+The same goes for a campaign state as the scheduler and the API spell it. What the catalogue
+carries beside each is the sentence explaining it.
 
 **`packages/ui` takes copy as props and will keep doing so.** #326's comment left the
 question open; the answer is props. A design-system component that reached for a catalogue
