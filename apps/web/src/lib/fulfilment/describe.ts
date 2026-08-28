@@ -31,27 +31,19 @@ export interface StatusDescription {
   readonly tone: 'default' | 'success' | 'warning' | 'danger';
 }
 
-const DESCRIPTIONS: Readonly<Record<FulfilmentStatus, StatusDescription>> = {
-  PREPARING: {
-    label: 'Preparing',
-    detail: 'The creator has not sent this yet.',
-    tone: 'default',
-  },
-  SHIPPED: {
-    label: 'On its way',
-    detail: 'It is with a carrier.',
-    tone: 'warning',
-  },
-  DELIVERED: {
-    label: 'Delivered',
-    detail: 'The carrier says it arrived.',
-    tone: 'success',
-  },
-  RETURNED: {
-    label: 'Came back',
-    detail: 'It could not be delivered and is back with the creator. Check your address.',
-    tone: 'danger',
-  },
+/**
+ * The tone each status is shown in. The words are `account.fulfilment.status` — issue #324.
+ *
+ * The tone stays here because it is a design decision rather than copy: §8.1 reads `--danger`
+ * as a state that needs attention, and a parcel that came back is the only one of the four
+ * that does. It is never the only carrier of the meaning (docs/ui-kit.md §9.2), which is what
+ * the label beside it is for.
+ */
+const TONES: Readonly<Record<FulfilmentStatus, StatusDescription['tone']>> = {
+  PREPARING: 'default',
+  SHIPPED: 'warning',
+  DELIVERED: 'success',
+  RETURNED: 'danger',
 };
 
 /**
@@ -61,15 +53,33 @@ const DESCRIPTIONS: Readonly<Record<FulfilmentStatus, StatusDescription>> = {
  * service said — where a blank tag would tell a backer nothing and a guessed one would tell
  * them something wrong about where their parcel is.
  */
-export function describeStatus(status: FulfilmentStatus | string): StatusDescription {
-  const known = DESCRIPTIONS[status as FulfilmentStatus];
-  if (known !== undefined) return known;
+export function describeStatus(
+  status: FulfilmentStatus | string,
+  copy: StatusCopy,
+): StatusDescription {
+  const tone = TONES[status as FulfilmentStatus];
+  const label = copy.status[status];
 
+  if (tone !== undefined && label !== undefined) {
+    return { label, detail: copy.statusDetail[status] ?? copy.statusDetail['unknown'] ?? '', tone };
+  }
+
+  /*
+   * A newer service could add a fifth. Showing the raw value is honest — it is at least what
+   * the service said — where a blank tag would tell a backer nothing and a guessed one would
+   * tell them something wrong about where their parcel is.
+   */
   return {
     label: status,
-    detail: 'This platform does not have a description for that status yet.',
+    detail: copy.statusDetail['unknown'] ?? '',
     tone: 'default',
   };
+}
+
+/** The two tables `describeStatus` reads, as `DeliveryListCopy` carries them. */
+export interface StatusCopy {
+  readonly status: Readonly<Record<string, string>>;
+  readonly statusDetail: Readonly<Record<string, string>>;
 }
 
 /**

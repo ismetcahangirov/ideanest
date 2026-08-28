@@ -180,6 +180,72 @@
         "title": "Bildirişlər",
         "intro": "Platformanın sizə bildirdiyi hər şey, ən yenisi əvvəldə. Birini açmağınız onu oxunmuş kimi işarələyir. <settings>Sizə nə göndərildiyini dəyişin</settings>."
       }
+    },
+    "fulfilment": {
+      "address": {
+        "metaTitle": "Çatdırılma ünvanı",
+        "metaDescription": "Bu dəstəyin mükafatının hara gedəcəyi.",
+        "title": "Çatdırılma ünvanı",
+        "intro": "Bu dəstəyin mükafatının hara gedəcəyi. Hər dəstəyin öz ünvanı var, ona görə burada dəyişiklik başqa heç nəyi tərpətmir. Ünvan saxlanarkən şifrələnir və müəllif onu yalnız bağlama yığarkən görür.",
+        "back": "Çatdırılmalarınıza qayıdın"
+      },
+      "deliveries": {
+        "loading": "Çatdırılmalarınız yüklənir",
+        "failedTitle": "Çatdırılmalarınızı yükləmək mümkün olmadı",
+        "refused": "Xidmət sorğunu rədd etdi.",
+        "unreachable": "Xidmətə çıxmaq mümkün olmadı. Bağlantınızı yoxlayıb yenidən cəhd edin.",
+        "emptyTitle": "Yolda heç nə yoxdur",
+        "emptyBody": "Dəstəklədiyiniz kampaniya maliyyələşəndən və müəllif bağlama yığmağa başlayandan sonra hər mükafat izlənmə məlumatı ilə birlikdə burada görünür.",
+        "emptyAction": "Kampaniyalara bax",
+        "unlisted": "Artıq siyahıda olmayan kampaniya",
+        "carrier": "Daşıyıcı",
+        "tracking": "İzlənmə",
+        "sent": "Göndərilib",
+        "arrived": "Çatıb",
+        "shippingAddress": "Çatdırılma ünvanı",
+        "theCampaign": "Kampaniya"
+      },
+      "status": {
+        "PREPARING": "Hazırlanır",
+        "SHIPPED": "Yoldadır",
+        "DELIVERED": "Çatdırılıb",
+        "RETURNED": "Geri qayıdıb"
+      },
+      "statusDetail": {
+        "PREPARING": "Müəllif bunu hələ göndərməyib.",
+        "SHIPPED": "Daşıyıcıdadır.",
+        "DELIVERED": "Daşıyıcı çatdığını bildirir.",
+        "RETURNED": "Çatdırıla bilmədi və müəllifə qayıdıb. Ünvanınızı yoxlayın.",
+        "unknown": "Bu platformada həmin status üçün hələ izahat yoxdur."
+      },
+      "form": {
+        "recipient": "Tam ad",
+        "line1": "Ünvan",
+        "line2": "Mənzil, mərtəbə və ya şirkət",
+        "locality": "Şəhər və ya qəsəbə",
+        "region": "Region və ya ştat",
+        "postcode": "Poçt indeksi",
+        "country": "Ölkə",
+        "countryHint": "İki hərf — AZ, TR, GB, DE.",
+        "phone": "Telefon",
+        "phoneHint": "Bəzi daşıyıcılar onsuz çatdırmır.",
+        "requiredField": "Bağlamanı bu olmadan ünvanlamaq mümkün deyil.",
+        "loadFailedTitle": "Bu ünvanı yükləmək mümkün olmadı",
+        "notFound": "Həmin dəstək tapılmadı və ya sizə aid deyil.",
+        "unreachable": "Xidmətə çıxmaq mümkün olmadı. Bağlantınızı yoxlayıb yenidən cəhd edin.",
+        "refused": "Ünvan rədd edildi.",
+        "lockedTitle": "Bu ünvan kilidlidir",
+        "lockedBody": "Müəllif dəyişiklikləri bağlayıb, bu adətən etiketlərin çap olunduğu deməkdir. Səhvdirsə, kampaniya vasitəsilə onlara yazın.",
+        "lockedBodyAt": "Müəllif dəyişiklikləri {at} tarixində bağlayıb, bu adətən etiketlərin çap olunduğu deməkdir. Səhvdirsə, kampaniya vasitəsilə onlara yazın.",
+        "noAddressTitle": "Hələ ünvan yoxdur",
+        "noAddressBody": "Bu doldurulmayana qədər müəllif heç nə göndərə bilməz.",
+        "saveFailedTitle": "Yadda saxlanmadı",
+        "savedTitle": "Yadda saxlanıldı",
+        "savedBody": "Mükafat bura gedir.",
+        "savedBodyAt": "Mükafat bura gedir, {at} tarixinə olan məlumata görə.",
+        "save": "Ünvanı yadda saxla",
+        "saving": "Yadda saxlanılır"
+      }
     }
   },
   "settings": {

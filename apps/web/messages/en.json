@@ -180,6 +180,72 @@
         "title": "Notifications",
         "intro": "Everything the platform has told you, newest first. Opening one marks it read. <settings>Change what you are sent</settings>."
       }
+    },
+    "fulfilment": {
+      "address": {
+        "metaTitle": "Shipping address",
+        "metaDescription": "Where the reward for this pledge should go.",
+        "title": "Shipping address",
+        "intro": "Where this pledge’s reward should go. Each pledge has its own, so changing this one does not move anything else. It is encrypted at rest and the creator sees it only when they are packing.",
+        "back": "Back to your deliveries"
+      },
+      "deliveries": {
+        "loading": "Loading your deliveries",
+        "failedTitle": "Your deliveries could not be loaded",
+        "refused": "The service refused the request.",
+        "unreachable": "The service could not be reached. Check your connection and try again.",
+        "emptyTitle": "Nothing on its way",
+        "emptyBody": "Once a campaign you backed has funded and the creator starts packing, each reward appears here with its tracking.",
+        "emptyAction": "Browse campaigns",
+        "unlisted": "A campaign that is no longer listed",
+        "carrier": "Carrier",
+        "tracking": "Tracking",
+        "sent": "Sent",
+        "arrived": "Arrived",
+        "shippingAddress": "Shipping address",
+        "theCampaign": "The campaign"
+      },
+      "status": {
+        "PREPARING": "Preparing",
+        "SHIPPED": "On its way",
+        "DELIVERED": "Delivered",
+        "RETURNED": "Came back"
+      },
+      "statusDetail": {
+        "PREPARING": "The creator has not sent this yet.",
+        "SHIPPED": "It is with a carrier.",
+        "DELIVERED": "The carrier says it arrived.",
+        "RETURNED": "It could not be delivered and is back with the creator. Check your address.",
+        "unknown": "This platform does not have a description for that status yet."
+      },
+      "form": {
+        "recipient": "Full name",
+        "line1": "Address",
+        "line2": "Apartment, floor, or company",
+        "locality": "City or town",
+        "region": "Region or state",
+        "postcode": "Postcode",
+        "country": "Country",
+        "countryHint": "Two letters — AZ, TR, GB, DE.",
+        "phone": "Phone",
+        "phoneHint": "Some carriers will not deliver without one.",
+        "requiredField": "A parcel cannot be addressed without this.",
+        "loadFailedTitle": "This address could not be loaded",
+        "notFound": "That pledge could not be found, or it is not yours.",
+        "unreachable": "The service could not be reached. Check your connection and try again.",
+        "refused": "The address was refused.",
+        "lockedTitle": "This address is locked",
+        "lockedBody": "The creator has closed changes, which usually means labels are being printed. Message them through the campaign if it is wrong.",
+        "lockedBodyAt": "The creator has closed changes on {at}, which usually means labels are being printed. Message them through the campaign if it is wrong.",
+        "noAddressTitle": "No address yet",
+        "noAddressBody": "The creator cannot send anything until this is filled in.",
+        "saveFailedTitle": "It was not saved",
+        "savedTitle": "Saved",
+        "savedBody": "This is where the reward goes.",
+        "savedBodyAt": "This is where the reward goes, as of {at}.",
+        "save": "Save address",
+        "saving": "Saving"
+      }
     }
   },
   "settings": {

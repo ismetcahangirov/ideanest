@@ -3,11 +3,13 @@ import { Link } from '../../../../../i18n/navigation';
 import { AccountPageHeader } from '../../../../../components/account/AccountPageHeader';
 import { ShippingAddressForm } from '../../../../../components/fulfilment/ShippingAddressForm';
 import { privatePageMetadata } from '../../../../../lib/seo/metadata';
+import { getTranslations } from 'next-intl/server';
+import { shippingAddressFormCopyFrom } from '../../../../../lib/i18n/fulfilment-copy';
 
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Shipping address',
-  description: 'Where the reward for this pledge should go.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('account.fulfilment.address');
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
 
 /**
  * `/pledges/{pledgeId}/address` — §4.8 PM-07, issue #290.
@@ -33,17 +35,15 @@ export default async function ShippingAddressPage({
   params: Promise<{ pledgeId: string }>;
 }) {
   const { pledgeId } = await params;
+  const t = await getTranslations('account.fulfilment.address');
+  const copy = shippingAddressFormCopyFrom(await getTranslations('account.fulfilment'));
 
   return (
     <>
-      <AccountPageHeader title="Shipping address">
-        Where this pledge’s reward should go. Each pledge has its own, so changing this one does
-        not move anything else. It is encrypted at rest and the creator sees it only when they
-        are packing.
-      </AccountPageHeader>
+      <AccountPageHeader title={t('title')}>{t('intro')}</AccountPageHeader>
 
       <div className="mt-8">
-        <ShippingAddressForm pledgeId={pledgeId} />
+        <ShippingAddressForm pledgeId={pledgeId} copy={copy} />
       </div>
 
       <p className="mt-8 text-sm text-white/40">
@@ -51,7 +51,7 @@ export default async function ShippingAddressPage({
           href="/account/deliveries"
           className="rounded-sm text-white/64 underline underline-offset-4 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
         >
-          Back to your deliveries
+          {t('back')}
         </Link>
       </p>
     </>

@@ -9,6 +9,7 @@ import { listMyFulfilments, type BackerFulfilment } from '../../lib/fulfilment/a
 import { describeStatus, isFollowableTrackingUrl } from '../../lib/fulfilment/describe';
 import { formatExactTime } from '../../lib/time';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
+import type { DeliveryListCopy } from '../../lib/i18n/fulfilment-copy';
 
 /**
  * §4.8's PM-09 and PM-10 from the backer's side — where each reward is. Issue #290.
@@ -35,7 +36,12 @@ import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
  * link goes to the form, which is where the locked state is explained — putting it here would
  * mean this list guessing at a state it has not read.
  */
-export function DeliveryList() {
+export interface DeliveryListProps {
+  /** Every word this list draws, resolved by the route — see `lib/i18n/fulfilment-copy.ts`. */
+  readonly copy: DeliveryListCopy;
+}
+
+export function DeliveryList({ copy }: DeliveryListProps) {
   const locale = useRouteLocale();
   const [status, setStatus] = useState<'loading' | 'ready' | 'failed' | 'signed-out'>('loading');
   const [rows, setRows] = useState<readonly BackerFulfilment[]>([]);
@@ -61,21 +67,21 @@ export function DeliveryList() {
         }
         setError(
           cause instanceof ApiError
-            ? (cause.problem?.detail ?? cause.problem?.title ?? 'The service refused the request.')
-            : 'The service could not be reached. Check your connection and try again.',
+            ? (cause.problem?.detail ?? cause.problem?.title ?? copy.refused)
+            : copy.unreachable,
         );
         setStatus('failed');
       }
     })();
 
     return () => controller.abort();
-  }, []);
+  }, [copy.refused, copy.unreachable]);
 
   if (status === 'signed-out') return null;
 
   if (status === 'loading') {
     return (
-      <SkeletonGroup label="Loading your deliveries" className="flex flex-col gap-3">
+      <SkeletonGroup label={copy.loading} className="flex flex-col gap-3">
         {[0, 1, 2].map((row) => (
           <Skeleton key={row} height="7rem" />
         ))}
@@ -85,7 +91,7 @@ export function DeliveryList() {
 
   if (status === 'failed') {
     return (
-      <InlineAlert variant="danger" title="Your deliveries could not be loaded">
+      <InlineAlert variant="danger" title={copy.failedTitle}>
         <p>{error}</p>
       </InlineAlert>
     );
@@ -95,11 +101,11 @@ export function DeliveryList() {
     return (
       <EmptyState
         icon={<Package aria-hidden="true" className="size-6" />}
-        title="Nothing on its way"
-        description="Once a campaign you backed has funded and the creator starts packing, each reward appears here with its tracking."
+        title={copy.emptyTitle}
+        description={copy.emptyBody}
         action={
           <Link href="/discover">
-            <Pill type="button">Browse campaigns</Pill>
+            <Pill type="button">{copy.emptyAction}</Pill>
           </Link>
         }
       />
@@ -109,7 +115,7 @@ export function DeliveryList() {
   return (
     <ul className="flex list-none flex-col gap-3">
       {rows.map((row) => {
-        const state = describeStatus(row.fulfilment.status);
+        const state = describeStatus(row.fulfilment.status, copy);
         const followable = isFollowableTrackingUrl(row.fulfilment.trackingUrl);
         const addressHref = `/pledges/${encodeURIComponent(row.fulfilment.pledgeId)}/address`;
 
@@ -121,7 +127,7 @@ export function DeliveryList() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
                 <h2 className="text-[17px] font-medium tracking-[-0.01em] text-white">
-                  {row.projectTitle ?? 'A campaign that is no longer listed'}
+                  {row.projectTitle ?? copy.unlisted}
                 </h2>
                 <p className="mt-1 text-sm text-white/64">{state.detail}</p>
               </div>
@@ -131,14 +137,14 @@ export function DeliveryList() {
             <dl className="mt-4 grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
               {row.fulfilment.carrier !== null && row.fulfilment.carrier !== '' && (
                 <div className="flex gap-2">
-                  <dt className="text-white/40">Carrier</dt>
+                  <dt className="text-white/40">{copy.carrier}</dt>
                   <dd className="text-white/64">{row.fulfilment.carrier}</dd>
                 </div>
               )}
 
               {row.fulfilment.trackingNumber !== null && row.fulfilment.trackingNumber !== '' && (
                 <div className="flex min-w-0 gap-2">
-                  <dt className="text-white/40">Tracking</dt>
+                  <dt className="text-white/40">{copy.tracking}</dt>
                   <dd className="min-w-0 break-all text-white/64">
                     {followable ? (
                       <a
@@ -164,14 +170,14 @@ export function DeliveryList() {
 
               {row.fulfilment.shippedAt !== null && row.fulfilment.shippedAt !== '' && (
                 <div className="flex gap-2">
-                  <dt className="text-white/40">Sent</dt>
+                  <dt className="text-white/40">{copy.sent}</dt>
                   <dd className="text-white/64">{formatExactTime(row.fulfilment.shippedAt, locale)}</dd>
                 </div>
               )}
 
               {row.fulfilment.deliveredAt !== null && row.fulfilment.deliveredAt !== '' && (
                 <div className="flex gap-2">
-                  <dt className="text-white/40">Arrived</dt>
+                  <dt className="text-white/40">{copy.arrived}</dt>
                   <dd className="text-white/64">{formatExactTime(row.fulfilment.deliveredAt, locale)}</dd>
                 </div>
               )}
@@ -182,14 +188,14 @@ export function DeliveryList() {
                 href={addressHref}
                 className="rounded-sm text-white underline underline-offset-4 hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
               >
-                Shipping address
+                {copy.shippingAddress}
               </Link>
               {row.creatorSlug !== null && row.projectSlug !== null && (
                 <Link
                   href={`/projects/${encodeURIComponent(row.creatorSlug)}/${encodeURIComponent(row.projectSlug)}`}
                   className="rounded-sm text-white/64 underline underline-offset-4 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
                 >
-                  The campaign
+                  {copy.theCampaign}
                 </Link>
               )}
             </div>

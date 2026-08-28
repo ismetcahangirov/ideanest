@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { describeStatus, isFollowableTrackingUrl } from './describe';
+import { deliveryListCopyFrom } from '../i18n/fulfilment-copy';
+import { translatorFor } from '../../test-copy';
+/*
+ * The copy the route would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const COPY = deliveryListCopyFrom(translatorFor('account.fulfilment'));
 
 /**
  * §4.8's PM-09 and PM-10 — issue #290.
@@ -18,20 +26,20 @@ import { describeStatus, isFollowableTrackingUrl } from './describe';
 describe('describeStatus', () => {
   it('gives every known status a label and a sentence', () => {
     for (const status of ['PREPARING', 'SHIPPED', 'DELIVERED', 'RETURNED'] as const) {
-      const described = describeStatus(status);
+      const described = describeStatus(status, COPY);
       expect(described.label.trim()).not.toBe('');
       expect(described.detail.trim()).not.toBe('');
     }
   });
 
   it('marks only a returned parcel as needing attention', () => {
-    expect(describeStatus('RETURNED').tone).toBe('danger');
-    expect(describeStatus('DELIVERED').tone).toBe('success');
-    expect(describeStatus('PREPARING').tone).toBe('default');
+    expect(describeStatus('RETURNED', COPY).tone).toBe('danger');
+    expect(describeStatus('DELIVERED', COPY).tone).toBe('success');
+    expect(describeStatus('PREPARING', COPY).tone).toBe('default');
   });
 
   it('falls back to the service’s own word for a status this build does not know', () => {
-    const described = describeStatus('LOST_IN_TRANSIT');
+    const described = describeStatus('LOST_IN_TRANSIT', COPY);
     expect(described.label).toBe('LOST_IN_TRANSIT');
     expect(described.tone).toBe('default');
   });

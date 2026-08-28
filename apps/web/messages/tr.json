@@ -180,6 +180,72 @@
         "title": "Bildirimler",
         "intro": "Platformun size bildirdiği her şey, en yenisi başta. Birini açmanız onu okundu olarak işaretler. <settings>Size ne gönderildiğini değiştirin</settings>."
       }
+    },
+    "fulfilment": {
+      "address": {
+        "metaTitle": "Teslimat adresi",
+        "metaDescription": "Bu desteğin ödülünün nereye gideceği.",
+        "title": "Teslimat adresi",
+        "intro": "Bu desteğin ödülünün nereye gideceği. Her desteğin kendi adresi var, bu yüzden burayı değiştirmek başka hiçbir şeyi taşımaz. Adres saklanırken şifrelenir ve üretici onu yalnızca paketi hazırlarken görür.",
+        "back": "Teslimatlarınıza dönün"
+      },
+      "deliveries": {
+        "loading": "Teslimatlarınız yükleniyor",
+        "failedTitle": "Teslimatlarınız yüklenemedi",
+        "refused": "Servis isteği reddetti.",
+        "unreachable": "Servise ulaşılamadı. Bağlantınızı denetleyip yeniden deneyin.",
+        "emptyTitle": "Yolda bir şey yok",
+        "emptyBody": "Desteklediğiniz bir kampanya fonlandığında ve üretici paketlemeye başladığında her ödül, takip bilgisiyle birlikte burada görünür.",
+        "emptyAction": "Kampanyalara göz at",
+        "unlisted": "Artık listelenmeyen bir kampanya",
+        "carrier": "Taşıyıcı",
+        "tracking": "Takip",
+        "sent": "Gönderildi",
+        "arrived": "Ulaştı",
+        "shippingAddress": "Teslimat adresi",
+        "theCampaign": "Kampanya"
+      },
+      "status": {
+        "PREPARING": "Hazırlanıyor",
+        "SHIPPED": "Yolda",
+        "DELIVERED": "Teslim edildi",
+        "RETURNED": "Geri döndü"
+      },
+      "statusDetail": {
+        "PREPARING": "Üretici bunu henüz göndermedi.",
+        "SHIPPED": "Taşıyıcıda.",
+        "DELIVERED": "Taşıyıcı ulaştığını söylüyor.",
+        "RETURNED": "Teslim edilemedi ve üreticiye döndü. Adresinizi denetleyin.",
+        "unknown": "Bu platformda o durum için henüz bir açıklama yok."
+      },
+      "form": {
+        "recipient": "Tam ad",
+        "line1": "Adres",
+        "line2": "Daire, kat ya da şirket",
+        "locality": "Şehir ya da kasaba",
+        "region": "Bölge ya da eyalet",
+        "postcode": "Posta kodu",
+        "country": "Ülke",
+        "countryHint": "İki harf — AZ, TR, GB, DE.",
+        "phone": "Telefon",
+        "phoneHint": "Bazı taşıyıcılar bu olmadan teslim etmez.",
+        "requiredField": "Bir paket bu olmadan adreslenemez.",
+        "loadFailedTitle": "Bu adres yüklenemedi",
+        "notFound": "O destek bulunamadı ya da size ait değil.",
+        "unreachable": "Servise ulaşılamadı. Bağlantınızı denetleyip yeniden deneyin.",
+        "refused": "Adres reddedildi.",
+        "lockedTitle": "Bu adres kilitli",
+        "lockedBody": "Üretici değişiklikleri kapattı, bu genellikle etiketlerin basıldığı anlamına gelir. Yanlışsa kampanya üzerinden onlara yazın.",
+        "lockedBodyAt": "Üretici değişiklikleri {at} tarihinde kapattı, bu genellikle etiketlerin basıldığı anlamına gelir. Yanlışsa kampanya üzerinden onlara yazın.",
+        "noAddressTitle": "Henüz adres yok",
+        "noAddressBody": "Bu doldurulmadan üretici hiçbir şey gönderemez.",
+        "saveFailedTitle": "Kaydedilmedi",
+        "savedTitle": "Kaydedildi",
+        "savedBody": "Ödül buraya gidiyor.",
+        "savedBodyAt": "Ödül buraya gidiyor, {at} itibarıyla.",
+        "save": "Adresi kaydet",
+        "saving": "Kaydediliyor"
+      }
     }
   },
   "settings": {
