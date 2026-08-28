@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { CharacterCount, Field, Pill, Textarea } from '@ideanest/ui';
 import { Modal } from '@ideanest/ui/motion';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { NoteDialogCopy } from '../../lib/i18n/admin/common-copy';
 
 /** The `@Size` the curation request bodies carry, matching the moderation notes. */
 export const NOTE_MAX_CHARACTERS = 2000;
@@ -22,6 +24,11 @@ export interface NoteDialogProps {
   readonly error: string | null;
   readonly onCancel: () => void;
   readonly onConfirm: (note: string) => void;
+  /**
+   * The dialog's own words. Everything above them — the title, the confirm label — stays with
+   * the screen that opens it, because those name the change rather than the note.
+   */
+  readonly copy: NoteDialogCopy;
 }
 
 /**
@@ -63,6 +70,7 @@ export function NoteDialog({
   error,
   onCancel,
   onConfirm,
+  copy,
 }: NoteDialogProps) {
   const [note, setNote] = useState('');
   const [noteError, setNoteError] = useState<string | null>(null);
@@ -89,11 +97,11 @@ export function NoteDialog({
     const trimmed = note.trim();
 
     if (trimmed === '') {
-      setNoteError('Say why. This is recorded against the collection and cannot be edited later.');
+      setNoteError(copy.required);
       return;
     }
     if (count > NOTE_MAX_CHARACTERS) {
-      setNoteError(`A note may not exceed ${NOTE_MAX_CHARACTERS} characters.`);
+      setNoteError(fillPlaceholders(copy.tooLong, { limit: String(NOTE_MAX_CHARACTERS) }));
       return;
     }
 
@@ -115,7 +123,7 @@ export function NoteDialog({
       footer={
         <>
           <Pill variant="ghost" disabled={busy} onClick={onCancel}>
-            Cancel
+            {copy.cancel}
           </Pill>
           <Pill variant={destructive ? 'danger' : 'primary'} disabled={busy} onClick={confirm}>
             {busy ? busyLabel : confirmLabel}
@@ -126,12 +134,7 @@ export function NoteDialog({
       {body !== undefined && <p className="text-sm text-on-white/72">{body}</p>}
 
       <div className="mt-4">
-        <Field
-          label="Why"
-          required
-          hint="Recorded on the collection's audit trail. Written for whoever reads this in a year."
-          error={noteError}
-        >
+        <Field label={copy.why} required hint={copy.hint} error={noteError}>
           {/*
             No `maxLength`. A hard cap silently truncates a pasted note and takes the
             counter's only useful message away — "3 characters too many" is actionable,

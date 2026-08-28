@@ -9,14 +9,16 @@
  * legible in all four languages to everybody who uses it, staff included. A moderator who
  * reads Azerbaijani is not a different class of reader from a backer who does.
  *
- * <h2>What this covers, and what it deliberately does not</h2>
+ * <h2>What this covers, and where the rest of it lives</h2>
  *
  * The frame: the bar, the rail, and the index that lists §4.11's sixteen modules with what
- * each is waiting for. **The twenty-six screens inside it are still English literals**, and
- * `apps/web/README.md` records that rather than leaving it to be discovered — including
- * `ConsoleRefusal`, whose sentence names the thing a screen was going to show
- * ("…to read the audit trail") and therefore cannot be translated until the screen that
- * supplies the noun is.
+ * each is waiting for. The twenty-six screens inside it are translated too, and their copy is
+ * in `lib/i18n/admin/` — one module per group of the rail, resolved by
+ * `lib/i18n/admin/console.server.ts` and handed to each screen as a prop.
+ *
+ * <p>This file stays separate from those because the frame is the one part of the console
+ * that is drawn on every route, and because it is keyed by the identifiers the rail itself is
+ * built from rather than by a screen's name.
  *
  * <h2>Keyed by the identifiers rather than by a name of its own</h2>
  *

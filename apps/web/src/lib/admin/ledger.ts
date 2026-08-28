@@ -1,5 +1,7 @@
 import { authorizedFetch } from '../api/client';
 import { errorFrom } from '../api/problem';
+import { fillPlaceholders } from '../i18n/placeholders';
+import type { MoneyCopy } from '../i18n/admin/money-copy';
 import type { Money } from './payments';
 
 /**
@@ -28,14 +30,13 @@ export type EntryDirection = 'DEBIT' | 'CREDIT';
  * platform is a list that grows without bound, and the way to one creator's account is the
  * campaign filter beside it.
  */
-export const LEDGER_ACCOUNTS: ReadonlyArray<readonly [value: string, label: string]> =
-  Object.freeze([
-    ['escrow', 'Escrow'],
-    ['platform_fee', 'Platform fee'],
-    ['psp_fee', 'Processing fee'],
-    ['tax_payable', 'Tax payable'],
-    ['refunds', 'Refunds'],
-  ]);
+export const LEDGER_ACCOUNTS: readonly string[] = Object.freeze([
+  'escrow',
+  'platform_fee',
+  'psp_fee',
+  'tax_payable',
+  'refunds',
+]);
 
 /** One side of one posting. */
 export interface LedgerLine {
@@ -151,13 +152,19 @@ export async function readLedger(request: LedgerRequest = {}): Promise<LedgerVie
  * and a screen that pretended otherwise would be inventing a name. An account outside the six
  * is shown verbatim rather than hidden — the column has a check constraint, so a value that
  * is not one of these is something worth seeing.
+ *
+ * <p>The names arrive as a parameter since #324. They are `admin.money.account`, keyed by the
+ * same stored values {@link LEDGER_ACCOUNTS} lists, and this module is imported by a client
+ * component that cannot read a catalogue.
  */
-export function accountLabel(account: string): string {
-  const known = LEDGER_ACCOUNTS.find(([value]) => value === account);
-  if (known !== undefined) return known[1];
+export function accountLabel(account: string, copy: MoneyCopy): string {
+  const known = copy.account[account];
+  if (known !== undefined) return known;
 
   if (account.startsWith('creator:')) {
-    return `Creator ${account.slice('creator:'.length, 'creator:'.length + 8)}`;
+    return fillPlaceholders(copy.creatorAccount, {
+      id: account.slice('creator:'.length, 'creator:'.length + 8),
+    });
   }
   return account;
 }

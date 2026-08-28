@@ -125,46 +125,40 @@ export async function readTrail(request: TrailRequest = {}): Promise<AuditTrailP
 }
 
 /**
- * The entity kinds the trail is worth narrowing to, and the words for them.
+ * The entity kinds the trail is worth narrowing to.
  *
  * <p>Taken from `AuditAction.entityType()` on the service side — the values are open text in
  * the column and a closed set on the writing side, so this list is what the platform can
  * actually produce rather than a guess. A kind that stopped being written would show as an
  * empty page rather than as a missing option, which is the honest failure of the two.
+ *
+ * <p><strong>Values only since #324.</strong> This used to be a list of pairs carrying the
+ * English word for each kind, which put a translatable sentence in a module a server renders
+ * and a client imports. The words are `admin.screens.audit.entity` now, keyed by these same
+ * values, and this array stays the one place that says which kinds exist.
  */
-export const AUDIT_ENTITY_TYPES: ReadonlyArray<readonly [value: string, label: string]> =
-  Object.freeze([
-    ['project', 'Campaigns'],
-    ['account', 'Accounts'],
-    ['report', 'Reports'],
-    ['collaborator', 'Collaborators'],
-    ['session', 'Sessions'],
-    ['collection', 'Collections'],
-  ]);
+export const AUDIT_ENTITY_TYPES: readonly string[] = Object.freeze([
+  'project',
+  'account',
+  'report',
+  'collaborator',
+  'session',
+  'collection',
+]);
 
 /**
- * The action, in words, for the actions a console reader meets most.
+ * The action, in words, from a table the caller resolved.
  *
  * <p>A lookup with a fallback rather than an exhaustive map, and the fallback is the point:
  * the service's set grows with every feature that adds a privileged action, and a screen that
  * rendered nothing for an action it had not been taught would be hiding exactly the row
  * somebody is looking for. An unknown action shows its wire spelling, which is readable.
+ *
+ * <p>The table is a parameter rather than a constant here because this module is imported by a
+ * client component, and a catalogue cannot be read from one. The screen resolves it on the
+ * server and hands it down, which is what every other translated component in this application
+ * does.
  */
-const ACTION_LABELS: Readonly<Record<string, string>> = {
-  'project.approved': 'Campaign approved',
-  'project.rejected': 'Campaign rejected',
-  'project.changes_requested': 'Changes requested',
-  'project.suspended': 'Campaign suspended',
-  'report.upheld': 'Report upheld',
-  'report.dismissed': 'Report dismissed',
-  'account.searched': 'Accounts searched',
-  'account.suspended': 'Account suspended',
-  'account.reinstated': 'Account reinstated',
-  'audit.trail_read': 'Audit trail read',
-  'payment.log_read': 'Payment log read',
-  'ledger.read': 'Ledger read',
-};
-
-export function actionLabel(action: string): string {
-  return ACTION_LABELS[action] ?? action;
+export function actionLabel(action: string, labels: Readonly<Record<string, string>>): string {
+  return labels[action] ?? action;
 }

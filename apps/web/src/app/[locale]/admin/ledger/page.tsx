@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { LedgerExplorer } from '../../../../components/admin/LedgerExplorer';
+import { ledgerExplorerCopy } from '../../../../lib/i18n/admin/console.server';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 
 /**
@@ -10,24 +12,22 @@ import { privatePageMetadata } from '../../../../lib/seo/metadata';
  * ever when something actually did, which is why a declined charge has a row there
  * and nothing here.
  */
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Ledger',
-  description: 'The double-entry ledger, by account and by campaign, with both sides of every entry.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('admin.pages.ledger');
 
-export default function LedgerPage() {
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
+
+export default async function LedgerPage() {
+  const t = await getTranslations('admin.pages.ledger');
+
   return (
     <div className="max-w-[880px]">
-      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">Ledger</h1>
-      <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-        Every posting the platform has written, both sides shown together, newest first.
-        The debits equal the credits on each one — PostgreSQL refuses a transaction in
-        which they do not — and each card says so rather than asking you to take it on
-        trust.
-      </p>
+      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">{t('title')}</h1>
+      <p className="mt-2 max-w-[62ch] text-sm text-white/64">{t('intro')}</p>
 
       <div className="mt-8">
-        <LedgerExplorer />
+        <LedgerExplorer copy={await ledgerExplorerCopy()} />
       </div>
     </div>
   );

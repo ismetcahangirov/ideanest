@@ -21,10 +21,10 @@ import {
   type AdminCollection,
 } from '../../lib/admin/curation';
 import { consoleMessageFor } from '../../lib/admin/refusals';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { OpenCallManagerCopy } from '../../lib/i18n/admin/curation-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { useCollections } from './useCollections';
-
-const SUBJECT = 'the open calls';
 
 /**
  * §4.11's AD-03: themed programmes and their windows — issue #302.
@@ -60,13 +60,20 @@ const SUBJECT = 'the open calls';
  *
  * docs/motion-system.md §5's budget for a working surface: 150ms of colour on a control.
  */
-export function OpenCallManager() {
-  const { status, collections, error, apply, reload, setError } = useCollections();
+export interface OpenCallManagerProps {
+  readonly copy: OpenCallManagerCopy;
+}
+
+export function OpenCallManager({ copy }: OpenCallManagerProps) {
+  const { status, collections, error, apply, reload, setError } = useCollections(
+    copy.subject,
+    copy.refusals,
+  );
   const [savingSlug, setSavingSlug] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   if (status === 'signed-out' || status === 'forbidden') {
-    return <ConsoleRefusal status={status} subject={SUBJECT} />;
+    return <ConsoleRefusal status={status} subject={copy.subject} copy={copy.refusals} />;
   }
 
   const openCalls = collections.filter((collection) => collection.kind === 'open_call');
@@ -86,9 +93,9 @@ export function OpenCallManager() {
         closesAt,
       });
       apply(updated);
-      setNotice(`${collectionTitle(updated)}'s window was saved.`);
+      setNotice(fillPlaceholders(copy.savedNotice, { title: collectionTitle(updated) }));
     } catch (cause) {
-      setError(consoleMessageFor(cause, SUBJECT));
+      setError(consoleMessageFor(cause, copy.subject, copy.refusals));
     } finally {
       setSavingSlug(null);
     }
@@ -97,7 +104,7 @@ export function OpenCallManager() {
   return (
     <section aria-labelledby="open-calls-heading">
       <h2 id="open-calls-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-        Open calls
+        {copy.heading}
         {status === 'ready' && (
           <span className="ml-2 text-xs font-normal text-white/40">{openCalls.length}</span>
         )}
@@ -112,13 +119,13 @@ export function OpenCallManager() {
       </div>
 
       {error !== null && (
-        <InlineAlert variant="danger" title="Something went wrong" className="mt-4">
+        <InlineAlert variant="danger" title={copy.errorTitle} className="mt-4">
           {error}
         </InlineAlert>
       )}
 
       {status === 'loading' && (
-        <SkeletonGroup label="Loading the open calls" className="mt-4">
+        <SkeletonGroup label={copy.loadingList} className="mt-4">
           <div className="space-y-3">
             {[0, 1].map((row) => (
               <div key={row} className="rounded-lg border border-white/8 bg-surface-1 p-4">
@@ -134,8 +141,8 @@ export function OpenCallManager() {
         <EmptyState
           className="mt-4"
           variant="filtered"
-          title="No open calls"
-          description="An open call is a themed programme with a window it accepts entries in. Create one from the collections screen, choosing Open call as its kind — the kind cannot be guessed later."
+          title={copy.emptyTitle}
+          description={copy.emptyBody}
         />
       )}
 
@@ -146,6 +153,7 @@ export function OpenCallManager() {
               key={collection.slug}
               collection={collection}
               now={now}
+              copy={copy}
               busy={savingSlug === collection.slug}
               onSave={(opensAt, closesAt) => void saveWindow(collection, opensAt, closesAt)}
             />
@@ -155,7 +163,7 @@ export function OpenCallManager() {
 
       {status === 'failed' && (
         <Pill variant="ghost" size="sm" className="mt-4" onClick={reload}>
-          Try again
+          {copy.tryAgain}
         </Pill>
       )}
     </section>
@@ -188,11 +196,13 @@ function dayOf(instant: string | null | undefined): string {
 function OpenCallRow({
   collection,
   now,
+  copy,
   busy,
   onSave,
 }: {
   readonly collection: AdminCollection;
   readonly now: Date;
+  readonly copy: OpenCallManagerCopy;
   readonly busy: boolean;
   readonly onSave: (opensAt: string | null, closesAt: string | null) => void;
 }) {
@@ -217,20 +227,16 @@ function OpenCallRow({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Tag variant={running ? 'success' : 'default'}>
-            {running ? 'Open' : notYet ? 'Not open yet' : 'Closed'}
+            {running ? copy.open : notYet ? copy.notYet : copy.closed}
           </Tag>
           <Tag variant={published ? 'success' : 'default'}>
-            {published ? 'Published' : 'Unpublished'}
+            {published ? copy.curation.published : copy.curation.unpublished}
           </Tag>
         </div>
       </div>
 
       {published && !running && (
-        <p className="mt-2 text-sm text-white/48">
-          Published, and outside its window — so the public page answers 404. That is the
-          service's rule rather than a setting: a collection whose window has closed is not
-          returned at all.
-        </p>
+        <p className="mt-2 text-sm text-white/48">{copy.outsideWindow}</p>
       )}
 
       <form
@@ -240,10 +246,10 @@ function OpenCallRow({
           onSave(instantOf(opens), instantOf(closes));
         }}
       >
-        <Field label="Opens" hint="Empty means it has always been open." className="min-w-[180px]">
+        <Field label={copy.opensLabel} hint={copy.opensHint} className="min-w-[180px]">
           <TextInput type="date" value={opens} onChange={(event) => setOpens(event.target.value)} />
         </Field>
-        <Field label="Closes" hint="Empty means it does not close." className="min-w-[180px]">
+        <Field label={copy.closesLabel} hint={copy.closesHint} className="min-w-[180px]">
           <TextInput
             type="date"
             value={closes}
@@ -251,14 +257,11 @@ function OpenCallRow({
           />
         </Field>
         <Pill type="submit" variant="outline" size="sm" disabled={busy} className="mb-1">
-          {busy ? 'Saving' : 'Save the window'}
+          {busy ? copy.curation.saving : copy.saveWindow}
         </Pill>
       </form>
 
-      <p className="mt-2 text-xs text-white/32">
-        Dates are read as midnight UTC. §21.2 gives the platform one convention and this
-        follows it, so a programme closes at the same moment for everybody.
-      </p>
+      <p className="mt-2 text-xs text-white/32">{copy.utcNote}</p>
     </li>
   );
 }

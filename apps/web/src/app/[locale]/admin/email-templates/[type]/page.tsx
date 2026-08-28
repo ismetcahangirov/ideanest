@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { EmailTemplateEditor } from '../../../../../components/admin/EmailTemplateEditor';
+import { emailTemplateEditorCopy } from '../../../../../lib/i18n/admin/console.server';
 import { privatePageMetadata } from '../../../../../lib/seo/metadata';
 
 /**
@@ -16,10 +18,11 @@ import { privatePageMetadata } from '../../../../../lib/seo/metadata';
  *
  * <p>`privatePageMetadata` for the reason every console route gives.
  */
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Email copy',
-  description: 'The shipped copy, the override if there is one, and every version anybody has written.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('admin.pages.emailTemplatesType');
+
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
 
 export default async function EmailTemplatePage({
   params,
@@ -28,20 +31,17 @@ export default async function EmailTemplatePage({
 }) {
   const { type } = await params;
 
+  const t = await getTranslations('admin.pages.emailTemplatesType');
+
   return (
     <div className="max-w-[880px]">
       <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
         {type}
       </h1>
-      <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-        The subject and the first paragraph are what an administrator may rewrite. The
-        headline, the button label and a type&rsquo;s conditional second paragraph stay in the
-        shipped catalogue — a button with no label is a broken email rather than a badly
-        worded one.
-      </p>
+      <p className="mt-2 max-w-[62ch] text-sm text-white/64">{t('intro')}</p>
 
       <div className="mt-8">
-        <EmailTemplateEditor type={type} />
+        <EmailTemplateEditor type={type} copy={await emailTemplateEditorCopy()} />
       </div>
     </div>
   );

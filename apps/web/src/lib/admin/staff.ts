@@ -151,26 +151,30 @@ export async function revokeRole(
 }
 
 /**
- * What each capability is for, in the words the console uses.
+ * The twelve capabilities, as values.
  *
- * Here rather than in the service, unlike the module list in `navigation.ts`: the service's
- * own javadoc argues each one at length for whoever is reading the code, and this is the
- * sentence a person sees on a grant screen. Two audiences, two texts.
+ * <p>What each one is <em>for</em> lives in `admin.screens.staff.capability` since #324. The
+ * sentence a person reads on a grant screen is copy, and it was the one table of English prose
+ * in a module otherwise made of identifiers the service and the client agree on.
+ *
+ * <p>This list stays because {@link ROLE_CAPABILITIES} needs it: an administrator holds all
+ * twelve, and deriving that from a catalogue would make the role model depend on which words
+ * somebody had translated.
  */
-export const CAPABILITY_LABELS: Readonly<Record<StaffCapability, string>> = Object.freeze({
-  MODERATE_CONTENT: 'Work the moderation and report queues',
-  ADMINISTER_ACCOUNTS: 'Search, inspect, ban and reinstate accounts',
-  CURATE: 'Edit collections, badges, placement and the taxonomy',
-  VIEW_FINANCE: 'Read the payment log, the ledger and the platform figures',
-  ISSUE_REFUND: 'Send money back',
-  MANAGE_DISPUTES: 'Answer chargebacks',
-  APPROVE_PAYOUT: 'Sign off and send a payout',
-  HANDLE_SUPPORT: 'Answer support tickets',
-  CONFIGURE_PLATFORM: 'Change fees, feature flags and email copy',
-  VIEW_AUDIT: 'Read the audit trail',
-  VIEW_HEALTH: 'Read queue depth and provider status',
-  ADMINISTER_STAFF: 'Grant and withdraw roles',
-});
+export const STAFF_CAPABILITIES: readonly StaffCapability[] = Object.freeze([
+  'MODERATE_CONTENT',
+  'ADMINISTER_ACCOUNTS',
+  'CURATE',
+  'VIEW_FINANCE',
+  'ISSUE_REFUND',
+  'MANAGE_DISPUTES',
+  'APPROVE_PAYOUT',
+  'HANDLE_SUPPORT',
+  'CONFIGURE_PLATFORM',
+  'VIEW_AUDIT',
+  'VIEW_HEALTH',
+  'ADMINISTER_STAFF',
+]);
 
 /** What holding each role confers, mirroring `StaffRole` in the service. */
 export const ROLE_CAPABILITIES: Readonly<Record<StaffRole, readonly StaffCapability[]>> =
@@ -184,7 +188,7 @@ export const ROLE_CAPABILITIES: Readonly<Record<StaffRole, readonly StaffCapabil
       'HANDLE_SUPPORT',
       'VIEW_AUDIT',
     ],
-    ADMINISTRATOR: Object.keys(CAPABILITY_LABELS) as StaffCapability[],
+    ADMINISTRATOR: STAFF_CAPABILITIES,
   });
 
 /**

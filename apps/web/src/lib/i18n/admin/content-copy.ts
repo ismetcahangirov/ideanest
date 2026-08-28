@@ -1,0 +1,368 @@
+import type {
+  CampaignOutcome,
+  ReportOutcome,
+  ReportReason,
+  ReportState,
+  ReportTargetType,
+} from '../../moderation/api';
+import type { AdminTranslator } from '../admin-copy';
+import type { PluralForms } from '../plurals';
+import type { ConsoleChromeCopy } from './common-copy';
+
+/**
+ * The words the console's content screens draw — issue #324, epic #259.
+ *
+ * The rail's first group: the moderation queue, the content and profile queues over it, and
+ * one report's own page.
+ *
+ * <h2>Why the shared vocabulary is its own object rather than more fields</h2>
+ *
+ * Four components draw the same nine reasons, four target nouns, three states and five
+ * decision verbs — the queue, the card inside it, the dialog all three open, and the detail
+ * page. Spreading those into each screen's copy would give four copies of one table and three
+ * chances for one of them to be given a translation the others do not have.
+ *
+ * <p>{@link ModerationCopy} is therefore passed down as a nested object rather than flattened
+ * in, which is the one place in this directory that happens. It is the difference between a
+ * screen's own words — which nothing else says — and the platform's moderation vocabulary,
+ * which every one of these surfaces says identically.
+ */
+
+/**
+ * The vocabulary of a complaint.
+ *
+ * <h2>Three tables for the target noun, and each earns its place</h2>
+ *
+ * `target` is the bare noun in the case these sentences put it in — "the report about
+ * <em>campaign</em> 1a2b3c4d". `targetOnThis` is the whole prepositional phrase — "on this
+ * campaign" — because Russian agrees the demonstrative with the noun's gender and
+ * <em>эту кампанию</em> beside <em>этот комментарий</em> cannot be built from a shared "this".
+ * `campaignName` is the nominative, for the three campaign verbs whose sentences make the
+ * campaign the subject: "campaign 1a2b3c4d is cleared for launch" needs <em>кампания</em>
+ * where "the report about campaign 1a2b3c4d" needs <em>кампанию</em>.
+ *
+ * <p>English distinguishes none of the three and would have been served by one table, which is
+ * exactly why the old code had one. A translation surfaced the distinction the source language
+ * hid.
+ *
+ * <h2>The state is keyed three ways for the same reason</h2>
+ *
+ * `state` is the tag beside a report. {@link ModerationQueueCopy.heading},
+ * `emptyTitle` and `noticeReport` are whole sentences keyed by state rather than one sentence
+ * with the state interpolated: "Upheld" is an adjective in the tag, a plural attributive in
+ * "Upheld reports" and a past-tense verb in "Upheld the report about…", and Russian spells
+ * those three differently.
+ */
+export interface ModerationCopy {
+  /*
+   * Keyed by the closed unions rather than by `string`, so `noUncheckedIndexedAccess` gives a
+   * defined value at every call site and a member the service adds fails the build here rather
+   * than rendering a blank in the interface. The open tables in this directory — an audit
+   * action, an email category — are `string` for the opposite reason: their sets are the
+   * service's and are allowed to be ahead of the catalogue.
+   */
+  readonly reason: Readonly<Record<ReportReason, string>>;
+  /** The bare noun, in the case these sentences use. */
+  readonly target: Readonly<Record<ReportTargetType, string>>;
+  /** The whole "on this …" phrase. */
+  readonly targetOnThis: Readonly<Record<ReportTargetType, string>>;
+  /** Carries `{kind}` and `{id}`. */
+  readonly targetName: string;
+  /** Carries `{id}`. Nominative, for the sentences that make the campaign the subject. */
+  readonly campaignName: string;
+  /** The tag, never the heading. */
+  readonly state: Readonly<Record<ReportState, string>>;
+  readonly reportOutcome: Readonly<Record<ReportOutcome, string>>;
+  readonly campaignOutcome: Readonly<Record<CampaignOutcome, string>>;
+  /** Carries `{count}` and `{phrase}`, the latter from {@link targetOnThis}. */
+  readonly openReports: PluralForms;
+  /** Carries `{count}`. */
+  readonly reportCount: PluralForms;
+  readonly decisionHeading: string;
+  readonly noNote: string;
+  /**
+   * The dialog's dismissing control.
+   *
+   * Passed in already resolved rather than read from a key of its own: the word is
+   * `common.cancel`, which the whole product shares, and a second spelling of it under
+   * `admin.moderation` would be a second one to translate and a second one to get wrong.
+   */
+  readonly cancel: string;
+  /** Carries `{moderator}` and `{at}`, both of them nodes. */
+  readonly decidedBy: Readonly<Record<ReportState, string>>;
+  readonly decision: DecisionCopy;
+}
+
+/** One of the five verbs, as the dialog that confirms it says them. */
+export interface DecisionVerbCopy {
+  readonly title: string;
+  /** Carries `{name}`. */
+  readonly description: string;
+  readonly confirmLabel: string;
+  readonly busyLabel: string;
+  readonly noteLabel: string;
+  readonly noteHint: string;
+  /**
+   * What the decision does not do.
+   *
+   * Present on the two report outcomes, which each say something different about what they
+   * leave alone. Absent on the three campaign outcomes, which share {@link
+   * DecisionCopy.campaignBody} — all three move the campaign and none of them decides the
+   * report, and writing that sentence three times would be three chances to reword one of them.
+   */
+  readonly body?: string;
+}
+
+export interface DecisionCopy {
+  readonly errorTitle: string;
+  readonly noteRequired: string;
+  /** Carries `{limit}`. */
+  readonly tooLong: string;
+  readonly campaignBody: string;
+  /** Keyed by the outcome, across both kinds — the union the dialog switches on. */
+  readonly verb: Readonly<Record<ReportOutcome | CampaignOutcome, DecisionVerbCopy>>;
+}
+
+export interface ModerationQueueCopy extends ConsoleChromeCopy {
+  readonly moderation: ModerationCopy;
+  /**
+   * This screen's own refusals rather than `admin.refusals`.
+   *
+   * The queue said something different from the rest of the console before #324 — it names the
+   * queue and what clearing it means — and translating a surface is not the change that gets to
+   * reword it.
+   */
+  readonly signedOutTitle: string;
+  readonly signedOutBody: string;
+  readonly forbiddenTitle: string;
+  readonly forbiddenBody: string;
+  readonly notStaff: string;
+  readonly transitionNotAllowed: string;
+  /** Carries `{state}`, which is the service's own campaign state and stays in its spelling. */
+  readonly transitionNotAllowedFrom: string;
+  readonly alreadyResolved: string;
+  /** A whole heading, not a word to put in front of "reports". */
+  readonly heading: Readonly<Record<ReportState, string>>;
+  readonly statusLabel: string;
+  readonly targetLabel: string;
+  readonly triageLabel: string;
+  /** Keyed by `TargetFilter`. */
+  readonly targetFilter: Readonly<Record<string, string>>;
+  readonly overdueOnly: string;
+  readonly repeatedOnly: string;
+  /** Carries `{reports}` — already pluralised — and `{loaded}`. */
+  readonly showing: string;
+  readonly morePages: string;
+  readonly loadingList: string;
+  readonly filteredTitle: string;
+  readonly filteredBody: string;
+  readonly emptyTitle: Readonly<Record<ReportState, string>>;
+  readonly emptyBody: Readonly<Record<ReportState, string>>;
+  /** Carries `{target}`. */
+  readonly noticeReport: Readonly<Record<ReportState, string>>;
+  /** Carries `{id}` and `{state}`. */
+  readonly noticeCampaign: string;
+  /** Carries `{kind}` and `{id}`, the second a styled node. */
+  readonly reportedAbout: string;
+  readonly fullHistory: string;
+  /** Carries `{target}`. */
+  readonly fullHistoryLabel: string;
+  readonly overdue: string;
+  readonly reported: string;
+  readonly signal: string;
+  readonly reporter: string;
+  readonly targetTerm: string;
+  /** Carries `{target}`. */
+  readonly decideGroup: string;
+  readonly decideHeading: string;
+  /** Carries `{outcome}` and `{target}`. */
+  readonly decideLabel: string;
+  /** Carries `{target}`. */
+  readonly actGroup: string;
+  readonly actHeading: string;
+  /** Carries `{outcome}` and `{target}`. */
+  readonly actLabel: string;
+}
+
+export interface ContentReportQueueCopy extends ConsoleChromeCopy {
+  /** The queue this screen puts two chips over, and hands its own copy straight down to. */
+  readonly queue: ModerationQueueCopy;
+  /** Keyed by the two `ReportTargetType`s this screen offers. */
+  readonly surface: Readonly<Record<ReportTargetType, string>>;
+  readonly noticeTitle: string;
+  readonly noticeBody: string;
+}
+
+export interface ReportDetailCopy extends ConsoleChromeCopy {
+  readonly moderation: ModerationCopy;
+  /**
+   * The audit trail's action table, borrowed from `admin.screens.audit`.
+   *
+   * The same rows, drawn by a second screen. A copy of the table under this screen's node
+   * would be a second set of translations for `report.upheld` that nothing keeps in step.
+   */
+  readonly auditAction: Readonly<Record<string, string>>;
+  readonly subject: string;
+  readonly historySubject: string;
+  readonly loadingList: string;
+  readonly notFoundTitle: string;
+  readonly notFoundBody: string;
+  readonly backToQueue: string;
+  /** Carries `{kind}` and `{id}`, the second a styled node. */
+  readonly reportedAbout: string;
+  readonly reported: string;
+  readonly signal: string;
+  readonly reporter: string;
+  readonly decideGroup: string;
+  readonly decideHeading: string;
+  readonly decideFootnote: string;
+  readonly historyHeading: string;
+  readonly historyIntro: string;
+  readonly historyFailedTitle: string;
+  readonly loadingHistory: string;
+  readonly historyEmpty: string;
+  /** Carries `{action}` and `{actor}`, the second a styled node. */
+  readonly actionBy: string;
+  readonly refused: string;
+}
+
+function verb(t: AdminTranslator, outcome: string): DecisionVerbCopy {
+  return t.raw(`moderation.decision.${outcome}`) as DecisionVerbCopy;
+}
+
+export function moderationCopyFrom(t: AdminTranslator, cancel: string): ModerationCopy {
+  /*
+   * One cast per table rather than one per key. `t.raw` is next-intl's own escape hatch for a
+   * message that is not a string, and what comes back is the catalogue node — the shape of
+   * which `catalogue.test.ts` holds identical across the four languages, so a table that is
+   * complete in English is complete everywhere.
+   */
+  const table = <T>(key: string) => t.raw(`moderation.${key}`) as Readonly<T>;
+
+  return {
+    reason: table<Record<ReportReason, string>>('reason'),
+    target: table<Record<ReportTargetType, string>>('target'),
+    targetOnThis: table<Record<ReportTargetType, string>>('targetOnThis'),
+    targetName: String(t.raw('moderation.targetName')),
+    campaignName: String(t.raw('moderation.campaignName')),
+    state: table<Record<ReportState, string>>('state'),
+    reportOutcome: table<Record<ReportOutcome, string>>('reportOutcome'),
+    campaignOutcome: table<Record<CampaignOutcome, string>>('campaignOutcome'),
+    openReports: t.raw('moderation.openReports') as PluralForms,
+    reportCount: t.raw('moderation.reportCount') as PluralForms,
+    decisionHeading: t('moderation.decisionHeading'),
+    noNote: t('moderation.noNote'),
+    cancel,
+    decidedBy: table<Record<ReportState, string>>('decidedBy'),
+    decision: {
+      errorTitle: t('moderation.decision.errorTitle'),
+      noteRequired: t('moderation.decision.noteRequired'),
+      tooLong: String(t.raw('moderation.decision.tooLong')),
+      campaignBody: t('moderation.decision.campaignBody'),
+      verb: {
+        uphold: verb(t, 'uphold'),
+        dismiss: verb(t, 'dismiss'),
+        approve: verb(t, 'approve'),
+        'request-changes': verb(t, 'request-changes'),
+        reject: verb(t, 'reject'),
+      },
+    },
+  };
+}
+
+export function moderationQueueCopyFrom(
+  t: AdminTranslator,
+  chrome: ConsoleChromeCopy,
+): ModerationQueueCopy {
+  const at = (key: string) => `screens.moderationQueue.${key}`;
+  const table = <T>(key: string) => t.raw(at(key)) as Readonly<T>;
+
+  return {
+    ...chrome,
+    moderation: moderationCopyFrom(t, chrome.cancel),
+    signedOutTitle: t(at('signedOutTitle')),
+    signedOutBody: t(at('signedOutBody')),
+    forbiddenTitle: t(at('forbiddenTitle')),
+    forbiddenBody: t(at('forbiddenBody')),
+    notStaff: t(at('notStaff')),
+    transitionNotAllowed: t(at('transitionNotAllowed')),
+    transitionNotAllowedFrom: String(t.raw(at('transitionNotAllowedFrom'))),
+    alreadyResolved: t(at('alreadyResolved')),
+    heading: table<Record<ReportState, string>>('heading'),
+    statusLabel: t(at('statusLabel')),
+    targetLabel: t(at('targetLabel')),
+    triageLabel: t(at('triageLabel')),
+    targetFilter: table<Record<string, string>>('targetFilter'),
+    overdueOnly: t(at('overdueOnly')),
+    repeatedOnly: t(at('repeatedOnly')),
+    showing: String(t.raw(at('showing'))),
+    morePages: t(at('morePages')),
+    loadingList: t(at('loadingList')),
+    filteredTitle: t(at('filteredTitle')),
+    filteredBody: t(at('filteredBody')),
+    emptyTitle: table<Record<ReportState, string>>('emptyTitle'),
+    emptyBody: table<Record<ReportState, string>>('emptyBody'),
+    noticeReport: table<Record<ReportState, string>>('noticeReport'),
+    noticeCampaign: String(t.raw(at('noticeCampaign'))),
+    reportedAbout: String(t.raw(at('reportedAbout'))),
+    fullHistory: t(at('fullHistory')),
+    fullHistoryLabel: String(t.raw(at('fullHistoryLabel'))),
+    overdue: t(at('overdue')),
+    reported: t(at('reported')),
+    signal: t(at('signal')),
+    reporter: t(at('reporter')),
+    targetTerm: t(at('targetTerm')),
+    decideGroup: String(t.raw(at('decideGroup'))),
+    decideHeading: t(at('decideHeading')),
+    decideLabel: String(t.raw(at('decideLabel'))),
+    actGroup: String(t.raw(at('actGroup'))),
+    actHeading: t(at('actHeading')),
+    actLabel: String(t.raw(at('actLabel'))),
+  };
+}
+
+export function contentReportQueueCopyFrom(
+  t: AdminTranslator,
+  chrome: ConsoleChromeCopy,
+): ContentReportQueueCopy {
+  return {
+    ...chrome,
+    queue: moderationQueueCopyFrom(t, chrome),
+    surface: t.raw('screens.contentReports.surface') as Readonly<Record<ReportTargetType, string>>,
+    noticeTitle: t('screens.contentReports.noticeTitle'),
+    noticeBody: t('screens.contentReports.noticeBody'),
+  };
+}
+
+export function reportDetailCopyFrom(
+  t: AdminTranslator,
+  chrome: ConsoleChromeCopy,
+): ReportDetailCopy {
+  const at = (key: string) => `screens.reportDetail.${key}`;
+
+  return {
+    ...chrome,
+    moderation: moderationCopyFrom(t, chrome.cancel),
+    auditAction: t.raw('screens.audit.action') as Readonly<Record<string, string>>,
+    subject: t(at('subject')),
+    historySubject: t(at('historySubject')),
+    loadingList: t(at('loadingList')),
+    notFoundTitle: t(at('notFoundTitle')),
+    notFoundBody: t(at('notFoundBody')),
+    backToQueue: t(at('backToQueue')),
+    reportedAbout: String(t.raw(at('reportedAbout'))),
+    reported: t(at('reported')),
+    signal: t(at('signal')),
+    reporter: t(at('reporter')),
+    decideGroup: t(at('decideGroup')),
+    decideHeading: t(at('decideHeading')),
+    decideFootnote: t(at('decideFootnote')),
+    historyHeading: t(at('historyHeading')),
+    historyIntro: t(at('historyIntro')),
+    historyFailedTitle: t(at('historyFailedTitle')),
+    loadingHistory: t(at('loadingHistory')),
+    historyEmpty: t(at('historyEmpty')),
+    actionBy: String(t.raw(at('actionBy'))),
+    refused: t(at('refused')),
+  };
+}

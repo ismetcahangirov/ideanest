@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { EmailTemplateIndex } from '../../../../components/admin/EmailTemplateIndex';
+import { emailTemplateIndexCopy } from '../../../../lib/i18n/admin/console.server';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 
 /**
@@ -11,25 +13,22 @@ import { privatePageMetadata } from '../../../../lib/seo/metadata';
  *
  * <p>`privatePageMetadata` for the reason every console route gives.
  */
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Email templates',
-  description: 'The copy of every message the platform sends, and every edit anybody has made to it.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('admin.pages.emailTemplates');
 
-export default function EmailTemplatesPage() {
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
+
+export default async function EmailTemplatesPage() {
+  const t = await getTranslations('admin.pages.emailTemplates');
+
   return (
     <div className="max-w-[880px]">
-      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
-        Email templates
-      </h1>
-      <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-        The copy that ships with the code is what the platform sends unless somebody has
-        rewritten it. An edit appends a version rather than changing anything in place, so
-        &ldquo;what did this notice say in March&rdquo; stays answerable.
-      </p>
+      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">{t('title')}</h1>
+      <p className="mt-2 max-w-[62ch] text-sm text-white/64">{t('intro')}</p>
 
       <div className="mt-8">
-        <EmailTemplateIndex />
+        <EmailTemplateIndex copy={await emailTemplateIndexCopy()} />
       </div>
     </div>
   );

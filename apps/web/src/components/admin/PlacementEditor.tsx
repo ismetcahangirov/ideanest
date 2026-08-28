@@ -3,18 +3,12 @@
 import { useState } from 'react';
 import { Link } from '../../i18n/navigation';
 import { EmptyState, InlineAlert, Pill, Skeleton, SkeletonGroup, Tag } from '@ideanest/ui';
-import {
-  COLLECTION_KIND_LABELS,
-  bodyOf,
-  collectionTitle,
-  isPublished,
-  replaceCollection,
-} from '../../lib/admin/curation';
+import { bodyOf, collectionTitle, isPublished, replaceCollection } from '../../lib/admin/curation';
 import { consoleMessageFor } from '../../lib/admin/refusals';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { PlacementEditorCopy } from '../../lib/i18n/admin/curation-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { useCollections } from './useCollections';
-
-const SUBJECT = 'the placement';
 
 /**
  * §4.11's AD-03: where a curated collection appears — issue #303.
@@ -57,13 +51,20 @@ const SUBJECT = 'the placement';
  * and a reorder that slid would be 300ms in which the next button cannot be aimed at — on a
  * screen whose whole interaction is pressing the same button repeatedly.
  */
-export function PlacementEditor() {
-  const { status, collections, error, reload, setError } = useCollections();
+export interface PlacementEditorProps {
+  readonly copy: PlacementEditorCopy;
+}
+
+export function PlacementEditor({ copy }: PlacementEditorProps) {
+  const { status, collections, error, reload, setError } = useCollections(
+    copy.subject,
+    copy.refusals,
+  );
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   if (status === 'signed-out' || status === 'forbidden') {
-    return <ConsoleRefusal status={status} subject={SUBJECT} />;
+    return <ConsoleRefusal status={status} subject={copy.subject} copy={copy.refusals} />;
   }
 
   /*
@@ -86,11 +87,13 @@ export function PlacementEditor() {
     try {
       await replaceCollection(first.slug, { ...bodyOf(first), sortOrder: second.sortOrder });
       await replaceCollection(second.slug, { ...bodyOf(second), sortOrder: first.sortOrder });
-      setNotice(`${collectionTitle(first)} moved ${direction === -1 ? 'up' : 'down'}.`);
-    } catch (cause) {
-      setError(
-        `${consoleMessageFor(cause, SUBJECT)} A move is two requests; if the first succeeded, the order below is what the service now holds.`,
+      setNotice(
+        fillPlaceholders(direction === -1 ? copy.movedUp : copy.movedDown, {
+          title: collectionTitle(first),
+        }),
       );
+    } catch (cause) {
+      setError(`${consoleMessageFor(cause, copy.subject, copy.refusals)} ${copy.partial}`);
     } finally {
       setBusy(false);
       /*
@@ -105,15 +108,12 @@ export function PlacementEditor() {
   return (
     <section aria-labelledby="placement-heading">
       <h2 id="placement-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-        Placement order
+        {copy.heading}
         {status === 'ready' && (
           <span className="ml-2 text-xs font-normal text-white/40">{ordered.length}</span>
         )}
       </h2>
-      <p className="mt-1 max-w-[62ch] text-sm text-white/48">
-        Lower is earlier. This is the order of the collections index and of the rails built
-        from it — one integer per collection, which is the whole of what placement means today.
-      </p>
+      <p className="mt-1 max-w-[62ch] text-sm text-white/48">{copy.intro}</p>
 
       <div role="status" aria-live="polite" className="empty:hidden">
         {notice !== null && (
@@ -124,13 +124,13 @@ export function PlacementEditor() {
       </div>
 
       {error !== null && (
-        <InlineAlert variant="danger" title="The order may not be what you asked for" className="mt-4">
+        <InlineAlert variant="danger" title={copy.errorTitle} className="mt-4">
           {error}
         </InlineAlert>
       )}
 
       {status === 'loading' && (
-        <SkeletonGroup label="Loading the placement order" className="mt-4">
+        <SkeletonGroup label={copy.loadingList} className="mt-4">
           <div className="space-y-2">
             {[0, 1, 2].map((row) => (
               <div key={row} className="rounded-lg border border-white/8 bg-surface-1 p-4">
@@ -145,8 +145,8 @@ export function PlacementEditor() {
         <EmptyState
           className="mt-4"
           variant="empty"
-          title="Nothing to place"
-          description="There are no collections yet. Create one on the collections screen, and it appears here."
+          title={copy.emptyTitle}
+          description={copy.emptyBody}
         />
       )}
 
@@ -166,13 +166,13 @@ export function PlacementEditor() {
                 </Link>
                 <p className="mt-1 text-xs text-white/40">
                   <span className="font-mono">{collection.sortOrder}</span>{' '}
-                  · {COLLECTION_KIND_LABELS[collection.kind]}
+                  · {copy.curation.kind[collection.kind]}
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
                 <Tag variant={isPublished(collection) ? 'success' : 'default'}>
-                  {isPublished(collection) ? 'Published' : 'Unpublished'}
+                  {isPublished(collection) ? copy.curation.published : copy.curation.unpublished}
                 </Tag>
                 {/*
                   The accessible name says which collection moves. Twelve rows of "Move up" is
@@ -183,19 +183,23 @@ export function PlacementEditor() {
                   variant="outline"
                   size="sm"
                   disabled={busy || index === 0}
-                  aria-label={`Move up: ${collectionTitle(collection)}`}
+                  aria-label={fillPlaceholders(copy.curation.moveUpLabel, {
+                    title: collectionTitle(collection),
+                  })}
                   onClick={() => void swap(index, -1)}
                 >
-                  Move up
+                  {copy.curation.moveUp}
                 </Pill>
                 <Pill
                   variant="outline"
                   size="sm"
                   disabled={busy || index === ordered.length - 1}
-                  aria-label={`Move down: ${collectionTitle(collection)}`}
+                  aria-label={fillPlaceholders(copy.curation.moveDownLabel, {
+                    title: collectionTitle(collection),
+                  })}
                   onClick={() => void swap(index, 1)}
                 >
-                  Move down
+                  {copy.curation.moveDown}
                 </Pill>
               </div>
             </li>
@@ -205,7 +209,7 @@ export function PlacementEditor() {
 
       {status === 'failed' && (
         <Pill variant="ghost" size="sm" className="mt-4" onClick={reload}>
-          Try again
+          {copy.tryAgain}
         </Pill>
       )}
     </section>

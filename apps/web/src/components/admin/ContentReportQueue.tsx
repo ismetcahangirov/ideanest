@@ -4,12 +4,14 @@ import { useState } from 'react';
 import { InlineAlert, Pill } from '@ideanest/ui';
 import { ModerationQueue } from '../moderation/ModerationQueue';
 import type { ReportTargetType } from '../../lib/moderation/api';
+import type { ContentReportQueueCopy } from '../../lib/i18n/admin/content-copy';
 
-/** The two halves of AD-09's content queue, and what each is called on the screen. */
-const SURFACES: ReadonlyArray<readonly [ReportTargetType, string]> = [
-  ['COMMENT', 'Comments'],
-  ['PROJECT_UPDATE', 'Updates'],
-];
+/**
+ * The two halves of AD-09's content queue.
+ *
+ * Values only: what each is called is `admin.screens.contentReports.surface`, keyed by these.
+ */
+const SURFACES: readonly ReportTargetType[] = ['COMMENT', 'PROJECT_UPDATE'];
 
 /**
  * §4.11's AD-09: complaints about what people wrote — issue #297.
@@ -45,13 +47,17 @@ const SURFACES: ReadonlyArray<readonly [ReportTargetType, string]> = [
  * taking the comment down is a separate action on the campaign, by somebody who can see it
  * in context.
  */
-export function ContentReportQueue() {
+export interface ContentReportQueueProps {
+  readonly copy: ContentReportQueueCopy;
+}
+
+export function ContentReportQueue({ copy }: ContentReportQueueProps) {
   const [surface, setSurface] = useState<ReportTargetType>('COMMENT');
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center gap-2">
-        {SURFACES.map(([target, label]) => (
+        {SURFACES.map((target) => (
           <Pill
             key={target}
             variant={surface === target ? 'outline' : 'ghost'}
@@ -59,16 +65,14 @@ export function ContentReportQueue() {
             aria-pressed={surface === target}
             onClick={() => setSurface(target)}
           >
-            {label}
+            {copy.surface[target]}
           </Pill>
         ))}
       </div>
 
       {surface === 'PROJECT_UPDATE' && (
-        <InlineAlert variant="info" title="Updates became reportable with #297">
-          Nothing could file a complaint about an update until this release, so this queue
-          starts empty on every deployment and fills from here. Reports filed before it are
-          about comments and campaigns, and they are on the other chips.
+        <InlineAlert variant="info" title={copy.noticeTitle}>
+          {copy.noticeBody}
         </InlineAlert>
       )}
 
@@ -78,7 +82,12 @@ export function ContentReportQueue() {
         switch shows comments under a heading that says updates, for exactly as long as the
         request takes -- which on a moderation queue is long enough to act on.
       */}
-      <ModerationQueue key={surface} pinnedTarget={surface} detailHrefBase="/admin/moderation" />
+      <ModerationQueue
+        key={surface}
+        pinnedTarget={surface}
+        detailHrefBase="/admin/moderation"
+        copy={copy.queue}
+      />
     </div>
   );
 }

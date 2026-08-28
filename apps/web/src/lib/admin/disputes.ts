@@ -83,15 +83,19 @@ export interface DisputePage {
 /** The three outcomes a case can be resolved as. `OPEN` and `UNDER_REVIEW` are not outcomes. */
 export const DISPUTE_OUTCOMES: readonly DisputeState[] = ['WON', 'LOST', 'CONCEDED'];
 
-export const EVIDENCE_KIND_LABELS: Readonly<Record<EvidenceKind, string>> = Object.freeze({
-  RECEIPT: 'What they were charged, and for what',
-  SHIPPING_PROOF: 'That the reward was sent',
-  COMMUNICATION: 'What was said to them',
-  TERMS_ACCEPTANCE: 'That they accepted the terms',
-  REFUND_POLICY: 'What our refund policy said at the time',
-  ACTIVITY_LOG: 'That the cardholder was the one who pledged',
-  OTHER: 'Something else',
-});
+/*
+ * What each kind of evidence is, in words, is `admin.screens.disputes.evidenceKind` since
+ * #324. This is the order the form offers them in.
+ */
+export const EVIDENCE_KINDS: readonly EvidenceKind[] = Object.freeze([
+  'RECEIPT',
+  'SHIPPING_PROOF',
+  'COMMUNICATION',
+  'TERMS_ACCEPTANCE',
+  'REFUND_POLICY',
+  'ACTIVITY_LOG',
+  'OTHER',
+]);
 
 /** The queue: unresolved, soonest deadline first. */
 export async function readDisputeQueue(page = 0, signal?: AbortSignal): Promise<DisputePage> {

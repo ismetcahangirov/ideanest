@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { ModerationQueue } from '../../../../../components/moderation/ModerationQueue';
+import { moderationQueueCopy } from '../../../../../lib/i18n/admin/console.server';
 import { privatePageMetadata } from '../../../../../lib/seo/metadata';
 
 /**
@@ -33,26 +35,22 @@ import { privatePageMetadata } from '../../../../../lib/seo/metadata';
  * `privatePageMetadata` for the reason every console route gives, and one of its own: the
  * queue quotes what one person wrote about another.
  */
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Profile reports',
-  description: 'Complaints filed against a person rather than one of their campaigns.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('admin.pages.moderationProfiles');
 
-export default function ProfileModerationPage() {
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
+
+export default async function ProfileModerationPage() {
+  const t = await getTranslations('admin.pages.moderationProfiles');
+
   return (
     <div className="max-w-[880px]">
-      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
-        Profile reports
-      </h1>
-      <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-        Complaints about a person rather than one of their campaigns, oldest first. Deciding
-        one records a judgement about the complaint and nothing else — banning the account is
-        a separate decision, taken on the accounts screen, and it signs the person out
-        everywhere.
-      </p>
+      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">{t('title')}</h1>
+      <p className="mt-2 max-w-[62ch] text-sm text-white/64">{t('intro')}</p>
 
       <div className="mt-8">
-        <ModerationQueue pinnedTarget="USER" detailHrefBase="/admin/moderation" />
+        <ModerationQueue pinnedTarget="USER" detailHrefBase="/admin/moderation" copy={await moderationQueueCopy()} />
       </div>
     </div>
   );

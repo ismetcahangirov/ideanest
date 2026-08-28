@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { PaymentLogView } from '../../../../components/admin/PaymentLogView';
+import { paymentLogCopy } from '../../../../lib/i18n/admin/console.server';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 
 /**
@@ -10,26 +12,22 @@ import { privatePageMetadata } from '../../../../lib/seo/metadata';
  * do and what the provider said, and that is what the money meant. A declined charge
  * appears here and nowhere else, because it moved nothing.
  */
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Payment log',
-  description: 'Every call to a payment provider, its reference, and why the refused ones failed.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('admin.pages.payments');
 
-export default function PaymentsPage() {
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
+
+export default async function PaymentsPage() {
+  const t = await getTranslations('admin.pages.payments');
+
   return (
     <div className="max-w-[880px]">
-      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
-        Payment log
-      </h1>
-      <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-        Every call the platform has made to a payment provider, newest first, including
-        the ones that were refused. A status never moves: a pending call that later
-        settled is a second row, so four rows for one pledge is an attempt history
-        rather than four payments.
-      </p>
+      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">{t('title')}</h1>
+      <p className="mt-2 max-w-[62ch] text-sm text-white/64">{t('intro')}</p>
 
       <div className="mt-8">
-        <PaymentLogView />
+        <PaymentLogView copy={await paymentLogCopy()} />
       </div>
     </div>
   );

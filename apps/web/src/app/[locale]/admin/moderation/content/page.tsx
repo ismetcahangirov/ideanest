@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { ContentReportQueue } from '../../../../../components/admin/ContentReportQueue';
+import { contentReportQueueCopy } from '../../../../../lib/i18n/admin/console.server';
 import { privatePageMetadata } from '../../../../../lib/seo/metadata';
 
 /**
@@ -16,25 +18,22 @@ import { privatePageMetadata } from '../../../../../lib/seo/metadata';
  * <p>`privatePageMetadata` for the reason every console route gives: these pages are
  * per-person, they are not for a crawler, and several of them name people.
  */
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Content reports',
-  description: 'Complaints about comments and campaign updates, oldest first.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('admin.pages.moderationContent');
 
-export default function ContentModerationPage() {
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
+
+export default async function ContentModerationPage() {
+  const t = await getTranslations('admin.pages.moderationContent');
+
   return (
     <div className="max-w-[880px]">
-      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
-        Content reports
-      </h1>
-      <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-        Complaints about what somebody wrote on a campaign, oldest first. Deciding one records a
-        judgement about the complaint — taking the comment or update down is a separate action,
-        by somebody who can see it in context.
-      </p>
+      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">{t('title')}</h1>
+      <p className="mt-2 max-w-[62ch] text-sm text-white/64">{t('intro')}</p>
 
       <div className="mt-8">
-        <ContentReportQueue />
+        <ContentReportQueue copy={await contentReportQueueCopy()} />
       </div>
     </div>
   );

@@ -5,6 +5,20 @@ import { ApiError } from '../../lib/api/problem';
 import { readReconciliation, runReconciliation } from '../../lib/admin/reconciliation';
 import type { ReconciliationReport } from '../../lib/admin/reconciliation';
 import { ReconciliationPanel } from './ReconciliationPanel';
+import { translatorFor } from '../../test-copy';
+import { consoleChromeCopyFrom } from '../../lib/i18n/admin/common-copy';
+import { reconciliationCopyFrom } from '../../lib/i18n/admin/money-copy';
+
+/*
+ * The copy is built from `messages/en.json` with the same builders the routes call, rather
+ * than typed out here. `src/test-copy.ts` explains why at length: a suite that retyped the
+ * sentences would still be green with the catalogue empty, which is precisely the defect
+ * `catalogue.test.ts` exists to catch.
+ */
+const COPY = reconciliationCopyFrom(
+  translatorFor('admin'),
+  consoleChromeCopyFrom(translatorFor('admin'), translatorFor('common')),
+);
 
 /**
  * §4.11's AD-05 reconciliation screen — issue #106.
@@ -53,7 +67,7 @@ describe('the reconciliation panel', () => {
   it('says the books balance, and how much was checked', async () => {
     readMock.mockResolvedValue(report());
 
-    render(<ReconciliationPanel />);
+    render(<ReconciliationPanel copy={COPY} />);
 
     expect(await screen.findByText(/The books balance/i)).toBeInTheDocument();
     expect(screen.getByText(/12 account positions checked/i)).toBeInTheDocument();
@@ -69,7 +83,7 @@ describe('the reconciliation panel', () => {
   it('does not report a platform nobody has checked as balanced', async () => {
     readMock.mockResolvedValue(report({ hasRun: false, runAt: null, accountsChecked: 0 }));
 
-    render(<ReconciliationPanel />);
+    render(<ReconciliationPanel copy={COPY} />);
 
     expect(await screen.findByText(/Nothing has been reconciled/i)).toBeInTheDocument();
     expect(screen.queryByText(/The books balance/i)).not.toBeInTheDocument();
@@ -78,7 +92,7 @@ describe('the reconciliation panel', () => {
   it('says an empty platform is balanced rather than unchecked', async () => {
     readMock.mockResolvedValue(report({ accountsChecked: 0 }));
 
-    render(<ReconciliationPanel />);
+    render(<ReconciliationPanel copy={COPY} />);
 
     expect(await screen.findByText(/The books balance/i)).toBeInTheDocument();
     expect(screen.getByText(/holds no money in any account yet/i)).toBeInTheDocument();
@@ -98,7 +112,7 @@ describe('the reconciliation panel', () => {
       }),
     );
 
-    render(<ReconciliationPanel />);
+    render(<ReconciliationPanel copy={COPY} />);
 
     expect(await screen.findByText(/The books do not balance/i)).toBeInTheDocument();
     expect(
@@ -117,7 +131,7 @@ describe('the reconciliation panel', () => {
       }),
     );
 
-    render(<ReconciliationPanel />);
+    render(<ReconciliationPanel copy={COPY} />);
     await screen.findByText(/The books do not balance/i);
 
     // The service reports and never repairs, because the correcting entry depends on which
@@ -139,7 +153,7 @@ describe('the reconciliation panel', () => {
       }),
     );
 
-    render(<ReconciliationPanel />);
+    render(<ReconciliationPanel copy={COPY} />);
     await screen.findByText(/The books balance/i);
 
     await userEvent.click(screen.getByRole('button', { name: /Check again now/i }));
@@ -160,7 +174,7 @@ describe('the reconciliation panel', () => {
     );
     runMock.mockRejectedValue(new ApiError(503, null));
 
-    render(<ReconciliationPanel />);
+    render(<ReconciliationPanel copy={COPY} />);
     await screen.findByText(/The books do not balance/i);
 
     await userEvent.click(screen.getByRole('button', { name: /Check again now/i }));
@@ -174,7 +188,7 @@ describe('the reconciliation panel', () => {
   it('refuses honestly when the account may not read finance', async () => {
     readMock.mockRejectedValue(new ApiError(403, null));
 
-    render(<ReconciliationPanel />);
+    render(<ReconciliationPanel copy={COPY} />);
 
     expect(await screen.findByText(/Not a moderator/i)).toBeInTheDocument();
   });

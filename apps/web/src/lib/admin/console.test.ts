@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { translatorFor } from '../../test-copy';
+import { consoleChromeCopyFrom } from '../i18n/admin/common-copy';
+import { moneyCopyFrom } from '../i18n/admin/money-copy';
 import { ApiError } from '../api/problem';
 import { trailQuery } from './audit';
 import {
@@ -11,6 +14,15 @@ import {
 import { accountLabel, ledgerQuery } from './ledger';
 import { paymentLogQuery, statusVariant } from './payments';
 import { consoleMessageFor, shortId, statusFor } from './refusals';
+
+/*
+ * The copy is built from `messages/en.json` with the same functions the screens call, rather
+ * than typed out here — `src/test-copy.ts` explains why at length: a test that retyped the
+ * sentences would pass with the catalogue empty, which is exactly the defect these assertions
+ * are for.
+ */
+const CHROME = consoleChromeCopyFrom(translatorFor('admin'), translatorFor('common'));
+const MONEY = moneyCopyFrom(translatorFor('admin'));
 
 /**
  * The console's read modules — issues #300 to #314.
@@ -95,18 +107,20 @@ describe('the ledger query', () => {
 
 describe('a ledger account name', () => {
   it('reads §7.2 five accounts in words', () => {
-    expect(accountLabel('escrow')).toBe('Escrow');
-    expect(accountLabel('platform_fee')).toBe('Platform fee');
+    expect(accountLabel('escrow', MONEY)).toBe('Escrow');
+    expect(accountLabel('platform_fee', MONEY)).toBe('Platform fee');
   });
 
   it('says which creator, without pretending to know who they are', () => {
-    expect(accountLabel('creator:0191f2ab-1234-7000-8000-000000000001')).toBe('Creator 0191f2ab');
+    expect(accountLabel('creator:0191f2ab-1234-7000-8000-000000000001', MONEY)).toBe(
+      'Creator 0191f2ab',
+    );
   });
 
   it('shows an unknown account rather than hiding it', () => {
     // The column has a check constraint, so a value outside the six is something that should
     // not exist — which makes it the one row on the screen worth seeing.
-    expect(accountLabel('something_else')).toBe('something_else');
+    expect(accountLabel('something_else', MONEY)).toBe('something_else');
   });
 });
 
@@ -172,20 +186,22 @@ describe('a console refusal', () => {
   });
 
   it('names what the reader was trying to read', () => {
-    expect(consoleMessageFor(new ApiError(403, null, 'no'), 'the ledger')).toContain('the ledger');
+    expect(
+      consoleMessageFor(new ApiError(403, null, 'no'), 'the ledger', CHROME.refusals),
+    ).toContain('the ledger');
   });
 
   it('branches on the code and not on the prose', () => {
     const problem = { code: 'UNKNOWN_LEDGER_ACCOUNT', detail: "'platform_fees' is not one of them." };
-    expect(consoleMessageFor(new ApiError(400, problem, 'no'), 'the ledger')).toBe(
+    expect(consoleMessageFor(new ApiError(400, problem, 'no'), 'the ledger', CHROME.refusals)).toBe(
       "'platform_fees' is not one of them.",
     );
   });
 
   it('says the service could not be reached when it could not', () => {
-    expect(consoleMessageFor(new TypeError('offline'), 'the ledger')).toContain(
-      'could not be reached',
-    );
+    expect(
+      consoleMessageFor(new TypeError('offline'), 'the ledger', CHROME.refusals),
+    ).toContain('could not be reached');
   });
 });
 

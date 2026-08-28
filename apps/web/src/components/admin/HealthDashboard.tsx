@@ -2,10 +2,10 @@
 
 import { InlineAlert, Pill, Skeleton, SkeletonGroup, Tag } from '@ideanest/ui';
 import { ageInSeconds, readHealth, type HealthStatus } from '../../lib/admin/health';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { HealthDashboardCopy } from '../../lib/i18n/admin/platform-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { useConsoleResource } from './useConsoleResource';
-
-const SUBJECT = 'the health dashboard';
 
 /**
  * §4.11's AD-16: queue depth, failed jobs, provider status — §18, issue #316.
@@ -31,17 +31,31 @@ const SUBJECT = 'the health dashboard';
  * §9.3 asks for at least two payment integrations and a deployment may run one. Painting the
  * others red would put permanent failures on a screen whose whole job is to show the ones that
  * are not permanent.
+ *
+ * <h2>The measurement's age is two sentences rather than a number and a unit</h2>
+ *
+ * `lib/i18n/admin/platform-copy.ts` records why: a unit concatenated onto a figure is a
+ * sentence no translation can reorder, and this screen used to build four of them that way.
  */
-export function HealthDashboard() {
-  const health = useConsoleResource((signal) => readHealth(signal), SUBJECT, []);
+export interface HealthDashboardProps {
+  readonly copy: HealthDashboardCopy;
+}
+
+export function HealthDashboard({ copy }: HealthDashboardProps) {
+  const health = useConsoleResource(
+    (signal) => readHealth(signal),
+    copy.subject,
+    copy.refusals,
+    [],
+  );
 
   if (health.status === 'signed-out' || health.status === 'forbidden') {
-    return <ConsoleRefusal status={health.status} subject={SUBJECT} />;
+    return <ConsoleRefusal status={health.status} subject={copy.subject} copy={copy.refusals} />;
   }
 
   if (health.status === 'loading') {
     return (
-      <SkeletonGroup label="Loading the health dashboard">
+      <SkeletonGroup label={copy.loadingList}>
         <div className="space-y-3">
           {[0, 1, 2].map((row) => (
             <div key={row} className="rounded-lg border border-white/8 bg-surface-1 p-4">
@@ -57,11 +71,11 @@ export function HealthDashboard() {
   if (health.status === 'failed' || health.data === null) {
     return (
       <>
-        <InlineAlert variant="danger" title="Something went wrong">
-          {health.error ?? 'The dashboard could not be read.'}
+        <InlineAlert variant="danger" title={copy.errorTitle}>
+          {health.error ?? copy.readFailed}
         </InlineAlert>
         <Pill variant="ghost" size="sm" className="mt-4" onClick={health.reload}>
-          Try again
+          {copy.tryAgain}
         </Pill>
       </>
     );
@@ -73,32 +87,32 @@ export function HealthDashboard() {
   return (
     <div className="flex flex-col gap-8">
       {!snapshot.monitored && (
-        <InlineAlert variant="info" title="This page does not alert anybody">
-          Everything here is measured when you open it. Nothing on this screen wakes anybody, and
-          nothing watches it while you are not looking — §18&apos;s observability work (#138) is
-          what will. Read it when you suspect something; do not rely on it to tell you.
+        <InlineAlert variant="info" title={copy.notMonitoredTitle}>
+          {copy.notMonitoredBody}
         </InlineAlert>
       )}
 
       <section aria-labelledby="overall-heading">
         <h2 id="overall-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-          Overall <StatusTag status={snapshot.status} />
+          {copy.overall} <StatusTag status={snapshot.status} copy={copy} />
         </h2>
         <p className="mt-2 text-xs text-white/48">
-          Measured {age < 60 ? `${age} seconds` : `${Math.floor(age / 60)} minutes`} ago.{' '}
+          {age < 60
+            ? fillPlaceholders(copy.measuredSeconds, { count: String(age) })
+            : fillPlaceholders(copy.measuredMinutes, { count: String(Math.floor(age / 60)) })}{' '}
           <button
             type="button"
             onClick={health.reload}
             className="rounded text-white/64 underline transition-colors duration-150 ease-in-out hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
           >
-            Measure again
+            {copy.measureAgain}
           </button>
         </p>
       </section>
 
       <section aria-labelledby="queues-heading">
         <h2 id="queues-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-          Queues
+          {copy.queues}
         </h2>
         <ul className="mt-4 flex list-none flex-col gap-2">
           {snapshot.queues.map((queue) => (
@@ -108,9 +122,11 @@ export function HealthDashboard() {
             >
               <p className="text-sm text-white">{queue.name}</p>
               <p className="text-sm text-white/64">
-                {queue.waiting} waiting
-                {queue.dead > 0 ? ` · ${queue.dead} given up` : ''}{' '}
-                <StatusTag status={queue.status} />
+                {fillPlaceholders(copy.waiting, { count: String(queue.waiting) })}
+                {queue.dead > 0
+                  ? ` · ${fillPlaceholders(copy.givenUp, { count: String(queue.dead) })}`
+                  : ''}{' '}
+                <StatusTag status={queue.status} copy={copy} />
               </p>
             </li>
           ))}
@@ -119,21 +135,28 @@ export function HealthDashboard() {
 
       <section aria-labelledby="jobs-heading">
         <h2 id="jobs-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-          Scheduled jobs
+          {copy.jobs}
         </h2>
         <ul className="mt-4 flex list-none flex-col gap-2">
           {snapshot.jobs.map((job) => (
             <li key={job.name} className="rounded-lg border border-white/8 bg-surface-1 p-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <p className="font-mono text-sm text-white">{job.name}</p>
-                <StatusTag status={job.status} />
+                <StatusTag status={job.status} copy={copy} />
               </div>
               <p className="mt-2 text-xs text-white/48">
+                {/* `job.state` is the scheduler's own wire word and is not translated: it is
+                    what somebody greps the logs for, and a translated copy of it would be a
+                    second spelling of a value nothing else in the system knows. */}
                 {job.state}
                 {job.overdueBySeconds > 0
-                  ? ` · overdue by ${Math.floor(job.overdueBySeconds / 60)} minutes`
-                  : ' · on time'}
-                {job.attempts > 0 ? ` · ${job.attempts} attempts` : ''}
+                  ? ` · ${fillPlaceholders(copy.overdue, {
+                      count: String(Math.floor(job.overdueBySeconds / 60)),
+                    })}`
+                  : ` · ${copy.onTime}`}
+                {job.attempts > 0
+                  ? ` · ${fillPlaceholders(copy.attempts, { count: String(job.attempts) })}`
+                  : ''}
               </p>
               {job.lastError && (
                 <p className="mt-2 break-words text-xs text-white/64">{job.lastError}</p>
@@ -145,7 +168,7 @@ export function HealthDashboard() {
 
       <section aria-labelledby="providers-heading">
         <h2 id="providers-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-          Providers
+          {copy.providers}
         </h2>
         <ul className="mt-4 flex list-none flex-col gap-2">
           {snapshot.providers.map((provider) => (
@@ -159,9 +182,9 @@ export function HealthDashboard() {
                   <span className="ml-2 text-white/40">{provider.kind}</span>
                 </p>
                 {provider.configured ? (
-                  <StatusTag status={provider.status} />
+                  <StatusTag status={provider.status} copy={copy} />
                 ) : (
-                  <Tag>Not configured</Tag>
+                  <Tag>{copy.notConfigured}</Tag>
                 )}
               </div>
               {provider.detail && <p className="mt-2 text-xs text-white/48">{provider.detail}</p>}
@@ -179,7 +202,12 @@ export function HealthDashboard() {
  * CLAUDE.md: colour alone must never carry meaning. A dashboard is exactly where that rule
  * is most often broken and most expensive to break, because the whole page is a colour.
  */
-function StatusTag({ status }: { readonly status: HealthStatus }) {
-  const label = status === 'HEALTHY' ? 'Healthy' : status === 'DEGRADED' ? 'Worth a look' : 'Stopped';
-  return <Tag>{label}</Tag>;
+function StatusTag({
+  status,
+  copy,
+}: {
+  readonly status: HealthStatus;
+  readonly copy: HealthDashboardCopy;
+}) {
+  return <Tag>{copy.status[status] ?? status}</Tag>;
 }

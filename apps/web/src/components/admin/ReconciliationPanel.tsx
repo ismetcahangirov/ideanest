@@ -3,18 +3,19 @@
 import { useState } from 'react';
 import { InlineAlert, Pill, Skeleton, SkeletonGroup, Tag } from '@ideanest/ui';
 import {
-  FINDING_MEANINGS,
-  FINDING_TITLES,
   readReconciliation,
   runReconciliation,
   type ReconciliationFinding,
   type ReconciliationReport,
 } from '../../lib/admin/reconciliation';
 import { consoleMessageFor, statusFor } from '../../lib/admin/refusals';
+import { fillNodes, fillPlaceholders } from '../../lib/i18n/placeholders';
+import { pluralise } from '../../lib/i18n/plurals';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
+import type { Locale } from '../../lib/i18n/locale';
+import type { ReconciliationCopy } from '../../lib/i18n/admin/money-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { useConsoleResource } from './useConsoleResource';
-
-const SUBJECT = 'the reconciliation';
 
 /**
  * §4.11's AD-05: do the platform's books add up? — issue #106.
@@ -47,10 +48,16 @@ const SUBJECT = 'the reconciliation';
  * `docs/motion-system.md` §5 gives the console no entry animation. Nothing here fades in,
  * and "Check again" swaps a label rather than animating.
  */
-export function ReconciliationPanel() {
+export interface ReconciliationPanelProps {
+  readonly copy: ReconciliationCopy;
+}
+
+export function ReconciliationPanel({ copy }: ReconciliationPanelProps) {
+  const locale = useRouteLocale();
   const report = useConsoleResource<ReconciliationReport>(
     (signal) => readReconciliation(signal),
-    SUBJECT,
+    copy.subject,
+    copy.refusals,
     [],
   );
 
@@ -74,8 +81,8 @@ export function ReconciliationPanel() {
       const status = statusFor(cause);
       setRunFailure(
         status === 'failed'
-          ? consoleMessageFor(cause, SUBJECT)
-          : 'Your session no longer has permission to run a reconciliation.',
+          ? consoleMessageFor(cause, copy.subject, copy.refusals)
+          : copy.runForbidden,
       );
     } finally {
       setRunning(false);
@@ -83,12 +90,12 @@ export function ReconciliationPanel() {
   }
 
   if (report.status === 'signed-out' || report.status === 'forbidden') {
-    return <ConsoleRefusal status={report.status} subject={SUBJECT} />;
+    return <ConsoleRefusal status={report.status} subject={copy.subject} copy={copy.refusals} />;
   }
 
   if (report.status === 'loading' && report.data === null) {
     return (
-      <SkeletonGroup label="Loading the reconciliation">
+      <SkeletonGroup label={copy.loadingList}>
         <div className="rounded-lg border border-white/8 bg-surface-1 p-4">
           <Skeleton height="1rem" width="40%" />
           <Skeleton height="0.875rem" width="65%" className="mt-3" />
@@ -100,11 +107,11 @@ export function ReconciliationPanel() {
   if (report.data === null) {
     return (
       <>
-        <InlineAlert variant="danger" title="Something went wrong">
-          {report.error ?? 'The reconciliation could not be read.'}
+        <InlineAlert variant="danger" title={copy.errorTitle}>
+          {report.error ?? copy.readFailed}
         </InlineAlert>
         <Pill variant="ghost" size="sm" className="mt-4" onClick={report.reload}>
-          Try again
+          {copy.tryAgain}
         </Pill>
       </>
     );
@@ -114,10 +121,10 @@ export function ReconciliationPanel() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Summary report={found} />
+      <Summary report={found} copy={copy} locale={locale} />
 
       {runFailure !== null && (
-        <InlineAlert variant="danger" title="That check did not run">
+        <InlineAlert variant="danger" title={copy.runFailedTitle}>
           {runFailure}
         </InlineAlert>
       )}
@@ -125,11 +132,15 @@ export function ReconciliationPanel() {
       {found.findings.length > 0 && (
         <section aria-labelledby="findings-heading">
           <h2 id="findings-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-            What is wrong
+            {copy.findingsHeading}
           </h2>
           <ul className="mt-4 flex list-none flex-col gap-3">
             {found.findings.map((finding, index) => (
-              <FindingCard key={`${finding.kind}:${finding.currency}:${index}`} finding={finding} />
+              <FindingCard
+                key={`${finding.kind}:${finding.currency}:${index}`}
+                finding={finding}
+                copy={copy}
+              />
             ))}
           </ul>
         </section>
@@ -137,13 +148,9 @@ export function ReconciliationPanel() {
 
       <div className="flex flex-wrap items-center gap-4">
         <Pill variant="ghost" size="sm" onClick={() => void check()} disabled={running}>
-          {running ? 'Checking…' : 'Check again now'}
+          {running ? copy.checking : copy.checkAgain}
         </Pill>
-        <p className="text-xs text-white/48">
-          Two queries over the whole platform. It reads and writes nothing, so running it is
-          safe at any time — and it is the only way to get an answer from the replica you are
-          talking to.
-        </p>
+        <p className="text-xs text-white/48">{copy.runNote}</p>
       </div>
     </div>
   );
@@ -156,53 +163,72 @@ export function ReconciliationPanel() {
  * platform holds nothing" is worth its own sentence because a brand-new deployment reporting
  * zero positions is correct rather than broken.
  */
-function Summary({ report }: { readonly report: ReconciliationReport }) {
+function Summary({
+  report,
+  copy,
+  locale,
+}: {
+  readonly report: ReconciliationReport;
+  readonly copy: ReconciliationCopy;
+  readonly locale: Locale;
+}) {
   if (!report.hasRun) {
     return (
-      <InlineAlert variant="warning" title="Nothing has been reconciled on this replica">
-        The nightly pass keeps its result in the process that made it, so a replica that has
-        restarted since 02:30 has nothing to report — which is not the same as balanced books.
-        Run one now to get an answer.
+      <InlineAlert variant="warning" title={copy.neverRunTitle}>
+        {copy.neverRunBody}
       </InlineAlert>
     );
   }
 
-  const when = new Date(report.runAt as string);
+  const when = new Date(report.runAt as string).toISOString();
+  const positions = pluralise(locale, copy.positionCount, report.accountsChecked);
 
   if (!report.balanced) {
     return (
-      <InlineAlert variant="danger" title="The books do not balance">
-        {report.findings.length} finding{report.findings.length === 1 ? '' : 's'} across{' '}
-        {report.accountsChecked} account position
-        {report.accountsChecked === 1 ? '' : 's'}, checked {when.toISOString()}.{' '}
-        <strong>Nothing has been corrected automatically</strong> — the entry that would fix
-        this depends on which of a dozen things went wrong, so it is a decision rather than a
-        sweep.
+      <InlineAlert variant="danger" title={copy.unbalancedTitle}>
+        {/*
+          The emphasis is a node in a template rather than a `<strong>` inside a message.
+          `catalogue.test.ts` checks that rich-text tags match across the four languages
+          precisely because a dropped one is silent, and not carrying the tag at all is a
+          better answer than checking for it.
+        */}
+        {fillNodes(copy.unbalancedBody, {
+          findings: pluralise(locale, copy.findingCount, report.findings.length),
+          positions,
+          at: when,
+          note: fillNodes(copy.unbalancedNote, {
+            emphasis: <strong>{copy.unbalancedEmphasis}</strong>,
+          }),
+        })}
       </InlineAlert>
     );
   }
 
   return (
-    <InlineAlert variant="success" title="The books balance">
-      {report.accountsChecked} account position{report.accountsChecked === 1 ? '' : 's'} checked{' '}
-      {when.toISOString()}, nothing out of place.
-      {report.accountsChecked === 0 &&
-        ' The platform holds no money in any account yet, which is balanced rather than unchecked.'}
+    <InlineAlert variant="success" title={copy.balancedTitle}>
+      {fillPlaceholders(copy.balancedBody, { positions, at: when })}
+      {report.accountsChecked === 0 && ` ${copy.nothingHeld}`}
     </InlineAlert>
   );
 }
 
-function FindingCard({ finding }: { readonly finding: ReconciliationFinding }) {
+function FindingCard({
+  finding,
+  copy,
+}: {
+  readonly finding: ReconciliationFinding;
+  readonly copy: ReconciliationCopy;
+}) {
   return (
     <li className="rounded-lg border border-white/8 bg-surface-1 p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-sm text-white">{FINDING_TITLES[finding.kind]}</p>
+        <p className="text-sm text-white">{copy.findingTitle[finding.kind]}</p>
         {/* The currency as a tag rather than in the sentence: a finding is about exactly
             one, and it is what somebody scans the list by. */}
         <Tag>{finding.currency}</Tag>
       </div>
       <p className="mt-2 break-words text-sm text-white/64">{finding.detail}</p>
-      <p className="mt-2 max-w-[68ch] text-xs text-white/48">{FINDING_MEANINGS[finding.kind]}</p>
+      <p className="mt-2 max-w-[68ch] text-xs text-white/48">{copy.findingMeaning[finding.kind]}</p>
     </li>
   );
 }

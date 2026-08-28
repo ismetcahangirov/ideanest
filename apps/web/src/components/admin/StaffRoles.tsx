@@ -3,21 +3,19 @@
 import { useState } from 'react';
 import { EmptyState, Field, InlineAlert, Pill, Select, Skeleton, SkeletonGroup, Tag, TextInput } from '@ideanest/ui';
 import {
-  CAPABILITY_LABELS,
   ROLE_CAPABILITIES,
   grantRole,
   readMembership,
   readRoster,
   revokeRole,
-  type StaffCapability,
   type StaffGrant,
   type StaffRole,
 } from '../../lib/admin/staff';
 import { consoleMessageFor, shortId } from '../../lib/admin/refusals';
+import { fillNodes, fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { StaffRolesCopy } from '../../lib/i18n/admin/people-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { useConsoleResource } from './useConsoleResource';
-
-const SUBJECT = 'the staff roster';
 
 const ROLES: readonly StaffRole[] = ['MODERATOR', 'CURATOR', 'FINANCE', 'ADMINISTRATOR'];
 
@@ -52,9 +50,23 @@ const ROLES: readonly StaffRole[] = ['MODERATOR', 'CURATOR', 'FINANCE', 'ADMINIS
  * nothing that moves. This one changes who can move money; it is the last screen on the
  * platform that should feel playful.
  */
-export function StaffRoles() {
-  const me = useConsoleResource((signal) => readMembership(signal), 'your own standing', []);
-  const roster = useConsoleResource((signal) => readRoster(signal), SUBJECT, []);
+export interface StaffRolesProps {
+  readonly copy: StaffRolesCopy;
+}
+
+export function StaffRoles({ copy }: StaffRolesProps) {
+  const me = useConsoleResource(
+    (signal) => readMembership(signal),
+    copy.meSubject,
+    copy.refusals,
+    [],
+  );
+  const roster = useConsoleResource(
+    (signal) => readRoster(signal),
+    copy.subject,
+    copy.refusals,
+    [],
+  );
 
   const [accountId, setAccountId] = useState('');
   const [role, setRole] = useState<StaffRole>('MODERATOR');
@@ -67,7 +79,7 @@ export function StaffRoles() {
   // than by the roster — which would otherwise report "not staff" to somebody whose session
   // had merely expired.
   if (me.status === 'signed-out') {
-    return <ConsoleRefusal status="signed-out" subject={SUBJECT} />;
+    return <ConsoleRefusal status="signed-out" subject={copy.subject} copy={copy.refusals} />;
   }
 
   async function submit(event: React.FormEvent): Promise<void> {
@@ -80,12 +92,14 @@ export function StaffRoles() {
     setWritten(null);
     try {
       await grantRole(id, role, note.trim() === '' ? null : note.trim());
-      setWritten(`${role} granted to ${shortId(id)}.`);
+      setWritten(
+        fillPlaceholders(copy.grantedNotice, { role: copy.role[role], id: shortId(id) }),
+      );
       setAccountId('');
       setNote('');
       roster.reload();
     } catch (cause) {
-      setWriteError(consoleMessageFor(cause, SUBJECT));
+      setWriteError(consoleMessageFor(cause, copy.subject, copy.refusals));
     } finally {
       setBusy(false);
     }
@@ -97,10 +111,15 @@ export function StaffRoles() {
     setWritten(null);
     try {
       await revokeRole(grant.accountId, grant.role);
-      setWritten(`${grant.role} withdrawn from ${shortId(grant.accountId)}.`);
+      setWritten(
+        fillPlaceholders(copy.withdrawnNotice, {
+          role: copy.role[grant.role],
+          id: shortId(grant.accountId),
+        }),
+      );
       roster.reload();
     } catch (cause) {
-      setWriteError(consoleMessageFor(cause, SUBJECT));
+      setWriteError(consoleMessageFor(cause, copy.subject, copy.refusals));
     } finally {
       setBusy(false);
     }
@@ -110,42 +129,46 @@ export function StaffRoles() {
     <div className="flex flex-col gap-10">
       <section aria-labelledby="my-standing-heading">
         <h2 id="my-standing-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-          What you may do
+          {copy.myHeading}
         </h2>
 
         {me.status === 'loading' && (
-          <SkeletonGroup label="Reading your standing" className="mt-4">
+          <SkeletonGroup label={copy.loadingMe} className="mt-4">
             <Skeleton height="1rem" width="30%" />
             <Skeleton height="0.875rem" width="70%" className="mt-3" />
           </SkeletonGroup>
         )}
 
         {me.status === 'ready' && me.data !== null && !me.data.staff && (
-          <InlineAlert variant="info" title="You do not work here" className="mt-4">
-            Your account holds no platform role, so the console has nothing to show you. This
-            is not an error — the service refuses every screen behind this one, and the page
-            you are on is simply saying so honestly.
+          <InlineAlert variant="info" title={copy.notStaffTitle} className="mt-4">
+            {copy.notStaffBody}
           </InlineAlert>
         )}
 
         {me.status === 'ready' && me.data !== null && me.data.staff && (
           <div className="mt-4 rounded-lg border border-white/8 bg-surface-1 p-4">
             <p className="text-sm text-white/64">
-              Signed in as <span className="font-mono text-white/80">{shortId(me.data.accountId)}</span>, holding{' '}
-              {me.data.roles.map((held) => (
-                <Tag key={held} className="mx-1">
-                  {held}
-                </Tag>
-              ))}
+              {/*
+                One sentence with two holes rather than three fragments: the identifier and the
+                role tags are both styled, and Azerbaijani and Turkish put the verb after them.
+              */}
+              {fillNodes(copy.signedInAs, {
+                id: (
+                  <span className="font-mono text-white/80">{shortId(me.data.accountId)}</span>
+                ),
+                roles: me.data.roles.map((held) => (
+                  <Tag key={held} className="mx-1">
+                    {copy.role[held]}
+                  </Tag>
+                )),
+              })}
             </p>
 
             {me.data.bootstrapped && (
-              <InlineAlert variant="warning" title="Administrator by configuration" className="mt-4">
-                Your account is an administrator because its address is in{' '}
-                <code className="font-mono text-xs">MODERATOR_EMAILS</code>, not because anybody
-                granted it a role. That is the bootstrap the platform needs to make its first
-                grant — once real roles are in place, empty that variable. Nobody can withdraw
-                this from the console.
+              <InlineAlert variant="warning" title={copy.bootstrapTitle} className="mt-4">
+                {fillNodes(copy.bootstrapBody, {
+                  variable: <code className="font-mono text-xs">MODERATOR_EMAILS</code>,
+                })}
               </InlineAlert>
             )}
 
@@ -154,7 +177,7 @@ export function StaffRoles() {
                 <li
                   key={capability}
                   className="rounded-md border border-white/8 px-2.5 py-1.5 text-xs text-white/64"
-                  title={CAPABILITY_LABELS[capability as StaffCapability]}
+                  title={copy.capability[capability]}
                 >
                   {capability}
                 </li>
@@ -166,20 +189,19 @@ export function StaffRoles() {
 
       <section aria-labelledby="roster-heading">
         <h2 id="roster-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-          Who holds what
+          {copy.rosterHeading}
         </h2>
 
         {roster.status === 'forbidden' && (
-          <InlineAlert variant="info" title="Not yours to read" className="mt-4">
-            The roster names everybody who can move money on this platform, so reading it needs{' '}
-            <code className="font-mono text-xs">ADMINISTER_STAFF</code> — which only an
-            administrator holds. Your own standing is above, and it is the part that concerns
-            you.
+          <InlineAlert variant="info" title={copy.rosterForbiddenTitle} className="mt-4">
+            {fillNodes(copy.rosterForbiddenBody, {
+              capability: <code className="font-mono text-xs">ADMINISTER_STAFF</code>,
+            })}
           </InlineAlert>
         )}
 
         {roster.status === 'loading' && (
-          <SkeletonGroup label="Loading the roster" className="mt-4">
+          <SkeletonGroup label={copy.loadingRoster} className="mt-4">
             <div className="space-y-3">
               {[0, 1].map((row) => (
                 <div key={row} className="rounded-lg border border-white/8 bg-surface-1 p-4">
@@ -192,11 +214,11 @@ export function StaffRoles() {
 
         {roster.status === 'failed' && (
           <>
-            <InlineAlert variant="danger" title="Something went wrong" className="mt-4">
+            <InlineAlert variant="danger" title={copy.errorTitle} className="mt-4">
               {roster.error}
             </InlineAlert>
             <Pill variant="ghost" size="sm" className="mt-4" onClick={roster.reload}>
-              Try again
+              {copy.tryAgain}
             </Pill>
           </>
         )}
@@ -205,8 +227,8 @@ export function StaffRoles() {
           <EmptyState
             className="mt-4"
             variant="empty"
-            title="Nobody holds a granted role"
-            description="Every member of staff on this deployment is an administrator through the bootstrap list. Grant real roles below and then empty that variable."
+            title={copy.rosterEmptyTitle}
+            description={copy.rosterEmptyBody}
           />
         )}
 
@@ -220,17 +242,19 @@ export function StaffRoles() {
                 <div className="min-w-0">
                   <p className="text-sm text-white">
                     <span className="font-mono text-white/80">{shortId(grant.accountId)}</span>{' '}
-                    <Tag className="ml-1">{grant.role}</Tag>
+                    <Tag className="ml-1">{copy.role[grant.role]}</Tag>
                   </p>
                   <p className="mt-1 text-xs text-white/48">
-                    Granted by <span className="font-mono">{shortId(grant.grantedBy)}</span> on{' '}
-                    {new Date(grant.grantedAt).toISOString().slice(0, 10)}
+                    {fillNodes(copy.grantedBy, {
+                      by: <span className="font-mono">{shortId(grant.grantedBy)}</span>,
+                      date: new Date(grant.grantedAt).toISOString().slice(0, 10),
+                    })}
                     {grant.note ? ` — ${grant.note}` : ''}
                   </p>
                 </div>
 
                 <Pill variant="ghost" size="sm" disabled={busy} onClick={() => void withdraw(grant)}>
-                  Withdraw
+                  {copy.withdraw}
                 </Pill>
               </li>
             ))}
@@ -241,17 +265,14 @@ export function StaffRoles() {
       {roster.status !== 'forbidden' && (
         <section aria-labelledby="grant-heading">
           <h2 id="grant-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-            Grant a role
+            {copy.grantHeading}
           </h2>
-          <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-            Roles are additive: an account holds the union of every role granted to it. Nothing
-            here takes a capability away, which is why there is no order to resolve.
-          </p>
+          <p className="mt-2 max-w-[62ch] text-sm text-white/64">{copy.grantIntro}</p>
 
           <form onSubmit={(event) => void submit(event)} className="mt-4 flex flex-wrap items-end gap-3">
             <Field
-              label="Account"
-              hint="The whole identifier, from the account directory."
+              label={copy.accountLabel}
+              hint={copy.accountHint}
               className="min-w-[280px] flex-1"
             >
               <TextInput
@@ -261,36 +282,44 @@ export function StaffRoles() {
               />
             </Field>
 
-            <Field label="Role" className="min-w-[180px]">
+            <Field label={copy.roleLabel} className="min-w-[180px]">
               <Select value={role} onChange={(event) => setRole(event.target.value as StaffRole)}>
                 {ROLES.map((option) => (
                   <option key={option} value={option}>
-                    {option}
+                    {copy.role[option]}
                   </option>
                 ))}
               </Select>
             </Field>
 
-            <Field label="Note" hint="Why, for the next administrator." className="min-w-[240px] flex-1">
+            <Field label={copy.noteLabel} hint={copy.noteHint} className="min-w-[240px] flex-1">
               <TextInput value={note} onChange={(event) => setNote(event.target.value)} />
             </Field>
 
             <Pill type="submit" variant="outline" size="sm" className="mb-1" disabled={busy}>
-              {busy ? 'Working' : 'Grant'}
+              {busy ? copy.working : copy.grant}
             </Pill>
           </form>
 
           <p className="mt-3 text-xs text-white/48">
-            {role} confers: {ROLE_CAPABILITIES[role].join(', ')}
+            {/*
+              The capabilities are their own identifiers, not the sentences beside them: this
+              is the list somebody quotes when asking for a role, and the service names the
+              same strings back in a refusal.
+            */}
+            {fillPlaceholders(copy.confers, {
+              role: copy.role[role],
+              capabilities: ROLE_CAPABILITIES[role].join(', '),
+            })}
           </p>
 
           {written && (
-            <InlineAlert variant="success" title="Done" className="mt-4">
+            <InlineAlert variant="success" title={copy.doneTitle} className="mt-4">
               {written}
             </InlineAlert>
           )}
           {writeError && (
-            <InlineAlert variant="danger" title="That did not work" className="mt-4">
+            <InlineAlert variant="danger" title={copy.failedTitle} className="mt-4">
               {writeError}
             </InlineAlert>
           )}

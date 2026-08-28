@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { ReconciliationPanel } from '../../../../components/admin/ReconciliationPanel';
+import { reconciliationCopy } from '../../../../lib/i18n/admin/console.server';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 
 /**
@@ -13,27 +15,22 @@ import { privatePageMetadata } from '../../../../lib/seo/metadata';
  * <p>`privatePageMetadata` for the reason every console route gives: these pages are
  * per-person, they are not for a crawler, and several of them name people.
  */
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Reconciliation',
-  description: 'Whether the platform’s money adds up, and what is wrong when it does not.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('admin.pages.reconciliation');
 
-export default function ReconciliationPage() {
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
+
+export default async function ReconciliationPage() {
+  const t = await getTranslations('admin.pages.reconciliation');
+
   return (
     <div className="max-w-[880px]">
-      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
-        Reconciliation
-      </h1>
-      <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-        Three questions, each of which the other two would miss: do the debits equal the
-        credits, does any account hold a sign it cannot, and does the ledger agree with the
-        record of what moved. It runs nightly and reports rather than repairs — nothing here
-        corrects anything, because the entry that would fix a discrepancy depends on which of
-        a dozen things went wrong.
-      </p>
+      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">{t('title')}</h1>
+      <p className="mt-2 max-w-[62ch] text-sm text-white/64">{t('intro')}</p>
 
       <div className="mt-8">
-        <ReconciliationPanel />
+        <ReconciliationPanel copy={await reconciliationCopy()} />
       </div>
     </div>
   );

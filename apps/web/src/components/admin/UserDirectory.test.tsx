@@ -5,6 +5,20 @@ import { ApiError } from '../../lib/api/problem';
 import type { AdminUser, AdminUserPage } from '../../lib/admin/api';
 import { banUser, listUsers, reinstateUser } from '../../lib/admin/api';
 import { UserDirectory } from './UserDirectory';
+import { translatorFor } from '../../test-copy';
+import { consoleChromeCopyFrom } from '../../lib/i18n/admin/common-copy';
+import { userDirectoryCopyFrom } from '../../lib/i18n/admin/people-copy';
+
+/*
+ * The copy is built from `messages/en.json` with the same builders the routes call, rather
+ * than typed out here. `src/test-copy.ts` explains why at length: a suite that retyped the
+ * sentences would still be green with the catalogue empty, which is precisely the defect
+ * `catalogue.test.ts` exists to catch.
+ */
+const COPY = userDirectoryCopyFrom(
+  translatorFor('admin'),
+  consoleChromeCopyFrom(translatorFor('admin'), translatorFor('common')),
+);
 
 vi.mock('../../lib/admin/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../lib/admin/api')>();
@@ -72,21 +86,21 @@ describe('UserDirectory', () => {
   describe('reading the directory', () => {
     it('announces that it is loading rather than showing an empty list', () => {
       listUsersMock.mockReturnValue(new Promise<AdminUserPage>(() => {}));
-      render(<UserDirectory />);
+      render(<UserDirectory copy={COPY} />);
 
       const label = screen.getByText('Loading accounts');
       expect(label.closest('[aria-busy]')).toHaveAttribute('aria-busy', 'true');
     });
 
     it('shows each account with the address that is the point of the screen', async () => {
-      render(<UserDirectory />);
+      render(<UserDirectory copy={COPY} />);
 
       expect(await screen.findByText('ayan@example.com')).toBeInTheDocument();
       expect(screen.getByText('Ayan Mammadova')).toBeInTheDocument();
     });
 
     it('says what an account standing is in words as well as in colour', async () => {
-      render(<UserDirectory />);
+      render(<UserDirectory copy={COPY} />);
       await screen.findByText('ayan@example.com');
 
       // docs/ui-kit.md: colour alone must never carry meaning.
@@ -96,14 +110,14 @@ describe('UserDirectory', () => {
     });
 
     it('shows why a suspended account was stopped, so a second moderator reads it first', async () => {
-      render(<UserDirectory />);
+      render(<UserDirectory copy={COPY} />);
 
       expect(await screen.findByText(/Counterfeit goods\./)).toBeInTheDocument();
     });
 
     it('searches when the form is submitted rather than on every keystroke', async () => {
       const user = userEvent.setup();
-      render(<UserDirectory />);
+      render(<UserDirectory copy={COPY} />);
       await screen.findByText('ayan@example.com');
 
       await user.type(screen.getByLabelText('Search'), 'ayan');
@@ -120,7 +134,7 @@ describe('UserDirectory', () => {
 
     it('asks the service for the stopped accounts when the filter is on', async () => {
       const user = userEvent.setup();
-      render(<UserDirectory />);
+      render(<UserDirectory copy={COPY} />);
       await screen.findByText('ayan@example.com');
 
       await user.click(screen.getByRole('button', { name: 'Suspended only' }));
@@ -134,14 +148,14 @@ describe('UserDirectory', () => {
 
     it('says nobody matched rather than showing a blank page', async () => {
       listUsersMock.mockResolvedValue(page([]));
-      render(<UserDirectory />);
+      render(<UserDirectory copy={COPY} />);
 
       expect(await screen.findByText('No accounts to show')).toBeInTheDocument();
     });
 
     it('tells a caller who is not staff that this is not theirs to read', async () => {
       listUsersMock.mockRejectedValue(new ApiError(403, { code: 'NOT_A_MODERATOR' }, 'Forbidden'));
-      render(<UserDirectory />);
+      render(<UserDirectory copy={COPY} />);
 
       expect(await screen.findByText('Not a moderator')).toBeInTheDocument();
       expect(screen.queryByLabelText('Search')).not.toBeInTheDocument();
@@ -150,7 +164,7 @@ describe('UserDirectory', () => {
     it('offers another go when the service could not be reached', async () => {
       const user = userEvent.setup();
       listUsersMock.mockRejectedValueOnce(new Error('offline'));
-      render(<UserDirectory />);
+      render(<UserDirectory copy={COPY} />);
 
       await screen.findByText('Something went wrong');
       listUsersMock.mockResolvedValue(page([AYAN]));
@@ -163,7 +177,7 @@ describe('UserDirectory', () => {
   describe('suspending an account', () => {
     it('asks before it does it, and says what the person loses', async () => {
       const user = userEvent.setup();
-      render(<UserDirectory />);
+      render(<UserDirectory copy={COPY} />);
       await screen.findByText('ayan@example.com');
 
       await user.click(screen.getAllByRole('button', { name: 'Suspend' })[0]!);
@@ -176,7 +190,7 @@ describe('UserDirectory', () => {
 
     it('refuses to send a suspension with no reason', async () => {
       const user = userEvent.setup();
-      render(<UserDirectory />);
+      render(<UserDirectory copy={COPY} />);
       await screen.findByText('ayan@example.com');
 
       await user.click(screen.getAllByRole('button', { name: 'Suspend' })[0]!);
@@ -196,7 +210,7 @@ describe('UserDirectory', () => {
         suspendedAt: '2026-03-01T09:00:00Z',
         suspensionReason: 'Counterfeit product photographs.',
       });
-      render(<UserDirectory />);
+      render(<UserDirectory copy={COPY} />);
       await screen.findByText('ayan@example.com');
 
       await user.click(screen.getAllByRole('button', { name: 'Suspend' })[0]!);
@@ -215,7 +229,7 @@ describe('UserDirectory', () => {
       banUserMock.mockRejectedValue(
         new ApiError(422, { code: 'ACCOUNT_SUSPENSION_REFUSED' }, 'Refused'),
       );
-      render(<UserDirectory />);
+      render(<UserDirectory copy={COPY} />);
       await screen.findByText('ayan@example.com');
 
       await user.click(screen.getAllByRole('button', { name: 'Suspend' })[0]!);
@@ -240,7 +254,7 @@ describe('UserDirectory', () => {
         suspendedBy: null,
         suspensionReason: null,
       });
-      render(<UserDirectory />);
+      render(<UserDirectory copy={COPY} />);
       await screen.findByText('rasim@example.com');
 
       await user.click(screen.getByRole('button', { name: 'Reinstate' }));
@@ -260,7 +274,7 @@ describe('UserDirectory', () => {
         suspendedBy: null,
         suspensionReason: null,
       });
-      render(<UserDirectory />);
+      render(<UserDirectory copy={COPY} />);
       await screen.findByText('rasim@example.com');
 
       await user.click(screen.getByRole('button', { name: 'Suspended only' }));

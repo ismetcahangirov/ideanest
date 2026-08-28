@@ -16,9 +16,9 @@ import {
   wasAborted,
   type ConsoleStatus,
 } from '../../lib/admin/refusals';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { AuditTrailCopy } from '../../lib/i18n/admin/platform-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
-
-const SUBJECT = 'the audit trail';
 
 /**
  * §4.11's AD-14: what has been done, by whom, to what — issue #314.
@@ -57,8 +57,19 @@ const SUBJECT = 'the audit trail';
  *
  * docs/motion-system.md §5 gives an administrative surface no budget beyond 150ms of colour
  * on a control, and §8 forbids animation in long lists regardless. This is both.
+ *
+ * <h2>Every word arrives as a prop</h2>
+ *
+ * Resolved by the route on the server and handed down, since #324. The two label tables come
+ * with it: `lib/admin/audit.ts` used to carry the English for each entity kind and each action
+ * beside the list of which ones exist, and the words moved to `admin.screens.audit` while the
+ * list stayed where it was.
  */
-export function AuditTrailView() {
+export interface AuditTrailViewProps {
+  readonly copy: AuditTrailCopy;
+}
+
+export function AuditTrailView({ copy }: AuditTrailViewProps) {
   const [status, setStatus] = useState<ConsoleStatus>('loading');
   const [entityType, setEntityType] = useState<string | null>(null);
   const [entries, setEntries] = useState<readonly AuditEntry[]>([]);
@@ -88,13 +99,16 @@ export function AuditTrailView() {
         if (controller.signal.aborted || wasAborted(cause)) return;
 
         const next = statusFor(cause);
-        if (next === 'failed') setError(consoleMessageFor(cause, SUBJECT));
+        if (next === 'failed') setError(consoleMessageFor(cause, copy.subject, copy.refusals));
         setStatus(next);
       }
     }
 
     void load();
     return () => controller.abort();
+    // `copy` is not a dependency: it is one object per server render, so it changes only when
+    // the language does, and the language is a path segment that remounts this tree.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entityType, attempt]);
 
   const loadMore = useCallback(async (): Promise<void> => {
@@ -107,14 +121,14 @@ export function AuditTrailView() {
       setEntries((previous) => [...previous, ...page.entries]);
       setCursor(page.nextCursor ?? null);
     } catch (cause) {
-      setError(consoleMessageFor(cause, SUBJECT));
+      setError(consoleMessageFor(cause, copy.subject, copy.refusals));
     } finally {
       setLoadingMore(false);
     }
-  }, [cursor, entityType, loadingMore]);
+  }, [cursor, entityType, loadingMore, copy]);
 
   if (status === 'signed-out' || status === 'forbidden') {
-    return <ConsoleRefusal status={status} subject={SUBJECT} />;
+    return <ConsoleRefusal status={status} subject={copy.subject} copy={copy.refusals} />;
   }
 
   return (
@@ -123,7 +137,7 @@ export function AuditTrailView() {
         id="audit-trail-heading"
         className="text-lg font-medium tracking-[-0.02em] text-white"
       >
-        Privileged actions
+        {copy.heading}
         {status === 'ready' && (
           <span className="ml-2 text-xs font-normal text-white/40">{entries.length}</span>
         )}
@@ -134,25 +148,25 @@ export function AuditTrailView() {
         on this screen — see the docblock on why a count that means "of the page" is a wrong
         answer on an audit surface rather than a rough edge.
       */}
-      <ChipRow aria-label="What the action was about" className="mt-4">
+      <ChipRow aria-label={copy.filterLabel} className="mt-4">
         <Chip active={entityType === null} onClick={() => setEntityType(null)}>
-          Everything
+          {copy.everything}
         </Chip>
-        {AUDIT_ENTITY_TYPES.map(([value, label]) => (
+        {AUDIT_ENTITY_TYPES.map((value) => (
           <Chip key={value} active={entityType === value} onClick={() => setEntityType(value)}>
-            {label}
+            {copy.entity[value] ?? value}
           </Chip>
         ))}
       </ChipRow>
 
       {error && (
-        <InlineAlert variant="danger" title="Something went wrong" className="mt-4">
+        <InlineAlert variant="danger" title={copy.errorTitle} className="mt-4">
           {error}
         </InlineAlert>
       )}
 
       {status === 'loading' && (
-        <SkeletonGroup label="Loading the audit trail" className="mt-4">
+        <SkeletonGroup label={copy.loadingList} className="mt-4">
           <div className="space-y-3">
             {[0, 1, 2, 3].map((row) => (
               <div key={row} className="rounded-lg border border-white/8 bg-surface-1 p-4">
@@ -168,19 +182,15 @@ export function AuditTrailView() {
         <EmptyState
           className="mt-4"
           variant={entityType === null ? 'empty' : 'filtered'}
-          title={entityType === null ? 'Nothing has been recorded yet' : 'Nothing of that kind'}
-          description={
-            entityType === null
-              ? 'Every privileged action writes a row here. An empty trail means none has been taken on this deployment.'
-              : 'No privileged action has been recorded about that kind of thing. Widen the filter to see the rest.'
-          }
+          title={entityType === null ? copy.emptyTitle : copy.filteredTitle}
+          description={entityType === null ? copy.emptyBody : copy.filteredBody}
         />
       )}
 
       {status === 'ready' && entries.length > 0 && (
         <ul className="mt-4 flex list-none flex-col gap-2">
           {entries.map((entry) => (
-            <AuditRow key={entry.id} entry={entry} />
+            <AuditRow key={entry.id} entry={entry} copy={copy} />
           ))}
         </ul>
       )}
@@ -193,21 +203,17 @@ export function AuditTrailView() {
           disabled={loadingMore}
           onClick={() => void loadMore()}
         >
-          {loadingMore ? 'Loading' : 'Load more'}
+          {loadingMore ? copy.loading : copy.loadMore}
         </Pill>
       )}
 
       {status === 'failed' && (
         <Pill variant="ghost" size="sm" className="mt-4" onClick={() => setAttempt((n) => n + 1)}>
-          Try again
+          {copy.tryAgain}
         </Pill>
       )}
 
-      <p className="mt-8 max-w-[68ch] text-sm text-white/40">
-        Reading this page writes a row to it. An audit surface nobody audits is the one an
-        investigation starts by distrusting, so a read is recorded like a write — with the
-        filter and the number of rows, and never the rows themselves.
-      </p>
+      <p className="mt-8 max-w-[68ch] text-sm text-white/40">{copy.footnote}</p>
     </section>
   );
 }
@@ -225,14 +231,20 @@ export function AuditTrailView() {
  * list of forty rows each carrying three UUIDs is a list nobody can scan — and the full value
  * is what somebody copies into the next query.
  */
-function AuditRow({ entry }: { readonly entry: AuditEntry }) {
+function AuditRow({
+  entry,
+  copy,
+}: {
+  readonly entry: AuditEntry;
+  readonly copy: AuditTrailCopy;
+}) {
   return (
     <li className="rounded-lg border border-white/8 bg-surface-1 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[15px] font-medium text-white">{actionLabel(entry.action)}</p>
+          <p className="text-[15px] font-medium text-white">{actionLabel(entry.action, copy.action)}</p>
           <p className="mt-1 text-sm text-white/64">
-            {entry.entityType}{' '}
+            {copy.entity[entry.entityType] ?? entry.entityType}{' '}
             <span className="font-mono" title={entry.entityId}>
               {shortId(entry.entityId)}
             </span>
@@ -250,7 +262,7 @@ function AuditRow({ entry }: { readonly entry: AuditEntry }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {entry.outcome === 'REFUSED' && <Tag variant="warning">Refused</Tag>}
+          {entry.outcome === 'REFUSED' && <Tag variant="warning">{copy.refused}</Tag>}
           <time
             dateTime={entry.occurredAt}
             className="text-xs text-white/40"
@@ -271,7 +283,9 @@ function AuditRow({ entry }: { readonly entry: AuditEntry }) {
         what turns "the ban was recorded" into "here is everything that happened while it was".
       */}
       {entry.requestId != null && entry.requestId !== '' && (
-        <p className="mt-2 font-mono text-xs text-white/32">request {entry.requestId}</p>
+        <p className="mt-2 font-mono text-xs text-white/32">
+          {fillPlaceholders(copy.requestId, { id: entry.requestId })}
+        </p>
       )}
     </li>
   );

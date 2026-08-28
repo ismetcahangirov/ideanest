@@ -14,7 +14,6 @@ import {
 } from '@ideanest/ui';
 import { ApiError } from '../../lib/api/problem';
 import {
-  COLLECTION_KIND_LABELS,
   addProject,
   collectionTitle,
   isPublished,
@@ -30,13 +29,18 @@ import {
   wasAborted,
   type ConsoleStatus,
 } from '../../lib/admin/refusals';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import { pluralise } from '../../lib/i18n/plurals';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
+import type { CollectionEditorCopy } from '../../lib/i18n/admin/curation-copy';
+import type { NoteDialogCopy } from '../../lib/i18n/admin/common-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { NoteDialog } from './NoteDialog';
 
-const SUBJECT = 'this collection';
-
 export interface CollectionEditorProps {
   readonly slug: string;
+  readonly copy: CollectionEditorCopy;
+  readonly note: NoteDialogCopy;
 }
 
 /**
@@ -70,7 +74,8 @@ export interface CollectionEditorProps {
  * wholesale. The same rule the moderation queue and the account directory follow: these are
  * audited changes another curator may be making at the same moment.
  */
-export function CollectionEditor({ slug }: CollectionEditorProps) {
+export function CollectionEditor({ slug, copy, note }: CollectionEditorProps) {
+  const locale = useRouteLocale();
   const [status, setStatus] = useState<ConsoleStatus>('loading');
   const [collection, setCollection] = useState<AdminCollection | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -108,13 +113,15 @@ export function CollectionEditor({ slug }: CollectionEditorProps) {
           return;
         }
         const next = statusFor(cause);
-        if (next === 'failed') setError(consoleMessageFor(cause, SUBJECT));
+        if (next === 'failed') setError(consoleMessageFor(cause, copy.subject, copy.refusals));
         setStatus(next);
       }
     }
 
     void load();
     return () => controller.abort();
+    // The copy is one object per server render — see `useConsoleResource` for the argument.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, attempt]);
 
   const move = useCallback(
@@ -138,21 +145,21 @@ export function CollectionEditor({ slug }: CollectionEditorProps) {
       try {
         setCollection(await reorderProjects(collection.slug, next));
       } catch (cause) {
-        setError(consoleMessageFor(cause, SUBJECT));
+        setError(consoleMessageFor(cause, copy.subject, copy.refusals));
       } finally {
         setReordering(false);
       }
     },
-    [collection, reordering],
+    [collection, reordering, copy],
   );
 
   if (status === 'signed-out' || status === 'forbidden') {
-    return <ConsoleRefusal status={status} subject={SUBJECT} />;
+    return <ConsoleRefusal status={status} subject={copy.subject} copy={copy.refusals} />;
   }
 
   if (status === 'loading') {
     return (
-      <SkeletonGroup label="Loading the collection">
+      <SkeletonGroup label={copy.loadingList}>
         <div className="rounded-xl border border-white/8 bg-surface-1 p-5">
           <Skeleton height="1.25rem" width="40%" />
           <Skeleton height="0.875rem" width="60%" className="mt-3" />
@@ -165,14 +172,14 @@ export function CollectionEditor({ slug }: CollectionEditorProps) {
     return (
       <EmptyState
         variant="empty"
-        title="No such collection"
-        description="That handle does not name a collection. Handles are permanent, so this is a wrong link rather than a rename."
+        title={copy.notFoundTitle}
+        description={copy.notFoundBody}
         action={
           <Link
             href="/admin/curation"
             className="rounded-lg text-sm text-white/64 underline underline-offset-2 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
           >
-            Back to the collections
+            {copy.backToCollections}
           </Link>
         }
       />
@@ -183,12 +190,12 @@ export function CollectionEditor({ slug }: CollectionEditorProps) {
     return (
       <>
         {error !== null && (
-          <InlineAlert variant="danger" title="Something went wrong">
+          <InlineAlert variant="danger" title={copy.errorTitle}>
             {error}
           </InlineAlert>
         )}
         <Pill variant="ghost" size="sm" className="mt-4" onClick={() => setAttempt((n) => n + 1)}>
-          Try again
+          {copy.tryAgain}
         </Pill>
       </>
     );
@@ -197,7 +204,7 @@ export function CollectionEditor({ slug }: CollectionEditorProps) {
   const members = collection.projects ?? [];
   const hidden = members.filter((member) => !member.publiclyVisible).length;
 
-  async function commit(note: string): Promise<void> {
+  async function commit(text: string): Promise<void> {
     if (pending === null || collection === null) return;
 
     setDialogBusy(true);
@@ -205,16 +212,18 @@ export function CollectionEditor({ slug }: CollectionEditorProps) {
     setError(null);
     try {
       if (pending.kind === 'add') {
-        setCollection(await addProject(collection.slug, pending.projectId, note));
+        setCollection(await addProject(collection.slug, pending.projectId, text));
         setProjectId('');
-        setNotice('The campaign is in the collection, at the end of it.');
+        setNotice(copy.addedNotice);
       } else {
-        setCollection(await removeProject(collection.slug, pending.member.projectId, note));
-        setNotice(`${pending.member.title} is out of the collection, and its badge with it.`);
+        setCollection(await removeProject(collection.slug, pending.member.projectId, text));
+        setNotice(
+          fillPlaceholders(copy.removedNotice, { title: pending.member.title }),
+        );
       }
       setPending(null);
     } catch (cause) {
-      setDialogError(consoleMessageFor(cause, SUBJECT));
+      setDialogError(consoleMessageFor(cause, copy.subject, copy.refusals));
     } finally {
       setDialogBusy(false);
     }
@@ -239,28 +248,30 @@ export function CollectionEditor({ slug }: CollectionEditorProps) {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Tag>{COLLECTION_KIND_LABELS[collection.kind]}</Tag>
-            {collection.grantsBadge && <Tag variant="warning">Grants the badge</Tag>}
+            <Tag>{copy.curation.kind[collection.kind]}</Tag>
+            {collection.grantsBadge && <Tag variant="warning">{copy.curation.grantsBadge}</Tag>}
             <Tag variant={isPublished(collection) ? 'success' : 'default'}>
-              {isPublished(collection) ? 'Published' : 'Unpublished'}
+              {isPublished(collection) ? copy.curation.published : copy.curation.unpublished}
             </Tag>
           </div>
         </div>
 
         <dl className="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
           <div className="flex gap-2">
-            <dt className="text-white/40">Placement</dt>
+            <dt className="text-white/40">{copy.placement}</dt>
             <dd className="font-mono text-white/64">{collection.sortOrder}</dd>
           </div>
           <div className="flex gap-2">
-            <dt className="text-white/40">Languages</dt>
+            <dt className="text-white/40">{copy.languages}</dt>
             {/*
               Which locales have copy, rather than the copy itself. §21.1's chain falls back
               to Azerbaijani and then to the slug, so a collection with only English copy
               renders as a handle for most readers — a fact worth seeing at a glance, and one
               that a form full of text areas would bury.
             */}
-            <dd className="text-white/64">{Object.keys(collection.copy).join(', ') || 'none'}</dd>
+            <dd className="text-white/64">
+              {Object.keys(collection.copy).join(', ') || copy.noLanguages}
+            </dd>
           </div>
         </dl>
       </section>
@@ -274,21 +285,19 @@ export function CollectionEditor({ slug }: CollectionEditorProps) {
       </div>
 
       {error !== null && (
-        <InlineAlert variant="danger" title="Something went wrong" className="mt-4">
+        <InlineAlert variant="danger" title={copy.errorTitle} className="mt-4">
           {error}
         </InlineAlert>
       )}
 
       <section aria-labelledby="members-heading" className="mt-8">
         <h2 id="members-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-          Campaigns
+          {copy.campaigns}
           <span className="ml-2 text-xs font-normal text-white/40">{members.length}</span>
         </h2>
         {hidden > 0 && (
           <p className="mt-1 max-w-[62ch] text-sm text-white/48">
-            {hidden === 1 ? 'One campaign here is' : `${hidden} campaigns here are`} not visible
-            to the public — suspended, or no longer published. The membership row stays; the
-            campaign stops being counted.
+            {pluralise(locale, copy.hidden, hidden)}
           </p>
         )}
 
@@ -302,11 +311,7 @@ export function CollectionEditor({ slug }: CollectionEditorProps) {
             setPending({ kind: 'add', projectId: trimmed });
           }}
         >
-          <Field
-            label="Add a campaign"
-            hint="Its identifier. It goes to the end of the list."
-            className="min-w-[280px] flex-1"
-          >
+          <Field label={copy.addLabel} hint={copy.addHint} className="min-w-[280px] flex-1">
             <TextInput
               value={projectId}
               onChange={(event) => setProjectId(event.target.value)}
@@ -314,7 +319,7 @@ export function CollectionEditor({ slug }: CollectionEditorProps) {
             />
           </Field>
           <Pill type="submit" variant="outline" size="sm" className="mb-1">
-            Add
+            {copy.add}
           </Pill>
         </form>
 
@@ -322,8 +327,8 @@ export function CollectionEditor({ slug }: CollectionEditorProps) {
           <EmptyState
             className="mt-4"
             variant="empty"
-            title="Nothing in it yet"
-            description="A published collection with nothing in it is a page that says nothing. Add campaigns before publishing."
+            title={copy.emptyTitle}
+            description={copy.emptyBody}
           />
         ) : (
           <ol className="mt-4 flex list-none flex-col gap-2">
@@ -342,30 +347,34 @@ export function CollectionEditor({ slug }: CollectionEditorProps) {
                     variant="outline"
                     size="sm"
                     disabled={reordering || index === 0}
-                    aria-label={`Move up: ${member.title}`}
+                    aria-label={fillPlaceholders(copy.curation.moveUpLabel, {
+                      title: member.title,
+                    })}
                     onClick={() => void move(index, -1)}
                   >
-                    Move up
+                    {copy.curation.moveUp}
                   </Pill>
                   <Pill
                     variant="outline"
                     size="sm"
                     disabled={reordering || index === members.length - 1}
-                    aria-label={`Move down: ${member.title}`}
+                    aria-label={fillPlaceholders(copy.curation.moveDownLabel, {
+                      title: member.title,
+                    })}
                     onClick={() => void move(index, 1)}
                   >
-                    Move down
+                    {copy.curation.moveDown}
                   </Pill>
                   <Pill
                     variant="ghost"
                     size="sm"
-                    aria-label={`Remove ${member.title} from this collection`}
+                    aria-label={fillPlaceholders(copy.removeLabel, { title: member.title })}
                     onClick={() => {
                       setDialogError(null);
                       setPending({ kind: 'remove', member });
                     }}
                   >
-                    Remove
+                    {copy.remove}
                   </Pill>
                 </div>
               </li>
@@ -379,23 +388,21 @@ export function CollectionEditor({ slug }: CollectionEditorProps) {
           pending === null
             ? null
             : pending.kind === 'add'
-              ? 'Add this campaign?'
-              : `Remove ${pending.member.title}?`
+              ? copy.addTitle
+              : fillPlaceholders(copy.removeTitle, { title: pending.member.title })
         }
         description={
-          pending?.kind === 'add'
-            ? 'It goes to the end of the list.'
-            : 'It leaves the collection. Nothing about the campaign itself changes.'
+          pending?.kind === 'add' ? copy.addDescription : copy.removeDescription
         }
         body={
           collection.grantsBadge
             ? pending?.kind === 'add'
-              ? 'This collection grants the editorial badge, so adding a campaign here is applying it.'
-              : 'This collection grants the editorial badge, so removing a campaign takes its badge with it.'
+              ? copy.addBadgeBody
+              : copy.removeBadgeBody
             : undefined
         }
-        confirmLabel={pending?.kind === 'add' ? 'Add' : 'Remove'}
-        busyLabel={pending?.kind === 'add' ? 'Adding' : 'Removing'}
+        confirmLabel={pending?.kind === 'add' ? copy.add : copy.remove}
+        busyLabel={pending?.kind === 'add' ? copy.adding : copy.removing}
         destructive={pending?.kind === 'remove'}
         busy={dialogBusy}
         error={dialogError}
@@ -403,7 +410,8 @@ export function CollectionEditor({ slug }: CollectionEditorProps) {
           setPending(null);
           setDialogError(null);
         }}
-        onConfirm={(note) => void commit(note)}
+        onConfirm={(text) => void commit(text)}
+        copy={note}
       />
     </div>
   );

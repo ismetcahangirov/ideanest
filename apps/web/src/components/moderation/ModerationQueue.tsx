@@ -15,16 +15,17 @@ import {
 } from '../../lib/moderation/api';
 import {
   DEFAULT_FILTERS,
-  STATE_LABELS,
   humaniseState,
   isRefined,
   refine,
   shortId,
-  targetLabel,
   targetParameter,
   type QueueFilters,
   type TargetFilter,
 } from '../../lib/moderation/describe';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import { pluralise } from '../../lib/i18n/plurals';
+import type { ModerationQueueCopy } from '../../lib/i18n/admin/content-copy';
 import { DecisionDialog, type Decision } from './DecisionDialog';
 import { ReportCard } from './ReportCard';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
@@ -36,11 +37,13 @@ interface Pending {
   readonly decision: Decision;
 }
 
-const TARGET_FILTERS: ReadonlyArray<readonly [TargetFilter, string]> = [
-  ['ALL', 'Everything'],
-  ['PROJECT', 'Campaigns'],
-  ['USER', 'Accounts'],
-];
+/**
+ * The three chips, as values.
+ *
+ * The word for each is `admin.screens.moderationQueue.targetFilter`, keyed by these same
+ * values — this list stays the one place that says which three the queue offers.
+ */
+const TARGET_FILTERS: readonly TargetFilter[] = ['ALL', 'PROJECT', 'USER'];
 
 /** `meta` is `Record<string, unknown>`, so it is narrowed rather than asserted. */
 function metaString(meta: Record<string, unknown> | undefined, key: string): string | null {
@@ -55,38 +58,34 @@ function metaString(meta: Record<string, unknown> | undefined, key: string): str
  * apart would force this screen to match on sentences the service is free to
  * reword.
  */
-function messageFor(cause: unknown): string {
+function messageFor(cause: unknown, copy: ModerationQueueCopy): string {
   if (cause instanceof ApiError) {
-    if (cause.status === 403) {
-      return 'Your account is not on the platform moderator list, so this queue is not yours to clear.';
-    }
+    if (cause.status === 403) return copy.notStaff;
 
     const code = cause.problem?.code;
 
     if (code === 'PROJECT_TRANSITION_NOT_ALLOWED') {
       const state = metaString(cause.problem?.meta, 'state');
+      /*
+       * `humaniseState` renders the service's own campaign state — "changes requested" — and
+       * it is deliberately not translated. The sixteen states are the service's, `describe.ts`
+       * records why no client-side table of them exists, and a fifth spelling of a value the
+       * logs and the API both use would be one more thing to keep in step.
+       */
       return state === null
-        ? 'That campaign is not in a state this outcome can be reached from.'
-        : `That campaign is ${humaniseState(state)}, and this outcome cannot be reached from there. The report itself is still yours to uphold or dismiss.`;
+        ? copy.transitionNotAllowed
+        : fillPlaceholders(copy.transitionNotAllowedFrom, { state: humaniseState(state) });
     }
 
-    if (code === 'REPORT_ALREADY_RESOLVED') {
-      return 'Somebody else decided this report first. The card now shows their decision.';
-    }
+    if (code === 'REPORT_ALREADY_RESOLVED') return copy.alreadyResolved;
 
-    return (
-      cause.problem?.detail ?? cause.problem?.title ?? 'The service refused the request. Try again.'
-    );
+    return cause.problem?.detail ?? cause.problem?.title ?? copy.refusals.refused;
   }
-  return 'The service could not be reached. Check your connection and try again.';
+  return copy.refusals.unreachable;
 }
 
 function wasAborted(cause: unknown): boolean {
   return cause instanceof DOMException && cause.name === 'AbortError';
-}
-
-function reports(count: number): string {
-  return `${count} ${count === 1 ? 'report' : 'reports'}`;
 }
 
 export interface ModerationQueueProps {
@@ -118,6 +117,8 @@ export interface ModerationQueueProps {
    * link to a route that may not be reachable from there.
    */
   readonly detailHrefBase?: string;
+  /** Every word this queue and its cards draw, resolved by the route on the server. */
+  readonly copy: ModerationQueueCopy;
 }
 
 /**
@@ -141,7 +142,7 @@ export interface ModerationQueueProps {
  * docs/motion-system.md §5: motion decreases as the work gets more consequential,
  * and §8 forbids animation in long lists regardless.
  */
-export function ModerationQueue({ pinnedTarget, detailHrefBase }: ModerationQueueProps = {}) {
+export function ModerationQueue({ pinnedTarget, detailHrefBase, copy }: ModerationQueueProps) {
   const locale = useRouteLocale();
   const [status, setStatus] = useState<Status>('loading');
   const [filters, setFilters] = useState<QueueFilters>(() =>
@@ -202,13 +203,16 @@ export function ModerationQueue({ pinnedTarget, detailHrefBase }: ModerationQueu
           setStatus('forbidden');
           return;
         }
-        setError(messageFor(cause));
+        setError(messageFor(cause, copy));
         setStatus('failed');
       }
     }
 
     void load();
     return () => controller.abort();
+    // `copy` is one object per server render, so it changes only when the language does — and
+    // the language is a path segment, which remounts this tree rather than re-running this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, target, attempt]);
 
   const loadMore = useCallback(async (): Promise<void> => {
@@ -221,11 +225,11 @@ export function ModerationQueue({ pinnedTarget, detailHrefBase }: ModerationQueu
       setLoaded((previous) => [...previous, ...page.reports]);
       setCursor(page.nextCursor ?? null);
     } catch (cause) {
-      setError(messageFor(cause));
+      setError(messageFor(cause, copy));
     } finally {
       setLoadingMore(false);
     }
-  }, [cursor, loadingMore, state, target]);
+  }, [cursor, loadingMore, state, target, copy]);
 
   function markBusy(id: string, busy: boolean): void {
     setBusyIds((previous) => {
@@ -283,12 +287,20 @@ export function ModerationQueue({ pinnedTarget, detailHrefBase }: ModerationQueu
         const updated = await resolveReport(report.id, decision.outcome, note);
         applyReport(updated);
         setNotice(
-          `${STATE_LABELS[updated.state]} the report about ${targetLabel(report.target.type)} ${shortId(report.target.id)}.`,
+          fillPlaceholders(copy.noticeReport[updated.state], {
+            target: fillPlaceholders(copy.moderation.targetName, {
+              kind: copy.moderation.target[report.target.type],
+              id: shortId(report.target.id),
+            }),
+          }),
         );
       } else {
         const decided = await decideCampaign(report.target.id, decision.outcome, note);
         setNotice(
-          `Campaign ${shortId(decided.id)} is now ${humaniseState(decided.state)}. The report is still open — decide it separately.`,
+          fillPlaceholders(copy.noticeCampaign, {
+            id: shortId(decided.id),
+            state: humaniseState(decided.state),
+          }),
         );
       }
 
@@ -301,7 +313,7 @@ export function ModerationQueue({ pinnedTarget, detailHrefBase }: ModerationQueu
        */
       headingRef.current?.focus();
     } catch (cause) {
-      const message = messageFor(cause);
+      const message = messageFor(cause, copy);
 
       if (cause instanceof ApiError && cause.problem?.code === 'REPORT_ALREADY_RESOLVED') {
         try {
@@ -335,17 +347,16 @@ export function ModerationQueue({ pinnedTarget, detailHrefBase }: ModerationQueu
 
   if (status === 'signed-out') {
     return (
-      <InlineAlert variant="info" title="You are signed out">
-        This browser no longer has a session. Sign in again to read the moderation queue.
+      <InlineAlert variant="info" title={copy.signedOutTitle}>
+        {copy.signedOutBody}
       </InlineAlert>
     );
   }
 
   if (status === 'forbidden') {
     return (
-      <InlineAlert variant="info" title="Not a moderator">
-        The report queue is read and cleared by platform staff. Your account is not on the
-        configured moderator list.
+      <InlineAlert variant="info" title={copy.forbiddenTitle}>
+        {copy.forbiddenBody}
       </InlineAlert>
     );
   }
@@ -362,7 +373,7 @@ export function ModerationQueue({ pinnedTarget, detailHrefBase }: ModerationQueu
           tabIndex={-1}
           className="text-lg font-medium tracking-[-0.02em] text-white"
         >
-          {STATE_LABELS[state]} reports
+          {copy.heading[state]}
           {status === 'ready' && (
             <span className="ml-2 text-xs font-normal text-white/40">{visible.length}</span>
           )}
@@ -375,14 +386,14 @@ export function ModerationQueue({ pinnedTarget, detailHrefBase }: ModerationQueu
         than letting a count quietly mean something different from what it looks like.
       */}
       <div className="mt-4 space-y-3">
-        <ChipRow aria-label="Status">
+        <ChipRow aria-label={copy.statusLabel}>
           {REPORT_STATES.map((option) => (
             <Chip
               key={option}
               active={state === option}
               onClick={() => setFilters((previous) => ({ ...previous, state: option }))}
             >
-              {STATE_LABELS[option]}
+              {copy.moderation.state[option]}
             </Chip>
           ))}
         </ChipRow>
@@ -393,27 +404,27 @@ export function ModerationQueue({ pinnedTarget, detailHrefBase }: ModerationQueu
           into a different screen, under a heading that still says profiles.
         */}
         {pinnedTarget === undefined && (
-          <ChipRow aria-label="What was reported">
-            {TARGET_FILTERS.map(([value, label]) => (
+          <ChipRow aria-label={copy.targetLabel}>
+            {TARGET_FILTERS.map((value) => (
               <Chip
                 key={value}
                 active={filters.target === value}
                 onClick={() => setFilters((previous) => ({ ...previous, target: value }))}
               >
-                {label}
+                {copy.targetFilter[value] ?? value}
               </Chip>
             ))}
           </ChipRow>
         )}
 
-        <ChipRow aria-label="Triage">
+        <ChipRow aria-label={copy.triageLabel}>
           <Chip
             active={filters.overdueOnly}
             onClick={() =>
               setFilters((previous) => ({ ...previous, overdueOnly: !previous.overdueOnly }))
             }
           >
-            Open over 48 hours
+            {copy.overdueOnly}
           </Chip>
           <Chip
             active={filters.repeatedOnly}
@@ -421,7 +432,7 @@ export function ModerationQueue({ pinnedTarget, detailHrefBase }: ModerationQueu
               setFilters((previous) => ({ ...previous, repeatedOnly: !previous.repeatedOnly }))
             }
           >
-            More than one report
+            {copy.repeatedOnly}
           </Chip>
         </ChipRow>
       </div>
@@ -435,20 +446,23 @@ export function ModerationQueue({ pinnedTarget, detailHrefBase }: ModerationQueu
       </div>
 
       {error && (
-        <InlineAlert variant="danger" title="Something went wrong" className="mt-4">
+        <InlineAlert variant="danger" title={copy.errorTitle} className="mt-4">
           {error}
         </InlineAlert>
       )}
 
       {status === 'ready' && refined && (
         <p className="mt-4 text-sm text-white/40">
-          Showing {reports(visible.length)} of the {loaded.length} loaded so far.
-          {cursor !== null && ' There are more pages; load them to narrow over those too.'}
+          {fillPlaceholders(copy.showing, {
+            reports: pluralise(locale, copy.moderation.reportCount, visible.length),
+            loaded: String(loaded.length),
+          })}
+          {cursor !== null && ` ${copy.morePages}`}
         </p>
       )}
 
       {status === 'loading' && (
-        <SkeletonGroup label="Loading the moderation queue" className="mt-4">
+        <SkeletonGroup label={copy.loadingList} className="mt-4">
           <div className="space-y-4">
             {[0, 1, 2].map((row) => (
               <div key={row} className="rounded-lg border border-white/8 bg-surface-2 p-5">
@@ -465,20 +479,13 @@ export function ModerationQueue({ pinnedTarget, detailHrefBase }: ModerationQueu
         <EmptyState
           className="mt-4"
           variant={refined || loaded.length > 0 ? 'filtered' : 'empty'}
-          title={
-            refined
-              ? 'Nothing matches these filters'
-              : state === 'OPEN'
-                ? 'The queue is clear'
-                : `No ${STATE_LABELS[state].toLowerCase()} reports`
-          }
-          description={
-            refined
-              ? 'Widen the filters, or load another page — the last two narrow what is already loaded rather than asking the service again.'
-              : state === 'OPEN'
-                ? 'Every report has been decided. New complaints arrive here as they are made.'
-                : 'Nothing has been decided this way yet.'
-          }
+          /*
+            Keyed by state rather than built from one. This used to lower-case the state word
+            and put "No " in front of it, which is a sentence English can assemble and Russian
+            cannot — "Удовлетворённых жалоб нет" puts the negation at the end.
+          */
+          title={refined ? copy.filteredTitle : copy.emptyTitle[state]}
+          description={refined ? copy.filteredBody : copy.emptyBody[state]}
         />
       )}
 
@@ -491,6 +498,7 @@ export function ModerationQueue({ pinnedTarget, detailHrefBase }: ModerationQueu
               now={now}
               locale={locale}
               busy={busyIds.has(report.id)}
+              copy={copy}
               detailHref={
                 detailHrefBase === undefined
                   ? undefined
@@ -510,13 +518,13 @@ export function ModerationQueue({ pinnedTarget, detailHrefBase }: ModerationQueu
           disabled={loadingMore}
           onClick={() => void loadMore()}
         >
-          {loadingMore ? 'Loading' : 'Load more'}
+          {loadingMore ? copy.loading : copy.loadMore}
         </Pill>
       )}
 
       {status === 'failed' && (
         <Pill variant="ghost" size="sm" className="mt-4" onClick={() => setAttempt((n) => n + 1)}>
-          Try again
+          {copy.tryAgain}
         </Pill>
       )}
 
@@ -527,6 +535,7 @@ export function ModerationQueue({ pinnedTarget, detailHrefBase }: ModerationQueu
         error={dialogError}
         onCancel={closeDialog}
         onConfirm={(note) => void commit(note)}
+        copy={copy.moderation}
       />
     </section>
   );

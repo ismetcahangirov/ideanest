@@ -124,20 +124,11 @@ export async function readPaymentLog(request: PaymentLogRequest = {}): Promise<P
   return (await response.json()) as PaymentLogPage;
 }
 
-export const TRANSACTION_TYPE_LABELS: Readonly<Record<TransactionType, string>> = {
-  VERIFICATION: 'Verification',
-  CHARGE: 'Charge',
-  REFUND: 'Refund',
-  CHARGEBACK: 'Chargeback',
-  CHARGEBACK_REVERSAL: 'Chargeback reversal',
-  PAYOUT: 'Payout',
-};
-
-export const TRANSACTION_STATUS_LABELS: Readonly<Record<TransactionStatus, string>> = {
-  PENDING: 'Pending',
-  SUCCEEDED: 'Succeeded',
-  FAILED: 'Failed',
-};
+/*
+ * The two label tables moved to `admin.screens.payments` with #324. They were English prose in
+ * a module a client imports, and the values they were keyed by — the service's own type and
+ * status — are what the catalogue is keyed by now.
+ */
 
 /**
  * The token a status is drawn in, and the word beside it carries the meaning.

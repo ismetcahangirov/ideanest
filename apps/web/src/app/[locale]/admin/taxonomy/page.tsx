@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { TaxonomyManager } from '../../../../components/admin/TaxonomyManager';
+import { taxonomyManagerCopy } from '../../../../lib/i18n/admin/console.server';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 
 /**
@@ -11,24 +13,22 @@ import { privatePageMetadata } from '../../../../lib/seo/metadata';
  * <p>`privatePageMetadata` for the reason every console route gives: these pages are
  * per-person, they are not for a crawler, and several of them name people.
  */
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Taxonomy',
-  description: 'Categories, subcategories and tags, with a translation per locale.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('admin.pages.taxonomy');
 
-export default function TaxonomyPage() {
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
+
+export default async function TaxonomyPage() {
+  const t = await getTranslations('admin.pages.taxonomy');
+
   return (
     <div className="max-w-[920px]">
-      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
-        Taxonomy
-      </h1>
-      <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-        Handles are permanent — they are in the public URL of every campaign filed under them, and
-        the platform has no redirect table. Names and translations are what this screen edits.
-      </p>
+      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">{t('title')}</h1>
+      <p className="mt-2 max-w-[62ch] text-sm text-white/64">{t('intro')}</p>
 
       <div className="mt-8">
-        <TaxonomyManager />
+        <TaxonomyManager copy={await taxonomyManagerCopy()} />
       </div>
     </div>
   );

@@ -4,10 +4,9 @@ import { Link } from '../../i18n/navigation';
 import { EmptyState, InlineAlert, Pill, Skeleton, SkeletonGroup, Tag } from '@ideanest/ui';
 import { authorizedFetch } from '../../lib/api/client';
 import { errorFrom } from '../../lib/api/problem';
+import type { EmailTemplateIndexCopy } from '../../lib/i18n/admin/platform-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { useConsoleResource } from './useConsoleResource';
-
-const SUBJECT = 'the email templates';
 
 /** One notification type, as `GET /v1/admin/email-templates` lists it (#86). */
 interface TemplateSummary {
@@ -44,24 +43,29 @@ interface TemplateList {
  * cannot stop saying which card was declined. Marking them is so that somebody editing one
  * knows what they are holding.
  */
-export function EmailTemplateIndex() {
+export interface EmailTemplateIndexProps {
+  readonly copy: EmailTemplateIndexCopy;
+}
+
+export function EmailTemplateIndex({ copy }: EmailTemplateIndexProps) {
   const templates = useConsoleResource(
     async (signal) => {
       const response = await authorizedFetch('/v1/admin/email-templates', { signal });
       if (!response.ok) throw await errorFrom(response);
       return (await response.json()) as TemplateList;
     },
-    SUBJECT,
+    copy.subject,
+    copy.refusals,
     [],
   );
 
   if (templates.status === 'signed-out' || templates.status === 'forbidden') {
-    return <ConsoleRefusal status={templates.status} subject={SUBJECT} />;
+    return <ConsoleRefusal status={templates.status} subject={copy.subject} copy={copy.refusals} />;
   }
 
   if (templates.status === 'loading') {
     return (
-      <SkeletonGroup label="Loading the email templates">
+      <SkeletonGroup label={copy.loadingList}>
         <div className="space-y-3">
           {[0, 1, 2].map((row) => (
             <div key={row} className="rounded-lg border border-white/8 bg-surface-1 p-4">
@@ -76,11 +80,11 @@ export function EmailTemplateIndex() {
   if (templates.status === 'failed' || templates.data === null) {
     return (
       <>
-        <InlineAlert variant="danger" title="Something went wrong">
-          {templates.error ?? 'The templates could not be read.'}
+        <InlineAlert variant="danger" title={copy.errorTitle}>
+          {templates.error ?? copy.readFailed}
         </InlineAlert>
         <Pill variant="ghost" size="sm" className="mt-4" onClick={templates.reload}>
-          Try again
+          {copy.tryAgain}
         </Pill>
       </>
     );
@@ -90,8 +94,8 @@ export function EmailTemplateIndex() {
     return (
       <EmptyState
         variant="empty"
-        title="No templates"
-        description="The platform sends no notifications on this deployment, which almost certainly means the message catalogue failed to load."
+        title={copy.emptyTitle}
+        description={copy.emptyBody}
       />
     );
   }
@@ -107,8 +111,10 @@ export function EmailTemplateIndex() {
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <p className="font-mono text-sm text-white">{template.type}</p>
               <span className="flex items-center gap-2">
-                <Tag>{template.category}</Tag>
-                {template.mandatory && <Tag>Transactional</Tag>}
+                {/* The wire value stands in for a category the catalogue has not been
+                    taught, which is readable and is the honest failure of the two. */}
+                <Tag>{copy.category[template.category] ?? template.category}</Tag>
+                {template.mandatory && <Tag>{copy.transactional}</Tag>}
               </span>
             </div>
           </Link>

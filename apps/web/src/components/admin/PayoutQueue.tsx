@@ -25,10 +25,10 @@ import {
 } from '../../lib/admin/payouts';
 import { consoleMessageFor, shortId } from '../../lib/admin/refusals';
 import { formatMoney } from '../../lib/money';
+import { fillNodes, fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { PayoutQueueCopy } from '../../lib/i18n/admin/money-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { useConsoleResource } from './useConsoleResource';
-
-const SUBJECT = 'the payout queue';
 
 /**
  * §4.11's AD-05: the payout queue and its approvals — issues #69 and #306.
@@ -58,7 +58,11 @@ const SUBJECT = 'the payout queue';
  *
  * The last screen on the platform that should feel eager.
  */
-export function PayoutQueue() {
+export interface PayoutQueueProps {
+  readonly copy: PayoutQueueCopy;
+}
+
+export function PayoutQueue({ copy }: PayoutQueueProps) {
   const [page, setPage] = useState(0);
   const [openPayout, setOpenPayout] = useState<string | null>(null);
   const [projectId, setProjectId] = useState('');
@@ -66,10 +70,15 @@ export function PayoutQueue() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const queue = useConsoleResource((signal) => readPayoutQueue(page, signal), SUBJECT, [page]);
+  const queue = useConsoleResource(
+    (signal) => readPayoutQueue(page, signal),
+    copy.subject,
+    copy.refusals,
+    [page],
+  );
 
   if (queue.status === 'signed-out' || queue.status === 'forbidden') {
-    return <ConsoleRefusal status={queue.status} subject={SUBJECT} />;
+    return <ConsoleRefusal status={queue.status} subject={copy.subject} copy={copy.refusals} />;
   }
 
   async function calculate(event: React.FormEvent): Promise<void> {
@@ -82,11 +91,17 @@ export function PayoutQueue() {
     setNotice(null);
     try {
       const payout = await calculatePayout(id);
-      setNotice(`Calculated ${formatMoney(payout.net)} for ${shortId(id)}. The hold runs until ${payout.payableAt.slice(0, 10)}.`);
+      setNotice(
+        fillPlaceholders(copy.calculatedNotice, {
+          amount: formatMoney(payout.net),
+          id: shortId(id),
+          date: payout.payableAt.slice(0, 10),
+        }),
+      );
       setProjectId('');
       queue.reload();
     } catch (cause) {
-      setError(consoleMessageFor(cause, SUBJECT));
+      setError(consoleMessageFor(cause, copy.subject, copy.refusals));
     } finally {
       setBusy(false);
     }
@@ -96,16 +111,12 @@ export function PayoutQueue() {
     <div className="flex flex-col gap-10">
       <section aria-labelledby="calculate-heading">
         <h2 id="calculate-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-          Work out what a campaign owes
+          {copy.calculateHeading}
         </h2>
-        <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-          The figures are frozen at this moment and never recomputed — a payout two people
-          approved has to be the payout that is sent. If the collections or refunds move
-          afterwards, the send is refused and a fresh calculation replaces it.
-        </p>
+        <p className="mt-2 max-w-[62ch] text-sm text-white/64">{copy.calculateIntro}</p>
 
         <form onSubmit={(event) => void calculate(event)} className="mt-4 flex flex-wrap items-end gap-3">
-          <Field label="Campaign" hint="The whole identifier." className="min-w-[280px] flex-1">
+          <Field label={copy.campaignLabel} hint={copy.campaignHint} className="min-w-[280px] flex-1">
             <TextInput
               value={projectId}
               onChange={(event) => setProjectId(event.target.value)}
@@ -113,17 +124,17 @@ export function PayoutQueue() {
             />
           </Field>
           <Pill type="submit" variant="outline" size="sm" className="mb-1" disabled={busy}>
-            {busy ? 'Working' : 'Calculate'}
+            {busy ? copy.working : copy.calculate}
           </Pill>
         </form>
 
         {notice && (
-          <InlineAlert variant="success" title="Calculated" className="mt-4">
+          <InlineAlert variant="success" title={copy.calculatedTitle} className="mt-4">
             {notice}
           </InlineAlert>
         )}
         {error && (
-          <InlineAlert variant="danger" title="That did not work" className="mt-4">
+          <InlineAlert variant="danger" title={copy.failedTitle} className="mt-4">
             {error}
           </InlineAlert>
         )}
@@ -131,7 +142,7 @@ export function PayoutQueue() {
 
       <section aria-labelledby="payout-queue-heading">
         <h2 id="payout-queue-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-          In flight
+          {copy.queueHeading}
           {queue.status === 'ready' && (
             <span className="ml-2 text-xs font-normal text-white/40">
               {queue.data?.payouts.length ?? 0}
@@ -140,7 +151,7 @@ export function PayoutQueue() {
         </h2>
 
         {queue.status === 'loading' && (
-          <SkeletonGroup label="Loading the payout queue" className="mt-4">
+          <SkeletonGroup label={copy.loadingList} className="mt-4">
             <div className="space-y-3">
               {[0, 1].map((row) => (
                 <div key={row} className="rounded-lg border border-white/8 bg-surface-1 p-4">
@@ -154,11 +165,11 @@ export function PayoutQueue() {
 
         {queue.status === 'failed' && (
           <>
-            <InlineAlert variant="danger" title="Something went wrong" className="mt-4">
+            <InlineAlert variant="danger" title={copy.errorTitle} className="mt-4">
               {queue.error}
             </InlineAlert>
             <Pill variant="ghost" size="sm" className="mt-4" onClick={queue.reload}>
-              Try again
+              {copy.tryAgain}
             </Pill>
           </>
         )}
@@ -167,8 +178,8 @@ export function PayoutQueue() {
           <EmptyState
             className="mt-4"
             variant="empty"
-            title="Nothing is waiting to be paid"
-            description="No campaign has a payout in flight. Work one out above once a campaign has closed and collected."
+            title={copy.emptyTitle}
+            description={copy.emptyBody}
           />
         )}
 
@@ -186,18 +197,22 @@ export function PayoutQueue() {
                     <p className="text-sm text-white">
                       {formatMoney(payout.net)}
                       <span className="ml-2 text-white/48">
-                        to <span className="font-mono">{shortId(payout.creatorId)}</span>
+                        {fillNodes(copy.toCreator, {
+                          id: <span className="font-mono">{shortId(payout.creatorId)}</span>,
+                        })}
                       </span>
                     </p>
                     <span className="flex items-center gap-2">
-                      {!payout.payableNow && <Tag>Held</Tag>}
-                      <Tag>{payout.state}</Tag>
+                      {!payout.payableNow && <Tag>{copy.held}</Tag>}
+                      <Tag>{copy.state[payout.state]}</Tag>
                     </span>
                   </div>
-                  <Breakdown payout={payout} />
+                  <Breakdown payout={payout} copy={copy} />
                 </button>
 
-                {openPayout === payout.id && <PayoutDetail payoutId={payout.id} onChanged={queue.reload} />}
+                {openPayout === payout.id && (
+                  <PayoutDetail payoutId={payout.id} copy={copy} onChanged={queue.reload} />
+                )}
               </li>
             ))}
           </ul>
@@ -206,7 +221,7 @@ export function PayoutQueue() {
         {queue.status === 'ready' && (page > 0 || (queue.data?.hasMore ?? false)) && (
           <div className="mt-4 flex gap-2">
             <Pill variant="ghost" size="sm" disabled={page === 0} onClick={() => setPage((n) => n - 1)}>
-              Previous
+              {copy.previous}
             </Pill>
             <Pill
               variant="ghost"
@@ -214,7 +229,7 @@ export function PayoutQueue() {
               disabled={!(queue.data?.hasMore ?? false)}
               onClick={() => setPage((n) => n + 1)}
             >
-              Next
+              {copy.next}
             </Pill>
           </div>
         )}
@@ -224,14 +239,25 @@ export function PayoutQueue() {
 }
 
 /** The five figures, in the order they subtract. */
-function Breakdown({ payout }: { readonly payout: Payout }) {
+function Breakdown({
+  payout,
+  copy,
+}: {
+  readonly payout: Payout;
+  readonly copy: PayoutQueueCopy;
+}) {
   return (
     <StatRow className="mt-3 flex flex-wrap gap-x-8 gap-y-3">
-      <StatBlock size="md" label="Collected" value={formatMoney(payout.gross)} />
-      <StatBlock size="md" label="Platform fee" value={`− ${formatMoney(payout.platformFee)}`} />
-      <StatBlock size="md" label="Processing" value={`− ${formatMoney(payout.processingFee)}`} />
-      <StatBlock size="md" label="Refunded" value={`− ${formatMoney(payout.refunded)}`} />
-      <StatBlock size="md" label="Net" value={formatMoney(payout.net)} />
+      {/*
+        The minus signs are the component's and not the catalogue's: they are arithmetic
+        notation rather than words, and a translation that lost one would turn a deduction
+        into an addition on the screen where that costs the most.
+      */}
+      <StatBlock size="md" label={copy.collected} value={formatMoney(payout.gross)} />
+      <StatBlock size="md" label={copy.platformFee} value={`− ${formatMoney(payout.platformFee)}`} />
+      <StatBlock size="md" label={copy.processing} value={`− ${formatMoney(payout.processingFee)}`} />
+      <StatBlock size="md" label={copy.refunded} value={`− ${formatMoney(payout.refunded)}`} />
+      <StatBlock size="md" label={copy.net} value={formatMoney(payout.net)} />
     </StatRow>
   );
 }
@@ -239,12 +265,19 @@ function Breakdown({ payout }: { readonly payout: Payout }) {
 /** One payout, who has signed it, and the three things that can be done to it. */
 function PayoutDetail({
   payoutId,
+  copy,
   onChanged,
 }: {
   readonly payoutId: string;
+  readonly copy: PayoutQueueCopy;
   readonly onChanged: () => void;
 }) {
-  const file = useConsoleResource((signal) => readPayout(payoutId, signal), 'this payout', [payoutId]);
+  const file = useConsoleResource(
+    (signal) => readPayout(payoutId, signal),
+    copy.payoutSubject,
+    copy.refusals,
+    [payoutId],
+  );
 
   const [note, setNote] = useState('');
   const [destination, setDestination] = useState('');
@@ -259,7 +292,7 @@ function PayoutDetail({
       file.reload();
       onChanged();
     } catch (cause) {
-      setError(consoleMessageFor(cause, 'this payout'));
+      setError(consoleMessageFor(cause, copy.payoutSubject, copy.refusals));
     } finally {
       setBusy(false);
     }
@@ -267,7 +300,7 @@ function PayoutDetail({
 
   if (file.status === 'loading') {
     return (
-      <SkeletonGroup label="Loading the payout" className="mt-2 rounded-lg border border-white/8 p-4">
+      <SkeletonGroup label={copy.loadingPayout} className="mt-2 rounded-lg border border-white/8 p-4">
         <Skeleton height="0.875rem" width="60%" />
       </SkeletonGroup>
     );
@@ -275,8 +308,8 @@ function PayoutDetail({
 
   if (file.status !== 'ready' || file.data === null) {
     return (
-      <InlineAlert variant="danger" title="The payout could not be read" className="mt-2">
-        {file.error ?? 'Try again.'}
+      <InlineAlert variant="danger" title={copy.payoutFailedTitle} className="mt-2">
+        {file.error ?? copy.tryAgainShort}
       </InlineAlert>
     );
   }
@@ -286,25 +319,28 @@ function PayoutDetail({
   return (
     <div className="mt-2 rounded-lg border border-white/8 bg-surface-1 p-4">
       <h3 className="text-sm font-medium text-white">
-        Signatures
+        {copy.signatures}
         <span className="ml-2 text-xs font-normal text-white/48">
-          {approvals.length} of {payout.approvalsRequired}
+          {fillPlaceholders(copy.signatureCount, {
+            have: String(approvals.length),
+            need: String(payout.approvalsRequired),
+          })}
         </span>
       </h3>
 
       {approvals.length === 0 ? (
         <p className="mt-2 text-xs text-white/48">
-          Nobody has signed this off yet.
-          {payout.approvalsRequired > 1
-            ? ' It is above the threshold, so it needs two different people.'
-            : ''}
+          {copy.noSignatures}
+          {payout.approvalsRequired > 1 ? ` ${copy.needsTwo}` : ''}
         </p>
       ) : (
         <ul className="mt-2 flex list-none flex-col gap-1">
           {approvals.map((approval) => (
             <li key={approval.approverId} className="text-xs text-white/64">
-              <span className="font-mono">{shortId(approval.approverId)}</span> on{' '}
-              {approval.approvedAt.slice(0, 10)}
+              {fillNodes(copy.approvalLine, {
+                approver: <span className="font-mono">{shortId(approval.approverId)}</span>,
+                date: approval.approvedAt.slice(0, 10),
+              })}
               {approval.note ? ` — ${approval.note}` : ''}
             </li>
           ))}
@@ -312,15 +348,13 @@ function PayoutDetail({
       )}
 
       {!payout.payableNow && (
-        <InlineAlert variant="info" title="Still held" className="mt-4">
-          §9&apos;s hold runs until {payout.payableAt.slice(0, 10)}. It exists so that refunds and
-          chargebacks land before the money leaves, so a signature given now would be a signature
-          on a figure nobody can yet know is right.
+        <InlineAlert variant="info" title={copy.stillHeldTitle} className="mt-4">
+          {fillPlaceholders(copy.stillHeldBody, { date: payout.payableAt.slice(0, 10) })}
         </InlineAlert>
       )}
 
       <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-white/8 pt-4">
-        <Field label="Note" hint="Why, for the second approver." className="min-w-[240px] flex-1">
+        <Field label={copy.noteLabel} hint={copy.noteHint} className="min-w-[240px] flex-1">
           <TextInput value={note} onChange={(event) => setNote(event.target.value)} />
         </Field>
 
@@ -336,7 +370,7 @@ function PayoutDetail({
             })
           }
         >
-          Approve
+          {copy.approve}
         </Pill>
 
         <Pill
@@ -346,14 +380,14 @@ function PayoutDetail({
           disabled={busy}
           onClick={() => void act(() => withdrawApproval(payoutId))}
         >
-          Withdraw mine
+          {copy.withdrawMine}
         </Pill>
       </div>
 
       <div className="mt-4 flex flex-wrap items-end gap-3">
         <Field
-          label="Destination"
-          hint="Typed per send — §9's payout-destination schema is not built."
+          label={copy.destinationLabel}
+          hint={copy.destinationHint}
           className="min-w-[280px] flex-1"
         >
           <TextInput
@@ -370,7 +404,9 @@ function PayoutDetail({
           disabled={busy || stillNeeded > 0 || destination.trim() === ''}
           onClick={() => void act(() => sendPayout(payoutId, destination.trim()))}
         >
-          {stillNeeded > 0 ? `Needs ${stillNeeded} more` : 'Send'}
+          {stillNeeded > 0
+            ? fillPlaceholders(copy.needsMore, { count: String(stillNeeded) })
+            : copy.send}
         </Pill>
 
         <Pill
@@ -380,12 +416,12 @@ function PayoutDetail({
           disabled={busy}
           onClick={() => void act(() => cancelPayout(payoutId))}
         >
-          Cancel
+          {copy.cancel}
         </Pill>
       </div>
 
       {error && (
-        <InlineAlert variant="danger" title="That did not work" className="mt-4">
+        <InlineAlert variant="danger" title={copy.failedTitle} className="mt-4">
           {error}
         </InlineAlert>
       )}

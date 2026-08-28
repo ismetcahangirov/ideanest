@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { UserDirectory } from '../../../../components/admin/UserDirectory';
+import { userDirectoryCopy } from '../../../../lib/i18n/admin/console.server';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 
 /**
@@ -17,24 +19,22 @@ import { privatePageMetadata } from '../../../../lib/seo/metadata';
  * <p>Inside the console shell since #294, and no longer carrying a `<main>` of its
  * own — `/admin/moderation` states the argument.
  */
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Accounts',
-  description: 'Search the platform accounts, and stop the ones that have to be stopped.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('admin.pages.users');
 
-export default function AdminUsersPage() {
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
+
+export default async function AdminUsersPage() {
+  const t = await getTranslations('admin.pages.users');
+
   return (
     <div className="max-w-[880px]">
-      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">Accounts</h1>
-      <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-        Every account on the platform, searched by address, display name or profile slug.
-        Suspending one signs it out everywhere and refuses it at sign-in; it changes nothing about
-        the campaigns it created or the pledges it made, and those are separate decisions with
-        separate consequences.
-      </p>
+      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">{t('title')}</h1>
+      <p className="mt-2 max-w-[62ch] text-sm text-white/64">{t('intro')}</p>
 
       <div className="mt-8">
-        <UserDirectory />
+        <UserDirectory copy={await userDirectoryCopy()} />
       </div>
     </div>
   );

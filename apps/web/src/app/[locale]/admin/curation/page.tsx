@@ -1,5 +1,8 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { CollectionManager } from '../../../../components/admin/CollectionManager';
+import { collectionManagerCopy } from '../../../../lib/i18n/admin/console.server';
+import { noteDialogCopy } from '../../../../lib/i18n/admin/console.server';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 
 /**
@@ -10,27 +13,22 @@ import { privatePageMetadata } from '../../../../lib/seo/metadata';
  * `lib/admin/curation.ts` has the argument for why one table and one endpoint set serve all
  * four.
  */
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Collections',
-  description: 'Editorial collections, what is in them, and whether the public can see them.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('admin.pages.curation');
 
-export default function CurationPage() {
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
+
+export default async function CurationPage() {
+  const t = await getTranslations('admin.pages.curation');
+
   return (
     <div className="max-w-[880px]">
-      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
-        Collections
-      </h1>
-      <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-        Staff selections, themed lists and open calls — one table, because all three have a slug
-        in a URL, translated copy, a publication decision and an edited sequence of campaigns
-        behind them. Nothing here can be deleted: a collection anything has happened to carries
-        the record of it, so withdrawing one takes its page down and leaves the reasoning
-        intact.
-      </p>
+      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">{t('title')}</h1>
+      <p className="mt-2 max-w-[62ch] text-sm text-white/64">{t('intro')}</p>
 
       <div className="mt-8">
-        <CollectionManager allowCreate />
+        <CollectionManager allowCreate copy={await collectionManagerCopy()} note={await noteDialogCopy()} />
       </div>
     </div>
   );

@@ -8,8 +8,7 @@ import {
   wasAborted,
   type ConsoleStatus,
 } from '../../lib/admin/refusals';
-
-const SUBJECT = 'the collections';
+import type { ConsoleRefusalsCopy } from '../../lib/i18n/admin/common-copy';
 
 export interface Collections {
   readonly status: ConsoleStatus;
@@ -47,8 +46,13 @@ export interface Collections {
  * these are privileged, audited changes that another curator can be making at the same moment.
  * A row that flips before the service answers is an interface that lies for a few hundred
  * milliseconds about which campaigns the platform is standing behind.
+ *
+ * @param subject what the screen calls the thing it is reading, already translated — the four
+ *     screens say different things, and the refusal is the one message a reader meets without
+ *     having done anything wrong
+ * @param refusals the console's refusal table, resolved on the server by the route
  */
-export function useCollections(): Collections {
+export function useCollections(subject: string, refusals: ConsoleRefusalsCopy): Collections {
   const [status, setStatus] = useState<ConsoleStatus>('loading');
   const [collections, setCollections] = useState<readonly AdminCollection[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -70,13 +74,15 @@ export function useCollections(): Collections {
         if (controller.signal.aborted || wasAborted(cause)) return;
 
         const next = statusFor(cause);
-        if (next === 'failed') setError(consoleMessageFor(cause, SUBJECT));
+        if (next === 'failed') setError(consoleMessageFor(cause, subject, refusals));
         setStatus(next);
       }
     }
 
     void load();
     return () => controller.abort();
+    // The copy is one object per server render — see `useConsoleResource` for the argument.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attempt]);
 
   const apply = useCallback((updated: AdminCollection): void => {

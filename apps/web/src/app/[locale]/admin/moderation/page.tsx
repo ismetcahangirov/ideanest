@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { ModerationQueue } from '../../../../components/moderation/ModerationQueue';
+import { moderationQueueCopy } from '../../../../lib/i18n/admin/console.server';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 
 /**
@@ -20,25 +22,22 @@ import { privatePageMetadata } from '../../../../lib/seo/metadata';
  * The width also comes from the shell, so the console's screens line up with each
  * other instead of each choosing a column.
  */
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Moderation queue',
-  description: 'Reports waiting on platform staff, and the decisions taken on them.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('admin.pages.moderation');
 
-export default function ModerationPage() {
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
+
+export default async function ModerationPage() {
+  const t = await getTranslations('admin.pages.moderation');
+
   return (
     <div className="max-w-[880px]">
-      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
-        Moderation queue
-      </h1>
-      <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-        Every complaint the platform has received, oldest first. Deciding a report records a
-        judgement about the complaint and nothing else — suspending a campaign, banning an account
-        and removing content are separate decisions with separate consequences.
-      </p>
+      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">{t('title')}</h1>
+      <p className="mt-2 max-w-[62ch] text-sm text-white/64">{t('intro')}</p>
 
       <div className="mt-8">
-        <ModerationQueue detailHrefBase="/admin/moderation" />
+        <ModerationQueue detailHrefBase="/admin/moderation" copy={await moderationQueueCopy()} />
       </div>
     </div>
   );

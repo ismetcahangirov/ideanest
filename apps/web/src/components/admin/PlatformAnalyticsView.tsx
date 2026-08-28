@@ -4,17 +4,19 @@ import { useState } from 'react';
 import { InlineAlert, Pill, Skeleton, SkeletonGroup, StatBlock, StatRow } from '@ideanest/ui';
 import { peakVolume, readPlatformAnalytics } from '../../lib/admin/platform-analytics';
 import { formatMoney } from '../../lib/money';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { PlatformAnalyticsCopy } from '../../lib/i18n/admin/platform-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { useConsoleResource } from './useConsoleResource';
 
-const SUBJECT = 'the platform figures';
-
-/** The windows somebody actually reads a platform dashboard over. */
-const WINDOWS = [
-  { label: '30 days', days: 30 },
-  { label: '90 days', days: 90 },
-  { label: '365 days', days: 365 },
-] as const;
+/**
+ * The windows somebody actually reads a platform dashboard over.
+ *
+ * Numbers only since #324: the word beside each is `admin.screens.analytics.windows`, keyed by
+ * the same number. "30 days" is a noun phrase that inflects, and three of them built as
+ * `${n} days` were three sentences no translation could reach.
+ */
+const WINDOWS = [30, 90, 365] as const;
 
 /**
  * §4.11's AD-13: volume, success rate, average pledge — issue #313.
@@ -42,7 +44,11 @@ const WINDOWS = [
  * `transpilePackages` graph lands in the shared chunk for every console route — `MinimalShell`
  * records what that cost the last time — and this is one screen with one series.
  */
-export function PlatformAnalyticsView() {
+export interface PlatformAnalyticsViewProps {
+  readonly copy: PlatformAnalyticsCopy;
+}
+
+export function PlatformAnalyticsView({ copy }: PlatformAnalyticsViewProps) {
   const [days, setDays] = useState(30);
 
   const analytics = useConsoleResource(
@@ -55,12 +61,13 @@ export function PlatformAnalyticsView() {
         signal,
       );
     },
-    SUBJECT,
+    copy.subject,
+    copy.refusals,
     [days],
   );
 
   if (analytics.status === 'signed-out' || analytics.status === 'forbidden') {
-    return <ConsoleRefusal status={analytics.status} subject={SUBJECT} />;
+    return <ConsoleRefusal status={analytics.status} subject={copy.subject} copy={copy.refusals} />;
   }
 
   return (
@@ -68,18 +75,18 @@ export function PlatformAnalyticsView() {
       <div className="flex flex-wrap items-center gap-2">
         {WINDOWS.map((window) => (
           <Pill
-            key={window.days}
-            variant={days === window.days ? 'outline' : 'ghost'}
+            key={window}
+            variant={days === window ? 'outline' : 'ghost'}
             size="sm"
-            onClick={() => setDays(window.days)}
+            onClick={() => setDays(window)}
           >
-            {window.label}
+            {copy.windows[String(window)] ?? String(window)}
           </Pill>
         ))}
       </div>
 
       {analytics.status === 'loading' && (
-        <SkeletonGroup label="Loading the platform figures">
+        <SkeletonGroup label={copy.loadingList}>
           <Skeleton height="1rem" width="40%" />
           <Skeleton height="6rem" width="100%" className="mt-4" />
         </SkeletonGroup>
@@ -87,11 +94,11 @@ export function PlatformAnalyticsView() {
 
       {analytics.status === 'failed' && (
         <>
-          <InlineAlert variant="danger" title="Something went wrong">
+          <InlineAlert variant="danger" title={copy.errorTitle}>
             {analytics.error}
           </InlineAlert>
           <Pill variant="ghost" size="sm" onClick={analytics.reload}>
-            Try again
+            {copy.tryAgain}
           </Pill>
         </>
       )}
@@ -100,45 +107,48 @@ export function PlatformAnalyticsView() {
         <>
           <section aria-labelledby="totals-heading">
             <h2 id="totals-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-              Over {analytics.data.from} to {analytics.data.to}
+              {fillPlaceholders(copy.range, {
+                from: analytics.data.from,
+                to: analytics.data.to,
+              })}
             </h2>
 
             <StatRow className="mt-4 flex flex-wrap gap-x-10 gap-y-4">
-              <StatBlock label="Volume" value={formatMoney(analytics.data.totals.volume)} />
-              <StatBlock label="Pledges" value={String(analytics.data.totals.pledgeCount)} />
-              <StatBlock label="Backers" value={String(analytics.data.totals.backerCount)} />
+              <StatBlock label={copy.volume} value={formatMoney(analytics.data.totals.volume)} />
+              <StatBlock label={copy.pledges} value={String(analytics.data.totals.pledgeCount)} />
+              <StatBlock label={copy.backers} value={String(analytics.data.totals.backerCount)} />
               <StatBlock
-                label="Average pledge"
+                label={copy.averagePledge}
                 value={formatMoney(analytics.data.totals.averagePledge)}
               />
-              <StatBlock label="Live campaigns" value={String(analytics.data.totals.liveProjects)} />
+              <StatBlock
+                label={copy.liveProjects}
+                value={String(analytics.data.totals.liveProjects)}
+              />
             </StatRow>
 
             {analytics.data.totals.otherCurrencyPledges > 0 && (
-              <InlineAlert variant="warning" title="Some pledges are not in these totals" className="mt-4">
-                {analytics.data.totals.otherCurrencyPledges} pledges in the window were in another
-                currency. §21.2 gives nothing to convert them with, so they are counted here and
-                left out of the volume rather than added to a figure nobody could reconcile.
+              <InlineAlert variant="warning" title={copy.otherCurrencyTitle} className="mt-4">
+                {fillPlaceholders(copy.otherCurrencyBody, {
+                  count: String(analytics.data.totals.otherCurrencyPledges),
+                })}
               </InlineAlert>
             )}
           </section>
 
           <section aria-labelledby="outcomes-heading">
             <h2 id="outcomes-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-              Campaigns that closed
+              {copy.outcomesHeading}
             </h2>
 
             {analytics.data.outcomes.successRate == null ? (
-              <p className="mt-2 text-sm text-white/48">
-                No campaign closed in this window. That is not a success rate of nought — it is
-                the absence of one, which is why nothing is shown here.
-              </p>
+              <p className="mt-2 text-sm text-white/48">{copy.noneClosed}</p>
             ) : (
               <StatRow className="mt-4 flex flex-wrap gap-x-10 gap-y-4">
-                <StatBlock label="Succeeded" value={String(analytics.data.outcomes.succeeded)} />
-                <StatBlock label="Did not" value={String(analytics.data.outcomes.failed)} />
+                <StatBlock label={copy.succeeded} value={String(analytics.data.outcomes.succeeded)} />
+                <StatBlock label={copy.didNot} value={String(analytics.data.outcomes.failed)} />
                 <StatBlock
-                  label="Success rate"
+                  label={copy.successRate}
                   value={`${Math.round(analytics.data.outcomes.successRate * 100)}%`}
                 />
               </StatRow>
@@ -147,11 +157,11 @@ export function PlatformAnalyticsView() {
 
           <section aria-labelledby="daily-heading">
             <h2 id="daily-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-              Daily volume
+              {copy.dailyHeading}
             </h2>
 
             {analytics.data.daily.length === 0 ? (
-              <p className="mt-2 text-sm text-white/48">Nothing was pledged in this window.</p>
+              <p className="mt-2 text-sm text-white/48">{copy.nothingPledged}</p>
             ) : (
               <ul className="mt-4 flex list-none flex-col gap-1">
                 {analytics.data.daily.map((point) => {
@@ -183,7 +193,7 @@ export function PlatformAnalyticsView() {
           {analytics.data.notBuilt.length > 0 && (
             <section aria-labelledby="not-built-heading">
               <h2 id="not-built-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-                What this screen does not answer
+                {copy.notBuiltHeading}
               </h2>
               <ul className="mt-2 flex list-none flex-col gap-2">
                 {analytics.data.notBuilt.map((reason) => (

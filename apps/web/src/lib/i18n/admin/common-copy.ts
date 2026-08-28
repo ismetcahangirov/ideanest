@@ -1,0 +1,132 @@
+import type { AdminTranslator } from '../admin-copy';
+
+/**
+ * The words every console screen repeats — issue #324, epic #259.
+ *
+ * <h2>Why the refusals are one table rather than a table per screen</h2>
+ *
+ * `lib/admin/refusals.ts` already made this argument about the code and it applies unchanged
+ * to the copy: twenty-six screens meet the same four outcomes — it worked, the browser has no
+ * session, the account is not staff, or something else went wrong — and twenty-six copies of
+ * those sentences means the twenty-fifth is the one nobody teaches about a new refusal code.
+ * One table, keyed by §10.4's codes, so a code the service adds is a key somebody adds once.
+ *
+ * <h2>The 403s carry `{subject}`, and that is what unblocked `ConsoleRefusal`</h2>
+ *
+ * `apps/web/README.md` recorded `ConsoleRefusal` as the one component that could not be
+ * translated on its own: its sentence names the thing a screen was about to show — "…to read
+ * the audit trail" — and the noun belongs to the screen rather than to the component. That was
+ * true while the screens were English literals and stopped being true the moment each of them
+ * gained a catalogue node. Every screen now hands over its own `subject`, already translated
+ * and already in whatever case its language needs, and the sentence is a template around it.
+ *
+ * <p>Which is also why `subject` is a whole noun phrase and never a stem with an article or a
+ * suffix bolted on here. "the ledger" is `baş kitabı` in Azerbaijani and `defteri` in Turkish,
+ * both of them already inflected for the position they sit in; a component that tried to build
+ * that would be writing grammar for four languages in TypeScript.
+ */
+export interface ConsoleChromeCopy {
+  /** The heading over a failure that is not one of the two refusals. */
+  readonly errorTitle: string;
+  readonly loadMore: string;
+  /** The pager, on the four screens the service pages rather than cursors. */
+  readonly previous: string;
+  readonly next: string;
+  /** The load-more control while it is loading. Never the only signal — the control disables. */
+  readonly loading: string;
+  readonly tryAgain: string;
+  readonly save: string;
+  readonly saving: string;
+  readonly cancel: string;
+  readonly refusals: ConsoleRefusalsCopy;
+}
+
+export interface ConsoleRefusalsCopy {
+  readonly signedOutTitle: string;
+  /** Carries `{subject}`. */
+  readonly signedOutBody: string;
+  readonly forbiddenTitle: string;
+  readonly forbiddenBody: string;
+  /** The 403 with no capability in it. Carries `{subject}`. */
+  readonly notStaff: string;
+  /** The 403 that names one, since #295. Carries `{subject}` and `{capability}`. */
+  readonly needsCapability: string;
+  readonly unknownLedgerAccount: string;
+  readonly collectionNotFound: string;
+  readonly collectionSlugTaken: string;
+  readonly curationRejected: string;
+  readonly refused: string;
+  readonly unreachable: string;
+}
+
+/**
+ * `NoteDialog`'s own words.
+ *
+ * The labels above them — what is about to happen, and what the confirm control says — stay
+ * with the screen that opens the dialog, because they name the change rather than the note.
+ */
+export interface NoteDialogCopy {
+  readonly why: string;
+  readonly hint: string;
+  readonly required: string;
+  /** Carries `{limit}`. */
+  readonly tooLong: string;
+  readonly cancel: string;
+}
+
+/**
+ * The chrome, which every screen's own copy extends.
+ *
+ * <p>Spreading it into each screen's object rather than passing a second prop is what keeps
+ * twenty-six components taking exactly one `copy`. The alternative — `copy` and `chrome` and
+ * `refusals` — is three props that are always passed together and always resolved together,
+ * which is one object wearing a disguise.
+ *
+ * @param t the `admin` namespace
+ * @param common the root `common` namespace, which already owns the four words the whole
+ *     product shares. A second spelling of "Save" in the console is a second spelling to
+ *     translate and a second one to get wrong
+ */
+export function consoleChromeCopyFrom(t: AdminTranslator, common: AdminTranslator): ConsoleChromeCopy {
+  return {
+    errorTitle: t('common.errorTitle'),
+    loadMore: t('common.loadMore'),
+    previous: t('common.previous'),
+    next: t('common.next'),
+    loading: t('common.loading'),
+    tryAgain: common('tryAgain'),
+    save: common('save'),
+    saving: common('saving'),
+    cancel: common('cancel'),
+    refusals: consoleRefusalsCopyFrom(t),
+  };
+}
+
+export function consoleRefusalsCopyFrom(t: AdminTranslator): ConsoleRefusalsCopy {
+  return {
+    signedOutTitle: t('refusals.signedOutTitle'),
+    /* `raw`, because next-intl renders a template's own key when it is read with `t()` and
+       has no value for the argument — `src/test-copy.ts` refuses the same mistake in tests. */
+    signedOutBody: String(t.raw('refusals.signedOutBody')),
+    forbiddenTitle: t('refusals.forbiddenTitle'),
+    forbiddenBody: t('refusals.forbiddenBody'),
+    notStaff: String(t.raw('refusals.notStaff')),
+    needsCapability: String(t.raw('refusals.needsCapability')),
+    unknownLedgerAccount: t('refusals.unknownLedgerAccount'),
+    collectionNotFound: t('refusals.collectionNotFound'),
+    collectionSlugTaken: t('refusals.collectionSlugTaken'),
+    curationRejected: t('refusals.curationRejected'),
+    refused: t('refusals.refused'),
+    unreachable: t('refusals.unreachable'),
+  };
+}
+
+export function noteDialogCopyFrom(t: AdminTranslator, common: AdminTranslator): NoteDialogCopy {
+  return {
+    why: t('note.why'),
+    hint: t('note.hint'),
+    required: t('note.required'),
+    tooLong: String(t.raw('note.tooLong')),
+    cancel: common('cancel'),
+  };
+}

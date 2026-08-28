@@ -1,5 +1,8 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { BadgeManager } from '../../../../../components/admin/BadgeManager';
+import { badgeManagerCopy } from '../../../../../lib/i18n/admin/console.server';
+import { noteDialogCopy } from '../../../../../lib/i18n/admin/console.server';
 import { privatePageMetadata } from '../../../../../lib/seo/metadata';
 
 /**
@@ -9,25 +12,22 @@ import { privatePageMetadata } from '../../../../../lib/seo/metadata';
  * grants one. `BadgeManager` carries the argument, and the consequence for this page is that
  * it is a list of collections rather than a list of badges.
  */
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Editorial badges',
-  description: 'Which collections badge the campaigns in them.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('admin.pages.curationBadges');
 
-export default function BadgesPage() {
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
+
+export default async function BadgesPage() {
+  const t = await getTranslations('admin.pages.curationBadges');
+
   return (
     <div className="max-w-[880px]">
-      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
-        Editorial badges
-      </h1>
-      <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-        A campaign carries §3.2&apos;s editorial badge because it is in a collection that grants
-        one — there is no badge table, and no way to badge a single campaign. Turning the grant
-        on or off is therefore a decision about every campaign in the list at once.
-      </p>
+      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">{t('title')}</h1>
+      <p className="mt-2 max-w-[62ch] text-sm text-white/64">{t('intro')}</p>
 
       <div className="mt-8">
-        <BadgeManager />
+        <BadgeManager copy={await badgeManagerCopy()} note={await noteDialogCopy()} />
       </div>
     </div>
   );

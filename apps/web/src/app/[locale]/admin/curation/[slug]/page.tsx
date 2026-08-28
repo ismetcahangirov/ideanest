@@ -1,5 +1,8 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { CollectionEditor } from '../../../../../components/admin/CollectionEditor';
+import { collectionEditorCopy } from '../../../../../lib/i18n/admin/console.server';
+import { noteDialogCopy } from '../../../../../lib/i18n/admin/console.server';
 import { privatePageMetadata } from '../../../../../lib/seo/metadata';
 
 /**
@@ -16,10 +19,11 @@ import { privatePageMetadata } from '../../../../../lib/seo/metadata';
  * unreachable here. That is a trade worth naming rather than one worth a longer prefix on
  * every other collection's URL.
  */
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Collection',
-  description: 'One curated list, and the campaigns in it.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('admin.pages.curationSlug');
+
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
 
 export default async function CollectionPage({
   params,
@@ -28,18 +32,15 @@ export default async function CollectionPage({
 }) {
   const { slug } = await params;
 
+  const t = await getTranslations('admin.pages.curationSlug');
+
   return (
     <div className="max-w-[880px]">
-      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
-        Collection
-      </h1>
-      <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-        What is in this list, and in what order. On a collection that grants the editorial
-        badge, adding a campaign here is applying §3.2&apos;s badge to it.
-      </p>
+      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">{t('title')}</h1>
+      <p className="mt-2 max-w-[62ch] text-sm text-white/64">{t('intro')}</p>
 
       <div className="mt-8">
-        <CollectionEditor slug={slug} />
+        <CollectionEditor slug={slug} copy={await collectionEditorCopy()} note={await noteDialogCopy()} />
       </div>
     </div>
   );
