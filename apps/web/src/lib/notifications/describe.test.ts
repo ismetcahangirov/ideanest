@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { InboxNotification, NotificationType } from './api';
+import { inboxCopyFrom } from '../i18n/notifications-copy';
+import { translatorFor } from '../../test-copy';
+/*
+ * The copy the route would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const COPY = inboxCopyFrom(translatorFor('account.notifications'));
 import {
   CATEGORIES,
   CHANNELS,
@@ -114,7 +122,7 @@ describe('campaignOf', () => {
 
 describe('describeNotification', () => {
   it('names the campaign when the document carries a title', () => {
-    const view = describeNotification(notification({ type: 'GOAL_REACHED' }));
+    const view = describeNotification(notification({ type: 'GOAL_REACHED' }), COPY);
 
     expect(view.campaign).toBe('Xari Bulbul Ceramics');
     expect(view.headline).toBe('Xari Bulbul Ceramics reached its goal of 5,000.00 AZN');
@@ -129,6 +137,7 @@ describe('describeNotification', () => {
   it('still forms a sentence when the document names no campaign', () => {
     const view = describeNotification(
       notification({ type: 'GOAL_REACHED', params: '{"goal":{"amount":"5000.00","currency":"AZN"}}' }),
+      COPY,
     );
 
     expect(view.campaign).toBeNull();
@@ -137,7 +146,7 @@ describe('describeNotification', () => {
   });
 
   it.each(TYPES)('renders %s as a finished sentence with a full document', (type) => {
-    const view = describeNotification(notification({ type }));
+    const view = describeNotification(notification({ type }), COPY);
 
     expect(view.headline).not.toBe('');
     expect(view.headline).not.toContain('  ');
@@ -146,7 +155,7 @@ describe('describeNotification', () => {
   });
 
   it.each(TYPES)('renders %s as a finished sentence with an empty document', (type) => {
-    const view = describeNotification(notification({ type, params: '{}' }));
+    const view = describeNotification(notification({ type, params: '{}' }), COPY);
 
     expect(view.headline).not.toBe('');
     expect(view.headline).not.toContain('  ');
@@ -162,13 +171,14 @@ describe('describeNotification', () => {
   it('refuses an amount that did not arrive as a string, rather than rendering it', () => {
     const view = describeNotification(
       notification({ type: 'PLEDGE_CONFIRMED', params: '{"total":{"amount":120,"currency":"AZN"}}' }),
+      COPY,
     );
 
     expect(view.headline).toBe('Your pledge of your chosen amount to a campaign is confirmed');
   });
 
   it('groups thousands and keeps the scale the service sent', () => {
-    const view = describeNotification(notification({ type: 'CAMPAIGN_SUCCEEDED' }));
+    const view = describeNotification(notification({ type: 'CAMPAIGN_SUCCEEDED' }), COPY);
 
     expect(view.headline).toContain('6,250.00 AZN');
   });
@@ -181,13 +191,14 @@ describe('describeNotification', () => {
   it('sends the sign-in alert to the device list', () => {
     const view = describeNotification(
       notification({ type: 'NEW_DEVICE_SIGN_IN', category: 'SECURITY' }),
+      COPY,
     );
 
     expect(view.href).toBe('/settings/sessions');
   });
 
   it('survives a document that is not JSON at all', () => {
-    const view = describeNotification(notification({ type: 'PLEDGE_CONFIRMED', params: 'oops' }));
+    const view = describeNotification(notification({ type: 'PLEDGE_CONFIRMED', params: 'oops' }), COPY);
 
     expect(view.headline).toBe('Your pledge of your chosen amount to a campaign is confirmed');
     expect(view.href).toBeNull();
@@ -197,22 +208,22 @@ describe('describeNotification', () => {
 describe('labels', () => {
   it('has a label and a description for every category', () => {
     for (const category of CATEGORIES) {
-      expect(categoryLabel(category)).not.toBe('');
-      expect(categoryDescription(category)).not.toBe('');
-      expect(mandatoryReason(category)).toContain('Always on');
+      expect(categoryLabel(category, COPY)).not.toBe('');
+      expect(categoryDescription(category, COPY)).not.toBe('');
+      expect(mandatoryReason(category, COPY)).toContain('Always on');
     }
   });
 
   it('has a label for every channel and mode', () => {
-    for (const channel of CHANNELS) expect(channelLabel(channel)).not.toBe('');
-    expect(modeLabel('OFF')).toBe('Off');
-    expect(modeLabel('IMMEDIATE')).toBe('As it happens');
-    expect(modeLabel('DIGEST')).toBe('Daily digest');
+    for (const channel of CHANNELS) expect(channelLabel(channel, COPY)).not.toBe('');
+    expect(modeLabel('OFF', COPY)).toBe('Off');
+    expect(modeLabel('IMMEDIATE', COPY)).toBe('As it happens');
+    expect(modeLabel('DIGEST', COPY)).toBe('Daily digest');
   });
 
   it('gives the security reason only where it is true', () => {
-    expect(mandatoryReason('SECURITY')).toContain('somebody else reaches your account');
-    expect(mandatoryReason('PAYMENTS')).not.toContain('somebody else reaches your account');
+    expect(mandatoryReason('SECURITY', COPY)).toContain('somebody else reaches your account');
+    expect(mandatoryReason('PAYMENTS', COPY)).not.toContain('somebody else reaches your account');
   });
 
   /*

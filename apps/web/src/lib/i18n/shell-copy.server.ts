@@ -24,6 +24,12 @@ import {
 } from './campaign-copy';
 import { localeOrDefault, type Locale } from './locale';
 import { type ProfileCopy, profileCopyFrom } from './profile-copy';
+import {
+  type InboxCopy,
+  type PreferencesCopy,
+  inboxCopyFrom,
+  preferencesCopyFrom,
+} from './notifications-copy';
 import { type ProjectCardCopy, projectCardCopyFrom } from './card-copy';
 import { type FeedCopy, feedCopyFrom } from './feed-copy';
 import {
@@ -185,6 +191,21 @@ export async function adminShellCopy(): Promise<AdminShellCopy> {
 
 export async function consoleIndexCopy(): Promise<ConsoleIndexCopy> {
   return consoleIndexCopyFrom(await getTranslations('admin'));
+}
+
+/**
+ * The notifications inbox and its settings — `notifications-copy.ts` explains the two tables.
+ *
+ * Two accessors because two routes render two panels: `/notifications` is the inbox and
+ * `/settings/notifications` is the switchboard, and each shares the vocabulary of categories
+ * and channels without needing the other's own sentences.
+ */
+export async function inboxCopy(): Promise<InboxCopy> {
+  return inboxCopyFrom(await getTranslations('account.notifications'));
+}
+
+export async function notificationPreferencesCopy(): Promise<PreferencesCopy> {
+  return preferencesCopyFrom(await getTranslations('account.notifications'));
 }
 
 /** The checkout's words. `checkout-copy.ts` explains why the whole of it is one prop. */

@@ -13,19 +13,21 @@ import {
 import { CATEGORIES, categoryLabel, dayKeyOf, dayLabelOf } from '../../lib/notifications/describe';
 import { NotificationRow } from './NotificationRow';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
+import type { InboxCopy } from '../../lib/i18n/notifications-copy';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
 
 type Status = 'loading' | 'ready' | 'failed' | 'signed-out';
 
 /** "All", or one of §4.10's seven groups. */
 type Filter = NotificationCategory | 'ALL';
 
-function messageFor(cause: unknown): string {
+function messageFor(cause: unknown, copy: InboxCopy): string {
   if (cause instanceof ApiError) {
     return (
-      cause.problem?.detail ?? cause.problem?.title ?? 'The service refused the request. Try again.'
+      cause.problem?.detail ?? cause.problem?.title ?? copy.refused
     );
   }
-  return 'The service could not be reached. Check your connection and try again.';
+  return copy.unreachable;
 }
 
 function wasAborted(cause: unknown): boolean {
@@ -88,7 +90,12 @@ function byDay(
  * MOTION IS NEAR ZERO, following `SessionsPanel` — this is work rather than discovery, and
  * docs/motion-system.md §8 rules out staggering a list regardless.
  */
-export function InboxPanel() {
+export interface InboxPanelProps {
+  /** Every word this panel and its rows draw — see `lib/i18n/notifications-copy.ts`. */
+  readonly copy: InboxCopy;
+}
+
+export function InboxPanel({ copy }: InboxPanelProps) {
   const locale = useRouteLocale();
   const [status, setStatus] = useState<Status>('loading');
   const [notifications, setNotifications] = useState<readonly InboxNotification[]>([]);
@@ -122,7 +129,7 @@ export function InboxPanel() {
         setStatus('signed-out');
         return;
       }
-      setError(messageFor(cause));
+      setError(messageFor(cause, copy));
       setStatus('failed');
     }
   }, []);
@@ -147,7 +154,7 @@ export function InboxPanel() {
       setCursor(cursorOf(page.nextCursor, page.nextCursorId));
       setUnreadCount(page.unreadCount);
     } catch (cause) {
-      setError(messageFor(cause));
+      setError(messageFor(cause, copy));
     } finally {
       setLoadingMore(false);
     }
@@ -181,7 +188,7 @@ export function InboxPanel() {
       );
       setUnreadCount((previous) => Math.max(0, previous - 1));
     } catch (cause) {
-      setError(messageFor(cause));
+      setError(messageFor(cause, copy));
     } finally {
       markBusy(notification.id, false);
     }
@@ -189,7 +196,7 @@ export function InboxPanel() {
 
   if (status === 'signed-out') {
     return (
-      <InlineAlert variant="info" title="You are signed out">
+      <InlineAlert variant="info" title={copy.signedOut}>
         Sign in again to read your notifications.
       </InlineAlert>
     );
@@ -209,9 +216,11 @@ export function InboxPanel() {
           ref={headingRef}
           className="text-lg font-medium tracking-[-0.02em] text-white"
         >
-          Notifications
+          {copy.heading}
           {status === 'ready' && unreadCount > 0 && (
-            <span className="ml-2 text-xs font-normal text-white/56">{unreadCount} unread</span>
+            <span className="ml-2 text-xs font-normal text-white/56">
+              {fillPlaceholders(copy.unread, { count: String(unreadCount) })}
+            </span>
           )}
         </h2>
 
@@ -222,7 +231,7 @@ export function InboxPanel() {
           aria-pressed={unreadOnly}
           onClick={() => setUnreadOnly((previous) => !previous)}
         >
-          Unread only
+          {copy.unreadOnly}
         </Pill>
       </div>
 
@@ -230,9 +239,9 @@ export function InboxPanel() {
         Filters are white when selected, never lime — docs/ui-kit.md §7.3: a filter is not
         urgent. `Chip` carries `aria-pressed` for the same reason the toggle above does.
       */}
-      <ChipRow className="mt-4" aria-label="Filter by category">
+      <ChipRow className="mt-4" aria-label={copy.filterLabel}>
         <Chip active={filter === 'ALL'} onClick={() => setFilter('ALL')}>
-          All
+          {copy.all}
         </Chip>
         {CATEGORIES.map((category) => (
           <Chip
@@ -240,7 +249,7 @@ export function InboxPanel() {
             active={filter === category}
             onClick={() => setFilter(category)}
           >
-            {categoryLabel(category)}
+            {categoryLabel(category, copy)}
           </Chip>
         ))}
       </ChipRow>
@@ -252,7 +261,7 @@ export function InboxPanel() {
       )}
 
       {status === 'loading' && (
-        <SkeletonGroup label="Loading your notifications" className="mt-4">
+        <SkeletonGroup label={copy.loadingList} className="mt-4">
           <div className="divide-y divide-white/6 overflow-hidden rounded-lg border border-white/8 bg-surface-2">
             {[0, 1, 2, 3].map((row) => (
               <div key={row} className="flex items-start gap-3 px-5 py-4">
@@ -270,11 +279,11 @@ export function InboxPanel() {
       {status === 'ready' && shown.length === 0 && (
         <EmptyState
           className="mt-4"
-          title={notifications.length === 0 ? 'Nothing yet' : 'Nothing here in what has loaded'}
+          title={notifications.length === 0 ? copy.emptyTitle : copy.filteredTitle}
           description={
             notifications.length === 0
-              ? 'When a campaign you back reaches its goal, closes, or takes a payment, it will appear here.'
-              : 'These filters match none of the notifications loaded so far. Load more to keep looking, or clear them.'
+              ? copy.emptyBody
+              : copy.filteredBody
           }
         />
       )}
@@ -296,6 +305,7 @@ export function InboxPanel() {
                     notification={row}
                     now={now}
                     locale={locale}
+                    copy={copy}
                     busy={busyIds.has(row.id)}
                     onOpen={(target) => void open(target)}
                   />
@@ -308,7 +318,7 @@ export function InboxPanel() {
 
       {status === 'ready' && cursor !== null && (
         <Pill variant="ghost" size="sm" className="mt-4" disabled={loadingMore} onClick={() => void loadMore()}>
-          {loadingMore ? 'Loading' : 'Load more'}
+          {loadingMore ? copy.loading : copy.loadMore}
         </Pill>
       )}
 

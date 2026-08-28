@@ -10,6 +10,14 @@ import {
   type PreferenceSwitch,
 } from '../../lib/notifications/api';
 import { PreferencesPanel } from './PreferencesPanel';
+import { preferencesCopyFrom } from '../../lib/i18n/notifications-copy';
+import { translatorFor } from '../../test-copy';
+/*
+ * The copy the route would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const COPY = preferencesCopyFrom(translatorFor('account.notifications'));
 
 vi.mock('../../lib/notifications/api', () => ({
   listPreferences: vi.fn(),
@@ -62,14 +70,14 @@ beforeEach(() => {
 describe('PreferencesPanel', () => {
   it('announces that it is loading rather than showing a blank panel', () => {
     listMock.mockReturnValue(new Promise<readonly PreferenceSwitch[]>(() => {}));
-    render(<PreferencesPanel />);
+    render(<PreferencesPanel copy={COPY} />);
 
     const label = screen.getByText('Loading your notification settings');
     expect(label.closest('[aria-busy]')).toHaveAttribute('aria-busy', 'true');
   });
 
   it('gives every switch a labelled control', async () => {
-    render(<PreferencesPanel />);
+    render(<PreferencesPanel copy={COPY} />);
 
     await waitFor(() => expect(screen.getAllByRole('combobox')).toHaveLength(6));
     // Two categories, each with the three channels §4.10 defines.
@@ -79,7 +87,7 @@ describe('PreferencesPanel', () => {
   });
 
   it('offers a digest only on the channel the service says can batch', async () => {
-    render(<PreferencesPanel />);
+    render(<PreferencesPanel copy={COPY} />);
 
     const email = (await screen.findAllByLabelText('Email'))[0] as HTMLSelectElement;
     const inApp = (await screen.findAllByLabelText('In app'))[0] as HTMLSelectElement;
@@ -99,7 +107,7 @@ describe('PreferencesPanel', () => {
    * rather than simply absent.
    */
   it('draws a mandatory switch disabled, with the reason', async () => {
-    render(<PreferencesPanel />);
+    render(<PreferencesPanel copy={COPY} />);
 
     const controls = await screen.findAllByLabelText('In app');
     expect(controls[1]).toBeDisabled();
@@ -109,7 +117,7 @@ describe('PreferencesPanel', () => {
   });
 
   it('shows a default as a default rather than as a choice somebody made', async () => {
-    render(<PreferencesPanel />);
+    render(<PreferencesPanel copy={COPY} />);
 
     await waitFor(() => expect(screen.getAllByRole('combobox')).toHaveLength(6));
     // Two of the three PLEDGES switches are unstored; the third was set to OFF. The
@@ -124,13 +132,13 @@ describe('PreferencesPanel', () => {
    */
   it('says when nothing has ever been changed', async () => {
     listMock.mockResolvedValue(PAGE.map((entry) => ({ ...entry, stored: false })));
-    render(<PreferencesPanel />);
+    render(<PreferencesPanel copy={COPY} />);
 
     expect(await screen.findByText('all at their defaults')).toBeInTheDocument();
   });
 
   it('stops saying so once something is stored', async () => {
-    render(<PreferencesPanel />);
+    render(<PreferencesPanel copy={COPY} />);
 
     await waitFor(() => expect(screen.getAllByRole('combobox')).toHaveLength(6));
     expect(screen.queryByText('all at their defaults')).not.toBeInTheDocument();
@@ -143,7 +151,7 @@ describe('PreferencesPanel', () => {
         : entry,
     );
     updateMock.mockResolvedValue(changed);
-    render(<PreferencesPanel />);
+    render(<PreferencesPanel copy={COPY} />);
 
     const email = (await screen.findAllByLabelText('Email'))[0] as HTMLSelectElement;
     await userEvent.selectOptions(email, 'DIGEST');
@@ -157,7 +165,7 @@ describe('PreferencesPanel', () => {
   });
 
   it('reports what it saved in a live region', async () => {
-    render(<PreferencesPanel />);
+    render(<PreferencesPanel copy={COPY} />);
 
     const push = (await screen.findAllByLabelText('Push'))[0] as HTMLSelectElement;
     await userEvent.selectOptions(push, 'OFF');
@@ -175,7 +183,7 @@ describe('PreferencesPanel', () => {
     updateMock.mockRejectedValue(
       new ApiError(422, { title: 'Mandatory', detail: 'That category cannot be silenced.' }, 'no'),
     );
-    render(<PreferencesPanel />);
+    render(<PreferencesPanel copy={COPY} />);
 
     const email = (await screen.findAllByLabelText('Email'))[0] as HTMLSelectElement;
     await userEvent.selectOptions(email, 'OFF');
@@ -186,7 +194,7 @@ describe('PreferencesPanel', () => {
 
   it('explains a rate limit in terms somebody can act on', async () => {
     updateMock.mockRejectedValue(new ApiError(429, null, 'Too many requests'));
-    render(<PreferencesPanel />);
+    render(<PreferencesPanel copy={COPY} />);
 
     const email = (await screen.findAllByLabelText('Email'))[0] as HTMLSelectElement;
     await userEvent.selectOptions(email, 'OFF');
@@ -198,7 +206,7 @@ describe('PreferencesPanel', () => {
     listMock
       .mockRejectedValueOnce(new ApiError(503, null, 'Service unavailable'))
       .mockResolvedValueOnce(PAGE);
-    render(<PreferencesPanel />);
+    render(<PreferencesPanel copy={COPY} />);
 
     await userEvent.click(await screen.findByRole('button', { name: 'Try again' }));
 
@@ -207,7 +215,7 @@ describe('PreferencesPanel', () => {
 
   it('says so plainly when the session has gone rather than reporting an error', async () => {
     listMock.mockRejectedValue(new ApiError(401, null, 'Not signed in'));
-    render(<PreferencesPanel />);
+    render(<PreferencesPanel copy={COPY} />);
 
     expect(await screen.findByText('You are signed out')).toBeInTheDocument();
   });
