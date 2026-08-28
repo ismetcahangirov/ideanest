@@ -73,8 +73,8 @@ export function emailChangePanelCopyFrom(
 ): EmailChangePanelCopy {
   return {
     heading: t('emailChange.heading'),
-    signInWith: t('emailChange.signInWith'),
-    signInWithUnverified: t('emailChange.signInWithUnverified'),
+    signInWith: String(t.raw('emailChange.signInWith')),
+    signInWithUnverified: String(t.raw('emailChange.signInWithUnverified')),
     alertTitle: t('emailChange.alertTitle'),
     alertBody: t('emailChange.alertBody'),
     currentPassword: t('emailChange.currentPassword'),
@@ -83,9 +83,9 @@ export function emailChangePanelCopyFrom(
     emailPlaceholder: auth('fields.emailPlaceholder'),
     submit: t('emailChange.submit'),
     submitting: t('emailChange.submitting'),
-    sentIntro: t('emailChange.sentIntro'),
+    sentIntro: String(t.raw('emailChange.sentIntro')),
     nothingChanged: t('emailChange.nothingChanged'),
-    stillSignIn: t('emailChange.stillSignIn'),
+    stillSignIn: String(t.raw('emailChange.stillSignIn')),
     stillSignInUnknown: t('emailChange.stillSignInUnknown'),
     alsoWrote: t('emailChange.alsoWrote'),
     askDifferent: t('emailChange.askDifferent'),

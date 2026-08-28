@@ -50,11 +50,24 @@ vi.mock('next/navigation', async (importOriginal) => ({
  * page resolves the window's two terms and the page's language from it, and the answers here
  * are what `i18n/request.ts` would have produced for the English catalogue.
  */
-vi.mock('next-intl/server', () => ({
-  getLocale: () => Promise.resolve('en'),
-  getTranslations: () =>
-    Promise.resolve((key: string) => (key === 'closes' ? 'Closes' : 'Open since')),
-}));
+vi.mock('next-intl/server', async () => {
+  const { createTranslator } = await import('next-intl');
+  const CATALOGUE = (await import('../../../../../../messages/en.json')).default;
+
+  return {
+    getLocale: () => Promise.resolve('en'),
+    /*
+     * next-intl's own formatter rather than a stub returning a string. The page reads
+     * `t.raw` for the kind table and the plural forms, and a bare function has no `raw` —
+     * which fails as "t.raw is not a function" three frames inside a builder rather than
+     * anywhere near the mock.
+     */
+    getTranslations: (namespace: string) =>
+      Promise.resolve(
+        createTranslator({ locale: 'en', messages: CATALOGUE, namespace: namespace as never }),
+      ),
+  };
+});
 
 const fetchMock = vi.mocked(fetchCollection);
 

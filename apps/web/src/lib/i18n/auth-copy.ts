@@ -35,8 +35,19 @@
  * their account.
  */
 
-/** A message lookup rooted at `auth`, narrowed to what these builders need. */
-export type AuthTranslator = (key: string) => string;
+/**
+ * A message lookup rooted at `auth`, narrowed to what these builders need.
+ *
+ * `raw` is next-intl's escape hatch for a message that is not to be formatted here, and the
+ * builders below use it for every sentence carrying a placeholder. `t('x')` on such a message
+ * is a formatting error — next-intl has no value for the argument, calls `onError` and renders
+ * the key's own path — so a template is read raw and `fillPlaceholders` fills it in the
+ * component, where the address or the number of minutes is actually known.
+ */
+export interface AuthTranslator {
+  (key: string): string;
+  raw(key: string): unknown;
+}
 
 /* -------------------------------------------------------------------------
  * Shared vocabularies
@@ -259,10 +270,10 @@ export function authFailuresCopyFrom(t: AuthTranslator): AuthFailuresCopy {
     rateLimitedTitle: t('failures.rateLimitedTitle'),
     rateLimitedDetail: t('failures.rateLimitedDetail'),
     rateLimitedShort: t('failures.rateLimitedShort'),
-    retryAfter: t('failures.retryAfter'),
+    retryAfter: String(t.raw('failures.retryAfter')),
     waitUnderMinute: t('failures.waitUnderMinute'),
     waitOneMinute: t('failures.waitOneMinute'),
-    waitMinutes: t('failures.waitMinutes'),
+    waitMinutes: String(t.raw('failures.waitMinutes')),
     refusedTitle: t('failures.refusedTitle'),
     refusedDetail: t('failures.refusedDetail'),
   };
@@ -337,7 +348,7 @@ export function registerCopyFrom(t: AuthTranslator): RegisterCopy {
     twoFactorTitle: t('register.twoFactorTitle'),
     twoFactorIntro: t('register.twoFactorIntro'),
     sentTitle: t('register.sentTitle'),
-    sentIntro: t('register.sentIntro'),
+    sentIntro: String(t.raw('register.sentIntro')),
     sentLifetime: t('register.sentLifetime'),
     sentExisting: t('register.sentExisting'),
     verified: t('register.verified'),
@@ -357,9 +368,9 @@ export function passwordResetCopyFrom(t: AuthTranslator): PasswordResetCopy {
     remembered: t('reset.remembered'),
     signIn: t('reset.signIn'),
     sentTitle: t('reset.sentTitle'),
-    sentIntro: t('reset.sentIntro'),
-    sentLifetime: t('reset.sentLifetime'),
-    sentRetry: t('reset.sentRetry'),
+    sentIntro: String(t.raw('reset.sentIntro')),
+    sentLifetime: String(t.raw('reset.sentLifetime')),
+    sentRetry: String(t.raw('reset.sentRetry')),
     tryAnother: t('reset.tryAnother'),
     backToSignIn: t('reset.backToSignIn'),
     lifetime: t('reset.lifetime'),
@@ -371,7 +382,7 @@ export function passwordResetCopyFrom(t: AuthTranslator): PasswordResetCopy {
 export function passwordResetConfirmCopyFrom(t: AuthTranslator): PasswordResetConfirmCopy {
   return {
     title: t('resetConfirm.title'),
-    intro: t('resetConfirm.intro'),
+    intro: String(t.raw('resetConfirm.intro')),
     newPassword: t('resetConfirm.newPassword'),
     repeat: t('resetConfirm.repeat'),
     repeatHint: t('resetConfirm.repeatHint'),
@@ -387,7 +398,7 @@ export function passwordResetConfirmCopyFrom(t: AuthTranslator): PasswordResetCo
     deadTitle: t('resetConfirm.deadTitle'),
     deadAlertTitle: t('resetConfirm.deadAlertTitle'),
     deadFallback: t('resetConfirm.deadFallback'),
-    deadExplain: t('resetConfirm.deadExplain'),
+    deadExplain: String(t.raw('resetConfirm.deadExplain')),
     askNewLink: t('resetConfirm.askNewLink'),
     askNewInstead: t('resetConfirm.askNewInstead'),
     doneTitle: t('resetConfirm.doneTitle'),

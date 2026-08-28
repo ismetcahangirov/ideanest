@@ -4,7 +4,11 @@ import { useState } from 'react';
 import { Link } from '../../i18n/navigation';
 import { EmptyState, InlineAlert, Pill } from '@ideanest/ui';
 import { ApiError } from '../../lib/api/problem';
-import { campaignCount, getCollectionCampaigns } from '../../lib/collections/api';
+import { getCollectionCampaigns } from '../../lib/collections/api';
+import type { Locale } from '../../lib/i18n/locale';
+import type { CollectionCampaignsCopy } from '../../lib/i18n/collection-copy';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import { pluralise } from '../../lib/i18n/plurals';
 import type { ProjectCard } from '../../lib/discovery/api';
 import { CampaignGrid } from '../browse/CampaignGrid';
 
@@ -56,13 +60,12 @@ import { CampaignGrid } from '../browse/CampaignGrid';
  * case it names. The button changes its label while it waits; nothing moves.
  */
 
-function messageFor(cause: unknown): string {
+function messageFor(cause: unknown, copy: CollectionCampaignsCopy): string {
+  /* The service's own sentence where there is one (§10.4); the catalogue's when there is not. */
   if (cause instanceof ApiError) {
-    return (
-      cause.problem?.detail ?? cause.problem?.title ?? 'The service refused the request. Try again.'
-    );
+    return cause.problem?.detail ?? cause.problem?.title ?? copy.refused;
   }
-  return 'The service could not be reached. Check your connection and try again.';
+  return copy.unreachable;
 }
 
 export interface CollectionCampaignsProps {
@@ -73,6 +76,10 @@ export interface CollectionCampaignsProps {
   readonly initial: readonly ProjectCard[];
   /** The token for the page after the first, or `null` when there is not one. */
   readonly initialCursor: string | null;
+  /** Every word this list draws, resolved by the route — see `lib/i18n/collection-copy.ts`. */
+  readonly copy: CollectionCampaignsCopy;
+  /** The language, for the count alone. The list grows in the browser, so it cannot be ICU. */
+  readonly locale: Locale;
 }
 
 export function CollectionCampaigns({
@@ -80,6 +87,8 @@ export function CollectionCampaigns({
   title,
   initial,
   initialCursor,
+  copy,
+  locale,
 }: CollectionCampaignsProps) {
   const [items, setItems] = useState<readonly ProjectCard[]>(initial);
   const [cursor, setCursor] = useState<string | null>(initialCursor);
@@ -96,7 +105,7 @@ export function CollectionCampaigns({
       setItems((previous) => [...previous, ...page.items]);
       setCursor(page.nextCursor);
     } catch (cause) {
-      setError(messageFor(cause));
+      setError(messageFor(cause, copy));
     } finally {
       setLoading(false);
     }
@@ -112,14 +121,14 @@ export function CollectionCampaigns({
       <EmptyState
         variant="empty"
         headingLevel={2}
-        title="Nothing to show here yet"
-        description={`No campaign in ${title} is published at the moment. The feed carries every campaign on the platform.`}
+        title={copy.emptyTitle}
+        description={fillPlaceholders(copy.emptyBody, { title })}
         action={
           <Link
             href="/discover"
             className="inline-flex h-10 items-center rounded-full bg-white px-5 text-sm font-medium text-on-white transition-colors duration-150 ease-in-out hover:bg-[var(--white-muted)]"
           >
-            Browse the feed
+            {copy.emptyAction}
           </Link>
         }
       />
@@ -136,11 +145,14 @@ export function CollectionCampaigns({
         number a reader has no way to tell from a right one.
       */}
       <p className="text-sm text-white/64 tabular-nums">
-        {campaignCount(items.length)} shown
-        {cursor === null ? '' : ', with more to load'}
+        {pluralise(locale, cursor === null ? copy.shown : copy.shownMore, items.length)}
       </p>
 
-      <CampaignGrid campaigns={items} priorityCount={3} label={`Campaigns in ${title}`} />
+      <CampaignGrid
+        campaigns={items}
+        priorityCount={3}
+        label={fillPlaceholders(copy.gridLabel, { title })}
+      />
 
       {cursor !== null && (
         <div className="flex justify-center">
@@ -148,16 +160,16 @@ export function CollectionCampaigns({
             type="button"
             variant="outline"
             disabled={loading}
-            aria-label={`Show more campaigns in ${title}`}
+            aria-label={fillPlaceholders(copy.showMoreLabel, { title })}
             onClick={() => void loadMore()}
           >
-            {loading ? 'Loading' : 'Show more'}
+            {loading ? copy.loading : copy.showMore}
           </Pill>
         </div>
       )}
 
       {error !== null && (
-        <InlineAlert variant="danger" title="The next page did not load">
+        <InlineAlert variant="danger" title={copy.nextFailedTitle}>
           <p>{error}</p>
         </InlineAlert>
       )}

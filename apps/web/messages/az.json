@@ -509,6 +509,56 @@
       "window": {
         "closes": "Bağlanır",
         "openSince": "Açıqdır"
+      },
+      "notFound": "Kolleksiya tapılmadı",
+      "socialDescription": "{title} — IdeaNest-də seçilmiş kollektiv maliyyələşdirmə kampaniyaları kolleksiyası.",
+      "title": "Kolleksiyalar",
+      "intro": "IdeaNest komandasının seçdiyi kampaniyalar, bir mövsüm və ya mövzu ətrafında qurulmuş kolleksiyalar və müəllifin hələ də qoşula biləcəyi açıq çağırışlar. Hər birinin öz səhifəsi var.",
+      "listLabel": "Kolleksiyalar",
+      "emptyTitle": "Hazırda kolleksiya yoxdur",
+      "emptyBody": "Hazırda platformada seçilmiş heç nə yoxdur və ya siyahını yükləmək mümkün olmadı. Hər iki halda lent bütün kampaniyaları daşıyır.",
+      "emptyAction": "Lentə bax",
+      "kinds": {
+        "staff_selection": "Komanda seçimi",
+        "themed": "Mövzulu kolleksiya",
+        "open_call": "Açıq çağırış"
+      },
+      "sentences": {
+        "staff_selection": "IdeaNest komandası tərəfindən seçilib.",
+        "themed": "Bir mövzu ətrafında qurulmuş kolleksiya.",
+        "open_call": "Açıq çağırış: açıq olduğu müddətdə kampaniyaların təqdim oluna biləcəyi proqram."
+      },
+      "inCollection": "Bu kolleksiyada",
+      "cardCampaigns": "Kampaniyalar",
+      "badge": "Bu kolleksiyadakı kampaniyalar IdeaNest redaksiya nişanını daşıyır.",
+      "badgeOpenCall": "Onu verən şey bu proqrama qəbul olunmaqdır.",
+      "badgeCurated": "Bu, platformanın arxasında durduğu seçimdir, hər hansı kampaniya haqqında zəmanət deyil.",
+      "campaignsEmptyTitle": "Hələ göstəriləcək heç nə yoxdur",
+      "campaignsEmptyBody": "Hazırda {title} kolleksiyasında dərc olunmuş kampaniya yoxdur. Lent platformadakı bütün kampaniyaları daşıyır.",
+      "gridLabel": "{title} kolleksiyasındakı kampaniyalar",
+      "showMoreLabel": "{title} kolleksiyasında daha çox kampaniya göstər",
+      "showMore": "Daha çox göstər",
+      "loading": "Yüklənir",
+      "nextFailedTitle": "Növbəti səhifə yüklənmədi",
+      "refused": "Xidmət sorğunu rədd etdi. Yenidən cəhd edin.",
+      "unreachable": "Xidmətə çıxmaq mümkün olmadı. Bağlantınızı yoxlayıb yenidən cəhd edin.",
+      "count": {
+        "one": "{count} kampaniya",
+        "few": "{count} kampaniya",
+        "many": "{count} kampaniya",
+        "other": "{count} kampaniya"
+      },
+      "shown": {
+        "one": "{count} kampaniya göstərilir",
+        "few": "{count} kampaniya göstərilir",
+        "many": "{count} kampaniya göstərilir",
+        "other": "{count} kampaniya göstərilir"
+      },
+      "shownMore": {
+        "one": "{count} kampaniya göstərilir, daha yüklənəcək var",
+        "few": "{count} kampaniya göstərilir, daha yüklənəcək var",
+        "many": "{count} kampaniya göstərilir, daha yüklənəcək var",
+        "other": "{count} kampaniya göstərilir, daha yüklənəcək var"
       }
     },
     "search": {

@@ -8,7 +8,10 @@ import { graphContext } from '../../../../lib/i18n/shell-copy.server';
 import { localeOrDefault } from '../../../../lib/i18n/locale';
 import { publicPageMetadata } from '../../../../lib/seo/metadata';
 import { getLocale, getTranslations } from 'next-intl/server';
-import type { WindowCopy } from '../../../../lib/collections/api';
+import {
+  type CollectionIndexCopy,
+  collectionIndexCopyFrom,
+} from '../../../../lib/i18n/collection-copy';
 import type { Locale } from '../../../../lib/i18n/locale';
 
 /**
@@ -62,32 +65,27 @@ export async function generateMetadata({
 
 
 /**
- * The window's two terms and the language to write its dates in — #324.
+ * The page's words and the language to write its dates in — #324.
  *
  * `getLocale` rather than `params`, for `graphContext`'s reason: `layout.tsx` has already
  * handed the segment to `setRequestLocale`, so this reads a value the router resolved and
  * leaves the render as static as it found it.
  */
-async function windowContext(): Promise<{ locale: Locale; windowCopy: WindowCopy }> {
-  const t = await getTranslations('discovery.collections.window');
+async function indexContext(): Promise<{ locale: Locale; copy: CollectionIndexCopy }> {
   return {
     locale: localeOrDefault(await getLocale()),
-    windowCopy: { closes: t('closes'), openSince: t('openSince') },
+    copy: collectionIndexCopyFrom(await getTranslations('discovery.collections')),
   };
 }
 
 export default async function CollectionsPage() {
-  const { locale, windowCopy } = await windowContext();
+  const { locale, copy } = await indexContext();
   const collections = await fetchCollections();
 
   return (
     <>
       <StructuredData nodes={collectionsIndexGraph(await graphContext())} />
-      <CollectionIndex
-        collections={collections}
-        locale={locale}
-        windowCopy={windowCopy}
-      />
+      <CollectionIndex collections={collections} locale={locale} copy={copy} />
     </>
   );
 }

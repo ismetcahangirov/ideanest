@@ -1,7 +1,7 @@
 import { fetchCollection } from '../api/server';
 import type { ProjectCard } from '../discovery/api';
-import { SITE_NAME } from '../seo/metadata';
 import { PAGE_SIZE, type Collection } from './api';
+import { fillPlaceholders } from '../i18n/placeholders';
 
 /**
  * What a collection landing page needs, resolved once — D-08, §4.13 WS-04.
@@ -84,10 +84,16 @@ export async function resolveCollectionLanding(slug: string): Promise<Collection
  * When there is none, the fallback names the collection and states what it is, and stops. It
  * invents no count and no deadline: a description is cached by crawlers and unfurlers for
  * days, and `projectCount` moves whenever a campaign in the collection ends.
+ *
+ * <p>THE FALLBACK ARRIVES AS AN ARGUMENT since #324. It is the one sentence here this platform
+ * writes rather than the curator, and it is served under `/ru/collections/…` like everything
+ * else on the page. It carries `{title}`, which the route fills; The brand's name is inside the message
+ * rather than concatenated onto it, because "on IdeaNest" is a preposition in four languages
+ * and Turkish attaches it to the noun.
  */
-export function collectionSocialDescription(collection: Collection): string {
+export function collectionSocialDescription(collection: Collection, fallback: string): string {
   const standfirst = collection.description?.trim() ?? '';
   if (standfirst !== '') return standfirst;
 
-  return `${collection.title} — a curated collection of crowdfunding campaigns on ${SITE_NAME}.`;
+  return fillPlaceholders(fallback, { title: collection.title });
 }

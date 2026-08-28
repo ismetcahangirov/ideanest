@@ -17,7 +17,12 @@ import {
   publicPageMetadata,
 } from '../../../../../lib/seo/metadata';
 import { getLocale, getTranslations } from 'next-intl/server';
-import type { WindowCopy } from '../../../../../lib/collections/api';
+import {
+  type CollectionCampaignsCopy,
+  type CollectionHeaderCopy,
+  collectionCampaignsCopyFrom,
+  collectionHeaderCopyFrom,
+} from '../../../../../lib/i18n/collection-copy';
 import type { Locale } from '../../../../../lib/i18n/locale';
 
 /**
@@ -66,7 +71,10 @@ interface RouteParams {
 
 export async function generateMetadata({ params }: RouteParams): Promise<Metadata> {
   const { locale, slug } = await params;
-  const landing = await resolveCollectionLanding(slug);
+  const [landing, t] = await Promise.all([
+    resolveCollectionLanding(slug),
+    getTranslations('discovery.collections'),
+  ]);
 
   /*
    * A collection that does not resolve gets the private shape — `noindex, nofollow`, no
@@ -74,7 +82,7 @@ export async function generateMetadata({ params }: RouteParams): Promise<Metadat
    * page that is about to not exist would be a social preview for a URL nobody can open.
    */
   if (landing.kind === 'not-found') {
-    return privatePageMetadata({ title: 'Collection not found' });
+    return privatePageMetadata({ title: t('notFound') });
   }
 
   const { collection } = landing;
@@ -93,7 +101,13 @@ export async function generateMetadata({ params }: RouteParams): Promise<Metadat
 
   return publicPageMetadata({
     title: collection.title,
-    description: collectionSocialDescription(collection),
+    /*
+     * `t.raw`, not `t`. The fallback carries {title} and is filled by
+     * `collectionSocialDescription` where the collection is known; asking next-intl to format
+     * it here would be asking it for a value this call does not have, which it answers by
+     * rendering the key's own path.
+     */
+    description: collectionSocialDescription(collection, String(t.raw('socialDescription'))),
     path: collectionPath(collection.slug),
     locale: localeOrDefault(locale),
     image,
@@ -102,23 +116,29 @@ export async function generateMetadata({ params }: RouteParams): Promise<Metadat
 
 
 /**
- * The window's two terms and the language to write its dates in — #324.
+ * The page's words and the language to write its dates in — #324.
  *
  * `getLocale` rather than `params`, for `graphContext`'s reason: `layout.tsx` has already
  * handed the segment to `setRequestLocale`, so this reads a value the router resolved and
  * leaves the render as static as it found it.
  */
-async function windowContext(): Promise<{ locale: Locale; windowCopy: WindowCopy }> {
-  const t = await getTranslations('discovery.collections.window');
+async function pageContext(): Promise<{
+  locale: Locale;
+  header: CollectionHeaderCopy;
+  campaigns: CollectionCampaignsCopy;
+}> {
+  const t = await getTranslations('discovery.collections');
+
   return {
     locale: localeOrDefault(await getLocale()),
-    windowCopy: { closes: t('closes'), openSince: t('openSince') },
+    header: collectionHeaderCopyFrom(t, await getTranslations('common')),
+    campaigns: collectionCampaignsCopyFrom(t),
   };
 }
 
 export default async function CollectionPage({ params }: RouteParams) {
   const { slug } = await params;
-  const { locale, windowCopy } = await windowContext();
+  const { locale, header, campaigns: campaignsCopy } = await pageContext();
   const landing = await resolveCollectionLanding(slug);
 
   if (landing.kind === 'not-found') notFound();
@@ -136,7 +156,7 @@ export default async function CollectionPage({ params }: RouteParams) {
       />
 
       <div className="mx-auto w-full max-w-[1400px] px-5 py-10 sm:px-6">
-        <CollectionHeader collection={collection} locale={locale} windowCopy={windowCopy} />
+        <CollectionHeader collection={collection} locale={locale} copy={header} />
 
         <div className="mt-12">
           <CollectionCampaigns
@@ -144,6 +164,8 @@ export default async function CollectionPage({ params }: RouteParams) {
             title={collection.title}
             initial={campaigns}
             initialCursor={nextCursor}
+            copy={campaignsCopy}
+            locale={locale}
           />
         </div>
       </div>

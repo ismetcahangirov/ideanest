@@ -2,9 +2,16 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import type { Collection } from '../../lib/collections/api';
 import { CollectionIndex } from './CollectionIndex';
+import { collectionIndexCopyFrom } from '../../lib/i18n/collection-copy';
+import { translatorFor } from '../../test-copy';
+/*
+ * The copy the route would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const COPY = collectionIndexCopyFrom(translatorFor('discovery.collections'));
 
 /** The English catalogue's `discovery.collections.window`. */
-const WINDOW_COPY = { closes: 'Closes', openSince: 'Open since' };
 
 /**
  * The body of `/collections` — D-08, issue #266.
@@ -62,13 +69,13 @@ afterEach(cleanup);
 
 describe('the collections index', () => {
   it('names itself', () => {
-    render(<CollectionIndex locale="en" windowCopy={WINDOW_COPY} collections={[collection()]} />);
+    render(<CollectionIndex locale="en" copy={COPY} collections={[collection()]} />);
 
     expect(screen.getByRole('heading', { level: 1, name: 'Collections' })).toBeInTheDocument();
   });
 
   it('links every collection, which is the only path a crawler has to them', () => {
-    render(<CollectionIndex locale="en" windowCopy={WINDOW_COPY} collections={[collection(), OPEN_CALL]} />);
+    render(<CollectionIndex locale="en" copy={COPY} collections={[collection(), OPEN_CALL]} />);
 
     const list = screen.getByRole('list', { name: 'Collections' });
     expect(within(list).getByRole('link', { name: 'Staff picks' })).toHaveAttribute('href', '/en/collections/staff-picks');
@@ -76,21 +83,21 @@ describe('the collections index', () => {
   });
 
   it('keeps the order the curator arranged', () => {
-    render(<CollectionIndex locale="en" windowCopy={WINDOW_COPY} collections={[OPEN_CALL, collection()]} />);
+    render(<CollectionIndex locale="en" copy={COPY} collections={[OPEN_CALL, collection()]} />);
 
     const headings = screen.getAllByRole('heading', { level: 3 }).map((node) => node.textContent);
     expect(headings).toEqual(['Spring 2026', 'Staff picks']);
   });
 
   it('says what kind of list each one is, in words', () => {
-    render(<CollectionIndex locale="en" windowCopy={WINDOW_COPY} collections={[collection(), OPEN_CALL]} />);
+    render(<CollectionIndex locale="en" copy={COPY} collections={[collection(), OPEN_CALL]} />);
 
     expect(screen.getByText('Staff selection')).toBeInTheDocument();
     expect(screen.getByText('Open call')).toBeInTheDocument();
   });
 
   it('prints no kind at all for one this build does not know', () => {
-    render(<CollectionIndex locale="en" windowCopy={WINDOW_COPY} collections={[collection({ kind: 'mystery' })]} />);
+    render(<CollectionIndex locale="en" copy={COPY} collections={[collection({ kind: 'mystery' })]} />);
 
     expect(screen.queryByText('mystery')).toBeNull();
     // The collection itself is still listed. An unfamiliar kind costs a label, never a page.
@@ -98,7 +105,7 @@ describe('the collections index', () => {
   });
 
   it('states when an open call closes, as a date a machine can read too', () => {
-    render(<CollectionIndex locale="en" windowCopy={WINDOW_COPY} collections={[OPEN_CALL]} />);
+    render(<CollectionIndex locale="en" copy={COPY} collections={[OPEN_CALL]} />);
 
     expect(screen.getByText('Closes')).toBeInTheDocument();
 
@@ -108,14 +115,14 @@ describe('the collections index', () => {
   });
 
   it('says nothing about a window a standing collection does not have', () => {
-    render(<CollectionIndex locale="en" windowCopy={WINDOW_COPY} collections={[collection()]} />);
+    render(<CollectionIndex locale="en" copy={COPY} collections={[collection()]} />);
 
     expect(screen.queryByText('Closes')).toBeNull();
     expect(screen.queryByText('Open since')).toBeNull();
   });
 
   it('states the size of each collection rather than leaving it to be counted', () => {
-    render(<CollectionIndex locale="en" windowCopy={WINDOW_COPY} collections={[collection({ projectCount: 6 })]} />);
+    render(<CollectionIndex locale="en" copy={COPY} collections={[collection({ projectCount: 6 })]} />);
 
     expect(screen.getByText('Campaigns')).toBeInTheDocument();
     expect(screen.getByText('6')).toBeInTheDocument();
@@ -124,7 +131,7 @@ describe('the collections index', () => {
 
 describe('with nothing to list', () => {
   it('offers the feed rather than telling the reader to clear a filter', () => {
-    render(<CollectionIndex locale="en" windowCopy={WINDOW_COPY} collections={[]} />);
+    render(<CollectionIndex locale="en" copy={COPY} collections={[]} />);
 
     expect(
       screen.getByRole('heading', { level: 2, name: 'No collections just now' }),
@@ -134,7 +141,7 @@ describe('with nothing to list', () => {
   });
 
   it('says the same thing when the read was refused, because it cannot honestly say more', () => {
-    render(<CollectionIndex locale="en" windowCopy={WINDOW_COPY} collections={null} />);
+    render(<CollectionIndex locale="en" copy={COPY} collections={null} />);
 
     expect(
       screen.getByRole('heading', { level: 2, name: 'No collections just now' }),

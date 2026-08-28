@@ -2,7 +2,7 @@ import { Link } from '../../i18n/navigation';
 import { EmptyState } from '@ideanest/ui/server';
 import type { Collection } from '../../lib/collections/api';
 import { CollectionCard } from './CollectionCard';
-import type { WindowCopy } from '../../lib/collections/api';
+import type { CollectionIndexCopy } from '../../lib/i18n/collection-copy';
 import type { Locale } from '../../lib/i18n/locale';
 
 /**
@@ -52,23 +52,20 @@ export interface CollectionIndexProps {
    * which is the arrangement every other localised value in this tree already uses.
    */
   readonly locale: Locale;
-  readonly windowCopy: WindowCopy;
+  readonly copy: CollectionIndexCopy;
   /** `null` when the read was refused. See the component comment. */
   readonly collections: readonly Collection[] | null;
 }
 
-export function CollectionIndex({ collections, locale, windowCopy }: CollectionIndexProps) {
+export function CollectionIndex({ collections, locale, copy }: CollectionIndexProps) {
   const items = collections ?? [];
 
   return (
     <div className="mx-auto w-full max-w-[1400px] px-5 py-10 sm:px-6">
       <h1 className="text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">
-        Collections
+        {copy.title}
       </h1>
-      <p className="mt-2 max-w-[60ch] text-white/64">
-        Campaigns chosen by the IdeaNest team, collections built around a season or a subject,
-        and open calls a creator can still be part of. Each has a page of its own.
-      </p>
+      <p className="mt-2 max-w-[60ch] text-white/64">{copy.intro}</p>
 
       <div className="mt-12">
         {items.length === 0 ? (
@@ -80,14 +77,14 @@ export function CollectionIndex({ collections, locale, windowCopy }: CollectionI
           <EmptyState
             variant="empty"
             headingLevel={2}
-            title="No collections just now"
-            description="Nothing is curated on the platform at the moment, or the list could not be loaded. The feed carries every campaign either way."
+            title={copy.emptyTitle}
+            description={copy.emptyBody}
             action={
               <Link
                 href="/discover"
                 className="inline-flex h-10 items-center rounded-full bg-white px-5 text-sm font-medium text-on-white transition-colors duration-150 ease-in-out hover:bg-[var(--white-muted)]"
               >
-                Browse the feed
+                {copy.emptyAction}
               </Link>
             }
           />
@@ -97,7 +94,7 @@ export function CollectionIndex({ collections, locale, windowCopy }: CollectionI
               Named, because the heading is outside the list and a screen-reader user landing
               on it out of context is otherwise told only "list, 6 items".
             */
-            aria-label="Collections"
+            aria-label={copy.listLabel}
             className="grid list-none grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
           >
             {items.map((collection, index) => (
@@ -107,7 +104,7 @@ export function CollectionIndex({ collections, locale, windowCopy }: CollectionI
                   <CollectionCard
                     collection={collection}
                     locale={locale}
-                    windowCopy={windowCopy}
+                    copy={copy.card}
                     priority={index < 3}
                   />
                 </div>

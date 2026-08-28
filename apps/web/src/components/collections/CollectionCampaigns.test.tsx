@@ -5,6 +5,14 @@ import { ApiError } from '../../lib/api/problem';
 import { getCollectionCampaigns } from '../../lib/collections/api';
 import type { ProjectCard } from '../../lib/discovery/api';
 import { CollectionCampaigns } from './CollectionCampaigns';
+import { collectionCampaignsCopyFrom } from '../../lib/i18n/collection-copy';
+import { translatorFor } from '../../test-copy';
+/*
+ * The copy the route would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const COPY = collectionCampaignsCopyFrom(translatorFor('discovery.collections'));
 
 /**
  * A collection's campaigns, in the curator's order — D-08, issue #266.
@@ -60,6 +68,8 @@ afterEach(cleanup);
 function renderList(cursor: string | null, items: readonly ProjectCard[] = [card()]) {
   return render(
     <CollectionCampaigns
+      copy={COPY}
+      locale="en"
       slug="spring-2026"
       title="Spring 2026"
       initial={items}

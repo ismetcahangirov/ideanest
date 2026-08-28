@@ -509,6 +509,56 @@
       "window": {
         "closes": "Closes",
         "openSince": "Open since"
+      },
+      "notFound": "Collection not found",
+      "socialDescription": "{title} — a curated collection of crowdfunding campaigns on IdeaNest.",
+      "title": "Collections",
+      "intro": "Campaigns chosen by the IdeaNest team, collections built around a season or a subject, and open calls a creator can still be part of. Each has a page of its own.",
+      "listLabel": "Collections",
+      "emptyTitle": "No collections just now",
+      "emptyBody": "Nothing is curated on the platform at the moment, or the list could not be loaded. The feed carries every campaign either way.",
+      "emptyAction": "Browse the feed",
+      "kinds": {
+        "staff_selection": "Staff selection",
+        "themed": "Themed collection",
+        "open_call": "Open call"
+      },
+      "sentences": {
+        "staff_selection": "Chosen by the IdeaNest team.",
+        "themed": "A collection built around one subject.",
+        "open_call": "An open call: a programme campaigns can be submitted to while it is open."
+      },
+      "inCollection": "In this collection",
+      "cardCampaigns": "Campaigns",
+      "badge": "Campaigns in this collection carry the IdeaNest editorial badge.",
+      "badgeOpenCall": "Being accepted into this programme is what grants it.",
+      "badgeCurated": "It is a selection the platform stands behind, not a guarantee about any campaign.",
+      "campaignsEmptyTitle": "Nothing to show here yet",
+      "campaignsEmptyBody": "No campaign in {title} is published at the moment. The feed carries every campaign on the platform.",
+      "gridLabel": "Campaigns in {title}",
+      "showMoreLabel": "Show more campaigns in {title}",
+      "showMore": "Show more",
+      "loading": "Loading",
+      "nextFailedTitle": "The next page did not load",
+      "refused": "The service refused the request. Try again.",
+      "unreachable": "The service could not be reached. Check your connection and try again.",
+      "count": {
+        "one": "{count} campaign",
+        "few": "{count} campaigns",
+        "many": "{count} campaigns",
+        "other": "{count} campaigns"
+      },
+      "shown": {
+        "one": "{count} campaign shown",
+        "few": "{count} campaigns shown",
+        "many": "{count} campaigns shown",
+        "other": "{count} campaigns shown"
+      },
+      "shownMore": {
+        "one": "{count} campaign shown, with more to load",
+        "few": "{count} campaigns shown, with more to load",
+        "many": "{count} campaigns shown, with more to load",
+        "other": "{count} campaigns shown, with more to load"
       }
     },
     "search": {

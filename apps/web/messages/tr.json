@@ -509,6 +509,56 @@
       "window": {
         "closes": "Kapanıyor",
         "openSince": "Açık"
+      },
+      "notFound": "Derleme bulunamadı",
+      "socialDescription": "{title} — IdeaNest üzerinde seçilmiş kitlesel fonlama kampanyaları derlemesi.",
+      "title": "Derlemeler",
+      "intro": "IdeaNest ekibinin seçtiği kampanyalar, bir mevsim ya da konu çevresinde kurulmuş derlemeler ve bir üreticinin hâlâ katılabileceği açık çağrılar. Her birinin kendi sayfası var.",
+      "listLabel": "Derlemeler",
+      "emptyTitle": "Şu anda derleme yok",
+      "emptyBody": "Şu anda platformda derlenmiş bir şey yok ya da liste yüklenemedi. Her iki durumda da akış bütün kampanyaları taşır.",
+      "emptyAction": "Akışa göz at",
+      "kinds": {
+        "staff_selection": "Ekip seçkisi",
+        "themed": "Konulu derleme",
+        "open_call": "Açık çağrı"
+      },
+      "sentences": {
+        "staff_selection": "IdeaNest ekibi tarafından seçildi.",
+        "themed": "Tek bir konu çevresinde kurulmuş bir derleme.",
+        "open_call": "Açık çağrı: açık olduğu sürece kampanyaların başvurabileceği bir program."
+      },
+      "inCollection": "Bu derlemede",
+      "cardCampaigns": "Kampanyalar",
+      "badge": "Bu derlemedeki kampanyalar IdeaNest editör rozetini taşır.",
+      "badgeOpenCall": "Rozeti veren şey bu programa kabul edilmektir.",
+      "badgeCurated": "Bu, platformun arkasında durduğu bir seçkidir, herhangi bir kampanya hakkında bir güvence değil.",
+      "campaignsEmptyTitle": "Burada henüz gösterilecek bir şey yok",
+      "campaignsEmptyBody": "Şu anda {title} derlemesinde yayımlanmış bir kampanya yok. Akış, platformdaki bütün kampanyaları taşır.",
+      "gridLabel": "{title} derlemesindeki kampanyalar",
+      "showMoreLabel": "{title} derlemesinde daha fazla kampanya göster",
+      "showMore": "Daha fazla göster",
+      "loading": "Yükleniyor",
+      "nextFailedTitle": "Sonraki sayfa yüklenmedi",
+      "refused": "Servis isteği reddetti. Yeniden deneyin.",
+      "unreachable": "Servise ulaşılamadı. Bağlantınızı denetleyip yeniden deneyin.",
+      "count": {
+        "one": "{count} kampanya",
+        "few": "{count} kampanya",
+        "many": "{count} kampanya",
+        "other": "{count} kampanya"
+      },
+      "shown": {
+        "one": "{count} kampanya gösteriliyor",
+        "few": "{count} kampanya gösteriliyor",
+        "many": "{count} kampanya gösteriliyor",
+        "other": "{count} kampanya gösteriliyor"
+      },
+      "shownMore": {
+        "one": "{count} kampanya gösteriliyor, yüklenecek daha var",
+        "few": "{count} kampanya gösteriliyor, yüklenecek daha var",
+        "many": "{count} kampanya gösteriliyor, yüklenecek daha var",
+        "other": "{count} kampanya gösteriliyor, yüklenecek daha var"
       }
     },
     "search": {

@@ -1,5 +1,6 @@
 import { dateTimeFormat } from '../i18n/formats';
 import type { Locale } from '../i18n/locale';
+import type { WindowCopy } from '../i18n/collection-copy';
 import { publicFetch } from '../api/client';
 import { errorFrom } from '../api/problem';
 import { PAGE_SIZE, type ProjectCard } from '../discovery/api';
@@ -279,30 +280,22 @@ export function collectionsFrom(raw: readonly WireCollection[]): readonly Collec
  * `null` for a kind this build does not know, which is the point of `Collection.kind` being
  * widened: an unfamiliar kind costs a label, never a page.
  */
-const KIND_LABELS: Readonly<Record<CollectionKind, string>> = Object.freeze({
-  staff_selection: 'Staff selection',
-  themed: 'Themed collection',
-  open_call: 'Open call',
-});
-
-export function kindLabel(kind: string): string | null {
-  return Object.hasOwn(KIND_LABELS, kind) ? KIND_LABELS[kind as CollectionKind] : null;
-}
+/*
+ * THE KIND'S NAME AND THE COUNT MOVED TO THE CATALOGUE — issue #324.
+ *
+ * `KIND_LABELS`, `kindLabel` and `campaignCount` were three English constants in this module,
+ * and `campaignCount` carried the singular/plural split that is the whole of English and none
+ * of Russian. They are `discovery.collections.kinds` and `discovery.collections.count` now, and
+ * `lib/i18n/collection-copy.ts` builds them into the objects the two surfaces already take.
+ *
+ * A kind the service returns that this build does not know still renders no tag rather than a
+ * raw `open_call`, which is what `kindLabel` returning `null` bought: the lookup is on the
+ * copy's own table and misses the same way.
+ */
 
 /** §4.3's Programmes: the one kind a campaign applies to rather than merely appears in. */
 export function isOpenCall(collection: Collection): boolean {
   return collection.kind === 'open_call';
-}
-
-/**
- * "1 campaign", "12 campaigns".
- *
- * A count stated as text, because a grid whose only statement of how many there are is the
- * number of cards on screen is one a screen-reader user has to count. `CategoryLanding` and
- * the search results print the same sentence for the same reason.
- */
-export function campaignCount(count: number): string {
-  return `${count} ${count === 1 ? 'campaign' : 'campaigns'}`;
 }
 
 /* -------------------------------------------------------------------------
@@ -372,11 +365,13 @@ export function windowFacts(
   return facts;
 }
 
-/** The two terms, resolved by the route. `discovery.collections.window` in the catalogue. */
-export interface WindowCopy {
-  readonly closes: string;
-  readonly openSince: string;
-}
+/*
+ * `WindowCopy` is declared in `lib/i18n/collection-copy.ts` since #324 and re-exported here.
+ * It was defined in this module when it was the only piece of collection copy that had moved;
+ * the rest followed, and one file holding the shape of what a route resolves is what keeps the
+ * builder and the consumer from drifting.
+ */
+export type { WindowCopy } from '../i18n/collection-copy';
 
 /* -------------------------------------------------------------------------
  * Reading from the browser

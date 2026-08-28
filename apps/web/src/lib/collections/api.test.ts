@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  campaignCount,
   collectionFrom,
   collectionPath,
   collectionQuery,
@@ -8,7 +7,6 @@ import {
   collectionsFrom,
   formatWindowDate,
   isOpenCall,
-  kindLabel,
   windowFacts,
   type Collection,
 } from './api';
@@ -130,20 +128,12 @@ describe('reading a collection off the wire', () => {
 });
 
 describe('the kind', () => {
-  it('names each of the three in words, because colour never carries meaning alone', () => {
-    expect(kindLabel('staff_selection')).toBe('Staff selection');
-    expect(kindLabel('themed')).toBe('Themed collection');
-    expect(kindLabel('open_call')).toBe('Open call');
-  });
-
-  it('is null for a kind this build does not know, rather than the raw wire value', () => {
-    expect(kindLabel('mystery')).toBeNull();
-    expect(kindLabel('')).toBeNull();
-  });
-
-  it('does not answer for something inherited from Object', () => {
-    expect(kindLabel('toString')).toBeNull();
-  });
+  /*
+   * The three names and the "a kind this build does not know renders nothing" rule moved to
+   * `discovery.collections.kinds` with #324, and the lookup is now `copy.kinds[kind] ?? null`
+   * in the two components that draw the tag. `catalogue.test.ts` asserts the four languages
+   * hold the same three keys; what is left here is the predicate that is not copy.
+   */
 
   it('recognises the one kind a campaign is submitted to', () => {
     expect(isOpenCall(collection({ kind: 'open_call' }))).toBe(true);
@@ -214,10 +204,8 @@ describe('paging', () => {
   });
 });
 
-describe('campaignCount', () => {
-  it('is text rather than a figure a screen-reader user has to count off the screen', () => {
-    expect(campaignCount(1)).toBe('1 campaign');
-    expect(campaignCount(0)).toBe('0 campaigns');
-    expect(campaignCount(12)).toBe('12 campaigns');
-  });
-});
+/*
+ * `campaignCount` moved to `discovery.collections.count` with #324. It carried a
+ * singular/plural split, which is the whole of English and none of Russian — the catalogue
+ * holds four CLDR forms per language and `lib/i18n/plurals.ts` selects between them.
+ */

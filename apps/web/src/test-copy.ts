@@ -42,6 +42,25 @@ export function translatorFor(namespace: string): {
       const message = at(key);
       /* Throwing names the missing key. Returning `undefined` would fail three frames away. */
       if (typeof message !== 'string') throw new Error(`no message at ${namespace}.${key}`);
+
+      /*
+       * IT REFUSES A TEMPLATE, THE WAY next-intl DOES.
+       *
+       * `t('x')` on a message carrying `{name}` is a formatting error in next-intl — it has no
+       * value for the argument, so it calls `onError` and renders the key's own path. A builder
+       * that reads such a message must use `t.raw`, and `fillPlaceholders` puts the value in
+       * where it is known.
+       *
+       * A plain lookup here would return the template happily and every test would pass while
+       * the application drew `profile.about.heading` under somebody's name. So this refuses
+       * exactly what next-intl refuses, and names the fix.
+       */
+      if (/\{\w+\}/u.test(message)) {
+        throw new Error(
+          `${namespace}.${key} carries a placeholder — read it with t.raw and fill it with fillPlaceholders`,
+        );
+      }
+
       return message;
     },
     { raw: at },

@@ -5,14 +5,13 @@ import type { ReactNode } from 'react';
 import { MediaFrame, Tag } from '@ideanest/ui/server';
 import {
   collectionPath,
-  kindLabel,
   windowFacts,
   type Collection,
   type CollectionKind,
 } from '../../lib/collections/api';
 import { DISCOVERY_CARD_SIZES } from '../../lib/images/sizes';
 import { canOptimise } from '../../lib/images/source';
-import type { WindowCopy } from '../../lib/collections/api';
+import type { CollectionCardCopy } from '../../lib/i18n/collection-copy';
 import type { Locale } from '../../lib/i18n/locale';
 
 /**
@@ -79,7 +78,7 @@ export interface CollectionCardProps {
    * which is the arrangement every other localised value in this tree already uses.
    */
   readonly locale: Locale;
-  readonly windowCopy: WindowCopy;
+  readonly copy: CollectionCardCopy;
   readonly collection: Collection;
   /**
    * Loads the cover eagerly. True for the first row of the index and nothing else — one of
@@ -92,12 +91,12 @@ export interface CollectionCardProps {
 export function CollectionCard({
   collection,
   locale,
-  windowCopy,
+  copy,
   priority = false,
 }: CollectionCardProps) {
-  const label = kindLabel(collection.kind);
+  const label = copy.kinds[collection.kind] ?? null;
   const icon = kindIcon(collection.kind);
-  const facts = windowFacts(collection, locale, windowCopy);
+  const facts = windowFacts(collection, locale, copy.window);
 
   return (
     <article className="group relative flex h-full flex-col overflow-hidden rounded-lg border border-white/8 bg-surface-2 transition-colors duration-300 ease-in-out hover:bg-surface-3">
@@ -155,7 +154,7 @@ export function CollectionCard({
 
         <dl className="mt-auto flex flex-wrap items-baseline gap-x-4 gap-y-1 pt-2 text-sm">
           <div className="flex items-baseline gap-1.5">
-            <dt className="text-white/40">Campaigns</dt>
+            <dt className="text-white/40">{copy.campaigns}</dt>
             <dd className="text-white/80 tabular-nums">{collection.projectCount}</dd>
           </div>
 

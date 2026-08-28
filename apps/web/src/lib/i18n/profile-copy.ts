@@ -23,10 +23,14 @@ import type { PluralForms } from './plurals';
  * carries the reasoning and the CLDR lookup.
  */
 
-/** A message lookup rooted at `profile`. */
-export type ProfileTranslator = (key: string) => string;
-
-/** A lookup for a message that is not a string — the states table and the plural forms. */
+/**
+ * A message lookup rooted at `profile`.
+ *
+ * `raw` is used for the states table, the plural forms, and every sentence carrying a
+ * placeholder: `t('x')` on a template is a formatting error in next-intl, which renders the
+ * key's own path rather than the sentence. `fillPlaceholders` puts the value in where it is
+ * known, which is in the component.
+ */
 export interface ProfileRawTranslator {
   (key: string): string;
   raw(key: string): unknown;
@@ -90,9 +94,9 @@ export interface ProfileCopy {
 function cardCopyFrom(t: ProfileRawTranslator): ProfileCardCopy {
   return {
     states: t.raw('card.states') as Readonly<Record<string, string>>,
-    progressLabel: t('card.progressLabel'),
-    funded: t('card.funded'),
-    ofGoal: t('card.ofGoal'),
+    progressLabel: String(t.raw('card.progressLabel')),
+    funded: String(t.raw('card.funded')),
+    ofGoal: String(t.raw('card.ofGoal')),
     backers: t.raw('card.backers') as PluralForms,
   };
 }
@@ -102,9 +106,9 @@ export function profileGridCopyFrom(t: ProfileRawTranslator): ProfileGridCopy {
     failedTitle: t('grid.failedTitle'),
     failedBody: t('grid.failedBody'),
     createdEmptyTitle: t('grid.createdEmptyTitle'),
-    createdEmptyBody: t('grid.createdEmptyBody'),
+    createdEmptyBody: String(t.raw('grid.createdEmptyBody')),
     backedEmptyTitle: t('grid.backedEmptyTitle'),
-    backedEmptyBody: t('grid.backedEmptyBody'),
+    backedEmptyBody: String(t.raw('grid.backedEmptyBody')),
     showMore: t('grid.showMore'),
     showMoreCreated: t('grid.showMoreCreated'),
     showMoreBacked: t('grid.showMoreBacked'),
@@ -118,7 +122,7 @@ export function profileGridCopyFrom(t: ProfileRawTranslator): ProfileGridCopy {
 
 export function profileCopyFrom(t: ProfileRawTranslator): ProfileCopy {
   return {
-    avatarAlt: t('avatarAlt'),
+    avatarAlt: String(t.raw('avatarAlt')),
     tabsLabel: t('tabsLabel'),
     tabs: {
       created: t('tabs.created'),
@@ -126,8 +130,8 @@ export function profileCopyFrom(t: ProfileRawTranslator): ProfileCopy {
       about: t('tabs.about'),
     },
     about: {
-      heading: t('about.heading'),
-      empty: t('about.empty'),
+      heading: String(t.raw('about.heading')),
+      empty: String(t.raw('about.empty')),
       basedIn: t('about.basedIn'),
       website: t('about.website'),
       since: t('about.since'),
