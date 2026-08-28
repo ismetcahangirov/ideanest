@@ -4,6 +4,15 @@ import userEvent from '@testing-library/user-event';
 import { ApiError } from '../../lib/api/problem';
 import { resetPassword } from '../../lib/auth/passwordReset';
 import { PasswordResetConfirmForm } from './PasswordResetConfirmForm';
+import { passwordResetConfirmCopyFrom } from '../../lib/i18n/auth-copy';
+import { translatorFor } from '../../test-copy';
+
+/*
+ * The copy the page would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const COPY = passwordResetConfirmCopyFrom(translatorFor('auth'));
 
 /**
  * §4.1's A-06, second half — issue #271.
@@ -73,7 +82,7 @@ function invalidLink(detail: string): ApiError {
 
 describe('with a token in the URL', () => {
   it('says how long the link works before anything is submitted', async () => {
-    render(<PasswordResetConfirmForm />);
+    render(<PasswordResetConfirmForm copy={COPY} />);
 
     expect(screen.getByText(/works for one hour/u)).toBeInTheDocument();
     // And what succeeding costs, which is every other session.
@@ -82,7 +91,7 @@ describe('with a token in the URL', () => {
 
   it('spends the token from the query string and confirms what it cost', async () => {
     const user = userEvent.setup();
-    render(<PasswordResetConfirmForm />);
+    render(<PasswordResetConfirmForm copy={COPY} />);
 
     await setPassword(user, 'a much longer password');
 
@@ -98,7 +107,7 @@ describe('a link that cannot be used', () => {
     const user = userEvent.setup();
     resetMock.mockRejectedValue(invalidLink('This link has expired. Ask for a new one.'));
 
-    render(<PasswordResetConfirmForm />);
+    render(<PasswordResetConfirmForm copy={COPY} />);
     await setPassword(user, 'a much longer password');
 
     expect(await screen.findByText('This link has expired. Ask for a new one.')).toBeInTheDocument();
@@ -110,7 +119,7 @@ describe('a link that cannot be used', () => {
     const user = userEvent.setup();
     resetMock.mockRejectedValue(invalidLink('This link has already been used.'));
 
-    render(<PasswordResetConfirmForm />);
+    render(<PasswordResetConfirmForm copy={COPY} />);
     await setPassword(user, 'a much longer password');
 
     expect(await screen.findByText('This link has already been used.')).toBeInTheDocument();
@@ -120,7 +129,7 @@ describe('a link that cannot be used', () => {
     const user = userEvent.setup();
     resetMock.mockRejectedValue(invalidLink('This link has expired. Ask for a new one.'));
 
-    render(<PasswordResetConfirmForm />);
+    render(<PasswordResetConfirmForm copy={COPY} />);
     await setPassword(user, 'a much longer password');
 
     expect(await screen.findByText('This link cannot be used')).toBeInTheDocument();
@@ -142,7 +151,7 @@ describe('a password the policy refuses', () => {
       }),
     );
 
-    render(<PasswordResetConfirmForm />);
+    render(<PasswordResetConfirmForm copy={COPY} />);
     await setPassword(user, 'short');
 
     // The link is NOT spent — the policy is checked before the token is claimed — so the same
@@ -159,7 +168,7 @@ describe('a password the policy refuses', () => {
 describe('the two boxes', () => {
   it('catch a typo in the browser and never send it', async () => {
     const user = userEvent.setup();
-    render(<PasswordResetConfirmForm />);
+    render(<PasswordResetConfirmForm copy={COPY} />);
 
     await setPassword(user, 'a much longer password', 'a much longer passwrod');
 
@@ -176,7 +185,7 @@ describe('the two boxes', () => {
 describe('without a token', () => {
   it('explains rather than reporting an error, and points at the way to get one', () => {
     search = '';
-    render(<PasswordResetConfirmForm />);
+    render(<PasswordResetConfirmForm copy={COPY} />);
 
     expect(screen.getByText('Open the link we sent you')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();

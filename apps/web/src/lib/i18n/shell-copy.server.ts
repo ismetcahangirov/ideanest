@@ -1,4 +1,20 @@
 import { getLocale, getTranslations } from 'next-intl/server';
+import {
+  type AuthFailuresCopy,
+  type EmailChangeCopy,
+  type PasswordResetConfirmCopy,
+  type PasswordResetCopy,
+  type RegisterCopy,
+  type SignInCopy,
+  type VerifyEmailCopy,
+  authFailuresCopyFrom,
+  emailChangeCopyFrom,
+  passwordResetConfirmCopyFrom,
+  passwordResetCopyFrom,
+  registerCopyFrom,
+  signInCopyFrom,
+  verifyEmailCopyFrom,
+} from './auth-copy';
 import { type CheckoutCopy, checkoutCopyFrom } from './checkout-copy';
 import {
   type CampaignActionsCopy,
@@ -7,6 +23,12 @@ import {
   commentCopyFrom,
 } from './campaign-copy';
 import { localeOrDefault, type Locale } from './locale';
+import {
+  type EmailChangePanelCopy,
+  type PasswordChangePanelCopy,
+  emailChangePanelCopyFrom,
+  passwordChangePanelCopyFrom,
+} from './settings-copy';
 import { type TrailCopy } from '../seo/structured-data/breadcrumb';
 import { trailCopyFrom } from './trail-copy';
 import {
@@ -40,6 +62,64 @@ export async function footerCopy(): Promise<FooterCopy> {
 
 export async function failureCopy(): Promise<FailureCopy> {
   return failureCopyFrom(await getTranslations('shell'));
+}
+
+/* -------------------------------------------------------------------------
+ * The authentication screens — issue #324
+ *
+ * One accessor per route rather than one for the whole namespace. Each of the six pages under
+ * `app/[locale]/(auth)` renders one form, and handing it the vocabulary of the other five
+ * would put every word of the account-recovery flow into the flight payload of the sign-in
+ * page. `auth-copy.ts` carries the rest of the reasoning.
+ * ---------------------------------------------------------------------- */
+
+/** Just the refusal vocabulary, for the two credential panels in `components/settings`. */
+export async function authFailuresCopy(): Promise<AuthFailuresCopy> {
+  return authFailuresCopyFrom(await getTranslations('auth'));
+}
+
+export async function signInCopy(): Promise<SignInCopy> {
+  return signInCopyFrom(await getTranslations('auth'));
+}
+
+export async function registerCopy(): Promise<RegisterCopy> {
+  return registerCopyFrom(await getTranslations('auth'));
+}
+
+export async function passwordResetCopy(): Promise<PasswordResetCopy> {
+  return passwordResetCopyFrom(await getTranslations('auth'));
+}
+
+export async function passwordResetConfirmCopy(): Promise<PasswordResetConfirmCopy> {
+  return passwordResetConfirmCopyFrom(await getTranslations('auth'));
+}
+
+export async function verifyEmailCopy(): Promise<VerifyEmailCopy> {
+  return verifyEmailCopyFrom(await getTranslations('auth'));
+}
+
+export async function emailChangeCopy(): Promise<EmailChangeCopy> {
+  return emailChangeCopyFrom(await getTranslations('auth'));
+}
+
+/**
+ * The two credential panels under `/settings` — `settings-copy.ts` explains why these two.
+ *
+ * Both read `auth` as well as their own namespace, so the password policy sentence and the
+ * refusal vocabulary have one spelling across the six authentication routes and these panels.
+ */
+export async function emailChangePanelCopy(): Promise<EmailChangePanelCopy> {
+  return emailChangePanelCopyFrom(
+    await getTranslations('settings.panels'),
+    await getTranslations('auth'),
+  );
+}
+
+export async function passwordChangePanelCopy(): Promise<PasswordChangePanelCopy> {
+  return passwordChangePanelCopyFrom(
+    await getTranslations('settings.panels'),
+    await getTranslations('auth'),
+  );
 }
 
 /** The checkout's words. `checkout-copy.ts` explains why the whole of it is one prop. */

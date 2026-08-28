@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '../api/problem';
 import { describeAuthFailure, fieldErrorsOf } from './failures';
+import { authFailuresCopyFrom } from '../i18n/auth-copy';
+import { translatorFor } from '../../test-copy';
+
+/*
+ * The fallbacks the page would have resolved, built from `messages/en.json` by the same
+ * function it calls — issue #324. The assertions below are therefore against the words the
+ * screen will draw rather than against words retyped into this file.
+ */
+const COPY = authFailuresCopyFrom(translatorFor('auth'));
 
 describe('describeAuthFailure', () => {
   it('shows the service’s own words rather than a generic apology', () => {
@@ -9,6 +18,7 @@ describe('describeAuthFailure', () => {
         title: 'Not authenticated',
         detail: 'That email address and password do not match an account.',
       }),
+      COPY,
     );
 
     expect(failure.title).toBe('Not authenticated');
@@ -28,6 +38,7 @@ describe('describeAuthFailure', () => {
         title: 'Account suspended',
         detail: 'This account has been suspended. Contact support.',
       }),
+      COPY,
     );
 
     expect(failure.retryable).toBe(false);
@@ -41,6 +52,7 @@ describe('describeAuthFailure', () => {
         detail: 'Too many sign-in attempts.',
         retryAfterSeconds: 720,
       }),
+      COPY,
     );
 
     // A rate limit expires; a suspension does not. The control stays for the first and is
@@ -50,14 +62,14 @@ describe('describeAuthFailure', () => {
   });
 
   it('does not invent a wait it was not told about', () => {
-    const failure = describeAuthFailure(new ApiError(429, { detail: 'Too many attempts.' }));
+    const failure = describeAuthFailure(new ApiError(429, { detail: 'Too many attempts.' }), COPY);
 
     expect(failure.detail).toBe('Too many attempts.');
     expect(failure.detail).not.toContain('minute');
   });
 
   it('reads a refusal with no body as the service being unreachable', () => {
-    const failure = describeAuthFailure(new ApiError(503, null));
+    const failure = describeAuthFailure(new ApiError(503, null), COPY);
 
     expect(failure.title).toBe('The service could not be reached');
     expect(failure.detail).toContain('Nothing was submitted');
@@ -65,7 +77,7 @@ describe('describeAuthFailure', () => {
   });
 
   it('does not present our own bug as the reader’s details being wrong', () => {
-    const failure = describeAuthFailure(new TypeError('fetch failed'));
+    const failure = describeAuthFailure(new TypeError('fetch failed'), COPY);
 
     expect(failure.title).toBe('Something went wrong');
     expect(failure.retryable).toBe(true);

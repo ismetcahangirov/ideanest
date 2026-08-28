@@ -4,6 +4,15 @@ import userEvent from '@testing-library/user-event';
 import { ApiError } from '../../lib/api/problem';
 import { requestEmailChange } from '../../lib/auth/credentials';
 import { EmailChangePanel } from './EmailChangePanel';
+import { emailChangePanelCopyFrom } from '../../lib/i18n/settings-copy';
+import { translatorFor } from '../../test-copy';
+
+/*
+ * The copy the page would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const COPY = emailChangePanelCopyFrom(translatorFor('settings.panels'), translatorFor('auth'));
 
 /**
  * §4.1's A-12 — issue #277.
@@ -65,20 +74,20 @@ async function ask(
 
 describe('the form', () => {
   it('shows the address currently on the account', () => {
-    render(<EmailChangePanel />);
+    render(<EmailChangePanel copy={COPY} />);
 
     expect(screen.getByText('aysel@example.com')).toBeInTheDocument();
   });
 
   it('warns about nothing being signed out, because nothing is', () => {
-    render(<EmailChangePanel />);
+    render(<EmailChangePanel copy={COPY} />);
 
     expect(screen.queryByText(/sign(s|ed) you out/iu)).not.toBeInTheDocument();
   });
 
   it('sends the password and the trimmed address', async () => {
     const user = userEvent.setup();
-    render(<EmailChangePanel />);
+    render(<EmailChangePanel copy={COPY} />);
 
     await ask(user);
 
@@ -92,7 +101,7 @@ describe('the form', () => {
 describe('after the request is accepted', () => {
   it('says nothing has changed yet, and which address still signs in', async () => {
     const user = userEvent.setup();
-    render(<EmailChangePanel />);
+    render(<EmailChangePanel copy={COPY} />);
 
     await ask(user);
 
@@ -104,7 +113,7 @@ describe('after the request is accepted', () => {
 
   it('says the link went to the new address and the notice to the old one', async () => {
     const user = userEvent.setup();
-    render(<EmailChangePanel />);
+    render(<EmailChangePanel copy={COPY} />);
 
     await ask(user);
 
@@ -114,7 +123,7 @@ describe('after the request is accepted', () => {
 
   it('lets somebody start over with a different address', async () => {
     const user = userEvent.setup();
-    render(<EmailChangePanel />);
+    render(<EmailChangePanel copy={COPY} />);
 
     await ask(user);
     await user.click(await screen.findByRole('button', { name: 'Ask for a different address' }));
@@ -134,7 +143,7 @@ describe('a refusal', () => {
       }),
     );
 
-    render(<EmailChangePanel />);
+    render(<EmailChangePanel copy={COPY} />);
     await ask(user);
 
     const field = await screen.findByLabelText(/Current password/u);
@@ -152,7 +161,7 @@ describe('a refusal', () => {
       }),
     );
 
-    render(<EmailChangePanel />);
+    render(<EmailChangePanel copy={COPY} />);
     await ask(user, 'taken@example.com');
 
     // Saying so is not registration's enumeration oracle: the caller is signed in, the endpoint

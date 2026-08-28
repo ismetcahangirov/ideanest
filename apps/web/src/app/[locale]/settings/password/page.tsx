@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Link } from '../../../../i18n/navigation';
 import { AccountPageHeader } from '../../../../components/account/AccountPageHeader';
 import { PasswordChangePanel } from '../../../../components/settings/PasswordChangePanel';
+import { passwordChangePanelCopy } from '../../../../lib/i18n/shell-copy.server';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 import { getTranslations } from 'next-intl/server';
 
@@ -64,7 +65,7 @@ export default async function PasswordSettingsPage() {
       </AccountPageHeader>
 
       <div className="mt-8">
-        <PasswordChangePanel />
+        <PasswordChangePanel copy={await passwordChangePanelCopy()} />
       </div>
     </>
   );

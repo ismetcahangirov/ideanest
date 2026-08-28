@@ -1,4 +1,6 @@
 import { ApiError } from '../api/problem';
+import type { AuthFailuresCopy } from '../i18n/auth-copy';
+import { fillPlaceholders } from '../i18n/placeholders';
 
 /**
  * What an authentication refusal means, and what the reader is told about it.
@@ -23,6 +25,18 @@ import { ApiError } from '../api/problem';
  *   - **A refusal with no body at all.** The request never reached the service. Saying so is
  *     more useful than inventing a reason, and it points at the reader's connection rather
  *     than at their password.
+ *
+ * <h2>THE FALLBACKS ARRIVE AS AN ARGUMENT — issue #324</h2>
+ *
+ * Every sentence below that is not the service's own has to exist in §21.1's four languages,
+ * and this is a pure function reached from eight client components: it cannot look a message
+ * up, because looking one up in the browser means the `use-intl` runtime and the catalogue in
+ * every bundle that touches a form. So the words are resolved on the server by the page and
+ * handed down — `lib/i18n/auth-copy.ts` carries the measurement that decided it.
+ *
+ * The argument is **required rather than optional**. An optional one would default to English
+ * and the defect would be invisible in review: a screen that answers a Turkish reader in
+ * English at the exact moment they are locked out of their account.
  */
 
 export interface AuthFailure {
@@ -45,14 +59,23 @@ export interface AuthFailure {
   readonly retryable: boolean;
 }
 
-/** Seconds until a rate-limited caller may try again, as a sentence. */
-function waitFor(seconds: number): string {
-  if (seconds <= 60) return 'in under a minute';
+/**
+ * Seconds until a rate-limited caller may try again, as a sentence in the reader's language.
+ *
+ * Three keys rather than one ICU plural, because the three are not three plural forms of one
+ * sentence: "in under a minute" is a different claim from "in about a minute", and the
+ * languages that decline the noun decline it inside `waitMinutes` where the number is.
+ */
+function waitFor(seconds: number, copy: AuthFailuresCopy): string {
+  if (seconds <= 60) return copy.waitUnderMinute;
+
   const minutes = Math.ceil(seconds / 60);
-  return minutes === 1 ? 'in about a minute' : `in about ${minutes} minutes`;
+  return minutes === 1
+    ? copy.waitOneMinute
+    : fillPlaceholders(copy.waitMinutes, { minutes: String(minutes) });
 }
 
-export function describeAuthFailure(cause: unknown): AuthFailure {
+export function describeAuthFailure(cause: unknown, copy: AuthFailuresCopy): AuthFailure {
   if (!(cause instanceof ApiError)) {
     /*
      * Not a refusal — a bug in this application, or a body that was not the JSON it claimed
@@ -60,8 +83,8 @@ export function describeAuthFailure(cause: unknown): AuthFailure {
      * details were wrong.
      */
     return {
-      title: 'Something went wrong',
-      detail: 'The request could not be completed. Try again in a moment.',
+      title: copy.unexpectedTitle,
+      detail: copy.unexpectedDetail,
       retryable: true,
     };
   }
@@ -70,16 +93,16 @@ export function describeAuthFailure(cause: unknown): AuthFailure {
 
   if (problem === null) {
     return {
-      title: 'The service could not be reached',
-      detail: 'Check your connection and try again. Nothing was submitted.',
+      title: copy.unreachableTitle,
+      detail: copy.unreachableDetail,
       retryable: true,
     };
   }
 
   if (problem.code === 'ACCOUNT_SUSPENDED') {
     return {
-      title: problem.title ?? 'Account suspended',
-      detail: problem.detail ?? 'This account has been suspended. Contact support to appeal.',
+      title: problem.title ?? copy.suspendedTitle,
+      detail: problem.detail ?? copy.suspendedDetail,
       retryable: false,
     };
   }
@@ -87,19 +110,22 @@ export function describeAuthFailure(cause: unknown): AuthFailure {
   if (cause.status === 429) {
     const seconds = problem.retryAfterSeconds;
     return {
-      title: problem.title ?? 'Too many attempts',
+      title: problem.title ?? copy.rateLimitedTitle,
       detail:
         seconds === undefined
-          ? (problem.detail ?? 'Too many attempts. Wait a few minutes and try again.')
-          : `${problem.detail ?? 'Too many attempts.'} You can try again ${waitFor(seconds)}.`,
+          ? (problem.detail ?? copy.rateLimitedDetail)
+          : fillPlaceholders(copy.retryAfter, {
+              detail: problem.detail ?? copy.rateLimitedShort,
+              wait: waitFor(seconds, copy),
+            }),
       // See `retryable`: the window expires, so the control stays.
       retryable: true,
     };
   }
 
   return {
-    title: problem.title ?? 'That did not work',
-    detail: problem.detail ?? 'The service refused this request and did not say why.',
+    title: problem.title ?? copy.refusedTitle,
+    detail: problem.detail ?? copy.refusedDetail,
     retryable: true,
   };
 }

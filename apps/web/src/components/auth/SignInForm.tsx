@@ -7,6 +7,7 @@ import { Field, InlineAlert, Pill, TextInput } from '@ideanest/ui';
 import { deviceLabelOf, signIn } from '../../lib/auth/api';
 import { PASSWORD_CHANGED_NOTICE, SIGN_IN_NOTICE_PARAM } from '../../lib/auth/credentials';
 import { describeAuthFailure, fieldErrorsOf, type AuthFailure } from '../../lib/auth/failures';
+import type { SignInCopy } from '../../lib/i18n/auth-copy';
 import { DEFAULT_SIGNED_IN_PATH, RETURN_TO_PARAM, safeReturnPath } from '../../lib/auth/redirect';
 import { ProviderSignIn } from './ProviderSignIn';
 import { TwoFactorChallenge } from './TwoFactorChallenge';
@@ -71,7 +72,19 @@ import { useSignInOutcome } from './useSignInOutcome';
  * error that animates in is one that arrives after it was needed.
  */
 
-export function SignInForm() {
+export interface SignInFormProps {
+  /**
+   * Every word this screen and the two components below it draw — issue #324.
+   *
+   * Resolved once by `app/[locale]/(auth)/sign-in/page.tsx` and handed down whole rather than
+   * looked up here: this is a client component, and looking a message up in the browser means
+   * the catalogue and the `use-intl` runtime in the bundle of the first page a stranger meets.
+   * `lib/i18n/auth-copy.ts` carries the measurement.
+   */
+  readonly copy: SignInCopy;
+}
+
+export function SignInForm({ copy }: SignInFormProps) {
   const searchParams = useSearchParams();
 
   const [email, setEmail] = useState('');
@@ -100,7 +113,7 @@ export function SignInForm() {
         }),
       );
     } catch (cause) {
-      setFailure(describeAuthFailure(cause));
+      setFailure(describeAuthFailure(cause, copy.failures));
       setFieldErrors(fieldErrorsOf(cause));
     } finally {
       setSubmitting(false);
@@ -112,6 +125,7 @@ export function SignInForm() {
       <TwoFactorChallenge
         challenge={challenge.value}
         expiresInSeconds={challenge.expiresInSeconds}
+        copy={copy.twoFactor}
         onSignedIn={finish}
         onStartOver={() => {
           /*
@@ -153,11 +167,8 @@ export function SignInForm() {
         already happened.
       */}
       {searchParams.get(SIGN_IN_NOTICE_PARAM) === PASSWORD_CHANGED_NOTICE && (
-        <InlineAlert variant="success" title="Your password was changed">
-          <p>
-            Every browser signed in to the account was signed out, including this one. Sign in
-            with the new password.
-          </p>
+        <InlineAlert variant="success" title={copy.passwordChangedTitle}>
+          <p>{copy.passwordChangedDetail}</p>
         </InlineAlert>
       )}
 
@@ -167,7 +178,7 @@ export function SignInForm() {
         </InlineAlert>
       )}
 
-      <Field label="Email address" required error={fieldErrors['email']}>
+      <Field label={copy.fields.email} required error={fieldErrors['email']}>
         <TextInput
           type="email"
           name="email"
@@ -175,11 +186,11 @@ export function SignInForm() {
           inputMode="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          placeholder="you@example.com"
+          placeholder={copy.fields.emailPlaceholder}
         />
       </Field>
 
-      <Field label="Password" required error={fieldErrors['password']}>
+      <Field label={copy.fields.password} required error={fieldErrors['password']}>
         <TextInput
           type="password"
           name="password"
@@ -196,7 +207,7 @@ export function SignInForm() {
       */}
       {(failure === null || failure.retryable) && (
         <Pill type="submit" fullWidth size="lg" disabled={submitting}>
-          {submitting ? 'Signing in' : 'Sign in'}
+          {submitting ? copy.submitting : copy.submit}
         </Pill>
       )}
 
@@ -215,17 +226,17 @@ export function SignInForm() {
           href="/reset-password"
           className="rounded-sm text-white underline underline-offset-4 hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
         >
-          Forgot your password?
+          {copy.forgot}
         </Link>
       </p>
 
       <p className="text-center text-sm text-white/64">
-        No account yet?{' '}
+        {copy.noAccount}{' '}
         <Link
           href={registerHref(searchParams.get(RETURN_TO_PARAM))}
           className="rounded-sm text-white underline underline-offset-4 hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
         >
-          Create one
+          {copy.createOne}
         </Link>
       </p>
     </form>
@@ -236,7 +247,7 @@ export function SignInForm() {
         below the fold on a phone. It renders nothing at all when neither provider is
         configured.
       */}
-      <ProviderSignIn onOutcome={settle} />
+      <ProviderSignIn onOutcome={settle} copy={copy.providers} />
     </div>
   );
 }

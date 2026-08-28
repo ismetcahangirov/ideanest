@@ -9,6 +9,8 @@ import {
   requestEmailChange,
 } from '../../lib/auth/credentials';
 import { describeAuthFailure, fieldErrorsOf, type AuthFailure } from '../../lib/auth/failures';
+import { fillNodes, fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { EmailChangePanelCopy } from '../../lib/i18n/settings-copy';
 import { FormErrorSummary } from '../auth/FormErrorSummary';
 import { useSession } from '../session/SessionProvider';
 
@@ -60,7 +62,12 @@ import { useSession } from '../session/SessionProvider';
  *
  * docs/motion-system.md §5 — "authentication, account settings: none".
  */
-export function EmailChangePanel() {
+export interface EmailChangePanelProps {
+  /** Every word this panel draws, resolved by the page — see `lib/i18n/settings-copy.ts`. */
+  readonly copy: EmailChangePanelCopy;
+}
+
+export function EmailChangePanel({ copy }: EmailChangePanelProps) {
   const { session } = useSession();
 
   const [currentPassword, setCurrentPassword] = useState('');
@@ -89,7 +96,7 @@ export function EmailChangePanel() {
       const refusal = refusalOf(cause);
       const detail = refusalDetailOf(cause);
 
-      setFailure(describeAuthFailure(cause));
+      setFailure(describeAuthFailure(cause, copy.failures));
       setFieldErrors({
         ...(refusal === 'incorrect-password' && detail !== null
           ? { currentPassword: detail }
@@ -104,9 +111,7 @@ export function EmailChangePanel() {
 
   return (
     <section className="rounded-2xl border border-white/8 bg-surface-2 p-6 sm:p-8">
-      <h2 className="text-lg font-medium tracking-[-0.02em] text-white">
-        Change your email address
-      </h2>
+      <h2 className="text-lg font-medium tracking-[-0.02em] text-white">{copy.heading}</h2>
 
       {/*
         THE ADDRESS ON THE ACCOUNT IS SHOWN THROUGHOUT, including on the confirmation below,
@@ -115,9 +120,15 @@ export function EmailChangePanel() {
       */}
       {session !== null && (
         <p className="mt-2 text-sm text-white/64">
-          You sign in with{' '}
-          <span className="font-medium text-white">{session.email}</span>
-          {session.emailVerified ? '.' : ', which is not verified yet.'}
+          {/*
+            TWO SENTENCES RATHER THAN ONE WITH A CLAUSE APPENDED. The unverified case used to be
+            built by concatenating ", which is not verified yet." onto the end, which assumes the
+            address is the last thing in the sentence — true in English and false in Azerbaijani,
+            where the verb is.
+          */}
+          {fillNodes(session.emailVerified ? copy.signInWith : copy.signInWithUnverified, {
+            address: <span className="font-medium text-white">{session.email}</span>,
+          })}
         </p>
       )}
 
@@ -127,9 +138,9 @@ export function EmailChangePanel() {
             <MailCheck aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-white/40" />
             <div>
               <p>
-                A confirmation link is on its way to{' '}
-                <span className="font-medium text-white">{requestedFor}</span>. Opening it is
-                what moves the account.
+                {fillNodes(copy.sentIntro, {
+                  address: <span className="font-medium text-white">{requestedFor}</span>,
+                })}
               </p>
               <p className="mt-3">
                 {/*
@@ -137,25 +148,18 @@ export function EmailChangePanel() {
                   see a success message, assume the account has moved, and stop being able to
                   find it when the link goes unopened.
                 */}
-                <strong className="font-medium text-white">
-                  Nothing has changed yet.
-                </strong>{' '}
+                <strong className="font-medium text-white">{copy.nothingChanged}</strong>{' '}
                 {session === null
-                  ? 'Your current address still signs in'
-                  : `You still sign in with ${session.email}`}{' '}
-                until that link is opened, and it works for six hours.
+                  ? copy.stillSignInUnknown
+                  : fillPlaceholders(copy.stillSignIn, { address: session.email })}
               </p>
-              <p className="mt-3">
-                We have also written to your current address to say the change was asked for.
-                That message carries no link — it cannot approve anything, and it is there so a
-                change you did not make reaches you while the account is still yours.
-              </p>
+              <p className="mt-3">{copy.alsoWrote}</p>
             </div>
           </div>
 
           <div>
             <Pill type="button" variant="ghost" onClick={() => setRequestedFor(null)}>
-              Ask for a different address
+              {copy.askDifferent}
             </Pill>
           </div>
         </div>
@@ -163,18 +167,14 @@ export function EmailChangePanel() {
         <form onSubmit={submit} noValidate className="mt-6 flex max-w-[30rem] flex-col gap-5">
           <FormErrorSummary failure={failure} />
 
-          <InlineAlert variant="info" title="The account moves when the new address answers">
-            <p>
-              We send a link to the address you give us and a notice to the one you have now.
-              Your account keeps its current address until that link is opened, so a typo costs
-              you nothing but the message.
-            </p>
+          <InlineAlert variant="info" title={copy.alertTitle}>
+            <p>{copy.alertBody}</p>
           </InlineAlert>
 
           <Field
-            label="Current password"
+            label={copy.currentPassword}
             required
-            hint="Asked for so that a stolen sign-in cannot move the address that resets your password."
+            hint={copy.currentPasswordHint}
             error={fieldErrors['currentPassword']}
           >
             <TextInput
@@ -186,7 +186,7 @@ export function EmailChangePanel() {
             />
           </Field>
 
-          <Field label="New email address" required error={fieldErrors['newEmail']}>
+          <Field label={copy.newEmail} required error={fieldErrors['newEmail']}>
             <TextInput
               type="email"
               name="newEmail"
@@ -194,13 +194,13 @@ export function EmailChangePanel() {
               inputMode="email"
               value={newEmail}
               onChange={(event) => setNewEmail(event.target.value)}
-              placeholder="you@example.com"
+              placeholder={copy.emailPlaceholder}
             />
           </Field>
 
           <div>
             <Pill type="submit" disabled={busy}>
-              {busy ? 'Sending the confirmation' : 'Send the confirmation'}
+              {busy ? copy.submitting : copy.submit}
             </Pill>
           </div>
         </form>

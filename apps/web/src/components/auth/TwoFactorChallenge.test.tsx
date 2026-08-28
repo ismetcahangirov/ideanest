@@ -4,6 +4,15 @@ import userEvent from '@testing-library/user-event';
 import { ApiError } from '../../lib/api/problem';
 import { completeTwoFactor } from '../../lib/auth/twoFactor';
 import { TwoFactorChallenge } from './TwoFactorChallenge';
+import { twoFactorCopyFrom } from '../../lib/i18n/auth-copy';
+import { translatorFor } from '../../test-copy';
+
+/*
+ * The copy the page would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const COPY = twoFactorCopyFrom(translatorFor('auth'));
 
 /**
  * §4.1's A-07 and A-08 — issue #272.
@@ -32,6 +41,7 @@ function renderChallenge(overrides: { expiresInSeconds?: number } = {}) {
 
   render(
     <TwoFactorChallenge
+      copy={COPY}
       challenge="a-secret-challenge-value"
       expiresInSeconds={overrides.expiresInSeconds ?? 300}
       onSignedIn={onSignedIn}

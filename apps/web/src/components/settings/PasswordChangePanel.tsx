@@ -11,6 +11,7 @@ import {
   refusalOf,
 } from '../../lib/auth/credentials';
 import { describeAuthFailure, fieldErrorsOf, type AuthFailure } from '../../lib/auth/failures';
+import type { PasswordChangePanelCopy } from '../../lib/i18n/settings-copy';
 import { FormErrorSummary } from '../auth/FormErrorSummary';
 import { useSession } from '../session/SessionProvider';
 
@@ -70,7 +71,12 @@ import { useSession } from '../session/SessionProvider';
  * animates, including the warning, which has to be readable the instant the page paints rather
  * than 300ms after somebody has started typing.
  */
-export function PasswordChangePanel() {
+export interface PasswordChangePanelProps {
+  /** Every word this panel draws, resolved by the page — see `lib/i18n/settings-copy.ts`. */
+  readonly copy: PasswordChangePanelCopy;
+}
+
+export function PasswordChangePanel({ copy }: PasswordChangePanelProps) {
   const router = useRouter();
   const { signOut } = useSession();
 
@@ -87,11 +93,11 @@ export function PasswordChangePanel() {
 
     if (newPassword !== repeated) {
       setFailure({
-        title: 'The two new passwords do not match',
-        detail: 'Type the same password in both boxes, then try again.',
+        title: copy.mismatchTitle,
+        detail: copy.mismatchDetail,
         retryable: true,
       });
-      setFieldErrors({ repeated: 'This does not match the password above.' });
+      setFieldErrors({ repeated: copy.mismatchField });
       return;
     }
 
@@ -117,7 +123,7 @@ export function PasswordChangePanel() {
       const refusal = refusalOf(cause);
       const detail = refusalDetailOf(cause);
 
-      setFailure(describeAuthFailure(cause));
+      setFailure(describeAuthFailure(cause, copy.failures));
       setFieldErrors({
         ...(refusal === 'incorrect-password' && detail !== null
           ? { currentPassword: detail }
@@ -131,7 +137,7 @@ export function PasswordChangePanel() {
 
   return (
     <section className="rounded-2xl border border-white/8 bg-surface-2 p-6 sm:p-8">
-      <h2 className="text-lg font-medium tracking-[-0.02em] text-white">Change your password</h2>
+      <h2 className="text-lg font-medium tracking-[-0.02em] text-white">{copy.heading}</h2>
 
       <form onSubmit={submit} noValidate className="mt-4 flex max-w-[30rem] flex-col gap-5">
         <FormErrorSummary failure={failure} />
@@ -143,19 +149,14 @@ export function PasswordChangePanel() {
           alert that shouts about an ordinary consequence is one people learn to skip. Icon plus
           words plus colour, never colour alone (§9.2).
         */}
-        <InlineAlert variant="warning" title="This signs you out everywhere">
-          <p>
-            Changing your password ends every session on the account, including this one — which
-            is the point: a password is changed precisely when the old one might be known. You
-            will be asked to sign in again with the new password, on this browser and on every
-            other.
-          </p>
+        <InlineAlert variant="warning" title={copy.alertTitle}>
+          <p>{copy.alertBody}</p>
         </InlineAlert>
 
         <Field
-          label="Current password"
+          label={copy.currentPassword}
           required
-          hint="Asked for so that a stolen sign-in cannot replace your password."
+          hint={copy.currentPasswordHint}
           error={fieldErrors['currentPassword']}
         >
           <TextInput
@@ -168,9 +169,9 @@ export function PasswordChangePanel() {
         </Field>
 
         <Field
-          label="New password"
+          label={copy.newPassword}
           required
-          hint="Long is stronger than complicated. The exact requirement comes from the service if this one is refused."
+          hint={copy.newPasswordHint}
           error={fieldErrors['newPassword']}
         >
           <TextInput
@@ -183,9 +184,9 @@ export function PasswordChangePanel() {
         </Field>
 
         <Field
-          label="New password again"
+          label={copy.repeat}
           required
-          hint="Compared in this browser and never sent."
+          hint={copy.repeatHint}
           error={fieldErrors['repeated']}
         >
           <TextInput
@@ -199,7 +200,7 @@ export function PasswordChangePanel() {
 
         <div>
           <Pill type="submit" disabled={busy} iconLeft={<LogOut aria-hidden="true" className="size-4" />}>
-            {busy ? 'Changing your password' : 'Change password and sign out'}
+            {busy ? copy.submitting : copy.submit}
           </Pill>
         </div>
       </form>

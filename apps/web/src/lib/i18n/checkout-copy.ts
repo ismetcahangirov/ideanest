@@ -137,8 +137,8 @@ export interface CheckoutCopy {
      * A function cannot cross the server/client boundary: React serialises props into the
      * flight payload and a closure has nothing to serialise, so a `(price) => string` here
      * would fail `next build` and nothing else. These take simple substitution — no plural,
-     * no gender, no ordinal — so `fillPlaceholders` below does the work where the value is
-     * known, which is in the browser.
+     * no gender, no ordinal — so `fillPlaceholders` does the work where the value is known,
+     * which is in the browser.
      */
     readonly amountMissingMinimum: string;
     readonly amountComma: string;
@@ -151,18 +151,15 @@ export interface CheckoutCopy {
 /**
  * `{price}` in a template, replaced with the value.
  *
- * Deliberately not an ICU formatter. next-intl's would need its runtime in the browser,
- * which is the cost `shell-copy.ts` measured and refused; these five messages carry one
- * placeholder each and no grammatical agreement, so a replacement is the whole of what ICU
- * would do for them. Anything that needs a plural — the search count, for instance — is
- * formatted on the server where the real formatter already is.
+ * Re-exported rather than defined here since #324. The substitution is not the checkout's —
+ * the register form echoes an address, the rate limit says how many minutes are left, and
+ * every one of them is a server-resolved sentence being finished in the browser. It lives in
+ * `lib/i18n/placeholders.ts` now, and the name is kept exported from this module so that the
+ * three call sites in `components/checkout` read as they did.
  *
- * A placeholder with no value is left as written rather than blanked: `{price}` on screen is
- * a defect somebody reports, and an empty gap in a sentence about money is one they do not.
+ * It is deliberately not an ICU formatter, and that reasoning has moved with it.
  */
-export function fillPlaceholders(template: string, values: Readonly<Record<string, string>>): string {
-  return template.replace(/\{(\w+)\}/gu, (whole, name: string) => values[name] ?? whole);
-}
+export { fillPlaceholders } from './placeholders';
 
 /**
  * A message lookup, narrowed to what this builder needs.

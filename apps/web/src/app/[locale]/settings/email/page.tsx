@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Link } from '../../../../i18n/navigation';
 import { AccountPageHeader } from '../../../../components/account/AccountPageHeader';
 import { EmailChangePanel } from '../../../../components/settings/EmailChangePanel';
+import { emailChangePanelCopy } from '../../../../lib/i18n/shell-copy.server';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 import { getTranslations } from 'next-intl/server';
 
@@ -59,7 +60,7 @@ export default async function EmailSettingsPage() {
       </AccountPageHeader>
 
       <div className="mt-8">
-        <EmailChangePanel />
+        <EmailChangePanel copy={await emailChangePanelCopy()} />
       </div>
     </>
   );

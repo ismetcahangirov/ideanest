@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { getTranslations } from 'next-intl/server';
 import { MinimalShell } from '../../../components/shell/MinimalShell';
 import { shellCopy } from '../../../lib/i18n/shell-copy.server';
 
@@ -34,16 +35,13 @@ import { shellCopy } from '../../../lib/i18n/shell-copy.server';
  */
 export default async function AuthLayout({ children }: { children: ReactNode }) {
   const { skipToContent } = await shellCopy();
+  const t = await getTranslations('auth');
 
   return (
-    <MinimalShell skipToContent={skipToContent}
+    <MinimalShell
+      skipToContent={skipToContent}
       centred
-      footer={
-        <p>
-          Reward-based crowdfunding. Nobody is charged unless a campaign reaches its goal by its
-          deadline.
-        </p>
-      }
+      footer={<p>{t('layout.footer')}</p>}
     >
       <div className="w-full max-w-[26rem]">{children}</div>
     </MinimalShell>

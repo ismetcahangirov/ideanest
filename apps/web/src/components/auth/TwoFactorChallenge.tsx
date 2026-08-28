@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Field, InlineAlert, Pill, TextInput } from '@ideanest/ui';
 import { completeTwoFactor } from '../../lib/auth/twoFactor';
 import { describeAuthFailure, type AuthFailure } from '../../lib/auth/failures';
+import type { TwoFactorCopy } from '../../lib/i18n/auth-copy';
 
 /**
  * §4.1's A-07 and A-08 — the step between a password and a session. Issue #272.
@@ -53,6 +54,8 @@ export interface TwoFactorChallengeProps {
   readonly onSignedIn: () => void | Promise<void>;
   /** Abandons the challenge and returns to the password form. */
   readonly onStartOver: () => void;
+  /** The words, resolved by the page — see `lib/i18n/auth-copy.ts`. */
+  readonly copy: TwoFactorCopy;
 }
 
 export function TwoFactorChallenge({
@@ -60,6 +63,7 @@ export function TwoFactorChallenge({
   expiresInSeconds,
   onSignedIn,
   onStartOver,
+  copy,
 }: TwoFactorChallengeProps) {
   const [code, setCode] = useState('');
   const [recoveryCode, setRecoveryCode] = useState('');
@@ -109,7 +113,7 @@ export function TwoFactorChallenge({
       );
       await onSignedIn();
     } catch (cause) {
-      setFailure(describeAuthFailure(cause));
+      setFailure(describeAuthFailure(cause, copy.failures));
       setCode('');
       setRecoveryCode('');
     } finally {
@@ -120,14 +124,11 @@ export function TwoFactorChallenge({
   if (expired) {
     return (
       <div className="flex flex-col gap-5">
-        <InlineAlert variant="warning" title="This challenge has expired">
-          <p>
-            For safety it only lasts a few minutes. Your password and your codes are unchanged
-            — sign in again and you will be asked for a fresh one.
-          </p>
+        <InlineAlert variant="warning" title={copy.expiredTitle}>
+          <p>{copy.expiredDetail}</p>
         </InlineAlert>
         <Pill type="button" fullWidth size="lg" onClick={onStartOver}>
-          Sign in again
+          {copy.signInAgain}
         </Pill>
       </div>
     );
@@ -135,11 +136,8 @@ export function TwoFactorChallenge({
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-5">
-      <InlineAlert variant="info" title="Your password was accepted">
-        <p>
-          This account asks for a second factor. Enter the six-digit code from your
-          authenticator app.
-        </p>
+      <InlineAlert variant="info" title={copy.acceptedTitle}>
+        <p>{copy.acceptedDetail}</p>
       </InlineAlert>
 
       {failure !== null && (
@@ -148,7 +146,7 @@ export function TwoFactorChallenge({
         </InlineAlert>
       )}
 
-      <Field label="Authentication code" required>
+      <Field label={copy.codeLabel} required>
         <TextInput
           name="code"
           /*
@@ -163,18 +161,18 @@ export function TwoFactorChallenge({
           maxLength={16}
           value={code}
           onChange={(event) => setCode(event.target.value)}
-          placeholder="000000"
+          placeholder={copy.codePlaceholder}
         />
       </Field>
 
       <details className="rounded-lg border border-white/6 bg-surface-1 px-4 py-3">
         <summary className="cursor-pointer text-sm text-white/64 marker:text-white/40 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]">
-          I cannot reach my authenticator
+          {copy.cannotReach}
         </summary>
         <div className="mt-4">
           <Field
-            label="Recovery code"
-            hint="One of the codes you saved when you switched two-factor on. Each one works once."
+            label={copy.recoveryLabel}
+            hint={copy.recoveryHint}
           >
             <TextInput
               name="recoveryCode"
@@ -189,7 +187,7 @@ export function TwoFactorChallenge({
       </details>
 
       <Pill type="submit" fullWidth size="lg" disabled={submitting}>
-        {submitting ? 'Checking' : 'Continue'}
+        {submitting ? copy.submitting : copy.submit}
       </Pill>
 
       <p className="text-center text-sm text-white/64">
@@ -198,7 +196,7 @@ export function TwoFactorChallenge({
           onClick={onStartOver}
           className="rounded-sm text-white underline underline-offset-4 hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
         >
-          Use a different account
+          {copy.differentAccount}
         </button>
       </p>
     </form>

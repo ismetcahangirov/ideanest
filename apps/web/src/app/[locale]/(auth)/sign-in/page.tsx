@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { getTranslations } from 'next-intl/server';
 import { AuthPageHeader } from '../../../../components/auth/AuthPageHeader';
 import { SignInForm } from '../../../../components/auth/SignInForm';
+import { signInCopy } from '../../../../lib/i18n/shell-copy.server';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 
 /**
@@ -22,20 +24,21 @@ import { privatePageMetadata } from '../../../../lib/seo/metadata';
  * controls arriving.
  */
 
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Sign in',
-  description: 'Sign in to IdeaNest.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('auth.signIn');
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
 
-export default function SignInPage() {
+export default async function SignInPage() {
+  const t = await getTranslations('auth');
+  const copy = await signInCopy();
+
   return (
     <>
-      <AuthPageHeader title="Sign in">
-        Back to your pledges, your campaigns, and everything you are following.
-      </AuthPageHeader>
+      <AuthPageHeader title={copy.title}>{copy.intro}</AuthPageHeader>
 
-      <Suspense fallback={<p className="text-white/40">Loading the form…</p>}>
-        <SignInForm />
+      <Suspense fallback={<p className="text-white/40">{t('loadingForm')}</p>}>
+        <SignInForm copy={copy} />
       </Suspense>
     </>
   );

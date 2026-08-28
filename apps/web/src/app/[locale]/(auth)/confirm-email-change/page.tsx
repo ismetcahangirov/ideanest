@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { getTranslations } from 'next-intl/server';
 import { EmailChangeConfirmView } from '../../../../components/auth/EmailChangeConfirmView';
+import { emailChangeCopy } from '../../../../lib/i18n/shell-copy.server';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 
 /**
@@ -34,15 +36,17 @@ import { privatePageMetadata } from '../../../../lib/seo/metadata';
  * single-use credential, which is the one thing that must never reach an index.
  */
 
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Confirm your new email address',
-  description: 'Finish moving your IdeaNest account to a new email address.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('auth.emailChange');
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
 
-export default function ConfirmEmailChangePage() {
+export default async function ConfirmEmailChangePage() {
+  const t = await getTranslations('auth');
+
   return (
-    <Suspense fallback={<p className="text-white/40">Checking the link…</p>}>
-      <EmailChangeConfirmView />
+    <Suspense fallback={<p className="text-white/40">{t('checkingLink')}</p>}>
+      <EmailChangeConfirmView copy={await emailChangeCopy()} />
     </Suspense>
   );
 }

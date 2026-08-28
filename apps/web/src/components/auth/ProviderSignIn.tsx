@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { InlineAlert, Pill } from '@ideanest/ui';
 import { deviceLabelOf, type SignInOutcome } from '../../lib/auth/api';
 import { describeAuthFailure, type AuthFailure } from '../../lib/auth/failures';
+import type { ProvidersCopy } from '../../lib/i18n/auth-copy';
 import {
   configuredProviders,
   generateNonce,
@@ -135,9 +136,18 @@ export interface ProviderSignInProps {
   readonly onOutcome: (outcome: SignInOutcome) => void | Promise<void>;
   /** `signin_with` on the sign-in page, `signup_with` on registration. Google's own wording. */
   readonly intent?: 'sign-in' | 'register';
+  /**
+   * The words, resolved by the page — issue #324.
+   *
+   * Google's own button is the one control on this screen whose text is not ours: it is drawn
+   * inside their iframe and is labelled by whatever language their SDK resolves. That is not a
+   * gap this copy can close, and pretending otherwise would mean a `locale` parameter that
+   * their `renderButton` does not take.
+   */
+  readonly copy: ProvidersCopy;
 }
 
-export function ProviderSignIn({ onOutcome, intent = 'sign-in' }: ProviderSignInProps) {
+export function ProviderSignIn({ onOutcome, intent = 'sign-in', copy }: ProviderSignInProps) {
   /*
    * Read once. `configuredProviders` is pure over build-time constants, so calling it on
    * every render would produce a new array each time and defeat the effect's dependency
@@ -172,12 +182,12 @@ export function ProviderSignIn({ onOutcome, intent = 'sign-in' }: ProviderSignIn
         });
         await onOutcome(outcome);
       } catch (cause) {
-        setFailure(describeAuthFailure(cause));
+        setFailure(describeAuthFailure(cause, copy.failures));
       } finally {
         setBusy(false);
       }
     },
-    [onOutcome],
+    [onOutcome, copy.failures],
   );
 
   /*
@@ -282,7 +292,7 @@ export function ProviderSignIn({ onOutcome, intent = 'sign-in' }: ProviderSignIn
         'error' in cause &&
         (cause as { error?: unknown }).error === 'popup_closed_by_user';
 
-      if (!cancelledByUser) setFailure(describeAuthFailure(cause));
+      if (!cancelledByUser) setFailure(describeAuthFailure(cause, copy.failures));
       setBusy(false);
     }
   }
@@ -296,9 +306,9 @@ export function ProviderSignIn({ onOutcome, intent = 'sign-in' }: ProviderSignIn
         word between them, so the relationship between the two halves of the screen is
         announced rather than drawn.
       */}
-      <div className="flex items-center gap-4" role="separator" aria-label="Or continue with">
+      <div className="flex items-center gap-4" role="separator" aria-label={copy.separatorLabel}>
         <span aria-hidden="true" className="h-px flex-1 bg-white/6" />
-        <span className="text-xs tracking-[0.08em] text-white/40 uppercase">or</span>
+        <span className="text-xs tracking-[0.08em] text-white/40 uppercase">{copy.or}</span>
         <span aria-hidden="true" className="h-px flex-1 bg-white/6" />
       </div>
 
@@ -325,7 +335,7 @@ export function ProviderSignIn({ onOutcome, intent = 'sign-in' }: ProviderSignIn
           disabled={busy}
           onClick={() => void signInWithApple()}
         >
-          {intent === 'register' ? 'Sign up with Apple' : 'Sign in with Apple'}
+          {intent === 'register' ? copy.appleRegister : copy.appleSignIn}
         </Pill>
       )}
     </div>

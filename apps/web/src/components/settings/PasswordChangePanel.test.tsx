@@ -4,6 +4,15 @@ import userEvent from '@testing-library/user-event';
 import { ApiError } from '../../lib/api/problem';
 import { SIGN_IN_AFTER_PASSWORD_CHANGE, changePassword } from '../../lib/auth/credentials';
 import { PasswordChangePanel } from './PasswordChangePanel';
+import { passwordChangePanelCopyFrom } from '../../lib/i18n/settings-copy';
+import { translatorFor } from '../../test-copy';
+
+/*
+ * The copy the page would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const COPY = passwordChangePanelCopyFrom(translatorFor('settings.panels'), translatorFor('auth'));
 
 /**
  * §4.1's A-13 — issue #277.
@@ -91,7 +100,7 @@ async function change(
 
 describe('before anything is submitted', () => {
   it('says that succeeding signs every browser out, including this one', () => {
-    render(<PasswordChangePanel />);
+    render(<PasswordChangePanel copy={COPY} />);
 
     const warning = screen.getByText(/ends every session on the account, including this one/u);
     expect(warning).toBeInTheDocument();
@@ -103,7 +112,7 @@ describe('before anything is submitted', () => {
   });
 
   it('asks for the current password, because a stolen token must not be enough', () => {
-    render(<PasswordChangePanel />);
+    render(<PasswordChangePanel copy={COPY} />);
 
     expect(screen.getByLabelText(/Current password/u)).toBeInTheDocument();
   });
@@ -112,7 +121,7 @@ describe('before anything is submitted', () => {
 describe('a successful change', () => {
   it('sends both passwords, ends the session, and lands on the sign-in page', async () => {
     const user = userEvent.setup();
-    render(<PasswordChangePanel />);
+    render(<PasswordChangePanel copy={COPY} />);
 
     await change(user, { current: 'the old one', next: 'a much longer password' });
 
@@ -139,7 +148,7 @@ describe('a refusal', () => {
       }),
     );
 
-    render(<PasswordChangePanel />);
+    render(<PasswordChangePanel copy={COPY} />);
     await change(user, { current: 'not it' });
 
     const field = await screen.findByLabelText(/Current password/u);
@@ -162,7 +171,7 @@ describe('a refusal', () => {
       }),
     );
 
-    render(<PasswordChangePanel />);
+    render(<PasswordChangePanel copy={COPY} />);
     await change(user, { next: 'short' });
 
     expect(await screen.findByLabelText(/^New password\*/u)).toHaveAccessibleDescription(
@@ -180,7 +189,7 @@ describe('a refusal', () => {
       }),
     );
 
-    render(<PasswordChangePanel />);
+    render(<PasswordChangePanel copy={COPY} />);
     await change(user);
 
     const alerts = await screen.findAllByRole('alert');
@@ -193,7 +202,7 @@ describe('a refusal', () => {
 describe('the two new-password boxes', () => {
   it('catch a typo without spending a request', async () => {
     const user = userEvent.setup();
-    render(<PasswordChangePanel />);
+    render(<PasswordChangePanel copy={COPY} />);
 
     await change(user, { next: 'a much longer password', repeated: 'a much longer passwrod' });
 
