@@ -8,7 +8,9 @@ import { PAGE_SIZE } from '../../../../lib/discovery/api';
 import { NO_FILTERS, toHref } from '../../../../lib/discovery/filters';
 import { SEARCH_QUERY_PARAM, readSearchQuery } from '../../../../lib/search/query';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { localeOrDefault } from '../../../../lib/i18n/locale';
+import { projectCardCopy } from '../../../../lib/i18n/shell-copy.server';
 
 /**
  * `/search` — §4.13 WS-06, issue #262.
@@ -55,6 +57,8 @@ export default async function SearchPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const t = await getTranslations('discovery.search');
+  const locale = localeOrDefault(await getLocale());
+  const cardCopy = await projectCardCopy();
   const query = readSearchQuery(searchParamsOf(await searchParams));
 
   /*
@@ -134,6 +138,8 @@ export default async function SearchPage({
             ) : (
               <>
                 <CampaignGrid
+                  cardCopy={cardCopy}
+                  locale={locale}
                   campaigns={results}
                   priorityCount={3}
                   label={t('gridLabel', { query })}

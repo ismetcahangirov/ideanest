@@ -8,6 +8,25 @@ import {
   type ProjectCard as ProjectCardData,
 } from '../../lib/discovery/api';
 import { DiscoveryView } from './DiscoveryView';
+import { projectCardCopyFrom } from '../../lib/i18n/card-copy';
+import { translatorFor } from '../../test-copy';
+import { feedCopyFrom } from '../../lib/i18n/feed-copy';
+/*
+ * The copy the route would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const FEED_COPY = feedCopyFrom(
+  translatorFor('discovery.feed'),
+  translatorFor('discovery.filters'),
+  translatorFor('discovery.suggest'),
+);
+/*
+ * The copy the route would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const CARD_COPY = projectCardCopyFrom(translatorFor('discovery.card'), translatorFor('common'));
 
 /**
  * The server-rendered first page — #119, from the client's side of it.
@@ -114,7 +133,7 @@ afterEach(cleanup);
 
 describe('a server-rendered first page', () => {
   it('is shown without the browser asking for it again', async () => {
-    render(<DiscoveryView seeded={{ key: '', feed: feed(['analogue-synth', 'field-recorder']) }} />);
+    render(<DiscoveryView cardCopy={CARD_COPY} locale="en" copy={FEED_COPY} seeded={{ key: '', feed: feed(['analogue-synth', 'field-recorder']) }} />);
 
     expect(await screen.findByText('analogue-synth')).toBeInTheDocument();
     expect(screen.getByText('field-recorder')).toBeInTheDocument();
@@ -131,7 +150,7 @@ describe('a server-rendered first page', () => {
   it('is ignored when it answers a different question', async () => {
     feedMock.mockResolvedValue(feed(['from-the-browser']));
 
-    render(<DiscoveryView seeded={{ key: 'status=live', feed: feed(['from-the-server']) }} />);
+    render(<DiscoveryView cardCopy={CARD_COPY} locale="en" copy={FEED_COPY} seeded={{ key: 'status=live', feed: feed(['from-the-server']) }} />);
 
     expect(await screen.findByText('from-the-browser')).toBeInTheDocument();
     expect(screen.queryByText('from-the-server')).not.toBeInTheDocument();
@@ -146,14 +165,14 @@ describe('a server-rendered first page', () => {
   it('is optional, and its absence is the behaviour that existed before', async () => {
     feedMock.mockResolvedValue(feed(['from-the-browser']));
 
-    render(<DiscoveryView />);
+    render(<DiscoveryView cardCopy={CARD_COPY} locale="en" copy={FEED_COPY} />);
 
     expect(await screen.findByText('from-the-browser')).toBeInTheDocument();
     expect(feedMock).toHaveBeenCalledTimes(1);
   });
 
   it('announces the seeded page, as a fetched one is announced', async () => {
-    render(<DiscoveryView seeded={{ key: '', feed: feed(['analogue-synth']) }} />);
+    render(<DiscoveryView cardCopy={CARD_COPY} locale="en" copy={FEED_COPY} seeded={{ key: '', feed: feed(['analogue-synth']) }} />);
 
     await waitFor(() => {
       expect(screen.getByText('1 project shown.')).toBeInTheDocument();
@@ -161,7 +180,7 @@ describe('a server-rendered first page', () => {
   });
 
   it('says nothing matched when the server render found nothing', async () => {
-    render(<DiscoveryView seeded={{ key: '', feed: feed([]) }} />);
+    render(<DiscoveryView cardCopy={CARD_COPY} locale="en" copy={FEED_COPY} seeded={{ key: '', feed: feed([]) }} />);
 
     await waitFor(() => {
       expect(screen.getByText('No projects match these filters.')).toBeInTheDocument();
@@ -180,7 +199,7 @@ describe('a server-rendered first page', () => {
     feedMock.mockResolvedValue(feed(['page-two']));
 
     render(
-      <DiscoveryView seeded={{ key: '', feed: feed(['page-one'], 'cursor-abc') }} />,
+      <DiscoveryView cardCopy={CARD_COPY} locale="en" copy={FEED_COPY} seeded={{ key: '', feed: feed(['page-one'], 'cursor-abc') }} />,
     );
 
     const more = await screen.findByRole('button', { name: /show more/i });

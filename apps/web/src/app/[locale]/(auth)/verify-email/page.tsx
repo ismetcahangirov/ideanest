@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { getTranslations } from 'next-intl/server';
 import { VerifyEmailView } from '../../../../components/auth/VerifyEmailView';
+import { verifyEmailCopy } from '../../../../lib/i18n/shell-copy.server';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 
 /**
@@ -25,15 +27,17 @@ import { privatePageMetadata } from '../../../../lib/seo/metadata';
  * index.
  */
 
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Verify your email',
-  description: 'Finish setting up your IdeaNest account.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('auth.verifyEmail');
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
 
-export default function VerifyEmailPage() {
+export default async function VerifyEmailPage() {
+  const t = await getTranslations('auth');
+
   return (
-    <Suspense fallback={<p className="text-white/40">Checking the link…</p>}>
-      <VerifyEmailView />
+    <Suspense fallback={<p className="text-white/40">{t('checkingLink')}</p>}>
+      <VerifyEmailView copy={await verifyEmailCopy()} />
     </Suspense>
   );
 }

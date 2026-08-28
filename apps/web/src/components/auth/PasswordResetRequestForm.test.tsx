@@ -4,6 +4,15 @@ import userEvent from '@testing-library/user-event';
 import { ApiError } from '../../lib/api/problem';
 import { requestPasswordReset } from '../../lib/auth/passwordReset';
 import { PasswordResetRequestForm } from './PasswordResetRequestForm';
+import { passwordResetCopyFrom } from '../../lib/i18n/auth-copy';
+import { translatorFor } from '../../test-copy';
+
+/*
+ * The copy the page would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const COPY = passwordResetCopyFrom(translatorFor('auth'));
 
 /**
  * §4.1's A-06, first half — issue #271.
@@ -42,7 +51,7 @@ async function ask(user: ReturnType<typeof userEvent.setup>, address: string): P
 describe('asking for a link', () => {
   it('sends the trimmed address to the service', async () => {
     const user = userEvent.setup();
-    render(<PasswordResetRequestForm />);
+    render(<PasswordResetRequestForm copy={COPY} />);
 
     await ask(user, '  aysel@example.com  ');
 
@@ -51,7 +60,7 @@ describe('asking for a link', () => {
 
   it('never claims an account exists, whatever was typed', async () => {
     const user = userEvent.setup();
-    render(<PasswordResetRequestForm />);
+    render(<PasswordResetRequestForm copy={COPY} />);
 
     await ask(user, 'nobody@example.com');
 
@@ -65,7 +74,7 @@ describe('asking for a link', () => {
 
   it('states the hour and the single use while they can still be acted on', async () => {
     const user = userEvent.setup();
-    render(<PasswordResetRequestForm />);
+    render(<PasswordResetRequestForm copy={COPY} />);
 
     await ask(user, 'aysel@example.com');
 
@@ -74,7 +83,7 @@ describe('asking for a link', () => {
 
   it('offers a way back to the form, because a typo produces the same screen', async () => {
     const user = userEvent.setup();
-    render(<PasswordResetRequestForm />);
+    render(<PasswordResetRequestForm copy={COPY} />);
 
     await ask(user, 'ayzel@example.com');
     await user.click(await screen.findByRole('button', { name: 'try another address' }));
@@ -90,7 +99,7 @@ describe('a refusal', () => {
       new ApiError(429, { title: 'Too many attempts', detail: 'Wait a little.', retryAfterSeconds: 300 }),
     );
 
-    render(<PasswordResetRequestForm />);
+    render(<PasswordResetRequestForm copy={COPY} />);
     await ask(user, 'aysel@example.com');
 
     const alert = await screen.findByRole('alert');

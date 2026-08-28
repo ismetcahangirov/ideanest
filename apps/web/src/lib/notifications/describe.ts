@@ -1,5 +1,7 @@
 import { capitalised, dateTimeFormat, relativeTimeFormat, UNDATED } from '../i18n/formats';
 import type { Locale } from '../i18n/locale';
+import type { NotificationsCopy } from '../i18n/notifications-copy';
+import { fillPlaceholders } from '../i18n/placeholders';
 import { formatMoney, type Money } from '../money';
 import type {
   DeliveryMode,
@@ -128,7 +130,10 @@ function amountOr(params: Record<string, unknown>, key: string, fallback: string
  * it — the same property `EmailComposer`'s switch has on the service side, and for the same
  * reason: the alternative is a row that renders an empty line, found by a reader.
  */
-export function describeNotification(notification: InboxNotification): NotificationView {
+export function describeNotification(
+  notification: InboxNotification,
+  copy: NotificationsCopy,
+): NotificationView {
   const params = readParams(notification.params);
   const campaign = campaignOf(params);
   const named = campaign.title;
@@ -136,7 +141,7 @@ export function describeNotification(notification: InboxNotification): Notificat
   return {
     campaign: named,
     href: hrefOf(notification, campaign.href),
-    headline: headlineOf(notification.type, params, named),
+    headline: headlineOf(notification.type, params, named, copy),
   };
 }
 
@@ -144,60 +149,55 @@ function headlineOf(
   type: NotificationType,
   params: Record<string, unknown>,
   campaign: string | null,
+  copy: NotificationsCopy,
 ): string {
-  const about = campaign ?? 'a campaign';
+  /*
+   * TWO TABLES, NOT ONE SENTENCE WITH A STAND-IN — issue #324. The template that names the
+   * campaign and the one that does not are different sentences in every language, and in some
+   * of them the campaign is not at the front. `lib/i18n/notifications-copy.ts` carries the
+   * argument; it is the same one `messages.properties` makes about its `.named` keys.
+   */
+  const template = campaign === null ? copy.unnamed[type] : copy.headline[type];
 
+  /* A type this build has no sentence for renders its own name rather than an empty row. */
+  if (template === undefined) return type;
+
+  return fillPlaceholders(template, {
+    campaign: campaign ?? '',
+    amount: amountFor(type, params, copy),
+  });
+}
+
+/**
+ * The figure a headline refers to, or the words that stand in for one.
+ *
+ * <p>Which key in the document a type reads is a fact about the event rather than copy, so it
+ * stays here. What is printed when the document does not carry it is a sentence somebody
+ * receives, so that is in the catalogue.
+ */
+function amountFor(
+  type: NotificationType,
+  params: Record<string, unknown>,
+  copy: NotificationsCopy,
+): string {
   switch (type) {
-    // Produced today. The parameter names are `NotificationEventListener`'s.
     case 'PLEDGE_CONFIRMED':
-      return `Your pledge of ${amountOr(params, 'total', 'your chosen amount')} to ${about} is confirmed`;
+      return amountOr(params, 'total', copy.amount['total'] ?? '');
     case 'PLEDGE_EDITED':
-      return `Your pledge to ${about} now stands at ${amountOr(params, 'total', 'a new amount')}`;
+      return amountOr(params, 'total', copy.amount['newTotal'] ?? '');
     case 'PAYMENT_FAILED':
-      return `A payment of ${amountOr(params, 'amount', 'your pledge')} for ${about} was declined`;
-    case 'GOAL_REACHED':
-      return `${capitalise(about)} reached its goal of ${amountOr(params, 'goal', 'what it needed')}`;
-    case 'CAMPAIGN_SUCCEEDED':
-      return `${capitalise(about)} was funded at ${amountOr(params, 'pledged', 'its closing total')}`;
-    case 'CAMPAIGN_UNSUCCESSFUL':
-      return `${capitalise(about)} closed without reaching its goal`;
-    case 'PROJECT_APPROVED':
-      return `${capitalise(about)} has been approved and can be launched`;
-
-    // Not produced yet. #64 owns collection and the payment schedule, #69 the payout, #74
-    // the surveys, #80 fulfilment, #83 updates, #84 comments, #90 saving and following, and
-    // #87 the push half of all of them. Written now for the reason `EmailComposer` gives:
-    // a message whose words are chosen the day its event lands is chosen in a hurry.
     case 'PAYMENT_COLLECTED':
-      return `A payment of ${amountOr(params, 'amount', 'your pledge')} for ${about} was collected`;
     case 'FINAL_PAYMENT_WARNING':
-      return `Final notice: a payment of ${amountOr(params, 'amount', 'your pledge')} for ${about}`;
+      return amountOr(params, 'amount', copy.amount['pledge'] ?? '');
+    case 'GOAL_REACHED':
+      return amountOr(params, 'goal', copy.amount['needed'] ?? '');
+    case 'CAMPAIGN_SUCCEEDED':
+      return amountOr(params, 'pledged', copy.amount['closingTotal'] ?? '');
     case 'PAYOUT_SENT':
-      return `A payout of ${amountOr(params, 'amount', 'your funds')} for ${about} has been sent`;
-    case 'DEADLINE_48H':
-      return `${capitalise(about)} closes in two days`;
-    case 'DEADLINE_24H':
-      return `${capitalise(about)} closes tomorrow`;
-    case 'NEW_UPDATE_PUBLISHED':
-      return `${capitalise(about)} published an update`;
-    case 'COMMENT_REPLY':
-      return 'Somebody replied to your comment';
-    case 'DIRECT_MESSAGE':
-      return 'You have a new message';
-    case 'SURVEY_AVAILABLE':
-      return `Your reward survey for ${about} is ready`;
-    case 'SURVEY_OVERDUE':
-      return `Your reward survey for ${about} is still unanswered`;
-    case 'REWARD_SHIPPED':
-      return `Your reward from ${about} has been shipped`;
-    case 'FOLLOWED_CREATOR_LAUNCHED':
-      return `A creator you follow launched ${about}`;
-    case 'LAUNCH_REMINDER':
-      return `${capitalise(about)} is about to launch`;
-    case 'SAVED_PROJECT_ENDING_SOON':
-      return `${capitalise(about)}, which you saved, is ending soon`;
-    case 'NEW_DEVICE_SIGN_IN':
-      return 'A new device signed in to your account';
+      return amountOr(params, 'amount', copy.amount['funds'] ?? '');
+    default:
+      /* Every other type's sentence carries no {amount}, so nothing is looked up for it. */
+      return '';
   }
 }
 
@@ -217,11 +217,6 @@ function headlineOf(
 function hrefOf(notification: InboxNotification, campaignHref: string | null): string | null {
   if (notification.type === 'NEW_DEVICE_SIGN_IN') return '/settings/sessions';
   return campaignHref;
-}
-
-/** Sentence case for a phrase that may be a campaign title or the generic stand-in. */
-function capitalise(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 /**
@@ -244,48 +239,23 @@ export const CATEGORIES: readonly NotificationCategory[] = [
 /** The three columns of §4.10's table. */
 export const CHANNELS: readonly NotificationChannel[] = ['IN_APP', 'EMAIL', 'PUSH'];
 
-const CATEGORY_LABELS: Record<NotificationCategory, string> = {
-  PLEDGES: 'Your pledges',
-  CAMPAIGN: 'Campaigns you back',
-  PAYMENTS: 'Payments and payouts',
-  COMMUNITY: 'Comments and messages',
-  REWARDS: 'Rewards and surveys',
-  DISCOVERY: 'Things you follow',
-  SECURITY: 'Account security',
-};
 
-const CATEGORY_DESCRIPTIONS: Record<NotificationCategory, string> = {
-  PLEDGES: 'A pledge of yours is confirmed or changed.',
-  CAMPAIGN: 'A campaign reaches its goal, closes, or is about to.',
-  PAYMENTS: 'A payment is taken, declined, or a payout is sent.',
-  COMMUNITY: 'Somebody replies to you or sends you a message.',
-  REWARDS: 'A survey is waiting, or a reward is on its way.',
-  DISCOVERY: 'A creator you follow launches, or something you saved is ending.',
-  SECURITY: 'A new device signs in to your account.',
-};
 
-const CHANNEL_LABELS: Record<NotificationChannel, string> = {
-  IN_APP: 'In app',
-  EMAIL: 'Email',
-  PUSH: 'Push',
-};
 
-const MODE_LABELS: Record<DeliveryMode, string> = {
-  OFF: 'Off',
-  IMMEDIATE: 'As it happens',
-  DIGEST: 'Daily digest',
-};
 
-export function categoryLabel(category: NotificationCategory): string {
-  return CATEGORY_LABELS[category];
+export function categoryLabel(category: NotificationCategory, copy: NotificationsCopy): string {
+  return copy.category[category] ?? category;
 }
 
-export function categoryDescription(category: NotificationCategory): string {
-  return CATEGORY_DESCRIPTIONS[category];
+export function categoryDescription(
+  category: NotificationCategory,
+  copy: NotificationsCopy,
+): string {
+  return copy.categoryDescription[category] ?? '';
 }
 
-export function channelLabel(channel: NotificationChannel): string {
-  return CHANNEL_LABELS[channel];
+export function channelLabel(channel: NotificationChannel, copy: NotificationsCopy): string {
+  return copy.channel[channel] ?? channel;
 }
 
 /**
@@ -296,14 +266,15 @@ export function channelLabel(channel: NotificationChannel): string {
  * mandatory today; the fallback is here so that a category that becomes mandatory later
  * shows something true rather than a claim about account safety.
  */
-export function mandatoryReason(category: NotificationCategory): string {
-  return category === 'SECURITY'
-    ? 'Always on. This is how you find out if somebody else reaches your account.'
-    : 'Always on. The platform has to be able to reach you about this.';
+export function mandatoryReason(
+  category: NotificationCategory,
+  copy: NotificationsCopy,
+): string {
+  return category === 'SECURITY' ? copy.mandatorySecurity : copy.mandatoryOther;
 }
 
-export function modeLabel(mode: DeliveryMode): string {
-  return MODE_LABELS[mode];
+export function modeLabel(mode: DeliveryMode, copy: NotificationsCopy): string {
+  return copy.mode[mode] ?? mode;
 }
 
 /**

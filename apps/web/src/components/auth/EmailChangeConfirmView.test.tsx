@@ -3,6 +3,15 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { ApiError } from '../../lib/api/problem';
 import { confirmEmailChange } from '../../lib/auth/credentials';
 import { EmailChangeConfirmView } from './EmailChangeConfirmView';
+import { emailChangeCopyFrom } from '../../lib/i18n/auth-copy';
+import { translatorFor } from '../../test-copy';
+
+/*
+ * The copy the page would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const COPY = emailChangeCopyFrom(translatorFor('auth'));
 
 /**
  * §4.1's A-12, second half — issue #277.
@@ -52,7 +61,7 @@ afterEach(cleanup);
 
 describe('a link that works', () => {
   it('spends the token exactly once and says the address has moved', async () => {
-    render(<EmailChangeConfirmView />);
+    render(<EmailChangeConfirmView copy={COPY} />);
 
     expect(await screen.findByText('Your email address has been changed')).toBeInTheDocument();
     expect(confirmMock).toHaveBeenCalledTimes(1);
@@ -60,13 +69,13 @@ describe('a link that works', () => {
   });
 
   it('does not claim anybody was signed out, because an address change revokes nothing', async () => {
-    render(<EmailChangeConfirmView />);
+    render(<EmailChangeConfirmView copy={COPY} />);
 
     expect(await screen.findByText(/still is/u)).toBeInTheDocument();
   });
 
   it('announces the outcome through a live region', async () => {
-    render(<EmailChangeConfirmView />);
+    render(<EmailChangeConfirmView copy={COPY} />);
 
     await screen.findByText('Your email address has been changed');
     expect(screen.getByRole('status')).toHaveTextContent(
@@ -85,7 +94,7 @@ describe('a link that cannot be used', () => {
       }),
     );
 
-    render(<EmailChangeConfirmView />);
+    render(<EmailChangeConfirmView copy={COPY} />);
 
     expect(await screen.findByText('This link has expired. Ask for a new one.')).toBeInTheDocument();
     expect(screen.getByText(/Your account has not moved/u)).toBeInTheDocument();
@@ -102,7 +111,7 @@ describe('an address somebody else took first', () => {
       }),
     );
 
-    render(<EmailChangeConfirmView />);
+    render(<EmailChangeConfirmView copy={COPY} />);
 
     expect(await screen.findByText('That address was taken first')).toBeInTheDocument();
     // The service rolls the claim back on this refusal, so the link survives.
@@ -114,7 +123,7 @@ describe('an address somebody else took first', () => {
 describe('no token at all', () => {
   it('explains rather than reporting an error, and asks the service nothing', async () => {
     search = '';
-    render(<EmailChangeConfirmView />);
+    render(<EmailChangeConfirmView copy={COPY} />);
 
     expect(screen.getByText('Open the link we sent you')).toBeInTheDocument();
     expect(confirmMock).not.toHaveBeenCalled();

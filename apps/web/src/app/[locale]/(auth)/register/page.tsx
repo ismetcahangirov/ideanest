@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { getTranslations } from 'next-intl/server';
 import { RegisterForm } from '../../../../components/auth/RegisterForm';
+import { registerCopy } from '../../../../lib/i18n/shell-copy.server';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 
 /**
@@ -24,15 +26,17 @@ import { privatePageMetadata } from '../../../../lib/seo/metadata';
  * `noindex` for the reason the sign-in page gives.
  */
 
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Create an account',
-  description: 'Create an IdeaNest account.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('auth.register');
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
 
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  const t = await getTranslations('auth');
+
   return (
-    <Suspense fallback={<p className="text-white/40">Loading the form…</p>}>
-      <RegisterForm />
+    <Suspense fallback={<p className="text-white/40">{t('loadingForm')}</p>}>
+      <RegisterForm copy={await registerCopy()} />
     </Suspense>
   );
 }

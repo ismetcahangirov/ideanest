@@ -1,4 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import az from '../../../messages/az.json';
+import en from '../../../messages/en.json';
+import ru from '../../../messages/ru.json';
+import tr from '../../../messages/tr.json';
+
+/** All four, because a note missing from one of them is a module blocked for no stated reason. */
+const CATALOGUES = [az, en, ru, tr];
 import {
   CONSOLE_GROUPS,
   CONSOLE_MODULES,
@@ -30,7 +37,10 @@ describe('the console modules', () => {
     for (const module of CONSOLE_MODULES) {
       if (module.state === 'blocked') {
         expect(module.href, `${module.code} is blocked and must not link anywhere`).toBeNull();
-        expect(module.waitingOn, `${module.code} must say what it waits on`).toBeTruthy();
+        expect(
+          noteFor(module.code),
+          `${module.code} must say what it waits on, in every language`,
+        ).toBeTruthy();
       } else {
         expect(module.href, `${module.code} is built and must link somewhere`).toBeTruthy();
       }
@@ -46,7 +56,10 @@ describe('the console modules', () => {
     const partial = CONSOLE_MODULES.filter((module) => module.state === 'partial');
     expect(partial.length).toBeGreaterThan(0);
     for (const module of partial) {
-      expect(module.waitingOn, `${module.code} is part built and must say what is missing`).toBeTruthy();
+      expect(
+        noteFor(module.code),
+        `${module.code} is part built and must say what is missing, in every language`,
+      ).toBeTruthy();
     }
   });
 
@@ -55,6 +68,21 @@ describe('the console modules', () => {
     expect(builtModuleCount()).toBe(reachable);
   });
 });
+
+/**
+ * Whether every language has a note for a module — issue #324.
+ *
+ * <p>The note moved to `admin.modules.{code}.waitingOn` and the state stayed here, so the
+ * invariant the two tests below assert now spans the catalogue: a module marked unfinished
+ * with no sentence saying why is the defect, and a sentence that exists in English and not in
+ * Turkish is the same defect for three quarters of the platform's readers.
+ */
+function noteFor(code: string): boolean {
+  return CATALOGUES.every((catalogue) => {
+    const module = (catalogue.admin.modules as Record<string, { waitingOn?: string }>)[code];
+    return typeof module?.waitingOn === 'string' && module.waitingOn.length > 0;
+  });
+}
 
 describe('the console navigation', () => {
   it('links only to screens a module actually owns', () => {
@@ -67,8 +95,8 @@ describe('the console navigation', () => {
     for (const group of CONSOLE_GROUPS) {
       for (const link of group.links) {
         expect(
-          owned.has(link.href),
-          `${link.href} is in the rail and belongs to no module`,
+          owned.has(link),
+          `${link} is in the rail and belongs to no module`,
         ).toBe(true);
       }
     }
@@ -78,7 +106,7 @@ describe('the console navigation', () => {
     // The other direction, and the one that catches a screen shipped with no way to reach
     // it: the ledger and the three curation screens are each a module's second, third or
     // fourth, and none of them has a row of its own on the index.
-    const railed = new Set(CONSOLE_GROUPS.flatMap((group) => group.links.map((link) => link.href)));
+    const railed = new Set(CONSOLE_GROUPS.flatMap((group) => group.links));
 
     for (const module of CONSOLE_MODULES) {
       for (const screen of screensOf(module)) {
@@ -88,7 +116,7 @@ describe('the console navigation', () => {
   });
 
   it('names every destination exactly once', () => {
-    const hrefs = CONSOLE_GROUPS.flatMap((group) => group.links.map((link) => link.href));
+    const hrefs = CONSOLE_GROUPS.flatMap((group) => group.links);
     expect(new Set(hrefs).size).toBe(hrefs.length);
   });
 });

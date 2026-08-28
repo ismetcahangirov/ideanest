@@ -2,9 +2,19 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import type { Collection } from '../../lib/collections/api';
 import { CollectionHeader } from './CollectionHeader';
+import { collectionHeaderCopyFrom } from '../../lib/i18n/collection-copy';
+import { translatorFor } from '../../test-copy';
+/*
+ * The copy the route would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const COPY = collectionHeaderCopyFrom(
+  translatorFor('discovery.collections'),
+  translatorFor('common'),
+);
 
 /** The English catalogue's `discovery.collections.window`. */
-const WINDOW_COPY = { closes: 'Closes', openSince: 'Open since' };
 
 /**
  * The head of a collection landing page — D-08, issue #266.
@@ -41,7 +51,7 @@ afterEach(cleanup);
 
 describe('a collection header', () => {
   it('names the collection and shows the trail it sits in', () => {
-    render(<CollectionHeader locale="en" windowCopy={WINDOW_COPY} collection={collection()} />);
+    render(<CollectionHeader locale="en" copy={COPY} collection={collection()} />);
 
     expect(screen.getByRole('heading', { level: 1, name: 'Spring 2026' })).toBeInTheDocument();
 
@@ -50,19 +60,19 @@ describe('a collection header', () => {
   });
 
   it('prints the curator’s standfirst rather than paraphrasing it', () => {
-    render(<CollectionHeader locale="en" windowCopy={WINDOW_COPY} collection={collection()} />);
+    render(<CollectionHeader locale="en" copy={COPY} collection={collection()} />);
 
     expect(screen.getByText('Applications for the spring programme.')).toBeInTheDocument();
   });
 
   it('says what an open call is, because it is the one kind a creator can act on', () => {
-    render(<CollectionHeader locale="en" windowCopy={WINDOW_COPY} collection={collection()} />);
+    render(<CollectionHeader locale="en" copy={COPY} collection={collection()} />);
 
     expect(screen.getByText(/programme campaigns can be submitted to/u)).toBeInTheDocument();
   });
 
   it('states the closing date, machine-readable, and never as a countdown', () => {
-    render(<CollectionHeader locale="en" windowCopy={WINDOW_COPY} collection={collection()} />);
+    render(<CollectionHeader locale="en" copy={COPY} collection={collection()} />);
 
     expect(screen.getByText('Closes')).toBeInTheDocument();
 
@@ -75,7 +85,7 @@ describe('a collection header', () => {
   });
 
   it('states the collection’s own size as text', () => {
-    render(<CollectionHeader locale="en" windowCopy={WINDOW_COPY} collection={collection({ projectCount: 3 })} />);
+    render(<CollectionHeader locale="en" copy={COPY} collection={collection({ projectCount: 3 })} />);
 
     expect(screen.getByText('3 campaigns')).toBeInTheDocument();
   });
@@ -84,7 +94,7 @@ describe('a collection header', () => {
     render(
       <CollectionHeader
         locale="en"
-        windowCopy={WINDOW_COPY}
+        copy={COPY}
         collection={collection({ kind: 'staff_selection', opensAt: null, closesAt: null })}
       />,
     );
@@ -96,13 +106,13 @@ describe('a collection header', () => {
 
 describe('the editorial badge', () => {
   it('is stated in words when membership grants it', () => {
-    render(<CollectionHeader locale="en" windowCopy={WINDOW_COPY} collection={collection({ grantsBadge: true })} />);
+    render(<CollectionHeader locale="en" copy={COPY} collection={collection({ grantsBadge: true })} />);
 
     expect(screen.getByText(/carry the IdeaNest editorial badge/u)).toBeInTheDocument();
   });
 
   it('says nothing when it does not', () => {
-    render(<CollectionHeader locale="en" windowCopy={WINDOW_COPY} collection={collection({ grantsBadge: false })} />);
+    render(<CollectionHeader locale="en" copy={COPY} collection={collection({ grantsBadge: false })} />);
 
     expect(screen.queryByText(/editorial badge/u)).toBeNull();
   });
@@ -113,7 +123,7 @@ describe('the cover', () => {
     const { container } = render(
       <CollectionHeader
         locale="en"
-        windowCopy={WINDOW_COPY}
+        copy={COPY}
         collection={collection({
           image: { url: 'https://example.test/cover.jpg', width: 1600, height: 900 },
         })}
@@ -126,7 +136,7 @@ describe('the cover', () => {
   });
 
   it('is simply absent when there is none, rather than a broken element', () => {
-    const { container } = render(<CollectionHeader locale="en" windowCopy={WINDOW_COPY} collection={collection()} />);
+    const { container } = render(<CollectionHeader locale="en" copy={COPY} collection={collection()} />);
 
     expect(container.querySelector('img')).toBeNull();
   });

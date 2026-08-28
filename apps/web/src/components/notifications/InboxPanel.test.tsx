@@ -9,6 +9,14 @@ import {
   type InboxPage,
 } from '../../lib/notifications/api';
 import { InboxPanel } from './InboxPanel';
+import { inboxCopyFrom } from '../../lib/i18n/notifications-copy';
+import { translatorFor } from '../../test-copy';
+/*
+ * The copy the route would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const COPY = inboxCopyFrom(translatorFor('account.notifications'));
 
 vi.mock('../../lib/notifications/api', () => ({
   listNotifications: vi.fn(),
@@ -65,7 +73,7 @@ beforeEach(() => {
 describe('InboxPanel', () => {
   it('announces that it is loading rather than showing a blank panel', () => {
     listMock.mockReturnValue(new Promise<InboxPage>(() => {}));
-    render(<InboxPanel />);
+    render(<InboxPanel copy={COPY} />);
 
     // The placeholders themselves are `aria-hidden`; the container carries the message and
     // the busy state, so a screen reader hears the wait rather than unnamed rectangles.
@@ -75,7 +83,7 @@ describe('InboxPanel', () => {
 
   it('renders each notification as a sentence naming its campaign', async () => {
     listMock.mockResolvedValue(page({ notifications: [GOAL, PLEDGE], unreadCount: 1 }));
-    render(<InboxPanel />);
+    render(<InboxPanel copy={COPY} />);
 
     await waitFor(() => expect(rows()).toHaveLength(2));
     expect(
@@ -92,7 +100,7 @@ describe('InboxPanel', () => {
    */
   it('says "unread" in words as well as marking it', async () => {
     listMock.mockResolvedValue(page({ notifications: [GOAL, PLEDGE], unreadCount: 1 }));
-    render(<InboxPanel />);
+    render(<InboxPanel copy={COPY} />);
 
     await waitFor(() => expect(rows()).toHaveLength(2));
     expect(within(rows()[0] as HTMLElement).getByText('Unread')).toBeInTheDocument();
@@ -101,14 +109,14 @@ describe('InboxPanel', () => {
 
   it('shows the service badge number rather than a count of the loaded page', async () => {
     listMock.mockResolvedValue(page({ notifications: [GOAL], unreadCount: 42 }));
-    render(<InboxPanel />);
+    render(<InboxPanel copy={COPY} />);
 
     expect(await screen.findByText('42 unread')).toBeInTheDocument();
   });
 
   it('links a campaign notification to the two-segment public page', async () => {
     listMock.mockResolvedValue(page({ notifications: [GOAL], unreadCount: 1 }));
-    render(<InboxPanel />);
+    render(<InboxPanel copy={COPY} />);
 
     const link = await screen.findByRole('link', {
       name: 'Xari Bulbul Ceramics reached its goal of 5,000.00 AZN',
@@ -125,7 +133,7 @@ describe('InboxPanel', () => {
     listMock.mockResolvedValue(
       page({ notifications: [notification({ id: 'bare', params: '{}' })], unreadCount: 1 }),
     );
-    render(<InboxPanel />);
+    render(<InboxPanel copy={COPY} />);
 
     await waitFor(() => expect(rows()).toHaveLength(1));
     expect(screen.getByText('A campaign reached its goal of what it needed')).toBeInTheDocument();
@@ -135,7 +143,7 @@ describe('InboxPanel', () => {
   it('marks one read and decrements the badge without re-fetching', async () => {
     listMock.mockResolvedValue(page({ notifications: [GOAL], unreadCount: 3 }));
     markReadMock.mockResolvedValue({ ...GOAL, readAt: '2026-08-20T09:00:00.000Z' });
-    render(<InboxPanel />);
+    render(<InboxPanel copy={COPY} />);
 
     await userEvent.click(await screen.findByRole('button', { name: 'Mark as read' }));
 
@@ -148,7 +156,7 @@ describe('InboxPanel', () => {
   it('reports a refusal to mark read rather than showing the row as read', async () => {
     listMock.mockResolvedValue(page({ notifications: [GOAL], unreadCount: 1 }));
     markReadMock.mockRejectedValue(new ApiError(404, { title: 'Not found' }, 'Not found'));
-    render(<InboxPanel />);
+    render(<InboxPanel copy={COPY} />);
 
     await userEvent.click(await screen.findByRole('button', { name: 'Mark as read' }));
 
@@ -158,7 +166,7 @@ describe('InboxPanel', () => {
 
   it('filters the loaded rows by category', async () => {
     listMock.mockResolvedValue(page({ notifications: [GOAL, PLEDGE], unreadCount: 1 }));
-    render(<InboxPanel />);
+    render(<InboxPanel copy={COPY} />);
 
     await waitFor(() => expect(rows()).toHaveLength(2));
     await userEvent.click(screen.getByRole('button', { name: /Your pledges/ }));
@@ -171,7 +179,7 @@ describe('InboxPanel', () => {
 
   it('filters to unread only', async () => {
     listMock.mockResolvedValue(page({ notifications: [GOAL, PLEDGE], unreadCount: 1 }));
-    render(<InboxPanel />);
+    render(<InboxPanel copy={COPY} />);
 
     await waitFor(() => expect(rows()).toHaveLength(2));
     const toggle = screen.getByRole('button', { name: 'Unread only' });
@@ -188,7 +196,7 @@ describe('InboxPanel', () => {
    */
   it('says an empty filter result is about what has loaded, not about the inbox', async () => {
     listMock.mockResolvedValue(page({ notifications: [GOAL], unreadCount: 1 }));
-    render(<InboxPanel />);
+    render(<InboxPanel copy={COPY} />);
 
     await waitFor(() => expect(rows()).toHaveLength(1));
     await userEvent.click(screen.getByRole('button', { name: /Comments and messages/ }));
@@ -199,7 +207,7 @@ describe('InboxPanel', () => {
 
   it('says an empty inbox is empty', async () => {
     listMock.mockResolvedValue(page());
-    render(<InboxPanel />);
+    render(<InboxPanel copy={COPY} />);
 
     expect(await screen.findByText('Nothing yet')).toBeInTheDocument();
   });
@@ -215,7 +223,7 @@ describe('InboxPanel', () => {
         }),
       )
       .mockResolvedValueOnce(page({ notifications: [PLEDGE], unreadCount: 2 }));
-    render(<InboxPanel />);
+    render(<InboxPanel copy={COPY} />);
 
     await userEvent.click(await screen.findByRole('button', { name: 'Load more' }));
 
@@ -230,7 +238,7 @@ describe('InboxPanel', () => {
 
   it('offers no "load more" when the first page is the whole inbox', async () => {
     listMock.mockResolvedValue(page({ notifications: [GOAL], unreadCount: 1 }));
-    render(<InboxPanel />);
+    render(<InboxPanel copy={COPY} />);
 
     await waitFor(() => expect(rows()).toHaveLength(1));
     expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
@@ -240,7 +248,7 @@ describe('InboxPanel', () => {
     listMock
       .mockRejectedValueOnce(new ApiError(503, null, 'Service unavailable'))
       .mockResolvedValueOnce(page({ notifications: [GOAL], unreadCount: 1 }));
-    render(<InboxPanel />);
+    render(<InboxPanel copy={COPY} />);
 
     await userEvent.click(await screen.findByRole('button', { name: 'Try again' }));
 
@@ -249,7 +257,7 @@ describe('InboxPanel', () => {
 
   it('says so plainly when the session has gone rather than reporting an error', async () => {
     listMock.mockRejectedValue(new ApiError(401, null, 'Not signed in'));
-    render(<InboxPanel />);
+    render(<InboxPanel copy={COPY} />);
 
     expect(await screen.findByText('You are signed out')).toBeInTheDocument();
   });
@@ -264,7 +272,7 @@ describe('InboxPanel', () => {
         unreadCount: 2,
       }),
     );
-    render(<InboxPanel />);
+    render(<InboxPanel copy={COPY} />);
 
     expect(await screen.findByRole('heading', { name: 'Today', level: 3 })).toBeInTheDocument();
     expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(2);

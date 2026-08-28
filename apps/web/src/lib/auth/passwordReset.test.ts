@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { currentAccessToken, setAccessToken } from '../api/access-token';
 import { ApiError } from '../api/problem';
-import { RESET_LINK_LIFETIME, RESET_TOKEN_PARAM, requestPasswordReset, resetPassword } from './passwordReset';
+import { RESET_TOKEN_PARAM, requestPasswordReset, resetPassword } from './passwordReset';
 
 /**
  * §4.1's A-06 — issue #271.
@@ -132,8 +132,10 @@ describe('the constants both screens read', () => {
     expect(RESET_TOKEN_PARAM).toBe('token');
   });
 
-  it('states the lifetime once, so two screens cannot describe one link differently', () => {
-    // `ideanest.auth.password-reset-token-ttl` is PT1H.
-    expect(RESET_LINK_LIFETIME).toBe('one hour');
-  });
+  /*
+   * The lifetime moved to `auth.reset.lifetime` with #324 — a phrase has to exist in four
+   * languages and a constant cannot. `lib/i18n/auth-copy.ts` keeps the single-source property
+   * by reading that one key into both screens' copy, and `catalogue.test.ts` asserts the four
+   * languages hold it.
+   */
 });

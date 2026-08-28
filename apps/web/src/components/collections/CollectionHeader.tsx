@@ -5,16 +5,15 @@ import type { ReactNode } from 'react';
 import { MediaFrame, Tag } from '@ideanest/ui/server';
 import {
   COLLECTIONS_PATH,
-  campaignCount,
   isOpenCall,
-  kindLabel,
   windowFacts,
   type Collection,
   type CollectionKind,
 } from '../../lib/collections/api';
 import { COLLECTION_COVER_SIZES } from '../../lib/images/sizes';
 import { canOptimise } from '../../lib/images/source';
-import type { WindowCopy } from '../../lib/collections/api';
+import type { CollectionHeaderCopy } from '../../lib/i18n/collection-copy';
+import { pluralise } from '../../lib/i18n/plurals';
 import type { Locale } from '../../lib/i18n/locale';
 
 /**
@@ -68,26 +67,15 @@ function kindIcon(kind: string): ReactNode {
   return Object.hasOwn(KIND_ICONS, kind) ? KIND_ICONS[kind as CollectionKind] : null;
 }
 
-/**
- * What this kind of list is, in one sentence.
+/*
+ * WHAT THIS KIND OF LIST IS, IN ONE SENTENCE, moved to `discovery.collections.sentences` with
+ * #324. The open call's is the one that earns its place: it is the only kind a creator can
+ * still do something about, and "this is a programme with a deadline" is not something the
+ * title alone conveys. The other two describe a list somebody browses, and the sentence is
+ * short because the curator's own standfirst is the copy that matters on this page.
  *
- * The open call's is the one that earns its place: it is the only kind a creator can still do
- * something about, and "this is a programme with a deadline" is not something the title alone
- * conveys. The other two describe a list somebody browses, and the sentence is short because
- * the curator's own standfirst is the copy that matters on this page.
+ * A kind this build does not know has no sentence, exactly as it had none before.
  */
-function kindSentence(collection: Collection): string | null {
-  switch (collection.kind) {
-    case 'open_call':
-      return 'An open call: a programme campaigns can be submitted to while it is open.';
-    case 'staff_selection':
-      return 'Chosen by the IdeaNest team.';
-    case 'themed':
-      return 'A collection built around one subject.';
-    default:
-      return null;
-  }
-}
 
 export interface CollectionHeaderProps {
   /**
@@ -99,23 +87,23 @@ export interface CollectionHeaderProps {
    * which is the arrangement every other localised value in this tree already uses.
    */
   readonly locale: Locale;
-  readonly windowCopy: WindowCopy;
+  readonly copy: CollectionHeaderCopy;
   readonly collection: Collection;
 }
 
-export function CollectionHeader({ collection, locale, windowCopy }: CollectionHeaderProps) {
-  const label = kindLabel(collection.kind);
+export function CollectionHeader({ collection, locale, copy }: CollectionHeaderProps) {
+  const label = copy.kinds[collection.kind] ?? null;
   const icon = kindIcon(collection.kind);
-  const facts = windowFacts(collection, locale, windowCopy);
-  const sentence = kindSentence(collection);
+  const facts = windowFacts(collection, locale, copy.window);
+  const sentence = copy.sentences[collection.kind] ?? null;
 
   return (
     <header>
-      <nav aria-label="Breadcrumb" className="text-sm text-white/40">
+      <nav aria-label={copy.breadcrumb} className="text-sm text-white/40">
         <ol className="flex list-none flex-wrap items-center gap-2">
           <li>
             <Link href={COLLECTIONS_PATH} className="hover:text-white">
-              Collections
+              {copy.collections}
             </Link>
           </li>
           <li aria-hidden="true">/</li>
@@ -154,9 +142,9 @@ export function CollectionHeader({ collection, locale, windowCopy }: CollectionH
 
           <dl className="mt-6 flex flex-wrap items-baseline gap-x-6 gap-y-2 text-sm">
             <div className="flex items-baseline gap-1.5">
-              <dt className="text-white/40">In this collection</dt>
+              <dt className="text-white/40">{copy.inCollection}</dt>
               <dd className="text-white/80 tabular-nums">
-                {campaignCount(collection.projectCount)}
+                {pluralise(locale, copy.count, collection.projectCount)}
               </dd>
             </div>
 
@@ -174,10 +162,8 @@ export function CollectionHeader({ collection, locale, windowCopy }: CollectionH
             <p className="mt-4 flex max-w-[60ch] items-start gap-2 text-sm text-white/64">
               <BadgeCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-white/40" />
               <span>
-                Campaigns in this collection carry the IdeaNest editorial badge.
-                {isOpenCall(collection)
-                  ? ' Being accepted into this programme is what grants it.'
-                  : ' It is a selection the platform stands behind, not a guarantee about any campaign.'}
+                {copy.badge}{' '}
+                {isOpenCall(collection) ? copy.badgeOpenCall : copy.badgeCurated}
               </span>
             </p>
           )}

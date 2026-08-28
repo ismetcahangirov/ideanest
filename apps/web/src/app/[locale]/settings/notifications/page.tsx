@@ -4,6 +4,7 @@ import { AccountPageHeader } from '../../../../components/account/AccountPageHea
 import { PreferencesPanel } from '../../../../components/notifications/PreferencesPanel';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 import { getTranslations } from 'next-intl/server';
+import { notificationPreferencesCopy } from '../../../../lib/i18n/shell-copy.server';
 
 /**
  * The one class an inline link inside a page's introduction carries.
@@ -57,7 +58,7 @@ export default async function NotificationSettingsPage() {
       </AccountPageHeader>
 
       <div className="mt-8">
-        <PreferencesPanel />
+        <PreferencesPanel copy={await notificationPreferencesCopy()} />
       </div>
     </>
   );

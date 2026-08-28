@@ -1,6 +1,8 @@
 import { socialPlatformLabel, type PublicProfile } from '../../lib/profiles/api';
 import { dateTimeFormat } from '../../lib/i18n/formats';
 import type { Locale } from '../../lib/i18n/locale';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { ProfileAboutCopy } from '../../lib/i18n/profile-copy';
 
 /**
  * §4.2's P-06 — the About tab.
@@ -99,9 +101,11 @@ export interface ProfileAboutProps {
    * piece of localised data reaches this subtree.
    */
   readonly locale: Locale;
+  /** The section's words, resolved by the route — see `lib/i18n/profile-copy.ts`. */
+  readonly copy: ProfileAboutCopy;
 }
 
-export function ProfileAbout({ profile, locale }: ProfileAboutProps) {
+export function ProfileAbout({ profile, locale, copy }: ProfileAboutProps) {
   const joined = joinedMonth(profile.joinedAt, locale);
   const bio = profile.bio === null ? '' : profile.bio.trim();
   /*
@@ -115,11 +119,13 @@ export function ProfileAbout({ profile, locale }: ProfileAboutProps) {
 
   return (
     <section className="rounded-2xl border border-white/8 bg-surface-2 p-6 sm:p-8">
-      <h2 className="text-lg font-medium tracking-[-0.02em] text-white">About {profile.name}</h2>
+      <h2 className="text-lg font-medium tracking-[-0.02em] text-white">
+        {fillPlaceholders(copy.heading, { name: profile.name })}
+      </h2>
 
       {bio === '' ? (
         <p className="mt-3 max-w-[62ch] text-[15px] leading-relaxed text-white/64">
-          {profile.name} has not written anything here.
+          {fillPlaceholders(copy.empty, { name: profile.name })}
         </p>
       ) : (
         <p className="mt-3 max-w-[62ch] whitespace-pre-line text-[15px] leading-relaxed text-white/64">
@@ -131,14 +137,14 @@ export function ProfileAbout({ profile, locale }: ProfileAboutProps) {
         <dl className="mt-6 flex flex-col gap-3 border-t border-white/6 pt-6 text-sm">
           {profile.location !== null && (
             <div className="flex flex-wrap gap-x-3">
-              <dt className="text-white/40">Based in</dt>
+              <dt className="text-white/40">{copy.basedIn}</dt>
               <dd className="text-white/64">{profile.location.name}</dd>
             </div>
           )}
 
           {profile.websiteUrl !== null && (
             <div className="flex min-w-0 flex-wrap gap-x-3">
-              <dt className="text-white/40">Website</dt>
+              <dt className="text-white/40">{copy.website}</dt>
               <dd className="min-w-0 break-all">
                 <a
                   href={profile.websiteUrl}
@@ -154,7 +160,7 @@ export function ProfileAbout({ profile, locale }: ProfileAboutProps) {
 
           {joined !== null && (
             <div className="flex flex-wrap gap-x-3">
-              <dt className="text-white/40">On IdeaNest since</dt>
+              <dt className="text-white/40">{copy.since}</dt>
               <dd className="text-white/64">{joined}</dd>
             </div>
           )}
@@ -163,7 +169,7 @@ export function ProfileAbout({ profile, locale }: ProfileAboutProps) {
 
       {socialLinks.length > 0 && (
         <div className="mt-6 border-t border-white/6 pt-6">
-          <h3 className="text-sm font-medium text-white/64">Elsewhere</h3>
+          <h3 className="text-sm font-medium text-white/64">{copy.elsewhere}</h3>
           <ul className="mt-3 flex flex-col gap-2 text-sm">
             {socialLinks.map((link) => (
               /*

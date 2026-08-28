@@ -7,11 +7,9 @@ import { CircleCheck } from 'lucide-react';
 import { Field, InlineAlert, Pill, TextInput } from '@ideanest/ui';
 import { refusalDetailOf, refusalOf } from '../../lib/auth/credentials';
 import { describeAuthFailure, fieldErrorsOf, type AuthFailure } from '../../lib/auth/failures';
-import {
-  RESET_LINK_LIFETIME,
-  RESET_TOKEN_PARAM,
-  resetPassword,
-} from '../../lib/auth/passwordReset';
+import { RESET_TOKEN_PARAM, resetPassword } from '../../lib/auth/passwordReset';
+import type { PasswordResetConfirmCopy } from '../../lib/i18n/auth-copy';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import { AuthPageHeader } from './AuthPageHeader';
 import { FormErrorSummary } from './FormErrorSummary';
 
@@ -75,7 +73,12 @@ import { FormErrorSummary } from './FormErrorSummary';
 
 type Step = 'form' | 'done';
 
-export function PasswordResetConfirmForm() {
+export interface PasswordResetConfirmFormProps {
+  /** Every word this screen draws, resolved by the page — see `lib/i18n/auth-copy.ts`. */
+  readonly copy: PasswordResetConfirmCopy;
+}
+
+export function PasswordResetConfirmForm({ copy }: PasswordResetConfirmFormProps) {
   const searchParams = useSearchParams();
   const token = (searchParams.get(RESET_TOKEN_PARAM) ?? '').trim();
 
@@ -99,11 +102,11 @@ export function PasswordResetConfirmForm() {
        * would be asking it to hold an opinion about a comparison the browser has already made.
        */
       setFailure({
-        title: 'The two passwords do not match',
-        detail: 'Type the same password in both boxes, then try again.',
+        title: copy.mismatchTitle,
+        detail: copy.mismatchDetail,
         retryable: true,
       });
-      setFieldErrors({ repeated: 'This does not match the password above.' });
+      setFieldErrors({ repeated: copy.mismatchField });
       return;
     }
 
@@ -125,7 +128,7 @@ export function PasswordResetConfirmForm() {
          * filled boxes above a message saying the link is dead invites somebody to press the
          * button again, which cannot work however good the password is.
          */
-        setDeadLink(refusalDetailOf(cause) ?? 'This link cannot be used.');
+        setDeadLink(refusalDetailOf(cause) ?? copy.deadFallback);
         return;
       }
 
@@ -133,10 +136,10 @@ export function PasswordResetConfirmForm() {
        * `weak-password` KEEPS THE TOKEN AND THE FORM. The policy is checked before the link is
        * claimed, so the same token is still spendable — see the component comment.
        */
-      setFailure(describeAuthFailure(cause));
+      setFailure(describeAuthFailure(cause, copy.failures));
       setFieldErrors(
         refusal === 'weak-password'
-          ? { password: refusalDetailOf(cause) ?? 'That password was refused.', ...fieldErrorsOf(cause) }
+          ? { password: refusalDetailOf(cause) ?? copy.refusedPassword, ...fieldErrorsOf(cause) }
           : fieldErrorsOf(cause),
       );
     } finally {
@@ -151,11 +154,8 @@ export function PasswordResetConfirmForm() {
      */
     return (
       <div>
-        <AuthPageHeader title="Open the link we sent you">
-          This page sets a new password, and it needs the link from the reset email to do it.
-          Opening that link brings you back here with everything it needs.
-        </AuthPageHeader>
-        <AskAgain label="Ask for a reset link" />
+        <AuthPageHeader title={copy.noTokenTitle}>{copy.noTokenIntro}</AuthPageHeader>
+        <AskAgain label={copy.askForLink} signIn={copy.signIn} />
       </div>
     );
   }
@@ -163,23 +163,18 @@ export function PasswordResetConfirmForm() {
   if (deadLink !== null) {
     return (
       <div>
-        <AuthPageHeader title="This link cannot be used" />
+        <AuthPageHeader title={copy.deadTitle} />
 
-        <InlineAlert variant="danger" title="Reset link refused" className="mb-6">
+        <InlineAlert variant="danger" title={copy.deadAlertTitle} className="mb-6">
           {/* The service's own sentence. It is the only one that knows which of the three this is. */}
           <p>{deadLink}</p>
         </InlineAlert>
 
         <div className="rounded-lg border border-white/8 bg-surface-2 p-5 text-[15px] leading-relaxed text-white/64">
-          <p>
-            A reset link works for {RESET_LINK_LIFETIME} and can be used once, which is shorter
-            than a verification link on purpose — it sets a password rather than proving an
-            address. Asking for a new one also retires any older link, so use the most recent
-            message.
-          </p>
+          <p>{fillPlaceholders(copy.deadExplain, { lifetime: copy.lifetime })}</p>
         </div>
 
-        <AskAgain label="Ask for a new link" />
+        <AskAgain label={copy.askNewLink} signIn={copy.signIn} />
       </div>
     );
   }
@@ -194,17 +189,14 @@ export function PasswordResetConfirmForm() {
             rather than something urgent (§2.4).
           */}
           <CircleCheck aria-hidden="true" className="mt-1 size-6 shrink-0 text-[var(--success)]" />
-          <AuthPageHeader title="Your password is set">
-            Every browser that was signed in to this account has been signed out, including any
-            you did not recognise. Sign in with the new password.
-          </AuthPageHeader>
+          <AuthPageHeader title={copy.doneTitle}>{copy.doneIntro}</AuthPageHeader>
         </div>
 
         <Link
           href="/sign-in"
           className="inline-flex h-12 w-full items-center justify-center rounded-full bg-white px-6 text-base font-medium text-on-white transition-colors duration-150 ease-in-out hover:bg-[var(--white-muted)]"
         >
-          Sign in
+          {copy.signIn}
         </Link>
       </div>
     );
@@ -212,18 +204,17 @@ export function PasswordResetConfirmForm() {
 
   return (
     <>
-      <AuthPageHeader title="Choose a new password">
-        This link works for {RESET_LINK_LIFETIME} from when it was sent, and once. Setting a
-        password here signs out every browser that was signed in to the account.
+      <AuthPageHeader title={copy.title}>
+        {fillPlaceholders(copy.intro, { lifetime: copy.lifetime })}
       </AuthPageHeader>
 
       <form onSubmit={submit} noValidate className="flex flex-col gap-5">
         <FormErrorSummary failure={failure} />
 
         <Field
-          label="New password"
+          label={copy.newPassword}
           required
-          hint="Long is stronger than complicated. The exact requirement comes from the service if this one is refused."
+          hint={copy.passwordHint}
           error={fieldErrors['password']}
         >
           <TextInput
@@ -236,9 +227,9 @@ export function PasswordResetConfirmForm() {
         </Field>
 
         <Field
-          label="New password again"
+          label={copy.repeat}
           required
-          hint="Compared in this browser and never sent. A typo here would cost the link."
+          hint={copy.repeatHint}
           error={fieldErrors['repeated']}
         >
           <TextInput
@@ -251,17 +242,17 @@ export function PasswordResetConfirmForm() {
         </Field>
 
         <Pill type="submit" fullWidth size="lg" disabled={submitting}>
-          {submitting ? 'Setting your password' : 'Set my password'}
+          {submitting ? copy.submitting : copy.submit}
         </Pill>
       </form>
 
-      <AskAgain label="Ask for a new link instead" />
+      <AskAgain label={copy.askNewInstead} signIn={copy.signIn} />
     </>
   );
 }
 
 /** The one way off every state of this screen that cannot go forward. */
-function AskAgain({ label }: { readonly label: string }) {
+function AskAgain({ label, signIn }: { readonly label: string; readonly signIn: string }) {
   return (
     <p className="mt-8 text-center text-sm text-white/64">
       <Link
@@ -275,7 +266,7 @@ function AskAgain({ label }: { readonly label: string }) {
         href="/sign-in"
         className="rounded-sm text-white underline underline-offset-4 hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
       >
-        Sign in
+        {signIn}
       </Link>
     </p>
   );

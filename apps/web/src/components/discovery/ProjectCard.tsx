@@ -17,6 +17,10 @@ import { canOptimise } from '../../lib/images/source';
 import { formatMoney } from '../../lib/money';
 import type { ProjectCard as ProjectCardData } from '../../lib/discovery/api';
 import type { DiscoveryStatus } from '../../lib/discovery/vocabulary';
+import type { ProjectCardCopy } from '../../lib/i18n/card-copy';
+import type { Locale } from '../../lib/i18n/locale';
+import { fillNodes, fillPlaceholders } from '../../lib/i18n/placeholders';
+import { pluralise } from '../../lib/i18n/plurals';
 
 /**
  * D-05's project card: image, title, creator, completion, days left, badge.
@@ -67,29 +71,24 @@ import type { DiscoveryStatus } from '../../lib/discovery/vocabulary';
 const URGENT_DAYS = 2;
 
 interface BadgeSpec {
-  readonly label: string;
   readonly icon: ReactNode;
   readonly variant: 'default' | 'success' | 'warning' | 'danger';
 }
 
 /**
- * The five status words, each with an icon and a hue.
+ * The five status words' icon and hue. The words themselves are `discovery.card.badges`.
  *
- * `successful` is `--success` and `late_pledge` is `--warning`: a late-pledge
- * window is a clock running, which is what warning means here, and reaching the
- * goal is the achievement `--success` exists for. Neither is lime — a backer who
- * reads lime as "done" has been told the opposite of the truth (§2.4).
+ * `successful` is `--success` and `late_pledge` is `--warning`: a late-pledge window is a clock
+ * running, which is what warning means here, and reaching the goal is the achievement
+ * `--success` exists for. Neither is lime — a backer who reads lime as "done" has been told the
+ * opposite of the truth (§2.4).
  */
 const BADGES: Record<DiscoveryStatus, BadgeSpec> = {
-  upcoming: { label: 'Upcoming', icon: <CalendarClock className="size-3" />, variant: 'default' },
-  live: { label: 'Live', icon: <CircleDot className="size-3" />, variant: 'default' },
-  late_pledge: { label: 'Late pledge', icon: <Hourglass className="size-3" />, variant: 'warning' },
-  successful: { label: 'Successful', icon: <CircleCheck className="size-3" />, variant: 'success' },
-  unsuccessful: {
-    label: 'Unsuccessful',
-    icon: <CircleSlash className="size-3" />,
-    variant: 'default',
-  },
+  upcoming: { icon: <CalendarClock className="size-3" />, variant: 'default' },
+  live: { icon: <CircleDot className="size-3" />, variant: 'default' },
+  late_pledge: { icon: <Hourglass className="size-3" />, variant: 'warning' },
+  successful: { icon: <CircleCheck className="size-3" />, variant: 'success' },
+  unsuccessful: { icon: <CircleSlash className="size-3" />, variant: 'default' },
 };
 
 /**
@@ -111,9 +110,15 @@ function completionOf(card: ProjectCardData): Decimal | null {
   }
 }
 
-function daysLeftLabel(days: number): string {
-  if (days === 0) return 'Last day';
-  return days === 1 ? '1 day left' : `${days} days left`;
+/**
+ * The deadline, in words.
+ *
+ * ZERO IS NOT "0 DAYS LEFT". It is the last day, and a count of none reads as "none left" to
+ * somebody skimming a grid. The other numbers go through CLDR rather than a singular/plural
+ * split — Russian says остался 1 день, осталось 2 дня, осталось 5 дней.
+ */
+function daysLeftLabel(days: number, copy: ProjectCardCopy, locale: Locale): string {
+  return days === 0 ? copy.lastDay : pluralise(locale, copy.daysLeft, days);
 }
 
 export interface ProjectCardProps {
@@ -129,9 +134,13 @@ export interface ProjectCardProps {
    * document and make every one of them later.
    */
   priority?: boolean;
+  /** Every word this card draws, resolved by whichever parent could — see `card-copy.ts`. */
+  copy: ProjectCardCopy;
+  /** The language, for the two counted sentences. Both change with the number in front. */
+  locale: Locale;
 }
 
-export function ProjectCard({ card, priority = false }: ProjectCardProps) {
+export function ProjectCard({ card, priority = false, copy, locale }: ProjectCardProps) {
   const completion = completionOf(card);
   const badge = card.badge == null ? null : BADGES[card.badge];
   const days = card.daysLeft ?? null;
@@ -202,7 +211,7 @@ export function ProjectCard({ card, priority = false }: ProjectCardProps) {
               <span aria-hidden="true" className="flex items-center">
                 {badge.icon}
               </span>
-              {badge.label}
+              {copy.badges[card.badge as string]}
             </Tag>
           )}
 
@@ -219,7 +228,7 @@ export function ProjectCard({ card, priority = false }: ProjectCardProps) {
               className="inline-flex h-[26px] items-center gap-1.5 rounded-sm bg-lime-500 px-2.5 text-xs font-medium text-on-lime"
             >
               <Clock aria-hidden="true" className="size-3" />
-              {daysLeftLabel(days)}
+              {daysLeftLabel(days, copy, locale)}
             </span>
           )}
         </div>
@@ -237,7 +246,9 @@ export function ProjectCard({ card, priority = false }: ProjectCardProps) {
         </h3>
 
         <p className="text-sm text-white/64">
-          by <span className="text-white/80">{card.creator.name}</span>
+          {fillNodes(copy.by, {
+            creator: <span className="text-white/80">{card.creator.name}</span>,
+          })}
         </p>
 
         {completion !== null ? (
@@ -251,31 +262,31 @@ export function ProjectCard({ card, priority = false }: ProjectCardProps) {
                  */
                 completion.toNumber()
               }
-              label={`${completion.toFixed(0)} percent of the goal`}
+              label={fillPlaceholders(copy.progressLabel, { percent: completion.toFixed(0) })}
             />
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-sm">
               <span className="font-medium text-white tabular-nums">
                 {formatMoney(card.pledged)}
               </span>
               <span className="text-white/64 tabular-nums">
-                {completion.toFixed(0)}% funded
+                {fillPlaceholders(copy.funded, { percent: completion.toFixed(0) })}
               </span>
             </div>
             {card.goal != null && (
               <p className="text-xs text-white/40 tabular-nums">
-                of {formatMoney(card.goal)} goal
+                {fillPlaceholders(copy.ofGoal, { amount: formatMoney(card.goal) })}
               </p>
             )}
           </div>
         ) : (
-          <p className="mt-auto pt-2 text-sm text-white/40">Not open for pledges yet</p>
+          <p className="mt-auto pt-2 text-sm text-white/40">{copy.notOpen}</p>
         )}
 
         <div className="flex items-center gap-4 text-xs text-white/40">
           <span className="inline-flex items-center gap-1.5">
             <Users aria-hidden="true" className="size-3.5" />
             <span className="tabular-nums">
-              {card.backersCount === 1 ? '1 backer' : `${card.backersCount} backers`}
+              {pluralise(locale, copy.backers, card.backersCount)}
             </span>
           </span>
 
@@ -287,7 +298,7 @@ export function ProjectCard({ card, priority = false }: ProjectCardProps) {
           {!urgent && showDays && days !== null && (
             <span className="inline-flex items-center gap-1.5">
               <Clock aria-hidden="true" className="size-3.5" />
-              <span className="tabular-nums">{daysLeftLabel(days)}</span>
+              <span className="tabular-nums">{daysLeftLabel(days, copy, locale)}</span>
             </span>
           )}
         </div>

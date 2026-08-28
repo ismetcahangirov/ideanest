@@ -26,11 +26,19 @@
  * the facet counts. It arrives with a sort of its own — see `best_match` below.
  */
 
-/** One value of a closed vocabulary, with the label a reader sees. */
-export interface Vocabulary<T extends string> {
-  readonly value: T;
-  readonly label: string;
-}
+/*
+ * THE WORDS MOVED TO THE CATALOGUE — issue #324.
+ *
+ * This module used to pair each value with the label a reader sees. The values are the
+ * service's and stay: `DiscoveryValueBinder` refuses anything outside them with
+ * `400 DISCOVERY_VALUE_UNKNOWN`, so a typo here is a feed that never loads rather than a filter
+ * that quietly does nothing. The labels were copy, and they were the last English on the
+ * platform's front door.
+ *
+ * They are `discovery.filters.{status,sort,completion,amount}` now, keyed by the same value,
+ * and `lib/i18n/feed-copy.ts` reads them. A value with no word renders as the value itself,
+ * which is what `labelOf` did.
+ */
 
 /* -------------------------------------------------------------------------
  * Status — the five words §4.3 gives a backer for where a campaign is
@@ -40,13 +48,8 @@ export const STATUS_VALUES = ['upcoming', 'live', 'late_pledge', 'successful', '
 
 export type DiscoveryStatus = (typeof STATUS_VALUES)[number];
 
-export const STATUSES: readonly Vocabulary<DiscoveryStatus>[] = [
-  { value: 'upcoming', label: 'Upcoming' },
-  { value: 'live', label: 'Live' },
-  { value: 'late_pledge', label: 'Late pledge' },
-  { value: 'successful', label: 'Successful' },
-  { value: 'unsuccessful', label: 'Unsuccessful' },
-];
+/** The five, in the order the rail lists them. `discovery.filters.status` names them. */
+export const STATUSES: readonly DiscoveryStatus[] = STATUS_VALUES;
 
 /* -------------------------------------------------------------------------
  * Sort
@@ -92,13 +95,13 @@ export const DEFAULT_SORT_WITH_QUERY: DiscoverySort = 'best_match';
  * of the two that exists. §11.2's relevance is a composite of seven terms, none
  * of which is about what the reader typed; it stays #44's.
  */
-export const SORTS: readonly Vocabulary<DiscoverySort>[] = [
-  { value: 'best_match', label: 'Best match' },
-  { value: 'newest', label: 'Newest' },
-  { value: 'ending_soon', label: 'Ending soon' },
-  { value: 'most_funded', label: 'Most funded' },
-  { value: 'most_backed', label: 'Most backed' },
-  { value: 'popularity', label: 'Popular' },
+export const SORTS: readonly DiscoverySort[] = [
+  'best_match',
+  'newest',
+  'ending_soon',
+  'most_funded',
+  'most_backed',
+  'popularity',
 ];
 
 /**
@@ -110,8 +113,8 @@ export const SORTS: readonly Vocabulary<DiscoverySort>[] = [
  * the promise the interface breaks the first time somebody uses it. It appears
  * the moment there is text and disappears when the text is cleared.
  */
-export function sortsFor(hasQuery: boolean): readonly Vocabulary<DiscoverySort>[] {
-  return hasQuery ? SORTS : SORTS.filter((option) => option.value !== 'best_match');
+export function sortsFor(hasQuery: boolean): readonly DiscoverySort[] {
+  return hasQuery ? SORTS : SORTS.filter((value) => value !== 'best_match');
 }
 
 /* -------------------------------------------------------------------------
@@ -127,13 +130,7 @@ export const COMPLETION_VALUES = ['under_25', '25_to_50', '50_to_75', '75_to_100
 
 export type CompletionBand = (typeof COMPLETION_VALUES)[number];
 
-export const COMPLETION_BANDS: readonly Vocabulary<CompletionBand>[] = [
-  { value: 'under_25', label: 'Under 25%' },
-  { value: '25_to_50', label: '25% to under 50%' },
-  { value: '50_to_75', label: '50% to under 75%' },
-  { value: '75_to_100', label: '75% to under 100%' },
-  { value: 'over_100', label: 'Funded — 100% or more' },
-];
+export const COMPLETION_BANDS: readonly CompletionBand[] = COMPLETION_VALUES;
 
 /* -------------------------------------------------------------------------
  * Money bands
@@ -155,13 +152,7 @@ export const AMOUNT_BAND_VALUES = [
 
 export type AmountBand = (typeof AMOUNT_BAND_VALUES)[number];
 
-export const AMOUNT_BANDS: readonly Vocabulary<AmountBand>[] = [
-  { value: 'under_1000', label: 'Under 1,000 AZN' },
-  { value: '1000_to_5000', label: '1,000 to under 5,000 AZN' },
-  { value: '5000_to_20000', label: '5,000 to under 20,000 AZN' },
-  { value: '20000_to_50000', label: '20,000 to under 50,000 AZN' },
-  { value: 'over_50000', label: '50,000 AZN and above' },
-];
+export const AMOUNT_BANDS: readonly AmountBand[] = AMOUNT_BAND_VALUES;
 
 /* -------------------------------------------------------------------------
  * Narrowing
@@ -182,7 +173,13 @@ export const isCompletionBand = (value: string): value is CompletionBand =>
   member(COMPLETION_VALUES, value);
 export const isAmountBand = (value: string): value is AmountBand => member(AMOUNT_BAND_VALUES, value);
 
-/** The reader-facing label for a value, or the value itself if it is unknown. */
-export function labelOf<T extends string>(vocabulary: readonly Vocabulary<T>[], value: T): string {
-  return vocabulary.find((entry) => entry.value === value)?.label ?? value;
+/**
+ * The reader-facing word for a value, or the value itself if this build has no word for it.
+ *
+ * The table is the catalogue's rather than this module's since #324, and the fallback is the
+ * one `labelOf` always had: a value the service starts returning before the interface knows it
+ * renders as itself, which is unfriendly and true, rather than as an empty control.
+ */
+export function labelOf(words: Readonly<Record<string, string>>, value: string): string {
+  return words[value] ?? value;
 }

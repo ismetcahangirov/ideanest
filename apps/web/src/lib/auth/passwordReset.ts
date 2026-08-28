@@ -33,7 +33,7 @@ import { postToAuth } from './post';
  *
  * <h2>The link is one hour and one use, and both numbers are the screen's to say</h2>
  *
- * {@link RESET_LINK_LIFETIME} exists so that the two screens cannot come to two different
+ * `auth.reset.lifetime` exists so that the two screens cannot come to two different
  * answers about it. `ideanest.auth.password-reset-token-ttl` is `PT1H`, deliberately not the
  * twenty-four hours a verification link gets: that link proves an address, this one replaces a
  * credential, and a forwarded message should stop being a key to the account long before it
@@ -60,14 +60,21 @@ import { postToAuth } from './post';
  */
 export const RESET_TOKEN_PARAM = 'token';
 
-/**
- * How long a reset link works, as the words a screen prints.
+/*
+ * HOW LONG A RESET LINK WORKS IS NOW `auth.reset.lifetime` IN THE CATALOGUE — issue #324.
  *
- * A PHRASE RATHER THAN A NUMBER OF SECONDS, because nothing on either screen computes with it
- * — both of them put it in a sentence. Keeping it as `3600` and formatting it at two call
- * sites is how "one hour" and "60 minutes" end up on two pages describing one link.
+ * It used to be `RESET_LINK_LIFETIME`, a constant here, and the reason it existed is
+ * unchanged: it is one fact about one link that two screens print, and keeping it as `3600`
+ * to be formatted at each call site is how "one hour" and "60 minutes" end up on two pages
+ * describing the same thing. What changed is that the phrase has to exist in four languages,
+ * and a constant in a module cannot.
+ *
+ * The single-source property moved with it rather than being lost: `passwordResetCopyFrom`
+ * and `passwordResetConfirmCopyFrom` both read `reset.lifetime`, so the two screens still
+ * cannot come to two different answers. It is still a phrase rather than a number of seconds,
+ * because nothing on either screen computes with it — both put it in a sentence, and in
+ * Azerbaijani and Russian that sentence declines the noun.
  */
-export const RESET_LINK_LIFETIME = 'one hour';
 
 /**
  * Asks for a reset link — `POST /v1/auth/forgot-password`.

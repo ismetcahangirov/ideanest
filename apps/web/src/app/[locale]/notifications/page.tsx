@@ -3,6 +3,7 @@ import { Link } from '../../../i18n/navigation';
 import { InboxPanel } from '../../../components/notifications/InboxPanel';
 import { privatePageMetadata } from '../../../lib/seo/metadata';
 import { getTranslations } from 'next-intl/server';
+import { inboxCopy } from '../../../lib/i18n/shell-copy.server';
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('account.pages.inbox');
@@ -44,7 +45,7 @@ export default async function NotificationsPage() {
       </p>
 
       <div className="mt-8">
-        <InboxPanel />
+        <InboxPanel copy={await inboxCopy()} />
       </div>
     </div>
   );

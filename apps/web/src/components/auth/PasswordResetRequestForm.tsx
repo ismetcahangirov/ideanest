@@ -5,7 +5,9 @@ import { Link } from '../../i18n/navigation';
 import { MailQuestion } from 'lucide-react';
 import { Field, Pill, TextInput } from '@ideanest/ui';
 import { describeAuthFailure, fieldErrorsOf, type AuthFailure } from '../../lib/auth/failures';
-import { RESET_LINK_LIFETIME, requestPasswordReset } from '../../lib/auth/passwordReset';
+import { requestPasswordReset } from '../../lib/auth/passwordReset';
+import type { PasswordResetCopy } from '../../lib/i18n/auth-copy';
+import { fillNodes, fillPlaceholders } from '../../lib/i18n/placeholders';
 import { AuthPageHeader } from './AuthPageHeader';
 import { FormErrorSummary } from './FormErrorSummary';
 
@@ -35,14 +37,20 @@ import { FormErrorSummary } from './FormErrorSummary';
  * The link works for one hour and once. Saying so on the confirmation, rather than only in the
  * refusal an hour later, is the difference between a constraint and a surprise: somebody who
  * reads "one hour" goes and looks now, and somebody who does not comes back tomorrow to a page
- * that tells them off. `RESET_LINK_LIFETIME` is the single source of the phrase, so this screen
- * and `/reset-password/confirm` cannot disagree about it.
+ * that tells them off. `auth.reset.lifetime` is the single source of the phrase — both this
+ * screen's copy and `/reset-password/confirm`'s read that one key — so the two cannot disagree
+ * about it.
  *
  * <h2>Motion: none</h2>
  *
  * docs/motion-system.md §5's authentication row. The confirmation replaces the form outright.
  */
-export function PasswordResetRequestForm() {
+export interface PasswordResetRequestFormProps {
+  /** Every word this screen draws, resolved by the page — see `lib/i18n/auth-copy.ts`. */
+  readonly copy: PasswordResetCopy;
+}
+
+export function PasswordResetRequestForm({ copy }: PasswordResetRequestFormProps) {
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<AuthFailure | null>(null);
@@ -63,7 +71,7 @@ export function PasswordResetRequestForm() {
       await requestPasswordReset(address);
       setAskedFor(address);
     } catch (cause) {
-      setFailure(describeAuthFailure(cause));
+      setFailure(describeAuthFailure(cause, copy.failures));
       setFieldErrors(fieldErrorsOf(cause));
     } finally {
       setSubmitting(false);
@@ -73,33 +81,32 @@ export function PasswordResetRequestForm() {
   if (askedFor !== null) {
     return (
       <div>
-        <AuthPageHeader title="Check your email">
+        <AuthPageHeader title={copy.sentTitle}>
           {/*
             "IF THAT ADDRESS HAS AN ACCOUNT" IS NOT HEDGING — it is the only sentence this
             screen is entitled to write. See the component comment.
           */}
-          If <span className="text-white">{askedFor}</span> has an IdeaNest account, a link to
-          set a new password is on its way to it.
+          {fillNodes(copy.sentIntro, {
+            address: <span className="text-white">{askedFor}</span>,
+          })}
         </AuthPageHeader>
 
         <div className="flex items-start gap-3 rounded-lg border border-white/8 bg-surface-2 p-5 text-[15px] leading-relaxed text-white/64">
           <MailQuestion aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-white/40" />
           <div>
-            <p>
-              The link works for {RESET_LINK_LIFETIME} and can be used once. Asking again
-              replaces it, so use the most recent message.
-            </p>
+            <p>{fillPlaceholders(copy.sentLifetime, { lifetime: copy.lifetime })}</p>
             <p className="mt-3">
-              Nothing arrived? Check the address for a typo, then{' '}
-              <button
-                type="button"
-                onClick={() => setAskedFor(null)}
-                className="rounded-sm text-white underline underline-offset-4 hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
-              >
-                try another address
-              </button>
-              . We cannot tell you whether an account exists, so this screen looks the same
-              either way.
+              {fillNodes(copy.sentRetry, {
+                retry: (
+                  <button
+                    type="button"
+                    onClick={() => setAskedFor(null)}
+                    className="rounded-sm text-white underline underline-offset-4 hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
+                  >
+                    {copy.tryAnother}
+                  </button>
+                ),
+              })}
             </p>
           </div>
         </div>
@@ -109,7 +116,7 @@ export function PasswordResetRequestForm() {
             href="/sign-in"
             className="rounded-sm text-white underline underline-offset-4 hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
           >
-            Back to sign in
+            {copy.backToSignIn}
           </Link>
         </p>
       </div>
@@ -118,10 +125,7 @@ export function PasswordResetRequestForm() {
 
   return (
     <>
-      <AuthPageHeader title="Reset your password">
-        Give us the address you sign in with and we will send a link that sets a new password.
-        You will not need the old one.
-      </AuthPageHeader>
+      <AuthPageHeader title={copy.title}>{copy.intro}</AuthPageHeader>
 
       {/*
         `noValidate` for `SignInForm`'s reason: §9.2 requires the message to be text beside the
@@ -132,7 +136,7 @@ export function PasswordResetRequestForm() {
       <form onSubmit={submit} noValidate className="flex flex-col gap-5">
         <FormErrorSummary failure={failure} />
 
-        <Field label="Email address" required error={fieldErrors['email']}>
+        <Field label={copy.fields.email} required error={fieldErrors['email']}>
           <TextInput
             type="email"
             name="email"
@@ -140,7 +144,7 @@ export function PasswordResetRequestForm() {
             inputMode="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@example.com"
+            placeholder={copy.fields.emailPlaceholder}
           />
         </Field>
 
@@ -150,16 +154,16 @@ export function PasswordResetRequestForm() {
           says how long is left in `detail` and the same request works after it.
         */}
         <Pill type="submit" fullWidth size="lg" disabled={submitting}>
-          {submitting ? 'Sending the link' : 'Send the link'}
+          {submitting ? copy.submitting : copy.submit}
         </Pill>
 
         <p className="text-center text-sm text-white/64">
-          Remembered it?{' '}
+          {copy.remembered}{' '}
           <Link
             href="/sign-in"
             className="rounded-sm text-white underline underline-offset-4 hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
           >
-            Sign in
+            {copy.signIn}
           </Link>
         </p>
       </form>

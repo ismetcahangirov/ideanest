@@ -8,6 +8,10 @@ import { canOptimise } from '../../lib/images/source';
 import { sizesFor } from '../../lib/images/sizes';
 import { formatMoney } from '../../lib/money';
 import { profileCampaignHref, type ProfileProjectCard } from '../../lib/profiles/api';
+import type { Locale } from '../../lib/i18n/locale';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import { pluralise } from '../../lib/i18n/plurals';
+import type { ProfileCardCopy } from '../../lib/i18n/profile-copy';
 
 /**
  * One campaign on a profile — §4.2 P-04 and P-05, issue #274.
@@ -66,16 +70,16 @@ import { profileCampaignHref, type ProfileProjectCard } from '../../lib/profiles
  * itself rather than as an empty tag or a crash. The nine that are here are the nine a
  * public list can contain.
  */
-const STATE: Record<string, { readonly label: string; readonly icon: ReactNode; readonly variant: 'default' | 'success' | 'warning' }> = {
-  PRELAUNCH: { label: 'Pre-launch', icon: <CalendarClock className="size-3" />, variant: 'default' },
-  SCHEDULED: { label: 'Scheduled', icon: <CalendarClock className="size-3" />, variant: 'default' },
-  LIVE: { label: 'Live', icon: <CircleDot className="size-3" />, variant: 'default' },
-  SUCCESSFUL: { label: 'Funded', icon: <CircleCheck className="size-3" />, variant: 'success' },
-  UNSUCCESSFUL: { label: 'Not funded', icon: <CircleSlash className="size-3" />, variant: 'default' },
-  COLLECTING: { label: 'Collecting', icon: <Hourglass className="size-3" />, variant: 'warning' },
-  LATE_PLEDGE: { label: 'Late pledges', icon: <Hourglass className="size-3" />, variant: 'warning' },
-  FULFILLING: { label: 'Fulfilling', icon: <Package className="size-3" />, variant: 'default' },
-  COMPLETED: { label: 'Completed', icon: <CircleCheck className="size-3" />, variant: 'success' },
+const STATE: Record<string, { readonly icon: ReactNode; readonly variant: 'default' | 'success' | 'warning' }> = {
+  PRELAUNCH: { icon: <CalendarClock className="size-3" />, variant: 'default' },
+  SCHEDULED: { icon: <CalendarClock className="size-3" />, variant: 'default' },
+  LIVE: { icon: <CircleDot className="size-3" />, variant: 'default' },
+  SUCCESSFUL: { icon: <CircleCheck className="size-3" />, variant: 'success' },
+  UNSUCCESSFUL: { icon: <CircleSlash className="size-3" />, variant: 'default' },
+  COLLECTING: { icon: <Hourglass className="size-3" />, variant: 'warning' },
+  LATE_PLEDGE: { icon: <Hourglass className="size-3" />, variant: 'warning' },
+  FULFILLING: { icon: <Package className="size-3" />, variant: 'default' },
+  COMPLETED: { icon: <CircleCheck className="size-3" />, variant: 'success' },
 };
 
 /**
@@ -123,10 +127,28 @@ export interface ProfileCampaignCardProps {
   readonly funding: 'shown' | 'withheld';
   /** Loads the cover eagerly. True only for the cards above the fold. */
   readonly priority?: boolean;
+  /** The card's words, resolved by the route — see `lib/i18n/profile-copy.ts`. */
+  readonly copy: ProfileCardCopy;
+  /**
+   * The language, for the backer count alone — issue #324.
+   *
+   * The count is the one number on this card that changes its sentence: Russian picks between
+   * three forms by the last digit. Everything else here is either the campaign's own words or a
+   * figure `lib/money.ts` formats against the campaign's currency, which is a property of the
+   * project and never of the reader.
+   */
+  readonly locale: Locale;
 }
 
-export function ProfileCampaignCard({ card, funding, priority = false }: ProfileCampaignCardProps) {
+export function ProfileCampaignCard({
+  card,
+  funding,
+  priority = false,
+  copy,
+  locale,
+}: ProfileCampaignCardProps) {
   const badge = STATE[card.state];
+  const stateLabel = copy.states[card.state];
 
   const goal = card.goal ?? null;
   const pledged = card.pledged ?? null;
@@ -159,17 +181,18 @@ export function ProfileCampaignCard({ card, funding, priority = false }: Profile
       </MediaFrame>
 
       <div className="flex flex-1 flex-col gap-3 p-5">
-        {badge !== undefined ? (
+        {badge !== undefined && stateLabel !== undefined ? (
           <div>
             <Tag variant={badge.variant} className="gap-1.5">
               <span aria-hidden="true" className="flex items-center">
                 {badge.icon}
               </span>
-              {badge.label}
+              {stateLabel}
             </Tag>
           </div>
         ) : (
           <div>
+            {/* A state a newer service returns renders as itself rather than as an empty tag. */}
             <Tag>{card.state}</Tag>
           </div>
         )}
@@ -195,14 +218,18 @@ export function ProfileCampaignCard({ card, funding, priority = false }: Profile
               /* A width, not an amount. The figure a reader acts on is the text below it,
                  which comes from the decimal. */
               value={completion.toNumber()}
-              label={`${completion.toFixed(0)} percent of the goal`}
+              label={fillPlaceholders(copy.progressLabel, { percent: completion.toFixed(0) })}
             />
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-sm">
               <span className="font-medium tabular-nums text-white">{formatMoney(pledged)}</span>
-              <span className="tabular-nums text-white/64">{completion.toFixed(0)}% funded</span>
+              <span className="tabular-nums text-white/64">
+                {fillPlaceholders(copy.funded, { percent: completion.toFixed(0) })}
+              </span>
             </div>
             {goal !== null && (
-              <p className="text-xs tabular-nums text-white/40">of {formatMoney(goal)} goal</p>
+              <p className="text-xs tabular-nums text-white/40">
+                {fillPlaceholders(copy.ofGoal, { amount: formatMoney(goal) })}
+              </p>
             )}
           </div>
         ) : (
@@ -219,7 +246,7 @@ export function ProfileCampaignCard({ card, funding, priority = false }: Profile
           <span className="inline-flex items-center gap-1.5">
             <Users aria-hidden="true" className="size-3.5" />
             <span className="tabular-nums">
-              {card.backersCount === 1 ? '1 backer' : `${card.backersCount} backers`}
+              {pluralise(locale, copy.backers, card.backersCount)}
             </span>
           </span>
         </div>

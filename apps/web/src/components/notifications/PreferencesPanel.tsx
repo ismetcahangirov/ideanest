@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { InlineAlert, Pill, Select, Skeleton, SkeletonGroup } from '@ideanest/ui';
 import { ApiError } from '../../lib/api/problem';
+import type { PreferencesCopy } from '../../lib/i18n/notifications-copy';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 import {
   listPreferences,
   updatePreferences,
@@ -29,19 +32,19 @@ function keyOf(category: NotificationCategory, channel: NotificationChannel): st
   return `${category}:${channel}`;
 }
 
-function messageFor(cause: unknown): string {
+function messageFor(cause: unknown, copy: PreferencesCopy): string {
   if (cause instanceof ApiError) {
     if (cause.status === 429) {
-      return 'That is more changes than the service accepts at once. Wait a moment and try again.';
+      return copy.tooManyChanges;
     }
     if (cause.status === 409) {
-      return 'Something else changed this setting at the same time. Reload the page and try again.';
+      return copy.conflict;
     }
     return (
-      cause.problem?.detail ?? cause.problem?.title ?? 'The service refused the change. Try again.'
+      cause.problem?.detail ?? cause.problem?.title ?? copy.refused
     );
   }
-  return 'The service could not be reached. Check your connection and try again.';
+  return copy.unreachable;
 }
 
 function wasAborted(cause: unknown): boolean {
@@ -77,7 +80,14 @@ function wasAborted(cause: unknown): boolean {
  *
  * MOTION IS NEAR ZERO, as on the device list beside it: settings is work, not discovery.
  */
-export function PreferencesPanel() {
+export interface PreferencesPanelProps {
+  /** Every word this panel draws — see `lib/i18n/notifications-copy.ts`. */
+  readonly copy: PreferencesCopy;
+}
+
+export function PreferencesPanel({ copy }: PreferencesPanelProps) {
+  /* The language, for the two labels the announcement lowercases. See `change` below. */
+  const locale = useRouteLocale();
   const [status, setStatus] = useState<Status>('loading');
   const [preferences, setPreferences] = useState<readonly PreferenceSwitch[]>([]);
   const [busyKeys, setBusyKeys] = useState<ReadonlySet<string>>(() => new Set());
@@ -101,7 +111,7 @@ export function PreferencesPanel() {
         setStatus('signed-out');
         return;
       }
-      setError(messageFor(cause));
+      setError(messageFor(cause, copy));
       setStatus('failed');
     }
   }, []);
@@ -136,13 +146,22 @@ export function PreferencesPanel() {
       ]);
       setPreferences(page);
       setNotice(
-        `${categoryLabel(preference.category)} by ${channelLabel(preference.channel).toLowerCase()}: ${modeLabel(mode).toLowerCase()}.`,
+        fillPlaceholders(copy.saved, {
+          category: categoryLabel(preference.category, copy),
+          /*
+           * `toLocaleLowerCase` and not `toLowerCase` — #324. The capital I lowercases to a
+           * dotless ı in Turkish unless the locale is passed, so "In app" would announce with
+           * a letter the language does not use there.
+           */
+          channel: channelLabel(preference.channel, copy).toLocaleLowerCase(locale),
+          mode: modeLabel(mode, copy).toLocaleLowerCase(locale),
+        }),
       );
     } catch (cause) {
       // Nothing is written back, so the control re-renders from `preferences` — which
       // still holds what the service last confirmed. The switch visibly returns to where
       // it was, which is the truthful thing for it to do.
-      setError(messageFor(cause));
+      setError(messageFor(cause, copy));
     } finally {
       markBusy(key, false);
     }
@@ -150,7 +169,7 @@ export function PreferencesPanel() {
 
   if (status === 'signed-out') {
     return (
-      <InlineAlert variant="info" title="You are signed out">
+      <InlineAlert variant="info" title={copy.signedOut}>
         Sign in again to change what you are sent.
       </InlineAlert>
     );
@@ -168,7 +187,7 @@ export function PreferencesPanel() {
       >
         What you are sent
         {status === 'ready' && stored === 0 && (
-          <span className="ml-2 text-xs font-normal text-white/40">all at their defaults</span>
+          <span className="ml-2 text-xs font-normal text-white/40">{copy.defaults}</span>
         )}
       </h2>
 
@@ -185,13 +204,13 @@ export function PreferencesPanel() {
       </div>
 
       {error && (
-        <InlineAlert variant="danger" title="That change was not saved" className="mt-4">
+        <InlineAlert variant="danger" title={copy.saveFailedTitle} className="mt-4">
           {error}
         </InlineAlert>
       )}
 
       {status === 'loading' && (
-        <SkeletonGroup label="Loading your notification settings" className="mt-4">
+        <SkeletonGroup label={copy.loading} className="mt-4">
           <div className="space-y-3">
             {[0, 1, 2].map((row) => (
               <div key={row} className="rounded-lg border border-white/8 bg-surface-2 px-5 py-4">
@@ -218,9 +237,9 @@ export function PreferencesPanel() {
                 key={category}
                 className="rounded-lg border border-white/8 bg-surface-2 px-5 py-4"
               >
-                <h3 className="text-sm font-medium text-white">{categoryLabel(category)}</h3>
+                <h3 className="text-sm font-medium text-white">{categoryLabel(category, copy)}</h3>
                 <p className="mt-1 max-w-[60ch] text-xs text-white/56">
-                  {categoryDescription(category)}
+                  {categoryDescription(category, copy)}
                 </p>
 
                 <div className="mt-3 grid gap-3 sm:grid-cols-3">
@@ -237,7 +256,7 @@ export function PreferencesPanel() {
                           htmlFor={controlId}
                           className="mb-1 block text-xs font-medium text-white/72"
                         >
-                          {channelLabel(channel)}
+                          {channelLabel(channel, copy)}
                         </label>
                         <Select
                           id={controlId}
@@ -250,7 +269,7 @@ export function PreferencesPanel() {
                         >
                           {modesFor(preference.digestOffered).map((mode) => (
                             <option key={mode} value={mode}>
-                              {modeLabel(mode)}
+                              {modeLabel(mode, copy)}
                             </option>
                           ))}
                         </Select>
@@ -263,11 +282,11 @@ export function PreferencesPanel() {
                         */}
                         {!preference.changeable && (
                           <p className="mt-1 text-[0.6875rem] text-white/56">
-                            {mandatoryReason(category)}
+                            {mandatoryReason(category, copy)}
                           </p>
                         )}
                         {preference.changeable && !preference.stored && (
-                          <p className="mt-1 text-[0.6875rem] text-white/40">Default</p>
+                          <p className="mt-1 text-[0.6875rem] text-white/40">{copy.default}</p>
                         )}
                       </div>
                     );
@@ -281,7 +300,7 @@ export function PreferencesPanel() {
 
       {status === 'failed' && (
         <Pill variant="ghost" size="sm" className="mt-4" onClick={() => void load()}>
-          Try again
+          {copy.tryAgain}
         </Pill>
       )}
     </section>

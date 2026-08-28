@@ -46,15 +46,22 @@ public class EmailRenderer {
      * <p>The subject is not rendered through a template: it is one line of copy that
      * {@link EmailComposer} has already resolved, and passing it through a template
      * engine would be a second place for a newline to get into a header.
+     *
+     * <p><strong>The locale is the recipient's since #324.</strong> It reaches Thymeleaf's own
+     * {@code Context} as well as the two footer lookups, because a template that formats a
+     * number or a date does so against the context's locale — so passing it only to
+     * {@code MessageSource} would translate the words and leave the figures in the root
+     * locale's shape.
      */
-    public RenderedEmail render(EmailContent content) {
-        Context context = new Context(Locale.ROOT);
+    public RenderedEmail render(EmailContent content, Locale locale) {
+        Context context = new Context(locale);
         context.setVariable("content", content);
         // The two lines every email ends with, resolved here rather than put on
         // EmailContent: they are the same on every type, so a per-type field would be
         // twenty copies of one sentence.
-        context.setVariable("footer", messages.getMessage("email.layout.footer", null, Locale.ROOT));
-        context.setVariable("preferences", messages.getMessage("email.layout.preferences", null, Locale.ROOT));
+        context.setVariable("footer", messages.getMessage("email.layout.footer", null, locale));
+        context.setVariable(
+                "preferences", messages.getMessage("email.layout.preferences", null, locale));
 
         return new RenderedEmail(
                 content.subject(),

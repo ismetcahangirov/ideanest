@@ -13,7 +13,8 @@ import { NO_FILTERS, toHref } from '../../../lib/discovery/filters';
 import { homePageMetadata } from '../../../lib/seo/metadata';
 import { homePageGraph } from '../../../lib/seo/structured-data/graphs';
 import { graphContext } from '../../../lib/i18n/shell-copy.server';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { projectCardCopy } from '../../../lib/i18n/shell-copy.server';
 
 /**
  * `/` — §4.13 WS-04, issue #264.
@@ -69,6 +70,8 @@ const RAIL_SIZE = 6;
 
 export default async function HomePage() {
   const t = await getTranslations('home');
+  const locale = localeOrDefault(await getLocale());
+  const cardCopy = await projectCardCopy();
 
   /*
    * Concurrently. They are independent reads and the page cannot paint until the slowest has
@@ -148,7 +151,13 @@ export default async function HomePage() {
               largest contentful paint; putting the second rail in the same priority queue
               would make every image on the page later.
             */}
-            <CampaignGrid campaigns={closing} priorityCount={3} label={t('closing.gridLabel')} />
+            <CampaignGrid
+              campaigns={closing}
+              priorityCount={3}
+              label={t('closing.gridLabel')}
+              cardCopy={cardCopy}
+              locale={locale}
+            />
           </HomeSection>
         )}
 
@@ -159,7 +168,12 @@ export default async function HomePage() {
             href={toHref({ ...NO_FILTERS, statuses: ['live'], sort: 'newest' })}
             linkLabel={t('launched.link')}
           >
-            <CampaignGrid campaigns={launched} label={t('launched.gridLabel')} />
+            <CampaignGrid
+              campaigns={launched}
+              label={t('launched.gridLabel')}
+              cardCopy={cardCopy}
+              locale={locale}
+            />
           </HomeSection>
         )}
 

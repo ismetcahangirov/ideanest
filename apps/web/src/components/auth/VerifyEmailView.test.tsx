@@ -3,6 +3,15 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { ApiError } from '../../lib/api/problem';
 import { verifyEmail } from '../../lib/auth/api';
 import { VerifyEmailView } from './VerifyEmailView';
+import { verifyEmailCopyFrom } from '../../lib/i18n/auth-copy';
+import { translatorFor } from '../../test-copy';
+
+/*
+ * The copy the page would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const COPY = verifyEmailCopyFrom(translatorFor('auth'));
 
 /**
  * §4.1's A-02 — issue #270.
@@ -51,7 +60,7 @@ afterEach(cleanup);
 describe('with a token', () => {
   it('sends it once, and only once', async () => {
     verifyMock.mockResolvedValue(undefined);
-    render(<VerifyEmailView />);
+    render(<VerifyEmailView copy={COPY} />);
 
     await waitFor(() => expect(verifyMock).toHaveBeenCalledTimes(1));
     expect(verifyMock).toHaveBeenCalledWith('tok_1');
@@ -59,7 +68,7 @@ describe('with a token', () => {
 
   it('confirms the address and offers the way in', async () => {
     verifyMock.mockResolvedValue(undefined);
-    render(<VerifyEmailView />);
+    render(<VerifyEmailView copy={COPY} />);
 
     expect(
       await screen.findByRole('heading', { name: 'Your email address is verified' }),
@@ -69,7 +78,7 @@ describe('with a token', () => {
 
   it('announces the outcome rather than only showing it', async () => {
     verifyMock.mockResolvedValue(undefined);
-    render(<VerifyEmailView />);
+    render(<VerifyEmailView copy={COPY} />);
 
     const status = screen.getByRole('status');
     await waitFor(() => expect(status).toHaveTextContent('Your email address is verified.'));
@@ -77,7 +86,7 @@ describe('with a token', () => {
 
   it('does not sign anybody in — verifying an address authorises nothing else', async () => {
     verifyMock.mockResolvedValue(undefined);
-    render(<VerifyEmailView />);
+    render(<VerifyEmailView copy={COPY} />);
 
     await screen.findByRole('heading', { name: 'Your email address is verified' });
     // The only way onward is the sign-in link. Nothing here writes a token.
@@ -96,14 +105,14 @@ describe('a refused token', () => {
   });
 
   it('prints the service’s own sentence rather than guessing why', async () => {
-    render(<VerifyEmailView />);
+    render(<VerifyEmailView copy={COPY} />);
 
     expect(await screen.findByText('Verification failed')).toBeInTheDocument();
     expect(screen.getByText('That verification link has expired.')).toBeInTheDocument();
   });
 
   it('offers no resend, because there is no endpoint behind one', async () => {
-    render(<VerifyEmailView />);
+    render(<VerifyEmailView copy={COPY} />);
 
     await screen.findByText('Verification failed');
     // `RegistrationService` answers a second registration for an existing address by
@@ -114,7 +123,7 @@ describe('a refused token', () => {
   });
 
   it('says what does work, which is signing in before the address is verified', async () => {
-    render(<VerifyEmailView />);
+    render(<VerifyEmailView copy={COPY} />);
 
     await screen.findByText('Verification failed');
     expect(screen.getByText(/signing in works before an address is verified/u)).toBeInTheDocument();
@@ -124,7 +133,7 @@ describe('a refused token', () => {
 describe('with no token at all', () => {
   it('explains the page rather than reporting a failure', async () => {
     search = '';
-    render(<VerifyEmailView />);
+    render(<VerifyEmailView copy={COPY} />);
 
     expect(
       await screen.findByRole('heading', { name: 'Open the link we sent you' }),
@@ -134,7 +143,7 @@ describe('with no token at all', () => {
 
   it('treats a blank token as no token', async () => {
     search = 'token=%20%20';
-    render(<VerifyEmailView />);
+    render(<VerifyEmailView copy={COPY} />);
 
     await screen.findByRole('heading', { name: 'Open the link we sent you' });
     expect(verifyMock).not.toHaveBeenCalled();

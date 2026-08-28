@@ -20,6 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import az.ideanest.shared.ReaderLocale;
+import java.util.Locale;
 
 /**
  * AD-15's preview and test send, for the email half of §4.10.
@@ -143,7 +145,17 @@ public class EmailTemplates {
     public RenderedEmail preview(UUID staffAccountId, NotificationType type) {
         staff.requireStaff(staffAccountId);
         requireEmail(type);
-        return renderer.render(composer.compose(sampleOf(type), SAMPLE_RECIPIENT));
+
+        /*
+         * IN THE STAFF MEMBER'S OWN LANGUAGE — issue #324. A preview is read by whoever asked
+         * for it, and rendering it in a language they do not read would make the one screen for
+         * checking copy useless to them. It is not a claim about which language a recipient
+         * gets: that is theirs, and `EmailChannelSender` takes it off their account.
+         */
+        Locale locale = ReaderLocale.of(
+                users.findById(staffAccountId).map(UserAccount::locale).orElse(ReaderLocale.PRIMARY));
+
+        return renderer.render(composer.compose(sampleOf(type), SAMPLE_RECIPIENT, locale), locale);
     }
 
     /**
@@ -164,7 +176,9 @@ public class EmailTemplates {
                 .orElseThrow(() -> new IllegalStateException(
                         "A caller that passed the staff check has an account"));
 
-        RenderedEmail email = renderer.render(composer.compose(sampleOf(type), recipient.name()));
+        Locale locale = ReaderLocale.of(recipient.locale());
+        RenderedEmail email =
+                renderer.render(composer.compose(sampleOf(type), recipient.name(), locale), locale);
         // A fresh identifier per test send, unlike a notification's, which is stable
         // across attempts on purpose. Two test sends of one template are two messages
         // somebody asked for, and collapsing the second into the first would look like

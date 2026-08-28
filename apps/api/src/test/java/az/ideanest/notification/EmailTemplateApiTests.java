@@ -129,8 +129,11 @@ class EmailTemplateApiTests extends AbstractIntegrationTest {
         // Named, because the sample document carries a title -- which is what the platform
         // sends since #249, and previewing the fallback wording would show a reviewer the
         // sentences it has stopped sending.
-        assertThat(html.getHeaders().getFirst("X-Email-Subject"))
-                .isEqualTo("Your pledge to Xari Bulbul Ceramics is confirmed");
+        // RFC 8187 since #324: a preview renders in the reader's own language, so the subject
+        // may hold a character an HTTP field value cannot carry unencoded — and the symptom of
+        // sending it raw was Tomcat dropping the header entirely.
+        assertThat(decodedSubject(html))
+                .isEqualTo("Xari Bulbul Ceramics kampaniyasına dəstəyiniz təsdiqləndi");
         assertThat(html.getHeaders().getCacheControl()).isEqualTo("no-store");
         assertThat(html.getBody()).contains("<table").contains("120.00 AZN");
     }
@@ -191,7 +194,9 @@ class EmailTemplateApiTests extends AbstractIntegrationTest {
                 .contains(MODERATOR_EMAIL);
         assertThat(received.getSubject())
                 .as("and it is the real message for that type, not a placeholder")
-                .isEqualTo("Your payment for Xari Bulbul Ceramics did not go through");
+                // In the caller's own language since #324. A test send is a real email to a
+                // real account, so it goes out exactly as one to that account would.
+                .isEqualTo("Xari Bulbul Ceramics üçün ödənişiniz keçmədi");
     }
 
     @Test
@@ -289,5 +294,20 @@ class EmailTemplateApiTests extends AbstractIntegrationTest {
             headers.setBearerAuth(token);
         }
         return headers;
+    }
+
+    /**
+     * The preview's subject, decoded from RFC 8187 — #324.
+     *
+     * <p>The header carries {@code UTF-8''} and the percent-encoded bytes, because an HTTP
+     * field value is Latin-1 by RFC 9110 and a subject rendered in Azerbaijani is not. Decoding
+     * it here rather than asserting the encoded form keeps the assertion about the copy.
+     */
+    private static String decodedSubject(ResponseEntity<String> response) {
+        String header = response.getHeaders().getFirst("X-Email-Subject");
+        assertThat(header).as("the preview carries its subject").isNotNull().startsWith("UTF-8''");
+
+        String encoded = header.substring("UTF-8''".length());
+        return java.net.URLDecoder.decode(encoded, java.nio.charset.StandardCharsets.UTF_8);
     }
 }

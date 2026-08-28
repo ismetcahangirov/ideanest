@@ -8,6 +8,7 @@ import { privatePageMetadata, publicPageMetadata } from '../../../../../lib/seo/
 import { categoryPageGraph } from '../../../../../lib/seo/structured-data/graphs';
 import { graphContext } from '../../../../../lib/i18n/shell-copy.server';
 import { localeOrDefault } from '../../../../../lib/i18n/locale';
+import { getTranslations } from 'next-intl/server';
 
 /**
  * `/categories/{category}` — §4.13 WS-05, issue #265.
@@ -39,7 +40,10 @@ interface RouteParams {
 
 export async function generateMetadata({ params }: RouteParams): Promise<Metadata> {
   const { locale, category: slug } = await params;
-  const landing = await resolveCategoryLanding(slug);
+  const [landing, t] = await Promise.all([
+    resolveCategoryLanding(slug),
+    getTranslations('discovery.landing'),
+  ]);
 
   /*
    * A category that does not resolve gets the private shape — `noindex, nofollow`, no
@@ -48,14 +52,14 @@ export async function generateMetadata({ params }: RouteParams): Promise<Metadat
    * open.
    */
   if (landing.kind === 'not-found') {
-    return privatePageMetadata({ title: 'Category not found' });
+    return privatePageMetadata({ title: t('notFound') });
   }
 
   const { category } = landing;
 
   return publicPageMetadata({
     title: category.name,
-    description: `Crowdfunding campaigns in ${category.name} on IdeaNest — pledge to a campaign, or start one of your own.`,
+    description: t('metaDescription', { category: category.name }),
     path: categoryPath(category.slug),
     locale: localeOrDefault(locale),
   });

@@ -6,6 +6,7 @@ import type { Locale } from '../../lib/i18n/locale';
 import type { InboxNotification } from '../../lib/notifications/api';
 import { categoryLabel, describeNotification } from '../../lib/notifications/describe';
 import { formatExactTime, formatRelativeTime } from '../../lib/time';
+import type { InboxCopy } from '../../lib/i18n/notifications-copy';
 
 export interface NotificationRowProps {
   readonly notification: InboxNotification;
@@ -16,6 +17,8 @@ export interface NotificationRowProps {
    * mounted on a route, so it is the one that reads the language off the segment.
    */
   readonly locale: Locale;
+  /** The inbox\'s words — see `lib/i18n/notifications-copy.ts`. */
+  readonly copy: InboxCopy;
   readonly busy: boolean;
   readonly onOpen: (notification: InboxNotification) => void;
 }
@@ -44,8 +47,15 @@ export interface NotificationRowProps {
  * working through a list, not exploring, so it gets colour on hover and nothing else. §8
  * rules out staggering a list regardless.
  */
-export function NotificationRow({ notification, now, locale, busy, onOpen }: NotificationRowProps) {
-  const view = describeNotification(notification);
+export function NotificationRow({
+  notification,
+  now,
+  locale,
+  copy,
+  busy,
+  onOpen,
+}: NotificationRowProps) {
+  const view = describeNotification(notification, copy);
   const unread = notification.readAt === undefined || notification.readAt === null;
 
   return (
@@ -77,11 +87,11 @@ export function NotificationRow({ notification, now, locale, busy, onOpen }: Not
         </p>
 
         <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-white/56">
-          <Tag>{categoryLabel(notification.category)}</Tag>
+          <Tag>{categoryLabel(notification.category, copy)}</Tag>
           <time dateTime={notification.occurredAt} title={formatExactTime(notification.occurredAt, locale)}>
             {formatRelativeTime(notification.occurredAt, now, locale)}
           </time>
-          {unread && <span className="text-white/72">Unread</span>}
+          {unread && <span className="text-white/72">{copy.unreadWord}</span>}
         </p>
       </div>
 
@@ -93,7 +103,7 @@ export function NotificationRow({ notification, now, locale, busy, onOpen }: Not
           onClick={() => onOpen(notification)}
           className="shrink-0"
         >
-          {busy ? 'Marking' : 'Mark as read'}
+          {busy ? copy.marking : copy.markRead}
         </Pill>
       )}
     </li>

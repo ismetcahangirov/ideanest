@@ -7,6 +7,8 @@ import { MailCheck } from 'lucide-react';
 import { Field, InlineAlert, Pill, TextInput } from '@ideanest/ui';
 import { register } from '../../lib/auth/api';
 import { describeAuthFailure, fieldErrorsOf, type AuthFailure } from '../../lib/auth/failures';
+import type { RegisterCopy } from '../../lib/i18n/auth-copy';
+import { fillNodes } from '../../lib/i18n/placeholders';
 import { DEFAULT_SIGNED_IN_PATH, RETURN_TO_PARAM, safeReturnPath } from '../../lib/auth/redirect';
 import { AuthPageHeader } from './AuthPageHeader';
 import { ProviderSignIn } from './ProviderSignIn';
@@ -47,7 +49,12 @@ import { useSignInOutcome } from './useSignInOutcome';
  * rather than transitioning into it.
  */
 
-export function RegisterForm() {
+export interface RegisterFormProps {
+  /** Every word this screen draws, resolved by the page — see `lib/i18n/auth-copy.ts`. */
+  readonly copy: RegisterCopy;
+}
+
+export function RegisterForm({ copy }: RegisterFormProps) {
   const searchParams = useSearchParams();
 
   const [email, setEmail] = useState('');
@@ -90,7 +97,7 @@ export function RegisterForm() {
       await register({ email: address, password, name: name.trim() });
       setSentTo(address);
     } catch (cause) {
-      setFailure(describeAuthFailure(cause));
+      setFailure(describeAuthFailure(cause, copy.failures));
       setFieldErrors(fieldErrorsOf(cause));
     } finally {
       setSubmitting(false);
@@ -100,12 +107,11 @@ export function RegisterForm() {
   if (challenge !== null) {
     return (
       <>
-        <AuthPageHeader title="One more step">
-          This account already has two-factor authentication switched on.
-        </AuthPageHeader>
+        <AuthPageHeader title={copy.twoFactorTitle}>{copy.twoFactorIntro}</AuthPageHeader>
         <TwoFactorChallenge
           challenge={challenge.value}
           expiresInSeconds={challenge.expiresInSeconds}
+          copy={copy.twoFactor}
           onSignedIn={finish}
           onStartOver={clearChallenge}
         />
@@ -116,35 +122,34 @@ export function RegisterForm() {
   if (sentTo !== null) {
     return (
       <div>
-        <AuthPageHeader title="Check your email">
+        <AuthPageHeader title={copy.sentTitle}>
           {/*
             THE ADDRESS IS ECHOED BECAUSE A TYPO IS THE MOST COMMON REASON NOTHING ARRIVES,
             and it is the reader's own address rather than anything the service disclosed.
+
+            `fillNodes` rather than two half-sentences: the address is a styled node inside a
+            sentence whose word order is the translation's to decide.
           */}
-          We have sent a message to <span className="text-white">{sentTo}</span>. Open the link
-          in it to finish setting up your account.
+          {fillNodes(copy.sentIntro, {
+            address: <span className="text-white">{sentTo}</span>,
+          })}
         </AuthPageHeader>
 
         <div className="flex items-start gap-3 rounded-lg border border-white/8 bg-surface-2 p-5 text-[15px] leading-relaxed text-white/64">
           <MailCheck aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-white/40" />
           <div>
-            <p>
-              The link is valid for 24 hours and can be used once.
-            </p>
-            <p className="mt-3">
-              If that address already had an IdeaNest account, the message says so and offers a
-              way back in instead of creating a second one.
-            </p>
+            <p>{copy.sentLifetime}</p>
+            <p className="mt-3">{copy.sentExisting}</p>
           </div>
         </div>
 
         <p className="mt-8 text-center text-sm text-white/64">
-          Already verified?{' '}
+          {copy.verified}{' '}
           <Link
             href={signInHrefWith(returnTo)}
             className="rounded-sm text-white underline underline-offset-4 hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
           >
-            Sign in
+            {copy.signIn}
           </Link>
         </p>
       </div>
@@ -157,10 +162,7 @@ export function RegisterForm() {
         THE HEADING IS HERE RATHER THAN ON THE PAGE, because which of the two is correct
         depends on a state only this component holds — see the route's comment.
       */}
-      <AuthPageHeader title="Create an account">
-        Back campaigns, follow creators, and start a campaign of your own. It takes an email
-        address and a password.
-      </AuthPageHeader>
+      <AuthPageHeader title={copy.title}>{copy.intro}</AuthPageHeader>
 
       <form onSubmit={submit} noValidate className="flex flex-col gap-5">
         {failure !== null && (
@@ -169,12 +171,7 @@ export function RegisterForm() {
           </InlineAlert>
         )}
 
-        <Field
-          label="Name"
-          required
-          hint="How you appear to backers and creators. You can change it later."
-          error={fieldErrors['name']}
-        >
+        <Field label={copy.name} required hint={copy.nameHint} error={fieldErrors['name']}>
           <TextInput
             name="name"
             autoComplete="name"
@@ -184,7 +181,7 @@ export function RegisterForm() {
           />
         </Field>
 
-        <Field label="Email address" required error={fieldErrors['email']}>
+        <Field label={copy.fields.email} required error={fieldErrors['email']}>
           <TextInput
             type="email"
             name="email"
@@ -192,14 +189,14 @@ export function RegisterForm() {
             inputMode="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@example.com"
+            placeholder={copy.fields.emailPlaceholder}
           />
         </Field>
 
         <Field
-          label="Password"
+          label={copy.fields.password}
           required
-          hint="Long is stronger than complicated. The exact requirement comes from the service if this one is refused."
+          hint={copy.fields.passwordHint}
           error={fieldErrors['password']}
         >
           <TextInput
@@ -212,16 +209,16 @@ export function RegisterForm() {
         </Field>
 
         <Pill type="submit" fullWidth size="lg" disabled={submitting}>
-          {submitting ? 'Creating your account' : 'Create account'}
+          {submitting ? copy.submitting : copy.submit}
         </Pill>
 
         <p className="text-center text-sm text-white/64">
-          Already have an account?{' '}
+          {copy.haveAccount}{' '}
           <Link
             href={signInHrefWith(returnTo)}
             className="rounded-sm text-white underline underline-offset-4 hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
           >
-            Sign in
+            {copy.signIn}
           </Link>
         </p>
 
@@ -239,7 +236,7 @@ export function RegisterForm() {
         service decides whether an account is created (§17.1's linking table).
       */}
       <div className="mt-6">
-        <ProviderSignIn onOutcome={settle} intent="register" />
+        <ProviderSignIn onOutcome={settle} intent="register" copy={copy.providers} />
       </div>
     </>
   );

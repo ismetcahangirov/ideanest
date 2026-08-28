@@ -2,6 +2,18 @@
   "common": {
     "save": "Save",
     "cancel": "Cancel",
+    "breadcrumb": "Breadcrumb",
+    "card": {
+      "progressLabel": "{percent} percent of the goal",
+      "funded": "{percent}% funded",
+      "ofGoal": "of {amount} goal",
+      "backers": {
+        "one": "{count} backer",
+        "few": "{count} backers",
+        "many": "{count} backers",
+        "other": "{count} backers"
+      }
+    },
     "saving": "Saving…",
     "tryAgain": "Try again",
     "trail": {
@@ -168,6 +180,319 @@
         "title": "Notifications",
         "intro": "Everything the platform has told you, newest first. Opening one marks it read. <settings>Change what you are sent</settings>."
       }
+    },
+    "fulfilment": {
+      "address": {
+        "metaTitle": "Shipping address",
+        "metaDescription": "Where the reward for this pledge should go.",
+        "title": "Shipping address",
+        "intro": "Where this pledge’s reward should go. Each pledge has its own, so changing this one does not move anything else. It is encrypted at rest and the creator sees it only when they are packing.",
+        "back": "Back to your deliveries"
+      },
+      "deliveries": {
+        "loading": "Loading your deliveries",
+        "failedTitle": "Your deliveries could not be loaded",
+        "refused": "The service refused the request.",
+        "unreachable": "The service could not be reached. Check your connection and try again.",
+        "emptyTitle": "Nothing on its way",
+        "emptyBody": "Once a campaign you backed has funded and the creator starts packing, each reward appears here with its tracking.",
+        "emptyAction": "Browse campaigns",
+        "unlisted": "A campaign that is no longer listed",
+        "carrier": "Carrier",
+        "tracking": "Tracking",
+        "sent": "Sent",
+        "arrived": "Arrived",
+        "shippingAddress": "Shipping address",
+        "theCampaign": "The campaign"
+      },
+      "status": {
+        "PREPARING": "Preparing",
+        "SHIPPED": "On its way",
+        "DELIVERED": "Delivered",
+        "RETURNED": "Came back"
+      },
+      "statusDetail": {
+        "PREPARING": "The creator has not sent this yet.",
+        "SHIPPED": "It is with a carrier.",
+        "DELIVERED": "The carrier says it arrived.",
+        "RETURNED": "It could not be delivered and is back with the creator. Check your address.",
+        "unknown": "This platform does not have a description for that status yet."
+      },
+      "form": {
+        "recipient": "Full name",
+        "line1": "Address",
+        "line2": "Apartment, floor, or company",
+        "locality": "City or town",
+        "region": "Region or state",
+        "postcode": "Postcode",
+        "country": "Country",
+        "countryHint": "Two letters — AZ, TR, GB, DE.",
+        "phone": "Phone",
+        "phoneHint": "Some carriers will not deliver without one.",
+        "requiredField": "A parcel cannot be addressed without this.",
+        "loadFailedTitle": "This address could not be loaded",
+        "notFound": "That pledge could not be found, or it is not yours.",
+        "unreachable": "The service could not be reached. Check your connection and try again.",
+        "refused": "The address was refused.",
+        "lockedTitle": "This address is locked",
+        "lockedBody": "The creator has closed changes, which usually means labels are being printed. Message them through the campaign if it is wrong.",
+        "lockedBodyAt": "The creator has closed changes on {at}, which usually means labels are being printed. Message them through the campaign if it is wrong.",
+        "noAddressTitle": "No address yet",
+        "noAddressBody": "The creator cannot send anything until this is filled in.",
+        "saveFailedTitle": "It was not saved",
+        "savedTitle": "Saved",
+        "savedBody": "This is where the reward goes.",
+        "savedBodyAt": "This is where the reward goes, as of {at}.",
+        "save": "Save address",
+        "saving": "Saving"
+      }
+    },
+    "notifications": {
+      "headline": {
+        "PLEDGE_CONFIRMED": "Your pledge of {amount} to {campaign} is confirmed",
+        "PLEDGE_EDITED": "Your pledge to {campaign} now stands at {amount}",
+        "PAYMENT_FAILED": "A payment of {amount} for {campaign} was declined",
+        "GOAL_REACHED": "{campaign} reached its goal of {amount}",
+        "CAMPAIGN_SUCCEEDED": "{campaign} was funded at {amount}",
+        "CAMPAIGN_UNSUCCESSFUL": "{campaign} closed without reaching its goal",
+        "PROJECT_APPROVED": "{campaign} has been approved and can be launched",
+        "PAYMENT_COLLECTED": "A payment of {amount} for {campaign} was collected",
+        "FINAL_PAYMENT_WARNING": "Final notice: a payment of {amount} for {campaign}",
+        "PAYOUT_SENT": "A payout of {amount} for {campaign} has been sent",
+        "DEADLINE_48H": "{campaign} closes in two days",
+        "DEADLINE_24H": "{campaign} closes tomorrow",
+        "NEW_UPDATE_PUBLISHED": "{campaign} published an update",
+        "COMMENT_REPLY": "Somebody replied to your comment",
+        "DIRECT_MESSAGE": "You have a new message",
+        "SURVEY_AVAILABLE": "Your reward survey for {campaign} is ready",
+        "SURVEY_OVERDUE": "Your reward survey for {campaign} is still unanswered",
+        "REWARD_SHIPPED": "Your reward from {campaign} has been shipped",
+        "FOLLOWED_CREATOR_LAUNCHED": "A creator you follow launched {campaign}",
+        "LAUNCH_REMINDER": "{campaign} is about to launch",
+        "SAVED_PROJECT_ENDING_SOON": "{campaign}, which you saved, is ending soon",
+        "NEW_DEVICE_SIGN_IN": "A new device signed in to your account"
+      },
+      "unnamed": {
+        "PLEDGE_CONFIRMED": "Your pledge of {amount} to a campaign is confirmed",
+        "PLEDGE_EDITED": "Your pledge to a campaign now stands at {amount}",
+        "PAYMENT_FAILED": "A payment of {amount} for a campaign was declined",
+        "GOAL_REACHED": "A campaign reached its goal of {amount}",
+        "CAMPAIGN_SUCCEEDED": "A campaign was funded at {amount}",
+        "CAMPAIGN_UNSUCCESSFUL": "A campaign closed without reaching its goal",
+        "PROJECT_APPROVED": "A campaign has been approved and can be launched",
+        "PAYMENT_COLLECTED": "A payment of {amount} for a campaign was collected",
+        "FINAL_PAYMENT_WARNING": "Final notice: a payment of {amount} for a campaign",
+        "PAYOUT_SENT": "A payout of {amount} for a campaign has been sent",
+        "DEADLINE_48H": "A campaign closes in two days",
+        "DEADLINE_24H": "A campaign closes tomorrow",
+        "NEW_UPDATE_PUBLISHED": "A campaign published an update",
+        "COMMENT_REPLY": "Somebody replied to your comment",
+        "DIRECT_MESSAGE": "You have a new message",
+        "SURVEY_AVAILABLE": "Your reward survey for a campaign is ready",
+        "SURVEY_OVERDUE": "Your reward survey for a campaign is still unanswered",
+        "REWARD_SHIPPED": "Your reward from a campaign has been shipped",
+        "FOLLOWED_CREATOR_LAUNCHED": "A creator you follow launched a campaign",
+        "LAUNCH_REMINDER": "A campaign is about to launch",
+        "SAVED_PROJECT_ENDING_SOON": "A campaign, which you saved, is ending soon",
+        "NEW_DEVICE_SIGN_IN": "A new device signed in to your account"
+      },
+      "amount": {
+        "total": "your chosen amount",
+        "newTotal": "a new amount",
+        "pledge": "your pledge",
+        "needed": "what it needed",
+        "closingTotal": "its closing total",
+        "funds": "your funds"
+      },
+      "category": {
+        "PLEDGES": "Your pledges",
+        "CAMPAIGN": "Campaigns you back",
+        "PAYMENTS": "Payments and payouts",
+        "COMMUNITY": "Comments and messages",
+        "REWARDS": "Rewards and surveys",
+        "DISCOVERY": "Things you follow",
+        "SECURITY": "Account security"
+      },
+      "categoryDescription": {
+        "PLEDGES": "A pledge of yours is confirmed or changed.",
+        "CAMPAIGN": "A campaign reaches its goal, closes, or is about to.",
+        "PAYMENTS": "A payment is taken, declined, or a payout is sent.",
+        "COMMUNITY": "Somebody replies to you or sends you a message.",
+        "REWARDS": "A survey is waiting, or a reward is on its way.",
+        "DISCOVERY": "A creator you follow launches, or something you saved is ending.",
+        "SECURITY": "A new device signs in to your account."
+      },
+      "channel": {
+        "IN_APP": "In app",
+        "EMAIL": "Email",
+        "PUSH": "Push"
+      },
+      "mode": {
+        "OFF": "Off",
+        "IMMEDIATE": "As it happens",
+        "DIGEST": "Daily digest"
+      },
+      "mandatorySecurity": "Always on. This is how you find out if somebody else reaches your account.",
+      "mandatoryOther": "Always on. The platform has to be able to reach you about this.",
+      "inbox": {
+        "heading": "Notifications",
+        "unread": "{count} unread",
+        "unreadOnly": "Unread only",
+        "filterLabel": "Filter by category",
+        "all": "All",
+        "signedOut": "You are signed out",
+        "signedOutBody": "This browser no longer has a session. Sign in again to read your notifications.",
+        "loadingList": "Loading your notifications",
+        "emptyTitle": "Nothing yet",
+        "emptyBody": "When a campaign you back reaches its goal, closes, or takes a payment, it will appear here.",
+        "filteredTitle": "Nothing here in what has loaded",
+        "filteredBody": "These filters match none of the notifications loaded so far. Load more to keep looking, or clear them.",
+        "loadMore": "Load more",
+        "loading": "Loading",
+        "unreadWord": "Unread",
+        "markRead": "Mark as read",
+        "marking": "Marking",
+        "refused": "The service refused the request. Try again.",
+        "unreachable": "The service could not be reached. Check your connection and try again."
+      },
+      "preferences": {
+        "signedOut": "You are signed out",
+        "signedOutBody": "This browser no longer has a session. Sign in again to change your notification settings.",
+        "defaults": "all at their defaults",
+        "saveFailedTitle": "That change was not saved",
+        "loading": "Loading your notification settings",
+        "default": "Default",
+        "tryAgain": "Try again",
+        "tooManyChanges": "That is more changes than the service accepts at once. Wait a moment and try again.",
+        "conflict": "Something else changed this setting at the same time. Reload the page and try again.",
+        "refused": "The service refused the change. Try again.",
+        "unreachable": "The service could not be reached. Check your connection and try again.",
+        "saved": "{category} by {channel}: {mode}."
+      }
+    }
+  },
+  "admin": {
+    "console": "Console",
+    "backToSite": "Back to the site",
+    "navLabel": "Administration console",
+    "groups": {
+      "content": "Content",
+      "curation": "Curation",
+      "people": "People",
+      "money": "Money",
+      "platform": "Platform"
+    },
+    "links": {
+      "/admin/moderation": "Moderation queue",
+      "/admin/moderation/content": "Content reports",
+      "/admin/moderation/profiles": "Profile reports",
+      "/admin/curation": "Collections",
+      "/admin/curation/badges": "Editorial badges",
+      "/admin/curation/open-calls": "Open calls",
+      "/admin/curation/placements": "Placement",
+      "/admin/taxonomy": "Taxonomy",
+      "/admin/users": "Accounts",
+      "/admin/support": "Support",
+      "/admin/staff": "Staff and roles",
+      "/admin/payments": "Payment log",
+      "/admin/ledger": "Ledger",
+      "/admin/reconciliation": "Reconciliation",
+      "/admin/payouts": "Payouts",
+      "/admin/refunds": "Refunds",
+      "/admin/disputes": "Chargebacks",
+      "/admin/fees": "Fees",
+      "/admin/analytics": "Analytics",
+      "/admin/audit": "Audit log",
+      "/admin/email-templates": "Email templates",
+      "/admin/flags": "Feature flags",
+      "/admin/health": "System health"
+    },
+    "states": {
+      "built": "Built",
+      "partial": "Part built",
+      "blocked": "Not built"
+    },
+    "index": {
+      "title": "Administration console",
+      "metaDescription": "The platform modules, which of them have a screen, and what the rest wait on.",
+      "standfirst": "The {total} modules §4.11 describes. {built} of them have a screen; the rest say what they are waiting for, because a backlog that reads as though the console were nearly finished is worse than one that names the gap.",
+      "issue": "Issue #{issue}",
+      "footnote": "No screen here is a gate. Until there is a role model in the access token, every endpoint the console calls refuses a caller who is not platform staff, and each screen renders that refusal — a check in the browser would be a second, weaker copy of one the service already makes correctly."
+    },
+    "modules": {
+      "AD-01": {
+        "title": "Project moderation",
+        "summary": "The submission queue, its three outcomes, and the decision behind each one."
+      },
+      "AD-02": {
+        "title": "Trust and safety",
+        "summary": "Complaints about campaigns, and the suspension that answers the worst of them.",
+        "waitingOn": "Fraud signals and the identity review are built and scored (#108, #105), and neither has a screen here yet — both queues are reachable only through the API."
+      },
+      "AD-03": {
+        "title": "Curation",
+        "summary": "Editorial collections, the badges they grant, open calls, and where they appear."
+      },
+      "AD-04": {
+        "title": "User management",
+        "summary": "Search an account, read its standing, stop it, let it back in — and say who works here.",
+        "waitingOn": "Audited impersonation is blocked on a policy answer: what a session issued in somebody else’s name may not do is a question §17 does not settle (#299)."
+      },
+      "AD-05": {
+        "title": "Finance",
+        "summary": "Every charge and posting, what each creator is owed, whether it all adds up, and the signatures before it leaves."
+      },
+      "AD-06": {
+        "title": "Refunds",
+        "summary": "Full and partial, with reason codes and a ledger entry behind each."
+      },
+      "AD-07": {
+        "title": "Chargebacks",
+        "summary": "Notification, evidence, outcome — and the deadline each one runs against.",
+        "waitingOn": "Evidence is recorded here and submitted through the provider: §9.3 gives the provider interface no evidence upload, so the documents still go through their console (#308)."
+      },
+      "AD-08": {
+        "title": "Taxonomy",
+        "summary": "Categories, subcategories and tags, with a translation per locale.",
+        "waitingOn": "Nothing can be retired: campaigns reference these rows, and hiding one from the editor while leaving them filed under it needs a column V6 does not have (#309)."
+      },
+      "AD-09": {
+        "title": "Content moderation",
+        "summary": "Complaints about comments, campaign updates, and people."
+      },
+      "AD-10": {
+        "title": "Support",
+        "summary": "Tickets with the account context and the history of what was done.",
+        "waitingOn": "Staff record a conversation against an account; there is no public form yet, which is a surface with its own rate limiting and anonymous-sender question (#310)."
+      },
+      "AD-11": {
+        "title": "Fee configuration",
+        "summary": "Platform and processing rates, their exceptions, and every set of terms ever charged."
+      },
+      "AD-12": {
+        "title": "Feature flags",
+        "summary": "Gradual rollout, with a kill switch that means what it says.",
+        "waitingOn": "Rollout is built; experiments are not — a variant needs a metric to judge it by, and nothing measures one (#312)."
+      },
+      "AD-13": {
+        "title": "Analytics",
+        "summary": "Volume, success rate and average pledge, across the whole platform.",
+        "waitingOn": "Cohorts need a rollup keyed on a backer’s first pledge and funnels need the visit-to-pledge path; neither exists, and the screen says so rather than approximating them (#313)."
+      },
+      "AD-14": {
+        "title": "Audit log",
+        "summary": "The immutable record of every privileged action, newest first."
+      },
+      "AD-15": {
+        "title": "Email templates",
+        "summary": "Edit, preview and test send, with every version an edit has produced.",
+        "waitingOn": "The subject and first paragraph are editable; the headline, button label and a type’s conditional second paragraph stay in the shipped catalogue (#315)."
+      },
+      "AD-16": {
+        "title": "System health",
+        "summary": "Queue depth, failed jobs and provider status, measured when you open it.",
+        "waitingOn": "Nothing here alerts. #138 is §18’s observability work and is still what will wake somebody; this page is read rather than watched (#316)."
+      }
     }
   },
   "settings": {
@@ -234,6 +559,212 @@
         "title": "Privacy, data and closure",
         "intro": "Who can see you, everything IdeaNest holds about you, and what happens to it if you leave."
       }
+    },
+    "panels": {
+      "emailChange": {
+        "heading": "Change your email address",
+        "signInWith": "You sign in with {address}.",
+        "signInWithUnverified": "You sign in with {address}, which is not verified yet.",
+        "alertTitle": "The account moves when the new address answers",
+        "alertBody": "We send a link to the address you give us and a notice to the one you have now. Your account keeps its current address until that link is opened, so a typo costs you nothing but the message.",
+        "currentPassword": "Current password",
+        "currentPasswordHint": "Asked for so that a stolen sign-in cannot move the address that resets your password.",
+        "newEmail": "New email address",
+        "submit": "Send the confirmation",
+        "submitting": "Sending the confirmation",
+        "sentIntro": "A confirmation link is on its way to {address}. Opening it is what moves the account.",
+        "nothingChanged": "Nothing has changed yet.",
+        "stillSignIn": "You still sign in with {address} until that link is opened, and it works for six hours.",
+        "stillSignInUnknown": "Your current address still signs in until that link is opened, and it works for six hours.",
+        "alsoWrote": "We have also written to your current address to say the change was asked for. That message carries no link — it cannot approve anything, and it is there so a change you did not make reaches you while the account is still yours.",
+        "askDifferent": "Ask for a different address"
+      },
+      "passwordChange": {
+        "heading": "Change your password",
+        "alertTitle": "This signs you out everywhere",
+        "alertBody": "Changing your password ends every session on the account, including this one — which is the point: a password is changed precisely when the old one might be known. You will be asked to sign in again with the new password, on this browser and on every other.",
+        "currentPassword": "Current password",
+        "currentPasswordHint": "Asked for so that a stolen sign-in cannot replace your password.",
+        "newPassword": "New password",
+        "repeat": "New password again",
+        "repeatHint": "Compared in this browser and never sent.",
+        "submit": "Change password and sign out",
+        "submitting": "Changing your password",
+        "mismatchTitle": "The two new passwords do not match",
+        "mismatchDetail": "Type the same password in both boxes, then try again.",
+        "mismatchField": "This does not match the password above."
+      }
+    }
+  },
+  "auth": {
+    "layout": {
+      "footer": "Reward-based crowdfunding. Nobody is charged unless a campaign reaches its goal by its deadline."
+    },
+    "loadingForm": "Loading the form…",
+    "checkingLink": "Checking the link…",
+    "fields": {
+      "email": "Email address",
+      "emailPlaceholder": "you@example.com",
+      "password": "Password",
+      "passwordHint": "Long is stronger than complicated. The exact requirement comes from the service if this one is refused."
+    },
+    "failures": {
+      "unexpectedTitle": "Something went wrong",
+      "unexpectedDetail": "The request could not be completed. Try again in a moment.",
+      "unreachableTitle": "The service could not be reached",
+      "unreachableDetail": "Check your connection and try again. Nothing was submitted.",
+      "suspendedTitle": "Account suspended",
+      "suspendedDetail": "This account has been suspended. Contact support to appeal.",
+      "rateLimitedTitle": "Too many attempts",
+      "rateLimitedDetail": "Too many attempts. Wait a few minutes and try again.",
+      "rateLimitedShort": "Too many attempts.",
+      "retryAfter": "{detail} You can try again {wait}.",
+      "waitUnderMinute": "in under a minute",
+      "waitOneMinute": "in about a minute",
+      "waitMinutes": "in about {minutes} minutes",
+      "refusedTitle": "That did not work",
+      "refusedDetail": "The service refused this request and did not say why."
+    },
+    "signIn": {
+      "metaTitle": "Sign in",
+      "metaDescription": "Sign in to IdeaNest.",
+      "title": "Sign in",
+      "intro": "Back to your pledges, your campaigns, and everything you are following.",
+      "submit": "Sign in",
+      "submitting": "Signing in",
+      "forgot": "Forgot your password?",
+      "noAccount": "No account yet?",
+      "createOne": "Create one",
+      "passwordChangedTitle": "Your password was changed",
+      "passwordChangedDetail": "Every browser signed in to the account was signed out, including this one. Sign in with the new password."
+    },
+    "register": {
+      "metaTitle": "Create an account",
+      "metaDescription": "Create an IdeaNest account.",
+      "title": "Create an account",
+      "intro": "Back campaigns, follow creators, and start a campaign of your own. It takes an email address and a password.",
+      "name": "Name",
+      "nameHint": "How you appear to backers and creators. You can change it later.",
+      "submit": "Create account",
+      "submitting": "Creating your account",
+      "haveAccount": "Already have an account?",
+      "signIn": "Sign in",
+      "twoFactorTitle": "One more step",
+      "twoFactorIntro": "This account already has two-factor authentication switched on.",
+      "sentTitle": "Check your email",
+      "sentIntro": "We have sent a message to {address}. Open the link in it to finish setting up your account.",
+      "sentLifetime": "The link is valid for 24 hours and can be used once.",
+      "sentExisting": "If that address already had an IdeaNest account, the message says so and offers a way back in instead of creating a second one.",
+      "verified": "Already verified?"
+    },
+    "twoFactor": {
+      "expiredTitle": "This challenge has expired",
+      "expiredDetail": "For safety it only lasts a few minutes. Your password and your codes are unchanged — sign in again and you will be asked for a fresh one.",
+      "signInAgain": "Sign in again",
+      "acceptedTitle": "Your password was accepted",
+      "acceptedDetail": "This account asks for a second factor. Enter the six-digit code from your authenticator app.",
+      "codeLabel": "Authentication code",
+      "codePlaceholder": "000000",
+      "cannotReach": "I cannot reach my authenticator",
+      "recoveryLabel": "Recovery code",
+      "recoveryHint": "One of the codes you saved when you switched two-factor on. Each one works once.",
+      "submit": "Continue",
+      "submitting": "Checking",
+      "differentAccount": "Use a different account"
+    },
+    "providers": {
+      "separatorLabel": "Or continue with",
+      "or": "or",
+      "appleSignIn": "Sign in with Apple",
+      "appleRegister": "Sign up with Apple"
+    },
+    "reset": {
+      "lifetime": "one hour",
+      "metaTitle": "Reset your password",
+      "metaDescription": "Get a link that sets a new password for your IdeaNest account.",
+      "title": "Reset your password",
+      "intro": "Give us the address you sign in with and we will send a link that sets a new password. You will not need the old one.",
+      "submit": "Send the link",
+      "submitting": "Sending the link",
+      "remembered": "Remembered it?",
+      "signIn": "Sign in",
+      "sentTitle": "Check your email",
+      "sentIntro": "If {address} has an IdeaNest account, a link to set a new password is on its way to it.",
+      "sentLifetime": "The link works for {lifetime} and can be used once. Asking again replaces it, so use the most recent message.",
+      "sentRetry": "Nothing arrived? Check the address for a typo, then {retry}. We cannot tell you whether an account exists, so this screen looks the same either way.",
+      "tryAnother": "try another address",
+      "backToSignIn": "Back to sign in"
+    },
+    "resetConfirm": {
+      "metaTitle": "Choose a new password",
+      "metaDescription": "Finish resetting the password on your IdeaNest account.",
+      "title": "Choose a new password",
+      "intro": "This link works for {lifetime} from when it was sent, and once. Setting a password here signs out every browser that was signed in to the account.",
+      "newPassword": "New password",
+      "repeat": "New password again",
+      "repeatHint": "Compared in this browser and never sent. A typo here would cost the link.",
+      "submit": "Set my password",
+      "submitting": "Setting your password",
+      "mismatchTitle": "The two passwords do not match",
+      "mismatchDetail": "Type the same password in both boxes, then try again.",
+      "mismatchField": "This does not match the password above.",
+      "refusedPassword": "That password was refused.",
+      "noTokenTitle": "Open the link we sent you",
+      "noTokenIntro": "This page sets a new password, and it needs the link from the reset email to do it. Opening that link brings you back here with everything it needs.",
+      "askForLink": "Ask for a reset link",
+      "deadTitle": "This link cannot be used",
+      "deadAlertTitle": "Reset link refused",
+      "deadFallback": "This link cannot be used.",
+      "deadExplain": "A reset link works for {lifetime} and can be used once, which is shorter than a verification link on purpose — it sets a password rather than proving an address. Asking for a new one also retires any older link, so use the most recent message.",
+      "askNewLink": "Ask for a new link",
+      "askNewInstead": "Ask for a new link instead",
+      "doneTitle": "Your password is set",
+      "doneIntro": "Every browser that was signed in to this account has been signed out, including any you did not recognise. Sign in with the new password.",
+      "signIn": "Sign in"
+    },
+    "verifyEmail": {
+      "metaTitle": "Verify your email",
+      "metaDescription": "Finish setting up your IdeaNest account.",
+      "statusVerifying": "Verifying your email address.",
+      "statusVerified": "Your email address is verified.",
+      "statusFailed": "This verification link could not be used.",
+      "idleTitle": "Open the link we sent you",
+      "idleIntro": "This page finishes setting up an account, and it needs the link from the verification email to do it. Opening that link brings you back here with everything it needs.",
+      "verifyingTitle": "Verifying your email address",
+      "verifyingIntro": "One moment — we are confirming the link.",
+      "verifiedTitle": "Your email address is verified",
+      "verifiedIntro": "The account is ready. Signing in will take you the rest of the way.",
+      "failedTitle": "This link cannot be used",
+      "failedExplain": "Verification links are valid for 24 hours and can be used once. If yours has expired or was already opened, the account still exists — signing in works before an address is verified, and the account menu will carry the reminder until it is.",
+      "signIn": "Sign in",
+      "createAccount": "Create an account",
+      "home": "Home"
+    },
+    "emailChange": {
+      "metaTitle": "Confirm your new email address",
+      "metaDescription": "Finish moving your IdeaNest account to a new email address.",
+      "statusConfirming": "Confirming your new email address.",
+      "statusConfirmed": "Your email address has been changed.",
+      "statusTaken": "That address now has an account, so the change could not be completed.",
+      "statusRefused": "This confirmation link could not be used.",
+      "idleTitle": "Open the link we sent you",
+      "idleIntro": "This page finishes moving an account to a new email address, and it needs the link sent to that address to do it. Opening that link brings you back here with everything it needs.",
+      "confirmingTitle": "Confirming your new address",
+      "confirmingIntro": "One moment — we are checking the link.",
+      "confirmedTitle": "Your email address has been changed",
+      "confirmedIntro": "This is the address you sign in with from now on. Your password has not changed and any browser that was signed in still is — we have written to the previous address to say the account moved.",
+      "goToAccount": "Go to your account",
+      "takenTitle": "That address was taken first",
+      "takenAlertTitle": "The change could not be completed",
+      "takenFallback": "That address now has an account. Ask for the change again.",
+      "takenExplain": "Somebody registered that address between the moment the change was asked for and the moment this link was opened. Your account is unchanged and still signs in with its previous address.",
+      "takenNotSpent": "This link has not been used up. If that address becomes free, opening it again still works — otherwise ask for the change again with a different address.",
+      "refusedTitle": "This link cannot be used",
+      "refusedAlertTitle": "Confirmation refused",
+      "refusedFallback": "This link cannot be used.",
+      "refusedExplain": "A confirmation link works for six hours and can be used once. Your account has not moved — it still signs in with the address it had — so ask for the change again from your account settings and open the newest message.",
+      "emailSettings": "Email settings",
+      "signIn": "Sign in"
     }
   },
   "home": {
@@ -272,6 +803,153 @@
       "metaTitle": "Discover",
       "metaDescription": "Browse and filter every campaign on IdeaNest."
     },
+    "card": {
+      "badges": {
+        "upcoming": "Upcoming",
+        "live": "Live",
+        "late_pledge": "Late pledge",
+        "successful": "Successful",
+        "unsuccessful": "Unsuccessful"
+      },
+      "by": "by {creator}",
+      "lastDay": "Last day",
+      "daysLeft": {
+        "one": "{count} day left",
+        "few": "{count} days left",
+        "many": "{count} days left",
+        "other": "{count} days left"
+      },
+      "notOpen": "Not open for pledges yet"
+    },
+    "filters": {
+      "status": {
+        "upcoming": "Upcoming",
+        "live": "Live",
+        "late_pledge": "Late pledge",
+        "successful": "Successful",
+        "unsuccessful": "Unsuccessful"
+      },
+      "sort": {
+        "best_match": "Best match",
+        "newest": "Newest",
+        "ending_soon": "Ending soon",
+        "most_funded": "Most funded",
+        "most_backed": "Most backed",
+        "popularity": "Popular"
+      },
+      "completion": {
+        "under_25": "Under 25%",
+        "25_to_50": "25% to under 50%",
+        "50_to_75": "50% to under 75%",
+        "75_to_100": "75% to under 100%",
+        "over_100": "Funded — 100% or more"
+      },
+      "amount": {
+        "under_1000": "Under 1,000 AZN",
+        "1000_to_5000": "1,000 to under 5,000 AZN",
+        "5000_to_20000": "5,000 to under 20,000 AZN",
+        "20000_to_50000": "20,000 to under 50,000 AZN",
+        "over_50000": "50,000 AZN and above"
+      },
+      "groups": {
+        "status": "Status",
+        "category": "Category",
+        "subcategory": "Subcategory",
+        "completion": "Completion",
+        "goal": "Goal amount",
+        "raised": "Amount raised",
+        "tag": "Tag",
+        "tags": "Tags"
+      },
+      "range": {
+        "between": "{min} to {max} AZN",
+        "from": "{min} AZN and above",
+        "upTo": "Up to {max} AZN"
+      }
+    },
+    "feed": {
+      "title": "Discover",
+      "standfirst": "Every campaign on IdeaNest, narrowed by whatever matters to you.",
+      "filtersLabel": "Filter projects",
+      "railLabel": "Filters",
+      "resultsHeading": "Projects",
+      "none": "None",
+      "sortLabel": "Sort by",
+      "customRange": "Or a custom range, in AZN.",
+      "lowest": "Lowest {dimension}",
+      "highest": "Highest {dimension}",
+      "applyRange": "Apply range",
+      "applyRangeLabel": "Apply the custom {dimension} range",
+      "rangeInvalid": "Enter an amount in digits, for example 2500 or 2500.00.",
+      "rangeUnordered": "The lowest amount must not be more than the highest.",
+      "subcategoriesOf": "{category} subcategories",
+      "loading": "Loading projects",
+      "loadingMore": "Loading more projects",
+      "showMore": "Show more projects",
+      "appliedFilters": "Applied filters",
+      "clearAll": "Clear all filters",
+      "removeChip": "Remove {group} filter: {label}",
+      "tryAgain": "Try again",
+      "errorTitle": "The projects could not be loaded",
+      "unreachable": "The service could not be reached. Check your connection and try again.",
+      "refused": "The service refused this request and did not say why. Try clearing the filters.",
+      "emptyQueryTitle": "No projects match “{query}”",
+      "emptyFilteredTitle": "No projects match these filters",
+      "emptyTitle": "No projects to show yet",
+      "emptyQueryBody": "Nothing on the platform matches that search. Check the spelling, or try a shorter word.",
+      "emptyQueryBodyFiltered": "Nothing on the platform matches that search with these filters applied. Check the spelling, or try a shorter word.",
+      "emptyBody": "There is nothing published on the platform for this feed to show.",
+      "blamedOne": "{filter} has no campaigns once the rest of your filters are applied. Removing it should bring results back.",
+      "blamedMany": "These filters have nothing in common: {filters}. Removing one of them should bring results back.",
+      "removeFilter": "Remove {label}",
+      "clearSearch": "Clear the search",
+      "endAll": "That is every project matching these filters.",
+      "endFeed": "You have reached the end of this feed.",
+      "announceNone": "No projects match these filters.",
+      "shown": {
+        "one": "{count} project shown",
+        "few": "{count} projects shown",
+        "many": "{count} projects shown",
+        "other": "{count} projects shown"
+      },
+      "shownMore": {
+        "one": "{count} project shown, more available",
+        "few": "{count} projects shown, more available",
+        "many": "{count} projects shown, more available",
+        "other": "{count} projects shown, more available"
+      },
+      "announceShown": {
+        "one": "{count} project shown.",
+        "few": "{count} projects shown.",
+        "many": "{count} projects shown.",
+        "other": "{count} projects shown."
+      },
+      "announceMore": {
+        "one": "{count} more project loaded.",
+        "few": "{count} more projects loaded.",
+        "many": "{count} more projects loaded.",
+        "other": "{count} more projects loaded."
+      }
+    },
+    "suggest": {
+      "formLabel": "Campaign search",
+      "inputLabel": "Search campaigns",
+      "placeholder": "Search campaigns, categories, and tags",
+      "listboxLabel": "Campaign suggestions",
+      "submit": "Search",
+      "looking": "Looking for suggestions",
+      "lookingAnnounce": "Looking for suggestions.",
+      "unavailableAnnounce": "Suggestions are unavailable. What you typed can still be searched for.",
+      "failedFallback": "Suggestions could not be loaded. Press Enter to search for what you typed.",
+      "failedDetail": "{detail} Press Enter to search for what you typed.",
+      "none": "No suggestions for “{query}”. Press Enter to search anyway.",
+      "kinds": {
+        "campaign": "Campaign",
+        "category": "Category",
+        "subcategory": "Subcategory",
+        "tag": "Tag"
+      }
+    },
     "categories": {
       "metaTitle": "Categories",
       "metaDescription": "Every category and subcategory on IdeaNest, each with its own page of campaigns.",
@@ -279,12 +957,79 @@
       "intro": "Every category on the platform, and the subcategories inside them. Each has a page of its own.",
       "feedLink": "The feed"
     },
+    "landing": {
+      "notFound": "Category not found",
+      "metaDescription": "Crowdfunding campaigns in {category} on IdeaNest — pledge to a campaign, or start one of your own.",
+      "subMetaTitle": "{subcategory} in {category}",
+      "subMetaDescription": "Crowdfunding campaigns in {subcategory}, part of {category}, on IdeaNest.",
+      "standfirst": "Campaigns filed under {category}, newest first.",
+      "subStandfirst": "Campaigns filed under {category} → {subcategory}, newest first.",
+      "subcategoriesLabel": "Subcategories of {category}",
+      "count": "{count, plural, =0 {No campaigns here yet} one {# campaign} other {# campaigns}}",
+      "countMore": "{count, plural, =0 {No campaigns here yet} one {# campaign, with more in the feed} other {# campaigns, with more in the feed}}",
+      "emptyTitle": "Nothing published in {title} yet",
+      "emptyBody": "This category exists and no campaign has launched in it. The feed carries every campaign on the platform.",
+      "emptyAction": "Browse the feed",
+      "gridLabel": "Campaigns in {title}",
+      "seeEvery": "See every campaign in {title}",
+      "filterAndSort": "Filter and sort {title} in the feed"
+    },
     "collections": {
       "metaTitle": "Collections",
       "metaDescription": "Staff selections, themed collections, and open calls on IdeaNest — each with its own page of campaigns.",
       "window": {
         "closes": "Closes",
         "openSince": "Open since"
+      },
+      "notFound": "Collection not found",
+      "socialDescription": "{title} — a curated collection of crowdfunding campaigns on IdeaNest.",
+      "title": "Collections",
+      "intro": "Campaigns chosen by the IdeaNest team, collections built around a season or a subject, and open calls a creator can still be part of. Each has a page of its own.",
+      "listLabel": "Collections",
+      "emptyTitle": "No collections just now",
+      "emptyBody": "Nothing is curated on the platform at the moment, or the list could not be loaded. The feed carries every campaign either way.",
+      "emptyAction": "Browse the feed",
+      "kinds": {
+        "staff_selection": "Staff selection",
+        "themed": "Themed collection",
+        "open_call": "Open call"
+      },
+      "sentences": {
+        "staff_selection": "Chosen by the IdeaNest team.",
+        "themed": "A collection built around one subject.",
+        "open_call": "An open call: a programme campaigns can be submitted to while it is open."
+      },
+      "inCollection": "In this collection",
+      "cardCampaigns": "Campaigns",
+      "badge": "Campaigns in this collection carry the IdeaNest editorial badge.",
+      "badgeOpenCall": "Being accepted into this programme is what grants it.",
+      "badgeCurated": "It is a selection the platform stands behind, not a guarantee about any campaign.",
+      "campaignsEmptyTitle": "Nothing to show here yet",
+      "campaignsEmptyBody": "No campaign in {title} is published at the moment. The feed carries every campaign on the platform.",
+      "gridLabel": "Campaigns in {title}",
+      "showMoreLabel": "Show more campaigns in {title}",
+      "showMore": "Show more",
+      "loading": "Loading",
+      "nextFailedTitle": "The next page did not load",
+      "refused": "The service refused the request. Try again.",
+      "unreachable": "The service could not be reached. Check your connection and try again.",
+      "count": {
+        "one": "{count} campaign",
+        "few": "{count} campaigns",
+        "many": "{count} campaigns",
+        "other": "{count} campaigns"
+      },
+      "shown": {
+        "one": "{count} campaign shown",
+        "few": "{count} campaigns shown",
+        "many": "{count} campaigns shown",
+        "other": "{count} campaigns shown"
+      },
+      "shownMore": {
+        "one": "{count} campaign shown, with more to load",
+        "few": "{count} campaigns shown, with more to load",
+        "many": "{count} campaigns shown, with more to load",
+        "other": "{count} campaigns shown, with more to load"
       }
     },
     "search": {
@@ -490,6 +1235,53 @@
       "withdraw": "Withdraw",
       "withdrawWarning": "Withdrawing leaves a note saying the comment was removed. Any replies to it stay, and it cannot be edited or restored.",
       "keep": "Keep it"
+    }
+  },
+  "profile": {
+    "notFound": "Profile not found",
+    "metaDescription": "{name} on IdeaNest — the campaigns they have created and backed.",
+    "avatarAlt": "{name}’s profile picture",
+    "tabsLabel": "Profile sections",
+    "tabs": {
+      "created": "Created",
+      "backed": "Backed",
+      "about": "About"
+    },
+    "about": {
+      "heading": "About {name}",
+      "empty": "{name} has not written anything here.",
+      "basedIn": "Based in",
+      "website": "Website",
+      "since": "On IdeaNest since",
+      "elsewhere": "Elsewhere"
+    },
+    "grid": {
+      "failedTitle": "This list could not be loaded",
+      "failedBody": "The service did not answer. Nothing is wrong with the profile — reload the page to try again.",
+      "createdEmptyTitle": "No campaigns yet",
+      "createdEmptyBody": "{name} has not published a campaign on IdeaNest.",
+      "backedEmptyTitle": "Nothing here yet",
+      "backedEmptyBody": "{name} has not backed a campaign publicly. Pledges made anonymously are never listed here.",
+      "showMore": "Show more",
+      "showMoreCreated": "Show more campaigns this person created",
+      "showMoreBacked": "Show more campaigns this person backed",
+      "loading": "Loading",
+      "nextFailedTitle": "The next page did not load",
+      "refused": "The service refused the request. Try again.",
+      "unreachable": "The service could not be reached. Check your connection and try again."
+    },
+    "card": {
+      "states": {
+        "PRELAUNCH": "Pre-launch",
+        "SCHEDULED": "Scheduled",
+        "LIVE": "Live",
+        "SUCCESSFUL": "Funded",
+        "UNSUCCESSFUL": "Not funded",
+        "COLLECTING": "Collecting",
+        "LATE_PLEDGE": "Late pledges",
+        "FULFILLING": "Fulfilling",
+        "COMPLETED": "Completed"
+      }
     }
   },
   "static": {

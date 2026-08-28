@@ -2,6 +2,18 @@
   "common": {
     "save": "Kaydet",
     "cancel": "Vazgeç",
+    "breadcrumb": "Gezinti izi",
+    "card": {
+      "progressLabel": "hedefin yüzde {percent} kadarı",
+      "funded": "hedefin %{percent} kadarı",
+      "ofGoal": "{amount} hedefinden",
+      "backers": {
+        "one": "{count} destekçi",
+        "few": "{count} destekçi",
+        "many": "{count} destekçi",
+        "other": "{count} destekçi"
+      }
+    },
     "saving": "Kaydediliyor…",
     "tryAgain": "Tekrar deneyin",
     "trail": {
@@ -168,6 +180,319 @@
         "title": "Bildirimler",
         "intro": "Platformun size bildirdiği her şey, en yenisi başta. Birini açmanız onu okundu olarak işaretler. <settings>Size ne gönderildiğini değiştirin</settings>."
       }
+    },
+    "fulfilment": {
+      "address": {
+        "metaTitle": "Teslimat adresi",
+        "metaDescription": "Bu desteğin ödülünün nereye gideceği.",
+        "title": "Teslimat adresi",
+        "intro": "Bu desteğin ödülünün nereye gideceği. Her desteğin kendi adresi var, bu yüzden burayı değiştirmek başka hiçbir şeyi taşımaz. Adres saklanırken şifrelenir ve üretici onu yalnızca paketi hazırlarken görür.",
+        "back": "Teslimatlarınıza dönün"
+      },
+      "deliveries": {
+        "loading": "Teslimatlarınız yükleniyor",
+        "failedTitle": "Teslimatlarınız yüklenemedi",
+        "refused": "Servis isteği reddetti.",
+        "unreachable": "Servise ulaşılamadı. Bağlantınızı denetleyip yeniden deneyin.",
+        "emptyTitle": "Yolda bir şey yok",
+        "emptyBody": "Desteklediğiniz bir kampanya fonlandığında ve üretici paketlemeye başladığında her ödül, takip bilgisiyle birlikte burada görünür.",
+        "emptyAction": "Kampanyalara göz at",
+        "unlisted": "Artık listelenmeyen bir kampanya",
+        "carrier": "Taşıyıcı",
+        "tracking": "Takip",
+        "sent": "Gönderildi",
+        "arrived": "Ulaştı",
+        "shippingAddress": "Teslimat adresi",
+        "theCampaign": "Kampanya"
+      },
+      "status": {
+        "PREPARING": "Hazırlanıyor",
+        "SHIPPED": "Yolda",
+        "DELIVERED": "Teslim edildi",
+        "RETURNED": "Geri döndü"
+      },
+      "statusDetail": {
+        "PREPARING": "Üretici bunu henüz göndermedi.",
+        "SHIPPED": "Taşıyıcıda.",
+        "DELIVERED": "Taşıyıcı ulaştığını söylüyor.",
+        "RETURNED": "Teslim edilemedi ve üreticiye döndü. Adresinizi denetleyin.",
+        "unknown": "Bu platformda o durum için henüz bir açıklama yok."
+      },
+      "form": {
+        "recipient": "Tam ad",
+        "line1": "Adres",
+        "line2": "Daire, kat ya da şirket",
+        "locality": "Şehir ya da kasaba",
+        "region": "Bölge ya da eyalet",
+        "postcode": "Posta kodu",
+        "country": "Ülke",
+        "countryHint": "İki harf — AZ, TR, GB, DE.",
+        "phone": "Telefon",
+        "phoneHint": "Bazı taşıyıcılar bu olmadan teslim etmez.",
+        "requiredField": "Bir paket bu olmadan adreslenemez.",
+        "loadFailedTitle": "Bu adres yüklenemedi",
+        "notFound": "O destek bulunamadı ya da size ait değil.",
+        "unreachable": "Servise ulaşılamadı. Bağlantınızı denetleyip yeniden deneyin.",
+        "refused": "Adres reddedildi.",
+        "lockedTitle": "Bu adres kilitli",
+        "lockedBody": "Üretici değişiklikleri kapattı, bu genellikle etiketlerin basıldığı anlamına gelir. Yanlışsa kampanya üzerinden onlara yazın.",
+        "lockedBodyAt": "Üretici değişiklikleri {at} tarihinde kapattı, bu genellikle etiketlerin basıldığı anlamına gelir. Yanlışsa kampanya üzerinden onlara yazın.",
+        "noAddressTitle": "Henüz adres yok",
+        "noAddressBody": "Bu doldurulmadan üretici hiçbir şey gönderemez.",
+        "saveFailedTitle": "Kaydedilmedi",
+        "savedTitle": "Kaydedildi",
+        "savedBody": "Ödül buraya gidiyor.",
+        "savedBodyAt": "Ödül buraya gidiyor, {at} itibarıyla.",
+        "save": "Adresi kaydet",
+        "saving": "Kaydediliyor"
+      }
+    },
+    "notifications": {
+      "headline": {
+        "PLEDGE_CONFIRMED": "{campaign} kampanyasına {amount} tutarındaki desteğiniz onaylandı",
+        "PLEDGE_EDITED": "{campaign} kampanyasına desteğiniz artık {amount} tutarında",
+        "PAYMENT_FAILED": "{campaign} için {amount} tutarındaki ödeme reddedildi",
+        "GOAL_REACHED": "{campaign} kampanyası {amount} hedefine ulaştı",
+        "CAMPAIGN_SUCCEEDED": "{campaign} kampanyası {amount} tutarıyla fonlandı",
+        "CAMPAIGN_UNSUCCESSFUL": "{campaign} kampanyası hedefine ulaşamadan kapandı",
+        "PROJECT_APPROVED": "{campaign} onaylandı ve başlatılabilir",
+        "PAYMENT_COLLECTED": "{campaign} için {amount} tutarındaki ödeme tahsil edildi",
+        "FINAL_PAYMENT_WARNING": "Son uyarı: {campaign} için {amount} tutarındaki ödeme",
+        "PAYOUT_SENT": "{campaign} için {amount} tutarındaki ödeme gönderildi",
+        "DEADLINE_48H": "{campaign} iki gün içinde kapanıyor",
+        "DEADLINE_24H": "{campaign} yarın kapanıyor",
+        "NEW_UPDATE_PUBLISHED": "{campaign} bir güncelleme yayımladı",
+        "COMMENT_REPLY": "Birisi yorumunuza yanıt verdi",
+        "DIRECT_MESSAGE": "Yeni bir iletiniz var",
+        "SURVEY_AVAILABLE": "{campaign} için ödül anketiniz hazır",
+        "SURVEY_OVERDUE": "{campaign} için ödül anketiniz hâlâ yanıtlanmadı",
+        "REWARD_SHIPPED": "{campaign} kampanyasından ödülünüz gönderildi",
+        "FOLLOWED_CREATOR_LAUNCHED": "İzlediğiniz bir üretici {campaign} kampanyasını başlattı",
+        "LAUNCH_REMINDER": "{campaign} başlamak üzere",
+        "SAVED_PROJECT_ENDING_SOON": "Kaydettiğiniz {campaign} yakında bitiyor",
+        "NEW_DEVICE_SIGN_IN": "Hesabınıza yeni bir cihazdan giriş yapıldı"
+      },
+      "unnamed": {
+        "PLEDGE_CONFIRMED": "Bir kampanyaya {amount} tutarındaki desteğiniz onaylandı",
+        "PLEDGE_EDITED": "Bir kampanyaya desteğiniz artık {amount} tutarında",
+        "PAYMENT_FAILED": "Bir kampanya için {amount} tutarındaki ödeme reddedildi",
+        "GOAL_REACHED": "Bir kampanya {amount} hedefine ulaştı",
+        "CAMPAIGN_SUCCEEDED": "Bir kampanya {amount} tutarıyla fonlandı",
+        "CAMPAIGN_UNSUCCESSFUL": "Bir kampanya hedefine ulaşamadan kapandı",
+        "PROJECT_APPROVED": "Bir kampanya onaylandı ve başlatılabilir",
+        "PAYMENT_COLLECTED": "Bir kampanya için {amount} tutarındaki ödeme tahsil edildi",
+        "FINAL_PAYMENT_WARNING": "Son uyarı: bir kampanya için {amount} tutarındaki ödeme",
+        "PAYOUT_SENT": "Bir kampanya için {amount} tutarındaki ödeme gönderildi",
+        "DEADLINE_48H": "Bir kampanya iki gün içinde kapanıyor",
+        "DEADLINE_24H": "Bir kampanya yarın kapanıyor",
+        "NEW_UPDATE_PUBLISHED": "Bir kampanya güncelleme yayımladı",
+        "COMMENT_REPLY": "Birisi yorumunuza yanıt verdi",
+        "DIRECT_MESSAGE": "Yeni bir iletiniz var",
+        "SURVEY_AVAILABLE": "Bir kampanya için ödül anketiniz hazır",
+        "SURVEY_OVERDUE": "Bir kampanya için ödül anketiniz hâlâ yanıtlanmadı",
+        "REWARD_SHIPPED": "Bir kampanyadan ödülünüz gönderildi",
+        "FOLLOWED_CREATOR_LAUNCHED": "İzlediğiniz bir üretici kampanya başlattı",
+        "LAUNCH_REMINDER": "Bir kampanya başlamak üzere",
+        "SAVED_PROJECT_ENDING_SOON": "Kaydettiğiniz bir kampanya yakında bitiyor",
+        "NEW_DEVICE_SIGN_IN": "Hesabınıza yeni bir cihazdan giriş yapıldı"
+      },
+      "amount": {
+        "total": "seçtiğiniz tutar",
+        "newTotal": "yeni bir tutar",
+        "pledge": "desteğiniz",
+        "needed": "gereken tutar",
+        "closingTotal": "kapanış tutarı",
+        "funds": "paranız"
+      },
+      "category": {
+        "PLEDGES": "Destekleriniz",
+        "CAMPAIGN": "Desteklediğiniz kampanyalar",
+        "PAYMENTS": "Ödemeler ve gönderimler",
+        "COMMUNITY": "Yorumlar ve iletiler",
+        "REWARDS": "Ödüller ve anketler",
+        "DISCOVERY": "İzledikleriniz",
+        "SECURITY": "Hesap güvenliği"
+      },
+      "categoryDescription": {
+        "PLEDGES": "Bir desteğiniz onaylanır ya da değişir.",
+        "CAMPAIGN": "Bir kampanya hedefine ulaşır, kapanır ya da kapanmak üzeredir.",
+        "PAYMENTS": "Bir ödeme alınır, reddedilir ya da bir gönderim yapılır.",
+        "COMMUNITY": "Birisi size yanıt verir ya da ileti gönderir.",
+        "REWARDS": "Bir anket bekliyordur ya da bir ödül yoldadır.",
+        "DISCOVERY": "İzlediğiniz bir üretici kampanya başlatır ya da kaydettiğiniz bir şey biter.",
+        "SECURITY": "Hesabınıza yeni bir cihazdan giriş yapılır."
+      },
+      "channel": {
+        "IN_APP": "Uygulamada",
+        "EMAIL": "E-posta",
+        "PUSH": "Anlık bildirim"
+      },
+      "mode": {
+        "OFF": "Kapalı",
+        "IMMEDIATE": "Olur olmaz",
+        "DIGEST": "Günlük özet"
+      },
+      "mandatorySecurity": "Her zaman açık. Hesabınıza başkasının eriştiğini böyle öğrenirsiniz.",
+      "mandatoryOther": "Her zaman açık. Platformun bu konuda size ulaşabilmesi gerekiyor.",
+      "inbox": {
+        "heading": "Bildirimler",
+        "unread": "{count} okunmamış",
+        "unreadOnly": "Yalnızca okunmamışlar",
+        "filterLabel": "Kategoriye göre süz",
+        "all": "Tümü",
+        "signedOut": "Oturumunuz kapalı",
+        "signedOutBody": "Bu tarayıcının artık bir oturumu yok. Bildirimlerinizi okumak için yeniden girin.",
+        "loadingList": "Bildirimleriniz yükleniyor",
+        "emptyTitle": "Henüz bir şey yok",
+        "emptyBody": "Desteklediğiniz bir kampanya hedefine ulaştığında, kapandığında ya da bir ödeme aldığında burada görünecek.",
+        "filteredTitle": "Yüklenenler arasında bir şey yok",
+        "filteredBody": "Bu süzgeçler şimdiye dek yüklenen bildirimlerin hiçbiriyle eşleşmiyor. Aramaya devam etmek için daha fazla yükleyin ya da süzgeçleri temizleyin.",
+        "loadMore": "Daha fazla yükle",
+        "loading": "Yükleniyor",
+        "unreadWord": "Okunmamış",
+        "markRead": "Okundu olarak işaretle",
+        "marking": "İşaretleniyor",
+        "refused": "Servis isteği reddetti. Yeniden deneyin.",
+        "unreachable": "Servise ulaşılamadı. Bağlantınızı denetleyip yeniden deneyin."
+      },
+      "preferences": {
+        "signedOut": "Oturumunuz kapalı",
+        "signedOutBody": "Bu tarayıcının artık bir oturumu yok. Bildirim ayarlarınızı değiştirmek için yeniden girin.",
+        "defaults": "hepsi varsayılan değerinde",
+        "saveFailedTitle": "Bu değişiklik kaydedilmedi",
+        "loading": "Bildirim ayarlarınız yükleniyor",
+        "default": "Varsayılan",
+        "tryAgain": "Yeniden dene",
+        "tooManyChanges": "Bu, servisin bir seferde kabul ettiğinden fazla değişiklik. Biraz bekleyip yeniden deneyin.",
+        "conflict": "Bu ayarı aynı anda başka bir şey değiştirdi. Sayfayı yenileyip yeniden deneyin.",
+        "refused": "Servis değişikliği reddetti. Yeniden deneyin.",
+        "unreachable": "Servise ulaşılamadı. Bağlantınızı denetleyip yeniden deneyin.",
+        "saved": "{category} — {channel}: {mode}."
+      }
+    }
+  },
+  "admin": {
+    "console": "Konsol",
+    "backToSite": "Siteye dön",
+    "navLabel": "Yönetim konsolu",
+    "groups": {
+      "content": "İçerik",
+      "curation": "Küratörlük",
+      "people": "Kişiler",
+      "money": "Para",
+      "platform": "Platform"
+    },
+    "links": {
+      "/admin/moderation": "Denetim kuyruğu",
+      "/admin/moderation/content": "İçerik şikâyetleri",
+      "/admin/moderation/profiles": "Profil şikâyetleri",
+      "/admin/curation": "Derlemeler",
+      "/admin/curation/badges": "Editör rozetleri",
+      "/admin/curation/open-calls": "Açık çağrılar",
+      "/admin/curation/placements": "Yerleşim",
+      "/admin/taxonomy": "Taksonomi",
+      "/admin/users": "Hesaplar",
+      "/admin/support": "Destek",
+      "/admin/staff": "Çalışanlar ve roller",
+      "/admin/payments": "Ödeme günlüğü",
+      "/admin/ledger": "Defter",
+      "/admin/reconciliation": "Mutabakat",
+      "/admin/payouts": "Ödemeler",
+      "/admin/refunds": "İadeler",
+      "/admin/disputes": "Ters ibrazlar",
+      "/admin/fees": "Ücretler",
+      "/admin/analytics": "Analitik",
+      "/admin/audit": "Denetim günlüğü",
+      "/admin/email-templates": "E-posta şablonları",
+      "/admin/flags": "Özellik bayrakları",
+      "/admin/health": "Sistem durumu"
+    },
+    "states": {
+      "built": "Hazır",
+      "partial": "Kısmen hazır",
+      "blocked": "Hazır değil"
+    },
+    "index": {
+      "title": "Yönetim konsolu",
+      "metaDescription": "Platform modülleri, hangilerinin ekranı var ve geri kalanı neyi bekliyor.",
+      "standfirst": "§4.11 bölümünün tarif ettiği {total} modül. Bunlardan {built} tanesinin bir ekranı var; geri kalanı neyi beklediğini söylüyor, çünkü konsolu neredeyse bitmiş gibi gösteren bir liste, boşluğu adıyla anan bir listeden kötüdür.",
+      "issue": "Konu #{issue}",
+      "footnote": "Buradaki hiçbir ekran bir kapı değil. Erişim jetonunda bir rol modeli olana dek konsolun çağırdığı her uç nokta, platform çalışanı olmayan bir çağıranı reddeder ve her ekran bu reddi gösterir — tarayıcıdaki bir denetim, servisin zaten doğru yaptığı denetimin ikinci ve daha zayıf bir kopyası olurdu."
+    },
+    "modules": {
+      "AD-01": {
+        "title": "Proje denetimi",
+        "summary": "Başvuru kuyruğu, üç sonucu ve her birinin ardındaki karar."
+      },
+      "AD-02": {
+        "title": "Güven ve güvenlik",
+        "summary": "Kampanyalar hakkındaki şikâyetler ve en ağırlarına yanıt veren askıya alma.",
+        "waitingOn": "Dolandırıcılık sinyalleri ve kimlik incelemesi kuruldu ve puanlanıyor (#108, #105), ancak hiçbirinin burada ekranı yok — iki kuyruğa da yalnızca API üzerinden ulaşılıyor."
+      },
+      "AD-03": {
+        "title": "Küratörlük",
+        "summary": "Editör derlemeleri, verdikleri rozetler, açık çağrılar ve nerede göründükleri."
+      },
+      "AD-04": {
+        "title": "Kullanıcı yönetimi",
+        "summary": "Bir hesabı ara, durumunu oku, durdur, geri al — ve burada kimin çalıştığını söyle.",
+        "waitingOn": "Denetlenen kimliğe bürünme bir politika yanıtına takılı: başkasının adına açılmış bir oturumun neleri yapamayacağı §17 bölümünün çözmediği bir soru (#299)."
+      },
+      "AD-05": {
+        "title": "Finans",
+        "summary": "Her tahsilat ve kayıt, her üreticiye ne borçlu olunduğu, hepsinin tutup tutmadığı ve para çıkmadan önceki imzalar."
+      },
+      "AD-06": {
+        "title": "İadeler",
+        "summary": "Tam ve kısmi, gerekçe kodlarıyla ve her birinin ardında bir defter kaydıyla."
+      },
+      "AD-07": {
+        "title": "Ters ibrazlar",
+        "summary": "Bildirim, kanıt, sonuç — ve her birinin karşısındaki süre.",
+        "waitingOn": "Kanıtlar burada kaydediliyor ve sağlayıcı üzerinden sunuluyor: §9.3 sağlayıcı arayüzüne kanıt yükleme vermiyor, bu yüzden belgeler hâlâ onların konsolundan geçiyor (#308)."
+      },
+      "AD-08": {
+        "title": "Taksonomi",
+        "summary": "Kategoriler, alt kategoriler ve etiketler, her dil için bir çeviriyle.",
+        "waitingOn": "Hiçbir şey kullanımdan kaldırılamıyor: kampanyalar bu satırlara başvuruyor ve birini düzenleyiciden gizleyip kampanyaları altında bırakmak için V6 sürümünde olmayan bir sütun gerekiyor (#309)."
+      },
+      "AD-09": {
+        "title": "İçerik denetimi",
+        "summary": "Yorumlar, kampanya güncellemeleri ve kişiler hakkındaki şikâyetler."
+      },
+      "AD-10": {
+        "title": "Destek",
+        "summary": "Hesap bağlamı ve yapılanların geçmişiyle birlikte talepler.",
+        "waitingOn": "Çalışanlar bir görüşmeyi hesabın altına kaydediyor; henüz herkese açık bir form yok, o da kendi hız sınırı ve anonim gönderen sorusu olan ayrı bir yüzey (#310)."
+      },
+      "AD-11": {
+        "title": "Ücret yapılandırması",
+        "summary": "Platform ve işlem oranları, istisnaları ve bugüne dek uygulanmış bütün koşullar."
+      },
+      "AD-12": {
+        "title": "Özellik bayrakları",
+        "summary": "Kademeli yayma ve dediğini yapan bir kapatma anahtarı.",
+        "waitingOn": "Yayma kuruldu, deneyler değil — bir varyantı yargılamak için bir ölçüt gerekiyor ve hiçbir şey onu ölçmüyor (#312)."
+      },
+      "AD-13": {
+        "title": "Analitik",
+        "summary": "Platformun tamamında hacim, başarı oranı ve ortalama destek.",
+        "waitingOn": "Kohortlar için destekçinin ilk desteğine dayalı bir toplama, huniler için ziyaretten desteğe giden yol gerekiyor; ikisi de yok ve ekran onları yaklaştırmak yerine bunu söylüyor (#313)."
+      },
+      "AD-14": {
+        "title": "Denetim günlüğü",
+        "summary": "Her ayrıcalıklı işlemin değiştirilemez kaydı, en yenisi başta."
+      },
+      "AD-15": {
+        "title": "E-posta şablonları",
+        "summary": "Düzenleme, önizleme ve deneme gönderimi, her düzenlemenin ürettiği sürümle.",
+        "waitingOn": "Konu ve ilk paragraf düzenlenebilir; başlık, düğme yazısı ve bir türün koşullu ikinci paragrafı gelen katalogda kalır (#315)."
+      },
+      "AD-16": {
+        "title": "Sistem durumu",
+        "summary": "Kuyruk derinliği, başarısız işler ve sağlayıcı durumu, siz açtığınızda ölçülür.",
+        "waitingOn": "Burada hiçbir şey uyarı vermiyor. #138, §18 bölümünün gözlemlenebilirlik işi ve birini uyandıracak olan hâlâ o; bu sayfa izlenmez, okunur (#316)."
+      }
     }
   },
   "settings": {
@@ -234,6 +559,212 @@
         "title": "Gizlilik, veriler ve hesap kapatma",
         "intro": "Sizi kimlerin görebileceği, IdeaNest'in sizinle ilgili tuttuğu her şey ve siz ayrılırsanız bunlara ne olacağı."
       }
+    },
+    "panels": {
+      "emailChange": {
+        "heading": "E-posta adresinizi değiştirin",
+        "signInWith": "{address} ile oturum açıyorsunuz.",
+        "signInWithUnverified": "{address} ile oturum açıyorsunuz, bu adres henüz doğrulanmadı.",
+        "alertTitle": "Hesap, yeni adres yanıt verdiğinde taşınır",
+        "alertBody": "Bize verdiğiniz adrese bir bağlantı, şu an kullandığınız adrese ise bir bildirim gönderiyoruz. O bağlantı açılana dek hesabınız mevcut adresini korur, yani bir yazım yanlışı size yalnızca bir iletiye mal olur.",
+        "currentPassword": "Mevcut parola",
+        "currentPasswordHint": "Çalınmış bir oturum, parolanızı sıfırlayan adresi değiştiremesin diye soruluyor.",
+        "newEmail": "Yeni e-posta adresi",
+        "submit": "Doğrulamayı gönder",
+        "submitting": "Doğrulama gönderiliyor",
+        "sentIntro": "{address} adresine bir doğrulama bağlantısı yola çıktı. Hesabı taşıyan şey onun açılmasıdır.",
+        "nothingChanged": "Henüz hiçbir şey değişmedi.",
+        "stillSignIn": "O bağlantı açılana dek hâlâ {address} ile oturum açıyorsunuz ve bağlantı altı saat çalışır.",
+        "stillSignInUnknown": "O bağlantı açılana dek mevcut adresiniz hâlâ oturum açıyor ve bağlantı altı saat çalışır.",
+        "alsoWrote": "Değişikliğin istendiğini söylemek için mevcut adresinize de yazdık. O iletide hiçbir bağlantı yok — hiçbir şeyi onaylayamaz ve orada olmasının nedeni, sizin yapmadığınız bir değişikliğin hesap hâlâ sizinken size ulaşmasıdır.",
+        "askDifferent": "Başka bir adres iste"
+      },
+      "passwordChange": {
+        "heading": "Parolanızı değiştirin",
+        "alertTitle": "Bu sizi her yerde oturumdan çıkarır",
+        "alertBody": "Parolanızı değiştirmek hesaptaki bütün oturumları, bu oturum da dahil, sonlandırır — asıl mesele bu: bir parola tam da eskisinin bilinebileceği anda değiştirilir. Hem bu tarayıcıda hem de diğerlerinde yeni parolayla yeniden girmeniz istenecek.",
+        "currentPassword": "Mevcut parola",
+        "currentPasswordHint": "Çalınmış bir oturum parolanızı değiştiremesin diye soruluyor.",
+        "newPassword": "Yeni parola",
+        "repeat": "Yeni parola yeniden",
+        "repeatHint": "Bu tarayıcıda karşılaştırılır ve asla gönderilmez.",
+        "submit": "Parolayı değiştir ve çık",
+        "submitting": "Parolanız değiştiriliyor",
+        "mismatchTitle": "İki yeni parola birbirini tutmuyor",
+        "mismatchDetail": "Her iki kutuya aynı parolayı yazıp yeniden deneyin.",
+        "mismatchField": "Bu, yukarıdaki parolayla aynı değil."
+      }
+    }
+  },
+  "auth": {
+    "layout": {
+      "footer": "Ödüle dayalı kitlesel fonlama. Bir kampanya süresi dolmadan hedefine ulaşmazsa kimseden para alınmaz."
+    },
+    "loadingForm": "Form yükleniyor…",
+    "checkingLink": "Bağlantı denetleniyor…",
+    "fields": {
+      "email": "E-posta adresi",
+      "emailPlaceholder": "you@example.com",
+      "password": "Parola",
+      "passwordHint": "Uzun parola karmaşık paroladan güçlüdür. Kesin gereklilik, bu parola reddedilirse servisin kendisinden gelir."
+    },
+    "failures": {
+      "unexpectedTitle": "Bir şeyler ters gitti",
+      "unexpectedDetail": "İstek tamamlanamadı. Birazdan yeniden deneyin.",
+      "unreachableTitle": "Servise ulaşılamadı",
+      "unreachableDetail": "Bağlantınızı denetleyip yeniden deneyin. Hiçbir şey gönderilmedi.",
+      "suspendedTitle": "Hesap askıya alındı",
+      "suspendedDetail": "Bu hesap askıya alındı. İtiraz için destek ekibine yazın.",
+      "rateLimitedTitle": "Çok fazla deneme",
+      "rateLimitedDetail": "Çok fazla deneme yapıldı. Birkaç dakika bekleyip yeniden deneyin.",
+      "rateLimitedShort": "Çok fazla deneme yapıldı.",
+      "retryAfter": "{detail} {wait} yeniden deneyebilirsiniz.",
+      "waitUnderMinute": "bir dakikadan kısa sürede",
+      "waitOneMinute": "yaklaşık bir dakika sonra",
+      "waitMinutes": "yaklaşık {minutes} dakika sonra",
+      "refusedTitle": "Bu işe yaramadı",
+      "refusedDetail": "Servis bu isteği reddetti ve nedenini söylemedi."
+    },
+    "signIn": {
+      "metaTitle": "Oturum açın",
+      "metaDescription": "IdeaNest hesabınıza girin.",
+      "title": "Oturum açın",
+      "intro": "Desteklerinize, kampanyalarınıza ve izlediğiniz her şeye geri dönün.",
+      "submit": "Oturum aç",
+      "submitting": "Oturum açılıyor",
+      "forgot": "Parolanızı mı unuttunuz?",
+      "noAccount": "Henüz hesabınız yok mu?",
+      "createOne": "Bir tane oluşturun",
+      "passwordChangedTitle": "Parolanız değiştirildi",
+      "passwordChangedDetail": "Hesapta oturum açmış bütün tarayıcılar, bu tarayıcı da dahil, oturumdan çıkarıldı. Yeni parolayla girin."
+    },
+    "register": {
+      "metaTitle": "Hesap oluşturun",
+      "metaDescription": "Bir IdeaNest hesabı oluşturun.",
+      "title": "Hesap oluşturun",
+      "intro": "Kampanyaları destekleyin, üreticileri izleyin ve kendi kampanyanızı başlatın. Bunun için bir e-posta adresi ve bir parola yeterli.",
+      "name": "Ad",
+      "nameHint": "Destekçilere ve üreticilere böyle görünürsünüz. Sonradan değiştirebilirsiniz.",
+      "submit": "Hesap oluştur",
+      "submitting": "Hesabınız oluşturuluyor",
+      "haveAccount": "Zaten hesabınız var mı?",
+      "signIn": "Oturum açın",
+      "twoFactorTitle": "Bir adım daha",
+      "twoFactorIntro": "Bu hesapta iki adımlı doğrulama zaten açık.",
+      "sentTitle": "E-postanızı denetleyin",
+      "sentIntro": "{address} adresine bir ileti gönderdik. Hesabınızın kurulumunu bitirmek için içindeki bağlantıyı açın.",
+      "sentLifetime": "Bağlantı 24 saat geçerlidir ve bir kez kullanılabilir.",
+      "sentExisting": "O adresin zaten bir IdeaNest hesabı varsa ileti bunu söyler ve ikinci bir hesap açmak yerine geri dönüş yolu sunar.",
+      "verified": "Zaten doğrulandı mı?"
+    },
+    "twoFactor": {
+      "expiredTitle": "Bu doğrulamanın süresi doldu",
+      "expiredDetail": "Güvenlik için yalnızca birkaç dakika sürer. Parolanız ve kodlarınız değişmedi — yeniden girin, sizden yenisi istenecek.",
+      "signInAgain": "Yeniden oturum açın",
+      "acceptedTitle": "Parolanız kabul edildi",
+      "acceptedDetail": "Bu hesap ikinci bir etken istiyor. Doğrulayıcı uygulamanızdaki altı haneli kodu girin.",
+      "codeLabel": "Doğrulama kodu",
+      "codePlaceholder": "000000",
+      "cannotReach": "Doğrulayıcıma ulaşamıyorum",
+      "recoveryLabel": "Kurtarma kodu",
+      "recoveryHint": "İki adımlı doğrulamayı açarken kaydettiğiniz kodlardan biri. Her biri bir kez çalışır.",
+      "submit": "Devam et",
+      "submitting": "Denetleniyor",
+      "differentAccount": "Başka bir hesap kullan"
+    },
+    "providers": {
+      "separatorLabel": "Ya da şununla devam edin",
+      "or": "ya da",
+      "appleSignIn": "Apple ile oturum açın",
+      "appleRegister": "Apple ile kaydolun"
+    },
+    "reset": {
+      "lifetime": "bir saat",
+      "metaTitle": "Parolanızı sıfırlayın",
+      "metaDescription": "IdeaNest hesabınıza yeni bir parola belirleyen bağlantıyı alın.",
+      "title": "Parolanızı sıfırlayın",
+      "intro": "Giriş yaptığınız adresi verin, yeni bir parola belirleyen bağlantıyı gönderelim. Eskisine gerek kalmayacak.",
+      "submit": "Bağlantıyı gönder",
+      "submitting": "Bağlantı gönderiliyor",
+      "remembered": "Hatırladınız mı?",
+      "signIn": "Oturum açın",
+      "sentTitle": "E-postanızı denetleyin",
+      "sentIntro": "{address} adresinin bir IdeaNest hesabı varsa, yeni parola belirlemek için bir bağlantı ona yola çıktı.",
+      "sentLifetime": "Bağlantı {lifetime} çalışır ve bir kez kullanılabilir. Yeniden istemek onu değiştirir, bu yüzden en son iletiyi kullanın.",
+      "sentRetry": "Hiçbir şey gelmedi mi? Adreste yazım yanlışı var mı bakın, sonra {retry}. Bir hesabın var olup olmadığını size söyleyemeyiz, bu yüzden bu ekran her iki durumda da aynı görünür.",
+      "tryAnother": "başka bir adres deneyin",
+      "backToSignIn": "Girişe dön"
+    },
+    "resetConfirm": {
+      "metaTitle": "Yeni bir parola seçin",
+      "metaDescription": "IdeaNest hesabınızdaki parola sıfırlamasını tamamlayın.",
+      "title": "Yeni bir parola seçin",
+      "intro": "Bu bağlantı gönderildiği andan sonra {lifetime} ve yalnızca bir kez çalışır. Burada parola belirlemek, hesapta oturum açmış bütün tarayıcıları oturumdan çıkarır.",
+      "newPassword": "Yeni parola",
+      "repeat": "Yeni parola yeniden",
+      "repeatHint": "Bu tarayıcıda karşılaştırılır ve asla gönderilmez. Buradaki bir yazım yanlışı bağlantıya mal olurdu.",
+      "submit": "Parolamı belirle",
+      "submitting": "Parolanız belirleniyor",
+      "mismatchTitle": "İki parola birbirini tutmuyor",
+      "mismatchDetail": "Her iki kutuya aynı parolayı yazıp yeniden deneyin.",
+      "mismatchField": "Bu, yukarıdaki parolayla aynı değil.",
+      "refusedPassword": "Bu parola reddedildi.",
+      "noTokenTitle": "Size gönderdiğimiz bağlantıyı açın",
+      "noTokenIntro": "Bu sayfa yeni bir parola belirler ve bunun için sıfırlama iletisindeki bağlantıya ihtiyacı vardır. O bağlantıyı açmak sizi gereken her şeyle birlikte buraya geri getirir.",
+      "askForLink": "Sıfırlama bağlantısı isteyin",
+      "deadTitle": "Bu bağlantı kullanılamaz",
+      "deadAlertTitle": "Sıfırlama bağlantısı reddedildi",
+      "deadFallback": "Bu bağlantı kullanılamaz.",
+      "deadExplain": "Bir sıfırlama bağlantısı {lifetime} çalışır ve bir kez kullanılabilir; bu, doğrulama bağlantısından bilerek daha kısadır — o bir adresi kanıtlar, bu ise bir parolayı değiştirir. Yenisini istemek eski bağlantıları da geçersiz kılar, bu yüzden en son iletiyi kullanın.",
+      "askNewLink": "Yeni bir bağlantı isteyin",
+      "askNewInstead": "Bunun yerine yeni bir bağlantı isteyin",
+      "doneTitle": "Parolanız belirlendi",
+      "doneIntro": "Bu hesapta oturum açmış bütün tarayıcılar, tanımadıklarınız da dahil, oturumdan çıkarıldı. Yeni parolayla girin.",
+      "signIn": "Oturum açın"
+    },
+    "verifyEmail": {
+      "metaTitle": "E-postanızı doğrulayın",
+      "metaDescription": "IdeaNest hesabınızın kurulumunu tamamlayın.",
+      "statusVerifying": "E-posta adresiniz doğrulanıyor.",
+      "statusVerified": "E-posta adresiniz doğrulandı.",
+      "statusFailed": "Bu doğrulama bağlantısı kullanılamadı.",
+      "idleTitle": "Size gönderdiğimiz bağlantıyı açın",
+      "idleIntro": "Bu sayfa bir hesabın kurulumunu bitirir ve bunun için doğrulama iletisindeki bağlantıya ihtiyacı vardır. O bağlantıyı açmak sizi gereken her şeyle birlikte buraya geri getirir.",
+      "verifyingTitle": "E-posta adresiniz doğrulanıyor",
+      "verifyingIntro": "Bir saniye — bağlantıyı doğruluyoruz.",
+      "verifiedTitle": "E-posta adresiniz doğrulandı",
+      "verifiedIntro": "Hesap hazır. Oturum açmak sizi yolun geri kalanına götürür.",
+      "failedTitle": "Bu bağlantı kullanılamaz",
+      "failedExplain": "Doğrulama bağlantıları 24 saat geçerlidir ve bir kez kullanılabilir. Sizinkinin süresi dolduysa ya da zaten açıldıysa hesap yine de duruyor — bir adres doğrulanmadan önce de oturum açmak çalışır ve hesap menüsü doğrulanana dek hatırlatmayı taşır.",
+      "signIn": "Oturum açın",
+      "createAccount": "Hesap oluşturun",
+      "home": "Ana sayfa"
+    },
+    "emailChange": {
+      "metaTitle": "Yeni e-posta adresinizi doğrulayın",
+      "metaDescription": "IdeaNest hesabınızın yeni bir e-posta adresine taşınmasını tamamlayın.",
+      "statusConfirming": "Yeni e-posta adresiniz doğrulanıyor.",
+      "statusConfirmed": "E-posta adresiniz değiştirildi.",
+      "statusTaken": "O adresin artık bir hesabı var, bu yüzden değişiklik tamamlanamadı.",
+      "statusRefused": "Bu doğrulama bağlantısı kullanılamadı.",
+      "idleTitle": "Size gönderdiğimiz bağlantıyı açın",
+      "idleIntro": "Bu sayfa bir hesabın yeni bir e-posta adresine taşınmasını bitirir ve bunun için o adrese gönderilen bağlantıya ihtiyacı vardır. O bağlantıyı açmak sizi gereken her şeyle birlikte buraya geri getirir.",
+      "confirmingTitle": "Yeni adresiniz doğrulanıyor",
+      "confirmingIntro": "Bir saniye — bağlantıyı denetliyoruz.",
+      "confirmedTitle": "E-posta adresiniz değiştirildi",
+      "confirmedIntro": "Bundan sonra oturum açacağınız adres bu. Parolanız değişmedi ve oturum açmış her tarayıcı açık kalmaya devam ediyor — hesabın taşındığını söylemek için önceki adrese de yazdık.",
+      "goToAccount": "Hesabınıza gidin",
+      "takenTitle": "O adres önce alındı",
+      "takenAlertTitle": "Değişiklik tamamlanamadı",
+      "takenFallback": "O adresin artık bir hesabı var. Değişikliği yeniden isteyin.",
+      "takenExplain": "Değişikliğin istendiği an ile bu bağlantının açıldığı an arasında birisi o adresi kaydettirdi. Hesabınız değişmedi ve hâlâ önceki adresiyle oturum açıyor.",
+      "takenNotSpent": "Bu bağlantı tükenmedi. O adres serbest kalırsa yeniden açmak yine işe yarar — yoksa değişikliği başka bir adresle yeniden isteyin.",
+      "refusedTitle": "Bu bağlantı kullanılamaz",
+      "refusedAlertTitle": "Doğrulama reddedildi",
+      "refusedFallback": "Bu bağlantı kullanılamaz.",
+      "refusedExplain": "Bir doğrulama bağlantısı altı saat çalışır ve bir kez kullanılabilir. Hesabınız taşınmadı — hâlâ eski adresiyle oturum açıyor — bu yüzden değişikliği hesap ayarlarınızdan yeniden isteyin ve en yeni iletiyi açın.",
+      "emailSettings": "E-posta ayarları",
+      "signIn": "Oturum açın"
     }
   },
   "home": {
@@ -272,6 +803,153 @@
       "metaTitle": "Keşfet",
       "metaDescription": "IdeaNest'teki tüm kampanyalara göz atın ve filtreleyin."
     },
+    "card": {
+      "badges": {
+        "upcoming": "Yakında",
+        "live": "Etkin",
+        "late_pledge": "Geç destek",
+        "successful": "Başarılı",
+        "unsuccessful": "Başarısız"
+      },
+      "by": "hazırlayan: {creator}",
+      "lastDay": "Son gün",
+      "daysLeft": {
+        "one": "{count} gün kaldı",
+        "few": "{count} gün kaldı",
+        "many": "{count} gün kaldı",
+        "other": "{count} gün kaldı"
+      },
+      "notOpen": "Henüz desteğe açık değil"
+    },
+    "filters": {
+      "status": {
+        "upcoming": "Yakında",
+        "live": "Etkin",
+        "late_pledge": "Geç destek",
+        "successful": "Başarılı",
+        "unsuccessful": "Başarısız"
+      },
+      "sort": {
+        "best_match": "En uygun",
+        "newest": "En yeni",
+        "ending_soon": "Yakında bitiyor",
+        "most_funded": "En çok fonlanan",
+        "most_backed": "En çok desteklenen",
+        "popularity": "Popüler"
+      },
+      "completion": {
+        "under_25": "%25 altı",
+        "25_to_50": "%25 ile %50 arası",
+        "50_to_75": "%50 ile %75 arası",
+        "75_to_100": "%75 ile %100 arası",
+        "over_100": "Fonlandı — %100 ve üzeri"
+      },
+      "amount": {
+        "under_1000": "1.000 AZN altı",
+        "1000_to_5000": "1.000 ile 5.000 AZN arası",
+        "5000_to_20000": "5.000 ile 20.000 AZN arası",
+        "20000_to_50000": "20.000 ile 50.000 AZN arası",
+        "over_50000": "50.000 AZN ve üzeri"
+      },
+      "groups": {
+        "status": "Durum",
+        "category": "Kategori",
+        "subcategory": "Alt kategori",
+        "completion": "Tamamlanma",
+        "goal": "Hedef tutarı",
+        "raised": "Toplanan tutar",
+        "tag": "Etiket",
+        "tags": "Etiketler"
+      },
+      "range": {
+        "between": "{min} ile {max} AZN arası",
+        "from": "{min} AZN ve üzeri",
+        "upTo": "{max} AZN'ye kadar"
+      }
+    },
+    "feed": {
+      "title": "Keşfet",
+      "standfirst": "IdeaNest üzerindeki bütün kampanyalar, sizin için önemli olana göre süzülmüş.",
+      "filtersLabel": "Projeleri süz",
+      "railLabel": "Süzgeçler",
+      "resultsHeading": "Projeler",
+      "none": "Yok",
+      "sortLabel": "Sıralama",
+      "customRange": "Ya da AZN cinsinden kendi aralığınız.",
+      "lowest": "En düşük {dimension}",
+      "highest": "En yüksek {dimension}",
+      "applyRange": "Aralığı uygula",
+      "applyRangeLabel": "Kendi {dimension} aralığını uygula",
+      "rangeInvalid": "Tutarı rakamla yazın, örneğin 2500 ya da 2500.00.",
+      "rangeUnordered": "En düşük tutar en yüksekten büyük olamaz.",
+      "subcategoriesOf": "{category} alt bölümleri",
+      "loading": "Projeler yükleniyor",
+      "loadingMore": "Daha fazla proje yükleniyor",
+      "showMore": "Daha fazla proje göster",
+      "appliedFilters": "Uygulanan süzgeçler",
+      "clearAll": "Bütün süzgeçleri temizle",
+      "removeChip": "{group} süzgecini kaldır: {label}",
+      "tryAgain": "Yeniden dene",
+      "errorTitle": "Projeler yüklenemedi",
+      "unreachable": "Servise ulaşılamadı. Bağlantınızı denetleyip yeniden deneyin.",
+      "refused": "Servis bu isteği reddetti ve nedenini söylemedi. Süzgeçleri temizlemeyi deneyin.",
+      "emptyQueryTitle": "“{query}” ile eşleşen proje yok",
+      "emptyFilteredTitle": "Bu süzgeçlerle eşleşen proje yok",
+      "emptyTitle": "Henüz gösterilecek proje yok",
+      "emptyQueryBody": "Platformda bu aramayla eşleşen bir şey yok. Yazımı denetleyin ya da daha kısa bir sözcük deneyin.",
+      "emptyQueryBodyFiltered": "Bu süzgeçler uygulanmışken platformda bu aramayla eşleşen bir şey yok. Yazımı denetleyin ya da daha kısa bir sözcük deneyin.",
+      "emptyBody": "Bu akışın gösterebileceği hiçbir şey platformda yayımlanmadı.",
+      "blamedOne": "Diğer süzgeçleriniz uygulandığında {filter} altında kampanya kalmıyor. Onu kaldırırsanız sonuçlar geri gelmeli.",
+      "blamedMany": "Bu süzgeçlerin ortak hiçbir şeyi yok: {filters}. Birini kaldırırsanız sonuçlar geri gelmeli.",
+      "removeFilter": "Kaldır: {label}",
+      "clearSearch": "Aramayı temizle",
+      "endAll": "Bu süzgeçlerle eşleşen bütün projeler bunlar.",
+      "endFeed": "Bu akışın sonuna geldiniz.",
+      "announceNone": "Bu süzgeçlerle eşleşen proje yok.",
+      "shown": {
+        "one": "{count} proje gösteriliyor",
+        "few": "{count} proje gösteriliyor",
+        "many": "{count} proje gösteriliyor",
+        "other": "{count} proje gösteriliyor"
+      },
+      "shownMore": {
+        "one": "{count} proje gösteriliyor, daha fazlası var",
+        "few": "{count} proje gösteriliyor, daha fazlası var",
+        "many": "{count} proje gösteriliyor, daha fazlası var",
+        "other": "{count} proje gösteriliyor, daha fazlası var"
+      },
+      "announceShown": {
+        "one": "{count} proje gösteriliyor.",
+        "few": "{count} proje gösteriliyor.",
+        "many": "{count} proje gösteriliyor.",
+        "other": "{count} proje gösteriliyor."
+      },
+      "announceMore": {
+        "one": "{count} proje daha yüklendi.",
+        "few": "{count} proje daha yüklendi.",
+        "many": "{count} proje daha yüklendi.",
+        "other": "{count} proje daha yüklendi."
+      }
+    },
+    "suggest": {
+      "formLabel": "Kampanya araması",
+      "inputLabel": "Kampanya ara",
+      "placeholder": "Kampanya, kategori ve etiket arayın",
+      "listboxLabel": "Kampanya önerileri",
+      "submit": "Ara",
+      "looking": "Öneriler aranıyor",
+      "lookingAnnounce": "Öneriler aranıyor.",
+      "unavailableAnnounce": "Öneriler kullanılamıyor. Yazdığınız şey yine de aranabilir.",
+      "failedFallback": "Öneriler yüklenemedi. Yazdığınızı aramak için Enter'a basın.",
+      "failedDetail": "{detail} Yazdığınızı aramak için Enter'a basın.",
+      "none": "“{query}” için öneri yok. Yine de aramak için Enter'a basın.",
+      "kinds": {
+        "campaign": "Kampanya",
+        "category": "Kategori",
+        "subcategory": "Alt kategori",
+        "tag": "Etiket"
+      }
+    },
     "categories": {
       "metaTitle": "Kategoriler",
       "metaDescription": "IdeaNest'teki her kategori ve alt kategori — her birinin kendi kampanya sayfası var.",
@@ -279,12 +957,79 @@
       "intro": "Platformdaki tüm kategoriler ve içlerindeki alt kategoriler. Her birinin kendi sayfası var.",
       "feedLink": "Akış"
     },
+    "landing": {
+      "notFound": "Kategori bulunamadı",
+      "metaDescription": "IdeaNest üzerinde {category} kategorisindeki kitlesel fonlama kampanyaları — bir kampanyayı destekleyin ya da kendinizinkini başlatın.",
+      "subMetaTitle": "{category} kategorisinde {subcategory}",
+      "subMetaDescription": "IdeaNest üzerinde {category} kategorisinin bir parçası olan {subcategory} bölümündeki kitlesel fonlama kampanyaları.",
+      "standfirst": "{category} kategorisindeki kampanyalar, en yenisi başta.",
+      "subStandfirst": "{category} → {subcategory} bölümündeki kampanyalar, en yenisi başta.",
+      "subcategoriesLabel": "{category} kategorisinin alt bölümleri",
+      "count": "{count, plural, =0 {Burada henüz kampanya yok} other {# kampanya}}",
+      "countMore": "{count, plural, =0 {Burada henüz kampanya yok} other {# kampanya, akışta daha fazlası var}}",
+      "emptyTitle": "{title} bölümünde henüz bir şey yayımlanmadı",
+      "emptyBody": "Bu kategori var ve içinde henüz bir kampanya başlamadı. Akış, platformdaki bütün kampanyaları taşır.",
+      "emptyAction": "Akışa göz at",
+      "gridLabel": "{title} bölümündeki kampanyalar",
+      "seeEvery": "{title} bölümündeki bütün kampanyaları gör",
+      "filterAndSort": "{title} bölümünü akışta süz ve sırala"
+    },
     "collections": {
       "metaTitle": "Koleksiyonlar",
       "metaDescription": "IdeaNest'te editör seçkileri, temalı koleksiyonlar ve açık çağrılar — her birinin kendi kampanya sayfası var.",
       "window": {
         "closes": "Kapanıyor",
         "openSince": "Açık"
+      },
+      "notFound": "Derleme bulunamadı",
+      "socialDescription": "{title} — IdeaNest üzerinde seçilmiş kitlesel fonlama kampanyaları derlemesi.",
+      "title": "Derlemeler",
+      "intro": "IdeaNest ekibinin seçtiği kampanyalar, bir mevsim ya da konu çevresinde kurulmuş derlemeler ve bir üreticinin hâlâ katılabileceği açık çağrılar. Her birinin kendi sayfası var.",
+      "listLabel": "Derlemeler",
+      "emptyTitle": "Şu anda derleme yok",
+      "emptyBody": "Şu anda platformda derlenmiş bir şey yok ya da liste yüklenemedi. Her iki durumda da akış bütün kampanyaları taşır.",
+      "emptyAction": "Akışa göz at",
+      "kinds": {
+        "staff_selection": "Ekip seçkisi",
+        "themed": "Konulu derleme",
+        "open_call": "Açık çağrı"
+      },
+      "sentences": {
+        "staff_selection": "IdeaNest ekibi tarafından seçildi.",
+        "themed": "Tek bir konu çevresinde kurulmuş bir derleme.",
+        "open_call": "Açık çağrı: açık olduğu sürece kampanyaların başvurabileceği bir program."
+      },
+      "inCollection": "Bu derlemede",
+      "cardCampaigns": "Kampanyalar",
+      "badge": "Bu derlemedeki kampanyalar IdeaNest editör rozetini taşır.",
+      "badgeOpenCall": "Rozeti veren şey bu programa kabul edilmektir.",
+      "badgeCurated": "Bu, platformun arkasında durduğu bir seçkidir, herhangi bir kampanya hakkında bir güvence değil.",
+      "campaignsEmptyTitle": "Burada henüz gösterilecek bir şey yok",
+      "campaignsEmptyBody": "Şu anda {title} derlemesinde yayımlanmış bir kampanya yok. Akış, platformdaki bütün kampanyaları taşır.",
+      "gridLabel": "{title} derlemesindeki kampanyalar",
+      "showMoreLabel": "{title} derlemesinde daha fazla kampanya göster",
+      "showMore": "Daha fazla göster",
+      "loading": "Yükleniyor",
+      "nextFailedTitle": "Sonraki sayfa yüklenmedi",
+      "refused": "Servis isteği reddetti. Yeniden deneyin.",
+      "unreachable": "Servise ulaşılamadı. Bağlantınızı denetleyip yeniden deneyin.",
+      "count": {
+        "one": "{count} kampanya",
+        "few": "{count} kampanya",
+        "many": "{count} kampanya",
+        "other": "{count} kampanya"
+      },
+      "shown": {
+        "one": "{count} kampanya gösteriliyor",
+        "few": "{count} kampanya gösteriliyor",
+        "many": "{count} kampanya gösteriliyor",
+        "other": "{count} kampanya gösteriliyor"
+      },
+      "shownMore": {
+        "one": "{count} kampanya gösteriliyor, yüklenecek daha var",
+        "few": "{count} kampanya gösteriliyor, yüklenecek daha var",
+        "many": "{count} kampanya gösteriliyor, yüklenecek daha var",
+        "other": "{count} kampanya gösteriliyor, yüklenecek daha var"
       }
     },
     "search": {
@@ -490,6 +1235,53 @@
       "withdraw": "Geri çek",
       "withdrawWarning": "Geri çekmek, yorumun kaldırıldığını belirten bir not bırakır. Ona verilen yanıtlar kalır ve yorum ne düzenlenebilir ne de geri getirilebilir.",
       "keep": "Kalsın"
+    }
+  },
+  "profile": {
+    "notFound": "Profil bulunamadı",
+    "metaDescription": "IdeaNest üzerinde {name} — oluşturduğu ve desteklediği kampanyalar.",
+    "avatarAlt": "{name} adlı kullanıcının profil fotoğrafı",
+    "tabsLabel": "Profil bölümleri",
+    "tabs": {
+      "created": "Oluşturulan",
+      "backed": "Desteklenen",
+      "about": "Hakkında"
+    },
+    "about": {
+      "heading": "{name} hakkında",
+      "empty": "{name} buraya bir şey yazmadı.",
+      "basedIn": "Bulunduğu yer",
+      "website": "Web sitesi",
+      "since": "IdeaNest üyeliği",
+      "elsewhere": "Diğer bağlantılar"
+    },
+    "grid": {
+      "failedTitle": "Bu liste yüklenemedi",
+      "failedBody": "Servis yanıt vermedi. Profilde bir sorun yok — yeniden denemek için sayfayı yenileyin.",
+      "createdEmptyTitle": "Henüz kampanya yok",
+      "createdEmptyBody": "{name} IdeaNest üzerinde kampanya yayımlamadı.",
+      "backedEmptyTitle": "Burada henüz bir şey yok",
+      "backedEmptyBody": "{name} herkese açık olarak kampanya desteklemedi. Anonim yapılan destekler burada asla listelenmez.",
+      "showMore": "Daha fazla göster",
+      "showMoreCreated": "Bu kişinin oluşturduğu daha fazla kampanyayı göster",
+      "showMoreBacked": "Bu kişinin desteklediği daha fazla kampanyayı göster",
+      "loading": "Yükleniyor",
+      "nextFailedTitle": "Sonraki sayfa yüklenmedi",
+      "refused": "Servis isteği reddetti. Yeniden deneyin.",
+      "unreachable": "Servise ulaşılamadı. Bağlantınızı denetleyip yeniden deneyin."
+    },
+    "card": {
+      "states": {
+        "PRELAUNCH": "Lansman öncesi",
+        "SCHEDULED": "Planlandı",
+        "LIVE": "Etkin",
+        "SUCCESSFUL": "Fonlandı",
+        "UNSUCCESSFUL": "Fonlanmadı",
+        "COLLECTING": "Tahsilat",
+        "LATE_PLEDGE": "Geç destekler",
+        "FULFILLING": "Gönderim",
+        "COMPLETED": "Tamamlandı"
+      }
     }
   },
   "static": {

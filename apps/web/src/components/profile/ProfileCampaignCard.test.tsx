@@ -2,6 +2,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import type { ProfileProjectCard } from '../../lib/profiles/api';
 import { ProfileCampaignCard } from './ProfileCampaignCard';
+import { profileCopyFrom } from '../../lib/i18n/profile-copy';
+import { translatorFor } from '../../test-copy';
+/*
+ * The copy the route would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const COPY = profileCopyFrom(translatorFor('profile'), translatorFor('common'));
 
 /**
  * §4.2's P-04 and P-05, on one card — issue #274.
@@ -41,7 +49,7 @@ afterEach(cleanup);
 
 describe('a campaign on the created list', () => {
   it('shows what it raised, as a figure and not only as a bar', () => {
-    render(<ProfileCampaignCard card={CARD} funding="shown" />);
+    render(<ProfileCampaignCard copy={COPY.grid.card} locale="en" card={CARD} funding="shown" />);
 
     expect(screen.getByText('12,500.00 AZN')).toBeInTheDocument();
     expect(screen.getByText('125% funded')).toBeInTheDocument();
@@ -49,7 +57,7 @@ describe('a campaign on the created list', () => {
   });
 
   it('links to the campaign at its public address', () => {
-    render(<ProfileCampaignCard card={CARD} funding="shown" />);
+    render(<ProfileCampaignCard copy={COPY.grid.card} locale="en" card={CARD} funding="shown" />);
 
     expect(screen.getByRole('link', { name: 'A folding bicycle' })).toHaveAttribute('href', '/en/projects/aysel/folding-bicycle');
   });
@@ -57,6 +65,8 @@ describe('a campaign on the created list', () => {
   it('shows no progress at all for a campaign with no goal', () => {
     render(
       <ProfileCampaignCard
+        copy={COPY.grid.card}
+        locale="en"
         card={{ ...CARD, state: 'PRELAUNCH', goal: null, pledged: null }}
         funding="shown"
       />,
@@ -67,7 +77,7 @@ describe('a campaign on the created list', () => {
   });
 
   it('names the state in words and not by colour alone', () => {
-    render(<ProfileCampaignCard card={CARD} funding="shown" />);
+    render(<ProfileCampaignCard copy={COPY.grid.card} locale="en" card={CARD} funding="shown" />);
 
     expect(screen.getByText('Funded')).toBeInTheDocument();
   });
@@ -80,7 +90,7 @@ describe('a campaign on the backed list', () => {
    * does omit them; this proves the client would not print them even if it stopped.
    */
   it('prints no amount of any kind — P-04, and this is the point of the issue', () => {
-    const { container } = render(<ProfileCampaignCard card={CARD} funding="withheld" />);
+    const { container } = render(<ProfileCampaignCard copy={COPY.grid.card} locale="en" card={CARD} funding="withheld" />);
     const text = container.textContent ?? '';
 
     expect(text).not.toContain('AZN');
@@ -97,7 +107,7 @@ describe('a campaign on the backed list', () => {
   });
 
   it('still says what the campaign is, so the list is readable', () => {
-    render(<ProfileCampaignCard card={CARD} funding="withheld" />);
+    render(<ProfileCampaignCard copy={COPY.grid.card} locale="en" card={CARD} funding="withheld" />);
 
     expect(screen.getByRole('link', { name: 'A folding bicycle' })).toBeInTheDocument();
     expect(screen.getByText('Funded')).toBeInTheDocument();

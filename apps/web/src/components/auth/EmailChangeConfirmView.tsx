@@ -7,6 +7,7 @@ import { CircleCheck } from 'lucide-react';
 import { InlineAlert } from '@ideanest/ui';
 import { confirmEmailChange, refusalDetailOf, refusalOf } from '../../lib/auth/credentials';
 import { describeAuthFailure, type AuthFailure } from '../../lib/auth/failures';
+import type { EmailChangeCopy } from '../../lib/i18n/auth-copy';
 import { AuthPageHeader } from './AuthPageHeader';
 
 /**
@@ -58,7 +59,12 @@ import { AuthPageHeader } from './AuthPageHeader';
 
 type Status = 'idle' | 'confirming' | 'confirmed' | 'refused' | 'taken';
 
-export function EmailChangeConfirmView() {
+export interface EmailChangeConfirmViewProps {
+  /** Every word this screen draws, resolved by the page — see `lib/i18n/auth-copy.ts`. */
+  readonly copy: EmailChangeCopy;
+}
+
+export function EmailChangeConfirmView({ copy }: EmailChangeConfirmViewProps) {
   const searchParams = useSearchParams();
   const token = (searchParams.get('token') ?? '').trim();
 
@@ -89,11 +95,11 @@ export function EmailChangeConfirmView() {
         }
 
         // A 429, an outage, or anything else that is not about this link.
-        setFailure(describeAuthFailure(cause));
+        setFailure(describeAuthFailure(cause, copy.failures));
         setStatus('refused');
       }
     })();
-  }, [token]);
+  }, [token, copy.failures]);
 
   return (
     <div>
@@ -105,31 +111,25 @@ export function EmailChangeConfirmView() {
       */}
       <p role="status" aria-live="polite" className="sr-only">
         {status === 'confirming'
-          ? 'Confirming your new email address.'
+          ? copy.statusConfirming
           : status === 'confirmed'
-            ? 'Your email address has been changed.'
+            ? copy.statusConfirmed
             : status === 'taken'
-              ? 'That address now has an account, so the change could not be completed.'
+              ? copy.statusTaken
               : status === 'refused'
-                ? 'This confirmation link could not be used.'
+                ? copy.statusRefused
                 : ''}
       </p>
 
       {status === 'idle' && (
         <>
-          <AuthPageHeader title="Open the link we sent you">
-            This page finishes moving an account to a new email address, and it needs the link
-            sent to that address to do it. Opening that link brings you back here with
-            everything it needs.
-          </AuthPageHeader>
-          <FooterLinks />
+          <AuthPageHeader title={copy.idleTitle}>{copy.idleIntro}</AuthPageHeader>
+          <FooterLinks copy={copy} />
         </>
       )}
 
       {status === 'confirming' && (
-        <AuthPageHeader title="Confirming your new address">
-          One moment — we are checking the link.
-        </AuthPageHeader>
+        <AuthPageHeader title={copy.confirmingTitle}>{copy.confirmingIntro}</AuthPageHeader>
       )}
 
       {status === 'confirmed' && (
@@ -140,95 +140,82 @@ export function EmailChangeConfirmView() {
               not lime, which means "act now" and would say the opposite of "done" (§2.4).
             */}
             <CircleCheck aria-hidden="true" className="mt-1 size-6 shrink-0 text-[var(--success)]" />
-            <AuthPageHeader title="Your email address has been changed">
-              This is the address you sign in with from now on. Your password has not changed
-              and any browser that was signed in still is — we have written to the previous
-              address to say the account moved.
-            </AuthPageHeader>
+            <AuthPageHeader title={copy.confirmedTitle}>{copy.confirmedIntro}</AuthPageHeader>
           </div>
 
           <Link
             href="/settings/email"
             className="inline-flex h-12 w-full items-center justify-center rounded-full bg-white px-6 text-base font-medium text-on-white transition-colors duration-150 ease-in-out hover:bg-[var(--white-muted)]"
           >
-            Go to your account
+            {copy.goToAccount}
           </Link>
         </>
       )}
 
       {status === 'taken' && (
         <>
-          <AuthPageHeader title="That address was taken first" />
+          <AuthPageHeader title={copy.takenTitle} />
 
-          <InlineAlert variant="warning" title="The change could not be completed" className="mb-6">
-            <p>{detail ?? 'That address now has an account. Ask for the change again.'}</p>
+          <InlineAlert variant="warning" title={copy.takenAlertTitle} className="mb-6">
+            <p>{detail ?? copy.takenFallback}</p>
           </InlineAlert>
 
           <div className="rounded-lg border border-white/8 bg-surface-2 p-5 text-[15px] leading-relaxed text-white/64">
-            <p>
-              Somebody registered that address between the moment the change was asked for and
-              the moment this link was opened. Your account is unchanged and still signs in with
-              its previous address.
-            </p>
+            <p>{copy.takenExplain}</p>
             <p className="mt-3">
               {/*
                 THIS LINK IS NOT SPENT, which is worth saying: the service rolls the claim back
                 on this refusal precisely so a change that becomes possible again can still be
                 confirmed.
               */}
-              This link has not been used up. If that address becomes free, opening it again
-              still works — otherwise ask for the change again with a different address.
+              {copy.takenNotSpent}
             </p>
           </div>
 
-          <FooterLinks />
+          <FooterLinks copy={copy} />
         </>
       )}
 
       {status === 'refused' && (
         <>
-          <AuthPageHeader title="This link cannot be used" />
+          <AuthPageHeader title={copy.refusedTitle} />
 
           <InlineAlert
             variant="danger"
-            title={failure?.title ?? 'Confirmation refused'}
+            title={failure?.title ?? copy.refusedAlertTitle}
             className="mb-6"
           >
             {/* The service's own sentence: only it knows whether this link expired, was already
                 used, or was never one. */}
-            <p>{failure?.detail ?? detail ?? 'This link cannot be used.'}</p>
+            <p>{failure?.detail ?? detail ?? copy.refusedFallback}</p>
           </InlineAlert>
 
           <div className="rounded-lg border border-white/8 bg-surface-2 p-5 text-[15px] leading-relaxed text-white/64">
-            <p>
-              A confirmation link works for six hours and can be used once. Your account has not
-              moved — it still signs in with the address it had — so ask for the change again
-              from your account settings and open the newest message.
-            </p>
+            <p>{copy.refusedExplain}</p>
           </div>
 
-          <FooterLinks />
+          <FooterLinks copy={copy} />
         </>
       )}
     </div>
   );
 }
 
-function FooterLinks() {
+function FooterLinks({ copy }: { readonly copy: EmailChangeCopy }) {
   return (
     <p className="mt-8 text-center text-sm text-white/64">
       <Link
         href="/settings/email"
         className="rounded-sm text-white underline underline-offset-4 hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
       >
-        Email settings
+        {copy.emailSettings}
       </Link>
       {' · '}
       <Link
         href="/sign-in"
         className="rounded-sm text-white underline underline-offset-4 hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
       >
-        Sign in
+        {copy.signIn}
       </Link>
     </p>
   );

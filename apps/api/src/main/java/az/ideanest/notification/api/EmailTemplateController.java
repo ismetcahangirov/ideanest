@@ -66,6 +66,14 @@ public class EmailTemplateController {
      * of the message and there is nowhere else to put it in a response whose body is the
      * message.
      *
+     * <p><strong>Encoded per RFC 8187 since #324.</strong> A preview renders in the reader's
+     * own language now, so the subject may hold {@code ə}, {@code ё} or {@code ğ} — and an
+     * HTTP field value is Latin-1 by RFC 9110, so Tomcat drops a header carrying anything
+     * else. The symptom was the header simply not being there, which reads as an endpoint
+     * that forgot to set it. {@code UTF-8''} plus percent-encoding is the same convention
+     * {@code Content-Disposition} uses for a filename, so a client that already decodes one
+     * decodes this.
+     *
      * @param format {@code html} or {@code text}. Defaults to HTML, which is what a
      *     reader with a browser wants; the text part is the one that has to be asked for,
      *     and it is the one worth checking because nothing else renders it
@@ -107,7 +115,7 @@ public class EmailTemplateController {
                 .contentType(asText ? MediaType.TEXT_PLAIN : MediaType.TEXT_HTML)
                 // Not a header a client sends back and not part of the contract's
                 // schemas, so it is prefixed rather than pretending to be standard.
-                .header("X-Email-Subject", email.subject())
+                .header("X-Email-Subject", encodedSubject(email.subject()))
                 // A preview is generated per request and is not somebody's mail, but it
                 // is still the body of a message about a sample pledge -- and a cache
                 // holding staff-only content on a shared proxy is a category of accident
@@ -140,5 +148,33 @@ public class EmailTemplateController {
     /** The authenticated caller, from the token's subject and never from the request. */
     private static UUID callerOf(Jwt accessToken) {
         return UUID.fromString(accessToken.getSubject());
+    }
+
+    /**
+     * A subject line as an HTTP header value — RFC 8187.
+     *
+     * <p>{@code UTF-8''} followed by the percent-encoded bytes. Percent-encoding is applied to
+     * everything outside RFC 8187's {@code attr-char} set rather than only to the non-ASCII, so
+     * a space becomes {@code %20} rather than {@code +} and a comma cannot be read as a header
+     * list separator.
+     */
+    private static String encodedSubject(String subject) {
+        StringBuilder encoded = new StringBuilder("UTF-8''");
+
+        for (byte octet : subject.getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
+            int value = octet & 0xFF;
+            boolean attrChar = (value >= 'a' && value <= 'z')
+                    || (value >= 'A' && value <= 'Z')
+                    || (value >= '0' && value <= '9')
+                    || "!#$&+-.^_`|~".indexOf(value) >= 0;
+
+            if (attrChar) {
+                encoded.append((char) value);
+            } else {
+                encoded.append('%').append(String.format("%02X", value));
+            }
+        }
+
+        return encoded.toString();
     }
 }

@@ -13,6 +13,9 @@ import {
 } from '../../../../lib/profiles/server';
 import { privatePageMetadata, publicPageMetadata, truncateAtWord } from '../../../../lib/seo/metadata';
 import { localeOrDefault } from '../../../../lib/i18n/locale';
+import { fillPlaceholders } from '../../../../lib/i18n/placeholders';
+import { profileCopy } from '../../../../lib/i18n/shell-copy.server';
+import { getTranslations } from 'next-intl/server';
 
 /**
  * The public profile — §4.2 P-04 to P-07, at `/u/{slug}`. Issue #274.
@@ -79,20 +82,23 @@ export async function generateMetadata({
   params: Promise<{ locale: string; slug: string }>;
 }): Promise<Metadata> {
   const { locale, slug } = await params;
-  const profile = await fetchPublicProfile(slug);
+  const [profile, t] = await Promise.all([fetchPublicProfile(slug), getTranslations('profile')]);
 
   if (profile === null) {
-    return privatePageMetadata({ title: 'Profile not found' });
+    return privatePageMetadata({ title: t('notFound') });
   }
 
   const bio = profile.bio === null ? '' : profile.bio.trim();
 
   return publicPageMetadata({
+    /*
+     * The name is the title in every language — it is a person's, not a word. What #324
+     * changed is the sentence around it, which is written by this platform and was English on
+     * a page served at /az/u/…
+     */
     title: profile.name,
     description:
-      bio === ''
-        ? `${profile.name} on IdeaNest — the campaigns they have created and backed.`
-        : truncateAtWord(bio),
+      bio === '' ? t('metaDescription', { name: profile.name }) : truncateAtWord(bio),
     path: pathOf(slug),
     locale: localeOrDefault(locale),
   });
@@ -145,37 +151,59 @@ export default async function ProfilePage({
    * put two requests on the service for every crawl of a slug nobody has — and would ask about
    * a person the first read is about to say nothing about.
    */
-  const [created, backed] = await Promise.all([
+  const [created, backed, copy] = await Promise.all([
     fetchCreatedProjects(slug),
     fetchBackedProjects(slug),
+    profileCopy(),
   ]);
 
   const tabs: readonly ProfileTab[] = [
     {
       key: 'created',
-      label: 'Created',
+      label: copy.tabs.created,
       ...knownTotal(created),
-      panel: <ProfileCampaignGrid slug={slug} kind="created" initial={created} name={profile.name} />,
+      panel: (
+        <ProfileCampaignGrid
+          slug={slug}
+          kind="created"
+          initial={created}
+          name={profile.name}
+          copy={copy.grid}
+          locale={locale}
+        />
+      ),
     },
     {
       key: 'backed',
-      label: 'Backed',
+      label: copy.tabs.backed,
       ...knownTotal(backed),
-      panel: <ProfileCampaignGrid slug={slug} kind="backed" initial={backed} name={profile.name} />,
+      panel: (
+        <ProfileCampaignGrid
+          slug={slug}
+          kind="backed"
+          initial={backed}
+          name={profile.name}
+          copy={copy.grid}
+          locale={locale}
+        />
+      ),
     },
     {
       key: 'about',
-      label: 'About',
-      panel: <ProfileAbout profile={profile} locale={locale} />,
+      label: copy.tabs.about,
+      panel: <ProfileAbout profile={profile} locale={locale} copy={copy.about} />,
     },
   ];
 
   return (
     <div className="mx-auto w-full max-w-[1120px] px-5 py-10 sm:px-6 sm:py-14">
-      <ProfileHeader profile={profile} />
+      <ProfileHeader
+        profile={profile}
+        avatarAlt={fillPlaceholders(copy.avatarAlt, { name: profile.name })}
+      />
 
       <div className="mt-8">
-        <ProfileTabs tabs={tabs} label="Profile sections" />
+        <ProfileTabs tabs={tabs} label={copy.tabsLabel} />
       </div>
     </div>
   );

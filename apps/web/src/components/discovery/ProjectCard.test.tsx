@@ -3,6 +3,14 @@ import { cleanup, render, screen } from '@testing-library/react';
 import type { ProjectCard as ProjectCardData } from '../../lib/discovery/api';
 import { DISCOVERY_CARD_SIZES } from '../../lib/images/sizes';
 import { ProjectCard } from './ProjectCard';
+import { projectCardCopyFrom } from '../../lib/i18n/card-copy';
+import { translatorFor } from '../../test-copy';
+/*
+ * The copy the route would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const CARD_COPY = projectCardCopyFrom(translatorFor('discovery.card'), translatorFor('common'));
 
 /**
  * D-05's card. Appearance is reviewed in Storybook; these cover what fails
@@ -32,7 +40,7 @@ const CARD: ProjectCardData = {
 };
 
 function renderCard(overrides: Partial<ProjectCardData> = {}) {
-  return render(<ProjectCard card={{ ...CARD, ...overrides }} />);
+  return render(<ProjectCard card={{ ...CARD, ...overrides }} copy={CARD_COPY} locale="en" />);
 }
 
 describe('ProjectCard', () => {
@@ -229,7 +237,7 @@ describe('ProjectCard', () => {
       expect(lazy.container.querySelector('img')).toHaveAttribute('loading', 'lazy');
       cleanup();
 
-      const eager = render(<ProjectCard card={CARD} priority />);
+      const eager = render(<ProjectCard card={CARD} priority copy={CARD_COPY} locale="en" />);
       expect(eager.container.querySelector('img')).not.toHaveAttribute('loading', 'lazy');
     });
 

@@ -1,4 +1,20 @@
 import { getLocale, getTranslations } from 'next-intl/server';
+import {
+  type AuthFailuresCopy,
+  type EmailChangeCopy,
+  type PasswordResetConfirmCopy,
+  type PasswordResetCopy,
+  type RegisterCopy,
+  type SignInCopy,
+  type VerifyEmailCopy,
+  authFailuresCopyFrom,
+  emailChangeCopyFrom,
+  passwordResetConfirmCopyFrom,
+  passwordResetCopyFrom,
+  registerCopyFrom,
+  signInCopyFrom,
+  verifyEmailCopyFrom,
+} from './auth-copy';
 import { type CheckoutCopy, checkoutCopyFrom } from './checkout-copy';
 import {
   type CampaignActionsCopy,
@@ -7,6 +23,27 @@ import {
   commentCopyFrom,
 } from './campaign-copy';
 import { localeOrDefault, type Locale } from './locale';
+import { type ProfileCopy, profileCopyFrom } from './profile-copy';
+import {
+  type InboxCopy,
+  type PreferencesCopy,
+  inboxCopyFrom,
+  preferencesCopyFrom,
+} from './notifications-copy';
+import { type ProjectCardCopy, projectCardCopyFrom } from './card-copy';
+import { type FeedCopy, feedCopyFrom } from './feed-copy';
+import {
+  type AdminShellCopy,
+  type ConsoleIndexCopy,
+  adminShellCopyFrom,
+  consoleIndexCopyFrom,
+} from './admin-copy';
+import {
+  type EmailChangePanelCopy,
+  type PasswordChangePanelCopy,
+  emailChangePanelCopyFrom,
+  passwordChangePanelCopyFrom,
+} from './settings-copy';
 import { type TrailCopy } from '../seo/structured-data/breadcrumb';
 import { trailCopyFrom } from './trail-copy';
 import {
@@ -40,6 +77,135 @@ export async function footerCopy(): Promise<FooterCopy> {
 
 export async function failureCopy(): Promise<FailureCopy> {
   return failureCopyFrom(await getTranslations('shell'));
+}
+
+/* -------------------------------------------------------------------------
+ * The authentication screens — issue #324
+ *
+ * One accessor per route rather than one for the whole namespace. Each of the six pages under
+ * `app/[locale]/(auth)` renders one form, and handing it the vocabulary of the other five
+ * would put every word of the account-recovery flow into the flight payload of the sign-in
+ * page. `auth-copy.ts` carries the rest of the reasoning.
+ * ---------------------------------------------------------------------- */
+
+/** Just the refusal vocabulary, for the two credential panels in `components/settings`. */
+export async function authFailuresCopy(): Promise<AuthFailuresCopy> {
+  return authFailuresCopyFrom(await getTranslations('auth'));
+}
+
+export async function signInCopy(): Promise<SignInCopy> {
+  return signInCopyFrom(await getTranslations('auth'));
+}
+
+export async function registerCopy(): Promise<RegisterCopy> {
+  return registerCopyFrom(await getTranslations('auth'));
+}
+
+export async function passwordResetCopy(): Promise<PasswordResetCopy> {
+  return passwordResetCopyFrom(await getTranslations('auth'));
+}
+
+export async function passwordResetConfirmCopy(): Promise<PasswordResetConfirmCopy> {
+  return passwordResetConfirmCopyFrom(await getTranslations('auth'));
+}
+
+export async function verifyEmailCopy(): Promise<VerifyEmailCopy> {
+  return verifyEmailCopyFrom(await getTranslations('auth'));
+}
+
+export async function emailChangeCopy(): Promise<EmailChangeCopy> {
+  return emailChangeCopyFrom(await getTranslations('auth'));
+}
+
+/**
+ * The two credential panels under `/settings` — `settings-copy.ts` explains why these two.
+ *
+ * Both read `auth` as well as their own namespace, so the password policy sentence and the
+ * refusal vocabulary have one spelling across the six authentication routes and these panels.
+ */
+export async function emailChangePanelCopy(): Promise<EmailChangePanelCopy> {
+  return emailChangePanelCopyFrom(
+    await getTranslations('settings.panels'),
+    await getTranslations('auth'),
+  );
+}
+
+export async function passwordChangePanelCopy(): Promise<PasswordChangePanelCopy> {
+  return passwordChangePanelCopyFrom(
+    await getTranslations('settings.panels'),
+    await getTranslations('auth'),
+  );
+}
+
+/**
+ * Every word `/u/[slug]` draws — `profile-copy.ts` explains the two decisions in it.
+ *
+ * One object for the whole route rather than one per component: the grid is a client component
+ * that renders the cards, so the card's vocabulary has to travel through it, and the tabs are
+ * built by the page out of the same three words the panels are labelled with.
+ */
+export async function profileCopy(): Promise<ProfileCopy> {
+  return profileCopyFrom(
+    await getTranslations('profile'),
+    await getTranslations('common'),
+  );
+}
+
+/**
+ * The words every campaign card draws — `lib/i18n/card-copy.ts` explains why they are a prop.
+ *
+ * Six surfaces render that card and each resolves this: the home page, the feed, the search
+ * results, the category landings, the collection pages and the profile grid.
+ */
+export async function projectCardCopy(): Promise<ProjectCardCopy> {
+  return projectCardCopyFrom(
+    await getTranslations('discovery.card'),
+    await getTranslations('common'),
+  );
+}
+
+/**
+ * Every word the discovery feed draws — `feed-copy.ts` explains why all of it is one prop.
+ *
+ * Three namespaces: the surface's own sentences, the closed vocabularies the filters are named
+ * from, and the search box's. They are read separately elsewhere — `activeFilters` needs only
+ * the vocabularies — and travel together because one route draws all three.
+ */
+export async function feedCopy(): Promise<FeedCopy> {
+  return feedCopyFrom(
+    await getTranslations('discovery.feed'),
+    await getTranslations('discovery.filters'),
+    await getTranslations('discovery.suggest'),
+  );
+}
+
+/**
+ * The administration console's frame — `admin-copy.ts` records the decision behind it.
+ *
+ * Two accessors because two routes need different halves: every console route renders the
+ * bar and the rail, and only `/admin` renders the index that describes the sixteen modules.
+ */
+export async function adminShellCopy(): Promise<AdminShellCopy> {
+  return adminShellCopyFrom(await getTranslations('admin'));
+}
+
+export async function consoleIndexCopy(): Promise<ConsoleIndexCopy> {
+  return consoleIndexCopyFrom(await getTranslations('admin'));
+}
+
+/**
+ * The notifications inbox and its settings — `notifications-copy.ts` explains the two tables.
+ *
+ * Two accessors because two routes render two panels: `/notifications` is the inbox and
+ * `/settings/notifications` is the switchboard, and each shares the vocabulary of categories
+ * and channels without needing the other's own sentences.
+ */
+export async function inboxCopy(): Promise<InboxCopy> {
+  return inboxCopyFrom(await getTranslations('account.notifications'));
+}
+
+export async function notificationPreferencesCopy(): Promise<PreferencesCopy> {
+  return preferencesCopyFrom(await getTranslations('account.notifications'));
 }
 
 /** The checkout's words. `checkout-copy.ts` explains why the whole of it is one prop. */

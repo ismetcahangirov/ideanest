@@ -6,6 +6,15 @@ import { signIn } from '../../lib/auth/api';
 import { fetchSession } from '../../lib/session/session';
 import { SessionProvider } from '../session/SessionProvider';
 import { SignInForm } from './SignInForm';
+import { signInCopyFrom } from '../../lib/i18n/auth-copy';
+import { translatorFor } from '../../test-copy';
+
+/*
+ * The copy the page would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const COPY = signInCopyFrom(translatorFor('auth'));
 
 /**
  * §4.1's A-03 — issue #268.
@@ -62,7 +71,7 @@ const sessionMock = vi.mocked(fetchSession);
 function renderForm() {
   return render(
     <SessionProvider>
-      <SignInForm />
+      <SignInForm copy={COPY} />
     </SessionProvider>,
   );
 }

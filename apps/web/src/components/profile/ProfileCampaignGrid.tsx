@@ -11,6 +11,9 @@ import {
   type ProfileProjectCard,
 } from '../../lib/profiles/api';
 import { ProfileCampaignCard } from './ProfileCampaignCard';
+import type { Locale } from '../../lib/i18n/locale';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { ProfileGridCopy } from '../../lib/i18n/profile-copy';
 
 /**
  * One profile tab's list of campaigns — §4.2 P-04 and P-05, issue #274.
@@ -58,18 +61,31 @@ export interface ProfileCampaignGridProps {
   readonly initial: Page<ProfileProjectCard> | null;
   /** The person's own name, for the empty state's wording. */
   readonly name: string;
+  /** Every word this list and its cards draw — see `lib/i18n/profile-copy.ts`. */
+  readonly copy: ProfileGridCopy;
+  /** The language, passed to each card for its backer count. */
+  readonly locale: Locale;
 }
 
-function messageFor(cause: unknown): string {
+function messageFor(cause: unknown, copy: ProfileGridCopy): string {
+  /*
+   * The service's own sentence where there is one (§10.4). What is in the catalogue is what
+   * this application says when the service said nothing.
+   */
   if (cause instanceof ApiError) {
-    return (
-      cause.problem?.detail ?? cause.problem?.title ?? 'The service refused the request. Try again.'
-    );
+    return cause.problem?.detail ?? cause.problem?.title ?? copy.refused;
   }
-  return 'The service could not be reached. Check your connection and try again.';
+  return copy.unreachable;
 }
 
-export function ProfileCampaignGrid({ slug, kind, initial, name }: ProfileCampaignGridProps) {
+export function ProfileCampaignGrid({
+  slug,
+  kind,
+  initial,
+  name,
+  copy,
+  locale,
+}: ProfileCampaignGridProps) {
   const [items, setItems] = useState<readonly ProfileProjectCard[]>(initial?.items ?? []);
   const [cursor, setCursor] = useState<string | null>(initial?.nextCursor ?? null);
   const [loading, setLoading] = useState(false);
@@ -91,7 +107,7 @@ export function ProfileCampaignGrid({ slug, kind, initial, name }: ProfileCampai
       setItems((previous) => [...previous, ...page.items]);
       setCursor(page.nextCursor);
     } catch (cause) {
-      setError(messageFor(cause));
+      setError(messageFor(cause, copy));
     } finally {
       setLoading(false);
     }
@@ -99,11 +115,8 @@ export function ProfileCampaignGrid({ slug, kind, initial, name }: ProfileCampai
 
   if (initial === null) {
     return (
-      <InlineAlert variant="danger" title="This list could not be loaded">
-        <p>
-          The service did not answer. Nothing is wrong with the profile — reload the page to try
-          again.
-        </p>
+      <InlineAlert variant="danger" title={copy.failedTitle}>
+        <p>{copy.failedBody}</p>
       </InlineAlert>
     );
   }
@@ -112,14 +125,14 @@ export function ProfileCampaignGrid({ slug, kind, initial, name }: ProfileCampai
     return kind === 'created' ? (
       <EmptyState
         icon={<FolderOpen aria-hidden="true" className="size-6" />}
-        title="No campaigns yet"
-        description={`${name} has not published a campaign on IdeaNest.`}
+        title={copy.createdEmptyTitle}
+        description={fillPlaceholders(copy.createdEmptyBody, { name })}
       />
     ) : (
       <EmptyState
         icon={<HeartHandshake aria-hidden="true" className="size-6" />}
-        title="Nothing here yet"
-        description={`${name} has not backed a campaign publicly. Pledges made anonymously are never listed here.`}
+        title={copy.backedEmptyTitle}
+        description={fillPlaceholders(copy.backedEmptyBody, { name })}
       />
     );
   }
@@ -132,6 +145,8 @@ export function ProfileCampaignGrid({ slug, kind, initial, name }: ProfileCampai
             <div className="flex w-full">
               <ProfileCampaignCard
                 card={card}
+                copy={copy.card}
+                locale={locale}
                 /* The one line that enforces P-04. See `ProfileCampaignCard`. */
                 funding={kind === 'created' ? 'shown' : 'withheld'}
                 /* The first row is above the fold on every breakpoint this grid has. */
@@ -150,20 +165,16 @@ export function ProfileCampaignGrid({ slug, kind, initial, name }: ProfileCampai
             disabled={loading}
             /* The name says which list it extends: two buttons called "Show more" in one
                document is two buttons a screen reader cannot tell apart (§9.4). */
-            aria-label={
-              kind === 'created'
-                ? 'Show more campaigns this person created'
-                : 'Show more campaigns this person backed'
-            }
+            aria-label={kind === 'created' ? copy.showMoreCreated : copy.showMoreBacked}
             onClick={() => void loadMore()}
           >
-            {loading ? 'Loading' : 'Show more'}
+            {loading ? copy.loading : copy.showMore}
           </Pill>
         </div>
       )}
 
       {error !== null && (
-        <InlineAlert variant="danger" title="The next page did not load">
+        <InlineAlert variant="danger" title={copy.nextFailedTitle}>
           <p>{error}</p>
         </InlineAlert>
       )}

@@ -82,24 +82,14 @@ export async function getSuggestions(
  * Rendering
  * ---------------------------------------------------------------------- */
 
-const KIND_LABELS: Record<SuggestionKind, string> = {
-  campaign: 'Campaign',
-  category: 'Category',
-  subcategory: 'Subcategory',
-  tag: 'Tag',
-};
-
-/**
- * The word for a kind, which is rendered as TEXT beside the label.
+/*
+ * THE WORD FOR A KIND MOVED TO `discovery.suggest.kinds` — issue #324.
  *
- * Not an icon, and not a colour. Four kinds that lead to four different places
- * are meaning, and docs/ui-kit.md §9.2 forbids meaning carried by colour or by
- * an icon alone — a reader who cannot tell a tag from a campaign cannot predict
- * what pressing Enter will do.
+ * It is rendered as TEXT beside the label: not an icon, and not a colour. Four kinds that lead
+ * to four different places are meaning, and docs/ui-kit.md §9.2 forbids meaning carried by
+ * colour or by an icon alone — a reader who cannot tell a tag from a campaign cannot predict
+ * what pressing Enter will do. `SearchBox` looks the word up in the copy the route resolved.
  */
-export function kindLabel(kind: SuggestionKind): string {
-  return KIND_LABELS[kind];
-}
 
 /**
  * A stable DOM id for one row.

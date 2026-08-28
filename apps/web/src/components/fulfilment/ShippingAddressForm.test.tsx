@@ -9,6 +9,14 @@ import {
   type StoredAddress,
 } from '../../lib/fulfilment/api';
 import { ShippingAddressForm } from './ShippingAddressForm';
+import { shippingAddressFormCopyFrom } from '../../lib/i18n/fulfilment-copy';
+import { translatorFor } from '../../test-copy';
+/*
+ * The copy the route would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const COPY = shippingAddressFormCopyFrom(translatorFor('account.fulfilment'));
 
 /**
  * §4.8's PM-07 — issue #290.
@@ -67,7 +75,7 @@ afterEach(cleanup);
 describe('ShippingAddressForm', () => {
   it('renders a blank form when the pledge has no address yet', async () => {
     readMock.mockResolvedValue(null);
-    render(<ShippingAddressForm pledgeId="pledge-1" />);
+    render(<ShippingAddressForm copy={COPY} pledgeId="pledge-1" />);
 
     expect(await screen.findByText('No address yet')).toBeInTheDocument();
     expect(screen.getByLabelText(/Full name/u)).toHaveValue('');
@@ -76,7 +84,7 @@ describe('ShippingAddressForm', () => {
   it('sends every field, empty ones included, because the write replaces the address', async () => {
     readMock.mockResolvedValue(stored());
     const user = userEvent.setup();
-    render(<ShippingAddressForm pledgeId="pledge-1" />);
+    render(<ShippingAddressForm copy={COPY} pledgeId="pledge-1" />);
 
     await user.click(await screen.findByRole('button', { name: 'Save address' }));
 
@@ -93,7 +101,7 @@ describe('ShippingAddressForm', () => {
       stored({ address: { ...ADDRESS, recipient: '', line1: '', locality: '', countryCode: '' } }),
     );
     const user = userEvent.setup();
-    render(<ShippingAddressForm pledgeId="pledge-1" />);
+    render(<ShippingAddressForm copy={COPY} pledgeId="pledge-1" />);
 
     await user.click(await screen.findByRole('button', { name: 'Save address' }));
 
@@ -103,7 +111,7 @@ describe('ShippingAddressForm', () => {
 
   it('reads a locked address without offering a write that would be refused', async () => {
     readMock.mockResolvedValue(stored({ locked: true, lockedAt: '2026-08-21T09:00:00Z' }));
-    render(<ShippingAddressForm pledgeId="pledge-1" />);
+    render(<ShippingAddressForm copy={COPY} pledgeId="pledge-1" />);
 
     expect(await screen.findByText('This address is locked')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Save address' })).not.toBeInTheDocument();
@@ -113,14 +121,14 @@ describe('ShippingAddressForm', () => {
 
   it('says what the service said when the pledge is not the reader’s', async () => {
     readMock.mockRejectedValue(new ApiError(404, { detail: 'No such pledge.' }));
-    render(<ShippingAddressForm pledgeId="somebody-elses" />);
+    render(<ShippingAddressForm copy={COPY} pledgeId="somebody-elses" />);
 
     expect(await screen.findByText('No such pledge.')).toBeInTheDocument();
   });
 
   it('renders nothing when there is no session', async () => {
     readMock.mockRejectedValue(new ApiError(401));
-    const { container } = render(<ShippingAddressForm pledgeId="pledge-1" />);
+    const { container } = render(<ShippingAddressForm copy={COPY} pledgeId="pledge-1" />);
 
     await waitFor(() => expect(container).toBeEmptyDOMElement());
   });

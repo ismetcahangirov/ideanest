@@ -20,6 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.mail.MailException;
 import org.springframework.stereotype.Component;
+import az.ideanest.shared.ReaderLocale;
+import java.util.Locale;
 
 /**
  * §4.10's email column, with a transport behind it — #86.
@@ -111,7 +113,15 @@ public class EmailChannelSender implements ChannelSender {
         UserAccount recipient = addressFor(message.recipientId())
                 .orElseThrow(() -> suppress(message));
 
-        RenderedEmail email = renderer.render(composer.compose(message, recipient.name()));
+        /*
+         * THE LANGUAGE COMES OFF THE ACCOUNT, not off a request — issue #324. This runs on a
+         * background sender where there is no request, and the person who triggered the event
+         * is frequently not the person being written to: a reply notification is caused by
+         * somebody else typing. `ReaderLocale` falls back to the primary language rather than
+         * throwing on a tag it does not know.
+         */
+        Locale locale = ReaderLocale.of(recipient.locale());
+        RenderedEmail email = renderer.render(composer.compose(message, recipient.name(), locale), locale);
         String messageId = mime.messageIdFor(message.id());
 
         try {
@@ -151,7 +161,8 @@ public class EmailChannelSender implements ChannelSender {
         UserAccount recipient = addressFor(digest.recipientId())
                 .orElseThrow(() -> suppress(digest, first.attempt()));
 
-        RenderedEmail email = renderer.render(composer.compose(digest, recipient.name()));
+        Locale locale = ReaderLocale.of(recipient.locale());
+        RenderedEmail email = renderer.render(composer.compose(digest, recipient.name(), locale), locale);
         String messageId = mime.messageIdFor(digest.id());
 
         try {

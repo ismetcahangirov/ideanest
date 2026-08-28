@@ -1,3 +1,6 @@
+import { getLocale, getTranslations } from 'next-intl/server';
+import { projectCardCopyFrom } from '../../lib/i18n/card-copy';
+import { localeOrDefault } from '../../lib/i18n/locale';
 import { Link } from '../../i18n/navigation';
 import { ArrowRight } from 'lucide-react';
 import { EmptyState } from '@ideanest/ui/server';
@@ -30,6 +33,19 @@ import { CampaignGrid } from './CampaignGrid';
  * A landing page shows a slice and stops; the feed is where somebody narrows further, sorts,
  * and pages. So the last thing on every one of these is the same category with the filter
  * already applied, in `/discover`, where the rest of §4.3 lives.
+ *
+ * <h2>It reads the catalogue itself — issue #324</h2>
+ *
+ * There is no `'use client'` here or anywhere beneath it, which is what makes it an ordinary
+ * async server component: it can await `getTranslations` and does, rather than being handed a
+ * copy object by two routes that would then have to agree about what to resolve. That is the
+ * arrangement `CampaignSummary` and `CollectionIndex` already use; the prop-threading in
+ * `components/auth` and `components/checkout` exists because those subtrees are client
+ * components and cannot.
+ *
+ * <p>The counts go through ICU rather than a ternary. "1 campaign" against "2 campaigns" is
+ * the whole of English and none of Russian, which has three forms and picks between them by
+ * the last digit.
  */
 
 export interface CategoryLandingProps {
@@ -41,12 +57,18 @@ export interface CategoryLandingProps {
   readonly hasMore: boolean;
 }
 
-export function CategoryLanding({
+export async function CategoryLanding({
   category,
   subcategory,
   campaigns,
   hasMore,
 }: CategoryLandingProps) {
+  const t = await getTranslations('discovery.landing');
+  const common = await getTranslations('common');
+  const trail = await getTranslations('common.trail');
+  const cardCopy = projectCardCopyFrom(await getTranslations('discovery.card'), common);
+  const locale = localeOrDefault(await getLocale());
+
   const title = subcategory?.name ?? category.name;
 
   /*
@@ -69,11 +91,11 @@ export function CategoryLanding({
         half would be one a person lands on with no way up. `aria-label` names it because a
         second `<nav>` on the page — the header's — is otherwise indistinguishable from it.
       */}
-      <nav aria-label="Breadcrumb" className="text-sm text-white/40">
+      <nav aria-label={common('breadcrumb')} className="text-sm text-white/40">
         <ol className="flex list-none flex-wrap items-center gap-2">
           <li>
             <Link href="/categories" className="hover:text-white">
-              Categories
+              {trail('categories')}
             </Link>
           </li>
           {subcategory !== undefined && (
@@ -98,8 +120,8 @@ export function CategoryLanding({
       </h1>
       <p className="mt-2 max-w-[60ch] text-white/64">
         {subcategory === undefined
-          ? `Campaigns filed under ${category.name}, newest first.`
-          : `Campaigns filed under ${category.name} → ${subcategory.name}, newest first.`}
+          ? t('standfirst', { category: category.name })
+          : t('subStandfirst', { category: category.name, subcategory: subcategory.name })}
       </p>
 
       {/*
@@ -108,7 +130,7 @@ export function CategoryLanding({
         only link to it a crawler will find.
       */}
       {subcategory === undefined && category.subcategories.length > 0 && (
-        <nav aria-label={`Subcategories of ${category.name}`} className="mt-8">
+        <nav aria-label={t('subcategoriesLabel', { category: category.name })} className="mt-8">
           <ul className="flex list-none flex-wrap gap-2">
             {category.subcategories.map((child) => (
               <li key={child.id}>
@@ -125,11 +147,7 @@ export function CategoryLanding({
       )}
 
       <p className="mt-8 text-sm text-white/64 tabular-nums">
-        {campaigns.length === 0
-          ? 'No campaigns here yet'
-          : `${campaigns.length} ${campaigns.length === 1 ? 'campaign' : 'campaigns'}${
-              hasMore ? ', with more in the feed' : ''
-            }`}
+        {t(hasMore ? 'countMore' : 'count', { count: campaigns.length })}
       </p>
 
       <div className="mt-6">
@@ -143,14 +161,14 @@ export function CategoryLanding({
           <EmptyState
             variant="empty"
             headingLevel={2}
-            title={`Nothing published in ${title} yet`}
-            description="This category exists and no campaign has launched in it. The feed carries every campaign on the platform."
+            title={t('emptyTitle', { title })}
+            description={t('emptyBody')}
             action={
               <Link
                 href="/discover"
                 className="inline-flex h-10 items-center rounded-full bg-white px-5 text-sm font-medium text-on-white transition-colors duration-150 ease-in-out hover:bg-[var(--white-muted)]"
               >
-                Browse the feed
+                {t('emptyAction')}
               </Link>
             }
           />
@@ -159,7 +177,9 @@ export function CategoryLanding({
             <CampaignGrid
               campaigns={campaigns}
               priorityCount={3}
-              label={`Campaigns in ${title}`}
+              label={t('gridLabel', { title })}
+              cardCopy={cardCopy}
+              locale={locale}
             />
 
             <div className="mt-10 flex justify-center">
@@ -167,7 +187,7 @@ export function CategoryLanding({
                 href={feedHref}
                 className="inline-flex h-11 items-center gap-2 rounded-full border border-white/16 px-6 text-sm font-medium text-white transition-colors duration-150 ease-in-out hover:bg-surface-3"
               >
-                {hasMore ? `See every campaign in ${title}` : `Filter and sort ${title} in the feed`}
+                {hasMore ? t('seeEvery', { title }) : t('filterAndSort', { title })}
                 <ArrowRight aria-hidden="true" className="size-4" />
               </Link>
             </div>

@@ -52,18 +52,23 @@ public class TemplateOverrides {
     /**
      * The locale an override is stored and looked up under — #315.
      *
-     * <p>{@code "und"}, ISO 639-2 for an undetermined language, matching the
-     * {@link java.util.Locale#ROOT} that {@code EmailComposer} renders with. Every email
-     * the platform sends today comes out of the root bundle, because the sender is a
-     * background job with no reader attached and {@code users.locale} is not read yet —
-     * so an override has to be keyed to the same thing rather than to a language nobody
-     * is rendering in.
+     * <p>{@code "und"}, ISO 639-2 for an undetermined language. It was chosen to match the
+     * {@link java.util.Locale#ROOT} {@code EmailComposer} rendered with, on the reasoning that
+     * an override keyed to a language nobody was rendering in would be an override that never
+     * applied — and that storing them under a guessed {@code "en"} would make every one of them
+     * stop applying on the release that gave the sender a real locale.
      *
-     * <p><strong>Storing overrides under {@code "en"} today would be the expensive
-     * mistake.</strong> When #123 gives the sender the recipient's locale, every override
-     * written under a guessed code would silently stop applying on that release, and the
-     * symptom would be the platform quietly reverting to shipped copy nobody had asked it
-     * to send. Under {@code und} they stay findable and can be migrated deliberately.
+     * <p><strong>#324 was that release, and this key was right to be what it is.</strong> The
+     * sender now takes the recipient's language off their account and the bundles carry all four
+     * of §21.1's, so the shipped copy is translated. The overrides are not: one written here
+     * applies to every recipient whatever they read, because {@code und} matches all of them.
+     *
+     * <p>That is a gap and it is deliberate rather than overlooked. An administrator who
+     * rewrites a subject line today is rewriting it for everybody, which is what they could
+     * already do and what the console's one text box means. Making an override per-language is
+     * a screen with a language switcher on it, a migration that decides what the existing rows
+     * mean, and a rule for what a recipient gets when their language has no override — three
+     * product decisions, and #315's to take.
      *
      * <p>It lives here rather than on {@code EmailComposer} because the API layer needs it
      * too, and {@code ModuleBoundaryTests} keeps the api package out of infrastructure.

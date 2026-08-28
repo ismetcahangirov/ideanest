@@ -2,6 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchCollection } from '../api/server';
 import type { Collection } from './api';
 import { collectionSocialDescription, resolveCollectionLanding } from './landing';
+import CATALOGUE from '../../../messages/en.json';
+
+/** The fallback the route resolves, from the catalogue the page will actually draw. */
+const FALLBACK = CATALOGUE.discovery.collections.socialDescription;
 
 /**
  * What a collection landing page resolves to — D-08, issue #266.
@@ -113,11 +117,11 @@ describe('a collection that is not visible', () => {
 
 describe('what a collection says about itself in a shared link', () => {
   it('is the curator’s own standfirst', () => {
-    expect(collectionSocialDescription(COLLECTION)).toBe('Applications for the spring programme.');
+    expect(collectionSocialDescription(COLLECTION, FALLBACK)).toBe('Applications for the spring programme.');
   });
 
   it('names the collection and stops when there is no standfirst', () => {
-    const description = collectionSocialDescription({ ...COLLECTION, description: null });
+    const description = collectionSocialDescription({ ...COLLECTION, description: null }, FALLBACK);
 
     expect(description).toBe(
       'Spring 2026 — a curated collection of crowdfunding campaigns on IdeaNest.',
@@ -125,7 +129,7 @@ describe('what a collection says about itself in a shared link', () => {
   });
 
   it('invents no count and no deadline, which go stale in a cache', () => {
-    const description = collectionSocialDescription({ ...COLLECTION, description: '   ' });
+    const description = collectionSocialDescription({ ...COLLECTION, description: '   ' }, FALLBACK);
 
     expect(description).not.toMatch(/\d\scampaign/u);
     expect(description).not.toContain('May');

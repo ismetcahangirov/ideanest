@@ -4,6 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError } from '../api/problem';
 import { getDiscoveryFeed, type DiscoveryFeed, type ProjectCard } from './api';
 import { filterKey, type DiscoveryFilters } from './filters';
+import type { FeedCopy } from '../i18n/feed-copy';
+import type { Locale } from '../i18n/locale';
+import { pluralise } from '../i18n/plurals';
 
 /**
  * D-04's cursor-paginated feed, as a hook.
@@ -59,10 +62,6 @@ function wasAborted(cause: unknown): boolean {
   return cause instanceof DOMException && cause.name === 'AbortError';
 }
 
-function plural(count: number, one: string, many: string): string {
-  return `${count} ${count === 1 ? one : many}`;
-}
-
 /**
  * What the polite live region says once a first page has settled.
  *
@@ -70,11 +69,13 @@ function plural(count: number, one: string, many: string): string {
  * seeded render, and a seeded render that replaced a previous filter set — and three
  * spellings of the same sentence is three chances for a screen-reader user to be told
  * something slightly different about the same event.
+ *
+ * <p>The count goes through CLDR rather than a singular/plural split since #324. Russian has
+ * three forms and picks between them by the last digit, and this is the sentence a
+ * screen-reader user hears instead of seeing the grid.
  */
-function firstPageAnnouncement(count: number): string {
-  return count === 0
-    ? 'No projects match these filters.'
-    : `${plural(count, 'project', 'projects')} shown.`;
+function firstPageAnnouncement(count: number, copy: FeedCopy, locale: Locale): string {
+  return count === 0 ? copy.announceNone : pluralise(locale, copy.announceShown, count);
 }
 
 /**
@@ -95,7 +96,12 @@ export interface SeededFeed {
  *     client-only caller and in every test that is about the fetching rather than about the
  *     seeding, which is why it is optional rather than nullable.
  */
-export function useDiscoveryFeed(filters: DiscoveryFilters, seeded?: SeededFeed): DiscoveryFeedState {
+export function useDiscoveryFeed(
+  filters: DiscoveryFilters,
+  copy: FeedCopy,
+  locale: Locale,
+  seeded?: SeededFeed,
+): DiscoveryFeedState {
   const key = filterKey(filters);
 
   /** The seeded page, but only when it answers the question currently being asked. */
@@ -112,7 +118,7 @@ export function useDiscoveryFeed(filters: DiscoveryFilters, seeded?: SeededFeed)
    * Left empty, a seeded feed would be silent to exactly the reader who cannot see it.
    */
   const [announcement, setAnnouncement] = useState(() =>
-    seededHere === null ? '' : firstPageAnnouncement(seededHere.items.length),
+    seededHere === null ? '' : firstPageAnnouncement(seededHere.items.length, copy, locale),
   );
 
   /**
@@ -172,7 +178,7 @@ export function useDiscoveryFeed(filters: DiscoveryFilters, seeded?: SeededFeed)
     setStatus('ready');
     setError(null);
     setLoadingMore(false);
-    setAnnouncement(firstPageAnnouncement(seededHere.items.length));
+    setAnnouncement(firstPageAnnouncement(seededHere.items.length, copy, locale));
   }
 
   useEffect(() => {
@@ -203,7 +209,7 @@ export function useDiscoveryFeed(filters: DiscoveryFilters, seeded?: SeededFeed)
         setItems(page.items);
         setCursor(page.nextCursor ?? null);
         setStatus('ready');
-        setAnnouncement(firstPageAnnouncement(page.items.length));
+        setAnnouncement(firstPageAnnouncement(page.items.length, copy, locale));
       } catch (cause) {
         if (controller.signal.aborted || wasAborted(cause)) return;
 
@@ -238,9 +244,7 @@ export function useDiscoveryFeed(filters: DiscoveryFilters, seeded?: SeededFeed)
 
         setItems((previous) => [...previous, ...page.items]);
         setCursor(page.nextCursor ?? null);
-        setAnnouncement(
-          `${plural(page.items.length, 'more project', 'more projects')} loaded.`,
-        );
+        setAnnouncement(pluralise(locale, copy.announceMore, page.items.length));
       } catch (cause) {
         if (wasAborted(cause)) return;
 

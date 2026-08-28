@@ -7,6 +7,7 @@ import { CircleCheck } from 'lucide-react';
 import { InlineAlert } from '@ideanest/ui';
 import { verifyEmail } from '../../lib/auth/api';
 import { describeAuthFailure, type AuthFailure } from '../../lib/auth/failures';
+import type { VerifyEmailCopy } from '../../lib/i18n/auth-copy';
 import { AuthPageHeader } from './AuthPageHeader';
 
 /**
@@ -60,7 +61,12 @@ import { AuthPageHeader } from './AuthPageHeader';
 
 type Status = 'idle' | 'verifying' | 'verified' | 'failed';
 
-export function VerifyEmailView() {
+export interface VerifyEmailViewProps {
+  /** Every word this screen draws, resolved by the page — see `lib/i18n/auth-copy.ts`. */
+  readonly copy: VerifyEmailCopy;
+}
+
+export function VerifyEmailView({ copy }: VerifyEmailViewProps) {
   const searchParams = useSearchParams();
   const token = (searchParams.get('token') ?? '').trim();
 
@@ -77,11 +83,11 @@ export function VerifyEmailView() {
         await verifyEmail(token);
         setStatus('verified');
       } catch (cause) {
-        setFailure(describeAuthFailure(cause));
+        setFailure(describeAuthFailure(cause, copy.failures));
         setStatus('failed');
       }
     })();
-  }, [token]);
+  }, [token, copy.failures]);
 
   return (
     <div>
@@ -93,29 +99,23 @@ export function VerifyEmailView() {
       */}
       <p role="status" aria-live="polite" className="sr-only">
         {status === 'verifying'
-          ? 'Verifying your email address.'
+          ? copy.statusVerifying
           : status === 'verified'
-            ? 'Your email address is verified.'
+            ? copy.statusVerified
             : status === 'failed'
-              ? 'This verification link could not be used.'
+              ? copy.statusFailed
               : ''}
       </p>
 
       {status === 'idle' && (
         <>
-          <AuthPageHeader title="Open the link we sent you">
-            This page finishes setting up an account, and it needs the link from the
-            verification email to do it. Opening that link brings you back here with everything
-            it needs.
-          </AuthPageHeader>
-          <AuthFooterLinks />
+          <AuthPageHeader title={copy.idleTitle}>{copy.idleIntro}</AuthPageHeader>
+          <AuthFooterLinks copy={copy} />
         </>
       )}
 
       {status === 'verifying' && (
-        <AuthPageHeader title="Verifying your email address">
-          One moment — we are confirming the link.
-        </AuthPageHeader>
+        <AuthPageHeader title={copy.verifyingTitle}>{copy.verifyingIntro}</AuthPageHeader>
       )}
 
       {status === 'verified' && (
@@ -127,65 +127,59 @@ export function VerifyEmailView() {
               address is an achievement rather than something urgent (§2.4).
             */}
             <CircleCheck aria-hidden="true" className="mt-1 size-6 shrink-0 text-[var(--success)]" />
-            <AuthPageHeader title="Your email address is verified">
-              The account is ready. Signing in will take you the rest of the way.
-            </AuthPageHeader>
+            <AuthPageHeader title={copy.verifiedTitle}>{copy.verifiedIntro}</AuthPageHeader>
           </div>
 
           <Link
             href="/sign-in"
             className="inline-flex h-12 w-full items-center justify-center rounded-full bg-white px-6 text-base font-medium text-on-white transition-colors duration-150 ease-in-out hover:bg-[var(--white-muted)]"
           >
-            Sign in
+            {copy.signIn}
           </Link>
         </>
       )}
 
       {status === 'failed' && failure !== null && (
         <>
-          <AuthPageHeader title="This link cannot be used" />
+          <AuthPageHeader title={copy.failedTitle} />
 
           <InlineAlert variant="danger" title={failure.title} className="mb-6">
             <p>{failure.detail}</p>
           </InlineAlert>
 
           <div className="rounded-lg border border-white/8 bg-surface-2 p-5 text-[15px] leading-relaxed text-white/64">
-            <p>
-              Verification links are valid for 24 hours and can be used once. If yours has
-              expired or was already opened, the account still exists — signing in works before
-              an address is verified, and the account menu will carry the reminder until it is.
-            </p>
+            <p>{copy.failedExplain}</p>
           </div>
 
           <Link
             href="/sign-in"
             className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-full bg-white px-6 text-base font-medium text-on-white transition-colors duration-150 ease-in-out hover:bg-[var(--white-muted)]"
           >
-            Sign in
+            {copy.signIn}
           </Link>
 
-          <AuthFooterLinks />
+          <AuthFooterLinks copy={copy} />
         </>
       )}
     </div>
   );
 }
 
-function AuthFooterLinks() {
+function AuthFooterLinks({ copy }: { readonly copy: VerifyEmailCopy }) {
   return (
     <p className="mt-8 text-center text-sm text-white/64">
       <Link
         href="/register"
         className="rounded-sm text-white underline underline-offset-4 hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
       >
-        Create an account
+        {copy.createAccount}
       </Link>
       {' · '}
       <Link
         href="/"
         className="rounded-sm text-white underline underline-offset-4 hover:text-white/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
       >
-        Home
+        {copy.home}
       </Link>
     </p>
   );

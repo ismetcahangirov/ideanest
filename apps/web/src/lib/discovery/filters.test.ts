@@ -1,4 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { filterVocabularyCopyFrom } from '../i18n/feed-copy';
+import { translatorFor } from '../../test-copy';
+/*
+ * The vocabularies the route resolves, built from `messages/en.json` by the same function it
+ * calls — issue #324. The group names and the band labels are asserted below, so building them
+ * from the catalogue is what makes this fail when a word is edited to something the feed no
+ * longer draws.
+ */
+const VOCABULARY = filterVocabularyCopyFrom(translatorFor('discovery.filters'));
 import {
   NO_FILTERS,
   activeFilters,
@@ -235,7 +244,7 @@ describe('activeFilters', () => {
       params('status=live&category=games&subcategory=tabletop&tag=handmade&completion=over_100'),
     );
 
-    expect(activeFilters(filters, names).map((f) => [f.group, f.label])).toEqual([
+    expect(activeFilters(filters, VOCABULARY, names).map((f) => [f.group, f.label])).toEqual([
       ['Status', 'Live'],
       ['Category', 'Games'],
       ['Subcategory', 'Tabletop games'],
@@ -245,27 +254,27 @@ describe('activeFilters', () => {
   });
 
   it('falls back to the slug when the panel has not named it', () => {
-    expect(activeFilters(parseFilters(params('tag=ceramics'))).at(0)?.label).toBe('ceramics');
+    expect(activeFilters(parseFilters(params('tag=ceramics')), VOCABULARY).at(0)?.label).toBe('ceramics');
   });
 
   it('treats a custom range as one filter, not two', () => {
     // A minimum and a maximum are one thought. Removing half of "2,500 to
     // 20,000" leaves a filter nobody asked for.
-    const active = activeFilters(parseFilters(params('goalMin=2500&goalMax=20000')));
+    const active = activeFilters(parseFilters(params('goalMin=2500&goalMax=20000')), VOCABULARY);
 
     expect(active).toHaveLength(1);
     expect(active.at(0)?.label).toBe('2500 to 20000 AZN');
   });
 
   it('is empty with no filters, whatever the sort', () => {
-    expect(activeFilters(parseFilters(params('sort=most_backed')))).toEqual([]);
+    expect(activeFilters(parseFilters(params('sort=most_backed')), VOCABULARY)).toEqual([]);
   });
 });
 
 describe('removeFilter', () => {
   it('removes exactly the one named, from every dimension', () => {
     const filters = parseFilters(params('status=live,upcoming&tag=a,b&goalBand=under_1000'));
-    const active = activeFilters(filters);
+    const active = activeFilters(filters, VOCABULARY);
 
     const withoutLive = removeFilter(filters, active.find((f) => f.value === 'live')!);
     expect(withoutLive.statuses).toEqual(['upcoming']);
@@ -280,7 +289,7 @@ describe('removeFilter', () => {
 
   it('clears both ends of a custom range together', () => {
     const filters = parseFilters(params('raisedMin=100&raisedMax=900'));
-    const cleared = removeFilter(filters, activeFilters(filters)[0]!);
+    const cleared = removeFilter(filters, activeFilters(filters, VOCABULARY)[0]!);
 
     expect(cleared.raised).toEqual({ bands: [], min: null, max: null });
   });
@@ -292,7 +301,7 @@ describe('clearFilters', () => {
     // would be a second, unasked-for change hidden behind one control.
     const cleared = clearFilters(parseFilters(params('status=live&tag=a&sort=ending_soon')));
 
-    expect(activeFilters(cleared)).toEqual([]);
+    expect(activeFilters(cleared, VOCABULARY)).toEqual([]);
     expect(cleared.sort).toBe('ending_soon');
   });
 });

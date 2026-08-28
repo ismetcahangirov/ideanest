@@ -15,7 +15,10 @@ import {
   withAmountRange,
   type DiscoveryFilters,
 } from '../../lib/discovery/filters';
-import { AMOUNT_BANDS, COMPLETION_BANDS, STATUSES } from '../../lib/discovery/vocabulary';
+import { AMOUNT_BANDS, COMPLETION_BANDS, STATUSES, labelOf } from '../../lib/discovery/vocabulary';
+import type { FeedCopy } from '../../lib/i18n/feed-copy';
+import type { Locale } from '../../lib/i18n/locale';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
 
 /**
  * The filter panel: every filter §4.3 lists that `GET /v1/discover` can
@@ -58,13 +61,15 @@ import { AMOUNT_BANDS, COMPLETION_BANDS, STATUSES } from '../../lib/discovery/vo
 
 interface FacetCheckboxProps {
   label: string;
+  /** What an empty option reads, so unavailability is a word and not only a dimming. */
+  none: string;
   /** Null when the panel has not loaded. An unknown count is never shown as zero. */
   count: number | null;
   checked: boolean;
   onToggle: () => void;
 }
 
-function FacetCheckbox({ label, count, checked, onToggle }: FacetCheckboxProps) {
+function FacetCheckbox({ label, none, count, checked, onToggle }: FacetCheckboxProps) {
   /*
    * An option is only unavailable if it is BOTH empty and unchosen. A ticked
    * value that now counts zero must stay operable, or the reader is left with a
@@ -76,7 +81,7 @@ function FacetCheckbox({ label, count, checked, onToggle }: FacetCheckboxProps) 
     <li className="flex items-center justify-between gap-3">
       <Checkbox checked={checked} disabled={unavailable} onChange={onToggle} label={label} />
       <span className="shrink-0 text-xs text-white/40 tabular-nums">
-        {count === null ? '' : count === 0 ? 'None' : count}
+        {count === null ? '' : count === 0 ? none : count}
       </span>
     </li>
   );
@@ -103,6 +108,9 @@ function Group({ legend, children }: GroupProps) {
 interface RangeFieldsProps {
   dimension: 'goal' | 'raised';
   legend: string;
+  copy: FeedCopy;
+  /** For `toLocaleLowerCase` — see `FilterRailProps`. */
+  locale: Locale;
   min: string | null;
   max: string | null;
   onApply: (range: { min: string | null; max: string | null }) => void;
@@ -120,7 +128,7 @@ interface RangeFieldsProps {
  * The bounds are checked with `decimal.js` before they are applied, because
  * they are money and money never goes near floating point (CLAUDE.md §3).
  */
-function RangeFields({ dimension, legend, min, max, onApply }: RangeFieldsProps) {
+function RangeFields({ dimension, legend, copy, locale, min, max, onApply }: RangeFieldsProps) {
   const [from, setFrom] = useState(min ?? '');
   const [to, setTo] = useState(max ?? '');
   const [error, setError] = useState<string | null>(null);
@@ -135,11 +143,11 @@ function RangeFields({ dimension, legend, min, max, onApply }: RangeFieldsProps)
     const upper = to.trim() === '' ? null : to.trim();
 
     if (!isValidBound(lower) || !isValidBound(upper)) {
-      setError('Enter an amount in digits, for example 2500 or 2500.00.');
+      setError(copy.rangeInvalid);
       return;
     }
     if (!boundsAreOrdered(lower, upper)) {
-      setError('The lowest amount must not be more than the highest.');
+      setError(copy.rangeUnordered);
       return;
     }
 
@@ -149,7 +157,7 @@ function RangeFields({ dimension, legend, min, max, onApply }: RangeFieldsProps)
 
   return (
     <div className="mt-4 flex flex-col gap-3">
-      <p className="text-[13px] text-white/64">Or a custom range, in AZN.</p>
+      <p className="text-[13px] text-white/64">{copy.customRange}</p>
 
       {/*
         The labels name their dimension. Two fields called "Lowest" on one page
@@ -157,7 +165,10 @@ function RangeFields({ dimension, legend, min, max, onApply }: RangeFieldsProps)
         user tabbing into the second has no way to tell which range they are in.
       */}
       <div className="flex gap-3">
-        <Field label={`Lowest ${legend.toLowerCase()}`} className="flex-1">
+        <Field
+          label={fillPlaceholders(copy.lowest, { dimension: legend.toLocaleLowerCase(locale) })}
+          className="flex-1"
+        >
           <TextInput
             inputMode="decimal"
             autoComplete="off"
@@ -165,7 +176,10 @@ function RangeFields({ dimension, legend, min, max, onApply }: RangeFieldsProps)
             onChange={(event) => setFrom(event.target.value)}
           />
         </Field>
-        <Field label={`Highest ${legend.toLowerCase()}`} className="flex-1">
+        <Field
+          label={fillPlaceholders(copy.highest, { dimension: legend.toLocaleLowerCase(locale) })}
+          className="flex-1"
+        >
           <TextInput
             inputMode="decimal"
             autoComplete="off"
@@ -188,10 +202,12 @@ function RangeFields({ dimension, legend, min, max, onApply }: RangeFieldsProps)
           size="sm"
           variant="ghost"
           onClick={apply}
-          aria-label={`Apply the custom ${legend.toLowerCase()} range`}
+          aria-label={fillPlaceholders(copy.applyRangeLabel, {
+            dimension: legend.toLocaleLowerCase(locale),
+          })}
           data-range={dimension}
         >
-          Apply range
+          {copy.applyRange}
         </Pill>
       </div>
     </div>
@@ -206,9 +222,21 @@ export interface FilterRailProps {
   filters: DiscoveryFilters;
   facets: DiscoveryFacets | null;
   onChange: (next: DiscoveryFilters) => void;
+  /** Every word this rail draws, resolved by the route — see `lib/i18n/feed-copy.ts`. */
+  copy: FeedCopy;
+  /**
+   * The language, for `toLocaleLowerCase` alone.
+   *
+   * "Goal amount" becomes "goal amount" inside "Lowest goal amount", and a plain
+   * `toLowerCase()` is wrong in Turkish: the capital I lowercases to a dotless ı unless the
+   * locale is passed, so "Amount raised" would read with a letter the language does not use
+   * there.
+   */
+  locale: Locale;
 }
 
-export function FilterRail({ filters, facets, onChange }: FilterRailProps) {
+export function FilterRail({ filters, facets, onChange, copy, locale }: FilterRailProps) {
+  const vocabulary = copy.filters;
   /**
    * The count for one value, or null while the panel has not loaded.
    *
@@ -221,7 +249,7 @@ export function FilterRail({ filters, facets, onChange }: FilterRailProps) {
 
   return (
     <form
-      aria-label="Filters"
+      aria-label={copy.railLabel}
       className="flex flex-col gap-5"
       onSubmit={(event) => {
         // Nothing here submits: every control applies on change, and the range
@@ -229,21 +257,22 @@ export function FilterRail({ filters, facets, onChange }: FilterRailProps) {
         event.preventDefault();
       }}
     >
-      <Group legend="Status">
+      <Group legend={vocabulary.groups.status}>
         <ul className="flex flex-col gap-2.5">
           {STATUSES.map((status) => (
             <FacetCheckbox
-              key={status.value}
-              label={status.label}
-              count={countFor(facets?.status, status.value)}
-              checked={filters.statuses.includes(status.value)}
-              onToggle={() => onChange(toggleStatus(filters, status.value))}
+              none={copy.none}
+              key={status}
+              label={labelOf(vocabulary.status, status)}
+              count={countFor(facets?.status, status)}
+              checked={filters.statuses.includes(status)}
+              onToggle={() => onChange(toggleStatus(filters, status))}
             />
           ))}
         </ul>
       </Group>
 
-      <Group legend="Category">
+      <Group legend={vocabulary.groups.category}>
         <ul className="flex flex-col gap-2.5">
           {(facets?.categories ?? []).map((category) => {
             const chosen = filters.categories.includes(category.slug);
@@ -269,17 +298,20 @@ export function FilterRail({ filters, facets, onChange }: FilterRailProps) {
                     label={category.name}
                   />
                   <span className="shrink-0 text-xs text-white/40 tabular-nums">
-                    {category.count === 0 ? 'None' : category.count}
+                    {category.count === 0 ? copy.none : category.count}
                   </span>
                 </div>
 
                 {(chosen || childSelected) && category.subcategories.length > 0 && (
                   <ul
-                    aria-label={`${category.name} subcategories`}
+                    aria-label={fillPlaceholders(copy.subcategoriesOf, {
+                      category: category.name,
+                    })}
                     className="ml-8 flex flex-col gap-2.5 border-l border-white/8 pl-4"
                   >
                     {category.subcategories.map((subcategory) => (
                       <FacetCheckbox
+                        none={copy.none}
                         key={subcategory.slug}
                         label={subcategory.name}
                         count={subcategory.count}
@@ -295,63 +327,70 @@ export function FilterRail({ filters, facets, onChange }: FilterRailProps) {
         </ul>
       </Group>
 
-      <Group legend="Completion">
+      <Group legend={vocabulary.groups.completion}>
         <ul className="flex flex-col gap-2.5">
           {COMPLETION_BANDS.map((band) => (
             <FacetCheckbox
-              key={band.value}
-              label={band.label}
-              count={countFor(facets?.completion, band.value)}
-              checked={filters.completion.includes(band.value)}
-              onToggle={() => onChange(toggleCompletion(filters, band.value))}
+              none={copy.none}
+              key={band}
+              label={labelOf(vocabulary.completion, band)}
+              count={countFor(facets?.completion, band)}
+              checked={filters.completion.includes(band)}
+              onToggle={() => onChange(toggleCompletion(filters, band))}
             />
           ))}
         </ul>
       </Group>
 
-      <Group legend="Goal amount">
+      <Group legend={vocabulary.groups.goal}>
         <ul className="flex flex-col gap-2.5">
           {AMOUNT_BANDS.map((band) => (
             <FacetCheckbox
-              key={band.value}
-              label={band.label}
-              count={countFor(facets?.goalAmount, band.value)}
-              checked={filters.goal.bands.includes(band.value)}
-              onToggle={() => onChange(toggleAmountBand(filters, 'goal', band.value))}
+              none={copy.none}
+              key={band}
+              label={labelOf(vocabulary.amount, band)}
+              count={countFor(facets?.goalAmount, band)}
+              checked={filters.goal.bands.includes(band)}
+              onToggle={() => onChange(toggleAmountBand(filters, 'goal', band))}
             />
           ))}
         </ul>
         <RangeFields
           dimension="goal"
-          legend="Goal amount"
+          legend={vocabulary.groups.goal}
+          copy={copy}
+          locale={locale}
           min={filters.goal.min}
           max={filters.goal.max}
           onApply={(range) => onChange(withAmountRange(filters, 'goal', range))}
         />
       </Group>
 
-      <Group legend="Amount raised">
+      <Group legend={vocabulary.groups.raised}>
         <ul className="flex flex-col gap-2.5">
           {AMOUNT_BANDS.map((band) => (
             <FacetCheckbox
-              key={band.value}
-              label={band.label}
-              count={countFor(facets?.amountRaised, band.value)}
-              checked={filters.raised.bands.includes(band.value)}
-              onToggle={() => onChange(toggleAmountBand(filters, 'raised', band.value))}
+              none={copy.none}
+              key={band}
+              label={labelOf(vocabulary.amount, band)}
+              count={countFor(facets?.amountRaised, band)}
+              checked={filters.raised.bands.includes(band)}
+              onToggle={() => onChange(toggleAmountBand(filters, 'raised', band))}
             />
           ))}
         </ul>
         <RangeFields
           dimension="raised"
-          legend="Amount raised"
+          legend={vocabulary.groups.raised}
+          copy={copy}
+          locale={locale}
           min={filters.raised.min}
           max={filters.raised.max}
           onApply={(range) => onChange(withAmountRange(filters, 'raised', range))}
         />
       </Group>
 
-      <Group legend="Tags">
+      <Group legend={vocabulary.groups.tags}>
         {/*
           A FREE VOCABULARY, so only tags with campaigns behind them are listed —
           the whole list is unbounded and is not a thing that can be rendered.
@@ -372,6 +411,7 @@ export function FilterRail({ filters, facets, onChange }: FilterRailProps) {
             <ul className="flex flex-col gap-2.5">
               {(facets?.tags ?? []).map((tag) => (
                 <FacetCheckbox
+                  none={copy.none}
                   key={tag.slug}
                   label={tag.name}
                   count={tag.count}

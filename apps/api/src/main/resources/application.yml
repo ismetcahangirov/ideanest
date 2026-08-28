@@ -11,6 +11,21 @@ spring:
   jackson:
     default-property-inclusion: non_null
 
+  messages:
+    # NEVER THE SERVER'S OWN LANGUAGE -- issue #324.
+    #
+    # Spring's default is to fall back to the JVM's locale when a bundle for the
+    # requested one is missing, and English is deliberately missing: it lives in
+    # messages.properties itself rather than in messages_en.properties, so that a
+    # key absent from every translation still resolves. With the default left on, a
+    # request for English on a host whose locale is tr would resolve
+    # messages_en (absent) -> messages_tr (present) and send a Turkish email to an
+    # English reader -- a bug whose reproduction depends on the machine.
+    #
+    # Off, the chain is messages_<language> -> messages, which is English, and the
+    # answer no longer depends on where the process is running.
+    fallback-to-system-locale: false
+
   datasource:
     # No defaults. A missing database URL should stop the process with a clear
     # message, not silently connect somewhere plausible. Local values are in

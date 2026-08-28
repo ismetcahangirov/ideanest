@@ -11,6 +11,8 @@ import {
 } from '../../lib/fulfilment/api';
 import { formatExactTime } from '../../lib/time';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
+import type { ShippingAddressFormCopy } from '../../lib/i18n/fulfilment-copy';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
 
 /**
  * §4.8's PM-07 — where one pledge's reward goes. Issue #290.
@@ -48,46 +50,45 @@ import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
 export interface ShippingAddressFormProps {
   readonly pledgeId: string;
+  /** Every word this form draws, resolved by the route — see `lib/i18n/fulfilment-copy.ts`. */
+  readonly copy: ShippingAddressFormCopy;
 }
 
 type Status = 'loading' | 'ready' | 'failed' | 'signed-out';
 
-/** The fields, in the order an address is written. */
+/**
+ * The fields, in the order an address is written.
+ *
+ * The label and the hint moved to `account.fulfilment.form` with #324; what is left here is the
+ * wire key, the `autocomplete` token and whether the service requires it. All three are
+ * contracts rather than copy — `autocomplete="address-level2"` is what makes a browser offer
+ * the saved city, and it is the same token in every language.
+ */
 const FIELDS: ReadonlyArray<{
   readonly key: keyof PostalAddress;
-  readonly label: string;
+  /** The key under `account.fulfilment.form` that names it. */
+  readonly copyKey: keyof ShippingAddressFormCopy;
   readonly autoComplete: string;
   readonly required: boolean;
-  readonly hint?: string;
+  readonly hintKey?: keyof ShippingAddressFormCopy;
 }> = [
-  { key: 'recipient', label: 'Full name', autoComplete: 'name', required: true },
-  { key: 'line1', label: 'Address', autoComplete: 'address-line1', required: true },
-  {
-    key: 'line2',
-    label: 'Apartment, floor, or company',
-    autoComplete: 'address-line2',
-    required: false,
-  },
-  { key: 'locality', label: 'City or town', autoComplete: 'address-level2', required: true },
-  { key: 'region', label: 'Region or state', autoComplete: 'address-level1', required: false },
-  { key: 'postcode', label: 'Postcode', autoComplete: 'postal-code', required: false },
+  { key: 'recipient', copyKey: 'recipient', autoComplete: 'name', required: true },
+  { key: 'line1', copyKey: 'line1', autoComplete: 'address-line1', required: true },
+  { key: 'line2', copyKey: 'line2', autoComplete: 'address-line2', required: false },
+  { key: 'locality', copyKey: 'locality', autoComplete: 'address-level2', required: true },
+  { key: 'region', copyKey: 'region', autoComplete: 'address-level1', required: false },
+  { key: 'postcode', copyKey: 'postcode', autoComplete: 'postal-code', required: false },
   {
     key: 'countryCode',
-    label: 'Country',
+    copyKey: 'country',
     autoComplete: 'country',
     required: true,
-    hint: 'Two letters — AZ, TR, GB, DE.',
+    hintKey: 'countryHint',
   },
-  {
-    key: 'phone',
-    label: 'Phone',
-    autoComplete: 'tel',
-    required: false,
-    hint: 'Some carriers will not deliver without one.',
-  },
+  { key: 'phone', copyKey: 'phone', autoComplete: 'tel', required: false, hintKey: 'phoneHint' },
 ];
 
-export function ShippingAddressForm({ pledgeId }: ShippingAddressFormProps) {
+export function ShippingAddressForm({ pledgeId, copy }: ShippingAddressFormProps) {
   const locale = useRouteLocale();
   const [status, setStatus] = useState<Status>('loading');
   const [address, setAddress] = useState<PostalAddress>(EMPTY_ADDRESS);
@@ -136,8 +137,8 @@ export function ShippingAddressForm({ pledgeId }: ShippingAddressFormProps) {
           cause instanceof ApiError
             ? (cause.problem?.detail ??
               cause.problem?.title ??
-              'That pledge could not be found, or it is not yours.')
-            : 'The service could not be reached. Check your connection and try again.',
+              copy.notFound)
+            : copy.unreachable,
         );
         setStatus('failed');
       }
@@ -153,7 +154,7 @@ export function ShippingAddressForm({ pledgeId }: ShippingAddressFormProps) {
     const blanks: Record<string, string> = {};
     for (const field of FIELDS) {
       if (field.required && address[field.key].trim() === '') {
-        blanks[field.key] = 'A parcel cannot be addressed without this.';
+        blanks[field.key] = copy.requiredField;
       }
     }
     if (Object.keys(blanks).length > 0) {
@@ -178,8 +179,8 @@ export function ShippingAddressForm({ pledgeId }: ShippingAddressFormProps) {
       setSaved(false);
       setError(
         cause instanceof ApiError
-          ? (cause.problem?.detail ?? cause.problem?.title ?? 'The address was refused.')
-          : 'The service could not be reached. Check your connection and try again.',
+          ? (cause.problem?.detail ?? cause.problem?.title ?? copy.refused)
+          : copy.unreachable,
       );
     } finally {
       setBusy(false);
@@ -200,7 +201,7 @@ export function ShippingAddressForm({ pledgeId }: ShippingAddressFormProps) {
 
   if (status === 'failed') {
     return (
-      <InlineAlert variant="danger" title="This address could not be loaded">
+      <InlineAlert variant="danger" title={copy.loadFailedTitle}>
         <p>{error}</p>
       </InlineAlert>
     );
@@ -209,36 +210,39 @@ export function ShippingAddressForm({ pledgeId }: ShippingAddressFormProps) {
   return (
     <form onSubmit={submit} noValidate className="flex max-w-[34rem] flex-col gap-5">
       {locked && (
-        <InlineAlert variant="warning" title="This address is locked">
+        <InlineAlert variant="warning" title={copy.lockedTitle}>
           <p>
-            The creator has closed changes
-            {lockedAt !== null && lockedAt !== '' ? ` on ${formatExactTime(lockedAt, locale)}` : ''}, which
-            usually means labels are being printed. Message them through the campaign if it is
-            wrong.
+            {/*
+              TWO SENTENCES RATHER THAN ONE WITH A CLAUSE SPLICED IN. English can put "on
+              12 March" between the verb and the rest; Azerbaijani and Turkish put the date
+              before the verb, so a fragment concatenated at that point is a sentence that
+              parses in one language of four.
+            */}
+            {lockedAt !== null && lockedAt !== ''
+              ? fillPlaceholders(copy.lockedBodyAt, { at: formatExactTime(lockedAt, locale) })
+              : copy.lockedBody}
           </p>
         </InlineAlert>
       )}
 
       {neverGiven && !locked && (
-        <InlineAlert variant="info" title="No address yet">
-          <p>The creator cannot send anything until this is filled in.</p>
+        <InlineAlert variant="info" title={copy.noAddressTitle}>
+          <p>{copy.noAddressBody}</p>
         </InlineAlert>
       )}
 
       {error !== null && (
-        <InlineAlert variant="danger" title="It was not saved">
+        <InlineAlert variant="danger" title={copy.saveFailedTitle}>
           <p>{error}</p>
         </InlineAlert>
       )}
 
       {saved && error === null && (
-        <InlineAlert variant="success" title="Saved">
+        <InlineAlert variant="success" title={copy.savedTitle}>
           <p>
-            This is where the reward goes
             {updatedAt !== null && updatedAt !== ''
-              ? `, as of ${formatExactTime(updatedAt, locale)}`
-              : ''}
-            .
+              ? fillPlaceholders(copy.savedBodyAt, { at: formatExactTime(updatedAt, locale) })
+              : copy.savedBody}
           </p>
         </InlineAlert>
       )}
@@ -246,9 +250,9 @@ export function ShippingAddressForm({ pledgeId }: ShippingAddressFormProps) {
       {FIELDS.map((field) => (
         <Field
           key={field.key}
-          label={field.label}
+          label={copy[field.copyKey]}
           required={field.required}
-          hint={field.hint}
+          hint={field.hintKey === undefined ? undefined : copy[field.hintKey]}
           error={missing[field.key]}
         >
           <TextInput
@@ -273,7 +277,7 @@ export function ShippingAddressForm({ pledgeId }: ShippingAddressFormProps) {
       {!locked && (
         <div>
           <Pill type="submit" disabled={busy}>
-            {busy ? 'Saving' : 'Save address'}
+            {busy ? copy.saving : copy.save}
           </Pill>
         </div>
       )}

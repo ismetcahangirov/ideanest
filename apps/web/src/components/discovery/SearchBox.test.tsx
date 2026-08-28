@@ -5,6 +5,14 @@ import { ApiError } from '../../lib/api/problem';
 import { NO_FILTERS, parseFilters, toHref, type DiscoveryFilters } from '../../lib/discovery/filters';
 import { getSuggestions, type Suggestion } from '../../lib/discovery/suggest';
 import { SearchBox } from './SearchBox';
+import { suggestCopyFrom } from '../../lib/i18n/feed-copy';
+import { translatorFor } from '../../test-copy';
+/*
+ * The copy the route would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const COPY = suggestCopyFrom(translatorFor('discovery.suggest'));
 
 /**
  * The search box and its autocomplete, with the suggest endpoint stubbed.
@@ -98,7 +106,7 @@ function mount(filters: DiscoveryFilters = NO_FILTERS): UserEvent {
   // `delay: null` types without waiting between keys, which is what keeps a
   // burst of keystrokes inside the debounce window on a loaded machine.
   const user = userEvent.setup({ delay: null });
-  render(<SearchBox filters={filters} onApply={(next) => applied.push(next)} />);
+  render(<SearchBox copy={COPY} filters={filters} onApply={(next) => applied.push(next)} />);
   return user;
 }
 
@@ -499,12 +507,12 @@ describe('the typed value and the URL', () => {
 
   it('follows the URL when it changes underneath — the back button', () => {
     const { rerender } = render(
-      <SearchBox filters={parseFilters(new URLSearchParams('q=ceramics'))} onApply={() => {}} />,
+      <SearchBox copy={COPY} filters={parseFilters(new URLSearchParams('q=ceramics'))} onApply={() => {}} />,
     );
     expect(box()).toHaveValue('ceramics');
 
     rerender(
-      <SearchBox filters={parseFilters(new URLSearchParams('q=pottery'))} onApply={() => {}} />,
+      <SearchBox copy={COPY} filters={parseFilters(new URLSearchParams('q=pottery'))} onApply={() => {}} />,
     );
 
     expect(box()).toHaveValue('pottery');

@@ -3,6 +3,7 @@ import { AccountPageHeader } from '../../../../components/account/AccountPageHea
 import { DeliveryList } from '../../../../components/fulfilment/DeliveryList';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 import { getTranslations } from 'next-intl/server';
+import { deliveryListCopyFrom } from '../../../../lib/i18n/fulfilment-copy';
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('account.pages.deliveries');
@@ -30,7 +31,7 @@ export default async function DeliveriesPage() {
       </AccountPageHeader>
 
       <div className="mt-8">
-        <DeliveryList />
+        <DeliveryList copy={deliveryListCopyFrom(await getTranslations('account.fulfilment'))} />
       </div>
     </>
   );

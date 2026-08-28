@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { PasswordResetRequestForm } from '../../../../components/auth/PasswordResetRequestForm';
+import { passwordResetCopy } from '../../../../lib/i18n/shell-copy.server';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 
 /**
@@ -34,11 +36,11 @@ import { privatePageMetadata } from '../../../../lib/seo/metadata';
  * Open Graph block, so a reset URL pasted into a chat does not unfurl as an invitation.
  */
 
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Reset your password',
-  description: 'Get a link that sets a new password for your IdeaNest account.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('auth.reset');
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
 
-export default function ResetPasswordPage() {
-  return <PasswordResetRequestForm />;
+export default async function ResetPasswordPage() {
+  return <PasswordResetRequestForm copy={await passwordResetCopy()} />;
 }

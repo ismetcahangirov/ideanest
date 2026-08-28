@@ -2,6 +2,8 @@
 
 import { ChipRow, Pill, RemovableChip } from '@ideanest/ui';
 import type { ActiveFilter } from '../../lib/discovery/filters';
+import type { FeedCopy } from '../../lib/i18n/feed-copy';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
 
 /**
  * Everything currently narrowing the feed, as chips that remove themselves.
@@ -25,18 +27,23 @@ export interface ActiveFiltersProps {
   filters: readonly ActiveFilter[];
   onRemove: (filter: ActiveFilter) => void;
   onClear: () => void;
+  /** The row's own three sentences — see `lib/i18n/feed-copy.ts`. */
+  copy: FeedCopy;
 }
 
-export function ActiveFilters({ filters, onRemove, onClear }: ActiveFiltersProps) {
+export function ActiveFilters({ filters, onRemove, onClear, copy }: ActiveFiltersProps) {
   if (filters.length === 0) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <ChipRow fadeEdge={false} aria-label="Applied filters" className="flex-wrap">
+      <ChipRow fadeEdge={false} aria-label={copy.appliedFilters} className="flex-wrap">
         {filters.map((filter) => (
           <RemovableChip
             key={filter.key}
-            removeLabel={`Remove ${filter.group} filter: ${filter.label}`}
+            removeLabel={fillPlaceholders(copy.removeChip, {
+              group: filter.group,
+              label: filter.label,
+            })}
             onClick={() => onRemove(filter)}
           >
             {filter.label}
@@ -50,7 +57,7 @@ export function ActiveFilters({ filters, onRemove, onClear }: ActiveFiltersProps
         chips would compete with them.
       */}
       <Pill size="sm" variant="ghost" onClick={onClear}>
-        Clear all filters
+        {copy.clearAll}
       </Pill>
     </div>
   );
