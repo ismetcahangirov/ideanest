@@ -2,6 +2,7 @@
   "common": {
     "save": "Save",
     "cancel": "Cancel",
+    "breadcrumb": "Breadcrumb",
     "saving": "Saving…",
     "tryAgain": "Try again",
     "trail": {
@@ -484,6 +485,23 @@
       "title": "Categories",
       "intro": "Every category on the platform, and the subcategories inside them. Each has a page of its own.",
       "feedLink": "The feed"
+    },
+    "landing": {
+      "notFound": "Category not found",
+      "metaDescription": "Crowdfunding campaigns in {category} on IdeaNest — pledge to a campaign, or start one of your own.",
+      "subMetaTitle": "{subcategory} in {category}",
+      "subMetaDescription": "Crowdfunding campaigns in {subcategory}, part of {category}, on IdeaNest.",
+      "standfirst": "Campaigns filed under {category}, newest first.",
+      "subStandfirst": "Campaigns filed under {category} → {subcategory}, newest first.",
+      "subcategoriesLabel": "Subcategories of {category}",
+      "count": "{count, plural, =0 {No campaigns here yet} one {# campaign} other {# campaigns}}",
+      "countMore": "{count, plural, =0 {No campaigns here yet} one {# campaign, with more in the feed} other {# campaigns, with more in the feed}}",
+      "emptyTitle": "Nothing published in {title} yet",
+      "emptyBody": "This category exists and no campaign has launched in it. The feed carries every campaign on the platform.",
+      "emptyAction": "Browse the feed",
+      "gridLabel": "Campaigns in {title}",
+      "seeEvery": "See every campaign in {title}",
+      "filterAndSort": "Filter and sort {title} in the feed"
     },
     "collections": {
       "metaTitle": "Collections",

@@ -2,6 +2,7 @@
   "common": {
     "save": "Yadda saxla",
     "cancel": "İmtina",
+    "breadcrumb": "Naviqasiya izi",
     "saving": "Yadda saxlanılır…",
     "tryAgain": "Yenidən cəhd edin",
     "trail": {
@@ -484,6 +485,23 @@
       "title": "Kateqoriyalar",
       "intro": "Platformadakı bütün kateqoriyalar və onların içindəki alt kateqoriyalar. Hər birinin öz səhifəsi var.",
       "feedLink": "Lent"
+    },
+    "landing": {
+      "notFound": "Kateqoriya tapılmadı",
+      "metaDescription": "IdeaNest-də {category} kateqoriyasındakı kollektiv maliyyələşdirmə kampaniyaları — bir kampaniyanı dəstəkləyin və ya özünüzünkünü başladın.",
+      "subMetaTitle": "{category} kateqoriyasında {subcategory}",
+      "subMetaDescription": "IdeaNest-də {category} kateqoriyasının bir hissəsi olan {subcategory} bölməsindəki kollektiv maliyyələşdirmə kampaniyaları.",
+      "standfirst": "{category} kateqoriyasına aid kampaniyalar, ən yenisi əvvəldə.",
+      "subStandfirst": "{category} → {subcategory} bölməsinə aid kampaniyalar, ən yenisi əvvəldə.",
+      "subcategoriesLabel": "{category} kateqoriyasının alt bölmələri",
+      "count": "{count, plural, =0 {Burada hələ kampaniya yoxdur} other {# kampaniya}}",
+      "countMore": "{count, plural, =0 {Burada hələ kampaniya yoxdur} other {# kampaniya, lentdə daha çoxu var}}",
+      "emptyTitle": "{title} bölməsində hələ heç nə dərc olunmayıb",
+      "emptyBody": "Bu kateqoriya mövcuddur və orada hələ bir kampaniya başlamayıb. Lent platformadakı bütün kampaniyaları daşıyır.",
+      "emptyAction": "Lentə bax",
+      "gridLabel": "{title} bölməsindəki kampaniyalar",
+      "seeEvery": "{title} bölməsindəki bütün kampaniyalara bax",
+      "filterAndSort": "{title} bölməsini lentdə süz və sırala"
     },
     "collections": {
       "metaTitle": "Kolleksiyalar",

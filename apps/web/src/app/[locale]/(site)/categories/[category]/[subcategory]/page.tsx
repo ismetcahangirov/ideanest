@@ -8,6 +8,7 @@ import { privatePageMetadata, publicPageMetadata } from '../../../../../../lib/s
 import { categoryPageGraph } from '../../../../../../lib/seo/structured-data/graphs';
 import { graphContext } from '../../../../../../lib/i18n/shell-copy.server';
 import { localeOrDefault } from '../../../../../../lib/i18n/locale';
+import { getTranslations } from 'next-intl/server';
 
 /**
  * `/categories/{category}/{subcategory}` — §4.13 WS-05, issue #265.
@@ -35,10 +36,13 @@ interface RouteParams {
 
 export async function generateMetadata({ params }: RouteParams): Promise<Metadata> {
   const { locale, category: categorySlug, subcategory: subcategorySlug } = await params;
-  const landing = await resolveCategoryLanding(categorySlug, subcategorySlug);
+  const [landing, t] = await Promise.all([
+    resolveCategoryLanding(categorySlug, subcategorySlug),
+    getTranslations('discovery.landing'),
+  ]);
 
   if (landing.kind === 'not-found' || landing.subcategory === null) {
-    return privatePageMetadata({ title: 'Category not found' });
+    return privatePageMetadata({ title: t('notFound') });
   }
 
   const { category, subcategory } = landing;
@@ -49,8 +53,11 @@ export async function generateMetadata({ params }: RouteParams): Promise<Metadat
      * that could belong to any platform; "Tabletop in Games" is one somebody can place at a
      * glance, and the site name is added after it by the template.
      */
-    title: `${subcategory.name} in ${category.name}`,
-    description: `Crowdfunding campaigns in ${subcategory.name}, part of ${category.name}, on IdeaNest.`,
+    title: t('subMetaTitle', { subcategory: subcategory.name, category: category.name }),
+    description: t('subMetaDescription', {
+      subcategory: subcategory.name,
+      category: category.name,
+    }),
     path: subcategoryPath(category.slug, subcategory.slug),
     locale: localeOrDefault(locale),
   });
