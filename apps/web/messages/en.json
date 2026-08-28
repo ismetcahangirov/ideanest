@@ -698,6 +698,62 @@
       "keep": "Keep it"
     }
   },
+  "profile": {
+    "notFound": "Profile not found",
+    "metaDescription": "{name} on IdeaNest — the campaigns they have created and backed.",
+    "avatarAlt": "{name}’s profile picture",
+    "tabsLabel": "Profile sections",
+    "tabs": {
+      "created": "Created",
+      "backed": "Backed",
+      "about": "About"
+    },
+    "about": {
+      "heading": "About {name}",
+      "empty": "{name} has not written anything here.",
+      "basedIn": "Based in",
+      "website": "Website",
+      "since": "On IdeaNest since",
+      "elsewhere": "Elsewhere"
+    },
+    "grid": {
+      "failedTitle": "This list could not be loaded",
+      "failedBody": "The service did not answer. Nothing is wrong with the profile — reload the page to try again.",
+      "createdEmptyTitle": "No campaigns yet",
+      "createdEmptyBody": "{name} has not published a campaign on IdeaNest.",
+      "backedEmptyTitle": "Nothing here yet",
+      "backedEmptyBody": "{name} has not backed a campaign publicly. Pledges made anonymously are never listed here.",
+      "showMore": "Show more",
+      "showMoreCreated": "Show more campaigns this person created",
+      "showMoreBacked": "Show more campaigns this person backed",
+      "loading": "Loading",
+      "nextFailedTitle": "The next page did not load",
+      "refused": "The service refused the request. Try again.",
+      "unreachable": "The service could not be reached. Check your connection and try again."
+    },
+    "card": {
+      "states": {
+        "PRELAUNCH": "Pre-launch",
+        "SCHEDULED": "Scheduled",
+        "LIVE": "Live",
+        "SUCCESSFUL": "Funded",
+        "UNSUCCESSFUL": "Not funded",
+        "COLLECTING": "Collecting",
+        "LATE_PLEDGE": "Late pledges",
+        "FULFILLING": "Fulfilling",
+        "COMPLETED": "Completed"
+      },
+      "progressLabel": "{percent} percent of the goal",
+      "funded": "{percent}% funded",
+      "ofGoal": "of {amount} goal",
+      "backers": {
+        "one": "{count} backer",
+        "few": "{count} backers",
+        "many": "{count} backers",
+        "other": "{count} backers"
+      }
+    }
+  },
   "static": {
     "about": {
       "metaTitle": "About",

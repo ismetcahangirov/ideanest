@@ -698,6 +698,62 @@
       "keep": "Оставить"
     }
   },
+  "profile": {
+    "notFound": "Профиль не найден",
+    "metaDescription": "{name} на IdeaNest — созданные и поддержанные кампании.",
+    "avatarAlt": "Фотография профиля: {name}",
+    "tabsLabel": "Разделы профиля",
+    "tabs": {
+      "created": "Созданные",
+      "backed": "Поддержанные",
+      "about": "О себе"
+    },
+    "about": {
+      "heading": "О пользователе {name}",
+      "empty": "{name} здесь ничего не написал.",
+      "basedIn": "Где находится",
+      "website": "Сайт",
+      "since": "На IdeaNest с",
+      "elsewhere": "Другие ссылки"
+    },
+    "grid": {
+      "failedTitle": "Этот список не удалось загрузить",
+      "failedBody": "Сервис не ответил. С профилем всё в порядке — перезагрузите страницу, чтобы попробовать снова.",
+      "createdEmptyTitle": "Кампаний пока нет",
+      "createdEmptyBody": "{name} не публиковал кампаний на IdeaNest.",
+      "backedEmptyTitle": "Здесь пока пусто",
+      "backedEmptyBody": "{name} не поддерживал кампании публично. Анонимные взносы здесь никогда не показываются.",
+      "showMore": "Показать ещё",
+      "showMoreCreated": "Показать больше кампаний, созданных этим человеком",
+      "showMoreBacked": "Показать больше кампаний, поддержанных этим человеком",
+      "loading": "Загружаем",
+      "nextFailedTitle": "Следующая страница не загрузилась",
+      "refused": "Сервис отклонил запрос. Попробуйте снова.",
+      "unreachable": "Сервис недоступен. Проверьте соединение и попробуйте снова."
+    },
+    "card": {
+      "states": {
+        "PRELAUNCH": "До запуска",
+        "SCHEDULED": "Запланирована",
+        "LIVE": "Идёт сбор",
+        "SUCCESSFUL": "Собрана",
+        "UNSUCCESSFUL": "Не собрана",
+        "COLLECTING": "Списание",
+        "LATE_PLEDGE": "Поздние взносы",
+        "FULFILLING": "Отправка",
+        "COMPLETED": "Завершена"
+      },
+      "progressLabel": "{percent} процентов цели",
+      "funded": "{percent}% цели",
+      "ofGoal": "из цели {amount}",
+      "backers": {
+        "one": "{count} бэкер",
+        "few": "{count} бэкера",
+        "many": "{count} бэкеров",
+        "other": "{count} бэкера"
+      }
+    }
+  },
   "static": {
     "about": {
       "metaTitle": "О платформе",

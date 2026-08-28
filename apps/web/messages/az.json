@@ -698,6 +698,62 @@
       "keep": "Qalsın"
     }
   },
+  "profile": {
+    "notFound": "Profil tapılmadı",
+    "metaDescription": "IdeaNest-də {name} — yaratdığı və dəstəklədiyi kampaniyalar.",
+    "avatarAlt": "{name} adlı istifadəçinin profil şəkli",
+    "tabsLabel": "Profil bölmələri",
+    "tabs": {
+      "created": "Yaradılan",
+      "backed": "Dəstəklənən",
+      "about": "Haqqında"
+    },
+    "about": {
+      "heading": "{name} haqqında",
+      "empty": "{name} burada heç nə yazmayıb.",
+      "basedIn": "Yerləşdiyi yer",
+      "website": "Veb sayt",
+      "since": "IdeaNest-də qoşulub",
+      "elsewhere": "Digər yerlərdə"
+    },
+    "grid": {
+      "failedTitle": "Bu siyahını yükləmək mümkün olmadı",
+      "failedBody": "Xidmət cavab vermədi. Profildə problem yoxdur — yenidən cəhd etmək üçün səhifəni təzələyin.",
+      "createdEmptyTitle": "Hələ kampaniya yoxdur",
+      "createdEmptyBody": "{name} IdeaNest-də kampaniya dərc etməyib.",
+      "backedEmptyTitle": "Hələ burada heç nə yoxdur",
+      "backedEmptyBody": "{name} açıq şəkildə kampaniya dəstəkləməyib. Anonim edilən dəstəklər burada heç vaxt göstərilmir.",
+      "showMore": "Daha çox göstər",
+      "showMoreCreated": "Bu şəxsin yaratdığı daha çox kampaniyanı göstər",
+      "showMoreBacked": "Bu şəxsin dəstəklədiyi daha çox kampaniyanı göstər",
+      "loading": "Yüklənir",
+      "nextFailedTitle": "Növbəti səhifə yüklənmədi",
+      "refused": "Xidmət sorğunu rədd etdi. Yenidən cəhd edin.",
+      "unreachable": "Xidmətə çıxmaq mümkün olmadı. Bağlantınızı yoxlayıb yenidən cəhd edin."
+    },
+    "card": {
+      "states": {
+        "PRELAUNCH": "Başlanğıcdan əvvəl",
+        "SCHEDULED": "Planlaşdırılıb",
+        "LIVE": "Aktiv",
+        "SUCCESSFUL": "Maliyyələşdi",
+        "UNSUCCESSFUL": "Maliyyələşmədi",
+        "COLLECTING": "Yığılır",
+        "LATE_PLEDGE": "Gecikmiş dəstəklər",
+        "FULFILLING": "İcra olunur",
+        "COMPLETED": "Tamamlandı"
+      },
+      "progressLabel": "hədəfin {percent} faizi",
+      "funded": "{percent}% maliyyələşdi",
+      "ofGoal": "{amount} hədəfdən",
+      "backers": {
+        "one": "{count} dəstəkçi",
+        "few": "{count} dəstəkçi",
+        "many": "{count} dəstəkçi",
+        "other": "{count} dəstəkçi"
+      }
+    }
+  },
   "static": {
     "about": {
       "metaTitle": "Haqqımızda",

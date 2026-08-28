@@ -47,9 +47,17 @@ function initialsOf(name: string): string {
 
 export interface ProfileHeaderProps {
   readonly profile: PublicProfile;
+  /**
+   * The one sentence this header owns — issue #324.
+   *
+   * The name, the handle and the initials are the person's own and are never translated. What
+   * is left is the picture's alternative text, and it is a sentence about whose face it is
+   * rather than a label, so it belongs in the catalogue like any other.
+   */
+  readonly avatarAlt: string;
 }
 
-export function ProfileHeader({ profile }: ProfileHeaderProps) {
+export function ProfileHeader({ profile, avatarAlt }: ProfileHeaderProps) {
   return (
     <header className="flex items-center gap-5">
       <div className="size-14 shrink-0 overflow-hidden rounded-full ring-2 ring-[var(--surface-1)]">
@@ -72,7 +80,7 @@ export function ProfileHeader({ profile }: ProfileHeaderProps) {
               src={profile.avatarUrl}
               /* A content image: it is this person, and the heading beside it names them, so
                  the alt says whose picture it is rather than repeating the name alone. */
-              alt={`${profile.name}’s profile picture`}
+              alt={avatarAlt}
               fill
               sizes="56px"
               unoptimized={!canOptimise(profile.avatarUrl)}

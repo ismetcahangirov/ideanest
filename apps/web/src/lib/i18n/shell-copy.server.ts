@@ -23,6 +23,7 @@ import {
   commentCopyFrom,
 } from './campaign-copy';
 import { localeOrDefault, type Locale } from './locale';
+import { type ProfileCopy, profileCopyFrom } from './profile-copy';
 import {
   type EmailChangePanelCopy,
   type PasswordChangePanelCopy,
@@ -120,6 +121,17 @@ export async function passwordChangePanelCopy(): Promise<PasswordChangePanelCopy
     await getTranslations('settings.panels'),
     await getTranslations('auth'),
   );
+}
+
+/**
+ * Every word `/u/[slug]` draws — `profile-copy.ts` explains the two decisions in it.
+ *
+ * One object for the whole route rather than one per component: the grid is a client component
+ * that renders the cards, so the card's vocabulary has to travel through it, and the tabs are
+ * built by the page out of the same three words the panels are labelled with.
+ */
+export async function profileCopy(): Promise<ProfileCopy> {
+  return profileCopyFrom(await getTranslations('profile'));
 }
 
 /** The checkout's words. `checkout-copy.ts` explains why the whole of it is one prop. */

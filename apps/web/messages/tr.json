@@ -698,6 +698,62 @@
       "keep": "Kalsın"
     }
   },
+  "profile": {
+    "notFound": "Profil bulunamadı",
+    "metaDescription": "IdeaNest üzerinde {name} — oluşturduğu ve desteklediği kampanyalar.",
+    "avatarAlt": "{name} adlı kullanıcının profil fotoğrafı",
+    "tabsLabel": "Profil bölümleri",
+    "tabs": {
+      "created": "Oluşturulan",
+      "backed": "Desteklenen",
+      "about": "Hakkında"
+    },
+    "about": {
+      "heading": "{name} hakkında",
+      "empty": "{name} buraya bir şey yazmadı.",
+      "basedIn": "Bulunduğu yer",
+      "website": "Web sitesi",
+      "since": "IdeaNest üyeliği",
+      "elsewhere": "Diğer bağlantılar"
+    },
+    "grid": {
+      "failedTitle": "Bu liste yüklenemedi",
+      "failedBody": "Servis yanıt vermedi. Profilde bir sorun yok — yeniden denemek için sayfayı yenileyin.",
+      "createdEmptyTitle": "Henüz kampanya yok",
+      "createdEmptyBody": "{name} IdeaNest üzerinde kampanya yayımlamadı.",
+      "backedEmptyTitle": "Burada henüz bir şey yok",
+      "backedEmptyBody": "{name} herkese açık olarak kampanya desteklemedi. Anonim yapılan destekler burada asla listelenmez.",
+      "showMore": "Daha fazla göster",
+      "showMoreCreated": "Bu kişinin oluşturduğu daha fazla kampanyayı göster",
+      "showMoreBacked": "Bu kişinin desteklediği daha fazla kampanyayı göster",
+      "loading": "Yükleniyor",
+      "nextFailedTitle": "Sonraki sayfa yüklenmedi",
+      "refused": "Servis isteği reddetti. Yeniden deneyin.",
+      "unreachable": "Servise ulaşılamadı. Bağlantınızı denetleyip yeniden deneyin."
+    },
+    "card": {
+      "states": {
+        "PRELAUNCH": "Lansman öncesi",
+        "SCHEDULED": "Planlandı",
+        "LIVE": "Etkin",
+        "SUCCESSFUL": "Fonlandı",
+        "UNSUCCESSFUL": "Fonlanmadı",
+        "COLLECTING": "Tahsilat",
+        "LATE_PLEDGE": "Geç destekler",
+        "FULFILLING": "Gönderim",
+        "COMPLETED": "Tamamlandı"
+      },
+      "progressLabel": "hedefin yüzde {percent} kadarı",
+      "funded": "hedefin %{percent} kadarı",
+      "ofGoal": "{amount} hedefinden",
+      "backers": {
+        "one": "{count} destekçi",
+        "few": "{count} destekçi",
+        "many": "{count} destekçi",
+        "other": "{count} destekçi"
+      }
+    }
+  },
   "static": {
     "about": {
       "metaTitle": "Hakkımızda",
