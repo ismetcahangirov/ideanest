@@ -7,6 +7,7 @@ import { ApiError } from '../../lib/api/problem';
 import { getCollectionCampaigns } from '../../lib/collections/api';
 import type { Locale } from '../../lib/i18n/locale';
 import type { CollectionCampaignsCopy } from '../../lib/i18n/collection-copy';
+import type { ProjectCardCopy } from '../../lib/i18n/card-copy';
 import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import { pluralise } from '../../lib/i18n/plurals';
 import type { ProjectCard } from '../../lib/discovery/api';
@@ -80,6 +81,8 @@ export interface CollectionCampaignsProps {
   readonly copy: CollectionCampaignsCopy;
   /** The language, for the count alone. The list grows in the browser, so it cannot be ICU. */
   readonly locale: Locale;
+  /** The card's words, passed through to the grid — see `lib/i18n/card-copy.ts`. */
+  readonly cardCopy: ProjectCardCopy;
 }
 
 export function CollectionCampaigns({
@@ -89,6 +92,7 @@ export function CollectionCampaigns({
   initialCursor,
   copy,
   locale,
+  cardCopy,
 }: CollectionCampaignsProps) {
   const [items, setItems] = useState<readonly ProjectCard[]>(initial);
   const [cursor, setCursor] = useState<string | null>(initialCursor);
@@ -152,6 +156,8 @@ export function CollectionCampaigns({
         campaigns={items}
         priorityCount={3}
         label={fillPlaceholders(copy.gridLabel, { title })}
+        cardCopy={cardCopy}
+        locale={locale}
       />
 
       {cursor !== null && (

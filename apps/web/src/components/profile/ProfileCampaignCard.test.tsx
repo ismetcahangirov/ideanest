@@ -9,7 +9,7 @@ import { translatorFor } from '../../test-copy';
  * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
  * catalogue says, which is the opposite of what it is for.
  */
-const COPY = profileCopyFrom(translatorFor('profile'));
+const COPY = profileCopyFrom(translatorFor('profile'), translatorFor('common'));
 
 /**
  * §4.2's P-04 and P-05, on one card — issue #274.

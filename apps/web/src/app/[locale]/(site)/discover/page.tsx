@@ -11,7 +11,8 @@ import { localeOrDefault } from '../../../../lib/i18n/locale';
 import { publicPageMetadata } from '../../../../lib/seo/metadata';
 import { discoverPageGraph } from '../../../../lib/seo/structured-data/graphs';
 import { graphContext } from '../../../../lib/i18n/shell-copy.server';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { projectCardCopy } from '../../../../lib/i18n/shell-copy.server';
 
 /**
  * `/discover`, and every filtered variant of it, is one canonical URL.
@@ -125,7 +126,11 @@ export default async function DiscoverPage({
           </div>
         }
       >
-        <DiscoveryView {...(seeded === undefined ? {} : { seeded })} />
+        <DiscoveryView
+          {...(seeded === undefined ? {} : { seeded })}
+          cardCopy={await projectCardCopy()}
+          locale={localeOrDefault(await getLocale())}
+        />
       </Suspense>
     </>
   );

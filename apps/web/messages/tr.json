@@ -3,6 +3,17 @@
     "save": "Kaydet",
     "cancel": "Vazgeç",
     "breadcrumb": "Gezinti izi",
+    "card": {
+      "progressLabel": "hedefin yüzde {percent} kadarı",
+      "funded": "hedefin %{percent} kadarı",
+      "ofGoal": "{amount} hedefinden",
+      "backers": {
+        "one": "{count} destekçi",
+        "few": "{count} destekçi",
+        "many": "{count} destekçi",
+        "other": "{count} destekçi"
+      }
+    },
     "saving": "Kaydediliyor…",
     "tryAgain": "Tekrar deneyin",
     "trail": {
@@ -479,6 +490,24 @@
       "metaTitle": "Keşfet",
       "metaDescription": "IdeaNest'teki tüm kampanyalara göz atın ve filtreleyin."
     },
+    "card": {
+      "badges": {
+        "upcoming": "Yakında",
+        "live": "Etkin",
+        "late_pledge": "Geç destek",
+        "successful": "Başarılı",
+        "unsuccessful": "Başarısız"
+      },
+      "by": "hazırlayan: {creator}",
+      "lastDay": "Son gün",
+      "daysLeft": {
+        "one": "{count} gün kaldı",
+        "few": "{count} gün kaldı",
+        "many": "{count} gün kaldı",
+        "other": "{count} gün kaldı"
+      },
+      "notOpen": "Henüz desteğe açık değil"
+    },
     "categories": {
       "metaTitle": "Kategoriler",
       "metaDescription": "IdeaNest'teki her kategori ve alt kategori — her birinin kendi kampanya sayfası var.",
@@ -810,15 +839,6 @@
         "LATE_PLEDGE": "Geç destekler",
         "FULFILLING": "Gönderim",
         "COMPLETED": "Tamamlandı"
-      },
-      "progressLabel": "hedefin yüzde {percent} kadarı",
-      "funded": "hedefin %{percent} kadarı",
-      "ofGoal": "{amount} hedefinden",
-      "backers": {
-        "one": "{count} destekçi",
-        "few": "{count} destekçi",
-        "many": "{count} destekçi",
-        "other": "{count} destekçi"
       }
     }
   },

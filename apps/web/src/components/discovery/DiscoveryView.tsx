@@ -26,6 +26,8 @@ import { FilterRail } from './FilterRail';
 import { ProjectCard } from './ProjectCard';
 import { SearchBox } from './SearchBox';
 import { SortControl } from './SortControl';
+import type { ProjectCardCopy } from '../../lib/i18n/card-copy';
+import type { Locale } from '../../lib/i18n/locale';
 
 /**
  * Discovery: the filter rail, the sort control, the applied-filter chips, and
@@ -110,9 +112,13 @@ export interface DiscoveryViewProps {
    * It carries the filter key it was fetched for. See `SeededFeed`.
    */
   readonly seeded?: SeededFeed;
+  /** The card's words, resolved by the route — see `lib/i18n/card-copy.ts`. */
+  readonly cardCopy: ProjectCardCopy;
+  /** The language, for the card's two counted sentences. */
+  readonly locale: Locale;
 }
 
-export function DiscoveryView({ seeded }: DiscoveryViewProps = {}) {
+export function DiscoveryView({ seeded, cardCopy, locale }: DiscoveryViewProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -367,7 +373,12 @@ export function DiscoveryView({ seeded }: DiscoveryViewProps = {}) {
                         a guess. One of them is the largest contentful paint on
                         this route and the rest must not compete with it.
                       */}
-                      <ProjectCard card={card} priority={index < 3} />
+                      <ProjectCard
+                        card={card}
+                        priority={index < 3}
+                        copy={cardCopy}
+                        locale={locale}
+                      />
                     </li>
                   ))}
                 </ul>

@@ -7,6 +7,8 @@ import type { ProjectCard } from '../../lib/discovery/api';
 import { CollectionCampaigns } from './CollectionCampaigns';
 import { collectionCampaignsCopyFrom } from '../../lib/i18n/collection-copy';
 import { translatorFor } from '../../test-copy';
+import { projectCardCopyFrom } from '../../lib/i18n/card-copy';
+const CARD_COPY = projectCardCopyFrom(translatorFor('discovery.card'), translatorFor('common'));
 /*
  * The copy the route would have resolved, built from `messages/en.json` by the same function it
  * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
@@ -70,6 +72,7 @@ function renderList(cursor: string | null, items: readonly ProjectCard[] = [card
     <CollectionCampaigns
       copy={COPY}
       locale="en"
+      cardCopy={CARD_COPY}
       slug="spring-2026"
       title="Spring 2026"
       initial={items}

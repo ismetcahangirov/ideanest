@@ -12,6 +12,14 @@ import {
 import type { DiscoveryFilters } from '../../lib/discovery/filters';
 import { expectNoViolations } from '../../test-axe';
 import { DiscoveryView } from './DiscoveryView';
+import { projectCardCopyFrom } from '../../lib/i18n/card-copy';
+import { translatorFor } from '../../test-copy';
+/*
+ * The copy the route would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for.
+ */
+const CARD_COPY = projectCardCopyFrom(translatorFor('discovery.card'), translatorFor('common'));
 
 /**
  * The discovery surface end to end, with the two endpoints stubbed.
@@ -205,7 +213,7 @@ async function open(initialSearch = ''): Promise<UserEvent> {
   nav.reset(initialSearch);
 
   const user = userEvent.setup();
-  render(<DiscoveryView />);
+  render(<DiscoveryView cardCopy={CARD_COPY} locale="en" />);
   await screen.findByRole('heading', { level: 1, name: 'Discover' });
   await waitFor(() => expect(feedMock).toHaveBeenCalled());
   await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Games' })).toBeInTheDocument());
@@ -234,7 +242,7 @@ afterEach(() => {
 describe('DiscoveryView', () => {
   it('announces that it is loading rather than showing an empty page', () => {
     feedMock.mockReturnValue(new Promise<DiscoveryFeed>(() => {}));
-    render(<DiscoveryView />);
+    render(<DiscoveryView cardCopy={CARD_COPY} locale="en" />);
 
     const label = screen.getByText('Loading projects', { selector: 'span' });
     expect(label.closest('[aria-busy]')).toHaveAttribute('aria-busy', 'true');
@@ -401,7 +409,7 @@ describe('facet counts', () => {
     // controls — the filters still work, because the feed is its own request.
     facetsMock.mockRejectedValue(new Error('nope'));
     nav.reset('');
-    render(<DiscoveryView />);
+    render(<DiscoveryView cardCopy={CARD_COPY} locale="en" />);
 
     await waitFor(() => expect(feedMock).toHaveBeenCalled());
     await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Live' })).toBeEnabled());
@@ -705,7 +713,7 @@ describe('when the service refuses', () => {
     );
 
     nav.reset('');
-    render(<DiscoveryView />);
+    render(<DiscoveryView cardCopy={CARD_COPY} locale="en" />);
 
     // The endpoint knows which of its rules refused the request and this page
     // does not, so its wording is what is shown.
@@ -718,7 +726,7 @@ describe('when the service refuses', () => {
     feedMock.mockRejectedValue(new TypeError('Failed to fetch'));
 
     nav.reset('');
-    render(<DiscoveryView />);
+    render(<DiscoveryView cardCopy={CARD_COPY} locale="en" />);
 
     expect(
       await screen.findByText(/The service could not be reached/),
@@ -730,7 +738,7 @@ describe('when the service refuses', () => {
     nav.reset('');
 
     const user = userEvent.setup();
-    render(<DiscoveryView />);
+    render(<DiscoveryView cardCopy={CARD_COPY} locale="en" />);
 
     await screen.findByRole('button', { name: 'Try again' });
     feedMock.mockResolvedValue(FIRST_PAGE);

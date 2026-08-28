@@ -1,4 +1,4 @@
-import type { PluralForms } from './plurals';
+import { type CardTranslator, type SharedCardCopy, sharedCardCopyFrom } from './card-copy';
 
 /**
  * Every word `/u/[slug]` draws — issue #324.
@@ -15,12 +15,16 @@ import type { PluralForms } from './plurals';
  * translation, so this change keeps both and says so here rather than quietly changing English
  * on one of the two screens.
  *
- * <h2>The backer count is `PluralForms` rather than an ICU string</h2>
+ * <h2>Four of the card's sentences are not here at all</h2>
  *
- * `campaign.backers` is ICU because the campaign page resolves it on the server. A profile's
- * grid appends cards after a click, so each card's count arrives in the browser, where
- * formatting ICU would mean the `use-intl` runtime in the bundle. `lib/i18n/plurals.ts`
- * carries the reasoning and the CLDR lookup.
+ * The progress bar's name, the completion figure, the goal under it and the backer count are
+ * word for word what `components/discovery/ProjectCard` draws, so they live in `common.card`
+ * and both cards read them — `lib/i18n/card-copy.ts` carries that decision. What is left in
+ * `profile.card` is the nine status words of an archive.
+ *
+ * <p>The count is `PluralForms` rather than an ICU string for the reason that file gives:
+ * `campaign.backers` is ICU because the campaign page resolves it on the server, and a
+ * profile's grid appends cards after a click, so each card's count arrives in the browser.
  */
 
 /**
@@ -36,16 +40,9 @@ export interface ProfileRawTranslator {
   raw(key: string): unknown;
 }
 
-export interface ProfileCardCopy {
+export interface ProfileCardCopy extends SharedCardCopy {
   /** Keyed by the service's state name; a state not in the table renders as itself. */
   readonly states: Readonly<Record<string, string>>;
-  /** Carries `{percent}`. The accessible name of the progress bar. */
-  readonly progressLabel: string;
-  /** Carries `{percent}`. */
-  readonly funded: string;
-  /** Carries `{amount}`, already formatted by `lib/money.ts` against the campaign's currency. */
-  readonly ofGoal: string;
-  readonly backers: PluralForms;
 }
 
 export interface ProfileGridCopy {
@@ -91,17 +88,17 @@ export interface ProfileCopy {
   readonly grid: ProfileGridCopy;
 }
 
-function cardCopyFrom(t: ProfileRawTranslator): ProfileCardCopy {
+function cardCopyFrom(t: ProfileRawTranslator, common: CardTranslator): ProfileCardCopy {
   return {
+    ...sharedCardCopyFrom(common),
     states: t.raw('card.states') as Readonly<Record<string, string>>,
-    progressLabel: String(t.raw('card.progressLabel')),
-    funded: String(t.raw('card.funded')),
-    ofGoal: String(t.raw('card.ofGoal')),
-    backers: t.raw('card.backers') as PluralForms,
   };
 }
 
-export function profileGridCopyFrom(t: ProfileRawTranslator): ProfileGridCopy {
+export function profileGridCopyFrom(
+  t: ProfileRawTranslator,
+  common: CardTranslator,
+): ProfileGridCopy {
   return {
     failedTitle: t('grid.failedTitle'),
     failedBody: t('grid.failedBody'),
@@ -116,11 +113,12 @@ export function profileGridCopyFrom(t: ProfileRawTranslator): ProfileGridCopy {
     nextFailedTitle: t('grid.nextFailedTitle'),
     refused: t('grid.refused'),
     unreachable: t('grid.unreachable'),
-    card: cardCopyFrom(t),
+    card: cardCopyFrom(t, common),
   };
 }
 
-export function profileCopyFrom(t: ProfileRawTranslator): ProfileCopy {
+/** The route resolves `profile` and `common`; the card's shared sentences are in the second. */
+export function profileCopyFrom(t: ProfileRawTranslator, common: CardTranslator): ProfileCopy {
   return {
     avatarAlt: String(t.raw('avatarAlt')),
     tabsLabel: t('tabsLabel'),
@@ -137,6 +135,6 @@ export function profileCopyFrom(t: ProfileRawTranslator): ProfileCopy {
       since: t('about.since'),
       elsewhere: t('about.elsewhere'),
     },
-    grid: profileGridCopyFrom(t),
+    grid: profileGridCopyFrom(t, common),
   };
 }

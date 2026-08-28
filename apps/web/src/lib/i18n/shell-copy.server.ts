@@ -24,6 +24,7 @@ import {
 } from './campaign-copy';
 import { localeOrDefault, type Locale } from './locale';
 import { type ProfileCopy, profileCopyFrom } from './profile-copy';
+import { type ProjectCardCopy, projectCardCopyFrom } from './card-copy';
 import {
   type EmailChangePanelCopy,
   type PasswordChangePanelCopy,
@@ -131,7 +132,23 @@ export async function passwordChangePanelCopy(): Promise<PasswordChangePanelCopy
  * built by the page out of the same three words the panels are labelled with.
  */
 export async function profileCopy(): Promise<ProfileCopy> {
-  return profileCopyFrom(await getTranslations('profile'));
+  return profileCopyFrom(
+    await getTranslations('profile'),
+    await getTranslations('common'),
+  );
+}
+
+/**
+ * The words every campaign card draws — `lib/i18n/card-copy.ts` explains why they are a prop.
+ *
+ * Six surfaces render that card and each resolves this: the home page, the feed, the search
+ * results, the category landings, the collection pages and the profile grid.
+ */
+export async function projectCardCopy(): Promise<ProjectCardCopy> {
+  return projectCardCopyFrom(
+    await getTranslations('discovery.card'),
+    await getTranslations('common'),
+  );
 }
 
 /** The checkout's words. `checkout-copy.ts` explains why the whole of it is one prop. */

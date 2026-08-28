@@ -1,5 +1,7 @@
 import type { ProjectCard as ProjectCardData } from '../../lib/discovery/api';
 import { ProjectCard } from '../discovery/ProjectCard';
+import type { ProjectCardCopy } from '../../lib/i18n/card-copy';
+import type { Locale } from '../../lib/i18n/locale';
 
 /**
  * A grid of campaigns, server-rendered — the body of the home page, the category landing
@@ -40,9 +42,19 @@ export interface CampaignGridProps {
   readonly priorityCount?: number;
   /** Announced to a screen reader as the list's name, since the heading is outside it. */
   readonly label: string;
+  /** The card's words. Passed through rather than resolved — see `lib/i18n/card-copy.ts`. */
+  readonly cardCopy: ProjectCardCopy;
+  /** The language, for the card's two counted sentences. */
+  readonly locale: Locale;
 }
 
-export function CampaignGrid({ campaigns, priorityCount = 0, label }: CampaignGridProps) {
+export function CampaignGrid({
+  campaigns,
+  priorityCount = 0,
+  label,
+  cardCopy,
+  locale,
+}: CampaignGridProps) {
   return (
     <ul
       aria-label={label}
@@ -50,7 +62,12 @@ export function CampaignGrid({ campaigns, priorityCount = 0, label }: CampaignGr
     >
       {campaigns.map((card, index) => (
         <li key={card.id}>
-          <ProjectCard card={card} priority={index < priorityCount} />
+          <ProjectCard
+            card={card}
+            priority={index < priorityCount}
+            copy={cardCopy}
+            locale={locale}
+          />
         </li>
       ))}
     </ul>

@@ -1,4 +1,6 @@
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { projectCardCopyFrom } from '../../lib/i18n/card-copy';
+import { localeOrDefault } from '../../lib/i18n/locale';
 import { Link } from '../../i18n/navigation';
 import { ArrowRight } from 'lucide-react';
 import { EmptyState } from '@ideanest/ui/server';
@@ -64,6 +66,8 @@ export async function CategoryLanding({
   const t = await getTranslations('discovery.landing');
   const common = await getTranslations('common');
   const trail = await getTranslations('common.trail');
+  const cardCopy = projectCardCopyFrom(await getTranslations('discovery.card'), common);
+  const locale = localeOrDefault(await getLocale());
 
   const title = subcategory?.name ?? category.name;
 
@@ -174,6 +178,8 @@ export async function CategoryLanding({
               campaigns={campaigns}
               priorityCount={3}
               label={t('gridLabel', { title })}
+              cardCopy={cardCopy}
+              locale={locale}
             />
 
             <div className="mt-10 flex justify-center">

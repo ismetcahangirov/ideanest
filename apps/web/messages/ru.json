@@ -3,6 +3,17 @@
     "save": "Сохранить",
     "cancel": "Отмена",
     "breadcrumb": "Навигационная цепочка",
+    "card": {
+      "progressLabel": "{percent} процентов цели",
+      "funded": "{percent}% цели",
+      "ofGoal": "из цели {amount}",
+      "backers": {
+        "one": "{count} бэкер",
+        "few": "{count} бэкера",
+        "many": "{count} бэкеров",
+        "other": "{count} бэкера"
+      }
+    },
     "saving": "Сохранение…",
     "tryAgain": "Попробуйте ещё раз",
     "trail": {
@@ -479,6 +490,24 @@
       "metaTitle": "Обзор",
       "metaDescription": "Смотрите и фильтруйте все кампании на IdeaNest."
     },
+    "card": {
+      "badges": {
+        "upcoming": "Скоро",
+        "live": "Идёт сбор",
+        "late_pledge": "Поздние взносы",
+        "successful": "Успешна",
+        "unsuccessful": "Не собрана"
+      },
+      "by": "автор: {creator}",
+      "lastDay": "Последний день",
+      "daysLeft": {
+        "one": "остался {count} день",
+        "few": "осталось {count} дня",
+        "many": "осталось {count} дней",
+        "other": "осталось {count} дня"
+      },
+      "notOpen": "Приём взносов ещё не открыт"
+    },
     "categories": {
       "metaTitle": "Категории",
       "metaDescription": "Все категории и подкатегории IdeaNest — у каждой своя страница с кампаниями.",
@@ -810,15 +839,6 @@
         "LATE_PLEDGE": "Поздние взносы",
         "FULFILLING": "Отправка",
         "COMPLETED": "Завершена"
-      },
-      "progressLabel": "{percent} процентов цели",
-      "funded": "{percent}% цели",
-      "ofGoal": "из цели {amount}",
-      "backers": {
-        "one": "{count} бэкер",
-        "few": "{count} бэкера",
-        "many": "{count} бэкеров",
-        "other": "{count} бэкера"
       }
     }
   },

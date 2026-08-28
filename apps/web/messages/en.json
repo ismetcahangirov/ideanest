@@ -3,6 +3,17 @@
     "save": "Save",
     "cancel": "Cancel",
     "breadcrumb": "Breadcrumb",
+    "card": {
+      "progressLabel": "{percent} percent of the goal",
+      "funded": "{percent}% funded",
+      "ofGoal": "of {amount} goal",
+      "backers": {
+        "one": "{count} backer",
+        "few": "{count} backers",
+        "many": "{count} backers",
+        "other": "{count} backers"
+      }
+    },
     "saving": "Saving…",
     "tryAgain": "Try again",
     "trail": {
@@ -479,6 +490,24 @@
       "metaTitle": "Discover",
       "metaDescription": "Browse and filter every campaign on IdeaNest."
     },
+    "card": {
+      "badges": {
+        "upcoming": "Upcoming",
+        "live": "Live",
+        "late_pledge": "Late pledge",
+        "successful": "Successful",
+        "unsuccessful": "Unsuccessful"
+      },
+      "by": "by {creator}",
+      "lastDay": "Last day",
+      "daysLeft": {
+        "one": "{count} day left",
+        "few": "{count} days left",
+        "many": "{count} days left",
+        "other": "{count} days left"
+      },
+      "notOpen": "Not open for pledges yet"
+    },
     "categories": {
       "metaTitle": "Categories",
       "metaDescription": "Every category and subcategory on IdeaNest, each with its own page of campaigns.",
@@ -810,15 +839,6 @@
         "LATE_PLEDGE": "Late pledges",
         "FULFILLING": "Fulfilling",
         "COMPLETED": "Completed"
-      },
-      "progressLabel": "{percent} percent of the goal",
-      "funded": "{percent}% funded",
-      "ofGoal": "of {amount} goal",
-      "backers": {
-        "one": "{count} backer",
-        "few": "{count} backers",
-        "many": "{count} backers",
-        "other": "{count} backers"
       }
     }
   },

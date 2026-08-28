@@ -23,6 +23,7 @@ import {
   collectionCampaignsCopyFrom,
   collectionHeaderCopyFrom,
 } from '../../../../../lib/i18n/collection-copy';
+import { type ProjectCardCopy, projectCardCopyFrom } from '../../../../../lib/i18n/card-copy';
 import type { Locale } from '../../../../../lib/i18n/locale';
 
 /**
@@ -126,19 +127,22 @@ async function pageContext(): Promise<{
   locale: Locale;
   header: CollectionHeaderCopy;
   campaigns: CollectionCampaignsCopy;
+  card: ProjectCardCopy;
 }> {
   const t = await getTranslations('discovery.collections');
+  const common = await getTranslations('common');
 
   return {
     locale: localeOrDefault(await getLocale()),
-    header: collectionHeaderCopyFrom(t, await getTranslations('common')),
+    header: collectionHeaderCopyFrom(t, common),
     campaigns: collectionCampaignsCopyFrom(t),
+    card: projectCardCopyFrom(await getTranslations('discovery.card'), common),
   };
 }
 
 export default async function CollectionPage({ params }: RouteParams) {
   const { slug } = await params;
-  const { locale, header, campaigns: campaignsCopy } = await pageContext();
+  const { locale, header, campaigns: campaignsCopy, card } = await pageContext();
   const landing = await resolveCollectionLanding(slug);
 
   if (landing.kind === 'not-found') notFound();
@@ -166,6 +170,7 @@ export default async function CollectionPage({ params }: RouteParams) {
             initialCursor={nextCursor}
             copy={campaignsCopy}
             locale={locale}
+            cardCopy={card}
           />
         </div>
       </div>
