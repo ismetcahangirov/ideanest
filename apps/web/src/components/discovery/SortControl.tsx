@@ -1,7 +1,8 @@
 'use client';
 
 import { Field, Select } from '@ideanest/ui';
-import { isSort, sortsFor, type DiscoverySort } from '../../lib/discovery/vocabulary';
+import { isSort, labelOf, sortsFor, type DiscoverySort } from '../../lib/discovery/vocabulary';
+import type { FeedCopy } from '../../lib/i18n/feed-copy';
 
 /**
  * The order the feed comes back in.
@@ -41,13 +42,15 @@ export interface SortControlProps {
   /** Whether the feed is a search. Decides whether `best_match` is offered. */
   hasQuery: boolean;
   onChange: (sort: DiscoverySort) => void;
+  /** The control's label and the six words. `discovery.filters.sort` names the orders. */
+  copy: FeedCopy;
 }
 
-export function SortControl({ sort, hasQuery, onChange }: SortControlProps) {
+export function SortControl({ sort, hasQuery, onChange, copy }: SortControlProps) {
   const options = sortsFor(hasQuery);
 
   return (
-    <Field label="Sort by" className="w-full sm:w-56">
+    <Field label={copy.sortLabel} className="w-full sm:w-56">
       <Select
         value={sort}
         onChange={(event) => {
@@ -58,8 +61,8 @@ export function SortControl({ sort, hasQuery, onChange }: SortControlProps) {
         }}
       >
         {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
+          <option key={option} value={option}>
+            {labelOf(copy.filters.sort, option)}
           </option>
         ))}
       </Select>

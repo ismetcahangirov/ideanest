@@ -508,6 +508,135 @@
       },
       "notOpen": "Not open for pledges yet"
     },
+    "filters": {
+      "status": {
+        "upcoming": "Upcoming",
+        "live": "Live",
+        "late_pledge": "Late pledge",
+        "successful": "Successful",
+        "unsuccessful": "Unsuccessful"
+      },
+      "sort": {
+        "best_match": "Best match",
+        "newest": "Newest",
+        "ending_soon": "Ending soon",
+        "most_funded": "Most funded",
+        "most_backed": "Most backed",
+        "popularity": "Popular"
+      },
+      "completion": {
+        "under_25": "Under 25%",
+        "25_to_50": "25% to under 50%",
+        "50_to_75": "50% to under 75%",
+        "75_to_100": "75% to under 100%",
+        "over_100": "Funded — 100% or more"
+      },
+      "amount": {
+        "under_1000": "Under 1,000 AZN",
+        "1000_to_5000": "1,000 to under 5,000 AZN",
+        "5000_to_20000": "5,000 to under 20,000 AZN",
+        "20000_to_50000": "20,000 to under 50,000 AZN",
+        "over_50000": "50,000 AZN and above"
+      },
+      "groups": {
+        "status": "Status",
+        "category": "Category",
+        "subcategory": "Subcategory",
+        "completion": "Completion",
+        "goal": "Goal amount",
+        "raised": "Amount raised",
+        "tag": "Tag",
+        "tags": "Tags"
+      },
+      "range": {
+        "between": "{min} to {max} AZN",
+        "from": "{min} AZN and above",
+        "upTo": "Up to {max} AZN"
+      }
+    },
+    "feed": {
+      "title": "Discover",
+      "standfirst": "Every campaign on IdeaNest, narrowed by whatever matters to you.",
+      "filtersLabel": "Filter projects",
+      "railLabel": "Filters",
+      "resultsHeading": "Projects",
+      "none": "None",
+      "sortLabel": "Sort by",
+      "customRange": "Or a custom range, in AZN.",
+      "lowest": "Lowest {dimension}",
+      "highest": "Highest {dimension}",
+      "applyRange": "Apply range",
+      "applyRangeLabel": "Apply the custom {dimension} range",
+      "rangeInvalid": "Enter an amount in digits, for example 2500 or 2500.00.",
+      "rangeUnordered": "The lowest amount must not be more than the highest.",
+      "subcategoriesOf": "{category} subcategories",
+      "loading": "Loading projects",
+      "loadingMore": "Loading more projects",
+      "showMore": "Show more projects",
+      "appliedFilters": "Applied filters",
+      "clearAll": "Clear all filters",
+      "removeChip": "Remove {group} filter: {label}",
+      "tryAgain": "Try again",
+      "errorTitle": "The projects could not be loaded",
+      "unreachable": "The service could not be reached. Check your connection and try again.",
+      "refused": "The service refused this request and did not say why. Try clearing the filters.",
+      "emptyQueryTitle": "No projects match “{query}”",
+      "emptyFilteredTitle": "No projects match these filters",
+      "emptyTitle": "No projects to show yet",
+      "emptyQueryBody": "Nothing on the platform matches that search. Check the spelling, or try a shorter word.",
+      "emptyQueryBodyFiltered": "Nothing on the platform matches that search with these filters applied. Check the spelling, or try a shorter word.",
+      "emptyBody": "There is nothing published on the platform for this feed to show.",
+      "blamedOne": "{filter} has no campaigns once the rest of your filters are applied. Removing it should bring results back.",
+      "blamedMany": "These filters have nothing in common: {filters}. Removing one of them should bring results back.",
+      "removeFilter": "Remove {label}",
+      "clearSearch": "Clear the search",
+      "endAll": "That is every project matching these filters.",
+      "endFeed": "You have reached the end of this feed.",
+      "announceNone": "No projects match these filters.",
+      "shown": {
+        "one": "{count} project shown",
+        "few": "{count} projects shown",
+        "many": "{count} projects shown",
+        "other": "{count} projects shown"
+      },
+      "shownMore": {
+        "one": "{count} project shown, more available",
+        "few": "{count} projects shown, more available",
+        "many": "{count} projects shown, more available",
+        "other": "{count} projects shown, more available"
+      },
+      "announceShown": {
+        "one": "{count} project shown.",
+        "few": "{count} projects shown.",
+        "many": "{count} projects shown.",
+        "other": "{count} projects shown."
+      },
+      "announceMore": {
+        "one": "{count} more project loaded.",
+        "few": "{count} more projects loaded.",
+        "many": "{count} more projects loaded.",
+        "other": "{count} more projects loaded."
+      }
+    },
+    "suggest": {
+      "formLabel": "Campaign search",
+      "inputLabel": "Search campaigns",
+      "placeholder": "Search campaigns, categories, and tags",
+      "listboxLabel": "Campaign suggestions",
+      "submit": "Search",
+      "looking": "Looking for suggestions",
+      "lookingAnnounce": "Looking for suggestions.",
+      "unavailableAnnounce": "Suggestions are unavailable. What you typed can still be searched for.",
+      "failedFallback": "Suggestions could not be loaded. Press Enter to search for what you typed.",
+      "failedDetail": "{detail} Press Enter to search for what you typed.",
+      "none": "No suggestions for “{query}”. Press Enter to search anyway.",
+      "kinds": {
+        "campaign": "Campaign",
+        "category": "Category",
+        "subcategory": "Subcategory",
+        "tag": "Tag"
+      }
+    },
     "categories": {
       "metaTitle": "Categories",
       "metaDescription": "Every category and subcategory on IdeaNest, each with its own page of campaigns.",

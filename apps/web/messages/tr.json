@@ -508,6 +508,135 @@
       },
       "notOpen": "Henüz desteğe açık değil"
     },
+    "filters": {
+      "status": {
+        "upcoming": "Yakında",
+        "live": "Etkin",
+        "late_pledge": "Geç destek",
+        "successful": "Başarılı",
+        "unsuccessful": "Başarısız"
+      },
+      "sort": {
+        "best_match": "En uygun",
+        "newest": "En yeni",
+        "ending_soon": "Yakında bitiyor",
+        "most_funded": "En çok fonlanan",
+        "most_backed": "En çok desteklenen",
+        "popularity": "Popüler"
+      },
+      "completion": {
+        "under_25": "%25 altı",
+        "25_to_50": "%25 ile %50 arası",
+        "50_to_75": "%50 ile %75 arası",
+        "75_to_100": "%75 ile %100 arası",
+        "over_100": "Fonlandı — %100 ve üzeri"
+      },
+      "amount": {
+        "under_1000": "1.000 AZN altı",
+        "1000_to_5000": "1.000 ile 5.000 AZN arası",
+        "5000_to_20000": "5.000 ile 20.000 AZN arası",
+        "20000_to_50000": "20.000 ile 50.000 AZN arası",
+        "over_50000": "50.000 AZN ve üzeri"
+      },
+      "groups": {
+        "status": "Durum",
+        "category": "Kategori",
+        "subcategory": "Alt kategori",
+        "completion": "Tamamlanma",
+        "goal": "Hedef tutarı",
+        "raised": "Toplanan tutar",
+        "tag": "Etiket",
+        "tags": "Etiketler"
+      },
+      "range": {
+        "between": "{min} ile {max} AZN arası",
+        "from": "{min} AZN ve üzeri",
+        "upTo": "{max} AZN'ye kadar"
+      }
+    },
+    "feed": {
+      "title": "Keşfet",
+      "standfirst": "IdeaNest üzerindeki bütün kampanyalar, sizin için önemli olana göre süzülmüş.",
+      "filtersLabel": "Projeleri süz",
+      "railLabel": "Süzgeçler",
+      "resultsHeading": "Projeler",
+      "none": "Yok",
+      "sortLabel": "Sıralama",
+      "customRange": "Ya da AZN cinsinden kendi aralığınız.",
+      "lowest": "En düşük {dimension}",
+      "highest": "En yüksek {dimension}",
+      "applyRange": "Aralığı uygula",
+      "applyRangeLabel": "Kendi {dimension} aralığını uygula",
+      "rangeInvalid": "Tutarı rakamla yazın, örneğin 2500 ya da 2500.00.",
+      "rangeUnordered": "En düşük tutar en yüksekten büyük olamaz.",
+      "subcategoriesOf": "{category} alt bölümleri",
+      "loading": "Projeler yükleniyor",
+      "loadingMore": "Daha fazla proje yükleniyor",
+      "showMore": "Daha fazla proje göster",
+      "appliedFilters": "Uygulanan süzgeçler",
+      "clearAll": "Bütün süzgeçleri temizle",
+      "removeChip": "{group} süzgecini kaldır: {label}",
+      "tryAgain": "Yeniden dene",
+      "errorTitle": "Projeler yüklenemedi",
+      "unreachable": "Servise ulaşılamadı. Bağlantınızı denetleyip yeniden deneyin.",
+      "refused": "Servis bu isteği reddetti ve nedenini söylemedi. Süzgeçleri temizlemeyi deneyin.",
+      "emptyQueryTitle": "“{query}” ile eşleşen proje yok",
+      "emptyFilteredTitle": "Bu süzgeçlerle eşleşen proje yok",
+      "emptyTitle": "Henüz gösterilecek proje yok",
+      "emptyQueryBody": "Platformda bu aramayla eşleşen bir şey yok. Yazımı denetleyin ya da daha kısa bir sözcük deneyin.",
+      "emptyQueryBodyFiltered": "Bu süzgeçler uygulanmışken platformda bu aramayla eşleşen bir şey yok. Yazımı denetleyin ya da daha kısa bir sözcük deneyin.",
+      "emptyBody": "Bu akışın gösterebileceği hiçbir şey platformda yayımlanmadı.",
+      "blamedOne": "Diğer süzgeçleriniz uygulandığında {filter} altında kampanya kalmıyor. Onu kaldırırsanız sonuçlar geri gelmeli.",
+      "blamedMany": "Bu süzgeçlerin ortak hiçbir şeyi yok: {filters}. Birini kaldırırsanız sonuçlar geri gelmeli.",
+      "removeFilter": "Kaldır: {label}",
+      "clearSearch": "Aramayı temizle",
+      "endAll": "Bu süzgeçlerle eşleşen bütün projeler bunlar.",
+      "endFeed": "Bu akışın sonuna geldiniz.",
+      "announceNone": "Bu süzgeçlerle eşleşen proje yok.",
+      "shown": {
+        "one": "{count} proje gösteriliyor",
+        "few": "{count} proje gösteriliyor",
+        "many": "{count} proje gösteriliyor",
+        "other": "{count} proje gösteriliyor"
+      },
+      "shownMore": {
+        "one": "{count} proje gösteriliyor, daha fazlası var",
+        "few": "{count} proje gösteriliyor, daha fazlası var",
+        "many": "{count} proje gösteriliyor, daha fazlası var",
+        "other": "{count} proje gösteriliyor, daha fazlası var"
+      },
+      "announceShown": {
+        "one": "{count} proje gösteriliyor.",
+        "few": "{count} proje gösteriliyor.",
+        "many": "{count} proje gösteriliyor.",
+        "other": "{count} proje gösteriliyor."
+      },
+      "announceMore": {
+        "one": "{count} proje daha yüklendi.",
+        "few": "{count} proje daha yüklendi.",
+        "many": "{count} proje daha yüklendi.",
+        "other": "{count} proje daha yüklendi."
+      }
+    },
+    "suggest": {
+      "formLabel": "Kampanya araması",
+      "inputLabel": "Kampanya ara",
+      "placeholder": "Kampanya, kategori ve etiket arayın",
+      "listboxLabel": "Kampanya önerileri",
+      "submit": "Ara",
+      "looking": "Öneriler aranıyor",
+      "lookingAnnounce": "Öneriler aranıyor.",
+      "unavailableAnnounce": "Öneriler kullanılamıyor. Yazdığınız şey yine de aranabilir.",
+      "failedFallback": "Öneriler yüklenemedi. Yazdığınızı aramak için Enter'a basın.",
+      "failedDetail": "{detail} Yazdığınızı aramak için Enter'a basın.",
+      "none": "“{query}” için öneri yok. Yine de aramak için Enter'a basın.",
+      "kinds": {
+        "campaign": "Kampanya",
+        "category": "Kategori",
+        "subcategory": "Alt kategori",
+        "tag": "Etiket"
+      }
+    },
     "categories": {
       "metaTitle": "Kategoriler",
       "metaDescription": "IdeaNest'teki her kategori ve alt kategori — her birinin kendi kampanya sayfası var.",

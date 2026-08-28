@@ -508,6 +508,135 @@
       },
       "notOpen": "Hələ dəstək üçün açıq deyil"
     },
+    "filters": {
+      "status": {
+        "upcoming": "Gözlənilir",
+        "live": "Aktiv",
+        "late_pledge": "Gecikmiş dəstək",
+        "successful": "Uğurlu",
+        "unsuccessful": "Uğursuz"
+      },
+      "sort": {
+        "best_match": "Ən uyğun",
+        "newest": "Ən yeni",
+        "ending_soon": "Tezliklə bitir",
+        "most_funded": "Ən çox maliyyələşən",
+        "most_backed": "Ən çox dəstəklənən",
+        "popularity": "Populyar"
+      },
+      "completion": {
+        "under_25": "25%-dən az",
+        "25_to_50": "25%-dən 50%-ə qədər",
+        "50_to_75": "50%-dən 75%-ə qədər",
+        "75_to_100": "75%-dən 100%-ə qədər",
+        "over_100": "Maliyyələşib — 100% və daha çox"
+      },
+      "amount": {
+        "under_1000": "1.000 AZN-dən az",
+        "1000_to_5000": "1.000 AZN-dən 5.000 AZN-ə qədər",
+        "5000_to_20000": "5.000 AZN-dən 20.000 AZN-ə qədər",
+        "20000_to_50000": "20.000 AZN-dən 50.000 AZN-ə qədər",
+        "over_50000": "50.000 AZN və daha çox"
+      },
+      "groups": {
+        "status": "Vəziyyət",
+        "category": "Kateqoriya",
+        "subcategory": "Alt kateqoriya",
+        "completion": "Tamamlanma",
+        "goal": "Hədəf məbləği",
+        "raised": "Toplanan məbləğ",
+        "tag": "Etiket",
+        "tags": "Etiketlər"
+      },
+      "range": {
+        "between": "{min} ilə {max} AZN arasında",
+        "from": "{min} AZN və daha çox",
+        "upTo": "{max} AZN-ə qədər"
+      }
+    },
+    "feed": {
+      "title": "Kəşf et",
+      "standfirst": "IdeaNest-dəki bütün kampaniyalar, sizin üçün önəmli olana görə süzülmüş.",
+      "filtersLabel": "Layihələri süz",
+      "railLabel": "Süzgəclər",
+      "resultsHeading": "Layihələr",
+      "none": "Yoxdur",
+      "sortLabel": "Sıralama",
+      "customRange": "Yaxud AZN ilə fərdi aralıq.",
+      "lowest": "Ən aşağı {dimension}",
+      "highest": "Ən yuxarı {dimension}",
+      "applyRange": "Aralığı tətbiq et",
+      "applyRangeLabel": "Fərdi {dimension} aralığını tətbiq et",
+      "rangeInvalid": "Məbləği rəqəmlə yazın, məsələn 2500 və ya 2500.00.",
+      "rangeUnordered": "Ən aşağı məbləğ ən yuxarıdan böyük ola bilməz.",
+      "subcategoriesOf": "{category} alt bölmələri",
+      "loading": "Layihələr yüklənir",
+      "loadingMore": "Daha çox layihə yüklənir",
+      "showMore": "Daha çox layihə göstər",
+      "appliedFilters": "Tətbiq olunan süzgəclər",
+      "clearAll": "Bütün süzgəcləri təmizlə",
+      "removeChip": "{group} süzgəcini sil: {label}",
+      "tryAgain": "Yenidən cəhd et",
+      "errorTitle": "Layihələri yükləmək mümkün olmadı",
+      "unreachable": "Xidmətə çıxmaq mümkün olmadı. Bağlantınızı yoxlayıb yenidən cəhd edin.",
+      "refused": "Xidmət bu sorğunu rədd etdi və səbəbini bildirmədi. Süzgəcləri təmizləməyə çalışın.",
+      "emptyQueryTitle": "“{query}” üzrə uyğun layihə yoxdur",
+      "emptyFilteredTitle": "Bu süzgəclərə uyğun layihə yoxdur",
+      "emptyTitle": "Hələ göstəriləcək layihə yoxdur",
+      "emptyQueryBody": "Platformada bu axtarışa uyğun heç nə yoxdur. Yazılışı yoxlayın və ya daha qısa söz sınayın.",
+      "emptyQueryBodyFiltered": "Bu süzgəclər tətbiq olunmuş halda platformada bu axtarışa uyğun heç nə yoxdur. Yazılışı yoxlayın və ya daha qısa söz sınayın.",
+      "emptyBody": "Bu lentin göstərəcəyi heç nə platformada dərc olunmayıb.",
+      "blamedOne": "Qalan süzgəcləriniz tətbiq olunanda {filter} üzrə kampaniya qalmır. Onu silsəniz, nəticələr qayıtmalıdır.",
+      "blamedMany": "Bu süzgəclərin ortaq heç nəyi yoxdur: {filters}. Onlardan birini silsəniz, nəticələr qayıtmalıdır.",
+      "removeFilter": "{label} süzgəcini sil",
+      "clearSearch": "Axtarışı təmizlə",
+      "endAll": "Bu süzgəclərə uyğun bütün layihələr budur.",
+      "endFeed": "Bu lentin sonuna çatdınız.",
+      "announceNone": "Bu süzgəclərə uyğun layihə yoxdur.",
+      "shown": {
+        "one": "{count} layihə göstərilir",
+        "few": "{count} layihə göstərilir",
+        "many": "{count} layihə göstərilir",
+        "other": "{count} layihə göstərilir"
+      },
+      "shownMore": {
+        "one": "{count} layihə göstərilir, daha çoxu var",
+        "few": "{count} layihə göstərilir, daha çoxu var",
+        "many": "{count} layihə göstərilir, daha çoxu var",
+        "other": "{count} layihə göstərilir, daha çoxu var"
+      },
+      "announceShown": {
+        "one": "{count} layihə göstərilir.",
+        "few": "{count} layihə göstərilir.",
+        "many": "{count} layihə göstərilir.",
+        "other": "{count} layihə göstərilir."
+      },
+      "announceMore": {
+        "one": "Daha {count} layihə yükləndi.",
+        "few": "Daha {count} layihə yükləndi.",
+        "many": "Daha {count} layihə yükləndi.",
+        "other": "Daha {count} layihə yükləndi."
+      }
+    },
+    "suggest": {
+      "formLabel": "Kampaniya axtarışı",
+      "inputLabel": "Kampaniyaları axtar",
+      "placeholder": "Kampaniya, kateqoriya və etiket axtarın",
+      "listboxLabel": "Kampaniya təklifləri",
+      "submit": "Axtar",
+      "looking": "Təkliflər axtarılır",
+      "lookingAnnounce": "Təkliflər axtarılır.",
+      "unavailableAnnounce": "Təkliflər əlçatan deyil. Yazdığınızı yenə də axtarmaq olar.",
+      "failedFallback": "Təklifləri yükləmək mümkün olmadı. Yazdığınızı axtarmaq üçün Enter basın.",
+      "failedDetail": "{detail} Yazdığınızı axtarmaq üçün Enter basın.",
+      "none": "“{query}” üzrə təklif yoxdur. Yenə də axtarmaq üçün Enter basın.",
+      "kinds": {
+        "campaign": "Kampaniya",
+        "category": "Kateqoriya",
+        "subcategory": "Alt kateqoriya",
+        "tag": "Etiket"
+      }
+    },
     "categories": {
       "metaTitle": "Kateqoriyalar",
       "metaDescription": "IdeaNest-dəki hər kateqoriya və alt kateqoriya — hər birinin öz kampaniya səhifəsi var.",

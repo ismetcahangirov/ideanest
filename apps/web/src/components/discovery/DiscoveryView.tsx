@@ -27,6 +27,9 @@ import { ProjectCard } from './ProjectCard';
 import { SearchBox } from './SearchBox';
 import { SortControl } from './SortControl';
 import type { ProjectCardCopy } from '../../lib/i18n/card-copy';
+import type { FeedCopy } from '../../lib/i18n/feed-copy';
+import { fillNodes, fillPlaceholders } from '../../lib/i18n/placeholders';
+import { pluralise } from '../../lib/i18n/plurals';
 import type { Locale } from '../../lib/i18n/locale';
 
 /**
@@ -72,21 +75,16 @@ const PREFETCH_MARGIN = '400px 0px';
  * status takes" is actionable and "something went wrong" is not. `code` is what
  * anything branches on; `detail` is never matched against.
  */
-function describeProblem(error: ApiError | null): { title: string; detail: string } {
+function describeProblem(error: ApiError | null, copy: FeedCopy): { title: string; detail: string } {
   const problem = error?.problem ?? null;
 
   if (problem === null) {
-    return {
-      title: 'The projects could not be loaded',
-      detail: 'The service could not be reached. Check your connection and try again.',
-    };
+    return { title: copy.errorTitle, detail: copy.unreachable };
   }
 
   return {
-    title: problem.title ?? 'The projects could not be loaded',
-    detail:
-      problem.detail ??
-      'The service refused this request and did not say why. Try clearing the filters.',
+    title: problem.title ?? copy.errorTitle,
+    detail: problem.detail ?? copy.refused,
   };
 }
 
@@ -114,11 +112,13 @@ export interface DiscoveryViewProps {
   readonly seeded?: SeededFeed;
   /** The card's words, resolved by the route — see `lib/i18n/card-copy.ts`. */
   readonly cardCopy: ProjectCardCopy;
-  /** The language, for the card's two counted sentences. */
+  /** The language, for the card's two counted sentences and the feed's own. */
   readonly locale: Locale;
+  /** Every word this surface draws — see `lib/i18n/feed-copy.ts`. */
+  readonly copy: FeedCopy;
 }
 
-export function DiscoveryView({ seeded, cardCopy, locale }: DiscoveryViewProps) {
+export function DiscoveryView({ seeded, cardCopy, locale, copy }: DiscoveryViewProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -132,10 +132,13 @@ export function DiscoveryView({ seeded, cardCopy, locale }: DiscoveryViewProps) 
   const filters = useMemo(() => parseFilters(new URLSearchParams(searchParams.toString())), [searchParams]);
 
   const facets = useDiscoveryFacets(filters);
-  const feed = useDiscoveryFeed(filters, seeded);
+  const feed = useDiscoveryFeed(filters, copy, locale, seeded);
 
   const names = useMemo(() => slugNames(facets), [facets]);
-  const active = useMemo(() => activeFilters(filters, names), [filters, names]);
+  const active = useMemo(
+    () => activeFilters(filters, copy.filters, names),
+    [filters, copy.filters, names],
+  );
 
   const apply = useCallback(
     (next: DiscoveryFilters) => {
@@ -170,17 +173,15 @@ export function DiscoveryView({ seeded, cardCopy, locale }: DiscoveryViewProps) 
   }, [hasMore, loadMore]);
 
   const blamed = feed.items.length === 0 ? blameFor(active, facets) : [];
-  const problem = describeProblem(feed.error);
+  const problem = describeProblem(feed.error, copy);
 
   return (
     <div className="mx-auto w-full max-w-[1400px] px-5 py-10 sm:px-6">
       <FadeUp>
         <h1 className="text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">
-          Discover
+          {copy.title}
         </h1>
-        <p className="mt-2 max-w-[60ch] text-white/64">
-          Every campaign on IdeaNest, narrowed by whatever matters to you.
-        </p>
+        <p className="mt-2 max-w-[60ch] text-white/64">{copy.standfirst}</p>
       </FadeUp>
 
       {/*
@@ -190,15 +191,21 @@ export function DiscoveryView({ seeded, cardCopy, locale }: DiscoveryViewProps) 
         things still moving.
       */}
       <div className="mt-6 max-w-[720px]">
-        <SearchBox filters={filters} onApply={apply} />
+        <SearchBox filters={filters} onApply={apply} copy={copy.suggest} />
       </div>
 
       <div className="mt-8 flex flex-col gap-8 lg:flex-row">
         <aside
-          aria-label="Filter projects"
+          aria-label={copy.filtersLabel}
           className="w-full shrink-0 lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] lg:w-[300px] lg:overflow-y-auto"
         >
-          <FilterRail filters={filters} facets={facets} onChange={apply} />
+          <FilterRail
+            filters={filters}
+            facets={facets}
+            onChange={apply}
+            copy={copy}
+            locale={locale}
+          />
         </aside>
 
         {/*
@@ -222,23 +229,22 @@ export function DiscoveryView({ seeded, cardCopy, locale }: DiscoveryViewProps) 
             accessible name as well, so the list announces what it is a list of.
           */}
           <h2 id={RESULTS_HEADING_ID} className="sr-only">
-            Projects
+            {copy.resultsHeading}
           </h2>
 
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <p className="text-sm text-white/64 tabular-nums">
                 {feed.status === 'loading'
-                  ? 'Loading projects'
-                  : `${feed.items.length} ${feed.items.length === 1 ? 'project' : 'projects'} shown${
-                      hasMore ? ', more available' : ''
-                    }`}
+                  ? copy.loading
+                  : pluralise(locale, hasMore ? copy.shownMore : copy.shown, feed.items.length)}
               </p>
 
               <SortControl
                 sort={filters.sort}
                 hasQuery={filters.query !== ''}
                 onChange={(sort) => apply({ ...filters, sort })}
+                copy={copy}
               />
             </div>
 
@@ -246,6 +252,7 @@ export function DiscoveryView({ seeded, cardCopy, locale }: DiscoveryViewProps) 
               filters={active}
               onRemove={(filter: ActiveFilter) => apply(removeFilter(filters, filter))}
               onClear={() => apply(clearFilters(filters))}
+              copy={copy}
             />
           </div>
 
@@ -269,11 +276,11 @@ export function DiscoveryView({ seeded, cardCopy, locale }: DiscoveryViewProps) 
                 <p>{problem.detail}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Pill size="sm" variant="ghost" onClick={feed.retry}>
-                    Try again
+                    {copy.tryAgain}
                   </Pill>
                   {active.length > 0 && (
                     <Pill size="sm" variant="ghost" onClick={() => apply(clearFilters(filters))}>
-                      Clear all filters
+                      {copy.clearAll}
                     </Pill>
                   )}
                 </div>
@@ -294,33 +301,35 @@ export function DiscoveryView({ seeded, cardCopy, locale }: DiscoveryViewProps) 
                    * changing, so it is the first thing the page says.
                    */
                   filters.query !== ''
-                    ? `No projects match “${filters.query}”`
+                    ? fillPlaceholders(copy.emptyQueryTitle, { query: filters.query })
                     : active.length > 0
-                      ? 'No projects match these filters'
-                      : 'No projects to show yet'
+                      ? copy.emptyFilteredTitle
+                      : copy.emptyTitle
                 }
                 description={
                   filters.query !== '' && blamed.length === 0 ? (
-                    <>
-                      Nothing on the platform matches that search
-                      {active.length > 0 ? ' with these filters applied' : ''}. Check the spelling,
-                      or try a shorter word.
-                    </>
+                    active.length > 0 ? (
+                      copy.emptyQueryBodyFiltered
+                    ) : (
+                      copy.emptyQueryBody
+                    )
                   ) : blamed.length === 0 ? (
-                    'There is nothing published on the platform for this feed to show.'
+                    copy.emptyBody
                   ) : blamed.length === 1 ? (
                     <>
-                      <strong className="text-white">{blamed[0]?.label}</strong> has no campaigns
-                      once the rest of your filters are applied. Removing it should bring results
-                      back.
+                      {fillNodes(copy.blamedOne, {
+                        filter: <strong className="text-white">{blamed[0]?.label}</strong>,
+                      })}
                     </>
                   ) : (
                     <>
-                      These filters have nothing in common:{' '}
-                      <strong className="text-white">
-                        {blamed.map((filter) => filter.label).join(', ')}
-                      </strong>
-                      . Removing one of them should bring results back.
+                      {fillNodes(copy.blamedMany, {
+                        filters: (
+                          <strong className="text-white">
+                            {blamed.map((filter) => filter.label).join(', ')}
+                          </strong>
+                        ),
+                      })}
                     </>
                   )
                 }
@@ -334,7 +343,7 @@ export function DiscoveryView({ seeded, cardCopy, locale }: DiscoveryViewProps) 
                           variant="ghost"
                           onClick={() => apply(removeFilter(filters, filter))}
                         >
-                          {`Remove ${filter.label}`}
+                          {fillPlaceholders(copy.removeFilter, { label: filter.label })}
                         </Pill>
                       ))}
                       {filters.query !== '' && (
@@ -343,12 +352,12 @@ export function DiscoveryView({ seeded, cardCopy, locale }: DiscoveryViewProps) 
                           variant="ghost"
                           onClick={() => apply(withQuery(filters, ''))}
                         >
-                          Clear the search
+                          {copy.clearSearch}
                         </Pill>
                       )}
                       {active.length > 0 && (
                         <Pill size="sm" onClick={() => apply(clearFilters(filters))}>
-                          Clear all filters
+                          {copy.clearAll}
                         </Pill>
                       )}
                     </div>
@@ -398,11 +407,11 @@ export function DiscoveryView({ seeded, cardCopy, locale }: DiscoveryViewProps) 
                   {hasMore ? (
                     <>
                       <Pill onClick={loadMore} disabled={feed.loadingMore}>
-                        {feed.loadingMore ? 'Loading more projects' : 'Show more projects'}
+                        {feed.loadingMore ? copy.loadingMore : copy.showMore}
                       </Pill>
 
                       {feed.loadingMore && (
-                        <SkeletonGroup label="Loading more projects" className="w-full">
+                        <SkeletonGroup label={copy.loadingMore} className="w-full">
                           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                             <Skeleton height="6rem" />
                             <Skeleton height="6rem" />
@@ -420,9 +429,7 @@ export function DiscoveryView({ seeded, cardCopy, locale }: DiscoveryViewProps) 
                     </>
                   ) : (
                     <p className="text-sm text-white/40">
-                      {feed.items.length <= PAGE_SIZE
-                        ? 'That is every project matching these filters.'
-                        : 'You have reached the end of this feed.'}
+                      {feed.items.length <= PAGE_SIZE ? copy.endAll : copy.endFeed}
                     </p>
                   )}
                 </div>

@@ -6,7 +6,9 @@ import { Search } from 'lucide-react';
 import { Combobox, Pill, type ComboboxOption } from '@ideanest/ui';
 import type { ApiError } from '../../lib/api/problem';
 import { addSlugFilter, withQuery, type DiscoveryFilters } from '../../lib/discovery/filters';
-import { kindLabel, suggestionId, type Suggestion } from '../../lib/discovery/suggest';
+import { suggestionId, type Suggestion } from '../../lib/discovery/suggest';
+import type { SuggestCopy } from '../../lib/i18n/feed-copy';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import { useSuggestions } from '../../lib/discovery/useSuggestions';
 
 /**
@@ -52,6 +54,8 @@ export interface SearchBoxProps {
   filters: DiscoveryFilters;
   /** Writes the next filter set to the URL — `DiscoveryView`'s `apply`. */
   onApply: (next: DiscoveryFilters) => void;
+  /** Every word this control draws — see `lib/i18n/feed-copy.ts`. */
+  copy: SuggestCopy;
 }
 
 /**
@@ -61,22 +65,23 @@ export interface SearchBoxProps {
  * does not. When there is no problem body at all the request never reached the
  * service, and saying so is more useful than inventing a reason.
  */
-function describeFailure(error: ApiError | null): string {
+function describeFailure(error: ApiError | null, copy: SuggestCopy): string {
   const detail = error?.problem?.detail ?? error?.problem?.title ?? null;
   return detail === null
-    ? 'Suggestions could not be loaded. Press Enter to search for what you typed.'
-    : `${detail} Press Enter to search for what you typed.`;
+    ? copy.failedFallback
+    : fillPlaceholders(copy.failedDetail, { detail });
 }
 
-function toOption(suggestion: Suggestion): ComboboxOption {
+function toOption(suggestion: Suggestion, copy: SuggestCopy): ComboboxOption {
   return {
     id: suggestionId(suggestion),
     label: suggestion.label,
-    kind: kindLabel(suggestion.kind),
+    /* A kind this build has no word for is better unlabelled than labelled `subcategory`. */
+    kind: copy.kinds[suggestion.kind] ?? suggestion.kind,
   };
 }
 
-export function SearchBox({ filters, onApply }: SearchBoxProps) {
+export function SearchBox({ filters, onApply, copy }: SearchBoxProps) {
   const router = useRouter();
 
   const [draft, setDraft] = useState(filters.query);
@@ -90,7 +95,10 @@ export function SearchBox({ filters, onApply }: SearchBoxProps) {
 
   const suggestions = useSuggestions(draft);
 
-  const options = useMemo(() => suggestions.items.map(toOption), [suggestions.items]);
+  const options = useMemo(
+    () => suggestions.items.map((suggestion) => toOption(suggestion, copy)),
+    [suggestions.items, copy],
+  );
 
   const byId = useMemo(() => {
     const map = new Map<string, Suggestion>();
@@ -148,11 +156,11 @@ export function SearchBox({ filters, onApply }: SearchBoxProps) {
 
   const message =
     suggestions.status === 'loading'
-      ? 'Looking for suggestions'
+      ? copy.looking
       : suggestions.status === 'failed'
-        ? describeFailure(suggestions.error)
+        ? describeFailure(suggestions.error, copy)
         : suggestions.status === 'ready' && options.length === 0
-          ? `No suggestions for “${draft.trim()}”. Press Enter to search anyway.`
+          ? fillPlaceholders(copy.none, { query: draft.trim() })
           : undefined;
 
   /*
@@ -163,15 +171,15 @@ export function SearchBox({ filters, onApply }: SearchBoxProps) {
    */
   const announcement =
     suggestions.status === 'loading'
-      ? 'Looking for suggestions.'
+      ? copy.lookingAnnounce
       : suggestions.status === 'failed'
-        ? 'Suggestions are unavailable. What you typed can still be searched for.'
+        ? copy.unavailableAnnounce
         : undefined;
 
   return (
     <form
       role="search"
-      aria-label="Campaign search"
+      aria-label={copy.formLabel}
       className="flex items-start gap-2"
       onSubmit={(event) => {
         event.preventDefault();
@@ -190,12 +198,12 @@ export function SearchBox({ filters, onApply }: SearchBoxProps) {
         onOpenChange={setOpen}
         onSelect={select}
         onSubmit={submit}
-        listboxLabel="Campaign suggestions"
+        listboxLabel={copy.listboxLabel}
         message={message}
         announcement={announcement}
         leading={<Search />}
-        aria-label="Search campaigns"
-        placeholder="Search campaigns, categories, and tags"
+        aria-label={copy.inputLabel}
+        placeholder={copy.placeholder}
       />
 
       {/*
@@ -205,7 +213,7 @@ export function SearchBox({ filters, onApply }: SearchBoxProps) {
         know the key is there.
       */}
       <Pill type="submit" variant="ghost" className="h-11 shrink-0">
-        Search
+        {copy.submit}
       </Pill>
     </form>
   );

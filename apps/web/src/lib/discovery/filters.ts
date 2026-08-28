@@ -1,9 +1,6 @@
 import {
-  AMOUNT_BANDS,
-  COMPLETION_BANDS,
   DEFAULT_SORT,
   DEFAULT_SORT_WITH_QUERY,
-  STATUSES,
   isAmountBand,
   isCompletionBand,
   isSort,
@@ -14,6 +11,8 @@ import {
   type DiscoverySort,
   type DiscoveryStatus,
 } from './vocabulary';
+import type { FilterVocabularyCopy } from '../i18n/feed-copy';
+import { fillPlaceholders } from '../i18n/placeholders';
 
 /**
  * The filter, sort, and range state of the discovery feed — and the URL it is
@@ -455,10 +454,14 @@ function nameFor(names: SlugNames | undefined, slug: string): string {
   return names?.get(slug) ?? slug;
 }
 
-function rangeLabel(min: string | null, max: string | null): string | null {
-  if (min !== null && max !== null) return `${min} to ${max} AZN`;
-  if (min !== null) return `${min} AZN and above`;
-  if (max !== null) return `Up to ${max} AZN`;
+function rangeLabel(
+  min: string | null,
+  max: string | null,
+  copy: FilterVocabularyCopy,
+): string | null {
+  if (min !== null && max !== null) return fillPlaceholders(copy.range.between, { min, max });
+  if (min !== null) return fillPlaceholders(copy.range.from, { min });
+  if (max !== null) return fillPlaceholders(copy.range.upTo, { max });
   return null;
 }
 
@@ -470,7 +473,11 @@ function rangeLabel(min: string | null, max: string | null): string | null {
  * asked for. The bands beside it are separate entries, because ticking two
  * bands is two independent choices.
  */
-export function activeFilters(filters: DiscoveryFilters, names?: SlugNames): readonly ActiveFilter[] {
+export function activeFilters(
+  filters: DiscoveryFilters,
+  copy: FilterVocabularyCopy,
+  names?: SlugNames,
+): readonly ActiveFilter[] {
   const active: ActiveFilter[] = [];
 
   for (const value of filters.statuses) {
@@ -478,8 +485,8 @@ export function activeFilters(filters: DiscoveryFilters, names?: SlugNames): rea
       key: `status:${value}`,
       dimension: 'status',
       value,
-      label: labelOf(STATUSES, value),
-      group: 'Status',
+      label: labelOf(copy.status, value),
+      group: copy.groups.status,
     });
   }
   for (const slug of filters.categories) {
@@ -488,7 +495,7 @@ export function activeFilters(filters: DiscoveryFilters, names?: SlugNames): rea
       dimension: 'category',
       value: slug,
       label: nameFor(names, slug),
-      group: 'Category',
+      group: copy.groups.category,
     });
   }
   for (const slug of filters.subcategories) {
@@ -497,7 +504,7 @@ export function activeFilters(filters: DiscoveryFilters, names?: SlugNames): rea
       dimension: 'subcategory',
       value: slug,
       label: nameFor(names, slug),
-      group: 'Subcategory',
+      group: copy.groups.subcategory,
     });
   }
   for (const value of filters.completion) {
@@ -505,8 +512,8 @@ export function activeFilters(filters: DiscoveryFilters, names?: SlugNames): rea
       key: `completion:${value}`,
       dimension: 'completion',
       value,
-      label: labelOf(COMPLETION_BANDS, value),
-      group: 'Completion',
+      label: labelOf(copy.completion, value),
+      group: copy.groups.completion,
     });
   }
   for (const value of filters.goal.bands) {
@@ -514,18 +521,18 @@ export function activeFilters(filters: DiscoveryFilters, names?: SlugNames): rea
       key: `goalBand:${value}`,
       dimension: 'goalBand',
       value,
-      label: labelOf(AMOUNT_BANDS, value),
-      group: 'Goal amount',
+      label: labelOf(copy.amount, value),
+      group: copy.groups.goal,
     });
   }
-  const goalRange = rangeLabel(filters.goal.min, filters.goal.max);
+  const goalRange = rangeLabel(filters.goal.min, filters.goal.max, copy);
   if (goalRange !== null) {
     active.push({
       key: 'goalRange',
       dimension: 'goalRange',
       value: '',
       label: goalRange,
-      group: 'Goal amount',
+      group: copy.groups.goal,
     });
   }
   for (const value of filters.raised.bands) {
@@ -533,18 +540,18 @@ export function activeFilters(filters: DiscoveryFilters, names?: SlugNames): rea
       key: `raisedBand:${value}`,
       dimension: 'raisedBand',
       value,
-      label: labelOf(AMOUNT_BANDS, value),
-      group: 'Amount raised',
+      label: labelOf(copy.amount, value),
+      group: copy.groups.raised,
     });
   }
-  const raisedRange = rangeLabel(filters.raised.min, filters.raised.max);
+  const raisedRange = rangeLabel(filters.raised.min, filters.raised.max, copy);
   if (raisedRange !== null) {
     active.push({
       key: 'raisedRange',
       dimension: 'raisedRange',
       value: '',
       label: raisedRange,
-      group: 'Amount raised',
+      group: copy.groups.raised,
     });
   }
   for (const slug of filters.tags) {
@@ -553,7 +560,7 @@ export function activeFilters(filters: DiscoveryFilters, names?: SlugNames): rea
       dimension: 'tag',
       value: slug,
       label: nameFor(names, slug),
-      group: 'Tag',
+      group: copy.groups.tag,
     });
   }
 

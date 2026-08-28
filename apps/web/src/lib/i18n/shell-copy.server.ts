@@ -25,6 +25,7 @@ import {
 import { localeOrDefault, type Locale } from './locale';
 import { type ProfileCopy, profileCopyFrom } from './profile-copy';
 import { type ProjectCardCopy, projectCardCopyFrom } from './card-copy';
+import { type FeedCopy, feedCopyFrom } from './feed-copy';
 import {
   type EmailChangePanelCopy,
   type PasswordChangePanelCopy,
@@ -148,6 +149,21 @@ export async function projectCardCopy(): Promise<ProjectCardCopy> {
   return projectCardCopyFrom(
     await getTranslations('discovery.card'),
     await getTranslations('common'),
+  );
+}
+
+/**
+ * Every word the discovery feed draws — `feed-copy.ts` explains why all of it is one prop.
+ *
+ * Three namespaces: the surface's own sentences, the closed vocabularies the filters are named
+ * from, and the search box's. They are read separately elsewhere — `activeFilters` needs only
+ * the vocabularies — and travel together because one route draws all three.
+ */
+export async function feedCopy(): Promise<FeedCopy> {
+  return feedCopyFrom(
+    await getTranslations('discovery.feed'),
+    await getTranslations('discovery.filters'),
+    await getTranslations('discovery.suggest'),
   );
 }
 

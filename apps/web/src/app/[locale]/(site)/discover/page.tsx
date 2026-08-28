@@ -12,7 +12,7 @@ import { publicPageMetadata } from '../../../../lib/seo/metadata';
 import { discoverPageGraph } from '../../../../lib/seo/structured-data/graphs';
 import { graphContext } from '../../../../lib/i18n/shell-copy.server';
 import { getLocale, getTranslations } from 'next-intl/server';
-import { projectCardCopy } from '../../../../lib/i18n/shell-copy.server';
+import { feedCopy, projectCardCopy } from '../../../../lib/i18n/shell-copy.server';
 
 /**
  * `/discover`, and every filtered variant of it, is one canonical URL.
@@ -130,6 +130,7 @@ export default async function DiscoverPage({
           {...(seeded === undefined ? {} : { seeded })}
           cardCopy={await projectCardCopy()}
           locale={localeOrDefault(await getLocale())}
+          copy={await feedCopy()}
         />
       </Suspense>
     </>
