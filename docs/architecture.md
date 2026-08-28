@@ -5288,37 +5288,42 @@ internationalisation APIs.
 **Creator content is never machine-translated.** It is displayed in the language
 it was written in.
 
-> **The catalogue exists now, and it covers the account area rather than the
-> whole client (#324).** `apps/web/messages/{az,en,ru,tr}.json` holds the four
-> languages, `next-intl` resolves them, and `apps/web/src/i18n/request.ts`
-> negotiates the reader's language from a cookie. `users.locale` is the durable
-> record behind that cookie: it is returned by `GET /v1/me` and written by
-> `PATCH /v1/me/locale`, which is what #280's `/settings/language` calls. Before
-> this the column had been unreachable over HTTP since V2 and `User.setLocale`
-> had no callers at all.
+> **The catalogue covers the whole client's public and account-facing surface now
+> (#324), and the emails with it.** `apps/web/messages/{az,en,ru,tr}.json` holds the
+> four languages and `next-intl` resolves them from the `[locale]` segment #123 put
+> in the path. `users.locale` is the durable record behind the reader's choice: it is
+> returned by `GET /v1/me`, written by `PATCH /v1/me/locale`, and — since #324 — read
+> by the notification sender, so a message about somebody's pledge arrives in the
+> language they chose.
 >
-> **Why the public site is still English, and why that is a performance fact
-> rather than an unfinished chore.** Reading a cookie makes a render dynamic.
-> That costs nothing on `/settings/*`, `/account/*` and `/pledges/*`, which are
-> authenticated and render per person already. It is expensive on `/`, the
-> category landings and the static pages, which are cached shared renders — a
-> language chosen per visitor turns every one of them into a render each, paid on
-> the largest contentful paint of the pages a stranger meets first.
+> **The performance argument that kept the public half English is gone rather than
+> overruled.** Reading a cookie makes a render dynamic, which cost nothing on the
+> authenticated routes and would have turned `/`, the category landings and the static
+> pages into a render per visitor. #123 moved the language into the path, so
+> `/az/discover` and `/ru/discover` are two cached documents and neither has to ask who
+> is asking. `apps/web/README.md` records exactly which routes are key-based and which
+> are not.
 >
-> **This is where #123 stops being unrelated.** A locale-prefixed URL is how a
-> translated public page stays cached: one render per language, keyed by the
-> path. The `area: seo` issue and the public half of the catalogue are therefore
-> the same piece of work. §4.2's note that #123 "was never the dependency" holds
-> for the *preference* — a stored account setting genuinely does not need
-> locale-prefixed URLs — and does not hold for translating the cached routes.
+> **What is still English, stated rather than left to be found.** The campaign editor,
+> the creator dashboard, and the twenty-six screens inside the administration console —
+> the console's own frame is translated, and `lib/i18n/admin-copy.ts` carries the
+> reversal of the earlier decision to leave it English. `packages/ui` takes copy as
+> props rather than reading a catalogue, which is deliberate: a design-system component
+> that reached for a message file could not be used outside one.
+>
+> **The service's own copy is per-language too.** `messages_{az,ru,tr}.properties` sit
+> beside `messages.properties`, which stays English so that a key no translation has
+> still resolves to a finished sentence. `spring.messages.fallback-to-system-locale` is
+> off for a reason worth keeping: with it on, a request for English would fall past the
+> absent `messages_en` to the JVM's own language, and an English reader on a Turkish
+> host would be sent Turkish.
 >
 > **One consequence is worth stating because it is invisible.** The service has
-> localised its taxonomy since V11 and the web client never sent
-> `Accept-Language`, so whatever header the browser happened to attach decided the
-> language of every category name, collection title and facet label on an
-> otherwise English page. `lib/api/client.ts` now states the interface language on
-> every browser-side request, so the two halves of a page finally agree.
-> `lib/api/server.ts` deliberately still does not, for the caching reason above.
+> localised its taxonomy since V11 and the web client never sent `Accept-Language`, so
+> whatever header the browser happened to attach decided the language of every category
+> name, collection title and facet label on an otherwise English page.
+> `lib/api/client.ts` states the interface language on every browser-side request, so
+> the two halves of a page finally agree.
 
 ### 21.2 Currency
 

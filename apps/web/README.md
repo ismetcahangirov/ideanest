@@ -212,14 +212,46 @@ from the matched segment, and `src/i18n/navigation.tsx` is what every `Link`, `u
 sends the reader through the redirect, which reads to them as the site forgetting what they
 picked.
 
-**Which routes are key-based, and which are still English literals (#324).** The message
-catalogue lives in `messages/{az,en,ru,tr}.json` and covers **the site shell and every
-signed-in screen's frame**: the header, the mobile drawer, the account menu, the footer, the
-skip link, the shared failure links, `AccountArea` and its navigation, and the tab title,
-heading and introduction of all thirteen screens under `/settings/*`, `/account/*`,
-`/pledges` and `/notifications`. What is still English is the **panels below those headings**
-— the forms, tables and empty states each screen renders — along with the whole public site,
-the checkout, the campaign editor and the console.
+**Which routes are key-based, and which are still English literals (#324).** The
+message catalogue lives in `messages/{az,en,ru,tr}.json` and covers, in full:
+
+- the site shell — header, mobile drawer, account menu, footer, skip link, failure links;
+- every public route: the home page, the feed and its filter rail, the search box and its
+  suggestions, the category and subcategory landings, the collection index and the
+  collection pages, the three editorial pages, the public profile, and the campaign card
+  those six surfaces all render;
+- the six authentication screens under `app/[locale]/(auth)`, and the two credential
+  panels under `/settings` that share their refusal vocabulary;
+- the checkout, and the public campaign page;
+- the account area: the frame, all thirteen screens' headings, the notifications inbox and
+  its settings, and the two fulfilment screens;
+- the administration console's **frame** — the bar, the rail, and the index that lists
+  §4.11's sixteen modules with what each one is waiting for.
+
+What is still English:
+
+| Surface | Where |
+|---|---|
+| The campaign editor | `components/campaign-editor` |
+| The creator dashboard | `components/dashboard` |
+| The console's twenty-six screens | `components/admin`, except `AdminArea`, `AdminNav` and `ConsoleIndex` |
+| The panels below eleven account headings | `components/settings`, `components/sessions`, `components/surveys`, `components/pledges`, `components/profile`'s editor |
+
+`ConsoleRefusal` is the one of those that cannot move on its own: its sentence names the
+thing a screen was about to show — "…to read the audit trail" — and the noun comes from the
+screen, so it is translated when that screen is.
+
+**`packages/ui` takes copy as props and will keep doing so.** #326's comment left the
+question open; the answer is props. A design-system component that reached for a catalogue
+is a component that cannot be used outside one, and every component in the kit that draws a
+word already takes it — `EmptyState`, `InlineAlert`, `SkeletonGroup` and `Combobox` are the
+four this branch threaded copy through without touching any of them.
+
+**The service's copy is per-language too, and it is not this catalogue.**
+`apps/api/src/main/resources/messages_{az,ru,tr}.properties` hold the emails; English stays
+in `messages.properties` so that a key no translation has still resolves to a finished
+sentence rather than throwing. `EmailChannelSender` reads `users.locale` off the account it
+already loaded for the address.
 
 **Two suites hold the catalogue honest, and they cover different halves.**
 `lib/i18n/catalogue.test.ts` asserts properties of the messages: that the four languages hold
@@ -254,16 +286,14 @@ a kilobyte, and `failure-copy.client.test.ts` asserts every one of them against 
 so the two cannot drift. A third such surface should re-measure the provider rather than
 extend that file.
 
-That is now the whole of the remaining work, and it is no longer blocked on anything. Until
-#123 there was a real argument for leaving the public half alone — see below — and it does
-not survive the language moving into the path.
-
 **The console is in scope now, and #294's exemption is withdrawn.** That issue argued that
-§21.1's catalogue exists for the product's readers while the console's readers are the people
-who operate the platform, so sixteen module descriptions in four languages was four times the
-strings to keep current for nobody. The decision has been reversed deliberately rather than
-forgotten: the platform is to be legible in all four languages to everyone who uses it, staff
-included. `lib/admin/navigation.ts` carries the old note and is updated with the keys.
+§21.1's catalogue exists for the product's readers while the console's readers are the
+people who operate the platform, so sixteen module descriptions in four languages was four
+times the strings to keep current for nobody. The decision has been reversed deliberately
+rather than forgotten: the platform is to be legible in all four languages to everyone who
+uses it, staff included. `lib/admin/navigation.ts` keeps the old argument as the record of a
+decision that was taken and then changed, and `lib/i18n/admin-copy.ts` states what replaced
+it.
 
 **What the split used to be, and why it is gone.** The catalogue was reached through a
 cookie, and reading a cookie makes a render dynamic. The account area is authenticated and
