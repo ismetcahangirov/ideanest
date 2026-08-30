@@ -401,6 +401,7 @@
       "/admin/refunds": "Geri qaytarmalar",
       "/admin/disputes": "Ödəniş mübahisələri",
       "/admin/fees": "Komissiyalar",
+      "/admin/plans": "Planlar",
       "/admin/analytics": "Analitika",
       "/admin/audit": "Audit jurnalı",
       "/admin/email-templates": "E-poçt şablonları",
@@ -598,6 +599,12 @@
         "metaDescription": "Platforma və emal dərəcələri, onların istisnaları və platformanın tətbiq etdiyi hər şərtlər dəsti.",
         "title": "Komissiyalar",
         "intro": "Komissiyanı dəyişmək indidən başlayan yeni şərtlər açır. Bağlanmışlar ekranda qalır, çünki “martda nə tutmuşduq” sualına §22.1 saxlama qaydası bağlayır."
+      },
+      "plans": {
+        "metaTitle": "Planlar",
+        "metaDescription": "Kampaniya sahibinin derc etdiyi abunelik planlari ve qeyde alinmasi gozlenilen odenisler.",
+        "title": "Planlar",
+        "intro": "Plan komissiya cedvelinden ferqli olaraq yerinde redakte olunur: abunecinin odedigi meblegi oz abuneliyinde yazilir, ona gore burada hec kimin kecmis hesabi deyismir."
       },
       "ledger": {
         "metaTitle": "Baş kitab",
@@ -1498,6 +1505,69 @@
           "CATEGORY": "Kateqoriya",
           "PROJECT": "Kampaniya"
         }
+      },
+      "plans": {
+        "subject": "plan kataloqu",
+        "noticeTitle": "Plani redakte etmek abunecilere tesir edir",
+        "noticeBody": "Qiymet deyisikliyi yalniz yeni alislara aiddir: kiminse odedigi meblegi oz abuneliyinde yazilib. Limit deyisikliyi plandaki hamiya aiddir, geriye deyil, novbeti muraciete. Silmek yoxdur — evezinde plani satisdan cixarin.",
+        "catalogueHeading": "Planlar",
+        "catalogueIntro": "Satisdan cixarilmis planlar da gorunur, cunki abunecileri hele de onlardadir.",
+        "loadingCatalogue": "Planlar yuklenir",
+        "emptyCatalogueTitle": "Plan yoxdur",
+        "emptyCatalogueBody": "Derc etmek plana baglidir, ona gore bos kataloqla hec kim kampaniyani baxisa gondere bilmez. Asagida bir plan elave edin.",
+        "planSummary": "{price} {period} · eyni vaxtda {campaigns} kampaniya · {ceiling} deqeder hedef",
+        "onSale": "Satisda",
+        "retired": "Satisdan cixarilib",
+        "repriceLabel": "Yeni qiymet",
+        "reprice": "Qiymeti deyis",
+        "retire": "Satisdan cixar",
+        "putOnSale": "Satisa qoy",
+        "unlimited": "limitsiz",
+        "addHeading": "Plan elave et",
+        "codeLabel": "Kod",
+        "codeHint": "Boyuk herflerle, bosluqsuz. Sonradan deyisdirile bilmez.",
+        "nameLabel": "Ad",
+        "descriptionLabel": "Tesvir",
+        "descriptionHint": "Qiymet sehifesinde adin altinda bir setir.",
+        "priceLabel": "Qiymet",
+        "priceHint": "AZN ile. Sifir pulsuz seviyye demekdir.",
+        "periodLabel": "Odenis dovru",
+        "maxActiveLabel": "Eyni vaxtda kampaniya",
+        "goalCeilingLabel": "Hedef limiti",
+        "unlimitedHint": "Limitsiz ucun bos buraxin.",
+        "addPlan": "Plani elave et",
+        "queueHeading": "Odenisler",
+        "queueIntro": "Hele odenis provayderi qosulmayib, ona gore odenisli plan burada kimse kocurmenin geldiyini qeyd edende baslayir. Her aktivlesdirme sizin adiniza qeyde alinir.",
+        "loadingQueue": "Abunelikler yuklenir",
+        "showAll": "Butun abunelikleri goster",
+        "showQueue": "Yalniz gozleyenleri goster",
+        "emptyQueueTitle": "Gozleyen yoxdur",
+        "emptyQueueBody": "Odenisin qeyde alinmasini gozleyen abunelik yoxdur.",
+        "subscriptionSummary": "{price} · {until} tarixine qeder",
+        "unknownPlan": "Namelum plan",
+        "notStarted": "baslamayib",
+        "noteLabel": "Odenis istinadi",
+        "noteHint": "Kocurmenin nomresi ve ya hesab-fakturanin nomresi, sonra yoxlanila bilsin deye.",
+        "recordPayment": "Odenisi qeyd et",
+        "endReasonLabel": "Bitirme sebebi",
+        "endReasonHint": "Mecburidir. Bu, plani dovrun sonunda deyil, derhal alir.",
+        "endSubscription": "Abuneliyi bitir",
+        "doneTitle": "Hazirdir",
+        "failedTitle": "Alinmadi",
+        "addedNotice": "{plan} elave olundu ve satisdadir.",
+        "repricedNotice": "{plan} planinin qiymeti deyisdi. Movcud abuneciler odedikleri meblegde qalir.",
+        "activatedNotice": "{id} abuneliyi aktivdir.",
+        "endedNotice": "{id} abuneliyi bitirildi.",
+        "period": {
+          "MONTHLY": "Ayliq",
+          "YEARLY": "Illik"
+        },
+        "state": {
+          "PENDING_PAYMENT": "Odenis gozlenilir",
+          "ACTIVE": "Aktiv",
+          "CANCELED": "Bitirilib",
+          "EXPIRED": "Muddeti bitib"
+        }
       }
     },
     "moderation": {
@@ -2292,6 +2362,50 @@
       "amountNotANumber": "Məbləğ rəqəmlərdən və ən çox bir nöqtədən ibarət olur, məsələn 45.00.",
       "belowRewardPrice": "Bu mükafat {price} dəyərindədir. Bu qədər və ya daha çox verin, ya da daha ucuz mükafat seçin.",
       "destinationUnpriced": "Müəllif bu istiqamət üçün {lines} çatdırılma qiyməti təyin etməyib. Başqa yer seçin və ya onu dəstəyinizdən çıxarın."
+    }
+  },
+  "pricing": {
+    "metaTitle": "Planlar ve qiymetler",
+    "metaDescription": "IdeaNest-de kampaniya derc etmeyin qiymeti ve her planin ne verdiyi.",
+    "title": "Planlar",
+    "intro": "Kampaniya qurmaq pulsuzdur. Onu derc etmek ucun plan lazimdir, plan ise eyni vaxtda nece kampaniya apara bileceyinizi ve neqeder boyuk hedef teyin ede bileceyinizi mueyyen edir.",
+    "loading": "Movcud planiniz yoxlanilir",
+    "unavailable": "Planlari yukleye bilmedik. Bu bizim terefimizdeki problemdir; bir azdan yeniden cehd edin.",
+    "empty": "Hazirda satisda plan yoxdur.",
+    "perMonth": "ayliq",
+    "perYear": "illik",
+    "free": "Pulsuz",
+    "choose": "Bu plani sec",
+    "choosing": "Secilir",
+    "signedOut": "Plan secmek ucun daxil olun",
+    "signIn": "Daxil ol",
+    "limits": {
+      "campaigns": "Eyni vaxtda {count} kampaniya",
+      "campaignsUnlimited": "Eyni vaxtda apara bildiyiniz qeder kampaniya",
+      "goalCeiling": "{amount} deqeder hedef",
+      "goalUnlimited": "Hedefe limit yoxdur"
+    },
+    "fromSubmit": {
+      "title": "Derc etmek ucun plan lazimdir",
+      "body": "Kampaniyaniz saxlanilib, hec ne itmeyib. Asagida plan secin ve derhal baxisa gonderin.",
+      "back": "Kampaniyaniza qayidin"
+    },
+    "held": {
+      "heading": "Planiniz",
+      "activeUntil": "{date} tarixine qeder {plan} planindasiniz",
+      "pendingTitle": "{plan} planini secdiniz, odenisinizi gozleyirik",
+      "pendingBody": "Hele kart odenisi qebul ede bilmirik, ona gore plan kocurmeniz gorunub qeyde alinandan sonra baslayir. Bu bas veren kimi derc ede bileceksiniz.",
+      "endingOn": "{plan} planiniz {date} tarixine qeder isleyir ve yenilenmeyecek",
+      "lapsed": "{plan} planiniz {date} tarixinde bitdi",
+      "cancel": "Bu dovrun sonunda legv et",
+      "cancelling": "Legv edilir",
+      "currentTag": "Sizin planiniz"
+    },
+    "errors": {
+      "alreadySubscribed": "Artiq bir planiniz var. Basqasini secmezden evvel onu legv edin.",
+      "notOnSale": "Bu plan artiq teklif olunmur. Movcud olanlari gormek ucun sehifeni yeniden yukleyin.",
+      "signedOut": "Plan secmek ucun yeniden daxil olun.",
+      "generic": "Alinmadi"
     }
   },
   "campaign": {

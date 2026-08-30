@@ -1,7 +1,7 @@
 # Creator subscriptions
 
 **Date:** 2026-08-30
-**Status:** approved for implementation
+**Status:** built. Section 11 was corrected after the fact to name the tests that exist.
 
 Publishing a campaign becomes something a creator subscribes to. A plan sets what
 the platform charges for that and what it allows; the console owns the catalogue;
@@ -113,10 +113,10 @@ it.
 | `id` | uuid |
 | `code` | Stable, unique, upper-case. What an operator and a log line agree on |
 | `name`, `description` | What the pricing page shows |
-| `price`, `currency` | `numeric(19,4)`. Zero is allowed and means a free tier |
+| `price`, `currency` | `numeric(14,2)`, §7.2's shape for every money column. Zero is allowed and means a free tier |
 | `billing_period` | `MONTHLY` or `YEARLY` |
 | `max_active_campaigns` | Null means no limit |
-| `goal_ceiling` | `numeric(19,4)`. Null means no ceiling |
+| `goal_ceiling` | `numeric(14,2)`. Null means no ceiling |
 | `listed` | Whether the pricing page offers it. A retired plan stops being sold without its subscribers losing it |
 | `sort_order` | The order the pricing page draws them in |
 | `created_at`, `updated_at`, `created_by` | |
@@ -280,17 +280,23 @@ console writes — enforced in the service, which is the only thing that writes.
 
 **Backend**
 
-- `SubscriptionTests`, `SubscriptionPlanTests`, `PlanLimitsTests` — the domain:
-  period arithmetic, what "entitled" means at a boundary instant, what a null
-  limit means.
-- `PlanEntitlementTests` — the allowance an account gets in each state.
-- `SubscriptionApiTests` — buy, cancel, buy again after expiry, two purchases
-  racing, the pending path, the free path.
-- `AdminPlanApiTests` — the console's CRUD, and that `CONFIGURE_PLATFORM` is
-  required for every write.
-- `ProjectSubmissionEntitlementTests` — the gate: no subscription refuses, an
+As built, these are four files rather than the six this section first named —
+the domain tests are one class with three nested groups, and the console's CRUD
+is exercised by the same API suite that buys a plan, because both need the same
+fixtures:
+
+- `subscription/SubscriptionDomainTests` — period arithmetic, what "entitled"
+  means at a boundary instant, what a null limit means, and that a repricing
+  does not reach a subscriber's bill.
+- `subscription/PublishingAllowanceTests` — the record that crosses the module
+  boundary, and the two conventions a caller must not get wrong.
+- `subscription/SubscriptionApiTests` — buy, cancel, buy again after expiry, the
+  pending path, the free path, and that `CONFIGURE_PLATFORM` is required for
+  every console write.
+- `project/PublishingGateApiTests` — the gate: no subscription refuses, an
   active one allows, the campaign-count limit refuses at the boundary and not
-  below it, the goal ceiling likewise.
+  below it, the goal ceiling likewise, and the creator's plan is the one
+  consulted rather than the collaborator's who pressed the button.
 
 State transitions and limits are on CLAUDE.md's not-optional list. So is money
 arithmetic, and every amount here is `BigDecimal` on the backend and a string on
@@ -298,12 +304,15 @@ the wire.
 
 **Frontend**
 
-- `PricingPage` / `PlanChooser` — the catalogue renders, the banner appears only
-  with `?from=submit`, choosing a plan calls the right endpoint.
-- `ReviewPanel` — `SUBSCRIPTION_REQUIRED` navigates; `PLAN_LIMIT_EXCEEDED` does
-  not.
-- `PlanManager` — the console screen, including its refusal when the reader lacks
-  the capability.
+- `PlanChooser.test.tsx` — the catalogue renders before anything is known about
+  the reader, a signed-out visitor sees prices rather than a refusal, the banner
+  appears only with `?from=submit`, and a pending purchase is not reported as a
+  completed one.
+- `ReviewPanel.test.tsx` — `SUBSCRIPTION_REQUIRED` navigates; `PLAN_LIMIT_EXCEEDED`
+  does not.
+- `PlanManager.test.tsx` — the console screen: the notice, retired plans, no
+  delete control, an empty limit sent as null, and its refusal when the reader
+  lacks the capability.
 - The catalogue test already asserts that all four languages carry every key.
 
 ## 12. What this leaves open

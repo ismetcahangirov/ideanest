@@ -195,6 +195,18 @@ export const CONSOLE_MODULES: readonly ConsoleModule[] = Object.freeze([
     code: 'AD-11',
     state: 'built',
     href: '/admin/fees',
+    /*
+     * `/admin/plans` is here rather than in a seventeenth module, on the argument AD-04
+     * makes about `/admin/staff`. §4.11's table has sixteen rows and no row for creator
+     * subscriptions, because when it was written the platform charged only a fee.
+     *
+     * Adding a row would mean this file and the specification disagreeing about how many
+     * modules the console has. Filing it here is the truthful alternative: AD-11 is what
+     * the platform charges, a fee comes out of a backer's pledge and a plan comes out of a
+     * creator's pocket, and those are two subjects of one authority rather than two
+     * authorities. The rail lists both under Money.
+     */
+    otherScreens: ['/admin/plans'],
     issue: 311,
   },
   {
@@ -301,6 +313,7 @@ export const CONSOLE_GROUPS: readonly ConsoleGroup[] = Object.freeze([
       '/admin/refunds',
       '/admin/disputes',
       '/admin/fees',
+      '/admin/plans',
     ],
   },
   {

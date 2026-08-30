@@ -1,0 +1,207 @@
+import { authorizedFetch } from '../api/client';
+import { errorFrom } from '../api/problem';
+import type { BillingPeriod, Plan } from '../plans/api';
+
+/**
+ * AD-11's second half: what the platform charges a creator to publish.
+ *
+ * <h2>Filed under AD-11 rather than a seventeenth module</h2>
+ *
+ * §4.11's table has sixteen rows and the fee editor is the one about what the platform
+ * charges. A fee comes out of a backer's pledge and this comes out of a creator's pocket, so
+ * it is the same authority over the same subject — `lib/admin/navigation.ts` files it under
+ * AD-11 the way `/admin/staff` is filed under AD-04, and a seventeenth row would make the
+ * console and the specification disagree about how many modules there are.
+ *
+ * <h2>A plan is edited in place, which the fee schedule beside it is not</h2>
+ *
+ * That difference is worth carrying, because the two screens look alike and behave
+ * oppositely. A rate may not be edited: a payout was priced against it, and §22.1 asks what
+ * the rate was in March with a seven-year retention rule attached. A plan may be, because
+ * what a subscriber was charged is copied onto their own subscription at purchase — so
+ * editing a plan cannot reach backwards into anybody's bill.
+ *
+ * <p>What it does reach is the limits of everybody currently on the plan, which are read live.
+ * The screen says so, because an operator lowering a limit should know who it applies to.
+ *
+ * <h2>There is no delete</h2>
+ *
+ * A plan leaves the catalogue by being unlisted. The service refuses a delete against any
+ * plan anybody has ever bought, and a plan nobody bought is one nobody misses when it is
+ * taken off sale.
+ *
+ * <h2>Money is a string, both ways</h2>
+ *
+ * `"19.00"`, never `19`. A JSON number is an IEEE 754 double in every mainstream parser.
+ */
+
+export type { Plan, BillingPeriod } from '../plans/api';
+
+export type SubscriptionState = 'PENDING_PAYMENT' | 'ACTIVE' | 'CANCELED' | 'EXPIRED';
+
+export interface PlanCatalogue {
+  readonly plans: readonly Plan[];
+}
+
+/** One row of the console's subscription list. */
+export interface ConsoleSubscription {
+  readonly id: string;
+  readonly accountId: string;
+  readonly state: SubscriptionState;
+  /** The state and the clock together. Branch on this, never on `state` alone. */
+  readonly entitled: boolean;
+  readonly planCode?: string | null;
+  readonly planName?: string | null;
+  readonly price: string;
+  readonly currency: string;
+  readonly billingPeriod: BillingPeriod;
+  readonly startedAt?: string | null;
+  readonly currentPeriodEnd?: string | null;
+  readonly cancelAtPeriodEnd: boolean;
+  readonly activatedBy?: string | null;
+  readonly note?: string | null;
+  readonly createdAt: string;
+}
+
+export interface ConsoleSubscriptionList {
+  readonly subscriptions: readonly ConsoleSubscription[];
+}
+
+/** Every plan, listed or not. The unlisted ones are the point of the console's own read. */
+export async function readPlanCatalogue(signal?: AbortSignal): Promise<PlanCatalogue> {
+  const response = await authorizedFetch('/v1/admin/plans', { signal });
+  if (!response.ok) throw await errorFrom(response);
+
+  return (await response.json()) as PlanCatalogue;
+}
+
+export interface AddPlanRequest {
+  readonly code: string;
+  readonly name: string;
+  readonly description: string | null;
+  readonly price: string;
+  readonly currency: string;
+  readonly billingPeriod: BillingPeriod;
+  readonly maxActiveCampaigns: number | null;
+  readonly goalCeiling: string | null;
+  readonly sortOrder: number;
+  readonly signal?: AbortSignal;
+}
+
+/** Adds a plan. It is on sale from the moment it is written. */
+export async function addPlan(request: AddPlanRequest): Promise<Plan> {
+  const response = await authorizedFetch('/v1/admin/plans', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      code: request.code,
+      name: request.name,
+      description: request.description,
+      price: request.price,
+      currency: request.currency,
+      billingPeriod: request.billingPeriod,
+      maxActiveCampaigns: request.maxActiveCampaigns,
+      goalCeiling: request.goalCeiling,
+      sortOrder: request.sortOrder,
+    }),
+    signal: request.signal,
+  });
+  if (!response.ok) throw await errorFrom(response);
+
+  return (await response.json()) as Plan;
+}
+
+/**
+ * A change to a plan. Omitted means "leave it alone".
+ *
+ * <p><strong>Removing a limit needs its own flag.</strong> `null` already means "leave it
+ * alone" on this endpoint, and a plan with no ceiling is a plan whose ceiling is null — two
+ * meanings for one absent field is the ambiguity that makes a PATCH untestable. So
+ * `clearMaxActiveCampaigns` and `clearGoalCeiling` say which the caller meant.
+ */
+export interface ChangePlanRequest {
+  readonly planId: string;
+  readonly name?: string;
+  readonly description?: string;
+  readonly price?: string;
+  readonly currency?: string;
+  readonly maxActiveCampaigns?: number;
+  readonly clearMaxActiveCampaigns?: boolean;
+  readonly goalCeiling?: string;
+  readonly clearGoalCeiling?: boolean;
+  readonly listed?: boolean;
+  readonly sortOrder?: number;
+  readonly signal?: AbortSignal;
+}
+
+export async function changePlan(request: ChangePlanRequest): Promise<Plan> {
+  const { planId, signal, ...body } = request;
+
+  const response = await authorizedFetch(`/v1/admin/plans/${planId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (!response.ok) throw await errorFrom(response);
+
+  return (await response.json()) as Plan;
+}
+
+/**
+ * Who is on what.
+ *
+ * @param awaitingPayment the queue rather than the archive. The screen opens on the queue,
+ *   because that is the only part of this that is somebody's work.
+ */
+export async function readSubscriptions(
+  awaitingPayment: boolean,
+  signal?: AbortSignal,
+): Promise<ConsoleSubscriptionList> {
+  const response = await authorizedFetch(`/v1/admin/subscriptions?awaitingPayment=${awaitingPayment}`, {
+    signal,
+  });
+  if (!response.ok) throw await errorFrom(response);
+
+  return (await response.json()) as ConsoleSubscriptionList;
+}
+
+/**
+ * Records that a subscription's payment arrived, which is what starts the entitlement.
+ *
+ * <p>This exists because no payment provider is integrated. Until one is, a paid plan becomes
+ * real when somebody here says the transfer landed — and the action is audited under their
+ * name for exactly that reason.
+ */
+export async function activateSubscription(
+  subscriptionId: string,
+  note: string,
+  signal?: AbortSignal,
+): Promise<ConsoleSubscription> {
+  const response = await authorizedFetch(`/v1/admin/subscriptions/${subscriptionId}/activate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ note }),
+    signal,
+  });
+  if (!response.ok) throw await errorFrom(response);
+
+  return (await response.json()) as ConsoleSubscription;
+}
+
+/** Ends a subscription outright — a reversed payment, a fraud finding, a mistake. */
+export async function cancelSubscriptionAsStaff(
+  subscriptionId: string,
+  reason: string,
+  signal?: AbortSignal,
+): Promise<ConsoleSubscription> {
+  const response = await authorizedFetch(`/v1/admin/subscriptions/${subscriptionId}/cancel`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason }),
+    signal,
+  });
+  if (!response.ok) throw await errorFrom(response);
+
+  return (await response.json()) as ConsoleSubscription;
+}

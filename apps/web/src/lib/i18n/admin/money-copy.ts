@@ -531,6 +531,154 @@ export function disputeConsoleCopyFrom(
  * the rate itself crosses as the string that gets multiplied, and nothing on this screen
  * multiplies a rate by money.
  */
+/**
+ * AD-11's second screen: the plan catalogue and the payment queue beside it.
+ *
+ * <h2>`noticeBody` is the one string on the screen that is load-bearing</h2>
+ *
+ * It is the only place an operator is told that editing a plan reaches every subscriber's
+ * limits and no subscriber's bill. The fee editor next door refuses to edit anything at all,
+ * so somebody moving between the two screens arrives here with the opposite expectation --
+ * and a limit lowered by somebody who thought it applied only to new customers is a change
+ * nobody meant to make.
+ */
+export interface PlanManagerCopy extends ConsoleChromeCopy {
+  readonly subject: string;
+  readonly noticeTitle: string;
+  readonly noticeBody: string;
+
+  readonly catalogueHeading: string;
+  readonly catalogueIntro: string;
+  readonly loadingCatalogue: string;
+  readonly emptyCatalogueTitle: string;
+  readonly emptyCatalogueBody: string;
+  /** Carries `{campaigns}`, `{ceiling}`, `{period}`, `{price}`. */
+  readonly planSummary: string;
+  readonly onSale: string;
+  readonly retired: string;
+  readonly repriceLabel: string;
+  readonly reprice: string;
+  readonly retire: string;
+  readonly putOnSale: string;
+  readonly unlimited: string;
+
+  readonly addHeading: string;
+  readonly codeLabel: string;
+  readonly codeHint: string;
+  readonly nameLabel: string;
+  readonly descriptionLabel: string;
+  readonly descriptionHint: string;
+  readonly priceLabel: string;
+  readonly priceHint: string;
+  readonly periodLabel: string;
+  readonly maxActiveLabel: string;
+  readonly goalCeilingLabel: string;
+  readonly unlimitedHint: string;
+  readonly addPlan: string;
+
+  readonly queueHeading: string;
+  readonly queueIntro: string;
+  readonly loadingQueue: string;
+  readonly showAll: string;
+  readonly showQueue: string;
+  readonly emptyQueueTitle: string;
+  readonly emptyQueueBody: string;
+  /** Carries `{price}`, `{until}`. */
+  readonly subscriptionSummary: string;
+  readonly unknownPlan: string;
+  readonly notStarted: string;
+  readonly noteLabel: string;
+  readonly noteHint: string;
+  readonly recordPayment: string;
+  readonly endReasonLabel: string;
+  readonly endReasonHint: string;
+  readonly endSubscription: string;
+
+  readonly doneTitle: string;
+  readonly failedTitle: string;
+  /** Carries `{plan}`. */
+  readonly addedNotice: string;
+  /** Carries `{plan}`. */
+  readonly repricedNotice: string;
+  /** Carries `{id}`. */
+  readonly activatedNotice: string;
+  /** Carries `{id}`. */
+  readonly endedNotice: string;
+
+  readonly period: Readonly<Record<'MONTHLY' | 'YEARLY', string>>;
+  readonly state: Readonly<
+    Record<'PENDING_PAYMENT' | 'ACTIVE' | 'CANCELED' | 'EXPIRED', string>
+  >;
+}
+
+export function planManagerCopyFrom(t: AdminTranslator, chrome: ConsoleChromeCopy): PlanManagerCopy {
+  return {
+    ...chrome,
+    subject: t('screens.plans.subject'),
+    noticeTitle: t('screens.plans.noticeTitle'),
+    noticeBody: t('screens.plans.noticeBody'),
+
+    catalogueHeading: t('screens.plans.catalogueHeading'),
+    catalogueIntro: t('screens.plans.catalogueIntro'),
+    loadingCatalogue: t('screens.plans.loadingCatalogue'),
+    emptyCatalogueTitle: t('screens.plans.emptyCatalogueTitle'),
+    emptyCatalogueBody: t('screens.plans.emptyCatalogueBody'),
+    // `t.raw` for every template, because `t('key')` on a message holding a placeholder
+    // renders the key's own path -- `test-copy.ts` refuses it.
+    planSummary: String(t.raw('screens.plans.planSummary')),
+    onSale: t('screens.plans.onSale'),
+    retired: t('screens.plans.retired'),
+    repriceLabel: t('screens.plans.repriceLabel'),
+    reprice: t('screens.plans.reprice'),
+    retire: t('screens.plans.retire'),
+    putOnSale: t('screens.plans.putOnSale'),
+    unlimited: t('screens.plans.unlimited'),
+
+    addHeading: t('screens.plans.addHeading'),
+    codeLabel: t('screens.plans.codeLabel'),
+    codeHint: t('screens.plans.codeHint'),
+    nameLabel: t('screens.plans.nameLabel'),
+    descriptionLabel: t('screens.plans.descriptionLabel'),
+    descriptionHint: t('screens.plans.descriptionHint'),
+    priceLabel: t('screens.plans.priceLabel'),
+    priceHint: t('screens.plans.priceHint'),
+    periodLabel: t('screens.plans.periodLabel'),
+    maxActiveLabel: t('screens.plans.maxActiveLabel'),
+    goalCeilingLabel: t('screens.plans.goalCeilingLabel'),
+    unlimitedHint: t('screens.plans.unlimitedHint'),
+    addPlan: t('screens.plans.addPlan'),
+
+    queueHeading: t('screens.plans.queueHeading'),
+    queueIntro: t('screens.plans.queueIntro'),
+    loadingQueue: t('screens.plans.loadingQueue'),
+    showAll: t('screens.plans.showAll'),
+    showQueue: t('screens.plans.showQueue'),
+    emptyQueueTitle: t('screens.plans.emptyQueueTitle'),
+    emptyQueueBody: t('screens.plans.emptyQueueBody'),
+    subscriptionSummary: String(t.raw('screens.plans.subscriptionSummary')),
+    unknownPlan: t('screens.plans.unknownPlan'),
+    notStarted: t('screens.plans.notStarted'),
+    noteLabel: t('screens.plans.noteLabel'),
+    noteHint: t('screens.plans.noteHint'),
+    recordPayment: t('screens.plans.recordPayment'),
+    endReasonLabel: t('screens.plans.endReasonLabel'),
+    endReasonHint: t('screens.plans.endReasonHint'),
+    endSubscription: t('screens.plans.endSubscription'),
+
+    doneTitle: t('screens.plans.doneTitle'),
+    failedTitle: t('screens.plans.failedTitle'),
+    addedNotice: String(t.raw('screens.plans.addedNotice')),
+    repricedNotice: String(t.raw('screens.plans.repricedNotice')),
+    activatedNotice: String(t.raw('screens.plans.activatedNotice')),
+    endedNotice: String(t.raw('screens.plans.endedNotice')),
+
+    period: t.raw('screens.plans.period') as Readonly<Record<'MONTHLY' | 'YEARLY', string>>,
+    state: t.raw('screens.plans.state') as Readonly<
+      Record<'PENDING_PAYMENT' | 'ACTIVE' | 'CANCELED' | 'EXPIRED', string>
+    >,
+  };
+}
+
 export interface FeeEditorCopy extends ConsoleChromeCopy {
   readonly subject: string;
   readonly noticeTitle: string;
