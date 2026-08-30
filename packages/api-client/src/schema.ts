@@ -1956,6 +1956,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/media/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["mediaBegin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/media/{mediaId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["mediaStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/media/{mediaId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["mediaComplete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/pledges/draft": {
         parameters: {
             query?: never;
@@ -3244,6 +3292,11 @@ export interface components {
             account?: string;
             net?: components["schemas"]["Money"];
         };
+        BeginUploadBody: {
+            /** Format: int64 */
+            byteSize?: number;
+            contentType: string;
+        };
         Branch: {
             category?: components["schemas"]["Category"];
             subcategories?: components["schemas"]["Subcategory"][];
@@ -3512,6 +3565,8 @@ export interface components {
         CoverImageBody: {
             /** Format: int32 */
             height?: number;
+            /** Format: uuid */
+            mediaId?: string;
             url?: string;
             /** Format: int32 */
             width?: number;
@@ -4008,6 +4063,18 @@ export interface components {
             locale?: string;
             name?: string;
             slug?: string;
+        };
+        Media: {
+            blurDataUrl?: string;
+            failureReason?: string;
+            /** Format: int32 */
+            height?: number;
+            /** Format: uuid */
+            id?: string;
+            status?: string;
+            url?: string;
+            /** Format: int32 */
+            width?: number;
         };
         Membership: {
             /** Format: uuid */
@@ -5219,6 +5286,16 @@ export interface components {
             /** Format: uuid */
             rewardTierId: string;
         };
+        Upload: {
+            contentType?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+            /** Format: int64 */
+            maxBytes?: number;
+            /** Format: uuid */
+            mediaId?: string;
+            uploadUrl?: string;
+        };
         ValueCount: {
             /** Format: int64 */
             count?: number;
@@ -5328,6 +5405,7 @@ export type SchemaBackerSegmentResponse = components['schemas']['BackerSegmentRe
 export type SchemaBackerSurveyBody = components['schemas']['BackerSurveyBody'];
 export type SchemaBackerSurveyListResponse = components['schemas']['BackerSurveyListResponse'];
 export type SchemaBalance = components['schemas']['Balance'];
+export type SchemaBeginUploadBody = components['schemas']['BeginUploadBody'];
 export type SchemaBranch = components['schemas']['Branch'];
 export type SchemaBuyAddonsRequest = components['schemas']['BuyAddonsRequest'];
 export type SchemaCalculateRequest = components['schemas']['CalculateRequest'];
@@ -5422,6 +5500,7 @@ export type SchemaLocationBody = components['schemas']['LocationBody'];
 export type SchemaLocationIndex = components['schemas']['LocationIndex'];
 export type SchemaLockAddressesResponse = components['schemas']['LockAddressesResponse'];
 export type SchemaMeResponse = components['schemas']['MeResponse'];
+export type SchemaMedia = components['schemas']['Media'];
 export type SchemaMembership = components['schemas']['Membership'];
 export type SchemaMessage = components['schemas']['Message'];
 export type SchemaModerationDecisionRequest = components['schemas']['ModerationDecisionRequest'];
@@ -5564,6 +5643,7 @@ export type SchemaTwoFactorEnrolmentResponse = components['schemas']['TwoFactorE
 export type SchemaUpdateNotificationPreferencesRequest = components['schemas']['UpdateNotificationPreferencesRequest'];
 export type SchemaUpdateRequest = components['schemas']['UpdateRequest'];
 export type SchemaUpgradePledgeRequest = components['schemas']['UpgradePledgeRequest'];
+export type SchemaUpload = components['schemas']['Upload'];
 export type SchemaValueCount = components['schemas']['ValueCount'];
 export type SchemaVerification = components['schemas']['Verification'];
 export type SchemaVerificationRecord = components['schemas']['VerificationRecord'];
@@ -8921,6 +9001,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Verification"];
+                };
+            };
+        };
+    };
+    mediaBegin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BeginUploadBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Upload"];
+                };
+            };
+        };
+    };
+    mediaStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mediaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Media"];
+                };
+            };
+        };
+    };
+    mediaComplete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mediaId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Media"];
                 };
             };
         };

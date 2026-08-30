@@ -1,15 +1,16 @@
 /**
- * The cover image rule, and the only way the client can check it.
+ * The cover image guidance, and how the client measures an image it is given.
  *
- * §5.3 makes a cover of at least 1024×576 a submission requirement, so the
- * dimensions have to be known before the project is submitted. There is no
- * uploader and no media service yet (contract §3), which means nothing on the
- * server has ever seen the file — the browser is the only place the intrinsic
- * size can be read at all. It is read here and sent alongside the URL.
+ * WHAT CHANGED. §5.3's 1024×576 used to refuse a submission and is now advice —
+ * see `ChecklistRequirement.COVER_IMAGE_SIZE` for both reasons, the short version
+ * being that the number came from this browser and so caught the honest and
+ * missed everybody else, and that it stopped creators at the first screen of the
+ * editor on a platform with nowhere to upload a larger file.
  *
- * This is interim by construction. When the media pipeline lands
- * (docs/architecture.md §13) the service reads the dimensions itself during
- * ingestion and this module goes away rather than being extended.
+ * WHAT THIS MODULE IS STILL FOR. An address a creator pastes: nothing on the
+ * server has seen that image, so the browser remains the only place its intrinsic
+ * size can be read. For an upload it is not used at all — `lib/media/upload.ts`
+ * gets the dimensions the server measured, along with §13.1's blur placeholder.
  */
 
 import { placeholderFrom } from '../images/lqip';
@@ -34,7 +35,12 @@ export interface MeasuredImage extends ImageSize {
   placeholder: string | null;
 }
 
-/** 16:9 at the minimum, which is the aspect the discovery card is cut to. */
+/**
+ * 16:9 at the recommended size, which is the aspect the discovery card is cut to.
+ *
+ * ADVICE, NOT A GATE. A cover below this is saved and the campaign is submittable;
+ * what it earns is a note in the editor and an advisory row on the checklist.
+ */
 export function meetsCoverMinimum(size: ImageSize): boolean {
   return size.width >= COVER_MIN_WIDTH && size.height >= COVER_MIN_HEIGHT;
 }

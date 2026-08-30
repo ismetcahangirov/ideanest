@@ -5,7 +5,6 @@ import {
   toMoney,
   type AmountRejection,
 } from '../money';
-import { COVER_MIN_HEIGHT, COVER_MIN_WIDTH, describeSize, meetsCoverMinimum } from './coverImage';
 import type { CoverImage, ProjectEdit, ProjectPatch } from './api';
 
 /**
@@ -265,11 +264,16 @@ export function validateBasics(draft: BasicsDraft, context: ValidationContext = 
     }
   }
 
-  if (draft.coverImage !== null && !meetsCoverMinimum(draft.coverImage)) {
-    errors.coverImage =
-      `A cover image is at least ${COVER_MIN_WIDTH}×${COVER_MIN_HEIGHT} pixels. ` +
-      `This one is ${describeSize(draft.coverImage)}.`;
-  }
+  /*
+   * THE COVER SIZE IS NOT VALIDATED HERE ANY MORE, and its absence is the change rather
+   * than an omission. A small cover used to be a form error, which meant the basics tab
+   * would not save -- so a creator holding an 800x600 photograph could not get past the
+   * first screen, on a platform that had nowhere for them to upload a larger one.
+   *
+   * It is advice now, in two places that are both non-blocking: `CoverImageField` says so
+   * when the image is set, and the checklist carries COVER_IMAGE_SIZE as an advisory row.
+   * The rule that still blocks is having a cover at all, which the checklist owns.
+   */
 
   return errors;
 }

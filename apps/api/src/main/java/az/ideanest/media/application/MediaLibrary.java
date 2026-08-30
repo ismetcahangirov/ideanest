@@ -80,9 +80,11 @@ public class MediaLibrary {
         Instant now = clock.instant();
         MediaAsset asset = assets.save(MediaAsset.awaitingUpload(ownerUserId, now));
 
-        URI address = store.presignedPut(rawKeyOf(asset.getId()), normalisedType(declaredContentType), properties.uploadWindow());
+        String signedType = normalisedType(declaredContentType);
+        URI address = store.presignedPut(rawKeyOf(asset.getId()), signedType, properties.uploadWindow());
 
-        return new MediaUpload(asset.getId(), address, now.plus(properties.uploadWindow()), properties.maxUploadBytes());
+        return new MediaUpload(
+                asset.getId(), address, signedType, now.plus(properties.uploadWindow()), properties.maxUploadBytes());
     }
 
     /**
@@ -200,8 +202,17 @@ public class MediaLibrary {
         return declared.trim();
     }
 
-    /** What {@link #begin} tells the browser. */
-    public record MediaUpload(UUID mediaId, URI uploadUrl, Instant expiresAt, long maxBytes) {}
+    /**
+     * What {@link #begin} tells the browser.
+     *
+     * @param contentType <strong>the type the address was signed for</strong>, which the
+     *     client must send verbatim on the {@code PUT}. Returned rather than left for the
+     *     client to reproduce because {@link #normalisedType} rewrites anything that is not
+     *     an image type, and a client that sent its own value instead would have every
+     *     upload refused by the store as a signature mismatch — a failure that looks like a
+     *     credentials problem and is not
+     */
+    public record MediaUpload(UUID mediaId, URI uploadUrl, String contentType, Instant expiresAt, long maxBytes) {}
 
     /**
      * A servable image, as everything outside this module sees it.

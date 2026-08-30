@@ -21,14 +21,22 @@ public final class MediaResponses {
      * @param mediaId the identifier to complete, poll and eventually attach
      * @param uploadUrl a presigned {@code PUT}. A credential — anybody holding it may write
      *     this one object until it expires
+     * @param contentType the {@code Content-Type} the address was signed for. <strong>Send
+     *     this exact value on the {@code PUT}.</strong> The server rewrites anything that is
+     *     not an image type, so a client that sent its own would have the store refuse the
+     *     upload as a signature mismatch
      * @param expiresAt when it stops working
      * @param maxBytes the ceiling, so the form can refuse before uploading
      */
-    public record Upload(UUID mediaId, String uploadUrl, Instant expiresAt, long maxBytes) {
+    public record Upload(UUID mediaId, String uploadUrl, String contentType, Instant expiresAt, long maxBytes) {
 
         static Upload of(MediaLibrary.MediaUpload upload) {
             return new Upload(
-                    upload.mediaId(), upload.uploadUrl().toString(), upload.expiresAt(), upload.maxBytes());
+                    upload.mediaId(),
+                    upload.uploadUrl().toString(),
+                    upload.contentType(),
+                    upload.expiresAt(),
+                    upload.maxBytes());
         }
     }
 

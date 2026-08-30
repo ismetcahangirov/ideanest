@@ -4554,6 +4554,88 @@
         "tags" : [ "verification-controller" ]
       }
     },
+    "/v1/media/uploads" : {
+      "post" : {
+        "operationId" : "mediaBegin",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BeginUploadBody"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Upload"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "media-controller" ]
+      }
+    },
+    "/v1/media/{mediaId}" : {
+      "get" : {
+        "operationId" : "mediaStatus",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "mediaId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Media"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "media-controller" ]
+      }
+    },
+    "/v1/media/{mediaId}/complete" : {
+      "post" : {
+        "operationId" : "mediaComplete",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "mediaId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Media"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "media-controller" ]
+      }
+    },
     "/v1/pledges/draft" : {
       "post" : {
         "operationId" : "pledgeDraft",
@@ -8300,6 +8382,21 @@
           }
         }
       },
+      "BeginUploadBody" : {
+        "type" : "object",
+        "properties" : {
+          "byteSize" : {
+            "type" : "integer",
+            "format" : "int64",
+            "minimum" : 0
+          },
+          "contentType" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "contentType" ]
+      },
       "Branch" : {
         "type" : "object",
         "properties" : {
@@ -9039,6 +9136,10 @@
           "height" : {
             "type" : "integer",
             "format" : "int32"
+          },
+          "mediaId" : {
+            "type" : "string",
+            "format" : "uuid"
           },
           "url" : {
             "type" : "string"
@@ -10430,6 +10531,35 @@
           },
           "slug" : {
             "type" : "string"
+          }
+        }
+      },
+      "Media" : {
+        "type" : "object",
+        "properties" : {
+          "blurDataUrl" : {
+            "type" : "string"
+          },
+          "failureReason" : {
+            "type" : "string"
+          },
+          "height" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "url" : {
+            "type" : "string"
+          },
+          "width" : {
+            "type" : "integer",
+            "format" : "int32"
           }
         }
       },
@@ -13709,6 +13839,29 @@
           }
         },
         "required" : [ "rewardTierId" ]
+      },
+      "Upload" : {
+        "type" : "object",
+        "properties" : {
+          "contentType" : {
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "maxBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "mediaId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "uploadUrl" : {
+            "type" : "string"
+          }
+        }
       },
       "ValueCount" : {
         "type" : "object",
