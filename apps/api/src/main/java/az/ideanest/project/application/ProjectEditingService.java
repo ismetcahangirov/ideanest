@@ -193,6 +193,19 @@ public class ProjectEditingService {
      *     exist, or has not finished
      */
     private CoverImage resolveCover(CoverImageSelection selection, UUID accountId) {
+        if (selection == null) {
+            /*
+             * `{"coverImage": null}` -- the creator removed the cover, which is a present
+             * field with a null value rather than an absent one. `Patched` keeps the two
+             * apart and this is the whole reason it does.
+             *
+             * The null check is not defensive. A `switch` over a sealed type throws on null
+             * in Java 21, so before this line removing a cover answered 500 -- caught by
+             * ProjectChecklistApiTests, which patches `coverImage` to null to break the
+             * COVER_IMAGE rule.
+             */
+            return null;
+        }
         return switch (selection) {
             case CoverImageSelection.FromUrl typed ->
                 new CoverImage(typed.url(), typed.width(), typed.height());

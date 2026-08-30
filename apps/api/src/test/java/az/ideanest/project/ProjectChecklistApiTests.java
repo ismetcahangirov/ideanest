@@ -131,10 +131,11 @@ class ProjectChecklistApiTests extends AbstractIntegrationTest {
         assertThat(unmetNames(advisory(checklist)))
                 .containsExactly("SUBCATEGORY", "SCHEDULED_LAUNCH", "STORY_MEDIA", "REWARDS_OFFERED");
 
-        // Ten blocking requirements at weight two out of twenty-four. Built from the
-        // blocking half alone this would read 100 and tell the creator of a bare
+        // Ten blocking requirements at weight two, plus the one advisory item this
+        // campaign does satisfy -- its cover is large enough -- out of twenty-five. Built
+        // from the blocking half alone this would read 100 and tell the creator of a bare
         // campaign there was nothing left to do.
-        assertThat(checklist).containsEntry("score", 83);
+        assertThat(checklist).containsEntry("score", 84);
     }
 
     @Test
