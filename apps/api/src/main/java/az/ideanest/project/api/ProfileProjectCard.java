@@ -90,6 +90,12 @@ public record ProfileProjectCard(
      * {@code ProfileCampaign.Cover}.
      */
     private static CoverImageBody cover(ProfileCampaign.Cover cover) {
-        return cover == null ? null : new CoverImageBody(cover.url(), cover.width(), cover.height());
+        /*
+         * No media identifier: this projection carries three values so that it can cross a
+         * module boundary, and adding a fourth would mean carrying a reference nothing on
+         * this path can resolve. A card renders the URL and the box it reserves; the
+         * placeholder belongs to the surfaces that read a campaign whole.
+         */
+        return cover == null ? null : new CoverImageBody(cover.url(), cover.width(), cover.height(), null);
     }
 }

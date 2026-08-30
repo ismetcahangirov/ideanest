@@ -178,7 +178,7 @@ class SubmissionChecklistTests {
         // "The story is too short" is a restatement of the rule. What a creator can
         // act on is how far off they are.
         assertThat(detailOf(result, ChecklistRequirement.STORY)).contains("140").contains("500");
-        assertThat(detailOf(result, ChecklistRequirement.COVER_IMAGE))
+        assertThat(detailOf(result, ChecklistRequirement.COVER_IMAGE_SIZE))
                 .contains("800×450")
                 .contains("1024×576");
     }
@@ -227,15 +227,46 @@ class SubmissionChecklistTests {
     }
 
     @Test
-    @DisplayName("a missing or undersized cover image is blocking")
+    @DisplayName("a missing cover image is blocking")
     void coverImage() {
         assertBlocks(complete().cover(null), ChecklistRequirement.COVER_IMAGE);
-        assertBlocks(
-                complete().cover(new CoverImage("https://x/c.jpg", 1023, 576)), ChecklistRequirement.COVER_IMAGE);
-        assertBlocks(
-                complete().cover(new CoverImage("https://x/c.jpg", 1024, 575)), ChecklistRequirement.COVER_IMAGE);
         assertPasses(
-                complete().cover(new CoverImage("https://x/c.jpg", 1024, 576)), ChecklistRequirement.COVER_IMAGE);
+                complete().cover(new CoverImage("https://x/c.jpg", 800, 450)), ChecklistRequirement.COVER_IMAGE);
+    }
+
+    @Test
+    @DisplayName("an undersized cover image is advice, and does not refuse the submission")
+    void coverImageSize() {
+        // The change the media pipeline made. This used to be part of COVER_IMAGE and used
+        // to block: the dimensions came from the creator's browser, so the rule caught the
+        // honest and missed everybody else, and it stopped people at the first screen of the
+        // editor on a platform with nowhere to upload a larger file.
+        ChecklistResult result =
+                SubmissionChecklist.evaluate(complete().cover(new CoverImage("https://x/c.jpg", 800, 450)).build(), LIMITS);
+
+        assertThat(itemOf(result, ChecklistRequirement.COVER_IMAGE_SIZE).satisfied()).isFalse();
+        assertThat(result.isSubmittable()).isTrue();
+
+        assertPasses(
+                complete().cover(new CoverImage("https://x/c.jpg", 1024, 576)), ChecklistRequirement.COVER_IMAGE_SIZE);
+        assertThat(itemOf(
+                                SubmissionChecklist.evaluate(
+                                        complete().cover(new CoverImage("https://x/c.jpg", 1023, 576)).build(), LIMITS),
+                                ChecklistRequirement.COVER_IMAGE_SIZE)
+                        .satisfied())
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("a campaign with no cover reports one problem, not two")
+    void coverSizeIsSilentWhenThereIsNoCover() {
+        // Both rows are about the cover, and a creator who has not set one has one thing to
+        // do. Reporting the size rule as unmet as well would put a second red row on the
+        // screen that disappears when the first is fixed.
+        ChecklistResult result = SubmissionChecklist.evaluate(complete().cover(null).build(), LIMITS);
+
+        assertThat(itemOf(result, ChecklistRequirement.COVER_IMAGE).satisfied()).isFalse();
+        assertThat(itemOf(result, ChecklistRequirement.COVER_IMAGE_SIZE).satisfied()).isTrue();
     }
 
     @Test
@@ -343,8 +374,10 @@ class SubmissionChecklistTests {
 
         assertThat(bare.isSubmittable()).isTrue();
         assertThat(bare.score()).isLessThan(100);
-        // Ten blocking requirements at weight two out of a total of twenty-four.
-        assertThat(bare.score()).isEqualTo(83);
+        // Ten blocking requirements at weight two, plus the one advisory item this bare
+        // campaign does satisfy -- its cover is large enough -- out of a total of
+        // twenty-five.
+        assertThat(bare.score()).isEqualTo(84);
     }
 
     @Test
@@ -371,9 +404,13 @@ class SubmissionChecklistTests {
         // campaign with no tiers, vacuously and correctly — §5.3 permits zero, and
         // the absence is reported as advice instead.
         assertThat(result.unmetBlocking()).hasSize(8);
-        // Not zero, and it should not be: those two rules are genuinely met. A score
-        // that read zero here would be measuring effort rather than completeness.
-        assertThat(result.score()).isEqualTo(16);
+        // Not zero, and it should not be: those rules are genuinely met. A score that read
+        // zero here would be measuring effort rather than completeness.
+        //
+        // COVER_IMAGE_SIZE is among the ones met, vacuously: a campaign with no cover has
+        // one thing to do about its cover, and reporting the size rule as unmet as well
+        // would put a second red row on the screen that vanishes when the first is fixed.
+        assertThat(result.score()).isEqualTo(20);
     }
 
     // ------------------------------------------------------------------
@@ -387,7 +424,8 @@ class SubmissionChecklistTests {
                 complete().title(null).prices(List.of()).build(), LIMITS);
 
         assertThat(result.blocking()).hasSize(10);
-        assertThat(result.advisory()).hasSize(4);
+        // Five since the cover-size rule stopped blocking -- see COVER_IMAGE_SIZE.
+        assertThat(result.advisory()).hasSize(5);
         assertThat(result.blocking().size() + result.advisory().size())
                 .isEqualTo(result.items().size());
 
@@ -462,6 +500,7 @@ class SubmissionChecklistTests {
             case CATEGORY -> campaign.categoryId(null).build();
             case SUBCATEGORY -> campaign.subcategoryId(null).build();
             case COVER_IMAGE -> campaign.cover(null).build();
+            case COVER_IMAGE_SIZE -> campaign.cover(new CoverImage("https://x/c.jpg", 800, 450)).build();
             case GOAL -> campaign.goal(null).build();
             case DURATION -> campaign.duration(null).build();
             case SCHEDULED_LAUNCH -> campaign.scheduledLaunchAt(null).build();

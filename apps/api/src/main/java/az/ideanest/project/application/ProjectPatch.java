@@ -36,7 +36,7 @@ public record ProjectPatch(
         Patched<Instant> scheduledLaunchAt,
         Patched<JsonNode> story,
         Patched<String> risks,
-        Patched<CoverImage> coverImage,
+        Patched<CoverImageSelection> coverImage,
         Patched<Boolean> latePledgeEnabled) {
 
     public ProjectPatch {

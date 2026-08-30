@@ -123,6 +123,20 @@ public class Project {
     @Column(name = "cover_image_height")
     private Integer coverImageHeight;
 
+    /**
+     * The uploaded file behind the three columns above, when there is one.
+     *
+     * <p>A plain identifier and not a JPA association, deliberately. {@code media} belongs to
+     * another module and {@code ModuleBoundaryTests} refuses this one its entities; a mapped
+     * relationship would also make every campaign read a join for a row that is only needed
+     * when somebody wants the placeholder.
+     *
+     * <p>Null for every campaign that predates the pipeline and for any cover supplied as a
+     * typed URL. See V61 on why the three text columns stay beside it.
+     */
+    @Column(name = "cover_media_id")
+    private UUID coverMediaId;
+
     @Column(name = "late_pledge_enabled", nullable = false)
     private boolean latePledgeEnabled;
 
@@ -428,24 +442,35 @@ public class Project {
         this.risks = risks;
     }
 
-    /** The cover image, or null when none has been set. The three columns move together. */
+    /** The cover image, or null when none has been set. The columns move together. */
     public CoverImage getCoverImage() {
         if (coverImageUrl == null || coverImageWidth == null || coverImageHeight == null) {
             return null;
         }
-        return new CoverImage(coverImageUrl, coverImageWidth, coverImageHeight);
+        return new CoverImage(coverImageUrl, coverImageWidth, coverImageHeight, coverMediaId);
     }
 
+    /**
+     * Sets all four together, {@code coverMediaId} included — which is null for a cover
+     * supplied as a typed URL, and clearing it in that case is the point.
+     *
+     * <p>Leaving a stale identifier beside a URL that no longer comes from it would mean a
+     * campaign whose recorded dimensions came from one image and whose placeholder came from
+     * another. That is exactly the kind of half-updated row the expand phase is prone to, so
+     * it is refused here rather than reasoned about at the call sites.
+     */
     public void setCoverImage(CoverImage coverImage) {
         if (coverImage == null) {
             this.coverImageUrl = null;
             this.coverImageWidth = null;
             this.coverImageHeight = null;
+            this.coverMediaId = null;
             return;
         }
         this.coverImageUrl = coverImage.url();
         this.coverImageWidth = coverImage.width();
         this.coverImageHeight = coverImage.height();
+        this.coverMediaId = coverImage.mediaId();
     }
 
     public boolean isLatePledgeEnabled() {

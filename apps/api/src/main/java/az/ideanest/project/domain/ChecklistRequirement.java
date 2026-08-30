@@ -43,8 +43,31 @@ public enum ChecklistRequirement {
      */
     SUBCATEGORY("Subcategory", ChecklistSeverity.ADVISORY, EditorSection.BASICS),
 
-    /** §5.3: required, at least 1024×576. */
+    /** §5.3: required. A campaign without one has nothing to show anywhere it is listed. */
     COVER_IMAGE("Cover image", ChecklistSeverity.BLOCKING, EditorSection.BASICS),
+
+    /**
+     * §5.3's 1024×576, and <strong>advisory since the media pipeline landed</strong>.
+     *
+     * <p>It used to be part of {@link #COVER_IMAGE} and it used to refuse a submission. Two
+     * things were wrong with that, and they compounded.
+     *
+     * <p>It was <strong>unenforceable</strong>. Until ingestion existed nothing on the server
+     * had seen the file: the dimensions were measured in the creator's browser and sent
+     * alongside the URL, so the rule refused honest creators and was inert against anybody
+     * who edited the number. {@code SubmissionChecklist} said so in its own header.
+     *
+     * <p>It was <strong>the first thing a creator hit</strong>. A phone photograph that is
+     * 800×600 could not be recorded as a cover at all, and the only way past it was to go
+     * and host a larger image somewhere else — on a platform that had no uploader.
+     *
+     * <p>Both are now different. The server measures the file, so the number is real, and
+     * there is somewhere to upload one, so a creator is no longer sent away. What is left is
+     * a judgement about how a small image looks stretched across a 1440px hero — which is
+     * advice, and which moderation reviews anyway. A hard floor still exists and is not this:
+     * {@code MediaAsset.MINIMUM_EDGE} refuses anything too small to display at all.
+     */
+    COVER_IMAGE_SIZE("Cover image size", ChecklistSeverity.ADVISORY, EditorSection.BASICS),
 
     /** §5.3: present, above zero, and within the configured bounds. */
     GOAL("Funding goal", ChecklistSeverity.BLOCKING, EditorSection.BASICS),

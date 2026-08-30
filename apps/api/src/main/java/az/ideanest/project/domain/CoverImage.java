@@ -1,6 +1,7 @@
 package az.ideanest.project.domain;
 
 import java.util.Objects;
+import java.util.UUID;
 
 /**
  * The campaign's cover image: a location and the dimensions it was measured at.
@@ -18,12 +19,29 @@ import java.util.Objects;
  * image is present without saying how large it is cannot be checked against the
  * minimum, and the checklist would report a campaign submittable that is not.
  *
- * <p>When the media module lands this becomes a reference to a {@code media}
- * row and the three columns are dropped in a later release. Keeping the value
- * object means that change is behind one type rather than spread across the
- * service and response mapping.
+ * <p><strong>The media module has landed, and this is the expand half.</strong>
+ * {@code mediaId} refers to the uploaded file when there is one, and is null for
+ * every cover that predates the pipeline and for one supplied as a typed URL. The
+ * three columns are still written in both cases, so every read path in the service
+ * keeps working unchanged — that is what makes the contract a later release rather
+ * than this one.
+ *
+ * <p>What the reference buys while both are present: the dimensions beside it were
+ * <em>measured</em> rather than reported by a browser, and the media row carries
+ * §13.1's blur placeholder. See the media pipeline design of 2026-08-30.
  */
-public record CoverImage(String url, int width, int height) {
+public record CoverImage(String url, int width, int height, UUID mediaId) {
+
+    /**
+     * A cover from a typed URL, with no uploaded file behind it.
+     *
+     * <p>The shape every call site had before the pipeline, kept so that the change
+     * is one field on the paths that set it rather than an edit to every path that
+     * reads it.
+     */
+    public CoverImage(String url, int width, int height) {
+        this(url, width, height, null);
+    }
 
     public CoverImage {
         Objects.requireNonNull(url, "A cover image needs a location");
