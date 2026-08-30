@@ -84,7 +84,19 @@ export async function readMySubscription(signal?: AbortSignal): Promise<MySubscr
   const response = await authorizedFetch('/v1/me/subscription', { signal });
   if (!response.ok) throw await errorFrom(response);
 
-  return (await response.json()) as MySubscription;
+  return normaliseMine((await response.json()) as { subscription?: HeldSubscription | null });
+}
+
+/**
+ * `subscription` as `null`, never `undefined`.
+ *
+ * A body that omits the key — an intermediary that drops a JSON `null`, a future response
+ * that forgets the field — must not read as "held", which is what `undefined` would do at
+ * every `held !== null` check in `PlanChooser`. Coercing here keeps that check sufficient
+ * rather than requiring `!= null` everywhere the value is read.
+ */
+function normaliseMine(body: { subscription?: HeldSubscription | null }): MySubscription {
+  return { subscription: body.subscription ?? null };
 }
 
 /**
@@ -104,7 +116,7 @@ export async function subscribeToPlan(planId: string, signal?: AbortSignal): Pro
   });
   if (!response.ok) throw await errorFrom(response);
 
-  return (await response.json()) as MySubscription;
+  return normaliseMine((await response.json()) as { subscription?: HeldSubscription | null });
 }
 
 /**
@@ -117,7 +129,7 @@ export async function cancelSubscription(signal?: AbortSignal): Promise<MySubscr
   const response = await authorizedFetch('/v1/me/subscription', { method: 'DELETE', signal });
   if (!response.ok) throw await errorFrom(response);
 
-  return (await response.json()) as MySubscription;
+  return normaliseMine((await response.json()) as { subscription?: HeldSubscription | null });
 }
 
 /**

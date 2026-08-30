@@ -26,13 +26,13 @@ vi.mock('../../lib/notifications/api', () => ({
 const listMock = vi.mocked(listNotifications);
 const markReadMock = vi.mocked(markNotificationRead);
 
-const NAMED = JSON.stringify({
+const NAMED = {
   projectTitle: 'Xari Bulbul Ceramics',
   creatorSlug: 'aysel-studio',
   projectSlug: 'xari-bulbul-ceramics',
   goal: { amount: '5000.00', currency: 'AZN' },
   total: { amount: '120.00', currency: 'AZN' },
-});
+};
 
 function notification(
   overrides: Partial<InboxNotification> & Pick<InboxNotification, 'id'>,
@@ -131,7 +131,7 @@ describe('InboxPanel', () => {
    */
   it('renders a row with no destination as text rather than as a link', async () => {
     listMock.mockResolvedValue(
-      page({ notifications: [notification({ id: 'bare', params: '{}' })], unreadCount: 1 }),
+      page({ notifications: [notification({ id: 'bare', params: {} })], unreadCount: 1 }),
     );
     render(<InboxPanel copy={COPY} />);
 
