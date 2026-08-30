@@ -97,7 +97,11 @@ class CollaboratorApiTests extends AbstractIntegrationTest {
     private Account account(String prefix) {
         EmailAddress email = EmailAddress.of(prefix + SEQUENCE.incrementAndGet() + "@example.com");
         register(email);
-        return signIn(email);
+        Account account = signIn(email);
+        // Publishing needs a plan since V62. Written rather than bought, because this
+        // suite is not about subscriptions -- Campaigns.subscribe says why it is PRO.
+        Campaigns.subscribe(dataSource, account.id());
+        return account;
     }
 
     private void register(EmailAddress email) {

@@ -21,6 +21,21 @@ import { ReviewPanel } from './ReviewPanel';
  * showing a moment earlier.
  */
 
+const push = vi.fn();
+
+/*
+ * `ReviewPanel` navigates to the pricing page when a submission is refused for want of a
+ * plan, so it holds a router now.
+ *
+ * Spread first so the real module's other exports survive. `i18n/navigation.tsx` builds its
+ * wrappers at import time and reads `redirect` and `permanentRedirect` while doing so, and a
+ * factory that replaced the module wholesale left those undefined.
+ */
+vi.mock('next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('next/navigation')>()),
+  useRouter: () => ({ push, replace: vi.fn(), back: vi.fn() }),
+}));
+
 vi.mock('../../lib/projects/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../lib/projects/api')>()),
   getProjectEdit: vi.fn(),
@@ -287,6 +302,75 @@ describe('ReviewPanel', () => {
         'A project in SUBMITTED cannot move to SUBMITTED.',
       );
       expect(screen.getByRole('button', { name: 'Check again' })).toBeInTheDocument();
+    });
+
+    /*
+     * THE ONE REFUSAL THIS SCREEN CANNOT ANSWER IN PLACE.
+     *
+     * Everything else the server says no to is something on this campaign, and the panel
+     * renders it beside the thing to fix. A creator with no plan has nothing to fix here, so
+     * the answer is the pricing page -- and the two parameters are what let that page explain
+     * why they are looking at a price list.
+     */
+    it('takes a creator with no plan to the pricing page rather than arguing with them here', async () => {
+      const user = userEvent.setup();
+      getProjectChecklistMock.mockResolvedValue(completeChecklist());
+      submitProjectMock.mockRejectedValue(
+        new ApiError(403, {
+          code: 'SUBSCRIPTION_REQUIRED',
+          detail: 'Building a campaign is free. Sending one for review needs an active plan.',
+          meta: { pricingPath: '/pricing' },
+        }),
+      );
+
+      await renderPanel();
+      await user.click(screen.getByRole('button', { name: 'Submit for review' }));
+
+      // `stringContaining` because `useRouter` prefixes the reader's language, which is what
+      // stops a Russian creator being dropped onto an English page by a redirect they did not
+      // ask for.
+      await waitFor(() =>
+        expect(push).toHaveBeenCalledWith(
+          expect.stringContaining('/pricing?from=submit&project=project-1'),
+        ),
+      );
+    });
+
+    /*
+     * AND THE ONE THAT LOOKS LIKE IT AND IS NOT.
+     *
+     * This creator has paid. The answer may be to withdraw a campaign or lower a goal, and
+     * sending a paying customer to a price list reads as the platform trying to sell them
+     * something instead of answering them.
+     */
+    it('stays put when the plan exists and does not stretch to this campaign', async () => {
+      const user = userEvent.setup();
+      getProjectChecklistMock.mockResolvedValue(completeChecklist());
+      submitProjectMock.mockRejectedValue(
+        new ApiError(403, {
+          code: 'PLAN_LIMIT_EXCEEDED',
+          detail: 'Plan STARTER allows 1 campaigns at once; this account holds 1',
+          meta: {
+            limit: 'ACTIVE_CAMPAIGNS',
+            plan: 'STARTER',
+            allowed: '1',
+            actual: '1',
+            pricingPath: '/pricing',
+          },
+        }),
+      );
+
+      await renderPanel();
+      await user.click(screen.getByRole('button', { name: 'Submit for review' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Plan STARTER allows 1 campaigns at once',
+      );
+      expect(push).not.toHaveBeenCalled();
+      // The way out is offered rather than taken.
+      expect(
+        screen.getByRole('link', { name: 'See what the other plans allow' }),
+      ).toBeInTheDocument();
     });
   });
 

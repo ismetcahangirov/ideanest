@@ -1321,7 +1321,7 @@ Preferences are per category and per channel, with a digest option.
 | AD-08 | Taxonomy | Category and tag management with translations. **Built (#309)** at `/admin/taxonomy`. Handles are permanent — they are in the public URL of every campaign filed under them — and nothing can be retired, because `projects.category_id` references these rows |
 | AD-09 | Content moderation | Comments, updates, profiles. **All three are built**: the profile queue with #298 and the comment and update queue with #297, which published `POST /v1/updates/{id}/report` and cost no migration because V23's constraint had named the value since #102 |
 | AD-10 | Support | Tickets with user context and action history. **Built (#310)** at `/admin/support`. Staff record a conversation against an account; there is no public form, which is a separate surface with its own rate limiting |
-| AD-11 | Fee configuration | Platform and processing rates, exceptions. **Built (#311)** at `/admin/fees`. There is no edit: a change closes the schedule in force and opens a new one, so a payout calculated last month still prices against last month's terms |
+| AD-11 | Fee configuration | Platform and processing rates, exceptions. **Built (#311)** at `/admin/fees`. There is no edit: a change closes the schedule in force and opens a new one, so a payout calculated last month still prices against last month's terms. **The creator subscription catalogue is here too**, at `/admin/plans` — §5.6's plans, and the payments waiting to be recorded against them. Filed under this module rather than a seventeenth row: a fee comes out of a backer's pledge and a plan comes out of a creator's pocket, which is one authority over two subjects. Unlike a fee schedule, a plan **is** edited in place, because what a subscriber was charged is written on their own subscription |
 | AD-12 | Feature flags | Gradual rollout, experiments. **Rollout is built (#312)** at `/admin/flags`; experiments are not, because a variant needs a metric to judge it by and nothing measures one |
 | AD-13 | Analytics | Volume, success rate, average pledge, cohorts, funnels. **The first three are built (#313)** at `/admin/analytics`, over V27's rollups summed across campaigns rather than within one. Cohorts and funnels are not, and the screen says what each waits on |
 | AD-14 | Audit log | Immutable record of privileged actions. The record is built (#107, §7.2) and **the screen that reads it is built (#314)** at `/admin/audit` |
@@ -1772,6 +1772,60 @@ project or a collaborator, and no project may misrepresent facts.
 - Offer a refund where a reward cannot be delivered
 - Respond to questions and complaints
 
+### 5.6 Creator subscriptions
+
+**Building a campaign is free. Publishing one needs a plan.**
+
+The gate sits on submission — `DRAFT`/`PRELAUNCH`/`CHANGES_REQUESTED` →
+`SUBMITTED` — and not on creation or on launch. A draft is private and costs the
+platform nothing, so a paywall in front of an empty form is a paywall in front of
+nothing; refusing at launch would spend a moderator's afternoon and then take it
+back. Submission is the first moment a campaign costs the platform something and
+the first moment it stops being private.
+
+| | |
+|---|---|
+| Enforced in | `ProjectTransitionService.submit`, through `PublishingGate` |
+| Contract | `shared.access.PublishingEntitlement` → `PublishingAllowance` |
+| Refusals | `SUBSCRIPTION_REQUIRED` (403), `PLAN_LIMIT_EXCEEDED` (403) |
+
+**What a plan carries.** A price, a billing period, and two limits — how many
+campaigns the account may have in the platform's hands at once, and the largest
+funding goal a campaign may be submitted with. Both are nullable, and null means
+no limit rather than zero. Plans are rows in `subscription_plans`, administered
+from AD-11's second screen, and the catalogue an operator seeds decides whether
+there is a free tier.
+
+What counts against the campaign limit is a campaign that has left the creator's
+hands and not finished: `SUBMITTED`, `CHANGES_REQUESTED`, `APPROVED`,
+`SCHEDULED`, `LIVE`, `COLLECTING`, `LATE_PLEDGE`. Drafts do not count, and the
+campaign being submitted is excluded from its own count — otherwise a
+resubmission would refuse every creator on a one-campaign plan.
+
+**The creator's plan is what is consulted, not the caller's.** #38 lets a
+collaborator hold `SUBMIT_FOR_REVIEW`; billing the helper would let a creator
+publish free by asking a friend, and would charge somebody for a favour.
+
+**The price is snapshotted onto the subscription; the limits are not.** A price
+that moved under a subscriber is a bill they never agreed to. A limit that moved
+is either a gift — the operator raised what a plan allows, and everybody on it
+gets that — or a reduction, which reaches only their next submission. §7.2's
+`subscriptions` carries the argument in full.
+
+**A paid plan is bought in two steps, because no payment provider is
+integrated.** §9.2 ships no adapter while #60 is unanswered, so a priced plan is
+written `PENDING_PAYMENT` and a member of staff records that the transfer
+arrived, audited under their name. That is how a platform with no processor
+sells — an invoice and a bank transfer — rather than a stub pretending to be one.
+A plan priced at zero activates on the spot. When #60 lands, the provider's
+callback replaces the second step and nothing above it changes.
+
+**Not built, deliberately:** proration, mid-period upgrades, automatic renewal,
+invoices as documents, and per-plan fee rates. The first three need a provider
+that can refund a part-month or charge a stored card. A per-plan fee rate would
+compete with §5.2's schedule for the same answer and belongs there as a fourth
+scope if it is ever wanted.
+
 ---
 
 ## 6. Domain model and state machines
@@ -1882,6 +1936,38 @@ PENDING → HOLD (14 days) → APPROVED → PROCESSING → PAID
                               ↓
                            BLOCKED (fraud or dispute)
 ```
+
+### 6.4 Subscription
+
+```
+a priced plan  →  PENDING_PAYMENT  →  ACTIVE  →  EXPIRED
+a free plan    →                      ACTIVE     (its period ended)
+
+                  PENDING_PAYMENT  →  CANCELED  ←  ACTIVE
+                  (abandoned, or staff ended it)
+```
+
+
+A creator's own cancellation is not an edge on this diagram: it sets
+`cancel_at_period_end` and the row stays `ACTIVE` until its period runs out.
+
+
+**`ACTIVE` is not the same as entitled.** An active subscription whose
+`current_period_end` has passed entitles nobody: the question is always the state
+*and* the clock, which is why there is no job marking lapsed rows `EXPIRED` on a
+schedule. Nothing reads the state without the period — the entitlement check, the
+console list and the creator's own view all derive what they show from the pair.
+
+The one place a stale row matters is the partial unique index that permits one
+open subscription per account, which cannot consult a clock. `subscribe` retires
+the lapsed row inside its own transaction, immediately before inserting: it is
+retired by the person it was in the way of, at the moment it was in the way.
+
+**A creator cancelling and staff ending a subscription are different edges.** The
+creator has paid for the period, so their cancellation sets
+`cancel_at_period_end` and leaves the row `ACTIVE` until the clock catches up.
+Staff ending one — a reversed payment, a fraud finding, a purchase made by
+mistake — takes the entitlement away at once.
 
 ---
 
@@ -3414,6 +3500,18 @@ POST   /v1/admin/collections/{slug}/unpublish
 POST   /v1/admin/collections/{slug}/projects
 POST   /v1/admin/collections/{slug}/projects/{projectId}/remove
 PUT    /v1/admin/collections/{slug}/projects/order
+
+# Creator subscriptions -- §5.6
+GET    /v1/plans                         # the catalogue on sale. Public and cacheable: a price list behind authentication is one nobody can decide to buy from
+GET    /v1/me/subscription               # what this account holds, or nothing. 200 with a null subscription rather than 404
+POST   /v1/me/subscription               # buy a plan. A priced one comes back PENDING_PAYMENT, because nothing charges a card yet (#60)
+DELETE /v1/me/subscription               # cancel: keeps the period that was paid for, stops the renewal
+GET    /v1/admin/plans                   # AD-11; every plan, retired ones included. CONFIGURE_PLATFORM
+POST   /v1/admin/plans                   # add one; on sale from the moment it is written
+PATCH  /v1/admin/plans/{id}              # edit in place. Absent means "leave alone"; clearMaxActiveCampaigns and clearGoalCeiling mean "remove"
+GET    /v1/admin/subscriptions           # ?awaitingPayment= defaults true, which is the queue rather than the archive
+POST   /v1/admin/subscriptions/{id}/activate  # record that the transfer arrived. Audited; this is what starts an entitlement
+POST   /v1/admin/subscriptions/{id}/cancel    # end one outright, with a required reason. Audited
 ```
 
 > **Two-factor is four endpoints rather than two.** `2fa/verify` is the second

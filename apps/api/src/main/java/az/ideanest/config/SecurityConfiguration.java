@@ -133,6 +133,23 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/v1/exchange-rates")
                         .permitAll()
                         // ---- end #327 -------------------------------------
+                        // The subscription plans a creator publishes under.
+                        //
+                        // Public because it is a price list, and a price list
+                        // behind authentication is one nobody can decide to buy
+                        // from: somebody weighing up whether to bring their
+                        // campaign here reads it before they have an account,
+                        // and the marketing site links straight to it.
+                        //
+                        // Nothing in the answer is personal -- it is what the
+                        // platform charges everybody -- which is also why it is
+                        // one of the few reads a shared cache may hold.
+                        //
+                        // GET and nothing else. Buying a plan is
+                        // POST /v1/me/subscription and is somebody's, and the
+                        // catalogue is written only from /v1/admin/plans.
+                        .requestMatchers(HttpMethod.GET, "/v1/plans")
+                        .permitAll()
                         // Browsing, and the counts beside it. Public because
                         // discovery is the front door: a visitor who has not
                         // registered is exactly the audience it exists for, and

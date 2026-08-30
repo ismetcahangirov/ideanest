@@ -1,4 +1,5 @@
 import { getLocale, getTranslations } from 'next-intl/server';
+import { pricingCopyFrom, type PricingCopy } from './plans-copy';
 import {
   type AuthFailuresCopy,
   type EmailChangeCopy,
@@ -211,6 +212,11 @@ export async function notificationPreferencesCopy(): Promise<PreferencesCopy> {
 /** The checkout's words. `checkout-copy.ts` explains why the whole of it is one prop. */
 export async function checkoutCopy(): Promise<CheckoutCopy> {
   return checkoutCopyFrom(await getTranslations('checkout'));
+}
+
+/** The pricing page and the plan chooser on it. */
+export async function pricingCopy(): Promise<PricingCopy> {
+  return pricingCopyFrom(await getTranslations('pricing'));
 }
 
 /** The save, share and reminder controls. */

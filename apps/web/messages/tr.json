@@ -401,6 +401,7 @@
       "/admin/refunds": "İadeler",
       "/admin/disputes": "Ters ibrazlar",
       "/admin/fees": "Ücretler",
+      "/admin/plans": "Planlar",
       "/admin/analytics": "Analitik",
       "/admin/audit": "Denetim günlüğü",
       "/admin/email-templates": "E-posta şablonları",
@@ -598,6 +599,12 @@
         "metaDescription": "Platform ve işlem oranları, istisnaları ve platformun uyguladığı her koşul kümesi.",
         "title": "Ücretler",
         "intro": "Bir ücreti değiştirmek, şimdiden başlayan yeni koşullar açar. Kapananlar ekranda kalır, çünkü “martta ne aldık” sorusuna §22.1 bir saklama kuralı bağlar."
+      },
+      "plans": {
+        "metaTitle": "Planlar",
+        "metaDescription": "Bir kurucunun altında yayım yaptığı abonelik planları ve kaydedilmeyi bekleyen ödemeler.",
+        "title": "Planlar",
+        "intro": "Plan, ücret cetvelinin aksine yerinde düzenlenir: bir abonenin ödediği tutar kendi aboneliğine yazılır, bu yüzden burada kimsenin geçmiş faturası değişmez."
       },
       "ledger": {
         "metaTitle": "Defter",
@@ -1498,6 +1505,69 @@
           "CATEGORY": "Kategori",
           "PROJECT": "Kampanya"
         }
+      },
+      "plans": {
+        "subject": "plan kataloğu",
+        "noticeTitle": "Bir planı düzenlemek abonelerine ulaşır",
+        "noticeBody": "Fiyat değişikliği yalnızca yeni alımlara işler: birinin ödediği tutar kendi aboneliğine yazılıdır. Limit değişikliği plandaki herkese işler; geriye dönük değil, bir sonraki gönderimde. Silme yoktur — planı satıştan kaldırın.",
+        "catalogueHeading": "Planlar",
+        "catalogueIntro": "Satıştan kaldırılan planlar da listelenir; aboneleri hâlâ onlarda.",
+        "loadingCatalogue": "Planlar yükleniyor",
+        "emptyCatalogueTitle": "Hiç plan yok",
+        "emptyCatalogueBody": "Yayımlamak bir plana bağlı; katalog boşken kimse kampanyasını incelemeye gönderemez. Aşağıdan bir plan ekleyin.",
+        "planSummary": "{price} {period} · aynı anda {campaigns} kampanya · {ceiling} tutarına kadar hedef",
+        "onSale": "Satışta",
+        "retired": "Satıştan kaldırıldı",
+        "repriceLabel": "Yeni fiyat",
+        "reprice": "Fiyatı değiştir",
+        "retire": "Satıştan kaldır",
+        "putOnSale": "Satışa çıkar",
+        "unlimited": "sınırsız",
+        "addHeading": "Plan ekle",
+        "codeLabel": "Kod",
+        "codeHint": "Büyük harf, boşluksuz. Sonradan değiştirilemez.",
+        "nameLabel": "Ad",
+        "descriptionLabel": "Açıklama",
+        "descriptionHint": "Planlar sayfasında adın altındaki tek satır.",
+        "priceLabel": "Fiyat",
+        "priceHint": "AZN olarak. Sıfır, ücretsiz kademe demektir.",
+        "periodLabel": "Faturalama",
+        "maxActiveLabel": "Aynı anda kampanya",
+        "goalCeilingLabel": "Hedef üst sınırı",
+        "unlimitedHint": "Sınır istemiyorsanız boş bırakın.",
+        "addPlan": "Planı ekle",
+        "queueHeading": "Ödemeler",
+        "queueIntro": "Henüz bir ödeme sağlayıcı bağlı değil; bu yüzden ücretli plan, buradaki biri havalenin geldiğini kaydettiğinde başlar. Her etkinleştirme sizin adınıza kayda geçer.",
+        "loadingQueue": "Abonelikler yükleniyor",
+        "showAll": "Bütün abonelikleri göster",
+        "showQueue": "Yalnızca bekleyenleri göster",
+        "emptyQueueTitle": "Bekleyen yok",
+        "emptyQueueBody": "Ödemesinin kaydedilmesini bekleyen abonelik yok.",
+        "subscriptionSummary": "{price} · {until} tarihine kadar",
+        "unknownPlan": "Bilinmeyen plan",
+        "notStarted": "başlamadı",
+        "noteLabel": "Ödeme referansı",
+        "noteHint": "Havale referansı veya fatura numarası; sonradan denetlenebilsin diye.",
+        "recordPayment": "Ödemeyi kaydet",
+        "endReasonLabel": "Sonlandırma gerekçesi",
+        "endReasonHint": "Zorunlu. Planı dönem sonunda değil, hemen geri alır.",
+        "endSubscription": "Aboneliği sonlandır",
+        "doneTitle": "Tamam",
+        "failedTitle": "Bu işe yaramadı",
+        "addedNotice": "{plan} eklendi ve satışta.",
+        "repricedNotice": "{plan} planının fiyatı değişti. Mevcut aboneler ödedikleri tutarda kalır.",
+        "activatedNotice": "{id} aboneliği etkin.",
+        "endedNotice": "{id} aboneliği sonlandırıldı.",
+        "period": {
+          "MONTHLY": "Aylık",
+          "YEARLY": "Yıllık"
+        },
+        "state": {
+          "PENDING_PAYMENT": "Ödeme bekleniyor",
+          "ACTIVE": "Etkin",
+          "CANCELED": "Sonlandırıldı",
+          "EXPIRED": "Süresi doldu"
+        }
       }
     },
     "moderation": {
@@ -2292,6 +2362,50 @@
       "amountNotANumber": "Tutarlar rakamlardan ve en fazla bir noktadan oluşur, örneğin 45.00.",
       "belowRewardPrice": "Bu ödül {price} değerinde. Bu kadar ya da daha fazlasını verin veya daha ucuz bir ödül seçin.",
       "destinationUnpriced": "Üretici bu varış noktası için {lines} teslimat ücreti belirlememiş. Başka bir yer seçin ya da bunu desteğinizden çıkarın."
+    }
+  },
+  "pricing": {
+    "metaTitle": "Planlar ve fiyatlar",
+    "metaDescription": "IdeaNest'te bir kampanya yayımlamanın maliyeti ve her planın neye izin verdiği.",
+    "title": "Planlar",
+    "intro": "Kampanya hazırlamak ücretsizdir. Yayımlamak için bir plan gerekir; plan, aynı anda kaç kampanya yürütebileceğinizi ve ne kadar büyük bir hedef koyabileceğinizi belirler.",
+    "loading": "Mevcut planınız kontrol ediliyor",
+    "unavailable": "Planlar yüklenemedi. Sorun bizde; birazdan tekrar deneyin.",
+    "empty": "Şu anda satışta plan yok.",
+    "perMonth": "aylık",
+    "perYear": "yıllık",
+    "free": "Ücretsiz",
+    "choose": "Bu planı seç",
+    "choosing": "Seçiliyor",
+    "signedOut": "Plan seçmek için giriş yapın",
+    "signIn": "Giriş yap",
+    "limits": {
+      "campaigns": "Aynı anda {count} kampanya",
+      "campaignsUnlimited": "Yürütebildiğiniz kadar kampanya",
+      "goalCeiling": "{amount} tutarına kadar hedef",
+      "goalUnlimited": "Hedefte sınır yok"
+    },
+    "fromSubmit": {
+      "title": "Yayımlamak için plan gerekiyor",
+      "body": "Kampanyanız kaydedildi, hiçbir şey kaybolmadı. Aşağıdan bir plan seçin, hemen incelemeye gönderebilirsiniz.",
+      "back": "Kampanyanıza dönün"
+    },
+    "held": {
+      "heading": "Planınız",
+      "activeUntil": "{date} tarihine kadar {plan} planındasınız",
+      "pendingTitle": "{plan} planını seçtiniz, ödemenizi bekliyoruz",
+      "pendingBody": "Henüz kartla ödeme alamıyoruz; bu yüzden plan, havaleniz görülüp kaydedildiğinde başlar. Bu gerçekleşir gerçekleşmez yayımlayabilirsiniz.",
+      "endingOn": "{plan} planınız {date} tarihine kadar geçerli ve yenilenmeyecek",
+      "lapsed": "{plan} planınız {date} tarihinde sona erdi",
+      "cancel": "Bu dönemin sonunda iptal et",
+      "cancelling": "İptal ediliyor",
+      "currentTag": "Sizin planınız"
+    },
+    "errors": {
+      "alreadySubscribed": "Zaten bir planınız var. Başkasını seçmeden önce onu iptal edin.",
+      "notOnSale": "Bu plan artık sunulmuyor. Güncel planları görmek için sayfayı yenileyin.",
+      "signedOut": "Plan seçmek için tekrar giriş yapın.",
+      "generic": "Bu işe yaramadı"
     }
   },
   "campaign": {

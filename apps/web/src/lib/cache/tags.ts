@@ -54,6 +54,16 @@ export const TAXONOMY = 'taxonomy';
 /** The curated collections index. One tag, because the index is one document. */
 export const COLLECTIONS = 'collections';
 
+/**
+ * The subscription plans a creator publishes under. One tag: the catalogue is one document.
+ *
+ * <p>Deliberately long-lived beside the others. A price changes a handful of times a year and
+ * is changed by one screen, so the pricing page takes the taxonomy's window rather than the
+ * shared minute -- and this tag is what makes that survivable, because an operator who
+ * repriced a plan should not spend an hour being told the browser is broken.
+ */
+export const PLANS = 'plans';
+
 /** One campaign, by the identifier the service knows it as. */
 export function project(id: string): string {
   return `project:${id}`;

@@ -7,7 +7,9 @@ import az.ideanest.project.application.ProjectFieldLockedException;
 import az.ideanest.project.application.ProjectFieldRejectedException;
 import az.ideanest.project.application.ProjectNotFoundException;
 import az.ideanest.project.application.ProjectNotLaunchableException;
+import az.ideanest.project.application.PlanLimitExceededException;
 import az.ideanest.project.application.ProjectNotSubmittableException;
+import az.ideanest.project.application.SubscriptionRequiredException;
 import az.ideanest.project.application.ProjectTransitionNotAllowedException;
 import az.ideanest.project.application.RemindersClosedException;
 import az.ideanest.project.domain.ProjectState;
@@ -181,6 +183,65 @@ public class ProjectExceptionHandler {
                     return entry;
                 })
                 .toList();
+    }
+
+    /**
+     * <strong>403 for a creator who has not subscribed</strong> — the publishing gate.
+     *
+     * <p><strong>The one refusal in this module that the web client answers with a
+     * navigation.</strong> Everything else here is fixed on the screen the creator is
+     * already looking at; this cannot be, because what is missing is not on the campaign.
+     * So {@code ReviewPanel} sends them to the pricing page, and the {@code code} is what
+     * it branches on — §10.4, and prose is translated into four languages.
+     *
+     * <p>403 rather than 402 Payment Required. 402 has never had agreed semantics, is
+     * treated as unusable by every specification that mentions it, and would be read by a
+     * proxy or a browser extension as something other than "this account is not permitted
+     * to do this" — which is exactly what it is.
+     *
+     * <p>{@code meta.pricingPath} rather than a bare flag, because the client should not
+     * be assembling the platform's own routes out of a constant: the day the pricing page
+     * moves, the server says so.
+     */
+    @ExceptionHandler(SubscriptionRequiredException.class)
+    public ProblemDetail handleSubscriptionRequired(SubscriptionRequiredException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+        problem.setType(URI.create("https://ideanest.az/problems/subscription-required"));
+        problem.setTitle("A plan is needed to publish");
+        problem.setDetail("Building a campaign is free. Sending one for review needs an active plan.");
+        problem.setProperty("code", "SUBSCRIPTION_REQUIRED");
+        problem.setProperty("meta", Map.of("pricingPath", "/pricing"));
+        return problem;
+    }
+
+    /**
+     * <strong>403 for a creator whose plan does not stretch to this campaign.</strong>
+     *
+     * <p>Deliberately a different code from {@code SUBSCRIPTION_REQUIRED}, and the client
+     * treats it differently: this creator has paid, and the answer may be to withdraw a
+     * campaign or lower a goal rather than to buy anything. Sending them to a price list
+     * would read as the platform trying to sell them something instead of answering them.
+     *
+     * <p>The numbers are on {@code meta} because the message has to name them. "You have
+     * reached your limit" is not actionable; "Starter allows one campaign at a time and you
+     * have one live" says both what to do and what changing plan would buy.
+     */
+    @ExceptionHandler(PlanLimitExceededException.class)
+    public ProblemDetail handlePlanLimit(PlanLimitExceededException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+        problem.setType(URI.create("https://ideanest.az/problems/plan-limit-exceeded"));
+        problem.setTitle("Your plan does not cover this");
+        problem.setDetail(exception.getMessage());
+        problem.setProperty("code", "PLAN_LIMIT_EXCEEDED");
+
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("limit", exception.limit().name());
+        meta.put("plan", exception.planCode());
+        meta.put("allowed", exception.allowed());
+        meta.put("actual", exception.actual());
+        meta.put("pricingPath", "/pricing");
+        problem.setProperty("meta", meta);
+        return problem;
     }
 
     /**

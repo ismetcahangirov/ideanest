@@ -11,10 +11,12 @@ import {
   type CollectionPageQuery,
 } from '../collections/api';
 import type { DiscoveryFeed, ProjectCard } from '../discovery/api';
+import type { Plan } from '../plans/api';
 import { DEFAULT_LOCALE } from '../i18n/locale';
 import {
   COLLECTIONS,
   DISCOVERY,
+  PLANS,
   TAXONOMY,
   campaignAddress,
   collection as collectionTag,
@@ -317,6 +319,40 @@ export async function fetchCategories(options: ServerReadOptions = {}): Promise<
 
 /** One hour. See `fetchCategories`. */
 const TAXONOMY_REVALIDATE_SECONDS = 60 * 60;
+
+/**
+ * The subscription catalogue -- `GET /v1/plans`.
+ *
+ * <h2>An hour, like the taxonomy and unlike everything else here</h2>
+ *
+ * The shared minute exists because a campaign's pledged total moves continuously. A price
+ * does not: it is changed from one console screen a handful of times a year, and a minute
+ * would mean re-reading the same three rows for every visitor who opens the pricing page.
+ * The `PLANS` tag is what makes the hour safe -- an operator who reprices a plan invalidates
+ * it rather than waiting one out.
+ *
+ * <h2>Read on the server, because the page is public and identical for everybody</h2>
+ *
+ * A price list is the same document for every reader in a language, which is exactly what a
+ * shared cache wants. What is *not* the same for everybody -- whether this visitor already
+ * holds a plan -- is read by `PlanChooser` after hydration, for the reason this module's
+ * header gives about session-varying server renders.
+ *
+ * `null` on failure, like everything else here: a pricing page that could not be read is a
+ * page saying so; one that threw is a site that is down.
+ */
+export async function fetchPlanCatalogue(
+  options: ServerReadOptions = {},
+): Promise<readonly Plan[] | null> {
+  const withWindow: ServerReadOptions = { revalidateSeconds: TAXONOMY_REVALIDATE_SECONDS, ...options };
+
+  try {
+    const catalogue = await client(withWindow).get('/v1/plans', await readOptions(withWindow, PLANS));
+    return ((catalogue as { plans?: readonly Plan[] }).plans ?? []) as readonly Plan[];
+  } catch (cause) {
+    return refusalOrRethrow(cause);
+  }
+}
 
 /**
  * D-08's collections index — `GET /v1/collections`.

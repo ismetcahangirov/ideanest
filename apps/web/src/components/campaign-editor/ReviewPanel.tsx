@@ -1,6 +1,6 @@
 'use client';
 
-import { Link } from '../../i18n/navigation';
+import { Link, useRouter } from '../../i18n/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CircleAlert, CircleCheck, Info } from 'lucide-react';
 import { InlineAlert, Pill, ProgressBar, Skeleton, SkeletonGroup } from '@ideanest/ui';
@@ -91,6 +91,12 @@ interface Refusal {
   message: string;
   /** Named by the server. Replaces what this screen was showing; see the note above. */
   unmet: readonly UnmetRequirement[];
+  /**
+   * The plan bound that refused this, when one did.
+   *
+   * <p>Rendered rather than redirected to, unlike `SUBSCRIPTION_REQUIRED` — see `submit`.
+   */
+  limit?: { plan: string; allowed: string; actual: string };
 }
 
 export interface ReviewPanelProps {
@@ -105,6 +111,7 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
    * behind every autosave in every other tab.
    */
   const { project, status, error, reload, apply } = useProjectEdit(projectId);
+  const router = useRouter();
 
   const [checklist, setChecklist] = useState<ProjectChecklist | null>(null);
   const [checklistError, setChecklistError] = useState<string | null>(null);
@@ -147,6 +154,28 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
       // with it the moderation outcome's `current` flag.
       setAttempt((n) => n + 1);
     } catch (cause) {
+      /*
+       * SUBSCRIPTION_REQUIRED IS THE ONE REFUSAL THIS SCREEN CANNOT ANSWER.
+       *
+       * Everything else the server says no to is something on this campaign, and the
+       * panel renders it beside the thing to fix. A creator with no plan has nothing
+       * to fix here: what is missing is not on the campaign, so the answer is the
+       * pricing page and the panel takes them there.
+       *
+       * `from` and `project` are what let that page explain itself — a banner saying
+       * why they are looking at a price list, and a link back to this tab. Arriving
+       * at prices with no account of what you did to deserve them is the failure
+       * those two parameters exist to prevent.
+       *
+       * PLAN_LIMIT_EXCEEDED deliberately does NOT navigate. That creator has paid,
+       * and the answer may be to withdraw a campaign or lower a goal rather than to
+       * buy anything; sending a paying customer to a price list reads as the platform
+       * trying to sell them something instead of answering them.
+       */
+      if (cause instanceof ApiError && cause.problem?.code === 'SUBSCRIPTION_REQUIRED') {
+        router.push(`/pricing?from=submit&project=${encodeURIComponent(projectId)}`);
+        return;
+      }
       setRefusal(refusalFrom(cause));
     } finally {
       setSubmitting(false);
@@ -252,6 +281,19 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
                   </li>
                 ))}
               </ul>
+            )}
+            {/*
+              A plan bound, with the way out beside it. The link is offered rather than
+              followed, because changing plan is one of three answers here and the other
+              two — withdraw a campaign, lower the goal — are on this creator's own
+              screens.
+            */}
+            {refusal.limit != null && (
+              <p className="mt-3">
+                <Link href="/pricing" className="text-white underline underline-offset-4">
+                  See what the other plans allow
+                </Link>
+              </p>
             )}
             <Pill variant="ghost" size="sm" className="mt-3" onClick={reloadAll}>
               Check again
@@ -467,6 +509,15 @@ function ChecklistRow({
 function messageFor(cause: unknown): string {
   if (cause instanceof ApiError) {
     if (cause.status === 404) return 'That campaign could not be found.';
+    /*
+     * A plan refusal is a 403 and is not "you do not have access to this campaign" — it is
+     * this creator's own campaign and they can edit every part of it. The server's own
+     * sentence names the plan and the bound, which is what makes it actionable, so it is
+     * preferred over the generic line below.
+     */
+    if (cause.problem?.code === 'PLAN_LIMIT_EXCEEDED') {
+      return cause.problem?.detail ?? 'Your plan does not cover this campaign.';
+    }
     if (cause.status === 403) return 'You do not have access to this campaign.';
     return cause.problem?.detail ?? cause.problem?.title ?? 'The service refused the request.';
   }
@@ -476,8 +527,8 @@ function messageFor(cause: unknown): string {
 /**
  * A refused submission, as something to render.
  *
- * `PROJECT_NOT_SUBMITTABLE` carries the requirements. `PROJECT_TRANSITION_NOT_ALLOWED`
- * carries none — it means the campaign is not in a state it can be submitted from,
+ * `PROJECT_NOT_SUBMITTABLE` carries the requirements. `PLAN_LIMIT_EXCEEDED` carries the
+ * bound that was hit. `PROJECT_TRANSITION_NOT_ALLOWED` carries none — it means the campaign is not in a state it can be submitted from,
  * which is usually another tab or a moderator having moved it, so the message is
  * the server's and the fix is to reload.
  */
@@ -486,9 +537,31 @@ function refusalFrom(cause: unknown): Refusal {
     return {
       message: messageFor(cause),
       unmet: unmetFromRefusal(cause.problem?.meta),
+      limit: planLimitFrom(cause),
     };
   }
   return { message: messageFor(cause), unmet: [] };
+}
+
+/**
+ * The plan bound a refusal named, if it named one.
+ *
+ * <p>Read off `meta` rather than parsed out of `detail`, per §10.4: the detail is prose in
+ * one language and this panel is read in four.
+ */
+function planLimitFrom(cause: ApiError): Refusal['limit'] {
+  if (cause.problem?.code !== 'PLAN_LIMIT_EXCEEDED') return undefined;
+
+  const meta = cause.problem?.meta as
+    | { plan?: unknown; allowed?: unknown; actual?: unknown }
+    | undefined;
+  if (meta == null) return undefined;
+
+  return {
+    plan: typeof meta.plan === 'string' ? meta.plan : '',
+    allowed: typeof meta.allowed === 'string' ? meta.allowed : '',
+    actual: typeof meta.actual === 'string' ? meta.actual : '',
+  };
 }
 
 function formatDate(iso: string): string {

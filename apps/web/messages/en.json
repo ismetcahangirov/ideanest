@@ -401,6 +401,7 @@
       "/admin/refunds": "Refunds",
       "/admin/disputes": "Chargebacks",
       "/admin/fees": "Fees",
+      "/admin/plans": "Plans",
       "/admin/analytics": "Analytics",
       "/admin/audit": "Audit log",
       "/admin/email-templates": "Email templates",
@@ -598,6 +599,12 @@
         "metaDescription": "Platform and processing rates, their exceptions, and every set of terms the platform has charged.",
         "title": "Fees",
         "intro": "Changing a fee opens new terms beginning now. The closed ones stay on the screen, because “what did we charge in March” is a question §22.1 attaches a retention rule to."
+      },
+      "plans": {
+        "metaTitle": "Plans",
+        "metaDescription": "The subscription plans a creator publishes under, and the payments waiting to be recorded.",
+        "title": "Plans",
+        "intro": "A plan is edited in place, unlike a fee schedule: what a subscriber was charged is written on their own subscription, so nothing here changes anybody past bill."
       },
       "ledger": {
         "metaTitle": "Ledger",
@@ -1498,6 +1505,69 @@
           "CATEGORY": "Category",
           "PROJECT": "Campaign"
         }
+      },
+      "plans": {
+        "subject": "the plan catalogue",
+        "noticeTitle": "Editing a plan reaches its subscribers",
+        "noticeBody": "A price change applies to new purchases only: what somebody was charged is written on their own subscription. A limit change applies to everybody on the plan, at their next submission rather than retroactively. There is no delete — take a plan off sale instead.",
+        "catalogueHeading": "Plans",
+        "catalogueIntro": "Retired plans are listed too, because their subscribers still hold them.",
+        "loadingCatalogue": "Loading plans",
+        "emptyCatalogueTitle": "There are no plans",
+        "emptyCatalogueBody": "Publishing is gated on a plan, so with an empty catalogue nobody can send a campaign for review. Add one below.",
+        "planSummary": "{price} {period} · {campaigns} campaigns at a time · goals up to {ceiling}",
+        "onSale": "On sale",
+        "retired": "Retired",
+        "repriceLabel": "New price",
+        "reprice": "Reprice",
+        "retire": "Take off sale",
+        "putOnSale": "Put on sale",
+        "unlimited": "no limit",
+        "addHeading": "Add a plan",
+        "codeLabel": "Code",
+        "codeHint": "Upper case, no spaces. It cannot be changed afterwards.",
+        "nameLabel": "Name",
+        "descriptionLabel": "Description",
+        "descriptionHint": "One line under the name on the pricing page.",
+        "priceLabel": "Price",
+        "priceHint": "In AZN. Zero means a free tier.",
+        "periodLabel": "Billed",
+        "maxActiveLabel": "Campaigns at a time",
+        "goalCeilingLabel": "Goal ceiling",
+        "unlimitedHint": "Leave empty for no limit.",
+        "addPlan": "Add plan",
+        "queueHeading": "Payments",
+        "queueIntro": "No payment provider is integrated yet, so a paid plan starts when somebody here records that the transfer arrived. Every activation is audited under your name.",
+        "loadingQueue": "Loading subscriptions",
+        "showAll": "Show every subscription",
+        "showQueue": "Show only what is waiting",
+        "emptyQueueTitle": "Nothing is waiting",
+        "emptyQueueBody": "No subscription is waiting for a payment to be recorded against it.",
+        "subscriptionSummary": "{price} · runs until {until}",
+        "unknownPlan": "Unknown plan",
+        "notStarted": "not started",
+        "noteLabel": "Payment reference",
+        "noteHint": "The transfer reference or invoice number, so this can be checked later.",
+        "recordPayment": "Record payment",
+        "endReasonLabel": "Reason for ending it",
+        "endReasonHint": "Required. This takes the plan away at once rather than at the period end.",
+        "endSubscription": "End subscription",
+        "doneTitle": "Done",
+        "failedTitle": "That did not work",
+        "addedNotice": "{plan} was added and is on sale.",
+        "repricedNotice": "{plan} was repriced. Existing subscribers keep what they were charged.",
+        "activatedNotice": "Subscription {id} is active.",
+        "endedNotice": "Subscription {id} was ended.",
+        "period": {
+          "MONTHLY": "Monthly",
+          "YEARLY": "Yearly"
+        },
+        "state": {
+          "PENDING_PAYMENT": "Waiting for payment",
+          "ACTIVE": "Active",
+          "CANCELED": "Ended",
+          "EXPIRED": "Expired"
+        }
       }
     },
     "moderation": {
@@ -2292,6 +2362,50 @@
       "amountNotANumber": "Amounts are digits and at most one full stop, like 45.00.",
       "belowRewardPrice": "This reward costs {price}. Give that or more, or choose a cheaper reward.",
       "destinationUnpriced": "The creator has not set a delivery cost to this destination for {lines}. Choose somewhere else, or take that out of your pledge."
+    }
+  },
+  "pricing": {
+    "metaTitle": "Plans and pricing",
+    "metaDescription": "What it costs to publish a campaign on IdeaNest, and what each plan allows.",
+    "title": "Plans",
+    "intro": "Building a campaign is free. Publishing one needs a plan, and the plan decides how many campaigns you can run at once and how large a goal you can ask for.",
+    "loading": "Checking what you already have",
+    "unavailable": "The plans could not be loaded. This is our side rather than yours; try again shortly.",
+    "empty": "There are no plans on sale at the moment.",
+    "perMonth": "a month",
+    "perYear": "a year",
+    "free": "Free",
+    "choose": "Choose this plan",
+    "choosing": "Choosing",
+    "signedOut": "Sign in to choose a plan",
+    "signIn": "Sign in",
+    "limits": {
+      "campaigns": "{count} campaigns at a time",
+      "campaignsUnlimited": "As many campaigns at a time as you can run",
+      "goalCeiling": "Goals up to {amount}",
+      "goalUnlimited": "No limit on your goal"
+    },
+    "fromSubmit": {
+      "title": "Publishing needs a plan",
+      "body": "Your campaign is saved and nothing has been lost. Choose a plan below and you can send it for review straight away.",
+      "back": "Back to your campaign"
+    },
+    "held": {
+      "heading": "Your plan",
+      "activeUntil": "You are on {plan} until {date}",
+      "pendingTitle": "You chose {plan} and we are waiting for your payment",
+      "pendingBody": "We cannot take card payments yet, so a plan starts once we have seen your transfer and recorded it. You will be able to publish as soon as that happens.",
+      "endingOn": "Your {plan} plan runs until {date} and will not renew",
+      "lapsed": "Your {plan} plan ended on {date}",
+      "cancel": "Cancel at the end of this period",
+      "cancelling": "Cancelling",
+      "currentTag": "Your plan"
+    },
+    "errors": {
+      "alreadySubscribed": "You already have a plan. Cancel it before choosing a different one.",
+      "notOnSale": "That plan is no longer offered. Reload the page to see what is available now.",
+      "signedOut": "Sign in again to choose a plan.",
+      "generic": "That did not work"
     }
   },
   "campaign": {
