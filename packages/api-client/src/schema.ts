@@ -644,6 +644,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminSubscriptionCatalogue"];
+        put?: never;
+        post: operations["adminSubscriptionAdd"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/plans/{planId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["adminSubscriptionChange"];
+        trace?: never;
+    };
     "/v1/admin/projects/{id}/suspend": {
         parameters: {
             query?: never;
@@ -847,6 +879,54 @@ export interface paths {
         put: operations["staffGrant"];
         post?: never;
         delete: operations["staffRevoke"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminSubscriptionList"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/subscriptions/{subscriptionId}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminSubscriptionActivate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/subscriptions/{subscriptionId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminSubscriptionCancel"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1924,6 +2004,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/subscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["subscriptionMine"];
+        put?: never;
+        post: operations["subscriptionSubscribe"];
+        delete: operations["subscriptionCancel"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/surveys": {
         parameters: {
             query?: never;
@@ -1998,6 +2094,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["mediaComplete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["subscriptionCatalogue"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3096,12 +3208,29 @@ export interface components {
             sessions?: components["schemas"]["SessionRecord"][];
             verifications?: components["schemas"]["VerificationRecord"][];
         };
+        ActivateRequest: {
+            note?: string;
+        };
         AddEvidenceRequest: {
             description: string;
             /** @enum {string} */
             kind: "RECEIPT" | "SHIPPING_PROOF" | "COMMUNICATION" | "TERMS_ACCEPTANCE" | "REFUND_POLICY" | "ACTIVITY_LOG" | "OTHER";
             /** Format: uuid */
             mediaId?: string;
+        };
+        AddPlanRequest: {
+            /** @enum {string} */
+            billingPeriod: "MONTHLY" | "YEARLY";
+            code: string;
+            currency: string;
+            description?: string;
+            goalCeiling?: number;
+            /** Format: int32 */
+            maxActiveCampaigns?: number;
+            name: string;
+            price: number;
+            /** Format: int32 */
+            sortOrder?: number;
         };
         AddProject: {
             note: string;
@@ -3362,6 +3491,9 @@ export interface components {
         CancelProjectRequest: {
             reason: string;
         };
+        CancelRequest: {
+            reason: string;
+        };
         CaptureVisitRequest: {
             campaign?: string;
             /** @enum {string} */
@@ -3390,6 +3522,9 @@ export interface components {
             slug?: string;
             state?: string;
             title?: string;
+        };
+        Catalogue: {
+            plans?: components["schemas"]["Plan"][];
         };
         Category: {
             /** Format: uuid */
@@ -3437,6 +3572,20 @@ export interface components {
         ChangePasswordRequest: {
             currentPassword: string;
             newPassword: string;
+        };
+        ChangePlanRequest: {
+            clearGoalCeiling?: boolean;
+            clearMaxActiveCampaigns?: boolean;
+            currency?: string;
+            description?: string;
+            goalCeiling?: number;
+            listed?: boolean;
+            /** Format: int32 */
+            maxActiveCampaigns?: number;
+            name?: string;
+            price?: number;
+            /** Format: int32 */
+            sortOrder?: number;
         };
         ChannelTotal: {
             amount?: components["schemas"]["Money"];
@@ -3544,6 +3693,34 @@ export interface components {
         };
         ConfirmTwoFactorRequest: {
             code: string;
+        };
+        ConsoleList: {
+            subscriptions?: components["schemas"]["ConsoleRow"][];
+        };
+        ConsoleRow: {
+            /** Format: uuid */
+            accountId?: string;
+            /** Format: uuid */
+            activatedBy?: string;
+            /** @enum {string} */
+            billingPeriod?: "MONTHLY" | "YEARLY";
+            cancelAtPeriodEnd?: boolean;
+            /** Format: date-time */
+            createdAt?: string;
+            currency?: string;
+            /** Format: date-time */
+            currentPeriodEnd?: string;
+            entitled?: boolean;
+            /** Format: uuid */
+            id?: string;
+            note?: string;
+            planCode?: string;
+            planName?: string;
+            price?: string;
+            /** Format: date-time */
+            startedAt?: string;
+            /** @enum {string} */
+            state?: "PENDING_PAYMENT" | "ACTIVE" | "CANCELED" | "EXPIRED";
         };
         CopyBody: {
             description?: string;
@@ -3917,6 +4094,25 @@ export interface components {
             queues?: components["schemas"]["Queue"][];
             status?: string;
         };
+        Held: {
+            /** @enum {string} */
+            billingPeriod?: "MONTHLY" | "YEARLY";
+            cancelAtPeriodEnd?: boolean;
+            /** Format: date-time */
+            createdAt?: string;
+            currency?: string;
+            /** Format: date-time */
+            currentPeriodEnd?: string;
+            entitled?: boolean;
+            /** Format: uuid */
+            id?: string;
+            plan?: components["schemas"]["Plan"];
+            price?: string;
+            /** Format: date-time */
+            startedAt?: string;
+            /** @enum {string} */
+            state?: "PENDING_PAYMENT" | "ACTIVE" | "CANCELED" | "EXPIRED";
+        };
         History: {
             schedules?: components["schemas"]["Schedule"][];
         };
@@ -4096,6 +4292,9 @@ export interface components {
             id?: string;
             internal?: boolean;
         };
+        Mine: {
+            subscription?: components["schemas"]["Held"];
+        };
         ModerationDecisionRequest: {
             note?: string;
         };
@@ -4255,6 +4454,25 @@ export interface components {
             /** @enum {string} */
             state?: "CALCULATED" | "PENDING_APPROVAL" | "APPROVED" | "PAID" | "FAILED" | "CANCELLED";
             taxWithheld?: components["schemas"]["Money"];
+        };
+        Plan: {
+            /** @enum {string} */
+            billingPeriod?: "MONTHLY" | "YEARLY";
+            code?: string;
+            currency?: string;
+            description?: string;
+            goalCeiling?: string;
+            /** Format: uuid */
+            id?: string;
+            listed?: boolean;
+            /** Format: int32 */
+            maxActiveCampaigns?: number;
+            name?: string;
+            price?: string;
+            /** Format: int32 */
+            sortOrder?: number;
+            /** Format: date-time */
+            updatedAt?: string;
         };
         PlatformAnalyticsResponse: {
             /** Format: date-time */
@@ -5064,6 +5282,10 @@ export interface components {
             };
             slug?: string;
         };
+        SubscribeRequest: {
+            /** Format: uuid */
+            planId: string;
+        };
         SuggestionItem: {
             kind?: string;
             label?: string;
@@ -5382,7 +5604,9 @@ export interface components {
 }
 export type SchemaAccount = components['schemas']['Account'];
 export type SchemaAccountExport = components['schemas']['AccountExport'];
+export type SchemaActivateRequest = components['schemas']['ActivateRequest'];
 export type SchemaAddEvidenceRequest = components['schemas']['AddEvidenceRequest'];
+export type SchemaAddPlanRequest = components['schemas']['AddPlanRequest'];
 export type SchemaAddProject = components['schemas']['AddProject'];
 export type SchemaAddressProgressResponse = components['schemas']['AddressProgressResponse'];
 export type SchemaAdminCollectionIndex = components['schemas']['AdminCollectionIndex'];
@@ -5414,14 +5638,17 @@ export type SchemaCampaignFinanceResponse = components['schemas']['CampaignFinan
 export type SchemaCampaignMessageListResponse = components['schemas']['CampaignMessageListResponse'];
 export type SchemaCampaignMessageResponse = components['schemas']['CampaignMessageResponse'];
 export type SchemaCancelProjectRequest = components['schemas']['CancelProjectRequest'];
+export type SchemaCancelRequest = components['schemas']['CancelRequest'];
 export type SchemaCaptureVisitRequest = components['schemas']['CaptureVisitRequest'];
 export type SchemaCard = components['schemas']['Card'];
+export type SchemaCatalogue = components['schemas']['Catalogue'];
 export type SchemaCategory = components['schemas']['Category'];
 export type SchemaCategoryCount = components['schemas']['CategoryCount'];
 export type SchemaCategoryResponse = components['schemas']['CategoryResponse'];
 export type SchemaChange = components['schemas']['Change'];
 export type SchemaChangeEmailRequest = components['schemas']['ChangeEmailRequest'];
 export type SchemaChangePasswordRequest = components['schemas']['ChangePasswordRequest'];
+export type SchemaChangePlanRequest = components['schemas']['ChangePlanRequest'];
 export type SchemaChannelTotal = components['schemas']['ChannelTotal'];
 export type SchemaChecklistItemBody = components['schemas']['ChecklistItemBody'];
 export type SchemaCollaboratorCapabilitiesRequest = components['schemas']['CollaboratorCapabilitiesRequest'];
@@ -5435,6 +5662,8 @@ export type SchemaCommentResponse = components['schemas']['CommentResponse'];
 export type SchemaConfirmEmailChangeRequest = components['schemas']['ConfirmEmailChangeRequest'];
 export type SchemaConfirmPledgeRequest = components['schemas']['ConfirmPledgeRequest'];
 export type SchemaConfirmTwoFactorRequest = components['schemas']['ConfirmTwoFactorRequest'];
+export type SchemaConsoleList = components['schemas']['ConsoleList'];
+export type SchemaConsoleRow = components['schemas']['ConsoleRow'];
 export type SchemaCopyBody = components['schemas']['CopyBody'];
 export type SchemaCountrySlice = components['schemas']['CountrySlice'];
 export type SchemaCoverBody = components['schemas']['CoverBody'];
@@ -5482,6 +5711,7 @@ export type SchemaFulfilmentResponse = components['schemas']['FulfilmentResponse
 export type SchemaGrant = components['schemas']['Grant'];
 export type SchemaGrantRequest = components['schemas']['GrantRequest'];
 export type SchemaHealth = components['schemas']['Health'];
+export type SchemaHeld = components['schemas']['Held'];
 export type SchemaHistory = components['schemas']['History'];
 export type SchemaImage = components['schemas']['Image'];
 export type SchemaInviteCollaboratorRequest = components['schemas']['InviteCollaboratorRequest'];
@@ -5503,6 +5733,7 @@ export type SchemaMeResponse = components['schemas']['MeResponse'];
 export type SchemaMedia = components['schemas']['Media'];
 export type SchemaMembership = components['schemas']['Membership'];
 export type SchemaMessage = components['schemas']['Message'];
+export type SchemaMine = components['schemas']['Mine'];
 export type SchemaModerationDecisionRequest = components['schemas']['ModerationDecisionRequest'];
 export type SchemaModerationOutcomeBody = components['schemas']['ModerationOutcomeBody'];
 export type SchemaMoney = components['schemas']['Money'];
@@ -5521,6 +5752,7 @@ export type SchemaPayoutFile = components['schemas']['PayoutFile'];
 export type SchemaPayoutPage = components['schemas']['PayoutPage'];
 export type SchemaPayoutRecord = components['schemas']['PayoutRecord'];
 export type SchemaPayoutSummary = components['schemas']['PayoutSummary'];
+export type SchemaPlan = components['schemas']['Plan'];
 export type SchemaPlatformAnalyticsResponse = components['schemas']['PlatformAnalyticsResponse'];
 export type SchemaPledgeAddonBody = components['schemas']['PledgeAddonBody'];
 export type SchemaPledgeResponse = components['schemas']['PledgeResponse'];
@@ -5613,6 +5845,7 @@ export type SchemaStoryVersionDetail = components['schemas']['StoryVersionDetail
 export type SchemaStoryVersionSummary = components['schemas']['StoryVersionSummary'];
 export type SchemaSubcategory = components['schemas']['Subcategory'];
 export type SchemaSubcategoryResponse = components['schemas']['SubcategoryResponse'];
+export type SchemaSubscribeRequest = components['schemas']['SubscribeRequest'];
 export type SchemaSuggestionItem = components['schemas']['SuggestionItem'];
 export type SchemaSuggestions = components['schemas']['Suggestions'];
 export type SchemaSurveyListResponse = components['schemas']['SurveyListResponse'];
@@ -6767,6 +7000,76 @@ export interface operations {
             };
         };
     };
+    adminSubscriptionCatalogue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Catalogue"];
+                };
+            };
+        };
+    };
+    adminSubscriptionAdd: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plan"];
+                };
+            };
+        };
+    };
+    adminSubscriptionChange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePlanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plan"];
+                };
+            };
+        };
+    };
     projectSuspensionSuspend: {
         parameters: {
             query?: never;
@@ -7104,6 +7407,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Membership"];
+                };
+            };
+        };
+    };
+    adminSubscriptionList: {
+        parameters: {
+            query?: {
+                awaitingPayment?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleList"];
+                };
+            };
+        };
+    };
+    adminSubscriptionActivate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subscriptionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleRow"];
+                };
+            };
+        };
+    };
+    adminSubscriptionCancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subscriptionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsoleRow"];
                 };
             };
         };
@@ -8933,6 +9310,70 @@ export interface operations {
             };
         };
     };
+    subscriptionMine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mine"];
+                };
+            };
+        };
+    };
+    subscriptionSubscribe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubscribeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mine"];
+                };
+            };
+        };
+    };
+    subscriptionCancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mine"];
+                };
+            };
+        };
+    };
     backerSurveyMine: {
         parameters: {
             query?: never;
@@ -9069,6 +9510,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Media"];
+                };
+            };
+        };
+    };
+    subscriptionCatalogue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Catalogue"];
                 };
             };
         };

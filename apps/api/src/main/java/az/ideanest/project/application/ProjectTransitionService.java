@@ -53,6 +53,13 @@ import org.springframework.transaction.annotation.Transactional;
  * may not be ours, so this is where "state transitions are enforced server-side
  * and cannot be bypassed" is actually true.
  *
+ * <p><strong>Publishing is also gated on a subscription.</strong> {@link PublishingGate}
+ * is asked on submission, between the edge check and the checklist, and it refuses a
+ * creator who has not paid or whose plan does not stretch to this campaign. It is a
+ * collaborator here rather than four inline conditions for the reason the checklist is:
+ * this class exists so that the edge, the write and the history stay one legible
+ * guarantee, and every rule inlined into it makes that harder to see.
+ *
  * <p><strong>What is not here.</strong> Transitions driven by time rather than by
  * a person — a scheduled launch arriving, a deadline passing — are scheduled work
  * (§8.4) and belong to the epics that own them; they will call these same methods
@@ -68,6 +75,7 @@ public class ProjectTransitionService {
     private final ProjectRepository projects;
     private final ProjectStateTransitionRepository transitions;
     private final ProjectChecklistService checklist;
+    private final PublishingGate publishing;
     private final ApplicationEventPublisher events;
     private final Outbox outbox;
     private final AuditLog audit;
@@ -79,6 +87,7 @@ public class ProjectTransitionService {
             ProjectRepository projects,
             ProjectStateTransitionRepository transitions,
             ProjectChecklistService checklist,
+            PublishingGate publishing,
             ApplicationEventPublisher events,
             Outbox outbox,
             AuditLog audit,
@@ -88,6 +97,7 @@ public class ProjectTransitionService {
         this.projects = projects;
         this.transitions = transitions;
         this.checklist = checklist;
+        this.publishing = publishing;
         this.events = events;
         this.outbox = outbox;
         this.audit = audit;
@@ -144,6 +154,11 @@ public class ProjectTransitionService {
         // reporting the second failure would send them to upload a picture that
         // would change nothing.
         requireEdge(project.getState(), ProjectState.SUBMITTED);
+        // Then whether they may publish at all, before whether this campaign is
+        // finished. Same order, same reason, one step further out: a creator with no
+        // subscription is not sent to write a longer risks section they will still not
+        // be allowed to submit.
+        publishing.requireEntitled(project);
         checklist.requireSubmittable(project);
 
         return apply(project, ProjectState.SUBMITTED, access.roleOf(project, accountId), accountId, null);

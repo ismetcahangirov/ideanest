@@ -482,7 +482,57 @@ public enum AuditAction {
      * set of reasons is shown to the creator, and an audit row that repeated it would be a
      * second copy in a table with a different retention rule.
      */
-    IDENTITY_VERIFICATION_REJECTED("identity.verification_rejected", "account");
+    IDENTITY_VERIFICATION_REJECTED("identity.verification_rejected", "account"),
+
+    /**
+     * A subscription plan was added to the catalogue.
+     *
+     * <p>Filed under AD-11 with the fee schedule, because it is the same kind of decision:
+     * what the platform charges, changed by one screen, taking effect for everybody at
+     * once. What differs is who pays — a fee comes out of a backer's pledge and this comes
+     * out of a creator's pocket — and that is a difference in subject rather than in the
+     * authority being exercised.
+     *
+     * <p>The detail carries the numbers and not the prose. A plan's description is
+     * marketing text, and copying it here would put it under a retention rule written for
+     * privileged actions to answer a question nobody asks of this table.
+     */
+    SUBSCRIPTION_PLAN_CREATED("subscription.plan_created", "subscription_plan"),
+
+    /**
+     * A subscription plan's price, limits or listing changed.
+     *
+     * <p><strong>The trail is the only history this table has</strong>, and that is why
+     * every edit writes one. A plan is edited in place, unlike a fee schedule — V62 argues
+     * why that is safe for anybody's bill — so "what did Growth allow in July" is
+     * answerable from these rows and from nowhere else.
+     */
+    SUBSCRIPTION_PLAN_CHANGED("subscription.plan_changed", "subscription_plan"),
+
+    /**
+     * A member of staff recorded that a subscription's payment arrived.
+     *
+     * <p>The most consequential thing anybody does to a subscription: it is what turns a
+     * chosen plan into an entitlement to publish. It exists as a staff action rather than a
+     * provider callback because no payment provider is integrated (#60), and V62's header
+     * argues why that is honest rather than a stub.
+     *
+     * <p>The entity is the subscription and the actor is the member of staff, so that
+     * "who let this account publish, and on what evidence" is one row. The detail names
+     * the plan, the amount and the period, which is what a reconciliation against a bank
+     * statement needs.
+     */
+    SUBSCRIPTION_ACTIVATED("subscription.activated", "subscription"),
+
+    /**
+     * A member of staff ended a subscription outright.
+     *
+     * <p>Not what a creator cancelling does — that leaves the row active until the period
+     * they paid for runs out, and takes nothing away, so there is nothing here for it to
+     * record. This is the one that removes an entitlement somebody is holding, which is
+     * why it is audited and why its reason is required.
+     */
+    SUBSCRIPTION_CANCELED("subscription.canceled", "subscription");
 
 
 

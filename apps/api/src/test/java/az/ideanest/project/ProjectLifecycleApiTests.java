@@ -104,6 +104,9 @@ class ProjectLifecycleApiTests extends AbstractIntegrationTest {
                 new ParameterizedTypeReference<Map<String, Object>>() {});
 
         UUID id = users.findByEmailAndDeletedAtIsNull(email).orElseThrow().getId();
+        // Publishing needs a plan since V62. Written rather than bought, because this
+        // suite is not about subscriptions -- Campaigns.subscribe says why it is PRO.
+        Campaigns.subscribe(dataSource, id);
         return new Creator((String) signedIn.getBody().get("accessToken"), id);
     }
 

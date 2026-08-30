@@ -112,4 +112,43 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
             ORDER BY p.deadline ASC
             """)
     List<UUID> findAwaitingCollection(Pageable page);
+
+    /**
+     * How many campaigns this creator currently has in the platform's hands.
+     *
+     * <p><strong>What a subscription's {@code maxActiveCampaigns} is counted against.</strong>
+     * The plan says "at most three"; this says which three, and it lives here because these
+     * are the project module's rows — {@code PublishingAllowance} has the argument for why
+     * the subscription module is not asked to count them.
+     *
+     * <p><strong>Drafts and pre-launch pages are excluded, and everything terminal is
+     * too.</strong> A draft is private and costs the platform nothing, so charging a
+     * creator for holding one would be charging them for thinking. A finished campaign is
+     * not occupying anything either. What is left is the window in which a campaign is
+     * somebody else's work: waiting for a moderator, cleared and waiting to launch, live,
+     * or collecting.
+     *
+     * <p>{@code CHANGES_REQUESTED} counts, which is the one that could go either way. It
+     * is a campaign a moderator has already read and will read again, so it is still
+     * occupying the queue — and excluding it would let a creator hold any number of
+     * campaigns by leaving each one in the state that follows a rejection.
+     *
+     * <p><strong>The excluded campaign is the one being submitted.</strong> A resubmission
+     * from {@code CHANGES_REQUESTED} would otherwise count itself and refuse a creator
+     * whose plan permits exactly one campaign — the plan most of them are on.
+     */
+    @Query(
+            """
+            SELECT COUNT(p) FROM Project p
+            WHERE p.creatorId = :creatorId
+              AND p.id <> :excluding
+              AND p.state IN (az.ideanest.project.domain.ProjectState.SUBMITTED,
+                              az.ideanest.project.domain.ProjectState.CHANGES_REQUESTED,
+                              az.ideanest.project.domain.ProjectState.APPROVED,
+                              az.ideanest.project.domain.ProjectState.SCHEDULED,
+                              az.ideanest.project.domain.ProjectState.LIVE,
+                              az.ideanest.project.domain.ProjectState.COLLECTING,
+                              az.ideanest.project.domain.ProjectState.LATE_PLEDGE)
+            """)
+    long countInPlatformHands(@Param("creatorId") UUID creatorId, @Param("excluding") UUID excluding);
 }

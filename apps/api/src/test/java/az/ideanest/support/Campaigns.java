@@ -493,6 +493,47 @@ public final class Campaigns {
         }
     }
 
+    /**
+     * Gives an account the plan that publishing needs, by writing the row.
+     *
+     * <p><strong>For suites that are not testing subscriptions.</strong> Submission is
+     * gated on an entitlement since V62, so a creator with no plan cannot reach
+     * {@code SUBMITTED} at all -- and every suite that drives a campaign through review
+     * would otherwise have to buy one first, which is the shape this class exists to
+     * avoid. {@code SubscriptionApiTests} and {@code ProjectPublishingGateTests} take the
+     * honest route, because the entitlement is what they are about.
+     *
+     * <p><strong>{@code PRO}, deliberately, and it is the seeded row rather than one this
+     * method invents.</strong> Pro has no campaign limit and no goal ceiling, so a fixture
+     * written this way constrains nothing a caller did not ask for: a suite about reward
+     * tiers does not start failing the day somebody lowers what Starter allows. A test
+     * that wants a limit to bite names its own plan.
+     *
+     * <p>What is written is what {@code Subscriptions.subscribe} would write for a free
+     * plan -- state, window, and the price snapshot -- so the row is one the application
+     * could have produced. What is not written is the audit entry, because nothing
+     * activated it.
+     *
+     * <p>Idempotent against V62's one-open-per-account index: an account that already
+     * holds one keeps it, rather than the second call failing three assertions away.
+     */
+    public static void subscribe(DataSource dataSource, UUID accountId) {
+        new JdbcTemplate(dataSource)
+                .update(
+                        """
+                        INSERT INTO subscriptions
+                            (id, account_id, plan_id, state, price, currency, billing_period,
+                             started_at, current_period_end)
+                        SELECT ?, ?, p.id, 'ACTIVE', p.price, p.currency, p.billing_period,
+                               now(), now() + interval '30 days'
+                          FROM subscription_plans p
+                         WHERE p.code = 'PRO'
+                        ON CONFLICT DO NOTHING
+                        """,
+                        UUID.randomUUID(),
+                        accountId);
+    }
+
     /** A valid story document holding one paragraph of the requested length. */
     public static Map<String, Object> story(int characters) {
         return Map.of(
