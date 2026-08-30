@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Link } from '../../i18n/navigation';
 import { EmptyState, InlineAlert, Pill, Skeleton, SkeletonGroup, Tag } from '@ideanest/ui';
 import {
-  COLLECTION_KIND_LABELS,
   bodyOf,
   collectionTitle,
   isPublished,
@@ -12,11 +11,12 @@ import {
   type AdminCollection,
 } from '../../lib/admin/curation';
 import { consoleMessageFor } from '../../lib/admin/refusals';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { BadgeManagerCopy } from '../../lib/i18n/admin/curation-copy';
+import type { NoteDialogCopy } from '../../lib/i18n/admin/common-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { NoteDialog } from './NoteDialog';
 import { useCollections } from './useCollections';
-
-const SUBJECT = 'the editorial badges';
 
 /**
  * §4.11's AD-03: the editorial badge manager — issue #300.
@@ -51,8 +51,16 @@ const SUBJECT = 'the editorial badges';
  *
  * The dialog's 200ms entry and 150ms of colour on a control, and nothing else.
  */
-export function BadgeManager() {
-  const { status, collections, error, apply, reload, setError } = useCollections();
+export interface BadgeManagerProps {
+  readonly copy: BadgeManagerCopy;
+  readonly note: NoteDialogCopy;
+}
+
+export function BadgeManager({ copy, note }: BadgeManagerProps) {
+  const { status, collections, error, apply, reload, setError } = useCollections(
+    copy.subject,
+    copy.refusals,
+  );
 
   const [pending, setPending] = useState<AdminCollection | null>(null);
   const [dialogBusy, setDialogBusy] = useState(false);
@@ -60,7 +68,7 @@ export function BadgeManager() {
   const [notice, setNotice] = useState<string | null>(null);
 
   if (status === 'signed-out' || status === 'forbidden') {
-    return <ConsoleRefusal status={status} subject={SUBJECT} />;
+    return <ConsoleRefusal status={status} subject={copy.subject} copy={copy.refusals} />;
   }
 
   const granting = collections.filter((collection) => collection.grantsBadge);
@@ -91,13 +99,13 @@ export function BadgeManager() {
 
       apply(updated);
       setNotice(
-        updated.grantsBadge
-          ? `${collectionTitle(updated)} now grants the editorial badge to every campaign in it.`
-          : `${collectionTitle(updated)} no longer badges its campaigns.`,
+        fillPlaceholders(updated.grantsBadge ? copy.grantedNotice : copy.stoppedNotice, {
+          title: collectionTitle(updated),
+        }),
       );
       setPending(null);
     } catch (cause) {
-      setDialogError(consoleMessageFor(cause, SUBJECT));
+      setDialogError(consoleMessageFor(cause, copy.subject, copy.refusals));
     } finally {
       setDialogBusy(false);
     }
@@ -106,7 +114,7 @@ export function BadgeManager() {
   return (
     <section aria-labelledby="badges-heading">
       <h2 id="badges-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-        Collections that grant the badge
+        {copy.heading}
         {status === 'ready' && (
           <span className="ml-2 text-xs font-normal text-white/40">{granting.length}</span>
         )}
@@ -121,13 +129,13 @@ export function BadgeManager() {
       </div>
 
       {error !== null && (
-        <InlineAlert variant="danger" title="Something went wrong" className="mt-4">
+        <InlineAlert variant="danger" title={copy.errorTitle} className="mt-4">
           {error}
         </InlineAlert>
       )}
 
       {status === 'loading' && (
-        <SkeletonGroup label="Loading the collections" className="mt-4">
+        <SkeletonGroup label={copy.loadingList} className="mt-4">
           <div className="space-y-3">
             {[0, 1].map((row) => (
               <div key={row} className="rounded-lg border border-white/8 bg-surface-1 p-4">
@@ -143,8 +151,8 @@ export function BadgeManager() {
         <EmptyState
           className="mt-4"
           variant="empty"
-          title="Nothing carries the editorial badge"
-          description="No collection grants it, so no campaign shows one. Turn the grant on for a collection below, and every campaign in it is badged."
+          title={copy.emptyTitle}
+          description={copy.emptyBody}
         />
       )}
 
@@ -154,6 +162,7 @@ export function BadgeManager() {
             <BadgeRow
               key={collection.slug}
               collection={collection}
+              copy={copy}
               onToggle={() => {
                 setDialogError(null);
                 setPending(collection);
@@ -166,23 +175,20 @@ export function BadgeManager() {
       {status === 'ready' && (
         <>
           <h2 className="mt-10 text-lg font-medium tracking-[-0.02em] text-white">
-            Collections that do not
+            {copy.restHeading}
             <span className="ml-2 text-xs font-normal text-white/40">{rest.length}</span>
           </h2>
-          <p className="mt-1 max-w-[62ch] text-sm text-white/48">
-            A staff selection is the usual carrier of the badge and does not imply it. The two
-            are separate decisions, which is why they are separate columns and why this list
-            exists.
-          </p>
+          <p className="mt-1 max-w-[62ch] text-sm text-white/48">{copy.restIntro}</p>
 
           {rest.length === 0 ? (
-            <p className="mt-4 text-sm text-white/40">Every collection grants the badge.</p>
+            <p className="mt-4 text-sm text-white/40">{copy.allGrant}</p>
           ) : (
             <ul className="mt-4 flex list-none flex-col gap-2">
               {rest.map((collection) => (
                 <BadgeRow
                   key={collection.slug}
                   collection={collection}
+                  copy={copy}
                   onToggle={() => {
                     setDialogError(null);
                     setPending(collection);
@@ -196,7 +202,7 @@ export function BadgeManager() {
 
       {status === 'failed' && (
         <Pill variant="ghost" size="sm" className="mt-4" onClick={reload}>
-          Try again
+          {copy.tryAgain}
         </Pill>
       )}
 
@@ -204,18 +210,16 @@ export function BadgeManager() {
         title={
           pending === null
             ? null
-            : pending.grantsBadge
-              ? `Stop badging ${collectionTitle(pending)}?`
-              : `Badge everything in ${collectionTitle(pending)}?`
+            : fillPlaceholders(pending.grantsBadge ? copy.stopTitle : copy.grantTitle, {
+                title: collectionTitle(pending),
+              })
         }
         description={
-          pending?.grantsBadge === true
-            ? 'Every campaign in this collection loses the editorial badge.'
-            : 'Every campaign in this collection gains the editorial badge, including the ones already in it.'
+          pending?.grantsBadge === true ? copy.stopDescription : copy.grantDescription
         }
-        body="This endpoint takes no note, so what you write here is not recorded — it is the pause before a change that affects every campaign in the list at once. The change itself is audited."
-        confirmLabel={pending?.grantsBadge === true ? 'Stop badging' : 'Grant the badge'}
-        busyLabel="Saving"
+        body={copy.dialogBody}
+        confirmLabel={pending?.grantsBadge === true ? copy.stopConfirm : copy.grantConfirm}
+        busyLabel={copy.curation.saving}
         destructive={pending?.grantsBadge === true}
         busy={dialogBusy}
         error={dialogError}
@@ -224,6 +228,7 @@ export function BadgeManager() {
           setDialogError(null);
         }}
         onConfirm={() => void commit()}
+        copy={note}
       />
     </section>
   );
@@ -231,9 +236,11 @@ export function BadgeManager() {
 
 function BadgeRow({
   collection,
+  copy,
   onToggle,
 }: {
   readonly collection: AdminCollection;
+  readonly copy: BadgeManagerCopy;
   readonly onToggle: () => void;
 }) {
   const published = isPublished(collection);
@@ -251,21 +258,21 @@ function BadgeRow({
           <p className="mt-1 font-mono text-xs text-white/40">/collections/{collection.slug}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Tag>{COLLECTION_KIND_LABELS[collection.kind]}</Tag>
+          <Tag>{copy.curation.kind[collection.kind]}</Tag>
           {/*
             An unpublished collection that grants the badge badges nothing, because nobody can
             see the collection. Said here rather than left to be worked out: a curator who
             turned the grant on and saw no badges would otherwise reasonably think it failed.
           */}
           <Tag variant={published ? 'success' : 'default'}>
-            {published ? 'Published' : 'Unpublished — badges nothing yet'}
+            {published ? copy.curation.published : copy.unpublishedBadgesNothing}
           </Tag>
         </div>
       </div>
 
       <div className="mt-3">
         <Pill variant="outline" size="sm" onClick={onToggle}>
-          {collection.grantsBadge ? 'Stop granting the badge' : 'Grant the badge'}
+          {collection.grantsBadge ? copy.stopGranting : copy.grant}
         </Pill>
       </div>
     </li>

@@ -19,22 +19,19 @@ import {
   type ReportOutcome,
 } from '../../lib/moderation/api';
 import {
-  REPORT_OUTCOME_LABELS,
-  STATE_LABELS,
   formatExactTime,
   formatRelativeTime,
   openReportsLabel,
-  reasonLabel,
-  targetLabel,
 } from '../../lib/moderation/describe';
+import { fillNodes } from '../../lib/i18n/placeholders';
+import type { ReportDetailCopy } from '../../lib/i18n/admin/content-copy';
 import { DecisionDialog, type Decision } from '../moderation/DecisionDialog';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
-const SUBJECT = 'this report';
-
 export interface ReportDetailProps {
   readonly reportId: string;
+  readonly copy: ReportDetailCopy;
 }
 
 /**
@@ -75,7 +72,7 @@ export interface ReportDetailProps {
  * The modal's 200ms entry, and nothing else — docs/motion-system.md §5's budget for a working
  * surface, and the same one the queue keeps.
  */
-export function ReportDetail({ reportId }: ReportDetailProps) {
+export function ReportDetail({ reportId, copy }: ReportDetailProps) {
   const locale = useRouteLocale();
   const [status, setStatus] = useState<ConsoleStatus>('loading');
   const [report, setReport] = useState<QueuedReport | null>(null);
@@ -103,10 +100,10 @@ export function ReportDetail({ reportId }: ReportDetailProps) {
          * what a moderator came for; the trail is the second question, and losing it should
          * cost a line of text rather than the screen.
          */
-        setHistoryError(consoleMessageFor(cause, 'the decision history'));
+        setHistoryError(consoleMessageFor(cause, copy.historySubject, copy.refusals));
       }
     },
-    [reportId],
+    [reportId, copy],
   );
 
   useEffect(() => {
@@ -131,7 +128,7 @@ export function ReportDetail({ reportId }: ReportDetailProps) {
           return;
         }
         const next = statusFor(cause);
-        if (next === 'failed') setError(consoleMessageFor(cause, SUBJECT));
+        if (next === 'failed') setError(consoleMessageFor(cause, copy.subject, copy.refusals));
         setStatus(next);
       }
     }
@@ -139,6 +136,9 @@ export function ReportDetail({ reportId }: ReportDetailProps) {
     void load();
     void loadHistory(controller.signal);
     return () => controller.abort();
+    // `copy` is one object per server render; the language is a path segment, so a change to
+    // it remounts this tree rather than re-running the effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportId, attempt, loadHistory]);
 
   async function commit(note: string | null): Promise<void> {
@@ -167,22 +167,22 @@ export function ReportDetail({ reportId }: ReportDetailProps) {
           // The correction failed too; the message below still says what happened.
         }
         setPending(null);
-        setError(consoleMessageFor(cause, SUBJECT));
+        setError(consoleMessageFor(cause, copy.subject, copy.refusals));
         return;
       }
-      setDialogError(consoleMessageFor(cause, SUBJECT));
+      setDialogError(consoleMessageFor(cause, copy.subject, copy.refusals));
     } finally {
       setDialogBusy(false);
     }
   }
 
   if (status === 'signed-out' || status === 'forbidden') {
-    return <ConsoleRefusal status={status} subject={SUBJECT} />;
+    return <ConsoleRefusal status={status} subject={copy.subject} copy={copy.refusals} />;
   }
 
   if (status === 'loading') {
     return (
-      <SkeletonGroup label="Loading the report">
+      <SkeletonGroup label={copy.loadingList}>
         <div className="rounded-xl border border-white/8 bg-surface-1 p-5">
           <Skeleton height="1.25rem" width="40%" />
           <Skeleton height="0.875rem" width="60%" className="mt-3" />
@@ -196,14 +196,14 @@ export function ReportDetail({ reportId }: ReportDetailProps) {
     return (
       <EmptyState
         variant="empty"
-        title="No such report"
-        description="That identifier does not name a report. It may have been decided and removed, or the link may be wrong."
+        title={copy.notFoundTitle}
+        description={copy.notFoundBody}
         action={
           <Link
             href="/admin/moderation"
             className="rounded-lg text-sm text-white/64 underline underline-offset-2 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
           >
-            Back to the queue
+            {copy.backToQueue}
           </Link>
         }
       />
@@ -214,25 +214,25 @@ export function ReportDetail({ reportId }: ReportDetailProps) {
     return (
       <>
         {error && (
-          <InlineAlert variant="danger" title="Something went wrong">
+          <InlineAlert variant="danger" title={copy.errorTitle}>
             {error}
           </InlineAlert>
         )}
         <Pill variant="ghost" size="sm" className="mt-4" onClick={() => setAttempt((n) => n + 1)}>
-          Try again
+          {copy.tryAgain}
         </Pill>
       </>
     );
   }
 
   const now = new Date();
-  const kind = targetLabel(report.target.type);
+  const kind = copy.moderation.target[report.target.type];
   const open = report.state === 'OPEN';
 
   return (
     <div>
       {error && (
-        <InlineAlert variant="danger" title="Something went wrong" className="mb-4">
+        <InlineAlert variant="danger" title={copy.errorTitle} className="mb-4">
           {error}
         </InlineAlert>
       )}
@@ -247,23 +247,27 @@ export function ReportDetail({ reportId }: ReportDetailProps) {
               id="report-heading"
               className="text-lg font-medium tracking-[-0.02em] text-white"
             >
-              {reasonLabel(report.reason)}
+              {copy.moderation.reason[report.reason]}
             </h2>
             <p className="mt-1 text-sm text-white/64">
-              Reported about {kind}{' '}
-              <span className="font-mono" title={report.target.id}>
-                {report.target.id}
-              </span>
+              {fillNodes(copy.reportedAbout, {
+                kind,
+                id: (
+                  <span className="font-mono" title={report.target.id}>
+                    {report.target.id}
+                  </span>
+                ),
+              })}
             </p>
           </div>
           <Tag variant={report.state === 'UPHELD' ? 'success' : 'default'}>
-            {STATE_LABELS[report.state]}
+            {copy.moderation.state[report.state]}
           </Tag>
         </div>
 
         <dl className="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
           <div className="flex gap-2">
-            <dt className="text-white/40">Reported</dt>
+            <dt className="text-white/40">{copy.reported}</dt>
             <dd className="text-white/64">
               <time dateTime={report.createdAt} title={formatExactTime(report.createdAt, locale)}>
                 {formatRelativeTime(report.createdAt, now, locale)}
@@ -271,11 +275,13 @@ export function ReportDetail({ reportId }: ReportDetailProps) {
             </dd>
           </div>
           <div className="flex gap-2">
-            <dt className="text-white/40">Signal</dt>
-            <dd className="text-white/64">{openReportsLabel(report)}</dd>
+            <dt className="text-white/40">{copy.signal}</dt>
+            <dd className="text-white/64">
+              {openReportsLabel(report, copy.moderation, locale)}
+            </dd>
           </div>
           <div className="flex gap-2">
-            <dt className="text-white/40">Reporter</dt>
+            <dt className="text-white/40">{copy.reporter}</dt>
             {/*
               An account id and not a name. A report is an accusation, "this account has
               reported forty campaigns this week" is the question that catches abuse of the
@@ -296,26 +302,33 @@ export function ReportDetail({ reportId }: ReportDetailProps) {
 
         {report.resolution != null && (
           <div className="mt-4 rounded-md bg-surface-3 p-4">
-            <h3 className="text-sm font-medium text-white">Decision</h3>
+            <h3 className="text-sm font-medium text-white">{copy.moderation.decisionHeading}</h3>
             <p className="mt-1 text-sm text-white/64">
-              {STATE_LABELS[report.state]} by moderator{' '}
-              <span className="font-mono" title={report.resolution.moderatorId}>
-                {shortId(report.resolution.moderatorId)}
-              </span>{' '}
-              on <time dateTime={report.resolution.at}>{formatExactTime(report.resolution.at, locale)}</time>.
+              {fillNodes(copy.moderation.decidedBy[report.state], {
+                moderator: (
+                  <span className="font-mono" title={report.resolution.moderatorId}>
+                    {shortId(report.resolution.moderatorId)}
+                  </span>
+                ),
+                at: (
+                  <time dateTime={report.resolution.at}>
+                    {formatExactTime(report.resolution.at, locale)}
+                  </time>
+                ),
+              })}
             </p>
             {report.resolution.note != null && report.resolution.note !== '' ? (
               <p className="mt-2 text-sm text-white/64">{report.resolution.note}</p>
             ) : (
-              <p className="mt-2 text-sm text-white/40">No note was left.</p>
+              <p className="mt-2 text-sm text-white/40">{copy.moderation.noNote}</p>
             )}
           </div>
         )}
 
         {open && (
-          <div className="mt-5" role="group" aria-label="Decide this complaint">
+          <div className="mt-5" role="group" aria-label={copy.decideGroup}>
             <p className="text-xs font-medium uppercase tracking-wide text-white/40">
-              Decide the complaint
+              {copy.decideHeading}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {(['uphold', 'dismiss'] as const).map((outcome: ReportOutcome) => (
@@ -329,15 +342,11 @@ export function ReportDetail({ reportId }: ReportDetailProps) {
                     setPending({ kind: 'report', outcome });
                   }}
                 >
-                  {REPORT_OUTCOME_LABELS[outcome]}
+                  {copy.moderation.reportOutcome[outcome]}
                 </Pill>
               ))}
             </div>
-            <p className="mt-3 max-w-[62ch] text-sm text-white/40">
-              This records a judgement about the complaint and nothing else. Suspending the
-              campaign, banning the account and removing the content are separate decisions
-              with separate consequences, and none of them happens here.
-            </p>
+            <p className="mt-3 max-w-[62ch] text-sm text-white/40">{copy.decideFootnote}</p>
           </div>
         )}
       </section>
@@ -347,32 +356,25 @@ export function ReportDetail({ reportId }: ReportDetailProps) {
           id="report-history-heading"
           className="text-lg font-medium tracking-[-0.02em] text-white"
         >
-          History
+          {copy.historyHeading}
         </h2>
-        <p className="mt-1 max-w-[62ch] text-sm text-white/48">
-          Every privileged action recorded against this report, newest first — including the
-          attempts that were refused. Read back from the audit trail rather than remembered by
-          this screen, which is why it can answer for decisions taken last March.
-        </p>
+        <p className="mt-1 max-w-[62ch] text-sm text-white/48">{copy.historyIntro}</p>
 
         {historyError !== null && (
-          <InlineAlert variant="info" title="The history could not be read" className="mt-4">
+          <InlineAlert variant="info" title={copy.historyFailedTitle} className="mt-4">
             {historyError}
           </InlineAlert>
         )}
 
         {historyError === null && history === null && (
-          <SkeletonGroup label="Loading the decision history" className="mt-4">
+          <SkeletonGroup label={copy.loadingHistory} className="mt-4">
             <Skeleton height="0.875rem" width="60%" />
             <Skeleton height="0.875rem" width="45%" className="mt-2" />
           </SkeletonGroup>
         )}
 
         {history !== null && history.length === 0 && (
-          <p className="mt-4 text-sm text-white/40">
-            Nothing has been done to this report yet. A row appears here the moment somebody
-            decides it.
-          </p>
+          <p className="mt-4 text-sm text-white/40">{copy.historyEmpty}</p>
         )}
 
         {history !== null && history.length > 0 && (
@@ -381,18 +383,25 @@ export function ReportDetail({ reportId }: ReportDetailProps) {
               <li key={entry.id} className="rounded-lg border border-white/8 bg-surface-1 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <p className="text-sm text-white">
-                    {actionLabel(entry.action)}
-                    {entry.actorId != null && (
-                      <>
-                        {' by '}
-                        <span className="font-mono text-white/64" title={entry.actorId}>
-                          {shortId(entry.actorId)}
-                        </span>
-                      </>
-                    )}
+                    {entry.actorId == null
+                      ? actionLabel(entry.action, copy.auditAction)
+                      : /*
+                          One sentence with two holes rather than an action, the word "by" and
+                          an identifier concatenated: Azerbaijani and Turkish put the actor
+                          before the verb, and three JSX fragments cannot be reordered by a
+                          translation.
+                        */
+                        fillNodes(copy.actionBy, {
+                          action: actionLabel(entry.action, copy.auditAction),
+                          actor: (
+                            <span className="font-mono text-white/64" title={entry.actorId}>
+                              {shortId(entry.actorId)}
+                            </span>
+                          ),
+                        })}
                   </p>
                   <div className="flex items-center gap-2">
-                    {entry.outcome === 'REFUSED' && <Tag variant="warning">Refused</Tag>}
+                    {entry.outcome === 'REFUSED' && <Tag variant="warning">{copy.refused}</Tag>}
                     <time
                       dateTime={entry.occurredAt}
                       className="text-xs text-white/40"
@@ -421,6 +430,7 @@ export function ReportDetail({ reportId }: ReportDetailProps) {
           setDialogError(null);
         }}
         onConfirm={(note) => void commit(note)}
+        copy={copy.moderation}
       />
     </div>
   );

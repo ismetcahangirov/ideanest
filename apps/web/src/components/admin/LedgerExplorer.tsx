@@ -29,9 +29,11 @@ import {
   type ConsoleStatus,
 } from '../../lib/admin/refusals';
 import { formatMoney } from '../../lib/money';
+import { fillNodes } from '../../lib/i18n/placeholders';
+import { pluralise } from '../../lib/i18n/plurals';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
+import type { LedgerExplorerCopy } from '../../lib/i18n/admin/money-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
-
-const SUBJECT = 'the ledger';
 
 /**
  * §4.11's AD-05: the double-entry ledger, readable by account and by campaign — issue #305.
@@ -70,7 +72,12 @@ const SUBJECT = 'the ledger';
  * docs/motion-system.md §5's lowest budget, for the screen §22.1 treats as a regulatory
  * record.
  */
-export function LedgerExplorer() {
+export interface LedgerExplorerProps {
+  readonly copy: LedgerExplorerCopy;
+}
+
+export function LedgerExplorer({ copy }: LedgerExplorerProps) {
+  const locale = useRouteLocale();
   const [status, setStatus] = useState<ConsoleStatus>('loading');
   const [account, setAccount] = useState<string | null>(null);
   const [term, setTerm] = useState('');
@@ -105,13 +112,15 @@ export function LedgerExplorer() {
         if (controller.signal.aborted || wasAborted(cause)) return;
 
         const next = statusFor(cause);
-        if (next === 'failed') setError(consoleMessageFor(cause, SUBJECT));
+        if (next === 'failed') setError(consoleMessageFor(cause, copy.subject, copy.refusals));
         setStatus(next);
       }
     }
 
     void load();
     return () => controller.abort();
+    // The copy is one object per server render — see `useConsoleResource` for the argument.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account, projectId, attempt]);
 
   const loadMore = useCallback(async (): Promise<void> => {
@@ -124,14 +133,14 @@ export function LedgerExplorer() {
       setPostings((previous) => [...previous, ...view.postings]);
       setCursor(view.nextCursor ?? null);
     } catch (cause) {
-      setError(consoleMessageFor(cause, SUBJECT));
+      setError(consoleMessageFor(cause, copy.subject, copy.refusals));
     } finally {
       setLoadingMore(false);
     }
-  }, [account, cursor, loadingMore, projectId]);
+  }, [account, cursor, loadingMore, projectId, copy]);
 
   if (status === 'signed-out' || status === 'forbidden') {
-    return <ConsoleRefusal status={status} subject={SUBJECT} />;
+    return <ConsoleRefusal status={status} subject={copy.subject} copy={copy.refusals} />;
   }
 
   function submit(event: React.FormEvent): void {
@@ -145,7 +154,7 @@ export function LedgerExplorer() {
   return (
     <section aria-labelledby="ledger-heading">
       <h2 id="ledger-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-        Postings
+        {copy.heading}
         {status === 'ready' && (
           <span className="ml-2 text-xs font-normal text-white/40">{postings.length}</span>
         )}
@@ -158,33 +167,31 @@ export function LedgerExplorer() {
         looking at the ledger is the one who needs to know first.
       */}
       {status === 'ready' && unbalanced.length > 0 && (
-        <InlineAlert variant="danger" title="A posting does not balance" className="mt-4">
-          {unbalanced.length === 1 ? 'One posting on this page has' : `${unbalanced.length} postings on this page have`}{' '}
-          debits that do not equal their credits. The database refuses to commit that, so these
-          rows did not arrive through the application. Raise it before doing anything else.
+        <InlineAlert variant="danger" title={copy.unbalancedTitle} className="mt-4">
+          {pluralise(locale, copy.unbalanced, unbalanced.length)}
         </InlineAlert>
       )}
 
       {status === 'ready' && balances.length > 0 && (
-        <BalancePanel balances={balances} scoped={projectId !== null} />
+        <BalancePanel balances={balances} scoped={projectId !== null} copy={copy} />
       )}
 
       <div className="mt-6 space-y-3">
-        <ChipRow aria-label="Account">
+        <ChipRow aria-label={copy.accountFilter}>
           <Chip active={account === null} onClick={() => setAccount(null)}>
-            Every account
+            {copy.everyAccount}
           </Chip>
-          {LEDGER_ACCOUNTS.map(([value, label]) => (
+          {LEDGER_ACCOUNTS.map((value) => (
             <Chip key={value} active={account === value} onClick={() => setAccount(value)}>
-              {label}
+              {copy.money.account[value] ?? value}
             </Chip>
           ))}
         </ChipRow>
 
         <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
           <Field
-            label="Campaign"
-            hint="A campaign identifier, to see only what moved on it."
+            label={copy.campaignLabel}
+            hint={copy.campaignHint}
             className="min-w-[280px] flex-1"
           >
             <TextInput
@@ -195,7 +202,7 @@ export function LedgerExplorer() {
             />
           </Field>
           <Pill type="submit" variant="outline" size="sm" className="mb-1">
-            Apply
+            {copy.apply}
           </Pill>
           {projectId !== null && (
             <Pill
@@ -207,20 +214,20 @@ export function LedgerExplorer() {
                 setProjectId(null);
               }}
             >
-              Clear
+              {copy.clear}
             </Pill>
           )}
         </form>
       </div>
 
       {error && (
-        <InlineAlert variant="danger" title="Something went wrong" className="mt-4">
+        <InlineAlert variant="danger" title={copy.errorTitle} className="mt-4">
           {error}
         </InlineAlert>
       )}
 
       {status === 'loading' && (
-        <SkeletonGroup label="Loading the ledger" className="mt-4">
+        <SkeletonGroup label={copy.loadingList} className="mt-4">
           <div className="space-y-3">
             {[0, 1, 2].map((row) => (
               <div key={row} className="rounded-lg border border-white/8 bg-surface-1 p-4">
@@ -237,15 +244,9 @@ export function LedgerExplorer() {
         <EmptyState
           className="mt-4"
           variant={account === null && projectId === null ? 'empty' : 'filtered'}
-          title={
-            account === null && projectId === null
-              ? 'Nothing has been posted yet'
-              : 'Nothing matches that'
-          }
+          title={account === null && projectId === null ? copy.emptyTitle : copy.filteredTitle}
           description={
-            account === null && projectId === null
-              ? 'A posting is written when money actually moves. An empty ledger means no collection has succeeded on this deployment.'
-              : 'No posting has touched that account on that campaign. Widen the filters, or check the identifier.'
+            account === null && projectId === null ? copy.emptyBody : copy.filteredBody
           }
         />
       )}
@@ -253,7 +254,7 @@ export function LedgerExplorer() {
       {status === 'ready' && postings.length > 0 && (
         <ul className="mt-4 flex list-none flex-col gap-2">
           {postings.map((posting) => (
-            <PostingCard key={posting.transactionId} posting={posting} />
+            <PostingCard key={posting.transactionId} posting={posting} copy={copy} />
           ))}
         </ul>
       )}
@@ -266,13 +267,13 @@ export function LedgerExplorer() {
           disabled={loadingMore}
           onClick={() => void loadMore()}
         >
-          {loadingMore ? 'Loading' : 'Load more'}
+          {loadingMore ? copy.loading : copy.loadMore}
         </Pill>
       )}
 
       {status === 'failed' && (
         <Pill variant="ghost" size="sm" className="mt-4" onClick={() => setAttempt((n) => n + 1)}>
-          Try again
+          {copy.tryAgain}
         </Pill>
       )}
     </section>
@@ -294,29 +295,28 @@ export function LedgerExplorer() {
 function BalancePanel({
   balances,
   scoped,
+  copy,
 }: {
   readonly balances: readonly LedgerBalance[];
   readonly scoped: boolean;
+  readonly copy: LedgerExplorerCopy;
 }) {
   return (
     <div className="mt-4 rounded-xl border border-white/8 bg-surface-1 p-4 sm:p-5">
       <h3 className="text-sm font-medium text-white">
-        {scoped ? 'Balances on this campaign' : 'Balances across the platform'}
+        {scoped ? copy.balancesScoped : copy.balancesPlatform}
       </h3>
       <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
         {balances.map((balance) => (
           <div key={`${balance.account}-${balance.net.currency}`} className="flex justify-between gap-4">
             <dt className="text-white/48" title={balance.account}>
-              {accountLabel(balance.account)}
+              {accountLabel(balance.account, copy.money)}
             </dt>
             <dd className="font-mono tabular-nums text-white">{formatMoney(balance.net)}</dd>
           </div>
         ))}
       </dl>
-      <p className="mt-3 text-xs text-white/32">
-        Debits minus credits, per currency and never summed across them. Not narrowed by the
-        account filter above.
-      </p>
+      <p className="mt-3 text-xs text-white/32">{copy.balancesNote}</p>
     </div>
   );
 }
@@ -328,22 +328,32 @@ function BalancePanel({
  * provider, and here what it meant — so it is printed rather than shortened away entirely,
  * and the full value is on the `title` for copying.
  */
-function PostingCard({ posting }: { readonly posting: LedgerPosting }) {
+function PostingCard({
+  posting,
+  copy,
+}: {
+  readonly posting: LedgerPosting;
+  readonly copy: LedgerExplorerCopy;
+}) {
   return (
     <li className="rounded-lg border border-white/8 bg-surface-1 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="text-sm text-white/64">
-          transaction{' '}
-          <span className="font-mono text-white" title={posting.transactionId}>
-            {shortId(posting.transactionId)}
-          </span>
-          {' · campaign '}
-          <span className="font-mono" title={posting.projectId}>
-            {shortId(posting.projectId)}
-          </span>
+          {fillNodes(copy.postingLine, {
+            transaction: (
+              <span className="font-mono text-white" title={posting.transactionId}>
+                {shortId(posting.transactionId)}
+              </span>
+            ),
+            campaign: (
+              <span className="font-mono" title={posting.projectId}>
+                {shortId(posting.projectId)}
+              </span>
+            ),
+          })}
         </p>
         <div className="flex items-center gap-2">
-          {!posting.balanced && <Tag variant="danger">Does not balance</Tag>}
+          {!posting.balanced && <Tag variant="danger">{copy.doesNotBalance}</Tag>}
           <time
             dateTime={posting.createdAt}
             className="text-xs text-white/40"
@@ -365,11 +375,11 @@ function PostingCard({ posting }: { readonly posting: LedgerPosting }) {
             className="flex items-baseline justify-between gap-4 text-sm"
           >
             <span className="text-white/64" title={line.account}>
-              {accountLabel(line.account)}
+              {accountLabel(line.account, copy.money)}
             </span>
             <span className="flex items-baseline gap-3">
               <span className="text-xs uppercase tracking-wide text-white/40">
-                {line.direction === 'DEBIT' ? 'debit' : 'credit'}
+                {line.direction === 'DEBIT' ? copy.debit : copy.credit}
               </span>
               <span className="font-mono tabular-nums text-white">{formatMoney(line.amount)}</span>
             </span>

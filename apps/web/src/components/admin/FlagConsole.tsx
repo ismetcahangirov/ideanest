@@ -14,10 +14,10 @@ import {
 } from '@ideanest/ui';
 import { FLAG_KEY_PATTERN, readFlags, saveFlag, type FeatureFlag } from '../../lib/admin/flags';
 import { consoleMessageFor } from '../../lib/admin/refusals';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { FlagConsoleCopy } from '../../lib/i18n/admin/platform-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { useConsoleResource } from './useConsoleResource';
-
-const SUBJECT = 'the feature flags';
 
 /**
  * §4.11's AD-12: gradual rollout and experiments — issue #312.
@@ -41,8 +41,12 @@ const SUBJECT = 'the feature flags';
  * deleted row and a row that never existed are indistinguishable from the application&apos;s
  * side. A flag is switched off instead, which leaves the row saying who switched it off.
  */
-export function FlagConsole() {
-  const flags = useConsoleResource((signal) => readFlags(signal), SUBJECT, []);
+export interface FlagConsoleProps {
+  readonly copy: FlagConsoleCopy;
+}
+
+export function FlagConsole({ copy }: FlagConsoleProps) {
+  const flags = useConsoleResource((signal) => readFlags(signal), copy.subject, copy.refusals, []);
 
   const [key, setKey] = useState('');
   const [description, setDescription] = useState('');
@@ -50,7 +54,7 @@ export function FlagConsole() {
   const [error, setError] = useState<string | null>(null);
 
   if (flags.status === 'signed-out' || flags.status === 'forbidden') {
-    return <ConsoleRefusal status={flags.status} subject={SUBJECT} />;
+    return <ConsoleRefusal status={flags.status} subject={copy.subject} copy={copy.refusals} />;
   }
 
   async function save(flag: FeatureFlag, change: Partial<FeatureFlag>): Promise<void> {
@@ -66,7 +70,7 @@ export function FlagConsole() {
       });
       flags.reload();
     } catch (cause) {
-      setError(consoleMessageFor(cause, SUBJECT));
+      setError(consoleMessageFor(cause, copy.subject, copy.refusals));
     } finally {
       setBusy(false);
     }
@@ -93,7 +97,7 @@ export function FlagConsole() {
       setDescription('');
       flags.reload();
     } catch (cause) {
-      setError(consoleMessageFor(cause, SUBJECT));
+      setError(consoleMessageFor(cause, copy.subject, copy.refusals));
     } finally {
       setBusy(false);
     }
@@ -105,7 +109,7 @@ export function FlagConsole() {
     <div className="flex flex-col gap-10">
       <section aria-labelledby="flags-heading">
         <h2 id="flags-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-          Flags
+          {copy.heading}
           {flags.status === 'ready' && (
             <span className="ml-2 text-xs font-normal text-white/40">
               {flags.data?.flags.length ?? 0}
@@ -114,7 +118,7 @@ export function FlagConsole() {
         </h2>
 
         {flags.status === 'loading' && (
-          <SkeletonGroup label="Loading feature flags" className="mt-4">
+          <SkeletonGroup label={copy.loadingList} className="mt-4">
             <div className="space-y-3">
               {[0, 1].map((row) => (
                 <div key={row} className="rounded-lg border border-white/8 bg-surface-1 p-4">
@@ -128,11 +132,11 @@ export function FlagConsole() {
 
         {flags.status === 'failed' && (
           <>
-            <InlineAlert variant="danger" title="Something went wrong" className="mt-4">
+            <InlineAlert variant="danger" title={copy.errorTitle} className="mt-4">
               {flags.error}
             </InlineAlert>
             <Pill variant="ghost" size="sm" className="mt-4" onClick={flags.reload}>
-              Try again
+              {copy.tryAgain}
             </Pill>
           </>
         )}
@@ -141,8 +145,8 @@ export function FlagConsole() {
           <EmptyState
             className="mt-4"
             variant="empty"
-            title="No flags"
-            description="Nothing on this deployment is behind a switch. Code asking for a flag that does not exist gets false, so the platform behaves as though every unbuilt feature is off — which is the safe direction."
+            title={copy.emptyTitle}
+            description={copy.emptyBody}
           />
         )}
 
@@ -159,13 +163,13 @@ export function FlagConsole() {
                   <Switch
                     checked={flag.enabled}
                     disabled={busy}
-                    label={flag.enabled ? 'On' : 'Off'}
+                    label={flag.enabled ? copy.on : copy.off}
                     onCheckedChange={(next) => void save(flag, { enabled: next })}
                   />
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-white/48">Rollout</span>
+                  <span className="text-xs text-white/48">{copy.rollout}</span>
                   {[0, 10, 25, 50, 100].map((percentage) => (
                     <Pill
                       key={percentage}
@@ -178,13 +182,17 @@ export function FlagConsole() {
                     </Pill>
                   ))}
                   {flag.enabledAccounts.length > 0 && (
-                    <Tag>{flag.enabledAccounts.length} always in</Tag>
+                    <Tag>
+                      {fillPlaceholders(copy.alwaysIn, {
+                        count: String(flag.enabledAccounts.length),
+                      })}
+                    </Tag>
                   )}
                 </div>
 
                 <p className="mt-3 text-xs text-white/40">
-                  Last changed {flag.updatedAt.slice(0, 10)}
-                  {flag.enabled ? '' : ' · off for everybody, including the accounts named on it'}
+                  {fillPlaceholders(copy.lastChanged, { date: flag.updatedAt.slice(0, 10) })}
+                  {flag.enabled ? '' : ` · ${copy.offForEverybody}`}
                 </p>
               </li>
             ))}
@@ -194,29 +202,27 @@ export function FlagConsole() {
 
       <section aria-labelledby="new-flag-heading">
         <h2 id="new-flag-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-          Add a flag
+          {copy.addHeading}
         </h2>
-        <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-          New flags arrive off and at nought percent. Widening a rollout only ever adds people —
-          the accounts inside it are decided by a stable hash rather than a sample, so nobody
-          loses a feature because the percentage went up.
-        </p>
+        <p className="mt-2 max-w-[62ch] text-sm text-white/64">{copy.addIntro}</p>
 
         <form onSubmit={(event) => void create(event)} className="mt-4 flex flex-wrap items-end gap-3">
           <Field
-            label="Name"
-            hint="Lower case and hyphenated, as the code asks for it."
-            error={keyIsValid ? undefined : 'Lower case letters, digits and hyphens.'}
+            label={copy.nameLabel}
+            hint={copy.nameHint}
+            error={keyIsValid ? undefined : copy.nameError}
             className="min-w-[240px]"
           >
             <TextInput
               value={key}
               onChange={(event) => setKey(event.target.value)}
+              /* An example flag name rather than a sentence: it is the shape the service's
+                 `CHECK` accepts, and it reads the same in every language. */
               placeholder="checkout-v2"
             />
           </Field>
 
-          <Field label="What it switches" className="min-w-[280px] flex-1">
+          <Field label={copy.switchesLabel} className="min-w-[280px] flex-1">
             <TextInput
               value={description}
               onChange={(event) => setDescription(event.target.value)}
@@ -225,12 +231,12 @@ export function FlagConsole() {
           </Field>
 
           <Pill type="submit" variant="outline" size="sm" className="mb-1" disabled={busy || !keyIsValid}>
-            {busy ? 'Working' : 'Add'}
+            {busy ? copy.working : copy.add}
           </Pill>
         </form>
 
         {error && (
-          <InlineAlert variant="danger" title="That did not work" className="mt-4">
+          <InlineAlert variant="danger" title={copy.failedTitle} className="mt-4">
             {error}
           </InlineAlert>
         )}

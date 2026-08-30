@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { HealthDashboard } from '../../../../components/admin/HealthDashboard';
+import { healthDashboardCopy } from '../../../../lib/i18n/admin/console.server';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 
 /**
@@ -12,25 +14,22 @@ import { privatePageMetadata } from '../../../../lib/seo/metadata';
  * <p>`privatePageMetadata` for the reason every console route gives: these pages are
  * per-person, they are not for a crawler, and several of them name people.
  */
-export const metadata: Metadata = privatePageMetadata({
-  title: 'System health',
-  description: 'Queue depth, failed jobs and provider status, measured when you open the page.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('admin.pages.health');
 
-export default function HealthPage() {
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
+
+export default async function HealthPage() {
+  const t = await getTranslations('admin.pages.health');
+
   return (
     <div className="max-w-[920px]">
-      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
-        System health
-      </h1>
-      <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-        Measured when you open it. Nothing on this page wakes anybody, and nothing watches it while
-        you are not looking — read it when you suspect something rather than relying on it to
-        tell you.
-      </p>
+      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">{t('title')}</h1>
+      <p className="mt-2 max-w-[62ch] text-sm text-white/64">{t('intro')}</p>
 
       <div className="mt-8">
-        <HealthDashboard />
+        <HealthDashboard copy={await healthDashboardCopy()} />
       </div>
     </div>
   );

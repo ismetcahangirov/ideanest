@@ -7,6 +7,7 @@ import {
   wasAborted,
   type ConsoleStatus,
 } from '../../lib/admin/refusals';
+import type { ConsoleRefusalsCopy } from '../../lib/i18n/admin/common-copy';
 
 /**
  * The load-and-refuse dance every console screen does, written once — issues #295 to #316.
@@ -59,13 +60,17 @@ export interface ConsoleResource<T> {
  * @param read the client call. **Must take the signal and pass it to `fetch`**, or a filter
  *     change will leave the previous request running and racing the new one
  * @param subject what the reader was trying to read, in the screen's own words — "the payout
- *     queue". Interpolated into the failure message
+ *     queue" — and in the reader's language since #324. Interpolated into the failure message
+ * @param refusals the console's refusal table, resolved on the server by the route and handed
+ *     down. Not in the effect's dependencies: it is one object per render of a server
+ *     component, so it changes when the language does and the language changes the route
  * @param dependencies what a change should reload on, exactly as `useEffect` takes them. A
  *     filter, a page number, an identifier
  */
 export function useConsoleResource<T>(
   read: (signal: AbortSignal) => Promise<T>,
   subject: string,
+  refusals: ConsoleRefusalsCopy,
   dependencies: readonly unknown[],
 ): ConsoleResource<T> {
   const [status, setStatus] = useState<ConsoleStatus>('loading');
@@ -93,7 +98,7 @@ export function useConsoleResource<T>(
         if (controller.signal.aborted || wasAborted(cause)) return;
 
         const next = statusFor(cause);
-        setError(next === 'failed' ? consoleMessageFor(cause, subject) : null);
+        setError(next === 'failed' ? consoleMessageFor(cause, subject, refusals) : null);
         setStatus(next);
       }
     }

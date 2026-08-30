@@ -1,13 +1,9 @@
 import type { Locale } from '../i18n/locale';
+import type { ModerationCopy } from '../i18n/admin/content-copy';
+import { fillPlaceholders } from '../i18n/placeholders';
+import { pluralise } from '../i18n/plurals';
 import { formatRelativeTime as baseRelativeTime } from '../time';
-import type {
-  CampaignOutcome,
-  QueuedReport,
-  ReportOutcome,
-  ReportReason,
-  ReportState,
-  ReportTargetType,
-} from './api';
+import type { QueuedReport, ReportReason, ReportState, ReportTargetType } from './api';
 
 /**
  * Turning a queue row into words.
@@ -17,6 +13,23 @@ import type {
  * measures its age from the same instant.
  */
 
+/**
+ * The nine reasons, in English, for the one surface that still draws them from here.
+ *
+ * <h2>This is `ReportControl`'s table and nothing else's since #324</h2>
+ *
+ * The console reads `admin.moderation.reason`, which is the same nine words in four
+ * languages. This constant survives because `components/moderation/ReportControl` — the
+ * dialog a member of the public opens on a campaign page — is not part of the console and
+ * was not translated with it: it carries its own reason descriptions, its own target nouns
+ * and about ten more sentences, and half-translating a public surface inside an
+ * administrative change would be worse than leaving it whole.
+ *
+ * <p><strong>The duplication is held still by a test rather than by a comment.</strong>
+ * `lib/i18n/wording.test.ts` asserts that `admin.moderation.reason` says exactly what this
+ * table says, so the day somebody rewords one the other fails rather than drifting. It goes
+ * when the public control is translated, which is the rest of #324.
+ */
 export const REASON_LABELS: Readonly<Record<ReportReason, string>> = {
   PROHIBITED_ITEM: 'Prohibited item',
   MISREPRESENTATION: 'Misrepresentation',
@@ -28,50 +41,6 @@ export const REASON_LABELS: Readonly<Record<ReportReason, string>> = {
   FRAUD: 'Fraud',
   OTHER: 'Other',
 };
-
-/**
- * What was reported, in the words a moderator uses for it.
- *
- * "Campaign" rather than "project", because that is what the rest of the product
- * calls one.
- */
-export const TARGET_LABELS: Readonly<Record<ReportTargetType, string>> = {
-  PROJECT: 'campaign',
-  PROJECT_UPDATE: 'campaign update',
-  COMMENT: 'comment',
-  USER: 'account',
-};
-
-export const STATE_LABELS: Readonly<Record<ReportState, string>> = {
-  OPEN: 'Open',
-  UPHELD: 'Upheld',
-  DISMISSED: 'Dismissed',
-};
-
-/** Past tense, for the sentence that says what happened to a decided report. */
-export const RESOLUTION_VERBS: Readonly<Record<ReportOutcome, string>> = {
-  uphold: 'Upheld',
-  dismiss: 'Dismissed',
-};
-
-export const CAMPAIGN_OUTCOME_LABELS: Readonly<Record<CampaignOutcome, string>> = {
-  approve: 'Approve',
-  reject: 'Reject',
-  'request-changes': 'Request changes',
-};
-
-export const REPORT_OUTCOME_LABELS: Readonly<Record<ReportOutcome, string>> = {
-  uphold: 'Uphold',
-  dismiss: 'Dismiss',
-};
-
-export function reasonLabel(reason: ReportReason): string {
-  return REASON_LABELS[reason];
-}
-
-export function targetLabel(type: ReportTargetType): string {
-  return TARGET_LABELS[type];
-}
 
 /**
  * Enough of an identifier to tell two cards apart, said aloud without pain.
@@ -121,11 +90,32 @@ export function isRepeated(report: QueuedReport): boolean {
   return report.openReportsOnTarget > 1;
 }
 
-/** "1 open report on this campaign" / "14 open reports on this campaign". */
-export function openReportsLabel(report: QueuedReport): string {
-  const count = report.openReportsOnTarget;
-  const noun = count === 1 ? 'open report' : 'open reports';
-  return `${count} ${noun} on this ${targetLabel(report.target.type)}`;
+/**
+ * "1 open report on this campaign", in the reader's language.
+ *
+ * <h2>Why this takes a locale where it used to take nothing</h2>
+ *
+ * It used to pick between "report" and "reports" with a ternary, which is the whole of
+ * English plurals and none of Russian's — 1 zhaloba, 2 zhaloby, 5 zhalob. `pluralise` carries
+ * the CLDR rules, and `lib/i18n/plurals.ts` records why a count like this one is resolved in
+ * the browser rather than as ICU on the server.
+ *
+ * <p>The target arrives as a whole phrase from the catalogue rather than as a noun this
+ * function puts "on this" in front of. Russian agrees the demonstrative with the noun's
+ * gender, and one shared "on this" cannot express that. Falls back to the bare noun for a
+ * target kind the catalogue has not been taught, which reads awkwardly and still says which
+ * kind it is.
+ */
+export function openReportsLabel(
+  report: QueuedReport,
+  copy: ModerationCopy,
+  locale: Locale,
+): string {
+  const phrase = copy.targetOnThis[report.target.type] ?? copy.target[report.target.type] ?? '';
+
+  return fillPlaceholders(pluralise(locale, copy.openReports, report.openReportsOnTarget), {
+    phrase,
+  });
 }
 
 /* -------------------------------------------------------------------------

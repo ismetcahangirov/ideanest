@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '../api/problem';
 import { consoleMessageFor, requiredCapabilityFrom } from './refusals';
-import { CAPABILITY_LABELS, ROLE_CAPABILITIES, holds, type StaffMembership } from './staff';
+import { ROLE_CAPABILITIES, holds, type StaffMembership } from './staff';
+import { translatorFor } from '../../test-copy';
+import { consoleChromeCopyFrom } from '../i18n/admin/common-copy';
+import { staffRolesCopyFrom } from '../i18n/admin/people-copy';
+
+/* Built from `messages/en.json` by the same functions the screen calls — see `src/test-copy.ts`. */
+const CHROME = consoleChromeCopyFrom(translatorFor('admin'), translatorFor('common'));
+const STAFF = staffRolesCopyFrom(translatorFor('admin'), CHROME);
 
 /**
  * What the console does with a role model — issue #295.
@@ -53,6 +60,7 @@ describe('the message a refused screen shows', () => {
     const message = consoleMessageFor(
       forbidden('INSUFFICIENT_STAFF_CAPABILITY', { capability: 'APPROVE_PAYOUT' }),
       'the payout queue',
+      CHROME.refusals,
     );
 
     expect(message).toContain('APPROVE_PAYOUT');
@@ -60,7 +68,7 @@ describe('the message a refused screen shows', () => {
   });
 
   it('tells a stranger something different', () => {
-    const message = consoleMessageFor(forbidden('NOT_A_MODERATOR'), 'the ledger');
+    const message = consoleMessageFor(forbidden('NOT_A_MODERATOR'), 'the ledger', CHROME.refusals);
 
     // The distinction #295 exists for: one of these is fixed by asking for a role, and the
     // other cannot be fixed by the person reading it.
@@ -96,7 +104,10 @@ describe('the role vocabulary', () => {
     // codebase identifier put in front of somebody deciding what a colleague may do.
     for (const [role, capabilities] of Object.entries(ROLE_CAPABILITIES)) {
       for (const capability of capabilities) {
-        expect(CAPABILITY_LABELS[capability], `${role} confers ${capability}, which has no label`).toBeTruthy();
+        expect(
+          STAFF.capability[capability],
+          `${role} confers ${capability}, which has no label`,
+        ).toBeTruthy();
       }
     }
   });

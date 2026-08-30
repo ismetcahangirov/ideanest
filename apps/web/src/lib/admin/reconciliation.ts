@@ -77,30 +77,9 @@ export async function runReconciliation(signal?: AbortSignal): Promise<Reconcili
   return (await response.json()) as ReconciliationReport;
 }
 
-/** What a finding is called on the screen. One sentence per kind, in §7.2's own terms. */
-export const FINDING_TITLES: Record<FindingKind, string> = {
-  UNBALANCED: 'The ledger does not sum to zero',
-  IMPOSSIBLE_SIGN: 'An account holds a balance it cannot hold',
-  DISAGREES_WITH_PAYMENTS: 'The ledger and the payment records disagree',
-};
-
-/**
- * What each kind means for somebody who has to act on it.
- *
- * <p>Here rather than in the component because these three sentences are the whole
- * usefulness of the screen: a member of finance reading "UNBALANCED" learns nothing they
- * did not know from the word, and what they need is which of the platform's guarantees has
- * just been broken and therefore who to call.
+/*
+ * The two finding tables moved to `admin.screens.reconciliation` with #324 — they are the
+ * whole usefulness of the screen and they are prose, so they belong where a translator can
+ * reach them. Both are keyed by {@link FindingKind}, which is the service's own vocabulary and
+ * stays here.
  */
-export const FINDING_MEANINGS: Record<FindingKind, string> = {
-  UNBALANCED:
-    'PostgreSQL refuses a posting whose debits and credits differ, so a row got past both ' +
-    'the application and that trigger. Nothing else on this platform can produce it.',
-  IMPOSSIBLE_SIGN:
-    'Escrow below zero is money paid out that was never taken; a creator’s account above ' +
-    'zero is a creator paid more than they earned. Neither is caught by the sum, because ' +
-    'two errors of opposite sign balance perfectly.',
-  DISAGREES_WITH_PAYMENTS:
-    'What the ledger holds and what the transactions say moved are not the same figure. ' +
-    'This is the only check that catches a posting the application never made at all.',
-};

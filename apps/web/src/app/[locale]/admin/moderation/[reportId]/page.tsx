@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { ReportDetail } from '../../../../../components/admin/ReportDetail';
+import { reportDetailCopy } from '../../../../../lib/i18n/admin/console.server';
 import { privatePageMetadata } from '../../../../../lib/seo/metadata';
 
 /**
@@ -16,10 +18,11 @@ import { privatePageMetadata } from '../../../../../lib/seo/metadata';
  * this page quotes what one person wrote about another and shows the account that wrote
  * it.
  */
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Report',
-  description: 'One complaint, the decision taken on it, and everything recorded against it.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('admin.pages.moderationReportId');
+
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
 
 export default async function ReportDetailPage({
   params,
@@ -28,18 +31,15 @@ export default async function ReportDetailPage({
 }) {
   const { reportId } = await params;
 
+  const t = await getTranslations('admin.pages.moderationReportId');
+
   return (
     <div className="max-w-[880px]">
-      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
-        Report
-      </h1>
-      <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-        The complaint, what was decided about it, and every privileged action recorded
-        against it — including the ones that were refused.
-      </p>
+      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">{t('title')}</h1>
+      <p className="mt-2 max-w-[62ch] text-sm text-white/64">{t('intro')}</p>
 
       <div className="mt-8">
-        <ReportDetail reportId={reportId} />
+        <ReportDetail reportId={reportId} copy={await reportDetailCopy()} />
       </div>
     </div>
   );

@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { DisputeConsole } from '../../../../components/admin/DisputeConsole';
+import { disputeConsoleCopy } from '../../../../lib/i18n/admin/console.server';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 
 /**
@@ -11,25 +13,22 @@ import { privatePageMetadata } from '../../../../lib/seo/metadata';
  * <p>`privatePageMetadata` for the reason every console route gives: these pages are
  * per-person, they are not for a crawler, and several of them name people.
  */
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Chargebacks',
-  description: 'Cases a card network raised, the evidence against them, and how each ended.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('admin.pages.disputes');
 
-export default function DisputesPage() {
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
+
+export default async function DisputesPage() {
+  const t = await getTranslations('admin.pages.disputes');
+
   return (
     <div className="max-w-[920px]">
-      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
-        Chargebacks
-      </h1>
-      <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-        Ordered by deadline, soonest first. Everything else about a dispute can be reconstructed
-        from the provider afterwards; a deadline that has passed cannot, and losing by default is
-        the expensive way to lose.
-      </p>
+      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">{t('title')}</h1>
+      <p className="mt-2 max-w-[62ch] text-sm text-white/64">{t('intro')}</p>
 
       <div className="mt-8">
-        <DisputeConsole />
+        <DisputeConsole copy={await disputeConsoleCopy()} />
       </div>
     </div>
   );

@@ -13,8 +13,6 @@ import {
 } from '@ideanest/ui';
 import {
   PAYMENT_PAGE_SIZE,
-  TRANSACTION_STATUS_LABELS,
-  TRANSACTION_TYPE_LABELS,
   readPaymentLog,
   statusVariant,
   type LoggedTransaction,
@@ -27,9 +25,9 @@ import {
   type ConsoleStatus,
 } from '../../lib/admin/refusals';
 import { formatMoney } from '../../lib/money';
+import { fillNodes, fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { PaymentLogCopy } from '../../lib/i18n/admin/money-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
-
-const SUBJECT = 'the payment log';
 
 /** Which of the two identifiers the search box is holding. */
 type Scope = 'pledge' | 'project';
@@ -64,7 +62,11 @@ type Scope = 'pledge' | 'project';
  * docs/motion-system.md §5 puts motion at its lowest as money gets closer, and this is the
  * screen that is entirely money. 150ms of colour on a control, and nothing else.
  */
-export function PaymentLogView() {
+export interface PaymentLogViewProps {
+  readonly copy: PaymentLogCopy;
+}
+
+export function PaymentLogView({ copy }: PaymentLogViewProps) {
   const [status, setStatus] = useState<ConsoleStatus>('loading');
   const [scope, setScope] = useState<Scope>('project');
   const [term, setTerm] = useState('');
@@ -99,13 +101,15 @@ export function PaymentLogView() {
         if (controller.signal.aborted || wasAborted(cause)) return;
 
         const next = statusFor(cause);
-        if (next === 'failed') setError(consoleMessageFor(cause, SUBJECT));
+        if (next === 'failed') setError(consoleMessageFor(cause, copy.subject, copy.refusals));
         setStatus(next);
       }
     }
 
     void load();
     return () => controller.abort();
+    // The copy is one object per server render — see `useConsoleResource` for the argument.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, attempt]);
 
   const loadMore = useCallback(async (): Promise<void> => {
@@ -123,14 +127,14 @@ export function PaymentLogView() {
       setRows((previous) => [...previous, ...page.transactions]);
       setCursor(page.nextCursor ?? null);
     } catch (cause) {
-      setError(consoleMessageFor(cause, SUBJECT));
+      setError(consoleMessageFor(cause, copy.subject, copy.refusals));
     } finally {
       setLoadingMore(false);
     }
-  }, [cursor, filter, loadingMore]);
+  }, [cursor, filter, loadingMore, copy]);
 
   if (status === 'signed-out' || status === 'forbidden') {
-    return <ConsoleRefusal status={status} subject={SUBJECT} />;
+    return <ConsoleRefusal status={status} subject={copy.subject} copy={copy.refusals} />;
   }
 
   function submit(event: React.FormEvent): void {
@@ -142,7 +146,7 @@ export function PaymentLogView() {
   return (
     <section aria-labelledby="payment-log-heading">
       <h2 id="payment-log-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-        Provider calls
+        {copy.heading}
         {status === 'ready' && (
           <span className="ml-2 text-xs font-normal text-white/40">{rows.length}</span>
         )}
@@ -150,8 +154,8 @@ export function PaymentLogView() {
 
       <form onSubmit={submit} className="mt-4 flex flex-wrap items-end gap-3">
         <Field
-          label="Identifier"
-          hint="A campaign or a pledge. The whole identifier, not part of one."
+          label={copy.identifierLabel}
+          hint={copy.identifierHint}
           className="min-w-[280px] flex-1"
         >
           <TextInput
@@ -169,7 +173,7 @@ export function PaymentLogView() {
           this surface reads as "nothing was ever charged".
         */}
         <fieldset className="flex items-end gap-3">
-          <legend className="sr-only">What the identifier names</legend>
+          <legend className="sr-only">{copy.scopeLegend}</legend>
           {(['project', 'pledge'] as const).map((option) => (
             <label key={option} className="flex items-center gap-2 pb-2.5 text-sm text-white/64">
               <input
@@ -180,13 +184,13 @@ export function PaymentLogView() {
                 onChange={() => setScope(option)}
                 className="accent-[var(--lime-500)]"
               />
-              {option === 'project' ? 'Campaign' : 'Pledge'}
+              {option === 'project' ? copy.scopeProject : copy.scopePledge}
             </label>
           ))}
         </fieldset>
 
         <Pill type="submit" variant="outline" size="sm" className="mb-1">
-          Search
+          {copy.search}
         </Pill>
         {submitted !== null && (
           <Pill
@@ -198,19 +202,19 @@ export function PaymentLogView() {
               setSubmitted(null);
             }}
           >
-            Clear
+            {copy.clear}
           </Pill>
         )}
       </form>
 
       {error && (
-        <InlineAlert variant="danger" title="Something went wrong" className="mt-4">
+        <InlineAlert variant="danger" title={copy.errorTitle} className="mt-4">
           {error}
         </InlineAlert>
       )}
 
       {status === 'loading' && (
-        <SkeletonGroup label="Loading the payment log" className="mt-4">
+        <SkeletonGroup label={copy.loadingList} className="mt-4">
           <div className="space-y-3">
             {[0, 1, 2].map((row) => (
               <div key={row} className="rounded-lg border border-white/8 bg-surface-1 p-4">
@@ -226,19 +230,15 @@ export function PaymentLogView() {
         <EmptyState
           className="mt-4"
           variant={submitted === null ? 'empty' : 'filtered'}
-          title={submitted === null ? 'Nothing has been charged yet' : 'No calls for that identifier'}
-          description={
-            submitted === null
-              ? 'Every call to a payment provider is recorded here, including the ones that were refused. An empty log means no collection has run on this deployment.'
-              : 'Nothing has been asked of a provider about that campaign or pledge. Check the identifier, and which of the two it is.'
-          }
+          title={submitted === null ? copy.emptyTitle : copy.filteredTitle}
+          description={submitted === null ? copy.emptyBody : copy.filteredBody}
         />
       )}
 
       {status === 'ready' && rows.length > 0 && (
         <ul className="mt-4 flex list-none flex-col gap-2">
           {rows.map((row) => (
-            <TransactionRow key={row.id} transaction={row} />
+            <TransactionRow key={row.id} transaction={row} copy={copy} />
           ))}
         </ul>
       )}
@@ -251,13 +251,13 @@ export function PaymentLogView() {
           disabled={loadingMore}
           onClick={() => void loadMore()}
         >
-          {loadingMore ? 'Loading' : 'Load more'}
+          {loadingMore ? copy.loading : copy.loadMore}
         </Pill>
       )}
 
       {status === 'failed' && (
         <Pill variant="ghost" size="sm" className="mt-4" onClick={() => setAttempt((n) => n + 1)}>
-          Try again
+          {copy.tryAgain}
         </Pill>
       )}
     </section>
@@ -277,39 +277,57 @@ export function PaymentLogView() {
  * client branches on and the sentence is what a person reads, and the two frequently disagree
  * in useful ways.
  */
-function TransactionRow({ transaction }: { readonly transaction: LoggedTransaction }) {
+function TransactionRow({
+  transaction,
+  copy,
+}: {
+  readonly transaction: LoggedTransaction;
+  readonly copy: PaymentLogCopy;
+}) {
   return (
     <li className="rounded-lg border border-white/8 bg-surface-1 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[15px] font-medium text-white">
             {formatMoney(transaction.amount)}{' '}
-            <span className="font-normal text-white/48">
-              {TRANSACTION_TYPE_LABELS[transaction.type]}
-            </span>
+            <span className="font-normal text-white/48">{copy.type[transaction.type]}</span>
           </p>
           <p className="mt-1 text-sm text-white/64">
-            campaign{' '}
-            <span className="font-mono" title={transaction.projectId}>
-              {shortId(transaction.projectId)}
-            </span>
+            {/*
+              Three fragments joined by a separator rather than one template with two optional
+              holes: the pledge is absent on a payout, and a sentence built around it would
+              leave a stray dot behind.
+            */}
+            {fillNodes(copy.campaignPart, {
+              id: (
+                <span className="font-mono" title={transaction.projectId}>
+                  {shortId(transaction.projectId)}
+                </span>
+              ),
+            })}
             {transaction.pledgeId != null && (
               <>
-                {' · pledge '}
-                <span className="font-mono" title={transaction.pledgeId}>
-                  {shortId(transaction.pledgeId)}
-                </span>
+                {' · '}
+                {fillNodes(copy.pledgePart, {
+                  id: (
+                    <span className="font-mono" title={transaction.pledgeId}>
+                      {shortId(transaction.pledgeId)}
+                    </span>
+                  ),
+                })}
               </>
             )}
-            {' · attempt '}
-            {transaction.attemptNumber}
+            {' · '}
+            {fillPlaceholders(copy.attemptPart, {
+              number: String(transaction.attemptNumber),
+            })}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <Tag>{transaction.provider}</Tag>
           <Tag variant={statusVariant(transaction.status)}>
-            {TRANSACTION_STATUS_LABELS[transaction.status]}
+            {copy.status[transaction.status]}
           </Tag>
           <time
             dateTime={transaction.createdAt}
@@ -331,9 +349,7 @@ function TransactionRow({ transaction }: { readonly transaction: LoggedTransacti
           answer — a timeout — and it is on the row precisely because it may have charged
           somebody without the platform knowing.
         */
-        <p className="mt-2 text-xs text-white/32">
-          The provider gave no reference. This attempt may have reached it.
-        </p>
+        <p className="mt-2 text-xs text-white/32">{copy.noReference}</p>
       )}
 
       {transaction.failureCode != null && (

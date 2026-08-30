@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { PayoutQueue } from '../../../../components/admin/PayoutQueue';
+import { payoutQueueCopy } from '../../../../lib/i18n/admin/console.server';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 
 /**
@@ -12,25 +14,22 @@ import { privatePageMetadata } from '../../../../lib/seo/metadata';
  * <p>`privatePageMetadata` for the reason every console route gives: these pages are
  * per-person, they are not for a crawler, and several of them name people.
  */
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Payouts',
-  description: 'What each creator is owed, the hold it is under, and the signatures before it leaves.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('admin.pages.payouts');
 
-export default function PayoutsPage() {
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
+
+export default async function PayoutsPage() {
+  const t = await getTranslations('admin.pages.payouts');
+
   return (
     <div className="max-w-[920px]">
-      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
-        Payouts
-      </h1>
-      <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-        Figures are frozen when a payout is calculated and never recomputed — the payout two people
-        approved has to be the one that is sent. Approving needs APPROVE_PAYOUT, which the finance
-        role deliberately does not confer.
-      </p>
+      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">{t('title')}</h1>
+      <p className="mt-2 max-w-[62ch] text-sm text-white/64">{t('intro')}</p>
 
       <div className="mt-8">
-        <PayoutQueue />
+        <PayoutQueue copy={await payoutQueueCopy()} />
       </div>
     </div>
   );

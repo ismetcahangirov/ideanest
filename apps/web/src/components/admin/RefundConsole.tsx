@@ -14,7 +14,7 @@ import {
   TextInput,
 } from '@ideanest/ui';
 import {
-  REFUND_REASON_LABELS,
+  REFUND_REASONS,
   issueRefund,
   listRefunds,
   newRefundKey,
@@ -24,14 +24,12 @@ import {
 } from '../../lib/admin/refunds';
 import { consoleMessageFor, shortId } from '../../lib/admin/refusals';
 import { formatMoney } from '../../lib/money';
+import { fillNodes, fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { RefundConsoleCopy } from '../../lib/i18n/admin/money-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { useConsoleResource } from './useConsoleResource';
 
-const SUBJECT = 'the refund log';
-
 const STATES: readonly RefundState[] = ['REQUESTED', 'SUCCEEDED', 'FAILED'];
-
-const REASONS = Object.keys(REFUND_REASON_LABELS) as RefundReason[];
 
 /**
  * §4.11's AD-06: full and partial refunds with reason codes — issues #67 and #307.
@@ -60,13 +58,18 @@ const REASONS = Object.keys(REFUND_REASON_LABELS) as RefundReason[];
  * docs/motion-system.md §5 puts motion at its lowest as money gets closer, and nothing on this
  * platform is closer to money than a button that sends it back.
  */
-export function RefundConsole() {
+export interface RefundConsoleProps {
+  readonly copy: RefundConsoleCopy;
+}
+
+export function RefundConsole({ copy }: RefundConsoleProps) {
   const [state, setState] = useState<RefundState | null>('REQUESTED');
   const [page, setPage] = useState(0);
 
   const refunds = useConsoleResource(
     (signal) => listRefunds({ state, page, signal }),
-    SUBJECT,
+    copy.subject,
+    copy.refusals,
     [state, page],
   );
 
@@ -80,7 +83,7 @@ export function RefundConsole() {
   const [issued, setIssued] = useState<Refund | null>(null);
 
   if (refunds.status === 'signed-out' || refunds.status === 'forbidden') {
-    return <ConsoleRefusal status={refunds.status} subject={SUBJECT} />;
+    return <ConsoleRefusal status={refunds.status} subject={copy.subject} copy={copy.refusals} />;
   }
 
   async function send(event: React.FormEvent): Promise<void> {
@@ -112,7 +115,7 @@ export function RefundConsole() {
       setKey(newRefundKey());
       refunds.reload();
     } catch (cause) {
-      setWriteError(consoleMessageFor(cause, SUBJECT));
+      setWriteError(consoleMessageFor(cause, copy.subject, copy.refusals));
     } finally {
       setBusy(false);
     }
@@ -122,16 +125,13 @@ export function RefundConsole() {
     <div className="flex flex-col gap-10">
       <section aria-labelledby="issue-refund-heading">
         <h2 id="issue-refund-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-          Send money back
+          {copy.issueHeading}
         </h2>
-        <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-          Leave the amount blank to refund whatever is left on the pledge. The reason code is
-          what refunds are counted by; the note is what the next person reads.
-        </p>
+        <p className="mt-2 max-w-[62ch] text-sm text-white/64">{copy.issueIntro}</p>
 
         <form onSubmit={(event) => void send(event)} className="mt-4 flex flex-col gap-3">
           <div className="flex flex-wrap items-end gap-3">
-            <Field label="Pledge" hint="The whole identifier." className="min-w-[280px] flex-1">
+            <Field label={copy.pledgeLabel} hint={copy.pledgeHint} className="min-w-[280px] flex-1">
               <TextInput
                 value={pledgeId}
                 onChange={(event) => setPledgeId(event.target.value)}
@@ -139,7 +139,7 @@ export function RefundConsole() {
               />
             </Field>
 
-            <Field label="Amount" hint="Blank refunds the rest." className="min-w-[160px]">
+            <Field label={copy.amountLabel} hint={copy.amountHint} className="min-w-[160px]">
               <TextInput
                 inputMode="decimal"
                 value={amount}
@@ -148,21 +148,21 @@ export function RefundConsole() {
               />
             </Field>
 
-            <Field label="Reason" className="min-w-[220px]">
+            <Field label={copy.reasonLabel} className="min-w-[220px]">
               <Select
                 value={reason}
                 onChange={(event) => setReason(event.target.value as RefundReason)}
               >
-                {REASONS.map((option) => (
+                {REFUND_REASONS.map((option) => (
                   <option key={option} value={option}>
-                    {REFUND_REASON_LABELS[option]}
+                    {copy.reason[option]}
                   </option>
                 ))}
               </Select>
             </Field>
           </div>
 
-          <Field label="Note" hint="Required. A code is never the whole story.">
+          <Field label={copy.noteLabel} hint={copy.noteHint}>
             <Textarea
               rows={2}
               value={detail}
@@ -173,7 +173,7 @@ export function RefundConsole() {
 
           <div>
             <Pill type="submit" variant="outline" size="sm" disabled={busy}>
-              {busy ? 'Sending' : 'Issue refund'}
+              {busy ? copy.sending : copy.issue}
             </Pill>
           </div>
         </form>
@@ -181,15 +181,24 @@ export function RefundConsole() {
         {issued && (
           <InlineAlert
             variant={issued.state === 'SUCCEEDED' ? 'success' : 'warning'}
-            title={issued.state === 'SUCCEEDED' ? 'Sent' : `The refund is ${issued.state}`}
+            title={
+              issued.state === 'SUCCEEDED'
+                ? copy.sentTitle
+                : fillPlaceholders(copy.pendingTitle, { state: copy.state[issued.state] })
+            }
             className="mt-4"
           >
-            {formatMoney(issued.amount)} on pledge {shortId(issued.pledgeId)}.
-            {issued.failureMessage ? ` The provider said: ${issued.failureMessage}` : ''}
+            {fillPlaceholders(copy.issuedBody, {
+              amount: formatMoney(issued.amount),
+              id: shortId(issued.pledgeId),
+            })}
+            {issued.failureMessage
+              ? ` ${fillPlaceholders(copy.providerSaid, { message: issued.failureMessage })}`
+              : ''}
           </InlineAlert>
         )}
         {writeError && (
-          <InlineAlert variant="danger" title="That did not work" className="mt-4">
+          <InlineAlert variant="danger" title={copy.failedTitle} className="mt-4">
             {writeError}
           </InlineAlert>
         )}
@@ -197,7 +206,7 @@ export function RefundConsole() {
 
       <section aria-labelledby="refund-log-heading">
         <h2 id="refund-log-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-          Refunds
+          {copy.logHeading}
         </h2>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -211,13 +220,13 @@ export function RefundConsole() {
                 setPage(0);
               }}
             >
-              {option ?? 'All'}
+              {option === null ? copy.all : copy.state[option]}
             </Pill>
           ))}
         </div>
 
         {refunds.status === 'loading' && (
-          <SkeletonGroup label="Loading refunds" className="mt-4">
+          <SkeletonGroup label={copy.loadingList} className="mt-4">
             <div className="space-y-3">
               {[0, 1, 2].map((row) => (
                 <div key={row} className="rounded-lg border border-white/8 bg-surface-1 p-4">
@@ -231,11 +240,11 @@ export function RefundConsole() {
 
         {refunds.status === 'failed' && (
           <>
-            <InlineAlert variant="danger" title="Something went wrong" className="mt-4">
+            <InlineAlert variant="danger" title={copy.errorTitle} className="mt-4">
               {refunds.error}
             </InlineAlert>
             <Pill variant="ghost" size="sm" className="mt-4" onClick={refunds.reload}>
-              Try again
+              {copy.tryAgain}
             </Pill>
           </>
         )}
@@ -244,19 +253,19 @@ export function RefundConsole() {
           <EmptyState
             className="mt-4"
             variant={state === null ? 'empty' : 'filtered'}
-            title={state === null ? 'Nothing has been refunded' : `No ${state} refunds`}
-            description={
+            title={
               state === null
-                ? 'No money has gone back on this deployment. Every refund the platform issues is recorded here, including the ones a provider refused.'
-                : 'Nothing is in that state. A refund that stays REQUESTED is one worth chasing; the others are settled.'
+                ? copy.emptyTitle
+                : fillPlaceholders(copy.filteredTitle, { state: copy.state[state] })
             }
+            description={state === null ? copy.emptyBody : copy.filteredBody}
           />
         )}
 
         {refunds.status === 'ready' && refunds.data !== null && refunds.data.refunds.length > 0 && (
           <ul className="mt-4 flex list-none flex-col gap-2">
             {refunds.data.refunds.map((refund) => (
-              <RefundRow key={refund.id} refund={refund} />
+              <RefundRow key={refund.id} refund={refund} copy={copy} />
             ))}
           </ul>
         )}
@@ -264,7 +273,7 @@ export function RefundConsole() {
         {refunds.status === 'ready' && (page > 0 || (refunds.data?.hasMore ?? false)) && (
           <div className="mt-4 flex gap-2">
             <Pill variant="ghost" size="sm" disabled={page === 0} onClick={() => setPage((n) => n - 1)}>
-              Previous
+              {copy.previous}
             </Pill>
             <Pill
               variant="ghost"
@@ -272,7 +281,7 @@ export function RefundConsole() {
               disabled={!(refunds.data?.hasMore ?? false)}
               onClick={() => setPage((n) => n + 1)}
             >
-              Next
+              {copy.next}
             </Pill>
           </div>
         )}
@@ -282,28 +291,43 @@ export function RefundConsole() {
 }
 
 /** One refund. The reason is a tag because it is the thing this list is counted by. */
-function RefundRow({ refund }: { readonly refund: Refund }) {
+function RefundRow({
+  refund,
+  copy,
+}: {
+  readonly refund: Refund;
+  readonly copy: RefundConsoleCopy;
+}) {
   return (
     <li className="rounded-lg border border-white/8 bg-surface-1 p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-sm text-white">
           {formatMoney(refund.amount)}
           <span className="ml-2 text-white/48">
-            {refund.fullRefund ? 'full' : 'partial'} on pledge{' '}
-            <span className="font-mono">{shortId(refund.pledgeId)}</span>
+            {fillNodes(copy.onPledge, {
+              fullness: refund.fullRefund ? copy.full : copy.partial,
+              id: <span className="font-mono">{shortId(refund.pledgeId)}</span>,
+            })}
           </span>
         </p>
-        <Tag>{refund.state}</Tag>
+        <Tag>{copy.state[refund.state]}</Tag>
       </div>
 
       <p className="mt-2 text-xs text-white/64">
-        {REFUND_REASON_LABELS[refund.reason]} — {refund.detail}
+        {fillPlaceholders(copy.reasonAndDetail, {
+          reason: copy.reason[refund.reason],
+          detail: refund.detail,
+        })}
       </p>
 
       <p className="mt-2 text-xs text-white/40">
-        Requested by <span className="font-mono">{shortId(refund.requestedBy)}</span> on{' '}
-        {new Date(refund.requestedAt).toISOString().slice(0, 10)}
-        {refund.failureCode ? ` · refused: ${refund.failureCode}` : ''}
+        {fillNodes(copy.requestedBy, {
+          by: <span className="font-mono">{shortId(refund.requestedBy)}</span>,
+          date: new Date(refund.requestedAt).toISOString().slice(0, 10),
+        })}
+        {refund.failureCode
+          ? ` · ${fillPlaceholders(copy.refused, { code: refund.failureCode })}`
+          : ''}
       </p>
     </li>
   );

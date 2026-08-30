@@ -1,12 +1,15 @@
 'use client';
 
 import { InlineAlert } from '@ideanest/ui';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { ConsoleRefusalsCopy } from '../../lib/i18n/admin/common-copy';
 import type { ConsoleStatus } from '../../lib/admin/refusals';
 
 export interface ConsoleRefusalProps {
   readonly status: ConsoleStatus;
   /** What the reader was trying to read, in the screen's own words: "the ledger". */
   readonly subject: string;
+  readonly copy: ConsoleRefusalsCopy;
 }
 
 /**
@@ -19,22 +22,28 @@ export interface ConsoleRefusalProps {
  *
  * <p>Returns null for the other three statuses, so a caller can render it unconditionally and
  * keep its own branch for the states that have content.
+ *
+ * <h2>This was the last component that could not be translated, and why it can be now</h2>
+ *
+ * `apps/web/README.md` used to list this file as the exception: the signed-out sentence names
+ * the thing a screen was about to show, the noun comes from the screen, and while the screens
+ * were English literals there was no translated noun to put in it. Every screen carries a
+ * catalogue node since #324, so `subject` arrives already translated and already inflected for
+ * its position, and the sentence is a template around it rather than a concatenation.
  */
-export function ConsoleRefusal({ status, subject }: ConsoleRefusalProps) {
+export function ConsoleRefusal({ status, subject, copy }: ConsoleRefusalProps) {
   if (status === 'signed-out') {
     return (
-      <InlineAlert variant="info" title="You are signed out">
-        This browser no longer has a session. Sign in again to read {subject}.
+      <InlineAlert variant="info" title={copy.signedOutTitle}>
+        {fillPlaceholders(copy.signedOutBody, { subject })}
       </InlineAlert>
     );
   }
 
   if (status === 'forbidden') {
     return (
-      <InlineAlert variant="info" title="Not a moderator">
-        The console is read by platform staff, and your account is not on the configured
-        moderator list. There is no role model in the access token yet, so that list is the
-        whole of the check.
+      <InlineAlert variant="info" title={copy.forbiddenTitle}>
+        {copy.forbiddenBody}
       </InlineAlert>
     );
   }

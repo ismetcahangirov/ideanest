@@ -4,18 +4,16 @@ import { Link } from '../../i18n/navigation';
 import { Card, Pill, Tag } from '@ideanest/ui';
 import type { QueuedReport } from '../../lib/moderation/api';
 import {
-  CAMPAIGN_OUTCOME_LABELS,
-  REPORT_OUTCOME_LABELS,
-  STATE_LABELS,
   formatExactTime,
   formatRelativeTime,
   isOverdue,
   isRepeated,
   openReportsLabel,
-  reasonLabel,
   shortId,
-  targetLabel,
 } from '../../lib/moderation/describe';
+import { fillNodes, fillPlaceholders } from '../../lib/i18n/placeholders';
+import { pluralise } from '../../lib/i18n/plurals';
+import type { ModerationQueueCopy } from '../../lib/i18n/admin/content-copy';
 import type { Decision } from './DecisionDialog';
 import type { Locale } from '../../lib/i18n/locale';
 
@@ -35,6 +33,7 @@ export interface ReportCardProps {
    */
   readonly detailHref?: string;
   readonly onDecide: (report: QueuedReport, decision: Decision) => void;
+  readonly copy: ModerationQueueCopy;
 }
 
 const REPORT_OUTCOMES = ['uphold', 'dismiss'] as const;
@@ -62,9 +61,20 @@ function stateVariant(report: QueuedReport): 'success' | 'default' {
  * button cannot be aimed at. Hover is the standard 150ms colour change `Card`
  * already carries and nothing else moves.
  */
-export function ReportCard({ report, now, locale, busy, detailHref, onDecide }: ReportCardProps) {
-  const kind = targetLabel(report.target.type);
-  const target = `${kind} ${shortId(report.target.id)}`;
+export function ReportCard({
+  report,
+  now,
+  locale,
+  busy,
+  detailHref,
+  onDecide,
+  copy,
+}: ReportCardProps) {
+  const kind = copy.moderation.target[report.target.type];
+  const target = fillPlaceholders(copy.moderation.targetName, {
+    kind,
+    id: shortId(report.target.id),
+  });
   const overdue = isOverdue(report, now);
   const open = report.state === 'OPEN';
   const headingId = `report-${report.id}-heading`;
@@ -82,11 +92,20 @@ export function ReportCard({ report, now, locale, busy, detailHref, onDecide }: 
               id={headingId}
               className="text-lg font-medium tracking-[-0.02em] text-white"
             >
-              {reasonLabel(report.reason)}
+              {copy.moderation.reason[report.reason]}
             </h3>
             <p className="mt-1 text-sm text-white/64">
-              Reported about {kind}{' '}
-              <span className="font-mono text-white/64">{shortId(report.target.id)}</span>
+              {/*
+                `fillNodes` rather than two half-sentences: the identifier is styled, and
+                splitting the sentence around it would fix the word order in English —
+                which is the one thing a translation is entitled to change.
+              */}
+              {fillNodes(copy.reportedAbout, {
+                kind,
+                id: (
+                  <span className="font-mono text-white/64">{shortId(report.target.id)}</span>
+                ),
+              })}
             </p>
             {/*
               The name says which report, for the reason the decision buttons below give:
@@ -96,10 +115,10 @@ export function ReportCard({ report, now, locale, busy, detailHref, onDecide }: 
             {detailHref !== undefined && (
               <Link
                 href={detailHref}
-                aria-label={`Open the full history of the report about ${target}`}
+                aria-label={fillPlaceholders(copy.fullHistoryLabel, { target })}
                 className="mt-2 inline-block rounded-lg text-sm text-white/64 underline underline-offset-2 transition-colors duration-150 ease-in-out hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
               >
-                Full history
+                {copy.fullHistory}
               </Link>
             )}
           </div>
@@ -117,17 +136,21 @@ export function ReportCard({ report, now, locale, busy, detailHref, onDecide }: 
                 data-on-lime
                 className="inline-flex h-[26px] items-center rounded-sm bg-lime-500 px-2.5 text-xs font-medium text-on-lime"
               >
-                Overdue
+                {copy.overdue}
               </span>
             )}
-            {isRepeated(report) && <Tag variant="warning">{report.openReportsOnTarget} reports</Tag>}
-            <Tag variant={stateVariant(report)}>{STATE_LABELS[report.state]}</Tag>
+            {isRepeated(report) && (
+              <Tag variant="warning">
+                {pluralise(locale, copy.moderation.reportCount, report.openReportsOnTarget)}
+              </Tag>
+            )}
+            <Tag variant={stateVariant(report)}>{copy.moderation.state[report.state]}</Tag>
           </div>
         </div>
 
         <dl className="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
           <div className="flex gap-2">
-            <dt className="text-white/40">Reported</dt>
+            <dt className="text-white/40">{copy.reported}</dt>
             <dd className="text-white/64">
               <time dateTime={report.createdAt} title={formatExactTime(report.createdAt, locale)}>
                 {formatRelativeTime(report.createdAt, now, locale)}
@@ -135,11 +158,13 @@ export function ReportCard({ report, now, locale, busy, detailHref, onDecide }: 
             </dd>
           </div>
           <div className="flex gap-2">
-            <dt className="text-white/40">Signal</dt>
-            <dd className="text-white/64">{openReportsLabel(report)}</dd>
+            <dt className="text-white/40">{copy.signal}</dt>
+            <dd className="text-white/64">
+              {openReportsLabel(report, copy.moderation, locale)}
+            </dd>
           </div>
           <div className="flex gap-2">
-            <dt className="text-white/40">Reporter</dt>
+            <dt className="text-white/40">{copy.reporter}</dt>
             {/*
               An account id, not a name — a report is an accusation and "this
               account has reported forty campaigns this week" is the question
@@ -149,7 +174,7 @@ export function ReportCard({ report, now, locale, busy, detailHref, onDecide }: 
             <dd className="font-mono text-white/64">{shortId(report.reporterId)}</dd>
           </div>
           <div className="flex gap-2">
-            <dt className="text-white/40">Target</dt>
+            <dt className="text-white/40">{copy.targetTerm}</dt>
             <dd className="font-mono text-white/64">{report.target.id}</dd>
           </div>
         </dl>
@@ -168,28 +193,32 @@ export function ReportCard({ report, now, locale, busy, detailHref, onDecide }: 
         */}
         {report.resolution != null && (
           <div className="mt-4 rounded-md bg-surface-3 p-4">
-            <h4 className="text-sm font-medium text-white">Decision</h4>
+            <h4 className="text-sm font-medium text-white">{copy.moderation.decisionHeading}</h4>
             <p className="mt-1 text-sm text-white/64">
-              {STATE_LABELS[report.state]} by moderator{' '}
-              <span className="font-mono">{shortId(report.resolution.moderatorId)}</span> on{' '}
-              <time dateTime={report.resolution.at}>
-                {formatExactTime(report.resolution.at, locale)}
-              </time>
-              .
+              {fillNodes(copy.moderation.decidedBy[report.state], {
+                moderator: (
+                  <span className="font-mono">{shortId(report.resolution.moderatorId)}</span>
+                ),
+                at: (
+                  <time dateTime={report.resolution.at}>
+                    {formatExactTime(report.resolution.at, locale)}
+                  </time>
+                ),
+              })}
             </p>
             {report.resolution.note != null && report.resolution.note !== '' ? (
               <p className="mt-2 text-sm text-white/64">{report.resolution.note}</p>
             ) : (
-              <p className="mt-2 text-sm text-white/40">No note was left.</p>
+              <p className="mt-2 text-sm text-white/40">{copy.moderation.noNote}</p>
             )}
           </div>
         )}
 
         {open && (
           <div className="mt-5 space-y-4">
-            <div role="group" aria-label={`Decide the report about ${target}`}>
+            <div role="group" aria-label={fillPlaceholders(copy.decideGroup, { target })}>
               <p className="text-xs font-medium uppercase tracking-wide text-white/40">
-                Decide the complaint
+                {copy.decideHeading}
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {REPORT_OUTCOMES.map((outcome) => (
@@ -205,10 +234,13 @@ export function ReportCard({ report, now, locale, busy, detailHref, onDecide }: 
                       twenty cards of "Uphold" is unusable by ear and dangerous
                       here, where every button is irreversible.
                     */
-                    aria-label={`${REPORT_OUTCOME_LABELS[outcome]} the report about ${target}`}
+                    aria-label={fillPlaceholders(copy.decideLabel, {
+                      outcome: copy.moderation.reportOutcome[outcome],
+                      target,
+                    })}
                     onClick={() => onDecide(report, { kind: 'report', outcome })}
                   >
-                    {REPORT_OUTCOME_LABELS[outcome]}
+                    {copy.moderation.reportOutcome[outcome]}
                   </Pill>
                 ))}
               </div>
@@ -225,9 +257,9 @@ export function ReportCard({ report, now, locale, busy, detailHref, onDecide }: 
               reachable from.
             */}
             {report.target.type === 'PROJECT' && (
-              <div role="group" aria-label={`Act on ${target}`}>
+              <div role="group" aria-label={fillPlaceholders(copy.actGroup, { target })}>
                 <p className="text-xs font-medium uppercase tracking-wide text-white/40">
-                  Act on the campaign — separate from the report
+                  {copy.actHeading}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {CAMPAIGN_OUTCOMES.map((outcome) => (
@@ -236,10 +268,13 @@ export function ReportCard({ report, now, locale, busy, detailHref, onDecide }: 
                       variant="outline"
                       size="sm"
                       disabled={busy}
-                      aria-label={`${CAMPAIGN_OUTCOME_LABELS[outcome]} for ${target}`}
+                      aria-label={fillPlaceholders(copy.actLabel, {
+                        outcome: copy.moderation.campaignOutcome[outcome],
+                        target,
+                      })}
                       onClick={() => onDecide(report, { kind: 'campaign', outcome })}
                     >
-                      {CAMPAIGN_OUTCOME_LABELS[outcome]}
+                      {copy.moderation.campaignOutcome[outcome]}
                     </Pill>
                   ))}
                 </div>

@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import en from '../../../messages/en.json';
 import { TRUST_COPY } from '../../components/project/CampaignTrustBlock';
+import { REASON_LABELS } from '../moderation/describe';
 
 /**
  * The English catalogue says what the components used to say — issue #324.
@@ -76,5 +77,21 @@ describe('the English catalogue against the wording it replaced', () => {
     for (const message of Object.values(en.checkout.done)) {
       expect(message, message).not.toMatch(FORBIDDEN);
     }
+  });
+
+  it('says the same nine report reasons as the public control still holds', () => {
+    /*
+     * `lib/moderation/describe.ts` keeps `REASON_LABELS` because `ReportControl` — the dialog
+     * a member of the public opens on a campaign page — was not translated with the console:
+     * it carries its own reason descriptions, its own target nouns and about ten more
+     * sentences, and half-translating a public surface inside an administrative change would
+     * be worse than leaving it whole.
+     *
+     * <p>So the same nine words exist twice, and this is what stops them drifting. The day
+     * somebody rewords one, the other fails here rather than quietly saying something else to
+     * a moderator than it says to the person who filed the complaint. It goes when the public
+     * control is translated, which is the rest of #324.
+     */
+    expect(en.admin.moderation.reason).toEqual(REASON_LABELS);
   });
 });

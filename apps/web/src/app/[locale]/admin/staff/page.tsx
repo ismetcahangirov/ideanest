@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { StaffRoles } from '../../../../components/admin/StaffRoles';
+import { staffRolesCopy } from '../../../../lib/i18n/admin/console.server';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
 
 /**
@@ -12,24 +14,22 @@ import { privatePageMetadata } from '../../../../lib/seo/metadata';
  * <p>`privatePageMetadata` for the reason every console route gives: these pages are
  * per-person, they are not for a crawler, and several of them name people.
  */
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Staff and roles',
-  description: 'Who works here, what each role confers, and what your own account may do.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('admin.pages.staff');
 
-export default function StaffPage() {
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
+
+export default async function StaffPage() {
+  const t = await getTranslations('admin.pages.staff');
+
   return (
     <div className="max-w-[880px]">
-      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
-        Staff and roles
-      </h1>
-      <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-        Roles are additive: an account holds the union of every role granted to it, and nothing
-        here takes a capability away. Granting one is audited under your name.
-      </p>
+      <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">{t('title')}</h1>
+      <p className="mt-2 max-w-[62ch] text-sm text-white/64">{t('intro')}</p>
 
       <div className="mt-8">
-        <StaffRoles />
+        <StaffRoles copy={await staffRolesCopy()} />
       </div>
     </div>
   );

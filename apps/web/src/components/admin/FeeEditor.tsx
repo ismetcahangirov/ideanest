@@ -20,10 +20,10 @@ import {
   type FeeScope,
 } from '../../lib/admin/fees';
 import { consoleMessageFor, shortId } from '../../lib/admin/refusals';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { FeeEditorCopy } from '../../lib/i18n/admin/money-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { useConsoleResource } from './useConsoleResource';
-
-const SUBJECT = 'the fee schedule';
 
 const SCOPES: readonly FeeScope[] = ['PLATFORM', 'CATEGORY', 'PROJECT'];
 
@@ -53,8 +53,17 @@ const SCOPES: readonly FeeScope[] = ['PLATFORM', 'CATEGORY', 'PROJECT'];
  * seven-year retention rule to. A list of only the open ones would be three rows that could
  * have been configuration.
  */
-export function FeeEditor() {
-  const history = useConsoleResource((signal) => readFeeHistory(signal), SUBJECT, []);
+export interface FeeEditorProps {
+  readonly copy: FeeEditorCopy;
+}
+
+export function FeeEditor({ copy }: FeeEditorProps) {
+  const history = useConsoleResource(
+    (signal) => readFeeHistory(signal),
+    copy.subject,
+    copy.refusals,
+    [],
+  );
 
   const [scope, setScope] = useState<FeeScope>('PLATFORM');
   const [scopeRef, setScopeRef] = useState('');
@@ -67,7 +76,7 @@ export function FeeEditor() {
   const [written, setWritten] = useState<string | null>(null);
 
   if (history.status === 'signed-out' || history.status === 'forbidden') {
-    return <ConsoleRefusal status={history.status} subject={SUBJECT} />;
+    return <ConsoleRefusal status={history.status} subject={copy.subject} copy={copy.refusals} />;
   }
 
   async function replace(event: React.FormEvent): Promise<void> {
@@ -89,12 +98,15 @@ export function FeeEditor() {
       });
 
       setWritten(
-        `New ${schedule.scope} terms in force from ${schedule.effectiveFrom.slice(0, 10)}. The previous schedule is closed, not deleted.`,
+        fillPlaceholders(copy.openedNotice, {
+          scope: copy.scope[schedule.scope],
+          date: schedule.effectiveFrom.slice(0, 10),
+        }),
       );
       setNote('');
       history.reload();
     } catch (cause) {
-      setError(consoleMessageFor(cause, SUBJECT));
+      setError(consoleMessageFor(cause, copy.subject, copy.refusals));
     } finally {
       setBusy(false);
     }
@@ -105,19 +117,17 @@ export function FeeEditor() {
 
   return (
     <div className="flex flex-col gap-10">
-      <InlineAlert variant="info" title="Changing a fee opens a new schedule">
-        There is no edit. Submitting below closes the terms currently in force and opens new ones
-        beginning now, so a payout calculated last month still prices against last month&apos;s
-        rates. Nothing you can do here changes what was charged in the past.
+      <InlineAlert variant="info" title={copy.noticeTitle}>
+        {copy.noticeBody}
       </InlineAlert>
 
       <section aria-labelledby="in-force-heading">
         <h2 id="in-force-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-          In force
+          {copy.inForceHeading}
         </h2>
 
         {history.status === 'loading' && (
-          <SkeletonGroup label="Loading fee schedules" className="mt-4">
+          <SkeletonGroup label={copy.loadingList} className="mt-4">
             <Skeleton height="1rem" width="40%" />
             <Skeleton height="0.875rem" width="60%" className="mt-3" />
           </SkeletonGroup>
@@ -125,11 +135,11 @@ export function FeeEditor() {
 
         {history.status === 'failed' && (
           <>
-            <InlineAlert variant="danger" title="Something went wrong" className="mt-4">
+            <InlineAlert variant="danger" title={copy.errorTitle} className="mt-4">
               {history.error}
             </InlineAlert>
             <Pill variant="ghost" size="sm" className="mt-4" onClick={history.reload}>
-              Try again
+              {copy.tryAgain}
             </Pill>
           </>
         )}
@@ -138,15 +148,15 @@ export function FeeEditor() {
           <EmptyState
             className="mt-4"
             variant="empty"
-            title="No fee schedule is configured"
-            description="The platform is currently pricing every payout at zero fees. That is deliberate — a payout run must not stop because nobody wrote a row — but it means creators are being paid the full amount collected."
+            title={copy.emptyTitle}
+            description={copy.emptyBody}
           />
         )}
 
         {history.status === 'ready' && open.length > 0 && (
           <ul className="mt-4 flex list-none flex-col gap-2">
             {open.map((schedule) => (
-              <ScheduleRow key={schedule.id} schedule={schedule} />
+              <ScheduleRow key={schedule.id} schedule={schedule} copy={copy} />
             ))}
           </ul>
         )}
@@ -154,16 +164,16 @@ export function FeeEditor() {
 
       <section aria-labelledby="replace-heading">
         <h2 id="replace-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-          Open new terms
+          {copy.replaceHeading}
         </h2>
 
         <form onSubmit={(event) => void replace(event)} className="mt-4 flex flex-col gap-3">
           <div className="flex flex-wrap items-end gap-3">
-            <Field label="Scope" className="min-w-[180px]">
+            <Field label={copy.scopeLabel} className="min-w-[180px]">
               <Select value={scope} onChange={(event) => setScope(event.target.value as FeeScope)}>
                 {SCOPES.map((option) => (
                   <option key={option} value={option}>
-                    {option}
+                    {copy.scope[option]}
                   </option>
                 ))}
               </Select>
@@ -171,8 +181,8 @@ export function FeeEditor() {
 
             {scope !== 'PLATFORM' && (
               <Field
-                label={scope === 'CATEGORY' ? 'Category' : 'Campaign'}
-                hint="The whole identifier."
+                label={scope === 'CATEGORY' ? copy.categoryLabel : copy.campaignLabel}
+                hint={copy.scopeRefHint}
                 className="min-w-[280px] flex-1"
               >
                 <TextInput value={scopeRef} onChange={(event) => setScopeRef(event.target.value)} />
@@ -182,8 +192,10 @@ export function FeeEditor() {
 
           <div className="flex flex-wrap items-end gap-3">
             <Field
-              label="Platform rate"
-              hint={`A fraction. ${asPercentage(platformRate)}`}
+              label={copy.platformRateLabel}
+              hint={fillPlaceholders(copy.fractionHint, {
+                percentage: asPercentage(platformRate),
+              })}
               className="min-w-[180px]"
             >
               <TextInput
@@ -194,8 +206,10 @@ export function FeeEditor() {
             </Field>
 
             <Field
-              label="Processing rate"
-              hint={`A fraction. ${asPercentage(processingRate)}`}
+              label={copy.processingRateLabel}
+              hint={fillPlaceholders(copy.fractionHint, {
+                percentage: asPercentage(processingRate),
+              })}
               className="min-w-[180px]"
             >
               <TextInput
@@ -205,7 +219,7 @@ export function FeeEditor() {
               />
             </Field>
 
-            <Field label="Fixed per transaction" className="min-w-[180px]">
+            <Field label={copy.fixedLabel} className="min-w-[180px]">
               <TextInput
                 inputMode="decimal"
                 value={processingFixed}
@@ -214,24 +228,24 @@ export function FeeEditor() {
             </Field>
           </div>
 
-          <Field label="Why" hint="Required. A fee change nobody explained is one nobody can defend.">
+          <Field label={copy.whyLabel} hint={copy.whyHint}>
             <TextInput value={note} onChange={(event) => setNote(event.target.value)} maxLength={2000} />
           </Field>
 
           <div>
             <Pill type="submit" variant="outline" size="sm" disabled={busy}>
-              {busy ? 'Working' : 'Open new terms'}
+              {busy ? copy.working : copy.open}
             </Pill>
           </div>
         </form>
 
         {written && (
-          <InlineAlert variant="success" title="Done" className="mt-4">
+          <InlineAlert variant="success" title={copy.doneTitle} className="mt-4">
             {written}
           </InlineAlert>
         )}
         {error && (
-          <InlineAlert variant="danger" title="That did not work" className="mt-4">
+          <InlineAlert variant="danger" title={copy.failedTitle} className="mt-4">
             {error}
           </InlineAlert>
         )}
@@ -240,16 +254,13 @@ export function FeeEditor() {
       {history.status === 'ready' && closed.length > 0 && (
         <section aria-labelledby="past-terms-heading">
           <h2 id="past-terms-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-            Past terms
+            {copy.pastHeading}
           </h2>
-          <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-            What the platform charged, and when. §22.1 makes this a record with a retention rule
-            rather than a changelog.
-          </p>
+          <p className="mt-2 max-w-[62ch] text-sm text-white/64">{copy.pastIntro}</p>
 
           <ul className="mt-4 flex list-none flex-col gap-2">
             {closed.map((schedule) => (
-              <ScheduleRow key={schedule.id} schedule={schedule} />
+              <ScheduleRow key={schedule.id} schedule={schedule} copy={copy} />
             ))}
           </ul>
         </section>
@@ -259,27 +270,40 @@ export function FeeEditor() {
 }
 
 /** One set of terms and the window it applied over. */
-function ScheduleRow({ schedule }: { readonly schedule: FeeSchedule }) {
+function ScheduleRow({
+  schedule,
+  copy,
+}: {
+  readonly schedule: FeeSchedule;
+  readonly copy: FeeEditorCopy;
+}) {
   return (
     <li className="rounded-lg border border-white/8 bg-surface-1 p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-sm text-white">
-          {schedule.scope}
+          {copy.scope[schedule.scope]}
           {schedule.scopeRef ? (
             <span className="ml-2 font-mono text-white/48">{shortId(schedule.scopeRef)}</span>
           ) : null}
         </p>
-        {schedule.open ? <Tag>In force</Tag> : null}
+        {schedule.open ? <Tag>{copy.inForceTag}</Tag> : null}
       </div>
 
       <p className="mt-2 text-sm text-white/80">
-        Platform {asPercentage(schedule.platformRate)} · processing{' '}
-        {asPercentage(schedule.processingRate)} + {schedule.processingFixed} {schedule.currency}
+        {fillPlaceholders(copy.rates, {
+          platform: asPercentage(schedule.platformRate),
+          processing: asPercentage(schedule.processingRate),
+          fixed: schedule.processingFixed,
+          currency: schedule.currency,
+        })}
       </p>
 
       <p className="mt-2 text-xs text-white/40">
-        {schedule.effectiveFrom.slice(0, 10)} —{' '}
-        {schedule.effectiveTo == null ? 'now' : schedule.effectiveTo.slice(0, 10)} · {schedule.note}
+        {fillPlaceholders(copy.window, {
+          from: schedule.effectiveFrom.slice(0, 10),
+          to: schedule.effectiveTo == null ? copy.now : schedule.effectiveTo.slice(0, 10),
+          note: schedule.note,
+        })}
       </p>
     </li>
   );

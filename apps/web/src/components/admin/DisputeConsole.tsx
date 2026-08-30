@@ -14,7 +14,7 @@ import {
 } from '@ideanest/ui';
 import {
   DISPUTE_OUTCOMES,
-  EVIDENCE_KIND_LABELS,
+  EVIDENCE_KINDS,
   addEvidence,
   hoursUntilDue,
   readDispute,
@@ -27,12 +27,10 @@ import {
 } from '../../lib/admin/disputes';
 import { consoleMessageFor, shortId } from '../../lib/admin/refusals';
 import { formatMoney } from '../../lib/money';
+import { fillNodes, fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { DisputeConsoleCopy } from '../../lib/i18n/admin/money-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { useConsoleResource } from './useConsoleResource';
-
-const SUBJECT = 'the chargeback queue';
-
-const KINDS = Object.keys(EVIDENCE_KIND_LABELS) as EvidenceKind[];
 
 /**
  * §4.11's AD-07: notification, evidence, outcome — issues #68 and #308.
@@ -57,28 +55,34 @@ const KINDS = Object.keys(EVIDENCE_KIND_LABELS) as EvidenceKind[];
  * submission on it, so the files go through the provider's own console until an adapter method
  * exists. A screen that implied otherwise would let a deadline pass while saying it was handled.
  */
-export function DisputeConsole() {
+export interface DisputeConsoleProps {
+  readonly copy: DisputeConsoleCopy;
+}
+
+export function DisputeConsole({ copy }: DisputeConsoleProps) {
   const [page, setPage] = useState(0);
   const [openCase, setOpenCase] = useState<string | null>(null);
 
-  const queue = useConsoleResource((signal) => readDisputeQueue(page, signal), SUBJECT, [page]);
+  const queue = useConsoleResource(
+    (signal) => readDisputeQueue(page, signal),
+    copy.subject,
+    copy.refusals,
+    [page],
+  );
 
   if (queue.status === 'signed-out' || queue.status === 'forbidden') {
-    return <ConsoleRefusal status={queue.status} subject={SUBJECT} />;
+    return <ConsoleRefusal status={queue.status} subject={copy.subject} copy={copy.refusals} />;
   }
 
   return (
     <div className="flex flex-col gap-8">
-      <InlineAlert variant="info" title="Evidence is sent through the provider">
-        Submitting here records that the case was answered and by whom. §9.3&apos;s provider
-        interface has no evidence upload, so the documents themselves still go through the
-        provider&apos;s own console — this screen is the platform&apos;s record of the case, not
-        the channel to the network.
+      <InlineAlert variant="info" title={copy.noticeTitle}>
+        {copy.noticeBody}
       </InlineAlert>
 
       <section aria-labelledby="dispute-queue-heading">
         <h2 id="dispute-queue-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-          Open cases
+          {copy.heading}
           {queue.status === 'ready' && (
             <span className="ml-2 text-xs font-normal text-white/40">
               {queue.data?.disputes.length ?? 0}
@@ -87,7 +91,7 @@ export function DisputeConsole() {
         </h2>
 
         {queue.status === 'loading' && (
-          <SkeletonGroup label="Loading the chargeback queue" className="mt-4">
+          <SkeletonGroup label={copy.loadingList} className="mt-4">
             <div className="space-y-3">
               {[0, 1].map((row) => (
                 <div key={row} className="rounded-lg border border-white/8 bg-surface-1 p-4">
@@ -101,11 +105,11 @@ export function DisputeConsole() {
 
         {queue.status === 'failed' && (
           <>
-            <InlineAlert variant="danger" title="Something went wrong" className="mt-4">
+            <InlineAlert variant="danger" title={copy.errorTitle} className="mt-4">
               {queue.error}
             </InlineAlert>
             <Pill variant="ghost" size="sm" className="mt-4" onClick={queue.reload}>
-              Try again
+              {copy.tryAgain}
             </Pill>
           </>
         )}
@@ -114,8 +118,8 @@ export function DisputeConsole() {
           <EmptyState
             className="mt-4"
             variant="empty"
-            title="No open chargebacks"
-            description="Nothing is waiting for an answer. Cases arrive here from a provider webhook, so an empty queue means no network has disputed a charge."
+            title={copy.emptyTitle}
+            description={copy.emptyBody}
           />
         )}
 
@@ -133,18 +137,28 @@ export function DisputeConsole() {
                     <p className="text-sm text-white">
                       {formatMoney(dispute.amount)}
                       <span className="ml-2 text-white/48">
-                        {dispute.provider} · {dispute.reasonCode}
+                        {/* The provider's name and the network's reason code are quoted into a
+                            dispute, so both stay in the spelling the provider uses. */}
+                        {fillPlaceholders(copy.providerAndReason, {
+                          provider: dispute.provider,
+                          code: dispute.reasonCode,
+                        })}
                       </span>
                     </p>
-                    <Deadline dispute={dispute} />
+                    <Deadline dispute={dispute} copy={copy} />
                   </div>
                   <p className="mt-2 text-xs text-white/40">
-                    Pledge <span className="font-mono">{shortId(dispute.pledgeId)}</span> · fee{' '}
-                    {formatMoney(dispute.fee)} · <Tag>{dispute.state}</Tag>
+                    {fillNodes(copy.pledgeLine, {
+                      pledge: <span className="font-mono">{shortId(dispute.pledgeId)}</span>,
+                      fee: formatMoney(dispute.fee),
+                    })}
+                    <Tag>{copy.state[dispute.state]}</Tag>
                   </p>
                 </button>
 
-                {openCase === dispute.id && <CaseDetail disputeId={dispute.id} onChanged={queue.reload} />}
+                {openCase === dispute.id && (
+                  <CaseDetail disputeId={dispute.id} copy={copy} onChanged={queue.reload} />
+                )}
               </li>
             ))}
           </ul>
@@ -153,7 +167,7 @@ export function DisputeConsole() {
         {queue.status === 'ready' && (page > 0 || (queue.data?.hasMore ?? false)) && (
           <div className="mt-4 flex gap-2">
             <Pill variant="ghost" size="sm" disabled={page === 0} onClick={() => setPage((n) => n - 1)}>
-              Previous
+              {copy.previous}
             </Pill>
             <Pill
               variant="ghost"
@@ -161,7 +175,7 @@ export function DisputeConsole() {
               disabled={!(queue.data?.hasMore ?? false)}
               onClick={() => setPage((n) => n + 1)}
             >
-              Next
+              {copy.next}
             </Pill>
           </div>
         )}
@@ -177,18 +191,26 @@ export function DisputeConsole() {
  * one that has expired cannot be answered, and one with hours left is the reason somebody
  * opened this screen.
  */
-function Deadline({ dispute }: { readonly dispute: Dispute }) {
+function Deadline({
+  dispute,
+  copy,
+}: {
+  readonly dispute: Dispute;
+  readonly copy: DisputeConsoleCopy;
+}) {
   const hours = hoursUntilDue(dispute);
 
   if (hours === null) {
-    return <span className="text-xs text-white/40">No deadline given</span>;
+    return <span className="text-xs text-white/40">{copy.noDeadline}</span>;
   }
   if (hours < 0) {
-    return <Tag>Deadline passed</Tag>;
+    return <Tag>{copy.deadlinePassed}</Tag>;
   }
   return (
     <span className="text-xs text-white/64">
-      {hours < 48 ? `${Math.floor(hours)}h left` : `${Math.floor(hours / 24)}d left`}
+      {hours < 48
+        ? fillPlaceholders(copy.hoursLeft, { count: String(Math.floor(hours)) })
+        : fillPlaceholders(copy.daysLeft, { count: String(Math.floor(hours / 24)) })}
     </span>
   );
 }
@@ -196,12 +218,19 @@ function Deadline({ dispute }: { readonly dispute: Dispute }) {
 /** One case, its evidence, and the two things staff can do to it. */
 function CaseDetail({
   disputeId,
+  copy,
   onChanged,
 }: {
   readonly disputeId: string;
+  readonly copy: DisputeConsoleCopy;
   readonly onChanged: () => void;
 }) {
-  const detail = useConsoleResource((signal) => readDispute(disputeId, signal), 'this case', [disputeId]);
+  const detail = useConsoleResource(
+    (signal) => readDispute(disputeId, signal),
+    copy.caseSubject,
+    copy.refusals,
+    [disputeId],
+  );
 
   const [kind, setKind] = useState<EvidenceKind>('RECEIPT');
   const [description, setDescription] = useState('');
@@ -216,7 +245,7 @@ function CaseDetail({
       detail.reload();
       onChanged();
     } catch (cause) {
-      setError(consoleMessageFor(cause, 'this case'));
+      setError(consoleMessageFor(cause, copy.caseSubject, copy.refusals));
     } finally {
       setBusy(false);
     }
@@ -224,7 +253,7 @@ function CaseDetail({
 
   if (detail.status === 'loading') {
     return (
-      <SkeletonGroup label="Loading the case" className="mt-2 rounded-lg border border-white/8 p-4">
+      <SkeletonGroup label={copy.loadingCase} className="mt-2 rounded-lg border border-white/8 p-4">
         <Skeleton height="0.875rem" width="60%" />
       </SkeletonGroup>
     );
@@ -232,8 +261,8 @@ function CaseDetail({
 
   if (detail.status !== 'ready' || detail.data === null) {
     return (
-      <InlineAlert variant="danger" title="The case could not be read" className="mt-2">
-        {detail.error ?? 'Try again.'}
+      <InlineAlert variant="danger" title={copy.caseFailedTitle} className="mt-2">
+        {detail.error ?? copy.tryAgainShort}
       </InlineAlert>
     );
   }
@@ -242,20 +271,18 @@ function CaseDetail({
 
   return (
     <div className="mt-2 rounded-lg border border-white/8 bg-surface-1 p-4">
-      <h3 className="text-sm font-medium text-white">Evidence</h3>
+      <h3 className="text-sm font-medium text-white">{copy.evidenceHeading}</h3>
 
       {dispute.evidence.length === 0 ? (
-        <p className="mt-2 text-xs text-white/48">
-          Nothing has been assembled. A case answered with no evidence is a case conceded slowly.
-        </p>
+        <p className="mt-2 text-xs text-white/48">{copy.noEvidence}</p>
       ) : (
         <ul className="mt-2 flex list-none flex-col gap-2">
           {dispute.evidence.map((piece) => (
             <li key={piece.id} className="rounded-md border border-white/8 p-3">
-              <p className="text-xs text-white/80">{EVIDENCE_KIND_LABELS[piece.kind]}</p>
+              <p className="text-xs text-white/80">{copy.evidenceKind[piece.kind]}</p>
               <p className="mt-1 text-xs text-white/64">{piece.description}</p>
               <p className="mt-1 text-xs text-white/40">
-                {piece.submittedAt == null ? 'Not sent yet' : 'Sent'}
+                {piece.submittedAt == null ? copy.notSent : copy.sent}
               </p>
             </li>
           ))}
@@ -263,17 +290,17 @@ function CaseDetail({
       )}
 
       <div className="mt-4 flex flex-wrap items-end gap-3">
-        <Field label="Kind" className="min-w-[220px]">
+        <Field label={copy.kindLabel} className="min-w-[220px]">
           <Select value={kind} onChange={(event) => setKind(event.target.value as EvidenceKind)}>
-            {KINDS.map((option) => (
+            {EVIDENCE_KINDS.map((option) => (
               <option key={option} value={option}>
-                {EVIDENCE_KIND_LABELS[option]}
+                {copy.evidenceKind[option]}
               </option>
             ))}
           </Select>
         </Field>
 
-        <Field label="What it shows" className="min-w-[280px] flex-1">
+        <Field label={copy.showsLabel} className="min-w-[280px] flex-1">
           <Textarea
             rows={2}
             value={description}
@@ -294,7 +321,7 @@ function CaseDetail({
             })
           }
         >
-          Add
+          {copy.add}
         </Pill>
       </div>
 
@@ -305,7 +332,7 @@ function CaseDetail({
           disabled={busy}
           onClick={() => void act(() => submitEvidence(dispute.id))}
         >
-          Mark answered
+          {copy.markAnswered}
         </Pill>
 
         {DISPUTE_OUTCOMES.map((outcome) => (
@@ -316,18 +343,15 @@ function CaseDetail({
             disabled={busy}
             onClick={() => void act(() => resolveDispute(dispute.id, outcome as DisputeState))}
           >
-            {outcome}
+            {copy.state[outcome]}
           </Pill>
         ))}
       </div>
 
-      <p className="mt-3 text-xs text-white/40">
-        Recording LOST or CONCEDED posts the disputed amount and the provider&apos;s fee to the
-        ledger. WON posts nothing, because nothing moved.
-      </p>
+      <p className="mt-3 text-xs text-white/40">{copy.outcomeNote}</p>
 
       {error && (
-        <InlineAlert variant="danger" title="That did not work" className="mt-4">
+        <InlineAlert variant="danger" title={copy.failedTitle} className="mt-4">
           {error}
         </InlineAlert>
       )}

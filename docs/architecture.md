@@ -5305,11 +5305,16 @@ it was written in.
 > are not.
 >
 > **What is still English, stated rather than left to be found.** The campaign editor,
-> the creator dashboard, and the twenty-six screens inside the administration console —
-> the console's own frame is translated, and `lib/i18n/admin-copy.ts` carries the
-> reversal of the earlier decision to leave it English. `packages/ui` takes copy as
-> props rather than reading a catalogue, which is deliberate: a design-system component
-> that reached for a message file could not be used outside one.
+> the creator dashboard, the eleven panels under the account headings, and
+> `components/moderation/ReportControl` — the dialog a member of the public opens to
+> report a campaign. **The administration console is finished**: its frame, its
+> twenty-eight routes and all twenty-six screens inside them, including the moderation
+> queue, the ledger, the payouts and the fee schedules. `lib/i18n/admin/` carries the
+> reversal of the earlier decision to leave staff-facing surfaces English, and the
+> argument for it: a moderator who reads Azerbaijani is not a different class of reader
+> from a backer who does. `packages/ui` takes copy as props rather than reading a
+> catalogue, which is deliberate: a design-system component that reached for a message
+> file could not be used outside one.
 >
 > **The service's own copy is per-language too.** `messages_{az,ru,tr}.properties` sit
 > beside `messages.properties`, which stays English so that a key no translation has

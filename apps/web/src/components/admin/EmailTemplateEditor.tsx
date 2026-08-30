@@ -19,14 +19,15 @@ import {
   withdrawTemplate,
 } from '../../lib/admin/email-templates';
 import { consoleMessageFor } from '../../lib/admin/refusals';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { EmailTemplateEditorCopy } from '../../lib/i18n/admin/platform-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { useConsoleResource } from './useConsoleResource';
-
-const SUBJECT = 'the email copy';
 
 export interface EmailTemplateEditorProps {
   /** The `NotificationType` being edited, as the service names it. */
   readonly type: string;
+  readonly copy: EmailTemplateEditorCopy;
 }
 
 /**
@@ -57,11 +58,17 @@ export interface EmailTemplateEditorProps {
  * broken email rather than a badly worded one, and a paragraph that appears for only some
  * recipients is copy an editor cannot see the effect of.
  */
-export function EmailTemplateEditor({ type }: EmailTemplateEditorProps) {
-  const draft = useConsoleResource((signal) => readTemplateDraft(type, signal), SUBJECT, [type]);
+export function EmailTemplateEditor({ type, copy }: EmailTemplateEditorProps) {
+  const draft = useConsoleResource(
+    (signal) => readTemplateDraft(type, signal),
+    copy.subject,
+    copy.refusals,
+    [type],
+  );
   const history = useConsoleResource(
     (signal) => readTemplateHistory(type, signal),
-    'the version history',
+    copy.historySubject,
+    copy.refusals,
     [type],
   );
 
@@ -85,7 +92,7 @@ export function EmailTemplateEditor({ type }: EmailTemplateEditorProps) {
   );
 
   if (draft.status === 'signed-out' || draft.status === 'forbidden') {
-    return <ConsoleRefusal status={draft.status} subject={SUBJECT} />;
+    return <ConsoleRefusal status={draft.status} subject={copy.subject} copy={copy.refusals} />;
   }
 
   async function act(work: () => Promise<unknown>): Promise<void> {
@@ -97,7 +104,7 @@ export function EmailTemplateEditor({ type }: EmailTemplateEditorProps) {
       draft.reload();
       history.reload();
     } catch (cause) {
-      setError(consoleMessageFor(cause, SUBJECT));
+      setError(consoleMessageFor(cause, copy.subject, copy.refusals));
     } finally {
       setBusy(false);
     }
@@ -105,7 +112,7 @@ export function EmailTemplateEditor({ type }: EmailTemplateEditorProps) {
 
   if (draft.status === 'loading') {
     return (
-      <SkeletonGroup label="Loading the copy">
+      <SkeletonGroup label={copy.loadingList}>
         <Skeleton height="1rem" width="40%" />
         <Skeleton height="5rem" width="100%" className="mt-4" />
       </SkeletonGroup>
@@ -115,11 +122,11 @@ export function EmailTemplateEditor({ type }: EmailTemplateEditorProps) {
   if (draft.status === 'failed' || draft.data === null) {
     return (
       <>
-        <InlineAlert variant="danger" title="Something went wrong">
-          {draft.error ?? 'The copy could not be read.'}
+        <InlineAlert variant="danger" title={copy.errorTitle}>
+          {draft.error ?? copy.readFailed}
         </InlineAlert>
         <Pill variant="ghost" size="sm" className="mt-4" onClick={draft.reload}>
-          Try again
+          {copy.tryAgain}
         </Pill>
       </>
     );
@@ -129,15 +136,20 @@ export function EmailTemplateEditor({ type }: EmailTemplateEditorProps) {
 
   return (
     <div className="flex flex-col gap-8">
-      <InlineAlert variant={overridden ? 'warning' : 'info'} title={overridden ? 'This copy has been rewritten' : 'This is the shipped copy'}>
+      <InlineAlert
+        variant={overridden ? 'warning' : 'info'}
+        title={overridden ? copy.overriddenTitle : copy.shippedTitle}
+      >
         {overridden
-          ? `Version ${draft.data.override?.version} is live and is what the platform sends. Withdrawing it sends the shipped copy again — the versions are kept either way, because "what did the notice say in March" is a question somebody eventually asks.`
-          : 'Nothing has been edited, so the platform is sending the copy that ships with the code. Editing appends a version rather than changing anything in place.'}
+          ? fillPlaceholders(copy.overriddenBody, {
+              version: String(draft.data.override?.version ?? ''),
+            })
+          : copy.shippedBody}
       </InlineAlert>
 
       <section aria-labelledby="shipped-heading">
         <h2 id="shipped-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-          Shipped copy
+          {copy.shippedHeading}
         </h2>
         <div className="mt-3 rounded-lg border border-white/8 bg-surface-1 p-4">
           <p className="text-sm text-white/80">{draft.data.shippedSubject}</p>
@@ -147,22 +159,21 @@ export function EmailTemplateEditor({ type }: EmailTemplateEditorProps) {
 
       <section aria-labelledby="edit-heading">
         <h2 id="edit-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-          Your copy
+          {copy.yourHeading}
         </h2>
 
         {draft.data.requiredPlaceholders.length > 0 && (
           <p className="mt-2 text-xs text-white/48">
-            Must keep:{' '}
+            {copy.mustKeep}{' '}
             {draft.data.requiredPlaceholders.map((index) => (
               <code key={index} className="mr-1 font-mono">{`{${index}}`}</code>
             ))}
-            — these are the facts the message carries. A payment notice that drops one stops
-            telling somebody what happened.
+            {copy.mustKeepWhy}
           </p>
         )}
 
         <div className="mt-3 flex flex-col gap-3">
-          <Field label="Subject">
+          <Field label={copy.subjectLabel}>
             <TextInput
               value={currentSubject}
               onChange={(event) => setSubject(event.target.value)}
@@ -170,7 +181,7 @@ export function EmailTemplateEditor({ type }: EmailTemplateEditorProps) {
             />
           </Field>
 
-          <Field label="First paragraph">
+          <Field label={copy.bodyLabel}>
             <Textarea
               rows={4}
               value={currentBody}
@@ -179,16 +190,16 @@ export function EmailTemplateEditor({ type }: EmailTemplateEditorProps) {
             />
           </Field>
 
-          <Field label="Why" hint="For whoever reads the history in a year.">
+          <Field label={copy.whyLabel} hint={copy.whyHint}>
             <TextInput value={note} onChange={(event) => setNote(event.target.value)} maxLength={2000} />
           </Field>
         </div>
 
         {missing.length > 0 && (
-          <InlineAlert variant="danger" title="This drops something it has to keep" className="mt-4">
-            Missing {missing.map((index) => `{${index}}`).join(', ')}. The service refuses an
-            override that leaves out a placeholder the shipped copy uses, and it is right to:
-            no role check can catch a notice that no longer says which card was declined.
+          <InlineAlert variant="danger" title={copy.missingTitle} className="mt-4">
+            {fillPlaceholders(copy.missingBody, {
+              placeholders: missing.map((index) => `{${index}}`).join(', '),
+            })}
           </InlineAlert>
         )}
 
@@ -206,11 +217,11 @@ export function EmailTemplateEditor({ type }: EmailTemplateEditorProps) {
                   note.trim() === '' ? null : note.trim(),
                 );
                 setNote('');
-                setSaved('Saved as a new live version.');
+                setSaved(copy.savedNew);
               })
             }
           >
-            {busy ? 'Saving' : 'Save as a new version'}
+            {busy ? copy.saving : copy.saveNew}
           </Pill>
 
           {overridden && (
@@ -223,22 +234,22 @@ export function EmailTemplateEditor({ type }: EmailTemplateEditorProps) {
                   await withdrawTemplate(type);
                   setSubject(null);
                   setBody(null);
-                  setSaved('Withdrawn. The shipped copy is being sent again.');
+                  setSaved(copy.savedWithdrawn);
                 })
               }
             >
-              Withdraw the override
+              {copy.withdraw}
             </Pill>
           )}
         </div>
 
         {saved && (
-          <InlineAlert variant="success" title="Done" className="mt-4">
+          <InlineAlert variant="success" title={copy.doneTitle} className="mt-4">
             {saved}
           </InlineAlert>
         )}
         {error && (
-          <InlineAlert variant="danger" title="That did not work" className="mt-4">
+          <InlineAlert variant="danger" title={copy.failedTitle} className="mt-4">
             {error}
           </InlineAlert>
         )}
@@ -247,16 +258,19 @@ export function EmailTemplateEditor({ type }: EmailTemplateEditorProps) {
       {history.status === 'ready' && history.data !== null && history.data.versions.length > 0 && (
         <section aria-labelledby="history-heading">
           <h2 id="history-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-            Versions
+            {copy.versionsHeading}
           </h2>
           <ul className="mt-3 flex list-none flex-col gap-2">
             {history.data.versions.map((version) => (
               <li key={version.id} className="rounded-lg border border-white/8 bg-surface-1 p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="text-sm text-white/80">
-                    Version {version.version} · {version.createdAt.slice(0, 10)}
+                    {fillPlaceholders(copy.versionLine, {
+                      version: String(version.version),
+                      date: version.createdAt.slice(0, 10),
+                    })}
                   </p>
-                  {version.live && <Tag>Live</Tag>}
+                  {version.live && <Tag>{copy.live}</Tag>}
                 </div>
                 <p className="mt-2 text-sm text-white/64">{version.subject}</p>
                 {version.note && <p className="mt-1 text-xs text-white/40">{version.note}</p>}

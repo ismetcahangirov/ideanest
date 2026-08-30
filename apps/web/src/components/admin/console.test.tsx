@@ -10,6 +10,28 @@ import type { LedgerView } from '../../lib/admin/ledger';
 import { AuditTrailView } from './AuditTrailView';
 import { BadgeManager } from './BadgeManager';
 import { LedgerExplorer } from './LedgerExplorer';
+import { translatorFor } from '../../test-copy';
+import {
+  consoleChromeCopyFrom,
+  noteDialogCopyFrom,
+} from '../../lib/i18n/admin/common-copy';
+import { curationChromeFrom } from '../../lib/i18n/admin/curation-copy';
+import { badgeManagerCopyFrom } from '../../lib/i18n/admin/curation-copy';
+import { auditTrailCopyFrom } from '../../lib/i18n/admin/platform-copy';
+import { ledgerExplorerCopyFrom } from '../../lib/i18n/admin/money-copy';
+
+/*
+ * The copy is built from `messages/en.json` with the same builders the routes call, rather
+ * than typed out here. `src/test-copy.ts` explains why at length: a suite that retyped the
+ * sentences would still be green with the catalogue empty, which is precisely the defect
+ * `catalogue.test.ts` exists to catch.
+ */
+const ADMIN = translatorFor('admin');
+const CHROME = consoleChromeCopyFrom(ADMIN, translatorFor('common'));
+const AUDIT = auditTrailCopyFrom(ADMIN, CHROME);
+const LEDGER = ledgerExplorerCopyFrom(ADMIN, CHROME);
+const BADGES = badgeManagerCopyFrom(ADMIN, curationChromeFrom(ADMIN, CHROME));
+const NOTE = noteDialogCopyFrom(ADMIN, translatorFor('common'));
 
 vi.mock('../../lib/admin/audit', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../lib/admin/audit')>();
@@ -92,7 +114,7 @@ beforeEach(() => {
 describe('the ledger explorer', () => {
   it('shows both sides of a posting even when the filter matched one of them', async () => {
     const user = userEvent.setup();
-    render(<LedgerExplorer />);
+    render(<LedgerExplorer copy={LEDGER} />);
     await screen.findByText('Escrow');
 
     await user.click(screen.getByRole('button', { name: 'Escrow' }));
@@ -113,7 +135,7 @@ describe('the ledger explorer', () => {
 
   it('keeps every account in the balance panel while the postings narrow', async () => {
     const user = userEvent.setup();
-    render(<LedgerExplorer />);
+    render(<LedgerExplorer copy={LEDGER} />);
     await screen.findByText('Balances across the platform');
 
     await user.click(screen.getByRole('button', { name: 'Escrow' }));
@@ -133,7 +155,7 @@ describe('the ledger explorer', () => {
       ...view,
       postings: [{ ...view.postings[0]!, balanced: false }],
     });
-    render(<LedgerExplorer />);
+    render(<LedgerExplorer copy={LEDGER} />);
 
     // V41 refuses to commit one, so reaching this means a row arrived past both the
     // application and the database. It is an incident and the reader needs to know first.
@@ -143,7 +165,7 @@ describe('the ledger explorer', () => {
 
   it('tells a reader who is not staff why, rather than showing an empty ledger', async () => {
     readLedgerMock.mockRejectedValue(new ApiError(403, { code: 'NOT_A_MODERATOR' }, 'no'));
-    render(<LedgerExplorer />);
+    render(<LedgerExplorer copy={LEDGER} />);
 
     expect(await screen.findByText('Not a moderator')).toBeInTheDocument();
     // And not an empty state, which on a ledger reads as "no money has moved".
@@ -154,7 +176,7 @@ describe('the ledger explorer', () => {
 describe('the audit trail', () => {
   it('asks the service to narrow rather than filtering the page it holds', async () => {
     const user = userEvent.setup();
-    render(<AuditTrailView />);
+    render(<AuditTrailView copy={AUDIT} />);
     await screen.findByRole('button', { name: 'Everything' });
 
     await user.click(screen.getByRole('button', { name: 'Campaigns' }));
@@ -170,7 +192,7 @@ describe('the audit trail', () => {
   });
 
   it('says an empty trail is empty rather than broken', async () => {
-    render(<AuditTrailView />);
+    render(<AuditTrailView copy={AUDIT} />);
 
     expect(await screen.findByText('Nothing has been recorded yet')).toBeInTheDocument();
   });
@@ -180,7 +202,7 @@ describe('the badge manager', () => {
   it('sends the whole collection back, not only the field it changed', async () => {
     const user = userEvent.setup();
     replaceCollectionMock.mockResolvedValue(collection({ grantsBadge: true }));
-    render(<BadgeManager />);
+    render(<BadgeManager copy={BADGES} note={NOTE} />);
     await screen.findByRole('button', { name: 'Grant the badge' });
 
     await user.click(screen.getByRole('button', { name: 'Grant the badge' }));
@@ -205,7 +227,7 @@ describe('the badge manager', () => {
   });
 
   it('says an unpublished collection badges nothing yet', async () => {
-    render(<BadgeManager />);
+    render(<BadgeManager copy={BADGES} note={NOTE} />);
 
     // A curator who turned the grant on and saw no badges would otherwise reasonably think
     // it had failed.

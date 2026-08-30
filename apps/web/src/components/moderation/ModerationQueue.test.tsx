@@ -5,6 +5,20 @@ import { ApiError } from '../../lib/api/problem';
 import type { QueuedReport, ReportQueuePage } from '../../lib/moderation/api';
 import { decideCampaign, getReport, listReports, resolveReport } from '../../lib/moderation/api';
 import { ModerationQueue } from './ModerationQueue';
+import { translatorFor } from '../../test-copy';
+import { consoleChromeCopyFrom } from '../../lib/i18n/admin/common-copy';
+import { moderationQueueCopyFrom } from '../../lib/i18n/admin/content-copy';
+
+/*
+ * The copy is built from `messages/en.json` with the same builders the routes call, rather
+ * than typed out here. `src/test-copy.ts` explains why at length: a suite that retyped the
+ * sentences would still be green with the catalogue empty, which is precisely the defect
+ * `catalogue.test.ts` exists to catch.
+ */
+const COPY = moderationQueueCopyFrom(
+  translatorFor('admin'),
+  consoleChromeCopyFrom(translatorFor('admin'), translatorFor('common')),
+);
 
 vi.mock('../../lib/moderation/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../lib/moderation/api')>();
@@ -69,14 +83,14 @@ describe('ModerationQueue', () => {
   describe('loading, empty and failure', () => {
     it('announces that it is loading rather than showing a blank queue', () => {
       listReportsMock.mockReturnValue(new Promise<ReportQueuePage>(() => {}));
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
 
       const label = screen.getByText('Loading the moderation queue');
       expect(label.closest('[aria-busy]')).toHaveAttribute('aria-busy', 'true');
     });
 
     it('asks the service for the open reports first, because that is the queue', async () => {
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
       await screen.findByRole('heading', { name: /Open reports/ });
 
       expect(listReportsMock).toHaveBeenCalledWith(expect.objectContaining({ state: 'OPEN' }));
@@ -84,7 +98,7 @@ describe('ModerationQueue', () => {
 
     it('says the queue is clear rather than showing nothing at all', async () => {
       listReportsMock.mockResolvedValue(page([]));
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
 
       expect(await screen.findByText('The queue is clear')).toBeInTheDocument();
     });
@@ -92,7 +106,7 @@ describe('ModerationQueue', () => {
     it('shows why a load failed and offers to try again', async () => {
       const user = userEvent.setup();
       listReportsMock.mockRejectedValueOnce(new TypeError('offline'));
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
 
       const alert = await screen.findByRole('alert');
       expect(alert).toHaveTextContent('The service could not be reached');
@@ -105,7 +119,7 @@ describe('ModerationQueue', () => {
 
     it('tells a signed-out browser to sign in instead of showing an empty queue', async () => {
       listReportsMock.mockRejectedValue(new ApiError(401, null, 'You are not signed in.'));
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
 
       expect(await screen.findByText('You are signed out')).toBeInTheDocument();
     });
@@ -114,7 +128,7 @@ describe('ModerationQueue', () => {
       listReportsMock.mockRejectedValue(
         new ApiError(403, { code: 'NOT_A_MODERATOR', detail: 'Staff only.' }),
       );
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
 
       expect(await screen.findByText('Not a moderator')).toBeInTheDocument();
     });
@@ -122,7 +136,7 @@ describe('ModerationQueue', () => {
 
   describe('the cards', () => {
     it('names every action by what it does AND what it acts on', async () => {
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
       await screen.findByText('Fraud');
 
       expect(
@@ -137,7 +151,7 @@ describe('ModerationQueue', () => {
     });
 
     it('offers the three campaign outcomes only for a report about a campaign', async () => {
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
       await screen.findByText('Fraud');
 
       const campaign = screen.getByRole('group', { name: 'Act on campaign a1b2c3d4' });
@@ -149,7 +163,7 @@ describe('ModerationQueue', () => {
     });
 
     it('marks a report that has waited too long in words, not only in colour', async () => {
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
       await screen.findByText('Fraud');
 
       // 72 hours old, past the 48-hour threshold; the 2-hour-old one is not.
@@ -170,7 +184,7 @@ describe('ModerationQueue', () => {
           },
         ]),
       );
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
 
       await screen.findByRole('heading', { name: 'Decision' });
       expect(screen.getByText(/Upheld by moderator/)).toHaveTextContent('mod-1234');
@@ -183,7 +197,7 @@ describe('ModerationQueue', () => {
   describe('filters', () => {
     it('asks the service again when the state changes, because only that is a server filter', async () => {
       const user = userEvent.setup();
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
       await screen.findByText('Fraud');
 
       expect(screen.getByRole('button', { name: 'Open' })).toHaveAttribute(
@@ -207,7 +221,7 @@ describe('ModerationQueue', () => {
 
     it('asks the service to narrow by target rather than filtering the page it holds', async () => {
       const user = userEvent.setup();
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
       await screen.findByText('Fraud');
 
       listReportsMock.mockResolvedValue(page([ACCOUNT_REPORT]));
@@ -227,7 +241,7 @@ describe('ModerationQueue', () => {
 
     it('does not call a server-narrowed queue a filtered one', async () => {
       const user = userEvent.setup();
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
       await screen.findByText('Fraud');
 
       listReportsMock.mockResolvedValue(page([ACCOUNT_REPORT]));
@@ -244,7 +258,7 @@ describe('ModerationQueue', () => {
       // One report, two hours old, complained about by one person: it survives the server
       // filters and neither triage narrowing.
       listReportsMock.mockResolvedValue(page([ACCOUNT_REPORT]));
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
       await screen.findByText('Spam');
 
       await user.click(screen.getByRole('button', { name: 'Open over 48 hours' }));
@@ -258,7 +272,7 @@ describe('ModerationQueue', () => {
   describe('pinned to one kind of target', () => {
     it('asks the service for that kind and offers no way to widen', async () => {
       listReportsMock.mockResolvedValue(page([ACCOUNT_REPORT]));
-      render(<ModerationQueue pinnedTarget="USER" />);
+      render(<ModerationQueue pinnedTarget="USER" copy={COPY} />);
       await screen.findByText('Spam');
 
       expect(listReportsMock).toHaveBeenCalledWith(expect.objectContaining({ target: 'USER' }));
@@ -270,7 +284,7 @@ describe('ModerationQueue', () => {
 
     it('keeps the state tabs, which narrow a different question', async () => {
       listReportsMock.mockResolvedValue(page([ACCOUNT_REPORT]));
-      render(<ModerationQueue pinnedTarget="USER" />);
+      render(<ModerationQueue pinnedTarget="USER" copy={COPY} />);
       await screen.findByText('Spam');
 
       expect(screen.getByRole('button', { name: 'Upheld' })).toBeInTheDocument();
@@ -279,14 +293,14 @@ describe('ModerationQueue', () => {
 
   describe('the decision detail link', () => {
     it('is absent unless the screen says where it goes', async () => {
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
       await screen.findByText('Fraud');
 
       expect(screen.queryByRole('link', { name: /Full history/ })).toBeNull();
     });
 
     it('names the report it opens, because twenty of "Open" is unusable by ear', async () => {
-      render(<ModerationQueue detailHrefBase="/admin/moderation" />);
+      render(<ModerationQueue detailHrefBase="/admin/moderation" copy={COPY} />);
       await screen.findByText('Fraud');
 
       const link = screen.getByRole('link', {
@@ -300,7 +314,7 @@ describe('ModerationQueue', () => {
     it('appends the next page instead of replacing what is on screen', async () => {
       const user = userEvent.setup();
       listReportsMock.mockResolvedValueOnce(page([CAMPAIGN_REPORT], 'cursor-2'));
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
       await screen.findByText('Fraud');
 
       listReportsMock.mockResolvedValueOnce(page([ACCOUNT_REPORT]));
@@ -325,7 +339,7 @@ describe('ModerationQueue', () => {
         state: 'UPHELD',
         resolution: { moderatorId: 'me', at: new Date().toISOString(), note: 'Verified.' },
       });
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
       await screen.findByText('Fraud');
 
       await user.click(
@@ -351,7 +365,7 @@ describe('ModerationQueue', () => {
         state: 'DISMISSED',
         resolution: { moderatorId: 'me', at: new Date().toISOString() },
       });
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
       await screen.findByText('Fraud');
 
       await user.click(
@@ -374,7 +388,7 @@ describe('ModerationQueue', () => {
       resolveReportMock.mockRejectedValue(
         new ApiError(500, { title: 'Something broke', detail: 'The decision was not saved.' }),
       );
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
       await screen.findByText('Fraud');
 
       await user.click(
@@ -403,7 +417,7 @@ describe('ModerationQueue', () => {
         state: 'UPHELD',
         resolution: { moderatorId: 'someone-else', at: new Date().toISOString() },
       });
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
       await screen.findByText('Fraud');
 
       await user.click(
@@ -424,7 +438,7 @@ describe('ModerationQueue', () => {
   describe('deciding the campaign', () => {
     it('will not send a rejection with no reason on it', async () => {
       const user = userEvent.setup();
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
       await screen.findByText('Fraud');
 
       await user.click(screen.getByRole('button', { name: 'Reject for campaign a1b2c3d4' }));
@@ -445,7 +459,7 @@ describe('ModerationQueue', () => {
         state: 'CHANGES_REQUESTED',
         title: 'A campaign',
       });
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
       await screen.findByText('Fraud');
 
       await user.click(
@@ -482,7 +496,7 @@ describe('ModerationQueue', () => {
           meta: { state: 'LIVE', allowed: [] },
         }),
       );
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
       await screen.findByText('Fraud');
 
       await user.click(screen.getByRole('button', { name: 'Approve for campaign a1b2c3d4' }));
@@ -497,7 +511,7 @@ describe('ModerationQueue', () => {
     it('reaches an action by Tab alone and fires it with Enter', async () => {
       const user = userEvent.setup();
       listReportsMock.mockResolvedValue(page([ACCOUNT_REPORT]));
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
       await screen.findByText('Spam');
 
       const uphold = screen.getByRole('button', {
@@ -519,7 +533,7 @@ describe('ModerationQueue', () => {
         resolution: { moderatorId: 'me', at: new Date().toISOString() },
       });
       listReportsMock.mockResolvedValue(page([ACCOUNT_REPORT]));
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
       await screen.findByText('Spam');
 
       await user.click(
@@ -536,7 +550,7 @@ describe('ModerationQueue', () => {
 
     it('lets Escape out of a decision without taking it', async () => {
       const user = userEvent.setup();
-      render(<ModerationQueue />);
+      render(<ModerationQueue copy={COPY} />);
       await screen.findByText('Fraud');
 
       await user.click(

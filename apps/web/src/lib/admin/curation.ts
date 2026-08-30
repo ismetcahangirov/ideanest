@@ -33,11 +33,19 @@ import { errorFrom } from '../api/problem';
 /** §4.3's three senses of a curated list. */
 export type CollectionKind = 'staff_selection' | 'themed' | 'open_call';
 
-export const COLLECTION_KIND_LABELS: Readonly<Record<CollectionKind, string>> = {
-  staff_selection: 'Staff selection',
-  themed: 'Themed',
-  open_call: 'Open call',
-};
+/**
+ * The three kinds, as values.
+ *
+ * <p>Values only since #324. This used to be a table of English words, which put a
+ * translatable noun in a module a client imports — the words are `admin.curation.kind` now,
+ * keyed by these same values, and this array stays the one place that says which kinds exist
+ * and in what order a form offers them.
+ */
+export const COLLECTION_KINDS: readonly CollectionKind[] = Object.freeze([
+  'staff_selection',
+  'themed',
+  'open_call',
+]);
 
 /** The copy for one locale. Both halves are optional; a list with neither is not useful. */
 export interface CollectionCopy {

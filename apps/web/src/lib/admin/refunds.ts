@@ -64,16 +64,21 @@ export interface RefundPage {
 }
 
 /** What each reason means, in the words the console uses. */
-export const REFUND_REASON_LABELS: Readonly<Record<RefundReason, string>> = Object.freeze({
-  BACKER_REQUEST: 'The backer asked',
-  CAMPAIGN_HALTED: 'The campaign was stopped',
-  CAMPAIGN_FAILED: 'The campaign missed its goal',
-  FULFILMENT_FAILURE: 'The creator did not deliver',
-  DUPLICATE_CHARGE: 'Charged twice',
-  PLATFORM_ERROR: 'Our mistake',
-  DISPUTE_CONCEDED: 'A chargeback we did not contest',
-  FRAUD: 'Not the cardholder',
-});
+/*
+ * The eight reason codes read as sentences on the screen — "The backer asked" — and those
+ * sentences are `admin.screens.refunds.reason` since #324. The form offers them in the order
+ * the union declares, which is what {@link REFUND_REASONS} is for.
+ */
+export const REFUND_REASONS: readonly RefundReason[] = Object.freeze([
+  'BACKER_REQUEST',
+  'CAMPAIGN_HALTED',
+  'CAMPAIGN_FAILED',
+  'FULFILMENT_FAILURE',
+  'DUPLICATE_CHARGE',
+  'PLATFORM_ERROR',
+  'DISPUTE_CONCEDED',
+  'FRAUD',
+]);
 
 /**
  * A key for one refund attempt.

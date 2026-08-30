@@ -25,10 +25,11 @@ import {
   type TicketState,
 } from '../../lib/admin/tickets';
 import { consoleMessageFor, shortId } from '../../lib/admin/refusals';
+import { pluralise } from '../../lib/i18n/plurals';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
+import type { SupportConsoleCopy } from '../../lib/i18n/admin/people-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { useConsoleResource } from './useConsoleResource';
-
-const SUBJECT = 'the support queue';
 
 /**
  * §4.11's AD-10: tickets with user context and action history — issue #310.
@@ -50,34 +51,40 @@ const SUBJECT = 'the support queue';
  * Everything else about a reply does move it, in the entity rather than here — a reply that did
  * not take the ticket off the queue is a reply the next person has to notice by reading it.
  */
-export function SupportConsole() {
+export interface SupportConsoleProps {
+  readonly copy: SupportConsoleCopy;
+}
+
+export function SupportConsole({ copy }: SupportConsoleProps) {
   const [page, setPage] = useState(0);
   const [openTicket, setOpenTicket] = useState<string | null>(null);
 
-  const queue = useConsoleResource((signal) => readTicketQueue(page, signal), SUBJECT, [page]);
+  const queue = useConsoleResource(
+    (signal) => readTicketQueue(page, signal),
+    copy.subject,
+    copy.refusals,
+    [page],
+  );
 
   if (queue.status === 'signed-out' || queue.status === 'forbidden') {
-    return <ConsoleRefusal status={queue.status} subject={SUBJECT} />;
+    return <ConsoleRefusal status={queue.status} subject={copy.subject} copy={copy.refusals} />;
   }
 
   return (
     <div className="flex flex-col gap-8">
       <section aria-labelledby="queue-heading">
         <h2 id="queue-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-          Open tickets
+          {copy.heading}
           {queue.status === 'ready' && (
             <span className="ml-2 text-xs font-normal text-white/40">
               {queue.data?.tickets.length ?? 0}
             </span>
           )}
         </h2>
-        <p className="mt-2 max-w-[62ch] text-sm text-white/64">
-          Most urgent first, oldest first within a priority. Priority is set by staff — one the
-          person asking could choose would be urgent on every ticket within a week.
-        </p>
+        <p className="mt-2 max-w-[62ch] text-sm text-white/64">{copy.intro}</p>
 
         {queue.status === 'loading' && (
-          <SkeletonGroup label="Loading the support queue" className="mt-4">
+          <SkeletonGroup label={copy.loadingList} className="mt-4">
             <div className="space-y-3">
               {[0, 1, 2].map((row) => (
                 <div key={row} className="rounded-lg border border-white/8 bg-surface-1 p-4">
@@ -91,11 +98,11 @@ export function SupportConsole() {
 
         {queue.status === 'failed' && (
           <>
-            <InlineAlert variant="danger" title="Something went wrong" className="mt-4">
+            <InlineAlert variant="danger" title={copy.errorTitle} className="mt-4">
               {queue.error}
             </InlineAlert>
             <Pill variant="ghost" size="sm" className="mt-4" onClick={queue.reload}>
-              Try again
+              {copy.tryAgain}
             </Pill>
           </>
         )}
@@ -104,8 +111,8 @@ export function SupportConsole() {
           <EmptyState
             className="mt-4"
             variant="empty"
-            title="Nothing is waiting"
-            description="No ticket is open or pending. Tickets are recorded here by staff when somebody writes in — there is no public form behind this screen yet."
+            title={copy.emptyTitle}
+            description={copy.emptyBody}
           />
         )}
 
@@ -122,20 +129,22 @@ export function SupportConsole() {
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <p className="text-sm text-white">{ticket.subject}</p>
                     <span className="flex items-center gap-2">
-                      <Tag>{ticket.priority}</Tag>
-                      <Tag>{ticket.state}</Tag>
+                      <Tag>{copy.priority[ticket.priority]}</Tag>
+                      <Tag>{copy.state[ticket.state]}</Tag>
                     </span>
                   </div>
                   <p className="mt-2 text-xs text-white/40">
                     <span className="font-mono">{shortId(ticket.requesterId)}</span> ·{' '}
                     {ticket.createdAt.slice(0, 10)}
                     {ticket.assigneeId == null
-                      ? ' · unassigned'
+                      ? ` · ${copy.unassigned}`
                       : ` · ${shortId(ticket.assigneeId)}`}
                   </p>
                 </button>
 
-                {openTicket === ticket.id && <TicketDetail ticketId={ticket.id} onChanged={queue.reload} />}
+                {openTicket === ticket.id && (
+                  <TicketDetail ticketId={ticket.id} copy={copy} onChanged={queue.reload} />
+                )}
               </li>
             ))}
           </ul>
@@ -144,7 +153,7 @@ export function SupportConsole() {
         {queue.status === 'ready' && (page > 0 || (queue.data?.hasMore ?? false)) && (
           <div className="mt-4 flex gap-2">
             <Pill variant="ghost" size="sm" disabled={page === 0} onClick={() => setPage((n) => n - 1)}>
-              Previous
+              {copy.previous}
             </Pill>
             <Pill
               variant="ghost"
@@ -152,7 +161,7 @@ export function SupportConsole() {
               disabled={!(queue.data?.hasMore ?? false)}
               onClick={() => setPage((n) => n + 1)}
             >
-              Next
+              {copy.next}
             </Pill>
           </div>
         )}
@@ -164,14 +173,18 @@ export function SupportConsole() {
 /** One ticket, its thread, and the rest of the account's history. */
 function TicketDetail({
   ticketId,
+  copy,
   onChanged,
 }: {
   readonly ticketId: string;
+  readonly copy: SupportConsoleCopy;
   readonly onChanged: () => void;
 }) {
+  const locale = useRouteLocale();
   const context = useConsoleResource(
     (signal) => readTicket(ticketId, signal),
-    'this ticket',
+    copy.ticketSubject,
+    copy.refusals,
     [ticketId],
   );
 
@@ -188,7 +201,7 @@ function TicketDetail({
       context.reload();
       onChanged();
     } catch (cause) {
-      setError(consoleMessageFor(cause, 'this ticket'));
+      setError(consoleMessageFor(cause, copy.ticketSubject, copy.refusals));
     } finally {
       setBusy(false);
     }
@@ -196,7 +209,7 @@ function TicketDetail({
 
   if (context.status === 'loading') {
     return (
-      <SkeletonGroup label="Loading the ticket" className="mt-2 rounded-lg border border-white/8 p-4">
+      <SkeletonGroup label={copy.loadingTicket} className="mt-2 rounded-lg border border-white/8 p-4">
         <Skeleton height="0.875rem" width="60%" />
       </SkeletonGroup>
     );
@@ -204,8 +217,8 @@ function TicketDetail({
 
   if (context.status !== 'ready' || context.data === null) {
     return (
-      <InlineAlert variant="danger" title="The ticket could not be read" className="mt-2">
-        {context.error ?? 'Try again.'}
+      <InlineAlert variant="danger" title={copy.ticketFailedTitle} className="mt-2">
+        {context.error ?? copy.tryAgainShort}
       </InlineAlert>
     );
   }
@@ -226,8 +239,8 @@ function TicketDetail({
             }
           >
             <p className="text-xs text-white/40">
-              {message.authorSide === 'STAFF' ? 'Staff' : 'Requester'}
-              {message.internal ? ' · internal note, never shown to them' : ''} ·{' '}
+              {message.authorSide === 'STAFF' ? copy.staff : copy.requester}
+              {message.internal ? ` · ${copy.internalNote}` : ''} ·{' '}
               {message.createdAt.slice(0, 10)}
             </p>
             <p className="mt-1 whitespace-pre-wrap text-sm text-white/80">{message.body}</p>
@@ -236,7 +249,7 @@ function TicketDetail({
       </ul>
 
       <div className="mt-4 flex flex-col gap-2 border-t border-white/8 pt-4">
-        <Field label="Reply">
+        <Field label={copy.replyLabel}>
           <Textarea
             rows={3}
             value={body}
@@ -249,7 +262,7 @@ function TicketDetail({
           <Checkbox
             checked={internal}
             onChange={(event) => setInternal(event.target.checked)}
-            label="Internal note — the requester never sees this, and it does not move the ticket"
+            label={copy.internalLabel}
           />
           <Pill
             variant="outline"
@@ -262,13 +275,13 @@ function TicketDetail({
               })
             }
           >
-            Send
+            {copy.send}
           </Pill>
         </div>
       </div>
 
       <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-white/8 pt-4">
-        <Field label="Priority" className="min-w-[150px]">
+        <Field label={copy.priorityLabel} className="min-w-[150px]">
           <Select
             value={file.ticket.priority}
             disabled={busy}
@@ -280,13 +293,13 @@ function TicketDetail({
           >
             {TICKET_PRIORITIES.map((option) => (
               <option key={option} value={option}>
-                {option}
+                {copy.priority[option]}
               </option>
             ))}
           </Select>
         </Field>
 
-        <Field label="State" className="min-w-[150px]">
+        <Field label={copy.stateLabel} className="min-w-[150px]">
           <Select
             value={file.ticket.state}
             disabled={busy}
@@ -296,7 +309,7 @@ function TicketDetail({
           >
             {TICKET_STATES.map((option) => (
               <option key={option} value={option}>
-                {option}
+                {copy.state[option]}
               </option>
             ))}
           </Select>
@@ -309,19 +322,19 @@ function TicketDetail({
           disabled={busy}
           onClick={() => void act(() => updateTicket(ticketId, { unassign: true }))}
         >
-          Put back in the queue
+          {copy.putBack}
         </Pill>
       </div>
 
       {others.length > 0 && (
         <div className="mt-4 border-t border-white/8 pt-4">
           <h4 className="text-xs font-medium text-white/64">
-            This account has asked us {others.length} other {others.length === 1 ? 'time' : 'times'}
+            {pluralise(locale, copy.otherTickets, others.length)}
           </h4>
           <ul className="mt-2 flex list-none flex-col gap-1">
             {others.slice(0, 8).map((other: Ticket) => (
               <li key={other.id} className="text-xs text-white/48">
-                {other.createdAt.slice(0, 10)} · {other.subject} · {other.state}
+                {other.createdAt.slice(0, 10)} · {other.subject} · {copy.state[other.state]}
               </li>
             ))}
           </ul>
@@ -329,7 +342,7 @@ function TicketDetail({
       )}
 
       {error && (
-        <InlineAlert variant="danger" title="That did not work" className="mt-4">
+        <InlineAlert variant="danger" title={copy.failedTitle} className="mt-4">
           {error}
         </InlineAlert>
       )}

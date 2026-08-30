@@ -24,6 +24,10 @@ import {
   reinstateUser,
   type AdminUser,
 } from '../../lib/admin/api';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import { pluralise } from '../../lib/i18n/plurals';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
+import type { UserDirectoryCopy } from '../../lib/i18n/admin/people-copy';
 
 type Status = 'loading' | 'ready' | 'failed' | 'signed-out' | 'forbidden';
 
@@ -34,34 +38,22 @@ type Status = 'loading' | 'ready' | 'failed' | 'signed-out' | 'forbidden';
  * refusals that cannot be told apart would force this screen to match on
  * sentences the service is free to reword.
  */
-function messageFor(cause: unknown): string {
+function messageFor(cause: unknown, copy: UserDirectoryCopy): string {
   if (cause instanceof ApiError) {
-    if (cause.status === 403) {
-      return 'Your account is not on the platform moderator list, so the account directory is not yours to read.';
-    }
+    if (cause.status === 403) return copy.notStaff;
 
     const code = cause.problem?.code;
 
-    if (code === 'ACCOUNT_NOT_FOUND') {
-      return 'That account no longer exists. It may have been deleted since this page was loaded.';
-    }
-    if (code === 'ACCOUNT_SUSPENSION_REFUSED') {
-      return 'An account cannot suspend itself. Ask another moderator.';
-    }
+    if (code === 'ACCOUNT_NOT_FOUND') return copy.accountNotFound;
+    if (code === 'ACCOUNT_SUSPENSION_REFUSED') return copy.selfSuspend;
 
-    return (
-      cause.problem?.detail ?? cause.problem?.title ?? 'The service refused the request. Try again.'
-    );
+    return cause.problem?.detail ?? cause.problem?.title ?? copy.refusals.refused;
   }
-  return 'The service could not be reached. Check your connection and try again.';
+  return copy.refusals.unreachable;
 }
 
 function wasAborted(cause: unknown): boolean {
   return cause instanceof DOMException && cause.name === 'AbortError';
-}
-
-function accounts(count: number): string {
-  return `${count} ${count === 1 ? 'account' : 'accounts'}`;
 }
 
 /** The day, in the reader's locale. An instant to the second says more than anybody needs here. */
@@ -90,7 +82,12 @@ function day(instant: string | null): string | null {
  * docs/motion-system.md §8 forbids animation in long lists, and this is a list of
  * people's accounts.
  */
-export function UserDirectory() {
+export interface UserDirectoryProps {
+  readonly copy: UserDirectoryCopy;
+}
+
+export function UserDirectory({ copy }: UserDirectoryProps) {
+  const locale = useRouteLocale();
   const [status, setStatus] = useState<Status>('loading');
   const [term, setTerm] = useState('');
   const [submitted, setSubmitted] = useState('');
@@ -138,13 +135,15 @@ export function UserDirectory() {
           setStatus('forbidden');
           return;
         }
-        setError(messageFor(cause));
+        setError(messageFor(cause, copy));
         setStatus('failed');
       }
     }
 
     void load();
     return () => controller.abort();
+    // The copy is one object per server render — see `useConsoleResource` for the argument.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [submitted, suspendedOnly, attempt]);
 
   const loadMore = useCallback(async (): Promise<void> => {
@@ -157,11 +156,11 @@ export function UserDirectory() {
       setLoaded((previous) => [...previous, ...page.users]);
       setCursor(page.nextCursor);
     } catch (cause) {
-      setError(messageFor(cause));
+      setError(messageFor(cause, copy));
     } finally {
       setLoadingMore(false);
     }
-  }, [cursor, loadingMore, submitted, suspendedOnly]);
+  }, [cursor, loadingMore, submitted, suspendedOnly, copy]);
 
   function markBusy(id: string, busy: boolean): void {
     setBusyIds((previous) => {
@@ -188,11 +187,13 @@ export function UserDirectory() {
 
     const trimmed = reason.trim();
     if (trimmed === '') {
-      setDialogError('Say why. The person is told this, and an appeal is answered from it.');
+      setDialogError(copy.reasonRequired);
       return;
     }
     if (Array.from(reason).length > REASON_MAX_CHARACTERS) {
-      setDialogError(`A reason may not exceed ${REASON_MAX_CHARACTERS} characters.`);
+      setDialogError(
+        fillPlaceholders(copy.reasonTooLong, { limit: String(REASON_MAX_CHARACTERS) }),
+      );
       return;
     }
 
@@ -204,7 +205,7 @@ export function UserDirectory() {
     try {
       const updated = await banUser(pending.id, trimmed);
       applyUser(updated);
-      setNotice(`${updated.name} is suspended, and every session they held has been revoked.`);
+      setNotice(fillPlaceholders(copy.suspendedNotice, { name: updated.name }));
       setPending(null);
       setReason('');
       // The button that opened the dialog may have gone with its row. Moving
@@ -213,7 +214,7 @@ export function UserDirectory() {
     } catch (cause) {
       // Everything keeps the dialog open with the reason still in it: nothing
       // changed, and retyping it is the last thing a refused moderator should do.
-      setDialogError(messageFor(cause));
+      setDialogError(messageFor(cause, copy));
     } finally {
       setDialogBusy(false);
       markBusy(pending.id, false);
@@ -228,9 +229,9 @@ export function UserDirectory() {
     try {
       const updated = await reinstateUser(user.id);
       applyUser(updated);
-      setNotice(`${updated.name} can sign in again. Their old sessions are not restored.`);
+      setNotice(fillPlaceholders(copy.reinstatedNotice, { name: updated.name }));
     } catch (cause) {
-      setError(messageFor(cause));
+      setError(messageFor(cause, copy));
     } finally {
       markBusy(user.id, false);
     }
@@ -238,17 +239,16 @@ export function UserDirectory() {
 
   if (status === 'signed-out') {
     return (
-      <InlineAlert variant="info" title="You are signed out">
-        This browser no longer has a session. Sign in again to read the account directory.
+      <InlineAlert variant="info" title={copy.signedOutTitle}>
+        {copy.signedOutBody}
       </InlineAlert>
     );
   }
 
   if (status === 'forbidden') {
     return (
-      <InlineAlert variant="info" title="Not a moderator">
-        Accounts are searched and suspended by platform staff. Your account is not on the configured
-        moderator list.
+      <InlineAlert variant="info" title={copy.forbiddenTitle}>
+        {copy.forbiddenBody}
       </InlineAlert>
     );
   }
@@ -262,7 +262,7 @@ export function UserDirectory() {
           tabIndex={-1}
           className="text-lg font-medium tracking-[-0.02em] text-white"
         >
-          Accounts
+          {copy.heading}
           {status === 'ready' && (
             <span className="ml-2 text-xs font-normal text-white/40">{loaded.length}</span>
           )}
@@ -282,8 +282,8 @@ export function UserDirectory() {
         }}
       >
         <Field
-          label="Search"
-          hint="An email address, a display name, or a profile slug."
+          label={copy.searchLabel}
+          hint={copy.searchHint}
           className="min-w-[260px] flex-1"
         >
           <TextInput
@@ -294,13 +294,13 @@ export function UserDirectory() {
           />
         </Field>
         <Pill type="submit" variant="ghost" size="sm" className="mb-1">
-          Search
+          {copy.search}
         </Pill>
       </form>
 
-      <ChipRow aria-label="Standing" className="mt-3">
+      <ChipRow aria-label={copy.standing} className="mt-3">
         <Chip active={suspendedOnly} onClick={() => setSuspendedOnly((previous) => !previous)}>
-          Suspended only
+          {copy.suspendedOnly}
         </Chip>
       </ChipRow>
 
@@ -313,13 +313,13 @@ export function UserDirectory() {
       </div>
 
       {error && (
-        <InlineAlert variant="danger" title="Something went wrong" className="mt-4">
+        <InlineAlert variant="danger" title={copy.errorTitle} className="mt-4">
           {error}
         </InlineAlert>
       )}
 
       {status === 'loading' && (
-        <SkeletonGroup label="Loading accounts" className="mt-4">
+        <SkeletonGroup label={copy.loadingList} className="mt-4">
           <div className="space-y-3">
             {[0, 1, 2].map((row) => (
               <div key={row} className="rounded-lg border border-white/8 bg-surface-2 p-5">
@@ -335,13 +335,9 @@ export function UserDirectory() {
         <EmptyState
           className="mt-4"
           variant={submitted !== '' || suspendedOnly ? 'filtered' : 'empty'}
-          title={
-            submitted !== '' || suspendedOnly ? 'No accounts match' : 'No accounts to show'
-          }
+          title={submitted !== '' || suspendedOnly ? copy.filteredTitle : copy.emptyTitle}
           description={
-            submitted !== '' || suspendedOnly
-              ? 'Search matches an address, a display name or a profile slug, and it matches anywhere inside them.'
-              : 'Accounts appear here as people register.'
+            submitted !== '' || suspendedOnly ? copy.filteredBody : copy.emptyBody
           }
         />
       )}
@@ -361,23 +357,30 @@ export function UserDirectory() {
                       is audited. Nothing else on the platform shows one. */}
                   <p className="truncate text-sm text-white/64">{user.email}</p>
                   <p className="mt-1 truncate text-xs text-white/40">
-                    /{user.slug} · joined {day(user.createdAt) ?? 'at an unknown date'}
+                    /{user.slug} ·{' '}
+                    {fillPlaceholders(copy.joined, {
+                      date: day(user.createdAt) ?? copy.unknownDate,
+                    })}
                   </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
                   {/* Never colour alone: each state is a word as well as a tone. */}
                   <Tag variant={user.emailVerified ? 'success' : 'default'}>
-                    {user.emailVerified ? 'Email verified' : 'Email unverified'}
+                    {user.emailVerified ? copy.emailVerified : copy.emailUnverified}
                   </Tag>
-                  {user.suspended && <Tag variant="danger">Suspended</Tag>}
-                  {user.deletionScheduledAt !== null && <Tag variant="warning">Leaving</Tag>}
+                  {user.suspended && <Tag variant="danger">{copy.suspendedTag}</Tag>}
+                  {user.deletionScheduledAt !== null && (
+                    <Tag variant="warning">{copy.leaving}</Tag>
+                  )}
                 </div>
               </div>
 
               {user.suspended && (
                 <p className="mt-3 text-sm text-white/64">
-                  Suspended {day(user.suspendedAt) ?? 'at an unknown date'}
+                  {fillPlaceholders(copy.suspendedOn, {
+                    date: day(user.suspendedAt) ?? copy.unknownDate,
+                  })}
                   {user.suspensionReason !== null && `: ${user.suspensionReason}`}
                 </p>
               )}
@@ -390,7 +393,7 @@ export function UserDirectory() {
                     disabled={busyIds.has(user.id)}
                     onClick={() => void commitReinstatement(user)}
                   >
-                    {busyIds.has(user.id) ? 'Reinstating' : 'Reinstate'}
+                    {busyIds.has(user.id) ? copy.reinstating : copy.reinstate}
                   </Pill>
                 ) : (
                   <Pill
@@ -403,7 +406,7 @@ export function UserDirectory() {
                       setPending(user);
                     }}
                   >
-                    Suspend
+                    {copy.suspend}
                   </Pill>
                 )}
               </div>
@@ -414,8 +417,10 @@ export function UserDirectory() {
 
       {status === 'ready' && loaded.length > 0 && (
         <p className="mt-3 text-sm text-white/40">
-          Showing {accounts(loaded.length)}
-          {cursor !== null && ', and there are more.'}
+          {fillPlaceholders(copy.showing, {
+            accounts: pluralise(locale, copy.accountCount, loaded.length),
+          })}
+          {cursor !== null && copy.andMore}
         </p>
       )}
 
@@ -427,13 +432,13 @@ export function UserDirectory() {
           disabled={loadingMore}
           onClick={() => void loadMore()}
         >
-          {loadingMore ? 'Loading' : 'Load more'}
+          {loadingMore ? copy.loading : copy.loadMore}
         </Pill>
       )}
 
       {status === 'failed' && (
         <Pill variant="ghost" size="sm" className="mt-4" onClick={() => setAttempt((n) => n + 1)}>
-          Try again
+          {copy.tryAgain}
         </Pill>
       )}
 
@@ -444,32 +449,28 @@ export function UserDirectory() {
             if (!next && !dialogBusy) setPending(null);
           }}
           size="md"
-          title={`Suspend ${pending.name}?`}
-          description={`${pending.email} will be signed out of every device and refused at sign-in until somebody reinstates them.`}
+          title={fillPlaceholders(copy.suspendTitle, { name: pending.name })}
+          description={fillPlaceholders(copy.suspendDescription, { email: pending.email })}
           closeOnBackdropClick={false}
           showClose={false}
           footer={
             <>
               <Pill variant="ghost" disabled={dialogBusy} onClick={() => setPending(null)}>
-                Cancel
+                {copy.cancel}
               </Pill>
               <Pill variant="danger" disabled={dialogBusy} onClick={() => void commitBan()}>
-                {dialogBusy ? 'Suspending' : 'Suspend account'}
+                {dialogBusy ? copy.suspending : copy.suspendAccount}
               </Pill>
             </>
           }
         >
-          <p className="text-sm text-on-white/72">
-            Their campaigns and pledges are left exactly where they are. This is reversible, unlike
-            suspending a campaign — but every session they hold is revoked now and is not restored
-            by reinstating them.
-          </p>
+          <p className="text-sm text-on-white/72">{copy.suspendBody}</p>
 
           <div className="mt-4">
             <Field
-              label="Reason"
+              label={copy.reasonLabel}
               required
-              hint="The person is told this, and an appeal is answered from it."
+              hint={copy.reasonHint}
               error={dialogError}
             >
               {/* No `maxLength`: a hard cap silently truncates a pasted reason and

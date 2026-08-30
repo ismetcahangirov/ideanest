@@ -14,7 +14,7 @@ import {
   TextInput,
 } from '@ideanest/ui';
 import {
-  COLLECTION_KIND_LABELS,
+  COLLECTION_KINDS,
   collectionTitle,
   createCollection,
   isPublished,
@@ -24,11 +24,12 @@ import {
   type CollectionKind,
 } from '../../lib/admin/curation';
 import { consoleMessageFor } from '../../lib/admin/refusals';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { CollectionManagerCopy } from '../../lib/i18n/admin/curation-copy';
+import type { NoteDialogCopy } from '../../lib/i18n/admin/common-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { NoteDialog } from './NoteDialog';
 import { useCollections } from './useCollections';
-
-const SUBJECT = 'the collections';
 
 /** What the manager is about to do to one collection, once a note has been typed. */
 type Pending = { readonly collection: AdminCollection; readonly action: 'publish' | 'unpublish' };
@@ -49,6 +50,8 @@ export interface CollectionManagerProps {
   readonly emptyDescription?: string;
   /** Offers the create form. Off on the three narrowed screens — see the docblock. */
   readonly allowCreate?: boolean;
+  readonly copy: CollectionManagerCopy;
+  readonly note: NoteDialogCopy;
 }
 
 /**
@@ -88,8 +91,13 @@ export function CollectionManager({
   emptyTitle,
   emptyDescription,
   allowCreate = false,
+  copy,
+  note,
 }: CollectionManagerProps) {
-  const { status, collections, error, apply, reload, setError } = useCollections();
+  const { status, collections, error, apply, reload, setError } = useCollections(
+    copy.subject,
+    copy.refusals,
+  );
 
   const [pending, setPending] = useState<Pending | null>(null);
   const [dialogBusy, setDialogBusy] = useState(false);
@@ -102,7 +110,7 @@ export function CollectionManager({
   const [creating, setCreating] = useState(false);
 
   if (status === 'signed-out' || status === 'forbidden') {
-    return <ConsoleRefusal status={status} subject={SUBJECT} />;
+    return <ConsoleRefusal status={status} subject={copy.subject} copy={copy.refusals} />;
   }
 
   const visible = only === undefined ? collections : collections.filter(only);
@@ -121,15 +129,16 @@ export function CollectionManager({
 
       apply(updated);
       setNotice(
-        pending.action === 'publish'
-          ? `${collectionTitle(updated)} is now visible to the public.`
-          : `${collectionTitle(updated)} has been taken down. The public gets a 404; the record stays.`,
+        fillPlaceholders(
+          pending.action === 'publish' ? copy.publishedNotice : copy.unpublishedNotice,
+          { title: collectionTitle(updated) },
+        ),
       );
       setPending(null);
     } catch (cause) {
       // The dialog stays open with the note still in it: nothing changed, and retyping a
       // reason is the last thing a refused curator should have to do.
-      setDialogError(consoleMessageFor(cause, SUBJECT));
+      setDialogError(consoleMessageFor(cause, copy.subject, copy.refusals));
     } finally {
       setDialogBusy(false);
     }
@@ -152,10 +161,10 @@ export function CollectionManager({
       await createCollection(handle, { kind, copy: { az: { title: heading } } });
       setSlug('');
       setTitle('');
-      setNotice(`${heading} exists, unpublished and empty. Add campaigns, then publish it.`);
+      setNotice(fillPlaceholders(copy.createdNotice, { title: heading }));
       reload();
     } catch (cause) {
-      setError(consoleMessageFor(cause, SUBJECT));
+      setError(consoleMessageFor(cause, copy.subject, copy.refusals));
     } finally {
       setCreating(false);
     }
@@ -165,7 +174,7 @@ export function CollectionManager({
     <section aria-labelledby="collections-heading">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="collections-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-          Collections
+          {copy.heading}
           {status === 'ready' && (
             <span className="ml-2 text-xs font-normal text-white/40">{visible.length}</span>
           )}
@@ -181,7 +190,7 @@ export function CollectionManager({
       </div>
 
       {error !== null && (
-        <InlineAlert variant="danger" title="Something went wrong" className="mt-4">
+        <InlineAlert variant="danger" title={copy.errorTitle} className="mt-4">
           {error}
         </InlineAlert>
       )}
@@ -191,44 +200,51 @@ export function CollectionManager({
           onSubmit={(event) => void create(event)}
           className="mt-6 rounded-xl border border-white/8 bg-surface-1 p-4 sm:p-5"
         >
-          <h3 className="text-sm font-medium text-white">New collection</h3>
-          <p className="mt-1 max-w-[62ch] text-sm text-white/48">
-            Created unpublished and empty, so nothing is visible until it is worth seeing. The
-            handle is half of its public URL and cannot be changed afterwards.
-          </p>
+          <h3 className="text-sm font-medium text-white">{copy.newHeading}</h3>
+          <p className="mt-1 max-w-[62ch] text-sm text-white/48">{copy.newIntro}</p>
 
           <div className="mt-4 flex flex-wrap items-end gap-3">
-            <Field label="Handle" required hint="Lower case, hyphenated. Permanent." className="min-w-[220px] flex-1">
+            <Field
+              label={copy.handleLabel}
+              required
+              hint={copy.handleHint}
+              className="min-w-[220px] flex-1"
+            >
               <TextInput
                 value={slug}
                 onChange={(event) => setSlug(event.target.value)}
                 placeholder="autumn-picks"
               />
             </Field>
-            <Field label="Title" required hint="In Azerbaijani — the language the chain falls back to." className="min-w-[220px] flex-1">
+            <Field
+              label={copy.titleLabel}
+              required
+              hint={copy.titleHint}
+              className="min-w-[220px] flex-1"
+            >
               <TextInput value={title} onChange={(event) => setTitle(event.target.value)} />
             </Field>
-            <Field label="Kind" className="min-w-[200px]">
+            <Field label={copy.kindLabel} className="min-w-[200px]">
               <Select
                 value={kind}
                 onChange={(event) => setKind(event.target.value as CollectionKind)}
               >
-                {(Object.keys(COLLECTION_KIND_LABELS) as CollectionKind[]).map((option) => (
+                {COLLECTION_KINDS.map((option) => (
                   <option key={option} value={option}>
-                    {COLLECTION_KIND_LABELS[option]}
+                    {copy.curation.kind[option]}
                   </option>
                 ))}
               </Select>
             </Field>
             <Pill type="submit" variant="outline" size="sm" disabled={creating} className="mb-1">
-              {creating ? 'Creating' : 'Create'}
+              {creating ? copy.creating : copy.create}
             </Pill>
           </div>
         </form>
       )}
 
       {status === 'loading' && (
-        <SkeletonGroup label="Loading the collections" className="mt-6">
+        <SkeletonGroup label={copy.loadingList} className="mt-6">
           <div className="space-y-3">
             {[0, 1, 2].map((row) => (
               <div key={row} className="rounded-lg border border-white/8 bg-surface-1 p-4">
@@ -244,11 +260,8 @@ export function CollectionManager({
         <EmptyState
           className="mt-6"
           variant={only === undefined ? 'empty' : 'filtered'}
-          title={emptyTitle ?? 'No collections yet'}
-          description={
-            emptyDescription ??
-            'A collection is a curated list with a public page of its own. Create one, add campaigns to it, then publish it.'
-          }
+          title={emptyTitle ?? copy.emptyTitle}
+          description={emptyDescription ?? copy.emptyBody}
         />
       )}
 
@@ -258,6 +271,7 @@ export function CollectionManager({
             <CollectionRow
               key={collection.slug}
               collection={collection}
+              copy={copy}
               onPublish={() => {
                 setDialogError(null);
                 setPending({ collection, action: 'publish' });
@@ -273,7 +287,7 @@ export function CollectionManager({
 
       {status === 'failed' && (
         <Pill variant="ghost" size="sm" className="mt-4" onClick={reload}>
-          Try again
+          {copy.tryAgain}
         </Pill>
       )}
 
@@ -281,22 +295,21 @@ export function CollectionManager({
         title={
           pending === null
             ? null
-            : pending.action === 'publish'
-              ? `Publish ${collectionTitle(pending.collection)}?`
-              : `Take ${collectionTitle(pending.collection)} down?`
+            : fillPlaceholders(
+                pending.action === 'publish' ? copy.publishTitle : copy.unpublishTitle,
+                { title: collectionTitle(pending.collection) },
+              )
         }
         description={
-          pending?.action === 'publish'
-            ? 'The list and its campaigns become visible to everybody.'
-            : 'The public page starts answering 404. Nothing is deleted.'
+          pending?.action === 'publish' ? copy.publishDescription : copy.unpublishDescription
         }
         body={
           pending?.action === 'publish' && pending.collection.grantsBadge
-            ? 'This collection grants the editorial badge, so publishing it badges every campaign in it.'
+            ? copy.publishBadgeBody
             : undefined
         }
-        confirmLabel={pending?.action === 'publish' ? 'Publish' : 'Take it down'}
-        busyLabel={pending?.action === 'publish' ? 'Publishing' : 'Taking it down'}
+        confirmLabel={pending?.action === 'publish' ? copy.publish : copy.takeDown}
+        busyLabel={pending?.action === 'publish' ? copy.publishing : copy.takingDown}
         destructive={pending?.action === 'unpublish'}
         busy={dialogBusy}
         error={dialogError}
@@ -304,7 +317,8 @@ export function CollectionManager({
           setPending(null);
           setDialogError(null);
         }}
-        onConfirm={(note) => void commit(note)}
+        onConfirm={(text) => void commit(text)}
+        copy={note}
       />
     </section>
   );
@@ -324,10 +338,12 @@ export function CollectionManager({
  */
 function CollectionRow({
   collection,
+  copy,
   onPublish,
   onUnpublish,
 }: {
   readonly collection: AdminCollection;
+  readonly copy: CollectionManagerCopy;
   readonly onPublish: () => void;
   readonly onUnpublish: () => void;
 }) {
@@ -347,19 +363,21 @@ function CollectionRow({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Tag>{COLLECTION_KIND_LABELS[collection.kind]}</Tag>
-          {collection.grantsBadge && <Tag variant="warning">Grants the badge</Tag>}
+          <Tag>{copy.curation.kind[collection.kind]}</Tag>
+          {collection.grantsBadge && <Tag variant="warning">{copy.curation.grantsBadge}</Tag>}
           <Tag variant={published ? 'success' : 'default'}>
-            {published ? 'Published' : 'Unpublished'}
+            {published ? copy.curation.published : copy.curation.unpublished}
           </Tag>
         </div>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Pill variant="outline" size="sm" onClick={published ? onUnpublish : onPublish}>
-          {published ? 'Take it down' : 'Publish'}
+          {published ? copy.takeDown : copy.publish}
         </Pill>
-        <span className="text-xs text-white/32">Placement {collection.sortOrder}</span>
+        <span className="text-xs text-white/32">
+          {fillPlaceholders(copy.placement, { order: String(collection.sortOrder) })}
+        </span>
       </div>
     </li>
   );

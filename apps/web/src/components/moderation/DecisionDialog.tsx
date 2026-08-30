@@ -5,7 +5,9 @@ import { CharacterCount, Field, InlineAlert, Pill, Textarea } from '@ideanest/ui
 import { Modal } from '@ideanest/ui/motion';
 import type { CampaignOutcome, QueuedReport, ReportOutcome } from '../../lib/moderation/api';
 import { requiresNote } from '../../lib/moderation/api';
-import { shortId, targetLabel } from '../../lib/moderation/describe';
+import { shortId } from '../../lib/moderation/describe';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { ModerationCopy } from '../../lib/i18n/admin/content-copy';
 
 /**
  * Which of the five verbs is being confirmed.
@@ -34,88 +36,51 @@ interface Copy {
 }
 
 /**
- * The words for each verb, in one table.
+ * The words for each verb, assembled from `admin.moderation.decision`.
  *
- * Every `description` says what the decision does AND what it does not do. The
- * service is emphatic that upholding a report does not suspend anything and that
- * rejecting a campaign does not close the complaint; a moderator who believes
- * one button did both has been misled by the interface into thinking a job is
- * finished.
+ * <h2>The table moved to the catalogue and the two booleans did not</h2>
+ *
+ * Every `description` says what the decision does AND what it does not do. The service is
+ * emphatic that upholding a report does not suspend anything and that rejecting a campaign
+ * does not close the complaint; a moderator who believes one button did both has been misled
+ * by the interface into thinking a job is finished. Those sentences are copy and they are in
+ * `messages/*.json` since #324.
+ *
+ * <p><strong>`noteRequired` and `destructive` stayed here</strong>, because neither is a
+ * word. One mirrors what the service's request body demands and the other decides which
+ * token the confirm control is painted in — a translator who could change either would be
+ * able to turn off a validation rule or make a rejection look ordinary by editing a
+ * sentence.
+ *
+ * <h2>Two ways to name the target, and Russian is why</h2>
+ *
+ * A report outcome says "the complaint about <em>campaign 1a2b3c4d</em>" and a campaign
+ * outcome says "<em>campaign 1a2b3c4d</em> is cleared for launch". The noun is the object of
+ * the first and the subject of the second, which is one word in English and two in Russian —
+ * so the name is built from `targetName` in one branch and `campaignName` in the other.
  */
-function copyFor(decision: Decision, report: QueuedReport): Copy {
-  const kind = targetLabel(report.target.type);
-  const name = `${kind} ${shortId(report.target.id)}`;
+function copyFor(decision: Decision, report: QueuedReport, copy: ModerationCopy): Copy {
+  const verb = copy.decision.verb[decision.outcome];
+  const name =
+    decision.kind === 'report'
+      ? fillPlaceholders(copy.targetName, {
+          kind: copy.target[report.target.type],
+          id: shortId(report.target.id),
+        })
+      : fillPlaceholders(copy.campaignName, { id: shortId(report.target.id) });
 
-  if (decision.kind === 'report') {
-    return decision.outcome === 'uphold'
-      ? {
-          title: 'Uphold this report?',
-          description: `The complaint about ${name} is recorded as justified. This cannot be undone.`,
-          body: 'Nothing is taken down by this. Suspending a campaign or banning an account are separate decisions, and this one does not make them for you.',
-          confirmLabel: 'Uphold report',
-          busyLabel: 'Upholding',
-          noteLabel: 'Note',
-          noteHint:
-            'Optional. Written for the next moderator, not for the person who reported this — nothing shows it to them.',
-          noteRequired: false,
-          destructive: false,
-        }
-      : {
-          title: 'Dismiss this report?',
-          description: `The complaint about ${name} is recorded as unjustified. This cannot be undone.`,
-          body: 'Dismissals are audited too. "Who dismissed the fourteen reports about this campaign" is the question an investigation starts from.',
-          confirmLabel: 'Dismiss report',
-          busyLabel: 'Dismissing',
-          noteLabel: 'Note',
-          noteHint:
-            'Optional. Written for the next moderator, not for the person who reported this — nothing shows it to them.',
-          noteRequired: false,
-          destructive: false,
-        };
-  }
-
-  const shared = {
-    body: 'This moves the campaign. It does not decide the report — that is still open, and still yours to uphold or dismiss.',
-    noteRequired: requiresNote(decision.outcome),
-  } as const;
-
-  switch (decision.outcome) {
-    case 'approve':
-      return {
-        ...shared,
-        title: 'Approve this campaign?',
-        description: `${name} is cleared for launch.`,
-        confirmLabel: 'Approve campaign',
-        busyLabel: 'Approving',
-        noteLabel: 'Note',
-        noteHint: 'Optional commentary on the decision.',
-        destructive: false,
-      };
-    case 'request-changes':
-      return {
-        ...shared,
-        title: 'Send this campaign back?',
-        description: `${name} goes back to its creator, who can fix it and submit again.`,
-        confirmLabel: 'Request changes',
-        busyLabel: 'Sending back',
-        noteLabel: 'What has to change',
-        noteHint:
-          'Required. The creator is shown this and has to act on it — it is the entire content of the state.',
-        destructive: false,
-      };
-    case 'reject':
-      return {
-        ...shared,
-        title: 'Reject this campaign?',
-        description: `${name} is refused. Rejection is TERMINAL — there is no way back to a draft.`,
-        confirmLabel: 'Reject campaign',
-        busyLabel: 'Rejecting',
-        noteLabel: 'Why',
-        noteHint:
-          'Required. The creator is shown this. If the problem is fixable, send the campaign back instead.',
-        destructive: true,
-      };
-  }
+  return {
+    title: verb.title,
+    description: fillPlaceholders(verb.description, { name }),
+    /* The three campaign verbs share one sentence about what they leave undecided. */
+    body: verb.body ?? copy.decision.campaignBody,
+    confirmLabel: verb.confirmLabel,
+    busyLabel: verb.busyLabel,
+    noteLabel: verb.noteLabel,
+    noteHint: verb.noteHint,
+    noteRequired: decision.kind === 'campaign' && requiresNote(decision.outcome),
+    destructive: decision.kind === 'campaign' && decision.outcome === 'reject',
+  };
 }
 
 export interface DecisionDialogProps {
@@ -126,6 +91,8 @@ export interface DecisionDialogProps {
   readonly error: string | null;
   readonly onCancel: () => void;
   readonly onConfirm: (note: string | null) => void;
+  /** The moderation vocabulary, resolved on the server by whichever screen opened this. */
+  readonly copy: ModerationCopy;
 }
 
 /**
@@ -148,6 +115,7 @@ export function DecisionDialog({
   error,
   onCancel,
   onConfirm,
+  copy: moderation,
 }: DecisionDialogProps) {
   const [note, setNote] = useState('');
   const [noteError, setNoteError] = useState<string | null>(null);
@@ -171,18 +139,20 @@ export function DecisionDialog({
     return null;
   }
 
-  const copy = copyFor(decision, report);
+  const copy = copyFor(decision, report, moderation);
   const count = Array.from(note).length;
 
   function confirm(): void {
     const trimmed = note.trim();
 
     if (copy.noteRequired && trimmed === '') {
-      setNoteError('Say why. The creator is shown this note and has to act on it.');
+      setNoteError(moderation.decision.noteRequired);
       return;
     }
     if (count > NOTE_MAX_CHARACTERS) {
-      setNoteError(`A note may not exceed ${NOTE_MAX_CHARACTERS} characters.`);
+      setNoteError(
+        fillPlaceholders(moderation.decision.tooLong, { limit: String(NOTE_MAX_CHARACTERS) }),
+      );
       return;
     }
 
@@ -206,7 +176,7 @@ export function DecisionDialog({
       footer={
         <>
           <Pill variant="ghost" disabled={busy} onClick={onCancel}>
-            Cancel
+            {moderation.cancel}
           </Pill>
           <Pill
             variant={copy.destructive ? 'danger' : 'primary'}
@@ -245,7 +215,7 @@ export function DecisionDialog({
       {/* `InlineAlert` carries `role="alert"` for danger — a refused privileged
           action must interrupt rather than wait to be noticed. */}
       {error && (
-        <InlineAlert variant="danger" title="The decision was not recorded" className="mt-4">
+        <InlineAlert variant="danger" title={moderation.decision.errorTitle} className="mt-4">
           {error}
         </InlineAlert>
       )}

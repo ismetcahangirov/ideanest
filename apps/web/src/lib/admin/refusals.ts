@@ -1,4 +1,6 @@
 import { ApiError } from '../api/problem';
+import { fillPlaceholders } from '../i18n/placeholders';
+import type { ConsoleRefusalsCopy } from '../i18n/admin/common-copy';
 
 /**
  * What a console screen does when the service says no — issues #294 and #304 to #314.
@@ -67,10 +69,18 @@ export function requiredCapabilityFrom(cause: unknown): string | null {
  * Turns a refusal into something a member of staff can act on.
  *
  * @param subject what the reader was trying to read, in the words the screen uses for it —
- *     "the audit trail", "the ledger". It is interpolated into the 403, which is the one
- *     message a reader meets without having done anything wrong
+ *     "the audit trail", "the ledger", and since #324 in the language the reader chose. It is
+ *     interpolated into the 403, which is the one message a reader meets without having done
+ *     anything wrong
+ * @param copy the console's refusal table, resolved on the server and handed down as a prop.
+ *     A function that reached for a catalogue itself could not run on a client, which is where
+ *     every one of these failures is caught
  */
-export function consoleMessageFor(cause: unknown, subject: string): string {
+export function consoleMessageFor(
+  cause: unknown,
+  subject: string,
+  copy: ConsoleRefusalsCopy,
+): string {
   if (cause instanceof ApiError) {
     if (cause.status === 403) {
       const capability = requiredCapabilityFrom(cause);
@@ -79,32 +89,32 @@ export function consoleMessageFor(cause: unknown, subject: string): string {
       // asking an administrator for a role, and the other cannot be fixed by the person
       // reading it. Collapsing them would send a colleague looking for a bug.
       return capability === null
-        ? `Your account does not work on this platform, so ${subject} is not yours to read.`
-        : `Reading ${subject} needs ${capability}, which your roles do not include.`;
+        ? fillPlaceholders(copy.notStaff, { subject })
+        : fillPlaceholders(copy.needsCapability, { subject, capability });
     }
 
     const code = cause.problem?.code;
 
     if (code === 'UNKNOWN_LEDGER_ACCOUNT') {
-      // Deliberately the service's own message: it names the value that was sent and points
-      // at the six accounts §7.2 allows, which is more than this file knows.
-      return cause.problem?.detail ?? 'That is not one of the platform ledger accounts.';
+      // Deliberately the service's own message where it sent one: it names the value that was
+      // sent and points at the six accounts §7.2 allows, which is more than this file knows.
+      // The catalogue's sentence is the fallback, and it is the only one a reader meets in
+      // their own language — the service's messages are English until §21.1 reaches it.
+      return cause.problem?.detail ?? copy.unknownLedgerAccount;
     }
     if (code === 'COLLECTION_NOT_FOUND') {
-      return 'That collection no longer exists. It may have been renamed since this page was loaded.';
+      return copy.collectionNotFound;
     }
     if (code === 'COLLECTION_SLUG_TAKEN') {
-      return 'A collection already uses that handle. Handles are permanent, so pick another.';
+      return copy.collectionSlugTaken;
     }
     if (code === 'CURATION_REJECTED') {
-      return cause.problem?.detail ?? 'The service refused that change to the collection.';
+      return cause.problem?.detail ?? copy.curationRejected;
     }
 
-    return (
-      cause.problem?.detail ?? cause.problem?.title ?? 'The service refused the request. Try again.'
-    );
+    return cause.problem?.detail ?? cause.problem?.title ?? copy.refused;
   }
-  return 'The service could not be reached. Check your connection and try again.';
+  return copy.unreachable;
 }
 
 /**

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { translatorFor } from '../../test-copy';
+import { moderationCopyFrom } from '../i18n/admin/content-copy';
 import type { QueuedReport } from './api';
 import {
   DEFAULT_FILTERS,
@@ -71,13 +73,22 @@ describe('moderation/describe', () => {
   });
 
   describe('openReportsLabel', () => {
+    /*
+     * The copy is built from `messages/en.json` with the same function the screen calls,
+     * rather than typed out here — `src/test-copy.ts` explains at length why a test that
+     * retyped the sentence would still pass with the catalogue empty.
+     */
+    const copy = moderationCopyFrom(translatorFor('admin'), translatorFor('common')('cancel'));
+
     it('agrees with itself about number and says what the target is', () => {
-      expect(openReportsLabel(report({ openReportsOnTarget: 1 }))).toBe(
+      expect(openReportsLabel(report({ openReportsOnTarget: 1 }), copy, 'en')).toBe(
         '1 open report on this campaign',
       );
       expect(
         openReportsLabel(
           report({ openReportsOnTarget: 14, target: { type: 'USER', id: 'u9u8u7u6' } }),
+          copy,
+          'en',
         ),
       ).toBe('14 open reports on this account');
     });
