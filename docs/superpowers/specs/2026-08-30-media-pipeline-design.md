@@ -33,7 +33,17 @@ the server measures, the rule can afford to be advice.
 
 ## Scope
 
-**In:** campaign cover images and story-document images.
+**In:** campaign cover images. The upload endpoints, the `media` table, the
+processing sweep and the transcoder are general — nothing about them is specific
+to covers — but the cover is the only field wired to them.
+
+**Deferred, and it was in this document's first draft:** story-document images.
+`StoryDocuments` keeps taking an image block with a `url`, and the block schema
+has not gained a `mediaId`. It is the same wiring as the cover and it is a second
+pull request, not a smaller one: the story is a JSON document with its own
+validator, its own corpus of already-stored documents, and its own editor
+surface. Deferring it is a scope decision rather than a discovery, and the cover
+is the field that was blocking creators.
 
 **Out, and deliberately:** profile avatars, reward item images, and collection
 covers keep accepting typed URLs. Video (§13.2). Virus scanning and
@@ -47,15 +57,17 @@ that is a consequence of the scope above rather than an oversight:
 1. **`remotePatterns` does not narrow.** `apps/web/next.config.mjs` accepts
    `https` on any host, which leaves `/_next/image` usable as an image proxy.
    The config comment already names this as a cost. It cannot narrow while
-   avatars, reward items and collection covers still resolve to hosts we do not
-   control.
-2. **`blurDataUrl` reaches only two surfaces.** The `media` record carries it,
-   so covers and story images get a placeholder from the same response as the
-   image. Everything still on a typed URL keeps the status quo — no placeholder
-   outside the editor, which samples bytes it already holds.
+   avatars, reward items, collection covers and story images still resolve to
+   hosts we do not control.
+2. **`blurDataUrl` is stored and is not yet rendered publicly.** The `media`
+   record carries it and the media endpoint returns it, so the editor shows a
+   placeholder that survives a reload. The public campaign surfaces still read
+   `cover_image_url` and the three columns beside it — which V61 deliberately
+   left in place for the expand phase — so they are unchanged.
 
-Both close when the remaining three fields migrate. That is follow-up work, and
-it should be an issue rather than a comment nobody reads.
+Both close when the remaining fields migrate and the contract phase drops the
+three columns. That is follow-up work, and it should be an issue rather than a
+comment nobody reads.
 
 ---
 
@@ -68,11 +80,11 @@ Editor picks a file
   → POST /v1/media/uploads { contentType, byteSize }
       validates the ceiling and the declared type
       writes a media row as PENDING
-      returns { mediaId, uploadUrl, expiresAt }
+      returns { mediaId, uploadUrl, contentType, expiresAt, maxBytes }
   → Browser PUTs the bytes straight to object storage
   → POST /v1/media/{id}/complete
       marks UPLOADED, enqueues processing
-  → Processing (bounded pool, two at a time)
+  → Processing (media-processing, every five seconds, four per tick)
       read from storage → magic bytes → strip EXIF
       → downscale to ≤1440px → re-encode → 16px blur sample
       → write the derived object, delete the raw one
@@ -90,6 +102,13 @@ idempotent: a replay returns the current state and does not enqueue a second
 pass. That is not defensive coding — a browser that retries on a dropped
 response is the ordinary case.
 
+**The response repeats the content type it signed**, and the client must send
+that exact value on the `PUT`. The server rewrites anything that is not an image
+type, so a client reproducing the value itself would have every upload refused by
+the store as a signature mismatch — a failure that looks like a credentials
+problem and is not. This was found while writing the browser half and is not in
+the original sketch above.
+
 ### Storage
 
 An S3-compatible object store, reached through the AWS SDK v2 client. R2, MinIO
@@ -103,17 +122,26 @@ encrypted, and read once by a human. Campaign covers are read by everybody on
 every page, and putting them in the row would carry them into every backup in
 `ops/backup`.
 
-### Processing runs in the API process
+### Processing runs in the API process, on the durable scheduler
 
-§13.1 says "enqueues processing". This uses a bounded executor inside the API
-service rather than a new deployable, alongside the scheduled-job pattern the
-project module already uses (`CampaignFinalizerJob`, `DeadlineReminderJob`,
-`LaunchReminderJob`). A third container is infrastructure work this repository
-cannot do — `deploy.yml` takes an `api_digest` and a `web_digest` and nothing
-else.
+§13.1 says "enqueues processing". A third container is infrastructure work this
+repository cannot do — `deploy.yml` takes an `api_digest` and a `web_digest` and
+nothing else — so the work happens inside the API service.
 
-The pool is bounded at two because the bound is a memory limit, not a throughput
-preference. See below.
+**Amended during implementation.** This section first proposed a bounded executor
+triggered by the completion endpoint. It is a `ScheduledJob` on §8.4's durable
+scheduler instead, and the change is not a smaller version of the same idea: a
+job registered there is claimed on one replica, counted when it fails and stopped
+when it has failed too often (#134). An executor would have been a second
+concurrency mechanism with none of that, and one that loses its queue on restart.
+
+What it costs is latency — an upload waits for the next tick rather than starting
+the instant it completes — so the schedule is every five seconds rather than the
+minutes or hours every other job in this service runs at. The person on the other
+end of this one is watching a spinner.
+
+The batch is bounded at four. That bounds how many files a tick takes on; it is
+not a memory bound, because libvips streams and no bitmap is ever in this heap.
 
 ### libvips, and why a native dependency is worth it
 
@@ -129,8 +157,8 @@ whose whole purpose is that creators stop getting stuck.
 **It decodes to a full bitmap in heap.** An 8000×6000 photograph is 192 MB as a
 `BufferedImage`. The container sizes its heap with `MaxRAMPercentage`; two or
 three concurrent uploads is an OutOfMemoryError, not a slowdown. libvips streams
-and never materialises the whole image, which is also what makes the pool bound
-of two a comfortable number rather than a nervous one.
+and never materialises the whole image, which is also what makes a batch of four
+a comfortable number rather than a nervous one.
 
 Cost: one `apt-get install libvips-tools` in the runtime stage, roughly 40 MB.
 
@@ -190,10 +218,11 @@ served.
 readers prefer the media row when it is present. Dropping the three columns is a
 later release, per §1 of `CLAUDE.md`: expand, then contract, never both.
 
-Story image blocks gain an optional `mediaId` beside the existing `url`.
-`StoryDocuments` keeps accepting a block with only a `url` — every document
-already stored has exactly that shape, and a validator that stopped accepting it
-would invalidate the corpus.
+Story image blocks are **unchanged** — see Scope. When they are wired, the block
+gains an optional `mediaId` beside the existing `url`, and `StoryDocuments` keeps
+accepting a block with only a `url`: every document already stored has exactly
+that shape, and a validator that stopped accepting it would invalidate the
+corpus.
 
 ---
 
@@ -261,7 +290,7 @@ The rules that fail silently, per `CLAUDE.md` §3:
 - **Alpha routing** — a PNG with transparency stays PNG, a photograph becomes
   JPEG.
 - **The checklist no longer blocks** at 800×600, and still reports the warning.
-- **`alt` is still required.**
+- **`alt` is still required** on story images, which this change does not touch.
 
 Test data notes: fixtures take their own handles rather than reusing
 `creator-1@example.com`, and teardown clears `outbox_events` before deleting

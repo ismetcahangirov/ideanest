@@ -4450,9 +4450,9 @@ a guess about somebody else's infrastructure.
 
 #### What is still a typed URL
 
-Profile avatars, reward item images and collection covers. Each keeps taking an
-address a person pasted, and the two consequences are named here rather than left
-to be discovered:
+Profile avatars, reward item images, collection covers, **and images inside a
+campaign story**. Each keeps taking an address a person pasted, and the two
+consequences are named here rather than left to be discovered:
 
 1. **`remotePatterns` has not narrowed.** It still allows `https` on any host, so
    `/_next/image` remains usable as an image proxy. It cannot narrow while any
