@@ -130,6 +130,23 @@ dependencies {
     // without giving up index locality the way v4 does. Java has no built-in.
     implementation("com.github.f4b6a3:uuid-creator:6.1.1")
 
+    // §13.1's object storage -- the media pipeline design of 2026-08-30.
+    //
+    // The S3 protocol rather than one vendor's own: R2, MinIO and S3 itself all speak
+    // it, and which of them a deployment uses is not this repository's decision to
+    // make -- `deploy.yml` rolls out a digest through a hook and owns no
+    // infrastructure to decide on.
+    //
+    // Two artefacts and not the whole SDK. `s3` is the client; the presigner ships
+    // inside it and is what issues the address a browser uploads to directly, so that
+    // twenty megabytes never occupies a request thread here. `apache-client` is named
+    // explicitly because the SDK otherwise picks an HTTP implementation off the
+    // classpath at run time -- a start-up failure in the built jar that no test sees,
+    // which is exactly the way `spring-boot-restclient` was found to be missing above.
+    implementation(platform("software.amazon.awssdk:bom:2.31.0"))
+    implementation("software.amazon.awssdk:s3")
+    implementation("software.amazon.awssdk:apache-client")
+
     // `bootRun` starts and stops the local compose stack. Development only, so
     // it never reaches the deployed jar.
     developmentOnly("org.springframework.boot:spring-boot-docker-compose")

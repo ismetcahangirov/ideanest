@@ -243,6 +243,62 @@ ideanest:
       # overtaken by the window it was meant to shorten.
       queue-capacity: 256
 
+  # §13.1's image ingestion -- the media pipeline design of 2026-08-30.
+  #
+  # A DEPLOYMENT THAT SETS NONE OF THIS STARTS, SERVES EVERY OTHER ENDPOINT, AND
+  # ANSWERS AN UPLOAD WITH 503. There is no default bucket, because a default would
+  # be a guess about somebody else's infrastructure and a service that quietly wrote
+  # a creator's photograph to a plausible-looking address would be worse than one
+  # that did nothing. Refusing to start would trade a hundred working endpoints for
+  # one -- the same position VerificationProperties takes about its keys.
+  media:
+    storage:
+      # S3-compatible. R2, MinIO and S3 itself all speak it, and which of them is a
+      # deployment's decision: this repository rolls out a digest through a hook and
+      # owns no infrastructure to decide on.
+      #
+      # Absent for AWS itself, where the region decides the address.
+      endpoint: ${MEDIA_S3_ENDPOINT:}
+      region: ${MEDIA_S3_REGION:auto}
+      bucket: ${MEDIA_S3_BUCKET:}
+      # Both absent falls back to the SDK's default chain -- an instance role, or a
+      # mounted web identity token. That is the arrangement to prefer: a credential
+      # nobody had to paste into a variable is one nobody can leak from one.
+      access-key-id: ${MEDIA_S3_ACCESS_KEY_ID:}
+      secret-access-key: ${MEDIA_S3_SECRET_ACCESS_KEY:}
+      # WHAT A BROWSER FETCHES, which is routinely not `endpoint` -- a CDN in front
+      # of a bucket. Conflating the two is how a private address ends up rendered
+      # into a page, so they are two settings and both are required.
+      public-base-url: ${MEDIA_PUBLIC_BASE_URL:}
+      # MinIO needs it; most hosted services do not.
+      path-style: ${MEDIA_S3_PATH_STYLE:false}
+
+    # §13.1's "20MB images". A denial-of-service control and not a rule about what
+    # makes a good cover: nobody is blocked from making a campaign by it, and
+    # without it one request can occupy a processing slot with an arbitrarily large
+    # file.
+    max-upload-bytes: ${MEDIA_MAX_UPLOAD_BYTES:20971520}
+    # The presigned address is a credential -- anybody holding it may write that one
+    # object until it expires -- so it is short.
+    upload-window: PT10M
+    # §13.1's `hero`, and the same 1440 next.config.mjs stops its deviceSizes at.
+    # The widest box in the product is 720 CSS px, so this is that box at 2x and
+    # anything beyond it encodes pixels nobody can resolve.
+    longest-edge: 1440
+    jpeg-quality: 82
+
+    processing:
+      # Every five seconds, and it is the one schedule in this file that is not a
+      # sweep over rows that can wait: the person on the other end is watching a
+      # spinner. The lease still means one replica does the work.
+      schedule: ${MEDIA_PROCESSING_SCHEDULE:*/5 * * * * *}
+      # Bounded so a backlog does not become one pass that overlaps its own next
+      # tick. Small because each item spawns a process -- though not for memory:
+      # libvips streams, so no bitmap is ever in this heap.
+      batch-size: 4
+      # A PENDING row is somebody who closed the tab.
+      abandoned-after: PT6H
+
   # §17.3's limits on the public reads. Everything else in that table guards a
   # module's own endpoint and is configured beside it; these guard endpoints that
   # take no token at all, so they are counted per client address -- an office or a

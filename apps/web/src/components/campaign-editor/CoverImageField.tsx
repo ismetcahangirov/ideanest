@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Field, FileDropZone, InlineAlert, Media, Pill, TextInput } from '@ideanest/ui';
 import type { CoverImage } from '../../lib/projects/api';
 import {
@@ -10,35 +10,33 @@ import {
   measureImage,
   meetsCoverMinimum,
 } from '../../lib/projects/coverImage';
+import { UploadFailed, uploadImage, type UploadStage } from '../../lib/media/upload';
 
 /**
- * The cover image, as much of it as exists today.
+ * The cover image.
  *
- * WHAT IS MISSING, PLAINLY. There is no media table, no object storage, and no
- * uploader (contract §3, docs/architecture.md §13). Nothing this form does puts
- * a file anywhere. What the project can record is a URL and the dimensions that
- * go with it, so that is what this collects: the creator gives an address, the
- * browser loads it to read its intrinsic size, and the two are saved together.
- * The interface says so rather than implying an upload that will not happen.
+ * WHAT CHANGED, AND WHY BOTH HALVES HAD TO. This form used to say, in a banner, that it
+ * could not store a file — there was no uploader, no object storage and no `media` table
+ * (docs/architecture.md §13.1). It also refused any image below 1024×576. Together those
+ * meant a creator holding an 800×600 photograph was stopped at the first screen of the
+ * editor and told to go and publish a larger one somewhere else first.
  *
- * THE DROP ZONE STILL EARNS ITS PLACE. A creator holding a photograph needs to
- * know whether it satisfies the 1024×576 minimum (§5.3) BEFORE they publish it
- * somewhere and paste the address, and a local file is the only thing that can
- * answer that. So the zone measures and reports, and says in words that nothing
- * was uploaded. A control that quietly did nothing would be worse than no
- * control.
+ * Both are gone. Dropping a file uploads it: the browser writes to a presigned address, the
+ * service strips the metadata, reduces it to 1440px and measures it, and what comes back is
+ * the cover — with §13.1's blur placeholder, from the server rather than from this component's
+ * own sample. And the minimum is advice: a smaller image is saved and says so.
  *
- * The dimensions are read in the browser because the browser is the only place
- * they can be read while the server has never seen the file. When the media
- * pipeline lands it reads them during ingestion and this component is replaced,
- * not extended.
+ * THE ADDRESS FIELD STAYS. Every campaign that predates the uploader has a typed URL, and
+ * pasting one still works. It is the path where nothing on the server has seen the image, so
+ * the dimensions are read here in the browser and are the client's word — which is one of the
+ * two reasons the size rule stopped blocking.
  */
 export interface CoverImageFieldProps {
   /** The address as typed, which may not yet be a saved cover. */
   url: string;
   cover: CoverImage | null;
   disabled?: boolean;
-  /** A message from the form's own validation, e.g. a saved cover that is small. */
+  /** A message from the form's own validation. Size is no longer one of them. */
   error?: string;
   onUrlChange: (url: string) => void;
   onAccept: (cover: CoverImage) => void;
@@ -48,6 +46,34 @@ export interface CoverImageFieldProps {
 type Note = { tone: 'success' | 'info' | 'danger'; title?: string; text: string };
 
 const MINIMUM = `${COVER_MIN_WIDTH}×${COVER_MIN_HEIGHT}`;
+
+/**
+ * What each refusal means, in words a creator can act on.
+ *
+ * Keyed on the server's code rather than rendering its sentence, because the sentence is
+ * English for a log and these are read by somebody deciding what to do next. The editor is
+ * not translated yet (#324 scopes that separately); when it is, this table is what moves to
+ * the catalogue.
+ */
+const REFUSALS: Record<string, string> = {
+  UNSUPPORTED_FORMAT: 'That file is not an image this platform can read. JPEG, PNG, WebP, AVIF and HEIC all work.',
+  TOO_LARGE: 'That file is too large. The limit is 20 MB.',
+  TOO_SMALL: `That image is too small to display. Anything from ${MINIMUM} upwards reads well.`,
+  EMPTY: 'That file is empty.',
+  UNREADABLE: 'That image could not be converted. A different file should work.',
+  UPLOADS_UNAVAILABLE: 'Uploading is not switched on for this environment. Paste an address instead.',
+  MEDIA_STORAGE_UNREACHABLE: 'Image storage is not answering. Please try again shortly.',
+  UPLOAD_STILL_PROCESSING: 'That image is taking longer than usual. It may appear if you come back to this tab.',
+  UPLOAD_TRANSFER_FAILED: 'The image did not reach storage. Check the connection and try again.',
+};
+
+const STAGES: Record<UploadStage, string> = {
+  preparing: 'Preparing',
+  uploading: 'Uploading',
+  // Its own word rather than a spinner stuck at the end of the upload: the bytes have
+  // arrived and the conversion has not run yet, and on a large photograph that is seconds.
+  processing: 'Processing',
+};
 
 export function CoverImageField({
   url,
@@ -59,16 +85,46 @@ export function CoverImageField({
   onRemove,
 }: CoverImageFieldProps) {
   const [checking, setChecking] = useState(false);
+  const [stage, setStage] = useState<UploadStage | null>(null);
   const [note, setNote] = useState<Note | null>(null);
   /*
-   * The blur placeholder for the preview below, produced from the very load
-   * that measured the image (`lib/images/lqip.ts`). It lives in state rather
-   * than in the project, because `cover_image_url`, `cover_image_width` and
-   * `cover_image_height` are the only three columns there is — a fourth is the
-   * media epic's to add. It is therefore gone on the next page load, and that
-   * is honest: today nothing on the server has ever seen these bytes.
+   * The blur placeholder for the preview. For an upload it comes from the server, on the
+   * media row, and survives a reload with the cover. For a typed address it is sampled here
+   * from the load that measured the image (`lib/images/lqip.ts`) and is gone on the next page
+   * load — which is honest, because for that path nothing on the server has seen the bytes.
    */
   const [placeholder, setPlaceholder] = useState<string | null>(null);
+
+  /* Abandoning an upload when the creator picks a different file, rather than racing it. */
+  const inFlight = useRef<AbortController | null>(null);
+
+  function sizeAdvice(size: { width: number; height: number }): Note {
+    return meetsCoverMinimum(size)
+      ? { tone: 'success', text: `Cover set from a ${describeSize(size)} pixel image.` }
+      : {
+          // Not `danger`. The image is saved and the campaign can be submitted; this is the
+          // one thing the creator might want to change and not a thing they must.
+          tone: 'info',
+          title: 'This will look soft at full width',
+          /*
+           * "Soft", not "stretched", and the distinction is the whole of what a creator
+           * needs to know. Every surface that renders a cover uses `object-cover` --
+           * `Media` defaults to it, and CampaignMedia and ProjectCard pass it explicitly --
+           * so the proportions are kept and the frame crops. What a small image loses is
+           * resolution, because it is scaled up to fill a 1440px header; it is not
+           * distorted, and telling somebody their photograph will be squashed would send
+           * them to fix a problem they do not have.
+           */
+          text: `Cover set from a ${describeSize(size)} pixel image. It is below the recommended ${MINIMUM}, so it will be scaled up to fill the header and will look soft. Its proportions are kept — the frame crops rather than stretches. The campaign can still be submitted.`,
+        };
+  }
+
+  function describeFailure(cause: unknown): string {
+    if (cause instanceof UploadFailed) {
+      return REFUSALS[cause.code] ?? cause.message;
+    }
+    return cause instanceof Error ? cause.message : 'That image could not be used.';
+  }
 
   async function useAddress(): Promise<void> {
     const address = url.trim();
@@ -82,55 +138,48 @@ export function CoverImageField({
     try {
       const size = await measureImage(address);
 
-      if (!meetsCoverMinimum(size)) {
-        setNote({
-          tone: 'danger',
-          text: `That image is ${describeSize(size)} pixels, which is below the ${MINIMUM} minimum. It has not been saved as the cover.`,
-        });
-        return;
-      }
-
       setPlaceholder(size.placeholder);
-      onAccept({ url: address, width: size.width, height: size.height });
-      setNote({ tone: 'success', text: `Cover set from a ${describeSize(size)} pixel image.` });
+      // `mediaId: null` and not omitted: this cover did not come from an upload, and leaving
+      // a stale identifier beside a new address is exactly what the server refuses.
+      onAccept({ url: address, width: size.width, height: size.height, mediaId: null });
+      setNote(sizeAdvice(size));
     } catch (cause) {
-      setNote({
-        tone: 'danger',
-        text:
-          cause instanceof Error
-            ? cause.message
-            : 'That address could not be loaded as an image.',
-      });
+      setNote({ tone: 'danger', text: describeFailure(cause) });
     } finally {
       setChecking(false);
     }
   }
 
-  async function checkFile(file: File): Promise<void> {
+  async function upload(file: File): Promise<void> {
+    inFlight.current?.abort();
+    const controller = new AbortController();
+    inFlight.current = controller;
+
     setChecking(true);
     setNote(null);
     try {
-      const size = await measureImage(file);
-
-      setNote(
-        meetsCoverMinimum(size)
-          ? {
-              tone: 'info',
-              title: 'This file is large enough',
-              text: `${file.name} is ${describeSize(size)} pixels. Nothing has been uploaded — publish it somewhere public and paste the address below.`,
-            }
-          : {
-              tone: 'danger',
-              title: 'This file is too small',
-              text: `${file.name} is ${describeSize(size)} pixels, below the ${MINIMUM} minimum. A larger version is needed.`,
-            },
-      );
-    } catch (cause) {
-      setNote({
-        tone: 'danger',
-        text: cause instanceof Error ? cause.message : 'That file could not be read as an image.',
+      const image = await uploadImage(file, {
+        signal: controller.signal,
+        onStage: setStage,
       });
+
+      setPlaceholder(image.blurDataUrl === '' ? null : image.blurDataUrl);
+      onAccept({
+        // The address and the dimensions are sent for the benefit of anything reading this
+        // draft before it is saved; the server takes the identifier and fills them in from
+        // what it measured.
+        url: image.url,
+        width: image.width,
+        height: image.height,
+        mediaId: image.mediaId,
+      });
+      setNote(sizeAdvice(image));
+    } catch (cause) {
+      if (cause instanceof DOMException && cause.name === 'AbortError') return;
+      setNote({ tone: 'danger', title: 'That file was not used', text: describeFailure(cause) });
     } finally {
+      if (inFlight.current === controller) inFlight.current = null;
+      setStage(null);
       setChecking(false);
     }
   }
@@ -139,15 +188,10 @@ export function CoverImageField({
     <Field
       grouped
       label="Cover image"
-      hint={`Shown on the discovery grid and at the top of the project page. At least ${MINIMUM} pixels.`}
+      hint={`Shown on the discovery grid and at the top of the project page. ${MINIMUM} pixels or larger reads best.`}
       error={error}
     >
       <div className="flex flex-col gap-3">
-        <InlineAlert variant="info" title="Uploading arrives with the media pipeline">
-          This form cannot store a file yet. Give the address of an image that is already published
-          and its size is read here in the browser.
-        </InlineAlert>
-
         {cover !== null && (
           <figure className="overflow-hidden rounded-lg border border-white/8 bg-surface-2">
             {/*
@@ -158,11 +202,10 @@ export function CoverImageField({
 
               NOT `next/image`, AND THAT IS THE POINT. A preview has to show the
               creator the bytes they gave us; a re-encode would have them judging
-              their own photograph by our AVIF of it. The full-size file is also
-              already in the browser cache — `measureImage` just loaded it to
-              read the dimensions — so the optimiser would add a request rather
-              than remove one, on the surface docs/motion-system.md §5 gives the
-              tightest budget in the product.
+              their own photograph by our AVIF of it. The file is also already in
+              the browser cache — either measured here or just uploaded — so the
+              optimiser would add a request rather than remove one, on the surface
+              docs/motion-system.md §5 gives the tightest budget in the product.
 
               DECORATIVE: the caption carries the same information as text, and a
               preview of an image the creator has this second chosen has no
@@ -175,7 +218,10 @@ export function CoverImageField({
               decorative
             />
             <figcaption className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-[13px] text-white/64">
-              <span>Cover is {describeSize(cover)} pixels</span>
+              <span>
+                Cover is {describeSize(cover)} pixels
+                {cover.mediaId ? ' · uploaded' : ''}
+              </span>
               <Pill
                 variant="ghost"
                 size="sm"
@@ -192,6 +238,19 @@ export function CoverImageField({
           </figure>
         )}
 
+        <FileDropZone
+          accept="image/*"
+          disabled={disabled || checking}
+          prompt="Drop an image here to use it as the cover"
+          dragPrompt="Release to upload this image"
+          buttonLabel="Choose an image"
+          hint={`Up to 20 MB. It is converted and resized here, and the original is not kept. ${MINIMUM} or larger reads best.`}
+          onFiles={(files) => {
+            const [first] = files;
+            if (first) void upload(first);
+          }}
+        />
+
         <div className="flex flex-col gap-2 sm:flex-row">
           <TextInput
             type="url"
@@ -202,31 +261,18 @@ export function CoverImageField({
             // control; without a label of its own the input would be announced
             // as "edit text" and nothing else.
             aria-label="Cover image address"
-            placeholder="https://images.example.com/cover.jpg"
+            placeholder="Or paste an address: https://images.example.com/cover.jpg"
             className="sm:flex-1"
             onChange={(event) => onUrlChange(event.target.value)}
           />
           <Pill variant="ghost" disabled={disabled || checking} onClick={() => void useAddress()}>
-            {checking ? 'Checking' : 'Use this image'}
+            {checking && stage === null ? 'Checking' : 'Use this address'}
           </Pill>
         </div>
 
-        <FileDropZone
-          accept="image/*"
-          disabled={disabled}
-          prompt="Or drop a file here to check its size"
-          dragPrompt="Release to measure this image"
-          buttonLabel="Choose a file to measure"
-          hint="Measured in your browser. Nothing is uploaded."
-          onFiles={(files) => {
-            const [first] = files;
-            if (first) void checkFile(first);
-          }}
-        />
-
         {/*
           The outcome of pressing a button has to be announced, or a
-          screen-reader user presses "Use this image" and hears nothing at all.
+          screen-reader user presses "Use this address" and hears nothing at all.
 
           Two regions rather than one: `InlineAlert` already carries
           role="alert" for danger — a measurement that failed is worth
@@ -236,7 +282,10 @@ export function CoverImageField({
           registered before anything is put into it.
         */}
         <div role="status" aria-live="polite" className="empty:hidden">
-          {note !== null && note.tone !== 'danger' && (
+          {stage !== null && (
+            <InlineAlert variant="info">{STAGES[stage]} the image…</InlineAlert>
+          )}
+          {stage === null && note !== null && note.tone !== 'danger' && (
             <InlineAlert variant={note.tone} title={note.title}>
               {note.text}
             </InlineAlert>

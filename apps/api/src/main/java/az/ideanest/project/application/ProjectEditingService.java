@@ -1,5 +1,6 @@
 package az.ideanest.project.application;
 
+import az.ideanest.media.application.MediaLibrary;
 import az.ideanest.project.domain.Capability;
 import az.ideanest.project.domain.CoverImage;
 import az.ideanest.project.domain.LockedField;
@@ -87,19 +88,29 @@ public class ProjectEditingService {
     private final ProjectTransitionService transitions;
     private final StoryVersionService storyVersions;
 
+    /**
+     * The media module, reached through its application layer -- which is the only part of it
+     * this module may name. {@code ModuleBoundaryTests} refuses a reference to its
+     * {@code domain} or {@code infrastructure} packages, and that rule is why the cover is
+     * resolved through a service call rather than a JPA association.
+     */
+    private final MediaLibrary media;
+
     public ProjectEditingService(
             ProjectRepository projects,
             CategoryRepository categories,
             SubcategoryRepository subcategories,
             ProjectAccess access,
             ProjectTransitionService transitions,
-            StoryVersionService storyVersions) {
+            StoryVersionService storyVersions,
+            MediaLibrary media) {
         this.projects = projects;
         this.categories = categories;
         this.subcategories = subcategories;
         this.access = access;
         this.transitions = transitions;
         this.storyVersions = storyVersions;
+        this.media = media;
     }
 
     /**
@@ -152,7 +163,7 @@ public class ProjectEditingService {
         patch.risks().ifPresent(risks -> project.setRisks(blankAsNull(risks)));
         patch.story().ifPresent(story -> applyStory(project, accountId, story));
         patch.scheduledLaunchAt().ifPresent(project::setScheduledLaunchAt);
-        patch.coverImage().ifPresent(project::setCoverImage);
+        patch.coverImage().ifPresent(selection -> project.setCoverImage(resolveCover(selection, accountId)));
         patch.latePledgeEnabled()
                 .ifPresent(enabled -> project.setLatePledgeEnabled(requireBoolean(enabled)));
         patch.durationDays().ifPresent(days -> project.setDurationDays(validDuration(days)));
@@ -163,6 +174,52 @@ public class ProjectEditingService {
         }
 
         return project;
+    }
+
+    /**
+     * Turns what the creator chose into the cover that is stored.
+     *
+     * <p>For an upload this is where the numbers come from. {@code MediaLibrary} answers with
+     * the identifiers that are <em>this creator's</em> and have <em>finished processing</em>,
+     * and anything else is refused as a field error rather than silently ignored — a cover
+     * that quietly did not change is worse than one that would not save, because the creator
+     * finds out when the campaign is live.
+     *
+     * <p>Refusing an upload that is still processing rather than waiting for it is
+     * deliberate. The editor polls the media endpoint and knows when the image is ready; a
+     * save that blocked on a transcode would hold a transaction open for the length of one.
+     *
+     * @throws ProjectFieldRejectedException when the upload is not this creator's, does not
+     *     exist, or has not finished
+     */
+    private CoverImage resolveCover(CoverImageSelection selection, UUID accountId) {
+        if (selection == null) {
+            /*
+             * `{"coverImage": null}` -- the creator removed the cover, which is a present
+             * field with a null value rather than an absent one. `Patched` keeps the two
+             * apart and this is the whole reason it does.
+             *
+             * The null check is not defensive. A `switch` over a sealed type throws on null
+             * in Java 21, so before this line removing a cover answered 500 -- caught by
+             * ProjectChecklistApiTests, which patches `coverImage` to null to break the
+             * COVER_IMAGE rule.
+             */
+            return null;
+        }
+        return switch (selection) {
+            case CoverImageSelection.FromUrl typed ->
+                new CoverImage(typed.url(), typed.width(), typed.height());
+            case CoverImageSelection.FromUpload upload -> {
+                if (!media.claimForOwner(accountId, Set.of(upload.mediaId())).contains(upload.mediaId())) {
+                    throw new ProjectFieldRejectedException(
+                            "coverImage", "That upload is not available. It may still be processing.");
+                }
+                MediaLibrary.MediaView view = media.viewOf(upload.mediaId())
+                        .orElseThrow(() -> new ProjectFieldRejectedException(
+                                "coverImage", "That upload is not available. It may still be processing."));
+                yield new CoverImage(view.url(), view.width(), view.height(), view.id());
+            }
+        };
     }
 
     /**

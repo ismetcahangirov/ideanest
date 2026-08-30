@@ -36,6 +36,29 @@ RUN ./gradlew --no-daemon clean bootJar -x test
 # ---------------------------------------------------------------------------
 FROM eclipse-temurin:21-jre AS runtime
 
+# §13.1's ingestion needs an image processor, and this is it -- the media pipeline
+# design of 2026-08-30.
+#
+# WHY A NATIVE DEPENDENCY RATHER THAN THE JDK'S OWN ImageIO, which would have cost
+# nothing at all. Two facts, and both are about failing rather than about quality.
+#
+#  - ImageIO cannot read HEIC, which is the default camera format on an iPhone. iOS
+#    Safari usually transcodes to JPEG on a file input, and "usually" is not a
+#    guarantee to build a first-run experience on -- least of all in a change whose
+#    whole purpose is that creators stop getting stuck.
+#  - ImageIO decodes to a full bitmap in heap. An 8000x6000 photograph is 192MB as a
+#    BufferedImage; this container sizes its heap with MaxRAMPercentage, so two or
+#    three concurrent uploads is an OutOfMemoryError rather than a slowdown. libvips
+#    streams and never materialises the whole image.
+#
+# `--no-install-recommends` and the list cleanup keep it to roughly 40MB. The tools
+# package is what provides `vips` and `vipsheader`; the library alone provides
+# neither, and VipsImageTranscoder shells out rather than binding through JNI so
+# that a missing binary is a start-up log line instead of a linker error.
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y libvips-tools \
+    && rm -rf /var/lib/apt/lists/*
+
 # A user of its own. The base image runs as root, and a process that never needs
 # to write outside /tmp has no reason to be able to.
 RUN groupadd --system ideanest && useradd --system --gid ideanest --home /app ideanest

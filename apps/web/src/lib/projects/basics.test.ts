@@ -152,16 +152,34 @@ describe('validateBasics', () => {
   });
 
   describe('cover image', () => {
-    it('refuses one below 1024×576 and says what it measured', () => {
+    /*
+     * THIS USED TO BE A FORM ERROR, and its absence is the change. A small cover meant the
+     * basics tab would not save, so a creator holding an 800x450 photograph could not get
+     * past the first screen of the editor -- on a platform that had nowhere for them to
+     * upload a larger one.
+     *
+     * It is advice now, and in two non-blocking places: CoverImageField says so when the
+     * image is set, and the checklist carries COVER_IMAGE_SIZE as an advisory row. What
+     * still blocks is having a cover at all, which the checklist owns rather than this.
+     */
+    it('does not refuse one below 1024×576', () => {
       const small = { url: 'https://cdn.example.test/small.jpg', width: 800, height: 450 };
-      expect(validateBasics(draft({ coverImage: small }), { now: NOW }).coverImage).toBe(
-        'A cover image is at least 1024×576 pixels. This one is 800×450.',
-      );
+      expect(validateBasics(draft({ coverImage: small }), { now: NOW }).coverImage).toBeUndefined();
     });
 
     it('accepts exactly the minimum', () => {
       const exact = { url: 'https://cdn.example.test/exact.jpg', width: 1024, height: 576 };
       expect(validateBasics(draft({ coverImage: exact }), { now: NOW }).coverImage).toBeUndefined();
+    });
+
+    it('carries a media identifier through to the patch when the cover came from an upload', () => {
+      const uploaded = {
+        url: 'https://cdn.example.test/media/abc.jpg',
+        width: 1440,
+        height: 810,
+        mediaId: '3f2504e0-4f89-41d3-9a0c-0305e82c3301',
+      };
+      expect(validateBasics(draft({ coverImage: uploaded }), { now: NOW }).coverImage).toBeUndefined();
     });
   });
 

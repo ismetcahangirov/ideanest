@@ -108,7 +108,8 @@ public record BackerPledgeSummary(
          */
         private static CoverImageBody cover(ProfileCampaign campaign) {
             ProfileCampaign.Cover cover = campaign.cover();
-            return cover == null ? null : new CoverImageBody(cover.url(), cover.width(), cover.height());
+            // No media identifier here, for the reason ProfileProjectCard gives.
+            return cover == null ? null : new CoverImageBody(cover.url(), cover.width(), cover.height(), null);
         }
     }
 

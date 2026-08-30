@@ -82,7 +82,7 @@ public record ProjectPatchRequest(
                 scheduledLaunchAt,
                 story,
                 risks,
-                coverImage.map(CoverImageBody::toDomain),
+                coverImage.map(CoverImageBody::toSelection),
                 latePledgeEnabled);
     }
 }

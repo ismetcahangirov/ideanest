@@ -296,6 +296,22 @@ jobs:
           java-version: '21'
           cache: gradle
 
+      # §13.1's ingestion shells out to libvips, and the runtime image installs it
+      # for the same reason -- see apps/api/Dockerfile on why the JDK's own ImageIO
+      # was not enough.
+      #
+      # HERE SO THAT THE TRANSCODER TESTS ACTUALLY RUN. They are guarded on the
+      # binary being present, which is what lets somebody work on this repository
+      # without installing it; without this step that guard would quietly skip them
+      # in CI as well, and a test that never runs anywhere is a test that is not
+      # there. The EXIF assertion in particular is a privacy claim, and it has to be
+      # made against real output.
+      - name: Install libvips
+        if: steps.detect.outputs.present == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libvips-tools
+
       - name: Build and test
         if: steps.detect.outputs.present == 'true'
         working-directory: apps/api

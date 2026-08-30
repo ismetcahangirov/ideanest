@@ -22,6 +22,35 @@ public class TestDoublesConfiguration {
     }
 
     /**
+     * The object store, as a directory on disk -- the media pipeline design of 2026-08-30.
+     *
+     * <p>Without it the upload path cannot be tested at all: an unconfigured deployment gets
+     * a store that refuses everything, which is right in production and makes "upload a cover
+     * and attach it" impossible to write. What is interesting is above the store anyway --
+     * the state machine, the sweep's claim, the ownership check on attachment -- and none of
+     * it is S3.
+     */
+    @Bean
+    @Primary
+    LocalObjectStore localObjectStore() {
+        return new LocalObjectStore();
+    }
+
+    /**
+     * The transcoder, scripted rather than spawning libvips.
+     *
+     * <p>The conversion is asserted against a real installation in
+     * {@code VipsImageTranscoderTests}, on the bytes it produces. Requiring a native
+     * dependency for the integration suite to start would make the suite one that does not
+     * run; see {@code ScriptedImageTranscoder} for the full argument.
+     */
+    @Bean
+    @Primary
+    ScriptedImageTranscoder scriptedImageTranscoder() {
+        return new ScriptedImageTranscoder();
+    }
+
+    /**
      * §21.2's rate source, scripted rather than fetched — issue #327.
      *
      * <p>The suite must never reach cbar.az: a test that fetched a public website would fail

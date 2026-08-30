@@ -4396,29 +4396,86 @@ notice says — epic #100.
 Client requests a pre-signed URL, uploads directly to object storage, then
 notifies the API, which enqueues processing.
 
-**Variants:** thumbnail (160w), card (640w), hero (1440w), original.
-**Formats:** AVIF primary, WebP fallback, JPEG last.
+**Built, for campaign covers.** `POST /v1/media/uploads` issues a presigned
+`PUT`, the browser writes to it, `POST /v1/media/{id}/complete` says the bytes
+are there, and `media-processing` — a job on §8.4's durable scheduler, every five
+seconds — converts them. A campaign cover may then be set by identifier, and the
+dimensions recorded against it are **measured** rather than reported by a
+browser. What is not built is in "What is still a typed URL" below.
+
+**One derived file, not four variants.** §13.1 originally asked ingestion for
+160w, 640w, 1440w and the original. It stores one, reduced to 1440 on its longest
+edge, JPEG at Q82 — or PNG when the source has an alpha channel, because JPEG has
+none and would composite transparency onto black.
+
+> The reason is that the delivery half of this section was already built and
+> already does the rest. `next/image` content-negotiates AVIF then WebP,
+> `deviceSizes` stops at 1440 and `imageSizes` starts at 16, cached for thirty
+> days. Emitting four variants at ingestion would have the optimiser derive its
+> own variants from ours — the same encoding twice, and roughly five times the
+> storage for it. Quality is not the trade: the widest box in the product is 720
+> CSS px, so 1440 is that box at 2×.
+
+**The original is not kept.** Re-cropping later works from the 1440px copy.
+Keeping it is a defensible different choice and costs four to five times the
+storage; this spends that budget on not having it.
+
+**Conversion is libvips**, installed in the runtime image. The JDK's own
+`ImageIO` would have cost no dependency at all and was the first choice: it
+cannot read HEIC, which is what an iPhone produces, and it decodes to a full
+bitmap — 192 MB of heap for an 8000×6000 photograph, which is an
+`OutOfMemoryError` rather than a slowdown at three uploads at once.
 
 **Safety:**
 
-- MIME type verified by magic bytes, never by file extension
-- Size limits: 20MB images, 4GB video
-- **EXIF stripped** — GPS coordinates in an uploaded photo are a privacy leak
-- Optional virus scanning
-- Automated adult-content detection routing to the moderation queue
+- MIME type verified by magic bytes, never by file extension — **built**, and it
+  is whatever libvips' loaders recognise rather than a list maintained by hand
+- Size limits: 20MB images — **built**. 4GB video is unbuilt with the rest of
+  §13.2
+- **EXIF stripped** — GPS coordinates in an uploaded photo are a privacy leak.
+  **Built**, and asserted on the bytes of a real conversion rather than trusted:
+  `VipsImageTranscoderTests` splices a probe into a JPEG's Exif and requires it
+  absent from the output
+- A floor of 320px on the shortest edge, which is not a quality rule — it is what
+  stops somebody who picked their avatar by mistake from putting a 128px square
+  behind a hero. §5.3's 1024×576 became **advice** when this landed; see
+  `ChecklistRequirement.COVER_IMAGE_SIZE` for both reasons
+- Optional virus scanning — **not built**
+- Automated adult-content detection routing to the moderation queue — **not
+  built**
+
+**A deployment that configures no bucket starts, serves every other endpoint,
+and answers an upload with 503.** There is no default, because a default would be
+a guess about somebody else's infrastructure.
+
+#### What is still a typed URL
+
+Profile avatars, reward item images, collection covers, **and images inside a
+campaign story**. Each keeps taking an address a person pasted, and the two
+consequences are named here rather than left to be discovered:
+
+1. **`remotePatterns` has not narrowed.** It still allows `https` on any host, so
+   `/_next/image` remains usable as an image proxy. It cannot narrow while any
+   field resolves to a host we do not control.
+2. **`blurDataUrl` reaches covers and nothing else.** The `media` row carries it;
+   a typed URL has no row and therefore no placeholder outside the editor.
+
+Both close when those three fields migrate.
 
 **The placeholder is a variant, not an afterthought.** Ingestion also emits a
 16-pixel-wide sample, base64'd into the media record beside the URL and the
 dimensions, so a blur placeholder arrives in the same response as the image it
 belongs to and costs no extra request. Sixteen pixels is small enough that no
 recognisable detail survives, which matters because a placeholder is shown
-before moderation has looked at anything.
+before moderation has looked at anything. **Built**, on `media.blur_data_url`.
 
 #### Delivery — what the browser is offered today
 
-Ingestion is not built. Delivery is, and it is separable: `next/image` and
-`apps/web/next.config.mjs` do the optimiser's half of this section against
-whatever addresses exist, which today are addresses creators typed by hand.
+Delivery was built first and is separable: `next/image` and
+`apps/web/next.config.mjs` do the optimiser's half of this section. It now runs
+against uploaded covers as well as against addresses creators typed by hand,
+and the table below is unchanged by that — which was the point of doing the two
+halves independently.
 
 | Concern | Setting | Reason |
 |---|---|---|
@@ -4429,19 +4486,20 @@ whatever addresses exist, which today are addresses creators typed by hand.
 | `remotePatterns` | `https` on any host | **Named as a cost.** With no storage, an allowlist matches nothing and no cover is ever converted. It leaves `/_next/image` usable as an image proxy for HTTPS URLs — bandwidth rather than network access, since private and loopback addresses are refused |
 | Aspect ratio | `MediaFrame`, every call site | The box is reserved before the bytes arrive. See [`ui-kit.md`](./ui-kit.md) §7.16 |
 
-**Two things this pipeline owes the front end when it lands, and they are part
-of its definition of done:**
+**Two things this pipeline owes the front end, and neither is discharged yet:**
 
-1. **`remotePatterns` narrows to the storage origin.** Every cover is then on
-   one host, the wildcard goes, and the proxy stops existing.
-2. **The media record carries `blurDataUrl`.** Until it does, a blur placeholder
-   only exists where the browser is holding the bytes — the campaign editor,
-   which samples the image it has just loaded to measure
-   (`apps/web/src/lib/images/lqip.ts`, the same algorithm at the same width).
-   That placeholder is not persisted, because `cover_image_url`,
-   `cover_image_width` and `cover_image_height` are the only three columns
-   there are. A statically imported image needs neither: Next reads the file at
-   build time and attaches `blurDataURL` to the import.
+1. **`remotePatterns` narrows to the storage origin.** Every cover would then be
+   on one host, the wildcard would go, and the proxy would stop existing. **Not
+   done**, and it cannot be while avatars, reward item images and collection
+   covers still resolve to hosts we do not control — see "What is still a typed
+   URL" above.
+2. **The media record carries `blurDataUrl`.** **Done in the record**, on
+   `media.blur_data_url`, and read back by the media endpoint. It has not yet
+   replaced the editor's own sample (`apps/web/src/lib/images/lqip.ts`) on the
+   public campaign surfaces, because those read `cover_image_url` and the three
+   columns beside it — which V61 deliberately left in place for the expand
+   phase. A statically imported image needs neither: Next reads the file at build
+   time and attaches `blurDataURL` to the import.
 
 **Where the optimiser is not used, and why.** The campaign editor's previews
 render a plain `<img>`. A preview has to show the creator the bytes they

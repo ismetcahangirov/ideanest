@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { ApiError } from '../../lib/api/problem';
 import {
@@ -11,6 +11,7 @@ import {
   type ProjectPatch,
 } from '../../lib/projects/api';
 import { measureImage } from '../../lib/projects/coverImage';
+import { UploadFailed, uploadImage } from '../../lib/media/upload';
 import { BasicsPanel } from './BasicsPanel';
 
 /**
@@ -28,6 +29,11 @@ import { BasicsPanel } from './BasicsPanel';
  * `measureImage` is mocked because jsdom never loads an image: an `<img>` there
  * fires neither `load` nor `error`, so the real implementation would hang. What
  * the mock returns is what a browser would have reported.
+ *
+ * `uploadImage` is mocked for the same class of reason: it makes three network calls and
+ * polls a fourth. What is asserted here is what the panel does with the answer -- the
+ * upload itself belongs to the API, and the conversion behind it is asserted against a
+ * real libvips in the backend suite.
  */
 
 vi.mock('../../lib/projects/api', async (importOriginal) => ({
@@ -42,10 +48,16 @@ vi.mock('../../lib/projects/coverImage', async (importOriginal) => ({
   measureImage: vi.fn(),
 }));
 
+vi.mock('../../lib/media/upload', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/media/upload')>()),
+  uploadImage: vi.fn(),
+}));
+
 const getProjectEditMock = vi.mocked(getProjectEdit);
 const patchProjectMock = vi.mocked(patchProject);
 const listCategoriesMock = vi.mocked(listCategories);
 const measureImageMock = vi.mocked(measureImage);
+const uploadImageMock = vi.mocked(uploadImage);
 
 /** The debounce `useAutosave` defaults to. */
 const DEBOUNCE = 800;
@@ -127,6 +139,20 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+/**
+ * Hands a file to the drop zone.
+ *
+ * `fireEvent` on the input rather than `userEvent.upload`, because the input is `hidden`:
+ * the drop zone's own button is what a person clicks, and user-event refuses to interact
+ * with an element that is not visible. What is being tested here is what the panel does
+ * with a chosen file, and the zone's own click-through is `packages/ui`'s.
+ */
+function chooseFile(file: File): void {
+  const input = document.querySelector<HTMLInputElement>('input[type="file"]');
+  if (input === null) throw new Error('The cover field has no file input');
+  fireEvent.change(input, { target: { files: [file] } });
+}
+
 describe('BasicsPanel', () => {
   it('announces that it is loading rather than showing an empty form', () => {
     getProjectEditMock.mockReturnValue(new Promise<ProjectEdit>(() => {}));
@@ -150,8 +176,8 @@ describe('BasicsPanel', () => {
     expect(screen.getByRole('switch', { name: 'Accept late pledges' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Cover image address' })).toBeInTheDocument();
     // Every button says what it does, including the two that only differ by it.
-    expect(screen.getByRole('button', { name: 'Use this image' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Choose a file to measure' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Use this address' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Choose an image' })).toBeInTheDocument();
   });
 
   it('fills the form from the project the service returned', async () => {
@@ -416,10 +442,18 @@ describe('BasicsPanel', () => {
   });
 
   describe('the cover image', () => {
-    it('says plainly that nothing is uploaded yet', async () => {
+    /*
+     * This used to assert the opposite: a banner reading "Uploading arrives with the media
+     * pipeline". It has arrived, and the control that told creators to go and host the file
+     * somewhere else first is what this change exists to remove.
+     */
+    it('offers to upload rather than explaining that it cannot', async () => {
       await openBasics();
 
-      expect(screen.getByText('Uploading arrives with the media pipeline')).toBeInTheDocument();
+      expect(
+        screen.queryByText('Uploading arrives with the media pipeline'),
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Choose an image' })).toBeInTheDocument();
     });
 
     it('reads the size of an address and saves the two together', async () => {
@@ -430,17 +464,29 @@ describe('BasicsPanel', () => {
         screen.getByRole('textbox', { name: 'Cover image address' }),
         'https://cdn.example.test/cover.jpg',
       );
-      await user.click(screen.getByRole('button', { name: 'Use this image' }));
+      await user.click(screen.getByRole('button', { name: 'Use this address' }));
       await tick();
       await tick(DEBOUNCE);
 
       expect(lastPatch()).toEqual({
-        coverImage: { url: 'https://cdn.example.test/cover.jpg', width: 1600, height: 900 },
+        coverImage: {
+          url: 'https://cdn.example.test/cover.jpg',
+          width: 1600,
+          height: 900,
+          // Explicitly null rather than absent: this cover did not come from an upload, and
+          // a stale identifier left beside a new address is what the server refuses.
+          mediaId: null,
+        },
       });
       expect(screen.getByText('Cover set from a 1600×900 pixel image.')).toBeInTheDocument();
     });
 
-    it('refuses one below 1024×576 and says what it measured', async () => {
+    /*
+     * THE CHANGE, IN ONE TEST. An 800x450 photograph used to be refused outright and never
+     * reached the service, which is where a creator holding one got stuck. It is saved now,
+     * and what it earns is a note.
+     */
+    it('saves one below 1024×576 and says it will look soft', async () => {
       const user = await openBasics();
       measureImageMock.mockResolvedValue({ width: 800, height: 450, placeholder: null });
 
@@ -448,11 +494,63 @@ describe('BasicsPanel', () => {
         screen.getByRole('textbox', { name: 'Cover image address' }),
         'https://cdn.example.test/small.jpg',
       );
-      await user.click(screen.getByRole('button', { name: 'Use this image' }));
+      await user.click(screen.getByRole('button', { name: 'Use this address' }));
       await tick();
       await tick(DEBOUNCE);
 
-      expect(screen.getByRole('alert')).toHaveTextContent('800×450');
+      expect(lastPatch()).toEqual({
+        coverImage: {
+          url: 'https://cdn.example.test/small.jpg',
+          width: 800,
+          height: 450,
+          mediaId: null,
+        },
+      });
+      // Said, and deliberately not as an alert: the campaign can still be submitted, so
+      // interrupting a screen-reader user for it would misreport what it is.
+      expect(screen.getByText(/below the recommended 1024×576/)).toBeInTheDocument();
+      // SOFT, NOT STRETCHED. Every surface renders a cover with `object-cover`, so the
+      // proportions are kept and the frame crops. Telling a creator their photograph will
+      // be squashed would send them to fix a problem they do not have.
+      expect(screen.getByText(/proportions are kept/)).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('uploads a dropped file and saves the identifier the service gave back', async () => {
+      await openBasics();
+      uploadImageMock.mockResolvedValue({
+        mediaId: '3f2504e0-4f89-41d3-9a0c-0305e82c3301',
+        url: 'https://cdn.example.test/media/3f2504e0.jpg',
+        width: 1440,
+        height: 810,
+        blurDataUrl: 'data:image/jpeg;base64,BBBB',
+      });
+
+      chooseFile(new File(['bytes'], 'photo.jpg', { type: 'image/jpeg' }));
+      await tick();
+      await tick(DEBOUNCE);
+
+      expect(lastPatch()).toEqual({
+        coverImage: {
+          url: 'https://cdn.example.test/media/3f2504e0.jpg',
+          width: 1440,
+          height: 810,
+          mediaId: '3f2504e0-4f89-41d3-9a0c-0305e82c3301',
+        },
+      });
+      // The dimensions are the server's measurement, which is the whole point of the
+      // pipeline: this browser never reported them.
+      expect(measureImageMock).not.toHaveBeenCalled();
+    });
+
+    it('explains a refusal in words rather than passing the code through', async () => {
+      await openBasics();
+      uploadImageMock.mockRejectedValue(new UploadFailed('UNSUPPORTED_FORMAT', 'refused'));
+
+      chooseFile(new File(['%PDF-1.7'], 'invoice.jpg', { type: 'image/jpeg' }));
+      await tick();
+
+      expect(screen.getByRole('alert')).toHaveTextContent(/not an image this platform can read/);
       expect(sent().filter((patch) => patch.coverImage != null)).toEqual([]);
     });
 
@@ -464,7 +562,7 @@ describe('BasicsPanel', () => {
         screen.getByRole('textbox', { name: 'Cover image address' }),
         'https://cdn.example.test/tall.jpg',
       );
-      await user.click(screen.getByRole('button', { name: 'Use this image' }));
+      await user.click(screen.getByRole('button', { name: 'Use this address' }));
       await tick();
 
       /*
@@ -490,7 +588,7 @@ describe('BasicsPanel', () => {
         screen.getByRole('textbox', { name: 'Cover image address' }),
         'https://cdn.example.test/cover.jpg',
       );
-      await user.click(screen.getByRole('button', { name: 'Use this image' }));
+      await user.click(screen.getByRole('button', { name: 'Use this address' }));
       await tick();
 
       const layer = document.querySelector<HTMLElement>('[data-media-placeholder]');

@@ -32,12 +32,13 @@ import java.util.List;
  * <h2>What §5.3 asks for and this cannot check</h2>
  *
  * <ul>
- *   <li><strong>That the cover image is really 1024×576.</strong> The dimensions
- *       are measured in the creator's browser and sent alongside the URL, because
- *       there is no media pipeline (§13) and nothing on the server has ever seen
- *       the file. A client could claim any size for any picture. The check below
- *       is therefore against what was recorded, not against the image, and it
- *       becomes a real check when ingestion measures the file itself.
+ *   <li><strong>That a cover supplied as a typed URL is really 1024×576.</strong> For
+ *       an uploaded one this is no longer true: ingestion measures the file and writes
+ *       what it measured, so {@code CampaignCompleteness} carries a fact rather than a
+ *       claim. A cover that is still a URL a creator typed is unchanged — the dimensions
+ *       come from their browser and a client could send any pair of numbers.
+ *       <p>Which is one of the two reasons the size rule stopped refusing submissions;
+ *       see {@link ChecklistRequirement#COVER_IMAGE_SIZE} for the other.
  *   <li><strong>§5.4's prohibited content and §5.5's obligations.</strong> Neither
  *       is a property of a row. They are what moderation is for, which is why
  *       submission leads to a queue rather than straight to {@code APPROVED}.
@@ -55,7 +56,15 @@ public final class SubmissionChecklist {
     /** §5.3. Also {@code projects_blurb_length}. */
     public static final int SUMMARY_MAX_CHARACTERS = 135;
 
-    /** §5.3: at least 1024×576, and the same pair as {@code coverImage.ts}. */
+    /**
+     * §5.3: at least 1024×576, and the same pair as {@code coverImage.ts}.
+     *
+     * <p><strong>Advice, not a gate.</strong> {@link ChecklistRequirement#COVER_IMAGE_SIZE}
+     * carries the argument. The floor that does refuse an image is
+     * {@code MediaAsset.MINIMUM_EDGE}, and it is a much lower number, because it answers a
+     * different question — "can this be displayed at all" rather than "does this look good
+     * across a hero".
+     */
     public static final int COVER_MIN_WIDTH = 1024;
 
     public static final int COVER_MIN_HEIGHT = 576;
@@ -112,7 +121,8 @@ public final class SubmissionChecklist {
                 "Filed only at the top level. A subcategory puts the campaign in front of the "
                         + "people browsing for exactly this."));
 
-        items.add(coverImage(campaign.coverImage()));
+        items.add(coverPresent(campaign.coverImage()));
+        items.add(coverSize(campaign.coverImage()));
 
         // --- What it costs and how long ----------------------------------
         items.add(goal(campaign, limits));
@@ -182,17 +192,44 @@ public final class SubmissionChecklist {
                 "The " + noun + " is " + characters + " characters. The limit is " + max + ".");
     }
 
-    private static ChecklistItem coverImage(CoverImage cover) {
-        if (cover == null) {
-            return ChecklistItem.unmet(
-                    ChecklistRequirement.COVER_IMAGE,
-                    "A cover image is required. It is the campaign everywhere it is listed.");
-        }
+    /**
+     * There is one, and that half still refuses a submission.
+     *
+     * <p>Split from the size rule below, which is the opposite of what {@link #text} does for
+     * a title — and the reason is that the two really are different requirements here. A
+     * campaign with no cover has nothing to show in any list on the platform; a campaign with
+     * a small one has something to show that could be better. Those are not the same
+     * sentence, and until this split they were the same row.
+     */
+    private static ChecklistItem coverPresent(CoverImage cover) {
         return ChecklistItem.of(
                 ChecklistRequirement.COVER_IMAGE,
+                cover != null,
+                "A cover image is required. It is the campaign everywhere it is listed.");
+    }
+
+    /**
+     * It is large enough to look right across a hero, and this is advice.
+     *
+     * <p>See {@link ChecklistRequirement#COVER_IMAGE_SIZE} for why it stopped blocking. The
+     * short version: the number used to come from the creator's browser, so the rule caught
+     * the honest and missed everybody else, and it stopped people at the first screen of the
+     * editor on a platform that had nowhere to upload a larger file.
+     *
+     * <p>Met when there is no cover at all, deliberately. The missing-cover case is
+     * {@link #coverPresent}'s, and reporting both would put two red rows on the screen for
+     * one thing to fix.
+     */
+    private static ChecklistItem coverSize(CoverImage cover) {
+        if (cover == null) {
+            return ChecklistItem.met(ChecklistRequirement.COVER_IMAGE_SIZE);
+        }
+        return ChecklistItem.of(
+                ChecklistRequirement.COVER_IMAGE_SIZE,
                 cover.width() >= COVER_MIN_WIDTH && cover.height() >= COVER_MIN_HEIGHT,
-                "The cover image is " + cover.width() + "×" + cover.height() + ". At least "
-                        + COVER_MIN_WIDTH + "×" + COVER_MIN_HEIGHT + " is needed.");
+                "The cover image is " + cover.width() + "×" + cover.height() + ". Anything below "
+                        + COVER_MIN_WIDTH + "×" + COVER_MIN_HEIGHT + " is scaled up to fill the "
+                        + "header on a campaign page and looks soft.");
     }
 
     /**

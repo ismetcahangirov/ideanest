@@ -69,6 +69,15 @@ export interface CoverImage {
   url: string;
   width: number;
   height: number;
+  /**
+   * The uploaded file behind the other three, when there is one.
+   *
+   * Send this alone to set a cover from an upload: the server fills in the location and the
+   * dimensions from what it measured, and ignores the other three fields. They are still
+   * populated on the way out, and `mediaId` is null for every cover that predates the
+   * uploader and for one supplied as a typed address.
+   */
+  mediaId?: string | null;
 }
 
 /**
