@@ -51,7 +51,7 @@ const TYPES: readonly NotificationType[] = [
 ];
 
 /** A document carrying everything any type reads — the shape #249 made routine. */
-const FULL_PARAMS = JSON.stringify({
+const FULL_PARAMS = {
   projectId: '01890000-0000-7000-8000-000000000001',
   projectTitle: 'Xari Bulbul Ceramics',
   creatorSlug: 'aysel-studio',
@@ -62,7 +62,7 @@ const FULL_PARAMS = JSON.stringify({
   pledged: { amount: '6250.00', currency: 'AZN' },
   backersCount: 184,
   attempt: 2,
-});
+};
 
 function notification(
   overrides: Partial<InboxNotification> & Pick<InboxNotification, 'type'>,
@@ -79,15 +79,16 @@ function notification(
 describe('readParams', () => {
   it('answers an empty document rather than throwing on anything that is not one', () => {
     expect(readParams(undefined)).toEqual({});
-    expect(readParams('')).toEqual({});
-    expect(readParams('not json')).toEqual({});
-    expect(readParams('null')).toEqual({});
+    expect(readParams(null)).toEqual({});
+    // A row from a build that still sent the document as a JSON string is read as absent
+    // rather than crashing the row it arrived on.
+    expect(readParams('not an object')).toEqual({});
     // An array would index by number and read nothing, so it is refused as a document.
-    expect(readParams('[1,2]')).toEqual({});
+    expect(readParams([1, 2])).toEqual({});
   });
 
   it('reads an object', () => {
-    expect(readParams('{"a":1}')).toEqual({ a: 1 });
+    expect(readParams({ a: 1 })).toEqual({ a: 1 });
   });
 });
 
@@ -136,7 +137,7 @@ describe('describeNotification', () => {
    */
   it('still forms a sentence when the document names no campaign', () => {
     const view = describeNotification(
-      notification({ type: 'GOAL_REACHED', params: '{"goal":{"amount":"5000.00","currency":"AZN"}}' }),
+      notification({ type: 'GOAL_REACHED', params: { goal: { amount: '5000.00', currency: 'AZN' } } }),
       COPY,
     );
 
@@ -155,7 +156,7 @@ describe('describeNotification', () => {
   });
 
   it.each(TYPES)('renders %s as a finished sentence with an empty document', (type) => {
-    const view = describeNotification(notification({ type, params: '{}' }), COPY);
+    const view = describeNotification(notification({ type, params: {} }), COPY);
 
     expect(view.headline).not.toBe('');
     expect(view.headline).not.toContain('  ');
@@ -170,7 +171,7 @@ describe('describeNotification', () => {
    */
   it('refuses an amount that did not arrive as a string, rather than rendering it', () => {
     const view = describeNotification(
-      notification({ type: 'PLEDGE_CONFIRMED', params: '{"total":{"amount":120,"currency":"AZN"}}' }),
+      notification({ type: 'PLEDGE_CONFIRMED', params: { total: { amount: 120, currency: 'AZN' } } }),
       COPY,
     );
 
@@ -197,8 +198,13 @@ describe('describeNotification', () => {
     expect(view.href).toBe('/settings/sessions');
   });
 
-  it('survives a document that is not JSON at all', () => {
-    const view = describeNotification(notification({ type: 'PLEDGE_CONFIRMED', params: 'oops' }), COPY);
+  it('survives a document that is not an object at all', () => {
+    // A row from a build that still sent the document as a JSON string, or any other shape
+    // that is not a plain object — `readParams` refuses it rather than the row crashing.
+    const view = describeNotification(
+      notification({ type: 'PLEDGE_CONFIRMED', params: 'oops' as unknown as Record<string, unknown> }),
+      COPY,
+    );
 
     expect(view.headline).toBe('Your pledge of your chosen amount to a campaign is confirmed');
     expect(view.href).toBeNull();

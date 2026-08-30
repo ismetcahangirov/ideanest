@@ -26,13 +26,17 @@ import type {
  * the inbox and then again in a digest email should not be two different sentences about
  * the same thing.
  *
- * <h2>`params` is a string, and it is parsed exactly once</h2>
+ * <h2>`params` arrives already parsed, and {@link readParams} only narrows it</h2>
  *
- * The service emits the `jsonb` column verbatim rather than re-serialising it, so what
- * arrives is text. Every read below goes through {@link readParams}, which never throws:
- * a document that cannot be parsed produces a row with the campaign missing rather than an
- * inbox that fails to render. Money is read as the API's `{amount, currency}` object and
- * formatted by `lib/money`, never by `Number()`.
+ * The service emits the `jsonb` column with `@JsonRawValue`, splicing it into the response
+ * body as an object rather than encoding it as a nested string — `NotificationResponse`
+ * argues why: a decode-and-re-serialise would put every money amount in it through a
+ * `double`. `response.json()` on the client has therefore already done the one parse this
+ * document gets; {@link readParams} never calls `JSON.parse` again, and it never throws:
+ * anything that is not a plain object — `undefined`, `null`, an array, a stray primitive —
+ * produces a row with the campaign missing rather than an inbox that fails to render. Money
+ * is read as the API's `{amount, currency}` object and formatted by `lib/money`, never by
+ * `Number()`.
  */
 
 /** One notification, as a reader sees it. */
@@ -46,19 +50,14 @@ export interface NotificationView {
 }
 
 /** The rendering document, or an empty one. */
-export function readParams(params: string | undefined): Record<string, unknown> {
-  if (params === undefined || params.trim() === '') return {};
-
-  try {
-    const parsed: unknown = JSON.parse(params);
-    // `notifications_params_is_an_object` already keeps the column an object, so this is
-    // the second lock. An array would otherwise index by number below and read nothing.
-    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : {};
-  } catch {
-    return {};
-  }
+export function readParams(params: unknown): Record<string, unknown> {
+  // `notifications_params_is_an_object` keeps the column an object on the service side, so
+  // this is the second lock. An array would otherwise index by number below and read
+  // nothing, and a row from a build that still sent a JSON string is read as absent rather
+  // than crashing the row it arrived on.
+  return typeof params === 'object' && params !== null && !Array.isArray(params)
+    ? (params as Record<string, unknown>)
+    : {};
 }
 
 function textOf(params: Record<string, unknown>, key: string): string | null {

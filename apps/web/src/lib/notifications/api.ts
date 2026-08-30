@@ -43,13 +43,17 @@ export interface InboxNotification {
   /** Which one. Whole or absent with `subjectType`. */
   readonly subjectId?: string;
   /**
-   * The rendering document, as a JSON string.
+   * The rendering document.
    *
-   * A string rather than an object because the service emits the `jsonb` column verbatim
-   * (`NotificationResponse` argues why: round-tripping it would put every money amount
-   * through a decoder). `describe.ts` is the only thing that parses it.
+   * An object, not a string. `NotificationResponse` on the service emits the `jsonb` column
+   * with `@JsonRawValue` rather than through a decoder — precisely so that a money amount
+   * inside it stays the exact string it was written as (`"25.00"`), never a re-encoded
+   * `double`. That annotation splices the column's bytes straight into the response body,
+   * so what a browser's `response.json()` hands back is this object already parsed, not a
+   * nested string to run a second `JSON.parse` over. `describe.ts` is the only thing that
+   * reads it.
    */
-  readonly params: string;
+  readonly params: Record<string, unknown>;
   /** ISO-8601 instant. When the reported thing happened, not when the row was written. */
   readonly occurredAt: string;
   /** ISO-8601 instant, or absent while unread. */
@@ -125,7 +129,12 @@ export async function listNotifications(
 
   const body = (await response.json()) as ContractInbox;
   return {
-    notifications: (body.notifications ?? []) as readonly InboxNotification[],
+    // Cast through `unknown`: springdoc types `params` as a `string` because Java only ever
+    // sees the field's declared type, `String`, and cannot see that `@JsonRawValue` splices
+    // its content into the response as an object rather than encoding it as one. The
+    // generated contract is wrong about this one field; `InboxNotification` states the wire
+    // shape it actually is.
+    notifications: (body.notifications ?? []) as unknown as readonly InboxNotification[],
     nextCursor: body.nextCursor,
     nextCursorId: body.nextCursorId,
     unreadCount: body.unreadCount ?? 0,
