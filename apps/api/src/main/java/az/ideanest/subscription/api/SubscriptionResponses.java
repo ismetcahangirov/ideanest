@@ -4,6 +4,7 @@ import az.ideanest.subscription.domain.BillingPeriod;
 import az.ideanest.subscription.domain.Subscription;
 import az.ideanest.subscription.domain.SubscriptionPlan;
 import az.ideanest.subscription.domain.SubscriptionState;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -124,7 +125,17 @@ public final class SubscriptionResponses {
      * no subscription" is an ordinary fact about a signed-in visitor opening the pricing
      * page, not an error, and a 404 would put a line in the log for every creator who has
      * not bought anything yet.
+     *
+     * <p><strong>{@code @JsonInclude(ALWAYS)}, against the service's own default.</strong>
+     * {@code application.yml} sets {@code default-property-inclusion: non_null}, which would
+     * otherwise omit {@code subscription} entirely rather than write it as {@code null} —
+     * the response becomes {@code {}}, indistinguishable from a body Jackson never finished
+     * writing. The client reads that as {@code undefined}, not {@code null}, and a
+     * subscription-shaped page built to branch on the one and not the other renders
+     * something meant for a subscription it does not have. Written out for the same reason
+     * {@code NotificationResponse} is.
      */
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     public record Mine(Held subscription) {
 
         public static final Mine NONE = new Mine(null);
