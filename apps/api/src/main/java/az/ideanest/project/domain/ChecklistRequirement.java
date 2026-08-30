@@ -63,9 +63,11 @@ public enum ChecklistRequirement {
      *
      * <p>Both are now different. The server measures the file, so the number is real, and
      * there is somewhere to upload one, so a creator is no longer sent away. What is left is
-     * a judgement about how a small image looks stretched across a 1440px hero — which is
-     * advice, and which moderation reviews anyway. A hard floor still exists and is not this:
-     * {@code MediaAsset.MINIMUM_EDGE} refuses anything too small to display at all.
+     * a judgement about resolution: every surface renders a cover with {@code object-cover},
+     * so a small image keeps its proportions and is cropped rather than distorted — it is
+     * scaled up to fill a 1440px hero and looks soft. That is advice, and moderation reviews
+     * it anyway. A hard floor still exists and is not this: {@code MediaAsset.MINIMUM_EDGE}
+     * refuses anything too small to display at all.
      */
     COVER_IMAGE_SIZE("Cover image size", ChecklistSeverity.ADVISORY, EditorSection.BASICS),
 

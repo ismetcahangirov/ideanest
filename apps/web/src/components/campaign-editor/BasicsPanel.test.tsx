@@ -486,7 +486,7 @@ describe('BasicsPanel', () => {
      * reached the service, which is where a creator holding one got stuck. It is saved now,
      * and what it earns is a note.
      */
-    it('saves one below 1024×576 and says it will be stretched', async () => {
+    it('saves one below 1024×576 and says it will look soft', async () => {
       const user = await openBasics();
       measureImageMock.mockResolvedValue({ width: 800, height: 450, placeholder: null });
 
@@ -509,6 +509,10 @@ describe('BasicsPanel', () => {
       // Said, and deliberately not as an alert: the campaign can still be submitted, so
       // interrupting a screen-reader user for it would misreport what it is.
       expect(screen.getByText(/below the recommended 1024×576/)).toBeInTheDocument();
+      // SOFT, NOT STRETCHED. Every surface renders a cover with `object-cover`, so the
+      // proportions are kept and the frame crops. Telling a creator their photograph will
+      // be squashed would send them to fix a problem they do not have.
+      expect(screen.getByText(/proportions are kept/)).toBeInTheDocument();
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 

@@ -105,8 +105,17 @@ export function CoverImageField({
           // Not `danger`. The image is saved and the campaign can be submitted; this is the
           // one thing the creator might want to change and not a thing they must.
           tone: 'info',
-          title: 'This will be stretched a little',
-          text: `Cover set from a ${describeSize(size)} pixel image. It is below the recommended ${MINIMUM}, so it will look soft across the full-width header. The campaign can still be submitted.`,
+          title: 'This will look soft at full width',
+          /*
+           * "Soft", not "stretched", and the distinction is the whole of what a creator
+           * needs to know. Every surface that renders a cover uses `object-cover` --
+           * `Media` defaults to it, and CampaignMedia and ProjectCard pass it explicitly --
+           * so the proportions are kept and the frame crops. What a small image loses is
+           * resolution, because it is scaled up to fill a 1440px header; it is not
+           * distorted, and telling somebody their photograph will be squashed would send
+           * them to fix a problem they do not have.
+           */
+          text: `Cover set from a ${describeSize(size)} pixel image. It is below the recommended ${MINIMUM}, so it will be scaled up to fill the header and will look soft. Its proportions are kept — the frame crops rather than stretches. The campaign can still be submitted.`,
         };
   }
 

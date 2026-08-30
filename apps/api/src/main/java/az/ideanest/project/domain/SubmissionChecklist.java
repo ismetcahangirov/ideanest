@@ -227,9 +227,9 @@ public final class SubmissionChecklist {
         return ChecklistItem.of(
                 ChecklistRequirement.COVER_IMAGE_SIZE,
                 cover.width() >= COVER_MIN_WIDTH && cover.height() >= COVER_MIN_HEIGHT,
-                "The cover image is " + cover.width() + "×" + cover.height() + ". At least "
-                        + COVER_MIN_WIDTH + "×" + COVER_MIN_HEIGHT + " reads better across the "
-                        + "full-width header on a campaign page.");
+                "The cover image is " + cover.width() + "×" + cover.height() + ". Anything below "
+                        + COVER_MIN_WIDTH + "×" + COVER_MIN_HEIGHT + " is scaled up to fill the "
+                        + "header on a campaign page and looks soft.");
     }
 
     /**
