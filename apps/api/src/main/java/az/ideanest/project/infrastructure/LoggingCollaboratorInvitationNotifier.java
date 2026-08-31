@@ -14,11 +14,17 @@ import org.springframework.stereotype.Component;
  * <p>It writes a line saying a message would have been sent. It writes the token
  * itself <strong>only</strong> when
  * {@code ideanest.project.collaborators.log-invitation-links} is on, which it is in
- * {@code local} and nowhere else — the same rule
- * {@code LoggingVerificationNotifier} follows, and for a stronger reason here than
- * there: an invitation link in a production log is edit access to an unlaunched
- * campaign for anybody who can read logs, and that set is always larger than it
- * looks.
+ * {@code local} and nowhere else — the same rule {@code SmtpVerificationNotifier}
+ * follows for its own links, and for a stronger reason here than there: an
+ * invitation link in a production log is edit access to an unlaunched campaign for
+ * anybody who can read logs, and that set is always larger than it looks.
+ *
+ * <p><strong>The auth half of #86 landed and this did not.</strong> Its six messages
+ * now go through {@code TransactionalMailer}, which this adapter could use as well —
+ * the port takes an address and a {@code TransactionalMail} and knows nothing about
+ * authentication. What is missing is the copy and the decision about what an
+ * invitation to a campaign says, which is this module's to make rather than
+ * something to infer from a verification email.
  *
  * <p>Without a real sender, a deployed environment cannot complete an invitation.
  * That is the correct state for it to be in: it fails visibly, rather than

@@ -4441,6 +4441,44 @@ rejected: they are forty places to change one footer, and two versions of one ty
 that drift apart send plain-text readers something different. The copy lives in
 `messages.properties`, which is where #123 adds languages.
 
+**The auth messages are not notifications, and go out through a second port.**
+§4.1's six — the verification link, the notice to the owner of an address
+somebody tried to register a second time, the password reset, the
+password-change notice, and both halves of an address change — have no
+`notifications` row, no `NotificationType`, and no preference behind them. They
+are sent by `SmtpVerificationNotifier` through `TransactionalMailer`, which the
+notification module publishes in its **application** layer for the reason
+`ModuleBoundaryTests` enforces: `MimeEmails` and `EmailRenderer` are
+infrastructure and the auth module may not name them. The adapter,
+`MimeTransactionalMailer`, maps the published `TransactionalMail` onto
+`EmailContent` and reuses the layouts, the envelope and the `From` unchanged, so
+there is one place an email's shape is decided rather than two.
+
+Three things are deliberately different for these messages:
+
+* **No preferences line in the footer.** The notification footer offers to
+  change which emails you get. There is no such switch here and there must not
+  be: an account whose owner had turned off "your password was changed" is a
+  takeover nobody is told about. `EmailRenderer.render` takes a
+  `preferencesApply` flag and the auth path passes false.
+* **No `email_deliveries` row.** That table's rows point at a notification and
+  these are not one, so what the transport did is logged instead. Giving them a
+  table of their own would be a second delivery ledger for six messages.
+* **No retry, and a refusal is swallowed.** The messages are sent from an
+  `AFTER_COMMIT` listener, so the account already exists by then and an
+  exception cannot undo it — it can only turn a successful registration into a
+  500, after which the person tries again and is told the address is taken. A
+  refused send is an `ERROR` in the log. **The consequence is stated rather than
+  hidden: during a mail outage people register and no link arrives**, and they
+  recover by asking for another. #135's outbox is what closes that window, and
+  this path is the shape it will drain.
+
+**A verification link that expires has no resend, and that gap is #86's rather
+than this section's.** Registering the same address again sends the
+already-registered notice, not a fresh link, because the endpoint may not answer
+whether an address exists. The reset and address-change links both have a form
+behind them that issues another; the verification link does not.
+
 **Emails name the campaign, and the copy comes in pairs (#249).**
 `notifications.params` carries `projectTitle` and both halves of the campaign's
 public path, put there at translation time by `NotificationEventListener` through

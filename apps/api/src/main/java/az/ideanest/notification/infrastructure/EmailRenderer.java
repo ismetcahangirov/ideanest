@@ -54,14 +54,37 @@ public class EmailRenderer {
      * locale's shape.
      */
     public RenderedEmail render(EmailContent content, Locale locale) {
+        return render(content, locale, true);
+    }
+
+    /**
+     * The same, for a message that preferences do not govern — {@code MimeTransactionalMailer}.
+     *
+     * <p>The footer's second line says the reader can change which emails they get. On a
+     * notification that is true and is the whole reason the line exists. On a password
+     * reset it is false, and it is the kind of false that teaches somebody to look for a
+     * switch that must never exist: an account whose owner had turned off "your password
+     * was changed" is an account takeover nobody is told about.
+     *
+     * <p>So the line is dropped rather than reworded. A second sentence — "this one you
+     * cannot turn off" — would be four more translations of a fact nobody asked about,
+     * sitting under a message whose only job is to be acted on quickly.
+     *
+     * @param preferencesApply whether the reader may change whether they get this
+     */
+    public RenderedEmail render(EmailContent content, Locale locale, boolean preferencesApply) {
         Context context = new Context(locale);
         context.setVariable("content", content);
         // The two lines every email ends with, resolved here rather than put on
         // EmailContent: they are the same on every type, so a per-type field would be
         // twenty copies of one sentence.
         context.setVariable("footer", messages.getMessage("email.layout.footer", null, locale));
+        // Null rather than absent: both layouts guard on it, and Thymeleaf's `th:if`
+        // treats an unset variable and a null one alike — so this is the same test the
+        // templates would make either way, written where it can be read.
         context.setVariable(
-                "preferences", messages.getMessage("email.layout.preferences", null, locale));
+                "preferences",
+                preferencesApply ? messages.getMessage("email.layout.preferences", null, locale) : null);
 
         return new RenderedEmail(
                 content.subject(),
