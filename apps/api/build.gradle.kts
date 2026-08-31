@@ -143,7 +143,7 @@ dependencies {
     // explicitly because the SDK otherwise picks an HTTP implementation off the
     // classpath at run time -- a start-up failure in the built jar that no test sees,
     // which is exactly the way `spring-boot-restclient` was found to be missing above.
-    implementation(platform("software.amazon.awssdk:bom:2.31.0"))
+    implementation(platform("software.amazon.awssdk:bom:2.54.6"))
     implementation("software.amazon.awssdk:s3")
     implementation("software.amazon.awssdk:apache-client")
 
