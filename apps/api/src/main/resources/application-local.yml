@@ -37,8 +37,12 @@ ideanest:
       log-unsubscribe-links: true
 
   auth:
-    # There is no mail transport yet (#86), so the verification link is written
-    # to the console. Local only — see LoggingVerificationNotifier.
+    # The link is written to the console as well as sent. Since #86's auth half
+    # the mail does go out — to the Mailpit container in compose.yaml, whose
+    # inbox is at http://localhost:8025 — so this is no longer the only way to
+    # follow a link. It stays because reading a token out of the console is
+    # still the fastest way to do it, and because a suite or a script that needs
+    # one cannot open a mailbox. Local only — see SmtpVerificationNotifier.
     log-verification-links: true
     token:
       issuer: http://localhost:8080

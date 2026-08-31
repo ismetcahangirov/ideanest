@@ -232,8 +232,9 @@ public record ProjectProperties(
      *     no mail transport (#86), so without this a developer cannot accept an
      *     invitation at all; with it on anywhere else, anybody who can read logs can
      *     take over the editing of an unlaunched campaign. See
-     *     {@code application-local.yml} and {@code LoggingVerificationNotifier},
-     *     which makes the same trade in the same direction.
+     *     {@code application-local.yml} and {@code SmtpVerificationNotifier},
+     *     which keeps the same flag for the same reason now that the auth messages
+     *     are sent for real.
      */
     public record Collaborators(Duration invitationTtl, boolean logInvitationLinks) {
 
