@@ -834,9 +834,18 @@ no work factor, which would be indefensible for a password and is correct here:
 there is no dictionary against 256 random bits, and the hash is computed on
 every refresh.
 
-**Verification email** is not really sent. `LoggingVerificationNotifier` writes
-a line instead, and writes the link itself only under the `local` profile.
-Transactional email is #86.
+**Verification email is sent.** `SmtpVerificationNotifier` composes the six auth
+messages — verification, the notice to an address somebody tried to register
+twice, password reset, the password-change notice, and both halves of an address
+change — and hands each to `TransactionalMailer`, which renders it through #86's
+layouts and sends it from the same envelope as every notification. Locally the
+relay is the Mailpit container in `compose.yaml`; its inbox is at
+<http://localhost:8025>. The link is also written to the log under the `local`
+profile, and nowhere else.
+
+A relay that refuses is logged and not retried. These messages are sent from an
+`AFTER_COMMIT` listener, so by then the account exists and throwing would turn a
+successful registration into a 500; what closes the window is #135's outbox.
 
 **Rate limiting is in-process**, which is correct for one instance and wrong for
 two — each replica enforces the limit separately. The shared counter is #142.

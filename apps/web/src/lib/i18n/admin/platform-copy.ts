@@ -1,3 +1,4 @@
+import type { AuditActionLabels } from '../../admin/audit';
 import type { AdminTranslator } from '../admin-copy';
 import type { ConsoleChromeCopy } from './common-copy';
 
@@ -21,9 +22,14 @@ import type { ConsoleChromeCopy } from './common-copy';
  * falls back to its wire spelling, which is readable, and an unknown entity kind falls back to
  * the same.
  *
- * <p>That is also why they are `Record<string, string>` rather than a key per known action: the
+ * <p>That is also why they are open records rather than a key per known action: the
  * catalogue's set and the service's set are allowed to disagree, and the disagreement has to
  * fail soft in one direction only.
+ *
+ * <p>`action` is two levels deep where `entity` is one, because next-intl reads a `.` in a
+ * message key as nesting and refuses a key that carries one. `project.approved` is therefore
+ * `project` then `approved` in the catalogue, and `actionLabel` splits the wire spelling at
+ * its first `.` to find it.
  */
 export interface AuditTrailCopy extends ConsoleChromeCopy {
   /** What this screen calls the thing it reads, for the refusals. Already inflected. */
@@ -42,8 +48,8 @@ export interface AuditTrailCopy extends ConsoleChromeCopy {
   readonly footnote: string;
   /** Keyed by the entity kind the service writes. Falls back to the wire spelling. */
   readonly entity: Readonly<Record<string, string>>;
-  /** Keyed by the action the service writes. Falls back to the wire spelling. */
-  readonly action: Readonly<Record<string, string>>;
+  /** Keyed by the action the service writes, split at its `.`. Falls back to the wire spelling. */
+  readonly action: AuditActionLabels;
 }
 
 export function auditTrailCopyFrom(t: AdminTranslator, chrome: ConsoleChromeCopy): AuditTrailCopy {
@@ -62,7 +68,7 @@ export function auditTrailCopyFrom(t: AdminTranslator, chrome: ConsoleChromeCopy
     requestId: String(t.raw('screens.audit.requestId')),
     footnote: t('screens.audit.footnote'),
     entity: t.raw('screens.audit.entity') as Readonly<Record<string, string>>,
-    action: t.raw('screens.audit.action') as Readonly<Record<string, string>>,
+    action: t.raw('screens.audit.action') as AuditActionLabels,
   };
 }
 

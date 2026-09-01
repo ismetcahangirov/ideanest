@@ -114,7 +114,11 @@
             <p style="margin:0 0 4px 0;font-size:13px;line-height:20px;color:rgba(255,255,255,0.64);"
                th:text="${footer}">Why you got this</p>
             <p style="margin:0;font-size:13px;line-height:20px;color:rgba(255,255,255,0.64);"
+               th:if="${preferences != null}"
                th:text="${preferences}">How to change it</p>
+            <!--/* Absent on the auth messages, which no preference governs. See
+                   EmailRenderer.render(content, locale, preferencesApply). */-->
+
             <!--/* --text-secondary, 9.2:1. Not --text-tertiary: 4.9:1 passes only at
                    16px and up, and this is 13px. */-->
           </td>
