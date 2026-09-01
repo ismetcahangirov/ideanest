@@ -1113,6 +1113,50 @@
         "tags" : [ "report-queue-controller" ]
       }
     },
+    "/v1/admin/moderation/submissions" : {
+      "get" : {
+        "operationId" : "submissionQueueSubmissions",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "state",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : "SUBMITTED",
+            "enum" : [ "DRAFT", "PRELAUNCH", "SUBMITTED", "CHANGES_REQUESTED", "REJECTED", "APPROVED", "SCHEDULED", "LIVE", "SUSPENDED", "CANCELED", "SUCCESSFUL", "UNSUCCESSFUL", "COLLECTING", "LATE_PLEDGE", "FULFILLING", "COMPLETED" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "after",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SubmissionQueueResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "submission-queue-controller" ]
+      }
+    },
     "/v1/admin/moderation/{id}/approve" : {
       "post" : {
         "operationId" : "projectModerationApprove",
@@ -13793,6 +13837,66 @@
           },
           "slug" : {
             "type" : "string"
+          }
+        }
+      },
+      "Submission" : {
+        "type" : "object",
+        "properties" : {
+          "creatorId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "creatorName" : {
+            "type" : "string"
+          },
+          "creatorSlug" : {
+            "type" : "string"
+          },
+          "cursor" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "goal" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "waitingSince" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "SubmissionQueueResponse" : {
+        "type" : "object",
+        "properties" : {
+          "nextCursor" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "submissions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Submission"
+            }
           }
         }
       },

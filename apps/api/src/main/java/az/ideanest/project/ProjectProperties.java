@@ -15,6 +15,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param finalisation how often §5.1 is applied at the deadline, and to how many
  *     campaigns at once
  * @param latePledges how long a campaign may keep taking pledges after it closed
+ * @param submissions how much of the moderation submission queue one request may read
  */
 @ConfigurationProperties(prefix = "ideanest.project")
 public record ProjectProperties(
@@ -23,7 +24,8 @@ public record ProjectProperties(
         Submission submission,
         Reminders reminders,
         Finalisation finalisation,
-        LatePledges latePledges) {
+        LatePledges latePledges,
+        Submissions submissions) {
 
     public ProjectProperties {
         // A deployment that configures neither section still starts. Nested records
@@ -37,6 +39,47 @@ public record ProjectProperties(
         reminders = reminders == null ? Reminders.defaults() : reminders;
         finalisation = finalisation == null ? Finalisation.defaults() : finalisation;
         latePledges = latePledges == null ? LatePledges.defaults() : latePledges;
+        submissions = submissions == null ? Submissions.defaults() : submissions;
+    }
+
+    /**
+     * How much of the submission queue one request may read.
+     *
+     * <p>The same shape and the same argument as {@code ModerationProperties.Queue},
+     * kept here rather than borrowed from it: that block bounds the report queue, this
+     * one bounds a different query over a different table, and one number governing
+     * both is a number that cannot be tuned for either.
+     *
+     * @param defaultPageSize what a request that names no size gets
+     * @param maxPageSize the ceiling. Not an abuse control — the caller is a signed-in
+     *     moderator — but what stops one request from loading every campaign ever
+     *     submitted into one response and one screen
+     */
+    public record Submissions(int defaultPageSize, int maxPageSize) {
+
+        private static final int DEFAULT_PAGE_SIZE = 25;
+
+        private static final int DEFAULT_MAX_PAGE_SIZE = 100;
+
+        static Submissions defaults() {
+            return new Submissions(DEFAULT_PAGE_SIZE, DEFAULT_MAX_PAGE_SIZE);
+        }
+
+        public Submissions {
+            // Zero is what an absent property binds to, and is read as "not set"
+            // rather than as a page holding nothing.
+            defaultPageSize = defaultPageSize == 0 ? DEFAULT_PAGE_SIZE : defaultPageSize;
+            maxPageSize = maxPageSize == 0 ? DEFAULT_MAX_PAGE_SIZE : maxPageSize;
+
+            if (defaultPageSize < 1 || maxPageSize < 1) {
+                throw new IllegalArgumentException("A queue page holds at least one campaign");
+            }
+            if (defaultPageSize > maxPageSize) {
+                // Otherwise every request naming no size is refused by the ceiling --
+                // a start-up problem wearing a runtime costume.
+                throw new IllegalArgumentException("The default queue page cannot exceed the maximum");
+            }
+        }
     }
 
     /**

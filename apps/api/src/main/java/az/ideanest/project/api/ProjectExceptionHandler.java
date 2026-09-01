@@ -10,6 +10,7 @@ import az.ideanest.project.application.ProjectNotLaunchableException;
 import az.ideanest.project.application.PlanLimitExceededException;
 import az.ideanest.project.application.ProjectNotSubmittableException;
 import az.ideanest.project.application.SubscriptionRequiredException;
+import az.ideanest.project.application.UnreviewableStateException;
 import az.ideanest.project.application.ProjectTransitionNotAllowedException;
 import az.ideanest.project.application.RemindersClosedException;
 import az.ideanest.project.domain.ProjectState;
@@ -64,7 +65,14 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
             // a campaign the caller is not party to, so that the endpoint does not
             // confirm which identifiers are real, and a 403 for a collaborator whose
             // grant does not include VIEW_FINANCES.
-            DashboardController.class
+            DashboardController.class,
+            // The moderation submission queue, which raises two of them: a refusal
+            // for a caller without MODERATE_CONTENT, and UNREVIEWABLE_STATE. Listed
+            // rather than left out because this advice is scoped by type -- a
+            // controller absent from this list answers 500 for failures every other
+            // controller answers properly, which is how the queue's first run
+            // reported a permission check as a server fault.
+            SubmissionQueueController.class
         })
 public class ProjectExceptionHandler {
 
@@ -102,6 +110,27 @@ public class ProjectExceptionHandler {
         // Deliberately not the exception's message, which names the account.
         problem.setDetail("Moderation decisions are taken by platform staff.");
         problem.setProperty("code", "NOT_A_MODERATOR");
+        return problem;
+    }
+
+    /**
+     * 400 for a state the submission queue does not serve.
+     *
+     * <p>A bad request rather than an empty page, and the distinction is the point:
+     * asking for {@code LIVE} campaigns "for review" has an obvious empty answer, and a
+     * moderator shown one would read it as "there is nothing to review" instead of as a
+     * question this endpoint does not answer. The four it does answer are named in the
+     * body, because a refusal that does not say what would have worked is a refusal
+     * somebody has to read the source to act on.
+     */
+    @ExceptionHandler(UnreviewableStateException.class)
+    public ProblemDetail handleUnreviewableState(UnreviewableStateException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("https://ideanest.az/problems/unreviewable-state"));
+        problem.setTitle("Not a reviewable state");
+        problem.setDetail("The submission queue serves SUBMITTED, CHANGES_REQUESTED, APPROVED and REJECTED.");
+        problem.setProperty("code", "UNREVIEWABLE_STATE");
+        problem.setProperty("state", exception.state().name());
         return problem;
     }
 

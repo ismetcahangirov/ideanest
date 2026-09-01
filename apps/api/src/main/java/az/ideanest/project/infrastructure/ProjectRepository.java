@@ -151,4 +151,90 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
                               az.ideanest.project.domain.ProjectState.LATE_PLEDGE)
             """)
     long countInPlatformHands(@Param("creatorId") UUID creatorId, @Param("excluding") UUID excluding);
+
+    /**
+     * The moderation submission queue, oldest first.
+     *
+     * <p>One row per campaign in the requested state, carrying the transition that put
+     * it there — see {@link SubmissionQueueRow} for why that is a {@code LATERAL} join
+     * and why the cursor is the transition's identifier rather than the campaign's.
+     *
+     * <p>Ordered by that identifier ascending, which is oldest first: UUIDv7 sorts by
+     * the millisecond it was minted, and the transition was minted when the campaign
+     * entered the state. A queue worked newest-first is a queue whose oldest entry is
+     * never reached.
+     *
+     * <p>{@code to_state = p.state} inside the join rather than merely taking the
+     * latest transition: a campaign resubmitted after a change request has several
+     * transitions into {@code SUBMITTED}, and the one that matters is the last of
+     * them. Both spellings answer the same thing while the data is consistent, and
+     * this one keeps answering it when a transition is written that does not change
+     * the state a campaign is in.
+     *
+     * <p><strong>{@code LEFT} and {@code COALESCE}, because an invisible campaign is
+     * the bug this query exists to fix.</strong> Every state change the application
+     * makes writes a transition, so in practice the row is always there — and an inner
+     * join would silently drop a campaign that reached {@code SUBMITTED} some other
+     * way: a seed script, a manual correction, a migration. That campaign is precisely
+     * the one nobody would ever find, which is the failure being repaired rather than a
+     * variation on it. It falls back to the campaign's own creation, so it is ordered
+     * imperfectly and it is <em>present</em>, and the two are not close in cost.
+     */
+    @Query(
+            value =
+                    """
+                    SELECT COALESCE(t.id, p.id) AS cursor,
+                           COALESCE(t.created_at, p.created_at) AS enteredAt,
+                           t.note AS note,
+                           p.id AS projectId, p.title AS title, p.slug AS slug,
+                           p.state AS state, p.goal_amount AS goalAmount,
+                           p.currency AS currency, p.creator_id AS creatorId
+                    FROM projects p
+                    LEFT JOIN LATERAL (
+                        SELECT s.id, s.created_at, s.note
+                        FROM project_state_transitions s
+                        WHERE s.project_id = p.id AND s.to_state = p.state
+                        ORDER BY s.created_at DESC, s.id DESC
+                        LIMIT 1
+                    ) t ON TRUE
+                    WHERE p.state = :state
+                    ORDER BY COALESCE(t.id, p.id)
+                    LIMIT :limit
+                    """,
+            nativeQuery = true)
+    List<SubmissionQueueRow> findSubmissionQueue(@Param("state") String state, @Param("limit") int limit);
+
+    /**
+     * The page after {@code after}.
+     *
+     * <p>Spelled out rather than folded into the query above behind a nullable
+     * parameter, which is the choice {@code ContentReportRepository} made for the
+     * report queue and for the same reason: a {@code :after IS NULL OR …} predicate
+     * hands the driver a parameter whose type it has to guess on the first page, and
+     * the guess is what fails on a UUID column.
+     */
+    @Query(
+            value =
+                    """
+                    SELECT COALESCE(t.id, p.id) AS cursor,
+                           COALESCE(t.created_at, p.created_at) AS enteredAt,
+                           t.note AS note,
+                           p.id AS projectId, p.title AS title, p.slug AS slug,
+                           p.state AS state, p.goal_amount AS goalAmount,
+                           p.currency AS currency, p.creator_id AS creatorId
+                    FROM projects p
+                    LEFT JOIN LATERAL (
+                        SELECT s.id, s.created_at, s.note
+                        FROM project_state_transitions s
+                        WHERE s.project_id = p.id AND s.to_state = p.state
+                        ORDER BY s.created_at DESC, s.id DESC
+                        LIMIT 1
+                    ) t ON TRUE
+                    WHERE p.state = :state AND COALESCE(t.id, p.id) > :after
+                    ORDER BY COALESCE(t.id, p.id)
+                    LIMIT :limit
+                    """,
+            nativeQuery = true)
+    List<SubmissionQueueRow> findSubmissionQueueAfter(
+            @Param("state") String state, @Param("after") UUID after, @Param("limit") int limit);
 }
