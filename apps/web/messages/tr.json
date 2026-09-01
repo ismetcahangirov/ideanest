@@ -2440,7 +2440,9 @@
     "fromSubmit": {
       "title": "Yayımlamak için plan gerekiyor",
       "body": "Kampanyanız kaydedildi, hiçbir şey kaybolmadı. Aşağıdan bir plan seçin, hemen incelemeye gönderebilirsiniz.",
-      "back": "Kampanyanıza dönün"
+      "back": "Kampanyanıza dönün",
+      "ready": "Planınız etkin",
+      "resume": "Kampanyanıza dönün ve gönderin"
     },
     "held": {
       "heading": "Planınız",
