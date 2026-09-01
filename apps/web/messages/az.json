@@ -407,7 +407,8 @@
       "/admin/email-templates": "E-poçt şablonları",
       "/admin/flags": "Funksiya bayraqları",
       "/admin/health": "Sistem vəziyyəti",
-      "/admin/moderation/submissions": "Baxış gözləyən kampaniyalar"
+      "/admin/moderation/submissions": "Baxış gözləyən kampaniyalar",
+      "/admin/campaigns": "Bütün kampaniyalar"
     },
     "states": {
       "built": "Hazırdır",
@@ -690,6 +691,12 @@
         "metaDescription": "Yaradıcılarının təqdim etdiyi, qərar gözləyən kampaniyalar.",
         "title": "Baxış gözləyən kampaniyalar",
         "intro": "Yaradıcılarının təqdim etdiyi kampaniyalar, ən köhnəsi əvvəldə. Qərar kampaniyanın öz vəziyyətini dəyişir: təsdiq onu başlanğıca hazırlayır, dəyişiklik tələbi qeydlə birlikdə geri qaytarır, rədd isə qəti olur."
+      },
+      "campaigns": {
+        "metaTitle": "Kampaniyalar",
+        "metaDescription": "Platformadakı bütün kampaniyalar, hər vəziyyətdə, ən yenisi əvvəl.",
+        "title": "Kampaniyalar",
+        "intro": "Platformadakı bütün kampaniyalar, ən yenisi əvvəl, hansı vəziyyətdə olmasından asılı olmayaraq. Baxış növbəsi yalnız qərar gözləyənləri göstərir; bura isə hər şeyi — heç kimin göndərmədiyi qaralamaları və təsdiqlənib hələ yayımlanmayan kampaniyaları da — göstərir."
       }
     },
     "screens": {
@@ -715,18 +722,30 @@
           "collection": "Kolleksiyalar"
         },
         "action": {
-          "project.approved": "Kampaniya təsdiqləndi",
-          "project.rejected": "Kampaniya rədd edildi",
-          "project.changes_requested": "Dəyişiklik tələb olundu",
-          "project.suspended": "Kampaniya dayandırıldı",
-          "report.upheld": "Şikayət təsdiqləndi",
-          "report.dismissed": "Şikayət rədd edildi",
-          "account.searched": "Hesablar axtarıldı",
-          "account.suspended": "Hesab dayandırıldı",
-          "account.reinstated": "Hesab bərpa edildi",
-          "audit.trail_read": "Audit izi oxundu",
-          "payment.log_read": "Ödəniş jurnalı oxundu",
-          "ledger.read": "Baş kitab oxundu"
+          "project": {
+            "approved": "Kampaniya təsdiqləndi",
+            "rejected": "Kampaniya rədd edildi",
+            "changes_requested": "Dəyişiklik tələb olundu",
+            "suspended": "Kampaniya dayandırıldı"
+          },
+          "report": {
+            "upheld": "Şikayət təsdiqləndi",
+            "dismissed": "Şikayət rədd edildi"
+          },
+          "account": {
+            "searched": "Hesablar axtarıldı",
+            "suspended": "Hesab dayandırıldı",
+            "reinstated": "Hesab bərpa edildi"
+          },
+          "audit": {
+            "trail_read": "Audit izi oxundu"
+          },
+          "payment": {
+            "log_read": "Ödəniş jurnalı oxundu"
+          },
+          "ledger": {
+            "read": "Baş kitab oxundu"
+          }
         }
       },
       "health": {
@@ -1620,6 +1639,44 @@
         "decideHeading": "Bu kampaniya barədə qərar verin",
         "decideGroup": "{title} barədə qərar ver",
         "notice": "{title} indi {state} vəziyyətindədir."
+      },
+      "campaignDirectory": {
+        "subject": "kampaniya siyahısı",
+        "heading": "Kampaniyalar",
+        "filterLabel": "Vəziyyət",
+        "everything": "Bütün vəziyyətlər",
+        "loadingList": "Kampaniyalar yüklənir",
+        "emptyTitle": "Hələ kampaniya yoxdur",
+        "emptyBody": "Kampaniya yaradılan kimi, baxışa göndərilməsindən çox əvvəl burada görünür.",
+        "filteredTitle": "Bu vəziyyətdə kampaniya yoxdur",
+        "filteredBody": "Başqa vəziyyət seçin və ya bütün vəziyyətlərə baxın.",
+        "creatorGone": "Yaradıcının hesabı bağlanıb",
+        "goalLabel": "Hədəf",
+        "noGoal": "Hədəf təyin edilməyib",
+        "raisedLabel": "Toplanıb",
+        "backersLabel": "Dəstəkçi",
+        "startedLabel": "Yaradılıb",
+        "launchedLabel": "Yayımlanıb",
+        "deadlineLabel": "Bitir",
+        "notLaunched": "Yayımlanmayıb",
+        "state": {
+          "DRAFT": "Qaralama",
+          "PRELAUNCH": "Başlanğıcdan əvvəl",
+          "SUBMITTED": "Baxış gözləyir",
+          "CHANGES_REQUESTED": "Dəyişiklik tələb olunub",
+          "APPROVED": "Təsdiqlənib",
+          "SCHEDULED": "Planlaşdırılıb",
+          "LIVE": "Aktiv",
+          "COLLECTING": "Yığılır",
+          "LATE_PLEDGE": "Gecikmiş dəstəklər",
+          "SUCCESSFUL": "Maliyyələşdi",
+          "UNSUCCESSFUL": "Maliyyələşmədi",
+          "FULFILLING": "İcra olunur",
+          "COMPLETED": "Tamamlandı",
+          "REJECTED": "Rədd edilib",
+          "SUSPENDED": "Dayandırılıb",
+          "CANCELED": "Ləğv edildi"
+        }
       }
     },
     "moderation": {
@@ -2417,47 +2474,49 @@
     }
   },
   "pricing": {
-    "metaTitle": "Planlar ve qiymetler",
-    "metaDescription": "IdeaNest-de kampaniya derc etmeyin qiymeti ve her planin ne verdiyi.",
+    "metaTitle": "Planlar və qiymətlər",
+    "metaDescription": "IdeaNest-də kampaniya dərc etməyin qiyməti və hər planın nə verdiyi.",
     "title": "Planlar",
-    "intro": "Kampaniya qurmaq pulsuzdur. Onu derc etmek ucun plan lazimdir, plan ise eyni vaxtda nece kampaniya apara bileceyinizi ve neqeder boyuk hedef teyin ede bileceyinizi mueyyen edir.",
-    "loading": "Movcud planiniz yoxlanilir",
-    "unavailable": "Planlari yukleye bilmedik. Bu bizim terefimizdeki problemdir; bir azdan yeniden cehd edin.",
-    "empty": "Hazirda satisda plan yoxdur.",
-    "perMonth": "ayliq",
+    "intro": "Kampaniya qurmaq pulsuzdur. Onu dərc etmək üçün plan lazımdır, plan isə eyni vaxtda neçə kampaniya apara biləcəyinizi və nə qədər böyük hədəf təyin edə biləcəyinizi müəyyən edir.",
+    "loading": "Mövcud planınız yoxlanılır",
+    "unavailable": "Planları yükləyə bilmədik. Bu bizim tərəfimizdəki problemdir; bir azdan yenidən cəhd edin.",
+    "empty": "Hazırda satışda plan yoxdur.",
+    "perMonth": "aylıq",
     "perYear": "illik",
     "free": "Pulsuz",
-    "choose": "Bu plani sec",
-    "choosing": "Secilir",
-    "signedOut": "Plan secmek ucun daxil olun",
+    "choose": "Bu planı seç",
+    "choosing": "Seçilir",
+    "signedOut": "Plan seçmək üçün daxil olun",
     "signIn": "Daxil ol",
     "limits": {
       "campaigns": "Eyni vaxtda {count} kampaniya",
-      "campaignsUnlimited": "Eyni vaxtda apara bildiyiniz qeder kampaniya",
-      "goalCeiling": "{amount} deqeder hedef",
-      "goalUnlimited": "Hedefe limit yoxdur"
+      "campaignsUnlimited": "Eyni vaxtda apara bildiyiniz qədər kampaniya",
+      "goalCeiling": "{amount} həddinə qədər hədəf",
+      "goalUnlimited": "Hədəfə limit yoxdur"
     },
     "fromSubmit": {
-      "title": "Derc etmek ucun plan lazimdir",
-      "body": "Kampaniyaniz saxlanilib, hec ne itmeyib. Asagida plan secin ve derhal baxisa gonderin.",
-      "back": "Kampaniyaniza qayidin"
+      "title": "Dərc etmək üçün plan lazımdır",
+      "body": "Kampaniyanız saxlanılıb, heç nə itməyib. Aşağıda plan seçin və dərhal baxışa göndərin.",
+      "back": "Kampaniyanıza qayıdın",
+      "ready": "Planınız aktivdir",
+      "resume": "Kampaniyanıza qayıdın və baxışa göndərin"
     },
     "held": {
-      "heading": "Planiniz",
-      "activeUntil": "{date} tarixine qeder {plan} planindasiniz",
-      "pendingTitle": "{plan} planini secdiniz, odenisinizi gozleyirik",
-      "pendingBody": "Hele kart odenisi qebul ede bilmirik, ona gore plan kocurmeniz gorunub qeyde alinandan sonra baslayir. Bu bas veren kimi derc ede bileceksiniz.",
-      "endingOn": "{plan} planiniz {date} tarixine qeder isleyir ve yenilenmeyecek",
-      "lapsed": "{plan} planiniz {date} tarixinde bitdi",
-      "cancel": "Bu dovrun sonunda legv et",
-      "cancelling": "Legv edilir",
-      "currentTag": "Sizin planiniz"
+      "heading": "Planınız",
+      "activeUntil": "{date} tarixinə qədər {plan} planındasınız",
+      "pendingTitle": "{plan} planını seçdiniz, ödənişinizi gözləyirik",
+      "pendingBody": "Hələ kart ödənişi qəbul edə bilmirik, ona görə plan köçürməniz görünüb qeydə alınandan sonra başlayır. Bu baş verən kimi dərc edə biləcəksiniz.",
+      "endingOn": "{plan} planınız {date} tarixinə qədər işləyir və yenilənməyəcək",
+      "lapsed": "{plan} planınız {date} tarixində bitdi",
+      "cancel": "Bu dövrün sonunda ləğv et",
+      "cancelling": "Ləğv edilir",
+      "currentTag": "Sizin planınız"
     },
     "errors": {
-      "alreadySubscribed": "Artiq bir planiniz var. Basqasini secmezden evvel onu legv edin.",
-      "notOnSale": "Bu plan artiq teklif olunmur. Movcud olanlari gormek ucun sehifeni yeniden yukleyin.",
-      "signedOut": "Plan secmek ucun yeniden daxil olun.",
-      "generic": "Alinmadi"
+      "alreadySubscribed": "Artıq bir planınız var. Başqasını seçməzdən əvvəl onu ləğv edin.",
+      "notOnSale": "Bu plan artıq təklif olunmur. Mövcud olanları görmək üçün səhifəni yenidən yükləyin.",
+      "signedOut": "Plan seçmək üçün yenidən daxil olun.",
+      "generic": "Alınmadı"
     }
   },
   "campaign": {

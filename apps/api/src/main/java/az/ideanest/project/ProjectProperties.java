@@ -16,6 +16,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     campaigns at once
  * @param latePledges how long a campaign may keep taking pledges after it closed
  * @param submissions how much of the moderation submission queue one request may read
+ * @param directory how much of the console's campaign directory one request may read
  * @param launches how often campaigns whose launch time has arrived are taken live
  */
 @ConfigurationProperties(prefix = "ideanest.project")
@@ -27,6 +28,7 @@ public record ProjectProperties(
         Finalisation finalisation,
         LatePledges latePledges,
         Submissions submissions,
+        Directory directory,
         Launches launches) {
 
     public ProjectProperties {
@@ -42,7 +44,46 @@ public record ProjectProperties(
         finalisation = finalisation == null ? Finalisation.defaults() : finalisation;
         latePledges = latePledges == null ? LatePledges.defaults() : latePledges;
         submissions = submissions == null ? Submissions.defaults() : submissions;
+        directory = directory == null ? Directory.defaults() : directory;
         launches = launches == null ? Launches.defaults() : launches;
+    }
+
+    /**
+     * How much of the campaign directory one request may read.
+     *
+     * <p>Its own block rather than {@link Submissions} borrowed, which is the argument
+     * that block makes about {@code ModerationProperties.Queue}: this bounds a query over
+     * every campaign on the platform rather than over the few waiting on a moderator, and
+     * one number governing both is a number that cannot be tuned for either.
+     *
+     * @param defaultPageSize what a request that names no size gets
+     * @param maxPageSize the ceiling. Not an abuse control — the caller is signed-in staff
+     *     — but what stops one request from loading every campaign ever created into one
+     *     response and one screen
+     */
+    public record Directory(int defaultPageSize, int maxPageSize) {
+
+        private static final int DEFAULT_PAGE_SIZE = 25;
+
+        private static final int DEFAULT_MAX_PAGE_SIZE = 100;
+
+        static Directory defaults() {
+            return new Directory(DEFAULT_PAGE_SIZE, DEFAULT_MAX_PAGE_SIZE);
+        }
+
+        public Directory {
+            // Zero is what an absent property binds to, and is read as "not set" rather
+            // than as a page holding nothing.
+            defaultPageSize = defaultPageSize == 0 ? DEFAULT_PAGE_SIZE : defaultPageSize;
+            maxPageSize = maxPageSize == 0 ? DEFAULT_MAX_PAGE_SIZE : maxPageSize;
+
+            if (defaultPageSize < 1 || maxPageSize < 1) {
+                throw new IllegalArgumentException("A directory page holds at least one campaign");
+            }
+            if (defaultPageSize > maxPageSize) {
+                throw new IllegalArgumentException("The default directory page cannot exceed the maximum");
+            }
+        }
     }
 
     /**

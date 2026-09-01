@@ -72,7 +72,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
             // controller absent from this list answers 500 for failures every other
             // controller answers properly, which is how the queue's first run
             // reported a permission check as a server fault.
-            SubmissionQueueController.class
+            SubmissionQueueController.class,
+            // And the campaign directory beside it, which raises the same refusal for a
+            // caller without MODERATE_CONTENT. Same list, same reason: the advice is
+            // scoped by type, so an omission here is a permission check that answers 500.
+            CampaignDirectoryController.class
         })
 public class ProjectExceptionHandler {
 

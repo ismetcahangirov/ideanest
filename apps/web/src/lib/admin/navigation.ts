@@ -103,7 +103,13 @@ export const CONSOLE_MODULES: readonly ConsoleModule[] = Object.freeze([
      * a submitted campaign was a report somebody had filed about it. A campaign nobody
      * complained about waited out of sight while its creator was told it was under review.
      */
-    otherScreens: ['/admin/moderation/submissions'],
+    /*
+     * And the campaign directory (#387), which is the module's third screen and the
+     * answer to a question the first two cannot take: both list campaigns that have
+     * DONE something — been reported, been submitted — so a draft, a live campaign, or
+     * one cleared for launch a week ago and never launched appeared on no screen here.
+     */
+    otherScreens: ['/admin/moderation/submissions', '/admin/campaigns'],
     issue: 101,
   },
   {
@@ -290,6 +296,7 @@ export const CONSOLE_GROUPS: readonly ConsoleGroup[] = Object.freeze([
     links: [
       '/admin/moderation',
       '/admin/moderation/submissions',
+      '/admin/campaigns',
       '/admin/moderation/content',
       '/admin/moderation/profiles',
     ],

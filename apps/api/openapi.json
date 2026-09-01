@@ -1641,6 +1641,49 @@
         "tags" : [ "admin-subscription-controller" ]
       }
     },
+    "/v1/admin/projects" : {
+      "get" : {
+        "operationId" : "campaignDirectoryCampaigns",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "state",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "DRAFT", "PRELAUNCH", "SUBMITTED", "CHANGES_REQUESTED", "REJECTED", "APPROVED", "SCHEDULED", "LIVE", "SUSPENDED", "CANCELED", "SUCCESSFUL", "UNSUCCESSFUL", "COLLECTING", "LATE_PLEDGE", "FULFILLING", "COMPLETED" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "after",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CampaignDirectoryResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "campaign-directory-controller" ]
+      }
+    },
     "/v1/admin/projects/{id}/suspend" : {
       "post" : {
         "operationId" : "projectSuspensionSuspend",
@@ -8819,6 +8862,24 @@
             "type" : "string"
           },
           "title" : {
+            "type" : "string"
+          }
+        }
+      },
+      "CampaignDirectoryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "campaigns" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Campaign"
+            }
+          },
+          "nextCursor" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "state" : {
             "type" : "string"
           }
         }
