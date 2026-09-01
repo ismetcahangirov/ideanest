@@ -26,7 +26,47 @@ updates:
       # Drop this when #334 closes, not before.
       - dependency-name: 'typescript'
         update-types: ['version-update:semver-major']
+      # jest 30 does not run under jest-expo, which is pinned to the Expo SDK
+      # and builds its preset against jest 29: every mobile suite fails to
+      # start with `this._moduleMocker.clearMocksOnScope is not a function`.
+      # The bump cannot go green until jest-expo ships a jest 30 preset, so it
+      # is not worth proposing every Monday.
+      # Drop this when apps/mobile's jest-expo supports jest 30, not before.
+      - dependency-name: 'jest'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@types/jest'
+        update-types: ['version-update:semver-major']
     groups:
+      # THE MOBILE GROUP EXISTS SO ONE BROKEN NATIVE BUMP CANNOT HOLD BACK THE
+      # WEB.
+      #
+      # This ecosystem watches the whole workspace, so a single production
+      # group put React Native, Expo and the native modules in the same pull
+      # request as Next.js and next-intl. React Native 0.87 changed the style
+      # prop types, which fails `apps/mobile typecheck` in a way that takes a
+      # migration to fix — and while that sat unmerged it was also holding two
+      # Next.js patch releases and a next-intl minor hostage. One group cannot
+      # be half-merged.
+      #
+      # Listed first because a dependency belongs to the first group it
+      # matches, and every name here would otherwise fall into one of the two
+      # below.
+      mobile-dependencies:
+        patterns:
+          - 'react-native'
+          - 'react-native-*'
+          - '@react-native*'
+          - 'expo'
+          - 'expo-*'
+          - '@expo/*'
+          - '@shopify/flash-list'
+          # jest is apps/mobile's alone -- apps/web and packages/ui are on
+          # vitest -- and its version is decided by jest-expo, which is decided
+          # by the Expo SDK. It belongs with the thing that pins it.
+          - 'jest'
+          - 'jest-*'
+          - '@types/jest'
+        update-types: [minor, patch]
       # One pull request per ecosystem keeps the review load sane. Major
       # versions stay separate because they need a real read.
       dev-dependencies:
