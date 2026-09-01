@@ -1311,7 +1311,7 @@ Preferences are per category and per channel, with a digest option.
 
 | # | Module | Capabilities |
 |---|---|---|
-| AD-01 | Project moderation | Queue, approve, reject, request changes, notes, history |
+| AD-01 | Project moderation | Queue, approve, reject, request changes, notes, history. **The queue was the missing half until #381**: the three outcomes shipped with #101 and nothing listed what they applied to, so the console's only route to a submitted campaign was a report somebody had filed about it — a campaign nobody complained about waited in `SUBMITTED` indefinitely, invisible here, while its creator was shown "submitted for review". `/admin/moderation/submissions` is that queue. **And the directory since #387**: both that queue and the report queue list campaigns that have DONE something, so a draft, a live campaign, or one cleared for launch and never launched was on no screen here and could be reached only through psql. `/admin/campaigns` lists §6.1 entire, newest first |
 | AD-02 | Trust and safety | Report queue, fraud signals, suspension. Reporting and the queue are built (#102, §7.2's `content_reports`), **suspension is built (#103)**, and **fraud signals are built (#108)** — `risk_assessments`, a queue at `/v1/admin/risk/queue`, and the identity review at `/v1/admin/verifications/queue` (#105). The signals **advise and do not decide**: nothing refuses a pledge or suspends an account on a score. See §17.2 |
 | AD-03 | Curation | Editorial badges, collections, open calls, placement. The endpoints arrived with #48; **the four screens are built (#300 to #303)** at `/admin/curation` and its three siblings |
 | AD-04 | User management | Search, inspect, ban, verification status, audited impersonation. **Search, inspect and the ban are built (#104)**, and **`/admin/staff` is built (#295)** — the role model that replaced the configured list. Impersonation is not, and is the one thing in this table still waiting on a decision (#299) |
@@ -2790,7 +2790,7 @@ load profile).
 
 | Job | Frequency | Purpose |
 |---|---|---|
-| `campaign-launcher` | Every minute | Scheduled to live |
+| `campaign-launcher` | Every minute | Takes a cleared campaign live at the launch time its creator chose. **Built (#389).** §6.1 has carried `APPROVED → SCHEDULED → LIVE` since the state machine was written and nothing performed it: `ProjectTransitionService.launch` was the only producer of `LIVE` and it needs somebody signed in to press something, so a creator who set a time for nine on Monday and was not at a keyboard at nine on Monday had a campaign that did not open. The sweep reads both `APPROVED` and `SCHEDULED`, because nothing sets the second state today and a job that read only it would find nothing for as long as that stayed true. Every minute, for the reason `campaign-finalizer` is: the interval is the gap between the moment a creator told their followers the campaign opens and the moment it does |
 | `campaign-finalizer` | Every minute | Determine success at the deadline |
 | `charge-processor` | Every minute | Opens the collection of campaigns that closed above goal, and makes §9.6's first attempt against the pledges it queues. **Built (#64).** The rate limit is §9.3's R-09 expressed as a batch per tick — a hundred charges a minute is roughly 1.7 requests a second, a figure a provider can be told in advance rather than one discovered by being throttled at a campaign's close. There is deliberately no sleeping inside a pass to smooth it further: a sleep would hold the job's lease, and a pass that outlasts its lease is joined by a second replica |
 | `charge-retry` | Every 6 hours | Retries failures within the window and drops what has run out of it. **Built (#65).** Six hours rather than a minute because §9.6's slots are at +24h, +72h and +5 days — nobody can tell an attempt made at 24:00 from one at 27:00. **Two jobs and not one**, for the reason §8.4 gives about splitting `reminder-sender` from `deadline-reminder`: `JobRunner` counts failures per job name, so one job doing both queues would let a database problem in the retry sweep back off the initial collection too. The drop is here rather than in a third job — it is the last row of the same table, at the same granularity, and it runs after the retries so a pledge whose final attempt is due in the same pass gets it |
@@ -3467,7 +3467,7 @@ POST   /v1/media/{id}/complete
 POST   /v1/webhooks/psp/{provider}
 
 # Administration
-GET    /v1/admin/moderation/queue
+GET    /v1/admin/moderation/submissions # AD-01 (#381); campaigns awaiting a decision, oldest first
 POST   /v1/admin/moderation/{id}/approve
 POST   /v1/admin/moderation/{id}/reject
 POST   /v1/admin/moderation/{id}/request-changes
@@ -3475,6 +3475,7 @@ GET    /v1/admin/moderation/reports      # AD-02/AD-09; ?target= narrows to one 
 GET    /v1/admin/moderation/reports/{id} # AD-01 (#296); one complaint and its decision
 POST   /v1/admin/moderation/reports/{id}/uphold
 POST   /v1/admin/moderation/reports/{id}/dismiss
+GET    /v1/admin/projects              # AD-01 (#387); every campaign, any state, newest first
 POST   /v1/admin/projects/{id}/suspend   # AD-02 (#103); staff only, audited, ends every pledge
 GET    /v1/admin/users                   # AD-04 (#104); staff only, audited, no-store
 GET    /v1/admin/users/{id}              # AD-04 (#104); one account, audited

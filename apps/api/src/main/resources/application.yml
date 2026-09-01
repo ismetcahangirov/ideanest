@@ -413,6 +413,17 @@ ideanest:
       # exercise the unsubscribe path at all. On in local only.
       log-unsubscribe-links: false
 
+    launches:
+      # §8.4: scheduled-launch, every minute. This is the gap between the moment a
+      # creator told their followers the campaign opens and the moment it actually
+      # opens, so it is the second schedule in this file that should not be relaxed
+      # to save a query.
+      schedule: "0 * * * * *"
+      # A bound on one pass rather than a target. Launch times cluster on the hour
+      # and at the start of a month; the pass takes the oldest and comes back a
+      # minute later for the rest.
+      batch-size: 100
+
     finalisation:
       # §8.4: campaign-finalizer, every minute. This is the interval between a
       # campaign's countdown reaching zero and the campaign actually closing, so

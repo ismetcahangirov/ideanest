@@ -5,6 +5,7 @@ import { ApiError } from '../../lib/api/problem';
 import {
   getProjectChecklist,
   getProjectEdit,
+  launchProject,
   submitProject,
   type ChecklistItem,
   type ProjectChecklist,
@@ -41,11 +42,13 @@ vi.mock('../../lib/projects/api', async (importOriginal) => ({
   getProjectEdit: vi.fn(),
   getProjectChecklist: vi.fn(),
   submitProject: vi.fn(),
+  launchProject: vi.fn(),
 }));
 
 const getProjectEditMock = vi.mocked(getProjectEdit);
 const getProjectChecklistMock = vi.mocked(getProjectChecklist);
 const submitProjectMock = vi.mocked(submitProject);
+const launchProjectMock = vi.mocked(launchProject);
 
 const PROJECT: ProjectEdit = {
   id: 'project-1',
@@ -370,6 +373,102 @@ describe('ReviewPanel', () => {
       // The way out is offered rather than taken.
       expect(
         screen.getByRole('link', { name: 'See what the other plans allow' }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('the launch control', () => {
+    /**
+     * A cleared campaign is not a published one, and until #385 there was nothing on this
+     * screen that could make it one: every public listing shows `LIVE` alone, and the only
+     * edge into `LIVE` is an endpoint no part of this application called. A campaign could
+     * be approved and stay invisible for as long as its creator was prepared to wait.
+     */
+    async function renderCleared(state: ProjectChecklist['state'] = 'APPROVED') {
+      getProjectEditMock.mockResolvedValue({ ...PROJECT, state });
+      getProjectChecklistMock.mockResolvedValue(completeChecklist({ state }));
+      const user = userEvent.setup();
+      await renderPanel();
+      return user;
+    }
+
+    it('is offered once moderation has cleared the campaign', async () => {
+      await renderCleared();
+
+      expect(screen.getByRole('button', { name: 'Launch this campaign' })).toBeInTheDocument();
+      // And the submit control is gone: §6.1 has no APPROVED -> SUBMITTED edge, so offering
+      // it would be offering a 409.
+      expect(screen.queryByRole('button', { name: 'Submit for review' })).not.toBeInTheDocument();
+    });
+
+    it('is offered to a campaign waiting for its scheduled time, which can still be brought forward', async () => {
+      await renderCleared('SCHEDULED');
+
+      expect(screen.getByRole('button', { name: 'Launch this campaign' })).toBeInTheDocument();
+    });
+
+    it('is not offered while the campaign is still a draft', async () => {
+      await renderPanel();
+
+      expect(screen.queryByRole('button', { name: 'Launch this campaign' })).not.toBeInTheDocument();
+    });
+
+    it('asks before launching, and says what freezes', async () => {
+      const user = await renderCleared();
+
+      await user.click(screen.getByRole('button', { name: 'Launch this campaign' }));
+
+      // Two presses, not one: launching takes money from strangers and §6.1 has no edge back
+      // to a draft.
+      expect(
+        screen.getByRole('group', { name: 'Launch this campaign now?' }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/cannot be taken back to a draft/)).toBeInTheDocument();
+      expect(launchProjectMock).not.toHaveBeenCalled();
+
+      // And focus is on the answer to the question that just appeared, which is what a
+      // dialog would have done for a reader who cannot see it arrive.
+      expect(screen.getByRole('button', { name: 'Launch now' })).toHaveFocus();
+
+      await user.click(screen.getByRole('button', { name: 'Cancel' }));
+      expect(launchProjectMock).not.toHaveBeenCalled();
+      expect(
+        screen.queryByRole('group', { name: 'Launch this campaign now?' }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('launches on confirmation and takes the new state from the answer', async () => {
+      const user = await renderCleared();
+      launchProjectMock.mockResolvedValue({ ...PROJECT, state: 'LIVE' });
+      // What the tab re-reads afterwards, which is the state the panel then draws.
+      getProjectChecklistMock.mockResolvedValue(completeChecklist({ state: 'LIVE' }));
+
+      await user.click(screen.getByRole('button', { name: 'Launch this campaign' }));
+      await user.click(screen.getByRole('button', { name: 'Launch now' }));
+
+      await waitFor(() => expect(launchProjectMock).toHaveBeenCalledWith('project-1'));
+      // The state the server answered with, not the one this screen assumed.
+      expect(await screen.findByText(/live and taking pledges/)).toBeInTheDocument();
+    });
+
+    it('names a refusal and leaves the confirmation on screen with it', async () => {
+      launchProjectMock.mockRejectedValue(
+        new ApiError(
+          409,
+          { code: 'PROJECT_NOT_LAUNCHABLE', detail: 'This campaign has no goal.' },
+          'not launchable',
+        ),
+      );
+      const user = await renderCleared();
+
+      await user.click(screen.getByRole('button', { name: 'Launch this campaign' }));
+      await user.click(screen.getByRole('button', { name: 'Launch now' }));
+
+      expect(await screen.findByText('This campaign has no goal.')).toBeInTheDocument();
+      // Still asking. Collapsing it would return the creator to a screen that looks exactly
+      // as it did before they pressed anything.
+      expect(
+        screen.getByRole('group', { name: 'Launch this campaign now?' }),
       ).toBeInTheDocument();
     });
   });

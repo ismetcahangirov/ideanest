@@ -7,6 +7,7 @@ import { InlineAlert, Pill, ProgressBar, Skeleton, SkeletonGroup } from '@ideane
 import { ApiError } from '../../lib/api/problem';
 import {
   getProjectChecklist,
+  launchProject,
   submitProject,
   type ChecklistItem,
   type ProjectChecklist,
@@ -76,6 +77,16 @@ const LOADING_ROWS = [0, 1, 2, 3];
  */
 const SUBMITTABLE_FROM: readonly ProjectState[] = ['DRAFT', 'PRELAUNCH', 'CHANGES_REQUESTED'];
 
+/**
+ * The states from which launching is an action worth offering.
+ *
+ * The same presentation decision {@link SUBMITTABLE_FROM} is, and §6.1's own pair:
+ * a moderator clears a campaign into `APPROVED`, and `SCHEDULED` is that campaign
+ * waiting for a time it may still be taken past. Everything else the server
+ * refuses, and the refusal is rendered.
+ */
+const LAUNCHABLE_FROM: readonly ProjectState[] = ['APPROVED', 'SCHEDULED'];
+
 /** What a campaign in this state is waiting for, said plainly. */
 const STATE_NOTE: Partial<Record<ProjectState, string>> = {
   SUBMITTED:
@@ -118,6 +129,9 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
   const [attempt, setAttempt] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [refusal, setRefusal] = useState<Refusal | null>(null);
+  const [launching, setLaunching] = useState(false);
+  const [confirmingLaunch, setConfirmingLaunch] = useState(false);
+  const [launchError, setLaunchError] = useState<string | null>(null);
 
   const blockingHeading = useRef<HTMLHeadingElement>(null);
 
@@ -141,6 +155,7 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
 
   const reloadAll = useCallback(() => {
     setRefusal(null);
+    setLaunchError(null);
     setAttempt((n) => n + 1);
     reload();
   }, [reload]);
@@ -179,6 +194,34 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
       setRefusal(refusalFrom(cause));
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  /**
+   * `APPROVED` or `SCHEDULED` → `LIVE`, on the creator's word.
+   *
+   * <p>No checklist re-read stands between the confirmation and the request: §5.3
+   * was satisfied to reach `APPROVED` and a moderator has read the campaign since.
+   * What the server can still refuse — a goal or a duration cleared while the
+   * campaign sat in review — comes back as a message and is rendered beside the
+   * control, which is the same contract `submit` has.
+   *
+   * <p>The dialog is closed only on success. A failure leaves it open with the
+   * reason under it, because closing it would return the creator to a screen that
+   * looks exactly as it did before they pressed anything.
+   */
+  async function launch(): Promise<void> {
+    setLaunching(true);
+    setLaunchError(null);
+    try {
+      apply(await launchProject(projectId));
+      setConfirmingLaunch(false);
+      // The state has changed, and with it what this tab has to offer.
+      setAttempt((n) => n + 1);
+    } catch (cause) {
+      setLaunchError(messageFor(cause));
+    } finally {
+      setLaunching(false);
     }
   }
 
@@ -224,6 +267,7 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
   const suggestions = unmetOf(checklist.advisory);
   const moderation = checklist.moderation;
   const canOfferSubmit = SUBMITTABLE_FROM.includes(checklist.state);
+  const canOfferLaunch = LAUNCHABLE_FROM.includes(checklist.state);
   const held = blockers.length > 0;
 
   return (
@@ -384,6 +428,110 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
                   }`
                 : 'A moderator reads the campaign and either clears it, asks for changes, or refuses it. You can keep editing while it is in review.'}
             </p>
+          </section>
+        )}
+
+        {/*
+          THE CAMPAIGN CANNOT GO LIVE WITHOUT THIS CONTROL.
+
+          `POST /v1/projects/{id}/launch` has existed since #31 and nothing in this
+          application called it, so a cleared campaign sat in `APPROVED` — invisible
+          to every public listing, which show `LIVE` alone — and its creator had been
+          told by this very panel that it goes live when they launch it. There was
+          nothing to press.
+        */}
+        {canOfferLaunch && (
+          <section aria-labelledby="review-launch-heading" className="flex flex-col gap-3">
+            <h2 id="review-launch-heading" className="sr-only">
+              Launch this campaign
+            </h2>
+
+            {launchError !== null && (
+              <InlineAlert variant="danger" title="This campaign was not launched">
+                <p>{launchError}</p>
+                <Pill variant="ghost" size="sm" className="mt-3" onClick={reloadAll}>
+                  Check again
+                </Pill>
+              </InlineAlert>
+            )}
+
+            {/*
+              ASKED INLINE RATHER THAN IN A DIALOG, AND THE REASON IS MEASURED.
+
+              `Modal` lives behind `@ideanest/ui/motion`, and that entry point carries 116 KiB
+              of animation runtime (packages/ui/src/index.ts). This route's budget had 5 KiB
+              of room. A confirmation is also the last thing on this platform that should
+              arrive with a spring: docs/motion-system.md §5 gives the campaign editor "none",
+              and §7 puts the launch on the money side of the scale where motion reads as
+              hesitation.
+
+              What a dialog was doing here is done by the panel: the destructive action is not
+              the first press, the consequences are stated before the second, and focus moves
+              to the confirmation so it cannot be missed by somebody who cannot see it appear.
+            */}
+            {confirmingLaunch ? (
+              <div
+                role="group"
+                aria-labelledby="review-launch-confirm-heading"
+                className="rounded-2xl border border-white/8 bg-surface-2 p-5"
+              >
+                <h3 id="review-launch-confirm-heading" className="text-[15px] font-medium text-white">
+                  Launch this campaign now?
+                </h3>
+                <p className="mt-2 text-[13px] text-white/64">
+                  It becomes public immediately and starts taking pledges. The funding goal and
+                  the deadline are fixed on launch and cannot be edited afterwards, and a live
+                  campaign cannot be taken back to a draft.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Pill
+                    variant="accent"
+                    // Focus follows the consequence. The reader pressed something and a
+                    // question appeared; landing on its answer is what a dialog would have
+                    // done for them.
+                    autoFocus
+                    aria-disabled={launching}
+                    className={launching ? 'opacity-40' : undefined}
+                    onClick={() => {
+                      if (launching) return;
+                      void launch();
+                    }}
+                  >
+                    {launching ? 'Launching' : 'Launch now'}
+                  </Pill>
+                  <Pill
+                    variant="ghost"
+                    aria-disabled={launching}
+                    onClick={() => {
+                      if (launching) return;
+                      setConfirmingLaunch(false);
+                    }}
+                  >
+                    Cancel
+                  </Pill>
+                </div>
+              </div>
+            ) : (
+              <>
+                <Pill
+                  variant="accent"
+                  size="lg"
+                  aria-describedby="review-launch-explanation"
+                  onClick={() => setConfirmingLaunch(true)}
+                >
+                  Launch this campaign
+                </Pill>
+
+                {/* Not drawn beside the confirmation, which says the same thing at the moment
+                    it matters. Two copies of one warning on one screen is one of them being
+                    read and the other being scrolled past. */}
+                <p id="review-launch-explanation" className="text-[13px] text-white/64">
+                  The campaign appears everywhere on the platform and starts taking pledges the
+                  moment it launches. Its goal and its deadline freeze from that point, and a
+                  live campaign cannot be taken back to a draft.
+                </p>
+              </>
+            )}
           </section>
         )}
       </div>

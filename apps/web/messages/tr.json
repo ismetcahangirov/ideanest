@@ -406,7 +406,9 @@
       "/admin/audit": "Denetim günlüğü",
       "/admin/email-templates": "E-posta şablonları",
       "/admin/flags": "Özellik bayrakları",
-      "/admin/health": "Sistem durumu"
+      "/admin/health": "Sistem durumu",
+      "/admin/moderation/submissions": "İncelemedeki kampanyalar",
+      "/admin/campaigns": "Tüm kampanyalar"
     },
     "states": {
       "built": "Hazır",
@@ -683,6 +685,18 @@
         "metaDescription": "Platform hesaplarını arayın ve durdurulması gerekenleri durdurun.",
         "title": "Hesaplar",
         "intro": "Platformdaki her hesap, adrese, görünen ada veya profil kısa adına göre aranır. Birini askıya almak oturumunu her yerde kapatır ve girişte reddeder; oluşturduğu kampanyalar veya yaptığı destekler hakkında hiçbir şeyi değiştirmez, onlar ayrı sonuçları olan ayrı kararlardır."
+      },
+      "submissions": {
+        "metaTitle": "İncelemedeki kampanyalar",
+        "metaDescription": "Kurucularının gönderdiği, karar bekleyen kampanyalar.",
+        "title": "İncelemedeki kampanyalar",
+        "intro": "Kurucularının gönderdiği kampanyalar, en eskisi başta. Karar kampanyanın kendi durumunu değiştirir: onay yayına hazır hâle getirir, değişiklik isteği bir notla birlikte geri gönderir, ret ise kesindir."
+      },
+      "campaigns": {
+        "metaTitle": "Kampanyalar",
+        "metaDescription": "Platformdaki tüm kampanyalar, her durumda, en yenisi önce.",
+        "title": "Kampanyalar",
+        "intro": "Platformdaki tüm kampanyalar, en yenisi önce, hangi durumda olursa olsun. İnceleme kuyruğu yalnızca karar bekleyenleri listeler; burası ise kimsenin göndermediği taslaklar ve onaylanıp henüz yayımlanmamış kampanyalar dahil her şeyi listeler."
       }
     },
     "screens": {
@@ -708,18 +722,30 @@
           "collection": "Koleksiyonlar"
         },
         "action": {
-          "project.approved": "Kampanya onaylandı",
-          "project.rejected": "Kampanya reddedildi",
-          "project.changes_requested": "Değişiklik istendi",
-          "project.suspended": "Kampanya askıya alındı",
-          "report.upheld": "Şikayet haklı bulundu",
-          "report.dismissed": "Şikayet reddedildi",
-          "account.searched": "Hesaplar arandı",
-          "account.suspended": "Hesap askıya alındı",
-          "account.reinstated": "Hesap yeniden açıldı",
-          "audit.trail_read": "Denetim izi okundu",
-          "payment.log_read": "Ödeme günlüğü okundu",
-          "ledger.read": "Defter okundu"
+          "project": {
+            "approved": "Kampanya onaylandı",
+            "rejected": "Kampanya reddedildi",
+            "changes_requested": "Değişiklik istendi",
+            "suspended": "Kampanya askıya alındı"
+          },
+          "report": {
+            "upheld": "Şikayet haklı bulundu",
+            "dismissed": "Şikayet reddedildi"
+          },
+          "account": {
+            "searched": "Hesaplar arandı",
+            "suspended": "Hesap askıya alındı",
+            "reinstated": "Hesap yeniden açıldı"
+          },
+          "audit": {
+            "trail_read": "Denetim izi okundu"
+          },
+          "payment": {
+            "log_read": "Ödeme günlüğü okundu"
+          },
+          "ledger": {
+            "read": "Defter okundu"
+          }
         }
       },
       "health": {
@@ -1568,6 +1594,89 @@
           "CANCELED": "Sonlandırıldı",
           "EXPIRED": "Süresi doldu"
         }
+      },
+      "submissionQueue": {
+        "signedOutTitle": "Kuyrukla çalışmak için oturum açın",
+        "signedOutBody": "Bu ekran karar bekleyen kampanyaları okur; bunun için oturum açmış bir çalışan gerekir.",
+        "forbiddenTitle": "Bu kuyruğu göremezsiniz",
+        "forbiddenBody": "Kampanyaları incelemek için içerik moderasyonu yetkisi gerekir. Sizde olması gerektiğini düşünüyorsanız bir yöneticiye danışın.",
+        "notStaff": "Kampanyaları platform çalışanları inceler.",
+        "transitionNotAllowed": "Kampanya artık bu kararın verilebileceği durumda değil. Kuyruğu yenileyin.",
+        "transitionNotAllowedFrom": "Bu kampanya için karar çoktan verilmiş — şu anda {state}.",
+        "refused": "Servis bunu kabul etmedi.",
+        "unreachable": "Servise ulaşamadık. Yeniden deneyin.",
+        "heading": {
+          "SUBMITTED": "Karar bekliyor",
+          "CHANGES_REQUESTED": "Kurucularına geri gönderildi",
+          "APPROVED": "Yayına hazır",
+          "REJECTED": "Reddedildi"
+        },
+        "state": {
+          "SUBMITTED": "Bekliyor",
+          "CHANGES_REQUESTED": "Değişiklik istendi",
+          "APPROVED": "Onaylandı",
+          "REJECTED": "Reddedildi"
+        },
+        "statusLabel": "Hangi kampanyalar",
+        "loadingList": "Kampanyalar yükleniyor",
+        "emptyTitle": {
+          "SUBMITTED": "Bekleyen yok",
+          "CHANGES_REQUESTED": "Geri gönderilen yok",
+          "APPROVED": "Henüz onaylanan yok",
+          "REJECTED": "Reddedilen yok"
+        },
+        "emptyBody": {
+          "SUBMITTED": "Şimdiye kadar gönderilen her kampanya için karar verilmiş.",
+          "CHANGES_REQUESTED": "Şu anda kurucusunda değişiklik bekleyen kampanya yok.",
+          "APPROVED": "Onaylanan kampanyalar yayına girene kadar burada görünür.",
+          "REJECTED": "Reddedilen kampanyalar, karar sonradan okunabilsin diye burada kalır."
+        },
+        "waiting": "{days} gündür bekliyor",
+        "goalLabel": "Hedef",
+        "noGoal": "Hedef belirlenmemiş",
+        "stateLabel": "Durum",
+        "creatorGone": "Kurucunun hesabı kapatıldı",
+        "decideHeading": "Bu kampanya için karar verin",
+        "decideGroup": "{title} için karar ver",
+        "notice": "{title} artık {state}."
+      },
+      "campaignDirectory": {
+        "subject": "kampanya dizini",
+        "heading": "Kampanyalar",
+        "filterLabel": "Durum",
+        "everything": "Tüm durumlar",
+        "loadingList": "Kampanyalar yükleniyor",
+        "emptyTitle": "Henüz kampanya yok",
+        "emptyBody": "Bir kampanya, incelemeye gönderilmeden çok önce, biri onu başlattığı anda burada görünür.",
+        "filteredTitle": "Bu durumda kampanya yok",
+        "filteredBody": "Başka bir durum seçin ya da tüm durumlara bakın.",
+        "creatorGone": "Kurucunun hesabı kapatıldı",
+        "goalLabel": "Hedef",
+        "noGoal": "Hedef belirlenmedi",
+        "raisedLabel": "Toplanan",
+        "backersLabel": "Destekçi",
+        "startedLabel": "Başlatıldı",
+        "launchedLabel": "Yayımlandı",
+        "deadlineLabel": "Kapanış",
+        "notLaunched": "Yayımlanmadı",
+        "state": {
+          "DRAFT": "Taslak",
+          "PRELAUNCH": "Lansman öncesi",
+          "SUBMITTED": "İnceleme bekliyor",
+          "CHANGES_REQUESTED": "Değişiklik istendi",
+          "APPROVED": "Onaylandı",
+          "SCHEDULED": "Planlandı",
+          "LIVE": "Etkin",
+          "COLLECTING": "Tahsilat",
+          "LATE_PLEDGE": "Geç destekler",
+          "SUCCESSFUL": "Fonlandı",
+          "UNSUCCESSFUL": "Fonlanmadı",
+          "FULFILLING": "Gönderim",
+          "COMPLETED": "Tamamlandı",
+          "REJECTED": "Reddedildi",
+          "SUSPENDED": "Askıya alındı",
+          "CANCELED": "İptal edildi"
+        }
       }
     },
     "moderation": {
@@ -2388,7 +2497,9 @@
     "fromSubmit": {
       "title": "Yayımlamak için plan gerekiyor",
       "body": "Kampanyanız kaydedildi, hiçbir şey kaybolmadı. Aşağıdan bir plan seçin, hemen incelemeye gönderebilirsiniz.",
-      "back": "Kampanyanıza dönün"
+      "back": "Kampanyanıza dönün",
+      "ready": "Planınız etkin",
+      "resume": "Kampanyanıza dönün ve gönderin"
     },
     "held": {
       "heading": "Planınız",

@@ -1,0 +1,313 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import { Chip, ChipRow, EmptyState, InlineAlert, Pill, Skeleton, SkeletonGroup } from '@ideanest/ui';
+import {
+  DIRECTORY_PAGE_SIZE,
+  DIRECTORY_STATES,
+  listCampaigns,
+  type DirectoryCampaign,
+} from '../../lib/admin/campaigns';
+import {
+  consoleMessageFor,
+  shortId,
+  statusFor,
+  wasAborted,
+  type ConsoleStatus,
+} from '../../lib/admin/refusals';
+import type { ProjectState } from '../../lib/projects/api';
+import type { CampaignDirectoryCopy } from '../../lib/i18n/admin/content-copy';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
+import { ConsoleRefusal } from './ConsoleRefusal';
+
+/**
+ * §4.11's campaign directory: what campaigns exist — issue #387.
+ *
+ * <h2>Why the console needed this screen</h2>
+ *
+ * Every other way into a campaign starts from something the campaign did. A report
+ * somebody filed about it reaches the moderation queue; being submitted reaches the
+ * review queue; being suspended needs an identifier a member of staff already has. A
+ * campaign that is simply a draft, or simply live, or that was cleared for launch a week
+ * ago and has not launched, was in none of them. The console could operate a campaign and
+ * could not find one.
+ *
+ * <h2>Newest first, where the review queue is oldest first</h2>
+ *
+ * Not a preference, and the same distinction `AuditTrailView` draws. A queue is worked
+ * from the front, because the thing that has waited longest is the thing that matters. A
+ * directory is read from the end: what has just been started, what launched this week.
+ *
+ * <h2>The filter reaches the service</h2>
+ *
+ * There is deliberately no client-side narrowing. Twenty-five campaigns of which two are
+ * drafts is not a page of two, and a chip that filtered the loaded page would report a
+ * count about the page while appearing to report one about the platform.
+ *
+ * <h2>Nothing here changes anything</h2>
+ *
+ * The three moderation outcomes are on the review queue, where the campaigns they apply to
+ * are; suspension is its own screen with its own confirmation. A directory that also
+ * carried decisions would be a second path into a state machine whose single path is the
+ * point of it.
+ *
+ * <h2>Motion</h2>
+ *
+ * None. docs/motion-system.md §5 gives an administrative surface 150ms of colour on a
+ * control and §8 forbids animation in long lists. This is both.
+ */
+
+/** The day, in the reader's locale. An instant to the second says more than anybody needs here. */
+function day(instant: string | null | undefined): string | null {
+  if (instant == null) return null;
+  const parsed = new Date(instant);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toLocaleDateString();
+}
+
+export interface CampaignDirectoryProps {
+  /** Every word this screen draws, resolved by the route on the server. */
+  readonly copy: CampaignDirectoryCopy;
+}
+
+export function CampaignDirectory({ copy }: CampaignDirectoryProps) {
+  const locale = useRouteLocale();
+  const [status, setStatus] = useState<ConsoleStatus>('loading');
+  const [state, setState] = useState<ProjectState | null>(null);
+  const [campaigns, setCampaigns] = useState<readonly DirectoryCampaign[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function load(): Promise<void> {
+      setStatus('loading');
+      try {
+        const page = await listCampaigns({
+          state,
+          limit: DIRECTORY_PAGE_SIZE,
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+
+        setCampaigns(page.campaigns);
+        setCursor(page.nextCursor ?? null);
+        setError(null);
+        setStatus('ready');
+      } catch (cause) {
+        if (controller.signal.aborted || wasAborted(cause)) return;
+
+        const next = statusFor(cause);
+        if (next === 'failed') setError(consoleMessageFor(cause, copy.subject, copy.refusals));
+        setStatus(next);
+      }
+    }
+
+    void load();
+    return () => controller.abort();
+    // `copy` is one object per server render and changes only with the language, which is a
+    // path segment and remounts this tree rather than re-running this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, attempt]);
+
+  const loadMore = useCallback(async (): Promise<void> => {
+    if (cursor === null || loadingMore) return;
+
+    setLoadingMore(true);
+    setError(null);
+    try {
+      const page = await listCampaigns({ state, after: cursor, limit: DIRECTORY_PAGE_SIZE });
+      setCampaigns((previous) => [...previous, ...page.campaigns]);
+      setCursor(page.nextCursor ?? null);
+    } catch (cause) {
+      setError(consoleMessageFor(cause, copy.subject, copy.refusals));
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [cursor, loadingMore, state, copy]);
+
+  if (status === 'signed-out' || status === 'forbidden') {
+    return <ConsoleRefusal status={status} subject={copy.subject} copy={copy.refusals} />;
+  }
+
+  return (
+    <section aria-labelledby="campaign-directory-heading">
+      <h2 id="campaign-directory-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
+        {copy.heading}
+        {status === 'ready' && (
+          <span className="ml-2 text-xs font-normal text-white/40">{campaigns.length}</span>
+        )}
+      </h2>
+
+      {/* Every chip here reaches the service — see the docblock on why nothing is narrowed
+          in the browser. */}
+      <ChipRow aria-label={copy.filterLabel} className="mt-4">
+        <Chip active={state === null} onClick={() => setState(null)}>
+          {copy.everything}
+        </Chip>
+        {DIRECTORY_STATES.map((option) => (
+          <Chip key={option} active={state === option} onClick={() => setState(option)}>
+            {copy.state[option] ?? option}
+          </Chip>
+        ))}
+      </ChipRow>
+
+      {error && (
+        <InlineAlert variant="danger" title={copy.errorTitle} className="mt-4">
+          {error}
+        </InlineAlert>
+      )}
+
+      {status === 'loading' && (
+        <SkeletonGroup label={copy.loadingList} className="mt-4">
+          <div className="space-y-4">
+            {[0, 1, 2].map((row) => (
+              <div key={row} className="rounded-lg border border-white/8 bg-surface-2 p-5">
+                <Skeleton height="1.125rem" width="40%" />
+                <Skeleton height="0.875rem" width="60%" className="mt-3" />
+                <Skeleton height="0.875rem" width="30%" className="mt-2" />
+              </div>
+            ))}
+          </div>
+        </SkeletonGroup>
+      )}
+
+      {status === 'ready' && campaigns.length === 0 && (
+        <EmptyState
+          className="mt-4"
+          variant={state === null ? 'empty' : 'filtered'}
+          title={state === null ? copy.emptyTitle : copy.filteredTitle}
+          description={state === null ? copy.emptyBody : copy.filteredBody}
+        />
+      )}
+
+      {status === 'ready' && campaigns.length > 0 && (
+        <ul className="mt-4 flex list-none flex-col gap-4">
+          {campaigns.map((campaign) => (
+            <CampaignRow key={campaign.projectId} campaign={campaign} locale={locale} copy={copy} />
+          ))}
+        </ul>
+      )}
+
+      {status === 'ready' && cursor !== null && (
+        <Pill
+          variant="ghost"
+          size="sm"
+          className="mt-4"
+          disabled={loadingMore}
+          onClick={() => void loadMore()}
+        >
+          {loadingMore ? copy.loading : copy.loadMore}
+        </Pill>
+      )}
+
+      {status === 'failed' && (
+        <Pill variant="ghost" size="sm" className="mt-4" onClick={() => setAttempt((n) => n + 1)}>
+          {copy.tryAgain}
+        </Pill>
+      )}
+    </section>
+  );
+}
+
+interface CampaignRowProps {
+  readonly campaign: DirectoryCampaign;
+  readonly locale: string;
+  readonly copy: CampaignDirectoryCopy;
+}
+
+/**
+ * One campaign.
+ *
+ * <p>The heading links to the campaign's own page, because every question this row cannot
+ * answer is on it. A campaign whose creator has been anonymised keeps its row and loses
+ * the link to a profile — §17.4 removes the person, not the campaign.
+ */
+function CampaignRow({ campaign, locale, copy }: CampaignRowProps) {
+  const href =
+    campaign.creatorSlug == null
+      ? `/${locale}/projects/${encodeURIComponent(campaign.projectId)}`
+      : `/${locale}/projects/${encodeURIComponent(campaign.creatorSlug)}/${encodeURIComponent(campaign.slug)}`;
+
+  const started = day(campaign.createdAt);
+  const launched = day(campaign.launchedAt);
+  const closes = day(campaign.deadline);
+
+  return (
+    <li className="rounded-lg border border-white/8 bg-surface-2 p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-base font-medium text-white">
+            <a className="underline-offset-4 hover:underline" href={href}>
+              {campaign.title}
+            </a>
+          </h3>
+          <p className="mt-1 text-sm text-white/64">
+            {campaign.creatorName ?? copy.creatorGone}
+            <span className="text-white/32"> · {shortId(campaign.projectId)}</span>
+          </p>
+        </div>
+        {/*
+          The state as a word, not as a colour. docs/ui-kit.md §9.2: colour alone never
+          carries meaning, and there are sixteen states here — no palette distinguishes
+          them, so none tries to.
+        */}
+        <span className="shrink-0 text-sm text-white/80">
+          {copy.state[campaign.state] ?? campaign.state}
+        </span>
+      </div>
+
+      <dl className="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+        <div className="flex gap-2">
+          <dt className="text-white/40">{copy.goalLabel}</dt>
+          <dd className="text-white/80">
+            {campaign.goal == null
+              ? copy.noGoal
+              : `${campaign.goal.amount} ${campaign.goal.currency}`}
+          </dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="text-white/40">{copy.raisedLabel}</dt>
+          <dd className="text-white/80">
+            {`${campaign.pledged.amount} ${campaign.pledged.currency}`}
+          </dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="text-white/40">{copy.backersLabel}</dt>
+          <dd className="text-white/80">{campaign.backersCount}</dd>
+        </div>
+        {started !== null && (
+          <div className="flex gap-2">
+            <dt className="text-white/40">{copy.startedLabel}</dt>
+            <dd className="text-white/80">
+              <time dateTime={campaign.createdAt}>{started}</time>
+            </dd>
+          </div>
+        )}
+        {/*
+          Launched and closes are drawn only once they exist. A campaign that has never
+          launched has no deadline — §5.3 computes it from the launch instant — and an
+          empty row under a label reads as a missing value rather than as an absent event.
+        */}
+        {launched !== null && (
+          <div className="flex gap-2">
+            <dt className="text-white/40">{copy.launchedLabel}</dt>
+            <dd className="text-white/80">
+              <time dateTime={campaign.launchedAt ?? undefined}>{launched}</time>
+            </dd>
+          </div>
+        )}
+        {closes !== null && (
+          <div className="flex gap-2">
+            <dt className="text-white/40">{copy.deadlineLabel}</dt>
+            <dd className="text-white/80">
+              <time dateTime={campaign.deadline ?? undefined}>{closes}</time>
+            </dd>
+          </div>
+        )}
+      </dl>
+    </li>
+  );
+}

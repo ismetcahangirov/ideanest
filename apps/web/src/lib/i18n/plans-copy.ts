@@ -34,6 +34,16 @@ export interface FromSubmitCopy {
   readonly title: string;
   readonly body: string;
   readonly back: string;
+  /**
+   * The same banner once the plan entitles them, which is the half that was missing.
+   *
+   * A creator arrives here from a refused submission, chooses a plan, and is then holding
+   * everything they came for while still looking at a price list. Saying so and offering the
+   * way back is the whole of it — the alternative is a reader who has paid and has to work
+   * out for themselves that the thing they were doing is now possible.
+   */
+  readonly ready: string;
+  readonly resume: string;
 }
 
 /** What the page says about the plan this visitor already holds. */
@@ -116,6 +126,8 @@ export function pricingCopyFrom(t: PricingTranslator): PricingCopy {
       title: t('fromSubmit.title'),
       body: t('fromSubmit.body'),
       back: t('fromSubmit.back'),
+      ready: t('fromSubmit.ready'),
+      resume: t('fromSubmit.resume'),
     },
     held: {
       heading: t('held.heading'),

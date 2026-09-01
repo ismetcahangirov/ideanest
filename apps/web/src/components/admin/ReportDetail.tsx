@@ -422,7 +422,11 @@ export function ReportDetail({ reportId, copy }: ReportDetailProps) {
 
       <DecisionDialog
         decision={pending}
-        report={pending === null ? null : report}
+        subject={
+          pending === null || report === null
+            ? null
+            : { key: report.id, targetType: report.target.type, targetId: report.target.id }
+        }
         busy={dialogBusy}
         error={dialogError}
         onCancel={() => {
