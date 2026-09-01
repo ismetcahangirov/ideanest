@@ -14,7 +14,7 @@ import {
 } from '../../lib/plans/api';
 import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import type { PricingCopy } from '../../lib/i18n/plans-copy';
-import { Link } from '../../i18n/navigation';
+import { Link, useRouter } from '../../i18n/navigation';
 
 /**
  * The plans, and where this visitor stands against them.
@@ -61,6 +61,7 @@ export interface PlanChooserProps {
 type Status = 'loading' | 'ready' | 'signed-out';
 
 export function PlanChooser({ plans, copy, locale, fromProjectId }: PlanChooserProps) {
+  const router = useRouter();
   const [status, setStatus] = useState<Status>('loading');
   const [held, setHeld] = useState<HeldSubscription | null>(null);
   const [busyPlan, setBusyPlan] = useState<string | null>(null);
@@ -94,6 +95,20 @@ export function PlanChooser({ plans, copy, locale, fromProjectId }: PlanChooserP
     return () => controller.abort();
   }, [copy]);
 
+  /*
+   * A CHOICE THAT ENTITLES SOMEBODY IS THE END OF THIS PAGE'S BUSINESS WITH THEM.
+   *
+   * A creator sent here by a refused submission came to do one thing, and a plan that
+   * entitles them the moment it is chosen has finished it. Leaving them on a price list to
+   * find their own way back is the failure `?from=submit&project=` exists to prevent, and the
+   * banner alone was only half of the answer: it says why they are here, and said nothing
+   * once the reason had gone.
+   *
+   * `entitled`, not `state`, because that is the field the service computes for exactly this
+   * question — see `lib/plans/api.ts`. A priced plan comes back `PENDING_PAYMENT` and nobody
+   * is sent anywhere: the campaign would refuse them again on arrival, which is worse than
+   * staying on the page that explains what is still needed.
+   */
   const choose = useCallback(
     async (planId: string): Promise<void> => {
       setBusyPlan(planId);
@@ -101,14 +116,57 @@ export function PlanChooser({ plans, copy, locale, fromProjectId }: PlanChooserP
       try {
         const mine = await subscribeToPlan(planId);
         setHeld(mine.subscription);
+        if (fromProjectId !== undefined && mine.subscription?.entitled === true) {
+          router.push(`/projects/${fromProjectId}/edit/review`);
+        }
       } catch (cause) {
         setError(messageFor(cause, copy));
       } finally {
         setBusyPlan(null);
       }
     },
-    [copy],
+    [copy, fromProjectId, router],
   );
+
+  /*
+   * THE MOMENT A TRANSFER IS RECORDED HAPPENS SOMEWHERE ELSE.
+   *
+   * Nothing on this platform can charge a card yet, so a priced plan is activated by a member
+   * of staff who has seen the money — minutes or days after the creator chose it, and with no
+   * signal to this tab. Without this the creator sits on a page that still says "we are
+   * waiting for your transfer" long after it arrived, and their campaign stays unsubmitted
+   * because they were never told they could go back.
+   *
+   * So the subscription is re-read when the window is next focused, which is what returning
+   * from a banking app or another tab looks like from here. Only while a pending plan is held
+   * and only for a creator with a campaign to get back to: it is a read for one specific
+   * wait, not a poll on the price list.
+   */
+  useEffect(() => {
+    if (fromProjectId === undefined) return;
+    if (held === null || held.entitled) return;
+
+    const controller = new AbortController();
+
+    function recheck(): void {
+      void (async () => {
+        try {
+          const mine = await readMySubscription(controller.signal);
+          if (controller.signal.aborted) return;
+          setHeld(mine.subscription);
+        } catch {
+          // Keep what is on screen. A failed background read is not news a reader can act on,
+          // and replacing the panel with an error over one would be losing their place.
+        }
+      })();
+    }
+
+    window.addEventListener('focus', recheck);
+    return () => {
+      controller.abort();
+      window.removeEventListener('focus', recheck);
+    };
+  }, [fromProjectId, held]);
 
   const stop = useCallback(async (): Promise<void> => {
     setCancelling(true);
@@ -125,19 +183,31 @@ export function PlanChooser({ plans, copy, locale, fromProjectId }: PlanChooserP
 
   return (
     <div className="flex flex-col gap-8">
-      {fromProjectId !== undefined && (
-        <InlineAlert variant="info" title={copy.fromSubmit.title}>
-          <p>{copy.fromSubmit.body}</p>
-          <p className="mt-2">
-            <Link
-              href={`/projects/${fromProjectId}/edit/review`}
-              className="text-white underline underline-offset-4"
-            >
-              {copy.fromSubmit.back}
-            </Link>
-          </p>
-        </InlineAlert>
-      )}
+      {fromProjectId !== undefined &&
+        (held?.entitled === true ? (
+          <InlineAlert variant="success" title={copy.fromSubmit.ready}>
+            <p className="mt-2">
+              <Link
+                href={`/projects/${fromProjectId}/edit/review`}
+                className="text-white underline underline-offset-4"
+              >
+                {copy.fromSubmit.resume}
+              </Link>
+            </p>
+          </InlineAlert>
+        ) : (
+          <InlineAlert variant="info" title={copy.fromSubmit.title}>
+            <p>{copy.fromSubmit.body}</p>
+            <p className="mt-2">
+              <Link
+                href={`/projects/${fromProjectId}/edit/review`}
+                className="text-white underline underline-offset-4"
+              >
+                {copy.fromSubmit.back}
+              </Link>
+            </p>
+          </InlineAlert>
+        ))}
 
       {error !== null && (
         <InlineAlert variant="danger" title={copy.errors.generic}>

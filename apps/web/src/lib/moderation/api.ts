@@ -14,10 +14,11 @@ import type { ProjectState } from '../projects/api';
  * with a complaint and a moderator who takes a campaign down are performing two
  * requests, and this module keeps them two functions.
  *
- * `GET /v1/admin/moderation/queue` — the campaign review queue §10.2 lists — is
- * NOT implemented in the service. The three campaign outcomes exist and are
- * reachable by project id, but nothing lists the campaigns awaiting review, so
- * they are offered here from a report about a campaign and from nowhere else.
+ * The campaign review queue is `GET /v1/admin/moderation/submissions`, added because
+ * the three campaign outcomes had existed since #101 with nothing listing what they
+ * apply to: a moderator could reach a submitted campaign only through a report somebody
+ * had filed about it, so a campaign nobody complained about waited out of sight while
+ * its creator was told it was under review.
  */
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' } as const;
@@ -263,4 +264,80 @@ export async function decideCampaign(
   if (!response.ok) throw await errorFrom(response);
 
   return (await response.json()) as CampaignDecision;
+}
+
+/* -------------------------------------------------------------------------
+ * The campaign review queue — `/v1/admin/moderation/submissions`
+ * ---------------------------------------------------------------------- */
+
+/**
+ * The four states the queue serves.
+ *
+ * `SUBMITTED` is the queue itself; the other three are how a decision is looked up
+ * afterwards, which is the same shape `ReportState` has and for the same reason. Asking
+ * for any other campaign state is a `400 UNREVIEWABLE_STATE` rather than an empty page —
+ * see the service, which argues why an empty answer there would read as a fact about the
+ * platform.
+ */
+export type SubmissionState = 'SUBMITTED' | 'CHANGES_REQUESTED' | 'APPROVED' | 'REJECTED';
+
+export const SUBMISSION_STATES: readonly SubmissionState[] = [
+  'SUBMITTED',
+  'CHANGES_REQUESTED',
+  'APPROVED',
+  'REJECTED',
+];
+
+/** One campaign waiting on a decision, or one that has had one. */
+export interface QueuedSubmission {
+  /** This row's keyset position, and what `after` takes to continue from here. */
+  cursor: string;
+  projectId: string;
+  title: string;
+  slug: string;
+  state: ProjectState;
+  /** When it entered this state. What the queue is sorted by, and what it is about. */
+  waitingSince: string;
+  /** Whatever was written on the transition into this state, or absent. */
+  note?: string | null;
+  creatorId: string;
+  /**
+   * Absent when the account has been anonymised since — §17.4 leaves the campaign behind.
+   * The screen says so rather than rendering an empty name.
+   */
+  creatorName?: string | null;
+  creatorSlug?: string | null;
+  goal?: { amount: string; currency: string } | null;
+}
+
+export interface SubmissionQueuePage {
+  state: SubmissionState;
+  submissions: QueuedSubmission[];
+  /** Absent at the end of the queue. A short page is the end. */
+  nextCursor?: string | null;
+}
+
+/**
+ * One page of campaigns awaiting a decision, oldest first.
+ *
+ * Keyset rather than offset, for the reason the report queue gives: a moderator working
+ * the queue removes rows from it as they go, and an offset against a shifting set skips
+ * the campaigns that have been waiting longest.
+ */
+export async function listSubmissions(options: {
+  state: SubmissionState;
+  after?: string | null;
+  limit?: number;
+  signal?: AbortSignal;
+}): Promise<SubmissionQueuePage> {
+  const query = new URLSearchParams({ state: options.state });
+  if (options.after) query.set('after', options.after);
+  if (options.limit !== undefined) query.set('limit', String(options.limit));
+
+  const response = await authorizedFetch(`/v1/admin/moderation/submissions?${query}`, {
+    signal: options.signal,
+  });
+  if (!response.ok) throw await errorFrom(response);
+
+  return (await response.json()) as SubmissionQueuePage;
 }

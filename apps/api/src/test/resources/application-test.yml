@@ -130,6 +130,16 @@ ideanest:
       # have nothing to do with deadlines.
       deadline-schedule: "-"
 
+    launches:
+      # Disabled, exactly as every other schedule here is: `-` is Spring's own value
+      # for "do not schedule this". CampaignLaunchTests drives the job directly with
+      # the instant to judge against; a sweep firing every minute in the background
+      # would open the very campaigns a test is about to assert are still closed.
+      schedule: "-"
+      # Small enough that the batching is exercised rather than described: three
+      # campaigns due at once take two passes.
+      batch-size: 2
+
     finalisation:
       # Disabled, for the reason every schedule in this file is, and with one of its
       # own: the suite moves AdjustableClock past campaign deadlines deliberately, so

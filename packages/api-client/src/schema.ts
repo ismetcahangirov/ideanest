@@ -484,6 +484,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/moderation/submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["submissionQueueSubmissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/moderation/{id}/approve": {
         parameters: {
             query?: never;
@@ -674,6 +690,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["adminSubscriptionChange"];
+        trace?: never;
+    };
+    "/v1/admin/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["campaignDirectoryCampaigns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/admin/projects/{id}/suspend": {
@@ -3448,6 +3480,12 @@ export interface components {
             state?: string;
             title?: string;
         };
+        CampaignDirectoryResponse: {
+            campaigns?: components["schemas"]["Campaign"][];
+            /** Format: uuid */
+            nextCursor?: string;
+            state?: string;
+        };
         CampaignFinanceResponse: {
             /** @enum {string} */
             basis?: "PROJECTED" | "SETTLED";
@@ -5282,6 +5320,29 @@ export interface components {
             };
             slug?: string;
         };
+        Submission: {
+            /** Format: uuid */
+            creatorId?: string;
+            creatorName?: string;
+            creatorSlug?: string;
+            /** Format: uuid */
+            cursor?: string;
+            goal?: components["schemas"]["Money"];
+            note?: string;
+            /** Format: uuid */
+            projectId?: string;
+            slug?: string;
+            state?: string;
+            title?: string;
+            /** Format: date-time */
+            waitingSince?: string;
+        };
+        SubmissionQueueResponse: {
+            /** Format: uuid */
+            nextCursor?: string;
+            state?: string;
+            submissions?: components["schemas"]["Submission"][];
+        };
         SubscribeRequest: {
             /** Format: uuid */
             planId: string;
@@ -5634,6 +5695,7 @@ export type SchemaBranch = components['schemas']['Branch'];
 export type SchemaBuyAddonsRequest = components['schemas']['BuyAddonsRequest'];
 export type SchemaCalculateRequest = components['schemas']['CalculateRequest'];
 export type SchemaCampaign = components['schemas']['Campaign'];
+export type SchemaCampaignDirectoryResponse = components['schemas']['CampaignDirectoryResponse'];
 export type SchemaCampaignFinanceResponse = components['schemas']['CampaignFinanceResponse'];
 export type SchemaCampaignMessageListResponse = components['schemas']['CampaignMessageListResponse'];
 export type SchemaCampaignMessageResponse = components['schemas']['CampaignMessageResponse'];
@@ -5845,6 +5907,8 @@ export type SchemaStoryVersionDetail = components['schemas']['StoryVersionDetail
 export type SchemaStoryVersionSummary = components['schemas']['StoryVersionSummary'];
 export type SchemaSubcategory = components['schemas']['Subcategory'];
 export type SchemaSubcategoryResponse = components['schemas']['SubcategoryResponse'];
+export type SchemaSubmission = components['schemas']['Submission'];
+export type SchemaSubmissionQueueResponse = components['schemas']['SubmissionQueueResponse'];
 export type SchemaSubscribeRequest = components['schemas']['SubscribeRequest'];
 export type SchemaSuggestionItem = components['schemas']['SuggestionItem'];
 export type SchemaSuggestions = components['schemas']['Suggestions'];
@@ -6710,6 +6774,30 @@ export interface operations {
             };
         };
     };
+    submissionQueueSubmissions: {
+        parameters: {
+            query?: {
+                state?: "DRAFT" | "PRELAUNCH" | "SUBMITTED" | "CHANGES_REQUESTED" | "REJECTED" | "APPROVED" | "SCHEDULED" | "LIVE" | "SUSPENDED" | "CANCELED" | "SUCCESSFUL" | "UNSUCCESSFUL" | "COLLECTING" | "LATE_PLEDGE" | "FULFILLING" | "COMPLETED";
+                after?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionQueueResponse"];
+                };
+            };
+        };
+    };
     projectModerationApprove: {
         parameters: {
             query?: never;
@@ -7066,6 +7154,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Plan"];
+                };
+            };
+        };
+    };
+    campaignDirectoryCampaigns: {
+        parameters: {
+            query?: {
+                state?: "DRAFT" | "PRELAUNCH" | "SUBMITTED" | "CHANGES_REQUESTED" | "REJECTED" | "APPROVED" | "SCHEDULED" | "LIVE" | "SUSPENDED" | "CANCELED" | "SUCCESSFUL" | "UNSUCCESSFUL" | "COLLECTING" | "LATE_PLEDGE" | "FULFILLING" | "COMPLETED";
+                after?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignDirectoryResponse"];
                 };
             };
         };
