@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiError } from '../../lib/api/problem';
@@ -24,6 +24,21 @@ vi.mock('../../lib/plans/api', async (importOriginal) => {
     cancelSubscription: vi.fn(),
   };
 });
+
+/*
+ * The chooser navigates now: a creator sent here by a refused submission is taken back to
+ * their campaign the moment the plan they chose entitles them.
+ *
+ * Spread first so the real module's other exports survive -- `i18n/navigation.tsx` reads
+ * `redirect` and `permanentRedirect` at import time, and a factory that replaced the module
+ * wholesale left those undefined.
+ */
+const push = vi.fn();
+
+vi.mock('next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('next/navigation')>()),
+  useRouter: () => ({ push, replace: vi.fn(), back: vi.fn() }),
+}));
 
 const readMock = vi.mocked(readMySubscription);
 const subscribeMock = vi.mocked(subscribeToPlan);
@@ -79,6 +94,12 @@ function draw(props: Partial<React.ComponentProps<typeof PlanChooser>> = {}) {
   return render(<PlanChooser plans={PLANS} copy={COPY} locale="en" {...props} />);
 }
 
+beforeEach(() => {
+  // The router is shared by every test in this file; a redirect one of them provoked must not
+  // be counted against the next.
+  push.mockClear();
+});
+
 describe('the plan chooser', () => {
   it('renders the prices before it knows anything about the reader', () => {
     // Never resolves: the catalogue is a prop and must not wait on a fetch.
@@ -122,6 +143,57 @@ describe('the plan chooser', () => {
       'href',
       '/en/projects/abc-123/edit/review',
     );
+  });
+
+  it('takes the creator back to their campaign the moment the plan entitles them', async () => {
+    readMock.mockResolvedValue({ subscription: null });
+    subscribeMock.mockResolvedValue({ subscription: held() });
+
+    draw({ fromProjectId: 'abc-123' });
+
+    await waitFor(() => expect(readMock).toHaveBeenCalled());
+    await userEvent.click(screen.getByRole('button', { name: /Choose this plan: Starter/ }));
+
+    // The page has finished its business with them: they came to be allowed to submit, and
+    // they now are. Leaving them on a price list to find their own way back is the failure
+    // `?from=submit&project=` exists to prevent.
+    // `stringContaining` because `useRouter` prefixes the reader's language, the same way the
+    // review panel's own redirect does.
+    await waitFor(() =>
+      expect(push).toHaveBeenCalledWith(
+        expect.stringContaining('/projects/abc-123/edit/review'),
+      ),
+    );
+  });
+
+  it('leaves a creator on the price list when the plan is chosen and not yet paid for', async () => {
+    readMock.mockResolvedValue({ subscription: null });
+    subscribeMock.mockResolvedValue({
+      subscription: held({ state: 'PENDING_PAYMENT', entitled: false, currentPeriodEnd: null }),
+    });
+
+    draw({ fromProjectId: 'abc-123' });
+
+    await waitFor(() => expect(readMock).toHaveBeenCalled());
+    await userEvent.click(screen.getByRole('button', { name: /Choose this plan: Starter/ }));
+
+    // Sending them back would send them to a campaign that refuses them again, which is a
+    // worse answer than the page explaining what is still needed.
+    expect(await screen.findByText(COPY.held.pendingBody)).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('offers the way back once the plan is active, rather than repeating why they came', async () => {
+    readMock.mockResolvedValue({ subscription: held() });
+
+    draw({ fromProjectId: 'abc-123' });
+
+    expect(await screen.findByText(COPY.fromSubmit.ready)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: COPY.fromSubmit.resume })).toHaveAttribute(
+      'href',
+      '/en/projects/abc-123/edit/review',
+    );
+    expect(screen.queryByText(COPY.fromSubmit.title)).not.toBeInTheDocument();
   });
 
   it('says nothing about a campaign when the reader arrived on their own', async () => {

@@ -326,6 +326,30 @@ export async function submitProject(id: string, signal?: AbortSignal): Promise<P
   );
 }
 
+/**
+ * Takes a cleared campaign live: `APPROVED` or `SCHEDULED` → `LIVE`.
+ *
+ * The one transition on this screen that moves money rather than paperwork. The
+ * campaign enters every public listing, starts taking pledges, and its goal and
+ * deadline freeze on the edge into `LIVE` — §6.1 has no way back to a draft. So
+ * the interface asks first, the way `openPrelaunch` does for a much smaller
+ * consequence.
+ *
+ * Refused with `PROJECT_TRANSITION_NOT_ALLOWED` (409) from any other state, and
+ * with `PROJECT_NOT_LAUNCHABLE` (409) naming the fields a campaign cannot launch
+ * without. Neither is a state a creator can reach from this panel while it draws
+ * the control only for the two states that can launch, which is exactly why both
+ * are rendered rather than assumed away.
+ */
+export async function launchProject(id: string, signal?: AbortSignal): Promise<ProjectEdit> {
+  return readProject(
+    await authorizedFetch(`/v1/projects/${encodeURIComponent(id)}/launch`, {
+      method: 'POST',
+      signal,
+    }),
+  );
+}
+
 /* -------------------------------------------------------------------------
  * Taxonomy
  *

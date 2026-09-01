@@ -4,6 +4,7 @@ import az.ideanest.shared.EmailAddress;
 import az.ideanest.user.domain.User;
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -29,6 +30,15 @@ import org.springframework.data.repository.query.Param;
 public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByIdAndDeletedAtIsNull(UUID id);
+
+    /**
+     * Several accounts in one query, for a caller holding a page of rows that each
+     * name one.
+     *
+     * <p>Deleted accounts are excluded, exactly as the single finder excludes them, so
+     * that a caller cannot get through this method what the other one refuses.
+     */
+    List<User> findAllByIdInAndDeletedAtIsNull(Collection<UUID> ids);
 
     Optional<User> findByEmailAndDeletedAtIsNull(EmailAddress email);
 

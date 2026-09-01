@@ -151,4 +151,227 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
                               az.ideanest.project.domain.ProjectState.LATE_PLEDGE)
             """)
     long countInPlatformHands(@Param("creatorId") UUID creatorId, @Param("excluding") UUID excluding);
+
+    /**
+     * The moderation submission queue, oldest first.
+     *
+     * <p>One row per campaign in the requested state, carrying the transition that put
+     * it there — see {@link SubmissionQueueRow} for why that is a {@code LATERAL} join
+     * and why the cursor is the transition's identifier rather than the campaign's.
+     *
+     * <p>Ordered by that identifier ascending, which is oldest first: UUIDv7 sorts by
+     * the millisecond it was minted, and the transition was minted when the campaign
+     * entered the state. A queue worked newest-first is a queue whose oldest entry is
+     * never reached.
+     *
+     * <p>{@code to_state = p.state} inside the join rather than merely taking the
+     * latest transition: a campaign resubmitted after a change request has several
+     * transitions into {@code SUBMITTED}, and the one that matters is the last of
+     * them. Both spellings answer the same thing while the data is consistent, and
+     * this one keeps answering it when a transition is written that does not change
+     * the state a campaign is in.
+     *
+     * <p><strong>{@code LEFT} and {@code COALESCE}, because an invisible campaign is
+     * the bug this query exists to fix.</strong> Every state change the application
+     * makes writes a transition, so in practice the row is always there — and an inner
+     * join would silently drop a campaign that reached {@code SUBMITTED} some other
+     * way: a seed script, a manual correction, a migration. That campaign is precisely
+     * the one nobody would ever find, which is the failure being repaired rather than a
+     * variation on it. It falls back to the campaign's own creation, so it is ordered
+     * imperfectly and it is <em>present</em>, and the two are not close in cost.
+     */
+    @Query(
+            value =
+                    """
+                    SELECT COALESCE(t.id, p.id) AS cursor,
+                           COALESCE(t.created_at, p.created_at) AS enteredAt,
+                           t.note AS note,
+                           p.id AS projectId, p.title AS title, p.slug AS slug,
+                           p.state AS state, p.goal_amount AS goalAmount,
+                           p.currency AS currency, p.creator_id AS creatorId
+                    FROM projects p
+                    LEFT JOIN LATERAL (
+                        SELECT s.id, s.created_at, s.note
+                        FROM project_state_transitions s
+                        WHERE s.project_id = p.id AND s.to_state = p.state
+                        ORDER BY s.created_at DESC, s.id DESC
+                        LIMIT 1
+                    ) t ON TRUE
+                    WHERE p.state = :state
+                    ORDER BY COALESCE(t.id, p.id)
+                    LIMIT :limit
+                    """,
+            nativeQuery = true)
+    List<SubmissionQueueRow> findSubmissionQueue(@Param("state") String state, @Param("limit") int limit);
+
+    /**
+     * The page after {@code after}.
+     *
+     * <p>Spelled out rather than folded into the query above behind a nullable
+     * parameter, which is the choice {@code ContentReportRepository} made for the
+     * report queue and for the same reason: a {@code :after IS NULL OR …} predicate
+     * hands the driver a parameter whose type it has to guess on the first page, and
+     * the guess is what fails on a UUID column.
+     */
+    @Query(
+            value =
+                    """
+                    SELECT COALESCE(t.id, p.id) AS cursor,
+                           COALESCE(t.created_at, p.created_at) AS enteredAt,
+                           t.note AS note,
+                           p.id AS projectId, p.title AS title, p.slug AS slug,
+                           p.state AS state, p.goal_amount AS goalAmount,
+                           p.currency AS currency, p.creator_id AS creatorId
+                    FROM projects p
+                    LEFT JOIN LATERAL (
+                        SELECT s.id, s.created_at, s.note
+                        FROM project_state_transitions s
+                        WHERE s.project_id = p.id AND s.to_state = p.state
+                        ORDER BY s.created_at DESC, s.id DESC
+                        LIMIT 1
+                    ) t ON TRUE
+                    WHERE p.state = :state AND COALESCE(t.id, p.id) > :after
+                    ORDER BY COALESCE(t.id, p.id)
+                    LIMIT :limit
+                    """,
+            nativeQuery = true)
+    List<SubmissionQueueRow> findSubmissionQueueAfter(
+            @Param("state") String state, @Param("after") UUID after, @Param("limit") int limit);
+
+    /**
+     * The console's campaign directory: everything on the platform, newest first.
+     *
+     * <p><strong>Not the submission queue with the filter removed.</strong> That query
+     * reads the transition that put a campaign in its state, oldest first, because it
+     * answers "what has been waiting longest". This answers "what is on the platform",
+     * so it is ordered by when the campaign was created and carries what a member of
+     * staff looking at a campaign wants to know — how much it has raised and from how
+     * many people — which the queue has no use for.
+     *
+     * <p><strong>Ordered by {@code (created_at, id)} rather than by the key alone.</strong>
+     * The primary key is a UUIDv7 and is therefore time-ordered for everything this
+     * platform has written, but not for anything seeded or migrated in with a key from
+     * somewhere else. Ordering on the column that means what it says costs an index and
+     * cannot be wrong.
+     */
+    @Query(
+            value =
+                    """
+                    SELECT p.id AS projectId, p.title AS title, p.slug AS slug,
+                           p.state AS state, p.created_at AS createdAt,
+                           p.launched_at AS launchedAt, p.deadline AS deadline,
+                           p.goal_amount AS goalAmount, p.currency AS currency,
+                           p.pledged_amount AS pledgedAmount, p.backers_count AS backersCount,
+                           p.creator_id AS creatorId
+                    FROM projects p
+                    ORDER BY p.created_at DESC, p.id DESC
+                    LIMIT :limit
+                    """,
+            nativeQuery = true)
+    List<CampaignDirectoryRow> findCampaignDirectory(@Param("limit") int limit);
+
+    /**
+     * The page after {@code after}, which names a campaign rather than a position.
+     *
+     * <p>The row comparison is what makes one key enough for a two-column order: it asks
+     * PostgreSQL for everything that sorts after that campaign, in the same terms the
+     * {@code ORDER BY} uses. A cursor carrying both halves would be the alternative, and
+     * it would put a parseable structure in a URL for no gain — the id is already unique
+     * and the subquery is a primary-key lookup.
+     *
+     * <p>A cursor naming a campaign that has since been deleted answers nothing at all
+     * rather than answering the first page again. §17.4 deletes an account and leaves its
+     * campaigns behind, so this is a narrow case, and an empty page is the honest one:
+     * silently restarting a list somebody is halfway through is how a moderator reads the
+     * same twenty campaigns twice.
+     */
+    @Query(
+            value =
+                    """
+                    SELECT p.id AS projectId, p.title AS title, p.slug AS slug,
+                           p.state AS state, p.created_at AS createdAt,
+                           p.launched_at AS launchedAt, p.deadline AS deadline,
+                           p.goal_amount AS goalAmount, p.currency AS currency,
+                           p.pledged_amount AS pledgedAmount, p.backers_count AS backersCount,
+                           p.creator_id AS creatorId
+                    FROM projects p
+                    WHERE (p.created_at, p.id) <
+                          (SELECT c.created_at, c.id FROM projects c WHERE c.id = :after)
+                    ORDER BY p.created_at DESC, p.id DESC
+                    LIMIT :limit
+                    """,
+            nativeQuery = true)
+    List<CampaignDirectoryRow> findCampaignDirectoryAfter(
+            @Param("after") UUID after, @Param("limit") int limit);
+
+    /**
+     * The same list, narrowed to one state.
+     *
+     * <p>Spelled out rather than folded into the query above behind a nullable parameter,
+     * which is the choice the submission queue made two methods up and for the same
+     * reason: a {@code :state IS NULL OR …} predicate hands the driver a parameter whose
+     * type it has to guess.
+     */
+    @Query(
+            value =
+                    """
+                    SELECT p.id AS projectId, p.title AS title, p.slug AS slug,
+                           p.state AS state, p.created_at AS createdAt,
+                           p.launched_at AS launchedAt, p.deadline AS deadline,
+                           p.goal_amount AS goalAmount, p.currency AS currency,
+                           p.pledged_amount AS pledgedAmount, p.backers_count AS backersCount,
+                           p.creator_id AS creatorId
+                    FROM projects p
+                    WHERE p.state = :state
+                    ORDER BY p.created_at DESC, p.id DESC
+                    LIMIT :limit
+                    """,
+            nativeQuery = true)
+    List<CampaignDirectoryRow> findCampaignDirectoryInState(
+            @Param("state") String state, @Param("limit") int limit);
+
+    /** One state, the page after {@code after}. */
+    @Query(
+            value =
+                    """
+                    SELECT p.id AS projectId, p.title AS title, p.slug AS slug,
+                           p.state AS state, p.created_at AS createdAt,
+                           p.launched_at AS launchedAt, p.deadline AS deadline,
+                           p.goal_amount AS goalAmount, p.currency AS currency,
+                           p.pledged_amount AS pledgedAmount, p.backers_count AS backersCount,
+                           p.creator_id AS creatorId
+                    FROM projects p
+                    WHERE p.state = :state
+                      AND (p.created_at, p.id) <
+                          (SELECT c.created_at, c.id FROM projects c WHERE c.id = :after)
+                    ORDER BY p.created_at DESC, p.id DESC
+                    LIMIT :limit
+                    """,
+            nativeQuery = true)
+    List<CampaignDirectoryRow> findCampaignDirectoryInStateAfter(
+            @Param("state") String state, @Param("after") UUID after, @Param("limit") int limit);
+
+    /**
+     * Campaigns whose launch time has arrived — issue #389.
+     *
+     * <p>Both states, because {@code SCHEDULED} is reachable in §6.1 and nothing performs
+     * that edge today: a campaign waiting for a time it was given is {@code APPROVED} with
+     * a {@code scheduledLaunchAt}, and a sweep that read only {@code SCHEDULED} would find
+     * nothing for as long as that remains true. Reading both is what makes this job correct
+     * before and after anything sets that state.
+     *
+     * <p>Oldest first, so a backlog is opened in the order the times were chosen rather
+     * than in whatever order the planner returns. A campaign whose time passed while the
+     * service was down opens before one whose time is a minute old.
+     */
+    @Query(
+            """
+            SELECT p.id FROM Project p
+            WHERE p.state IN (az.ideanest.project.domain.ProjectState.APPROVED,
+                              az.ideanest.project.domain.ProjectState.SCHEDULED)
+              AND p.scheduledLaunchAt IS NOT NULL
+              AND p.scheduledLaunchAt <= :now
+            ORDER BY p.scheduledLaunchAt ASC
+            """)
+    List<UUID> findDueForLaunch(@Param("now") Instant now, Pageable page);
 }
