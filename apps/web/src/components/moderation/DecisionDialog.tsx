@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { CharacterCount, Field, InlineAlert, Pill, Textarea } from '@ideanest/ui';
 import { Modal } from '@ideanest/ui/motion';
-import type { CampaignOutcome, QueuedReport, ReportOutcome } from '../../lib/moderation/api';
+import type { CampaignOutcome, QueuedReport, ReportOutcome, ReportTargetType } from '../../lib/moderation/api';
 import { requiresNote } from '../../lib/moderation/api';
 import { shortId } from '../../lib/moderation/describe';
 import { fillPlaceholders } from '../../lib/i18n/placeholders';
@@ -59,15 +59,15 @@ interface Copy {
  * the first and the subject of the second, which is one word in English and two in Russian —
  * so the name is built from `targetName` in one branch and `campaignName` in the other.
  */
-function copyFor(decision: Decision, report: QueuedReport, copy: ModerationCopy): Copy {
+function copyFor(decision: Decision, subject: DecisionSubject, copy: ModerationCopy): Copy {
   const verb = copy.decision.verb[decision.outcome];
   const name =
     decision.kind === 'report'
       ? fillPlaceholders(copy.targetName, {
-          kind: copy.target[report.target.type],
-          id: shortId(report.target.id),
+          kind: copy.target[subject.targetType],
+          id: shortId(subject.targetId),
         })
-      : fillPlaceholders(copy.campaignName, { id: shortId(report.target.id) });
+      : fillPlaceholders(copy.campaignName, { id: shortId(subject.targetId) });
 
   return {
     title: verb.title,
@@ -83,9 +83,29 @@ function copyFor(decision: Decision, report: QueuedReport, copy: ModerationCopy)
   };
 }
 
+/**
+ * What a decision is about, which is less than a report.
+ *
+ * <p>This dialog took a whole {@link QueuedReport} until the submission queue needed it,
+ * and used three fields of one: an identity to key the note on, and the pair that names
+ * the thing in the sentence. A submitted campaign has all three and is not a report —
+ * nobody complained about it — so the prop is now the three fields rather than the object
+ * that happened to be the first thing carrying them.
+ *
+ * @param key identity, so a note typed for one decision does not survive into the next
+ * @param targetType only read on the `report` branch, where the sentence names the kind
+ *     of thing complained about. A campaign outcome always concerns a campaign
+ * @param targetId what gets shortened into the sentence
+ */
+export interface DecisionSubject {
+  readonly key: string;
+  readonly targetType: ReportTargetType;
+  readonly targetId: string;
+}
+
 export interface DecisionDialogProps {
   readonly decision: Decision | null;
-  readonly report: QueuedReport | null;
+  readonly subject: DecisionSubject | null;
   readonly busy: boolean;
   /** A refusal from the service. Keeps the dialog open — nothing has changed. */
   readonly error: string | null;
@@ -110,7 +130,7 @@ export interface DecisionDialogProps {
  */
 export function DecisionDialog({
   decision,
-  report,
+  subject,
   busy,
   error,
   onCancel,
@@ -120,7 +140,7 @@ export function DecisionDialog({
   const [note, setNote] = useState('');
   const [noteError, setNoteError] = useState<string | null>(null);
 
-  const key = decision === null || report === null ? null : `${report.id}:${decision.outcome}`;
+  const key = decision === null || subject === null ? null : `${subject.key}:${decision.outcome}`;
 
   /*
    * A note typed for one decision must not survive into the next one. Keyed on
@@ -133,13 +153,13 @@ export function DecisionDialog({
     setNoteError(null);
   }, [key]);
 
-  if (decision === null || report === null) {
+  if (decision === null || subject === null) {
     // Nothing to confirm. Rendering a closed `Modal` would put a dialog with no
     // title in the tree, and `title` is what names it.
     return null;
   }
 
-  const copy = copyFor(decision, report, moderation);
+  const copy = copyFor(decision, subject, moderation);
   const count = Array.from(note).length;
 
   function confirm(): void {

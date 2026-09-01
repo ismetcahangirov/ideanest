@@ -530,7 +530,15 @@ export function ModerationQueue({ pinnedTarget, detailHrefBase, copy }: Moderati
 
       <DecisionDialog
         decision={pending?.decision ?? null}
-        report={pending?.report ?? null}
+        subject={
+          pending === null
+            ? null
+            : {
+                key: pending.report.id,
+                targetType: pending.report.target.type,
+                targetId: pending.report.target.id,
+              }
+        }
         busy={dialogBusy}
         error={dialogError}
         onCancel={closeDialog}

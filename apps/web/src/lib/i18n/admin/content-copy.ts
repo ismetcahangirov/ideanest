@@ -4,6 +4,7 @@ import type {
   ReportReason,
   ReportState,
   ReportTargetType,
+  SubmissionState,
 } from '../../moderation/api';
 import type { AdminTranslator } from '../admin-copy';
 import type { PluralForms } from '../plurals';
@@ -318,6 +319,84 @@ export function moderationQueueCopyFrom(
     actGroup: String(t.raw(at('actGroup'))),
     actHeading: t(at('actHeading')),
     actLabel: String(t.raw(at('actLabel'))),
+  };
+}
+
+/**
+ * AD-01's campaign review queue — the screen that says what the three outcomes apply to.
+ *
+ * <p>Its own contract rather than a reuse of {@link ModerationQueueCopy}: that one is
+ * about complaints, and every heading, empty state and notice on this screen is about a
+ * campaign waiting on us. What the two do share is {@link ModerationCopy}, because the
+ * three campaign verbs and the dialog around them are the same three verbs.
+ */
+export interface SubmissionQueueCopy extends ConsoleChromeCopy {
+  readonly moderation: ModerationCopy;
+  readonly signedOutTitle: string;
+  readonly signedOutBody: string;
+  readonly forbiddenTitle: string;
+  readonly forbiddenBody: string;
+  readonly notStaff: string;
+  readonly transitionNotAllowed: string;
+  /** Carries `{state}`, which stays in the service's own spelling. */
+  readonly transitionNotAllowedFrom: string;
+  readonly refused: string;
+  readonly unreachable: string;
+  /** A whole heading per state, not a word put in front of "campaigns". */
+  readonly heading: Readonly<Record<SubmissionState, string>>;
+  /** The tag on a row, and the chips. */
+  readonly state: Readonly<Record<SubmissionState, string>>;
+  readonly statusLabel: string;
+  readonly loadingList: string;
+  readonly emptyTitle: Readonly<Record<SubmissionState, string>>;
+  readonly emptyBody: Readonly<Record<SubmissionState, string>>;
+  /** Carries `{days}`. The queue's one number: how long somebody has been waiting. */
+  readonly waiting: string;
+  readonly goalLabel: string;
+  readonly noGoal: string;
+  readonly stateLabel: string;
+  /** What a row says instead of a name when §17.4 has anonymised the creator. */
+  readonly creatorGone: string;
+  readonly decideHeading: string;
+  /** Carries `{title}`, for the group label a screen reader announces. */
+  readonly decideGroup: string;
+  /** Carries `{title}` and `{state}`. */
+  readonly notice: string;
+}
+
+export function submissionQueueCopyFrom(
+  t: AdminTranslator,
+  chrome: ConsoleChromeCopy,
+): SubmissionQueueCopy {
+  const at = (key: string) => `screens.submissionQueue.${key}`;
+  const table = <T,>(key: string) => t.raw(at(key)) as Readonly<T>;
+
+  return {
+    ...chrome,
+    moderation: moderationCopyFrom(t, chrome.cancel),
+    signedOutTitle: t(at('signedOutTitle')),
+    signedOutBody: t(at('signedOutBody')),
+    forbiddenTitle: t(at('forbiddenTitle')),
+    forbiddenBody: t(at('forbiddenBody')),
+    notStaff: t(at('notStaff')),
+    transitionNotAllowed: t(at('transitionNotAllowed')),
+    transitionNotAllowedFrom: String(t.raw(at('transitionNotAllowedFrom'))),
+    refused: t(at('refused')),
+    unreachable: t(at('unreachable')),
+    heading: table<Record<SubmissionState, string>>('heading'),
+    state: table<Record<SubmissionState, string>>('state'),
+    statusLabel: t(at('statusLabel')),
+    loadingList: t(at('loadingList')),
+    emptyTitle: table<Record<SubmissionState, string>>('emptyTitle'),
+    emptyBody: table<Record<SubmissionState, string>>('emptyBody'),
+    waiting: String(t.raw(at('waiting'))),
+    goalLabel: t(at('goalLabel')),
+    noGoal: t(at('noGoal')),
+    stateLabel: t(at('stateLabel')),
+    creatorGone: t(at('creatorGone')),
+    decideHeading: t(at('decideHeading')),
+    decideGroup: String(t.raw(at('decideGroup'))),
+    notice: String(t.raw(at('notice'))),
   };
 }
 
