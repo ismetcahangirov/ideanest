@@ -147,6 +147,14 @@ export const AUDIT_ENTITY_TYPES: readonly string[] = Object.freeze([
 ]);
 
 /**
+ * The action table, in the shape the catalogue has to hold it: the group, then the rest.
+ *
+ * <p>`project.approved` is two nodes in the message file rather than one key, because
+ * next-intl reads a `.` in a key as nesting and refuses a key that carries one.
+ */
+export type AuditActionLabels = Readonly<Record<string, Readonly<Record<string, string>>>>;
+
+/**
  * The action, in words, from a table the caller resolved.
  *
  * <p>A lookup with a fallback rather than an exhaustive map, and the fallback is the point:
@@ -158,7 +166,16 @@ export const AUDIT_ENTITY_TYPES: readonly string[] = Object.freeze([
  * client component, and a catalogue cannot be read from one. The screen resolves it on the
  * server and hands it down, which is what every other translated component in this application
  * does.
+ *
+ * <p><strong>The wire spelling is split rather than looked up whole.</strong> The service
+ * spells an action `project.approved`, and next-intl refuses a catalogue key carrying a `.` -
+ * the character expresses nesting there, so a flat key is an INVALID_KEY error rather than a
+ * message. The two halves are two levels in {@link AuditActionLabels}, and an action carrying
+ * no `.` at all cannot be in the table, so it falls straight through to its wire spelling.
  */
-export function actionLabel(action: string, labels: Readonly<Record<string, string>>): string {
-  return labels[action] ?? action;
+export function actionLabel(action: string, labels: AuditActionLabels): string {
+  const separator = action.indexOf('.');
+  if (separator < 0) return action;
+
+  return labels[action.slice(0, separator)]?.[action.slice(separator + 1)] ?? action;
 }

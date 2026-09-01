@@ -715,18 +715,30 @@
           "collection": "Collections"
         },
         "action": {
-          "project.approved": "Campaign approved",
-          "project.rejected": "Campaign rejected",
-          "project.changes_requested": "Changes requested",
-          "project.suspended": "Campaign suspended",
-          "report.upheld": "Report upheld",
-          "report.dismissed": "Report dismissed",
-          "account.searched": "Accounts searched",
-          "account.suspended": "Account suspended",
-          "account.reinstated": "Account reinstated",
-          "audit.trail_read": "Audit trail read",
-          "payment.log_read": "Payment log read",
-          "ledger.read": "Ledger read"
+          "project": {
+            "approved": "Campaign approved",
+            "rejected": "Campaign rejected",
+            "changes_requested": "Changes requested",
+            "suspended": "Campaign suspended"
+          },
+          "report": {
+            "upheld": "Report upheld",
+            "dismissed": "Report dismissed"
+          },
+          "account": {
+            "searched": "Accounts searched",
+            "suspended": "Account suspended",
+            "reinstated": "Account reinstated"
+          },
+          "audit": {
+            "trail_read": "Audit trail read"
+          },
+          "payment": {
+            "log_read": "Payment log read"
+          },
+          "ledger": {
+            "read": "Ledger read"
+          }
         }
       },
       "health": {
