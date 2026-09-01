@@ -2452,7 +2452,9 @@
     "fromSubmit": {
       "title": "Publishing needs a plan",
       "body": "Your campaign is saved and nothing has been lost. Choose a plan below and you can send it for review straight away.",
-      "back": "Back to your campaign"
+      "back": "Back to your campaign",
+      "ready": "Your plan is active",
+      "resume": "Back to your campaign and submit it"
     },
     "held": {
       "heading": "Your plan",
