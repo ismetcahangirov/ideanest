@@ -86,7 +86,7 @@ jobs:
       # staging serves a different host.
       - name: Build and push the API image
         id: api
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: apps/api
           file: apps/api/Dockerfile
@@ -97,7 +97,7 @@ jobs:
 
       - name: Build and push the web image
         id: web
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           # The repository root, because `@ideanest/web` compiles three
           # source-only workspace packages. `.dockerignore` is what keeps the
