@@ -406,7 +406,9 @@
       "/admin/audit": "Audit log",
       "/admin/email-templates": "Email templates",
       "/admin/flags": "Feature flags",
-      "/admin/health": "System health"
+      "/admin/health": "System health",
+      "/admin/moderation/submissions": "Campaigns for review",
+      "/admin/campaigns": "All campaigns"
     },
     "states": {
       "built": "Built",
@@ -683,6 +685,18 @@
         "metaDescription": "Search the platform accounts, and stop the ones that have to be stopped.",
         "title": "Accounts",
         "intro": "Every account on the platform, searched by address, display name or profile slug. Suspending one signs it out everywhere and refuses it at sign-in; it changes nothing about the campaigns it created or the pledges it made, and those are separate decisions with separate consequences."
+      },
+      "submissions": {
+        "metaTitle": "Campaigns for review",
+        "metaDescription": "Campaigns their creators have submitted, waiting on a decision.",
+        "title": "Campaigns for review",
+        "intro": "Campaigns their creators have submitted, oldest first. Deciding one moves the campaign's own state: approving clears it for launch, requesting changes sends it back with a note, and rejecting is final."
+      },
+      "campaigns": {
+        "metaTitle": "Campaigns",
+        "metaDescription": "Every campaign on the platform, in any state, newest first.",
+        "title": "Campaigns",
+        "intro": "Every campaign on the platform, newest first, whatever state it is in. The review queue lists what is waiting on a decision; this lists everything, including drafts nobody has submitted and campaigns cleared for launch that have not launched."
       }
     },
     "screens": {
@@ -708,18 +722,30 @@
           "collection": "Collections"
         },
         "action": {
-          "project.approved": "Campaign approved",
-          "project.rejected": "Campaign rejected",
-          "project.changes_requested": "Changes requested",
-          "project.suspended": "Campaign suspended",
-          "report.upheld": "Report upheld",
-          "report.dismissed": "Report dismissed",
-          "account.searched": "Accounts searched",
-          "account.suspended": "Account suspended",
-          "account.reinstated": "Account reinstated",
-          "audit.trail_read": "Audit trail read",
-          "payment.log_read": "Payment log read",
-          "ledger.read": "Ledger read"
+          "project": {
+            "approved": "Campaign approved",
+            "rejected": "Campaign rejected",
+            "changes_requested": "Changes requested",
+            "suspended": "Campaign suspended"
+          },
+          "report": {
+            "upheld": "Report upheld",
+            "dismissed": "Report dismissed"
+          },
+          "account": {
+            "searched": "Accounts searched",
+            "suspended": "Account suspended",
+            "reinstated": "Account reinstated"
+          },
+          "audit": {
+            "trail_read": "Audit trail read"
+          },
+          "payment": {
+            "log_read": "Payment log read"
+          },
+          "ledger": {
+            "read": "Ledger read"
+          }
         }
       },
       "health": {
@@ -1568,6 +1594,89 @@
           "CANCELED": "Ended",
           "EXPIRED": "Expired"
         }
+      },
+      "submissionQueue": {
+        "signedOutTitle": "Sign in to work the queue",
+        "signedOutBody": "This screen reads campaigns awaiting a decision, which needs a signed-in member of staff.",
+        "forbiddenTitle": "You cannot see this queue",
+        "forbiddenBody": "Reviewing campaigns needs the content moderation capability. Ask an administrator if you should have it.",
+        "notStaff": "Reviewing campaigns is done by platform staff.",
+        "transitionNotAllowed": "The campaign is no longer in a state this decision can be taken from. Reload the queue.",
+        "transitionNotAllowedFrom": "Somebody has already decided this one — it is now {state}.",
+        "refused": "The service refused that.",
+        "unreachable": "We could not reach the service. Try again.",
+        "heading": {
+          "SUBMITTED": "Waiting for a decision",
+          "CHANGES_REQUESTED": "Sent back to their creators",
+          "APPROVED": "Cleared for launch",
+          "REJECTED": "Refused"
+        },
+        "state": {
+          "SUBMITTED": "Waiting",
+          "CHANGES_REQUESTED": "Changes requested",
+          "APPROVED": "Approved",
+          "REJECTED": "Rejected"
+        },
+        "statusLabel": "Which campaigns",
+        "loadingList": "Loading campaigns",
+        "emptyTitle": {
+          "SUBMITTED": "Nothing is waiting",
+          "CHANGES_REQUESTED": "Nothing has been sent back",
+          "APPROVED": "Nothing has been approved yet",
+          "REJECTED": "Nothing has been refused"
+        },
+        "emptyBody": {
+          "SUBMITTED": "Every campaign submitted so far has been decided.",
+          "CHANGES_REQUESTED": "No campaign is currently with its creator awaiting changes.",
+          "APPROVED": "Approved campaigns appear here until they launch.",
+          "REJECTED": "Refused campaigns stay here so the decision can be read back."
+        },
+        "waiting": "Waiting {days} days",
+        "goalLabel": "Goal",
+        "noGoal": "No goal set",
+        "stateLabel": "State",
+        "creatorGone": "Creator account closed",
+        "decideHeading": "Decide this campaign",
+        "decideGroup": "Decide {title}",
+        "notice": "{title} is now {state}."
+      },
+      "campaignDirectory": {
+        "subject": "the campaign directory",
+        "heading": "Campaigns",
+        "filterLabel": "State",
+        "everything": "Every state",
+        "loadingList": "Loading campaigns",
+        "emptyTitle": "There are no campaigns yet",
+        "emptyBody": "A campaign appears here the moment somebody starts one, long before it is submitted for review.",
+        "filteredTitle": "No campaign is in this state",
+        "filteredBody": "Choose another state, or every state.",
+        "creatorGone": "Creator account closed",
+        "goalLabel": "Goal",
+        "noGoal": "No goal set",
+        "raisedLabel": "Raised",
+        "backersLabel": "Backers",
+        "startedLabel": "Started",
+        "launchedLabel": "Launched",
+        "deadlineLabel": "Closes",
+        "notLaunched": "Not launched",
+        "state": {
+          "DRAFT": "Draft",
+          "PRELAUNCH": "Pre-launch",
+          "SUBMITTED": "Awaiting review",
+          "CHANGES_REQUESTED": "Changes requested",
+          "APPROVED": "Approved",
+          "SCHEDULED": "Scheduled",
+          "LIVE": "Live",
+          "COLLECTING": "Collecting",
+          "LATE_PLEDGE": "Late pledges",
+          "SUCCESSFUL": "Funded",
+          "UNSUCCESSFUL": "Not funded",
+          "FULFILLING": "Fulfilling",
+          "COMPLETED": "Completed",
+          "REJECTED": "Rejected",
+          "SUSPENDED": "Suspended",
+          "CANCELED": "Cancelled"
+        }
       }
     },
     "moderation": {
@@ -2388,7 +2497,9 @@
     "fromSubmit": {
       "title": "Publishing needs a plan",
       "body": "Your campaign is saved and nothing has been lost. Choose a plan below and you can send it for review straight away.",
-      "back": "Back to your campaign"
+      "back": "Back to your campaign",
+      "ready": "Your plan is active",
+      "resume": "Back to your campaign and submit it"
     },
     "held": {
       "heading": "Your plan",

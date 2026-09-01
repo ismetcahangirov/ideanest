@@ -2,7 +2,6 @@
   "maxSlackPercent": 15,
   "sharedFirstLoadKib": 471,
   "routes": {
-    "/_not-found": 471,
     "/[locale]": 728,
     "/[locale]/about": 585,
     "/[locale]/account": 584,
@@ -13,6 +12,7 @@
     "/[locale]/admin": 510,
     "/[locale]/admin/analytics": 619,
     "/[locale]/admin/audit": 585,
+    "/[locale]/admin/campaigns": 580,
     "/[locale]/admin/curation": 718,
     "/[locale]/admin/curation/[slug]": 718,
     "/[locale]/admin/curation/badges": 716,
@@ -29,6 +29,7 @@
     "/[locale]/admin/moderation/[reportId]": 723,
     "/[locale]/admin/moderation/content": 724,
     "/[locale]/admin/moderation/profiles": 723,
+    "/[locale]/admin/moderation/submissions": 715,
     "/[locale]/admin/payments": 620,
     "/[locale]/admin/payouts": 624,
     "/[locale]/admin/plans": 587,
@@ -84,6 +85,7 @@
     "/[locale]/sign-in": 586,
     "/[locale]/trust-safety": 585,
     "/[locale]/u/[slug]": 646,
-    "/[locale]/verify-email": 576
+    "/[locale]/verify-email": 576,
+    "/_not-found": 471
   }
 }

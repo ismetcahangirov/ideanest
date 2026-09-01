@@ -96,6 +96,20 @@ export const CONSOLE_MODULES: readonly ConsoleModule[] = Object.freeze([
     code: 'AD-01',
     state: 'built',
     href: '/admin/moderation',
+    /*
+     * The campaign review queue is AD-01's second screen, and its absence was the module's
+     * real gap rather than a missing convenience: `approve`, `reject` and `request-changes`
+     * had existed since #101 with nothing listing what they apply to, so the only route to
+     * a submitted campaign was a report somebody had filed about it. A campaign nobody
+     * complained about waited out of sight while its creator was told it was under review.
+     */
+    /*
+     * And the campaign directory (#387), which is the module's third screen and the
+     * answer to a question the first two cannot take: both list campaigns that have
+     * DONE something — been reported, been submitted — so a draft, a live campaign, or
+     * one cleared for launch a week ago and never launched appeared on no screen here.
+     */
+    otherScreens: ['/admin/moderation/submissions', '/admin/campaigns'],
     issue: 101,
   },
   {
@@ -281,6 +295,8 @@ export const CONSOLE_GROUPS: readonly ConsoleGroup[] = Object.freeze([
     heading: 'content',
     links: [
       '/admin/moderation',
+      '/admin/moderation/submissions',
+      '/admin/campaigns',
       '/admin/moderation/content',
       '/admin/moderation/profiles',
     ],

@@ -15,6 +15,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param finalisation how often §5.1 is applied at the deadline, and to how many
  *     campaigns at once
  * @param latePledges how long a campaign may keep taking pledges after it closed
+ * @param submissions how much of the moderation submission queue one request may read
+ * @param directory how much of the console's campaign directory one request may read
+ * @param launches how often campaigns whose launch time has arrived are taken live
  */
 @ConfigurationProperties(prefix = "ideanest.project")
 public record ProjectProperties(
@@ -23,7 +26,10 @@ public record ProjectProperties(
         Submission submission,
         Reminders reminders,
         Finalisation finalisation,
-        LatePledges latePledges) {
+        LatePledges latePledges,
+        Submissions submissions,
+        Directory directory,
+        Launches launches) {
 
     public ProjectProperties {
         // A deployment that configures neither section still starts. Nested records
@@ -37,6 +43,129 @@ public record ProjectProperties(
         reminders = reminders == null ? Reminders.defaults() : reminders;
         finalisation = finalisation == null ? Finalisation.defaults() : finalisation;
         latePledges = latePledges == null ? LatePledges.defaults() : latePledges;
+        submissions = submissions == null ? Submissions.defaults() : submissions;
+        directory = directory == null ? Directory.defaults() : directory;
+        launches = launches == null ? Launches.defaults() : launches;
+    }
+
+    /**
+     * How much of the campaign directory one request may read.
+     *
+     * <p>Its own block rather than {@link Submissions} borrowed, which is the argument
+     * that block makes about {@code ModerationProperties.Queue}: this bounds a query over
+     * every campaign on the platform rather than over the few waiting on a moderator, and
+     * one number governing both is a number that cannot be tuned for either.
+     *
+     * @param defaultPageSize what a request that names no size gets
+     * @param maxPageSize the ceiling. Not an abuse control — the caller is signed-in staff
+     *     — but what stops one request from loading every campaign ever created into one
+     *     response and one screen
+     */
+    public record Directory(int defaultPageSize, int maxPageSize) {
+
+        private static final int DEFAULT_PAGE_SIZE = 25;
+
+        private static final int DEFAULT_MAX_PAGE_SIZE = 100;
+
+        static Directory defaults() {
+            return new Directory(DEFAULT_PAGE_SIZE, DEFAULT_MAX_PAGE_SIZE);
+        }
+
+        public Directory {
+            // Zero is what an absent property binds to, and is read as "not set" rather
+            // than as a page holding nothing.
+            defaultPageSize = defaultPageSize == 0 ? DEFAULT_PAGE_SIZE : defaultPageSize;
+            maxPageSize = maxPageSize == 0 ? DEFAULT_MAX_PAGE_SIZE : maxPageSize;
+
+            if (defaultPageSize < 1 || maxPageSize < 1) {
+                throw new IllegalArgumentException("A directory page holds at least one campaign");
+            }
+            if (defaultPageSize > maxPageSize) {
+                throw new IllegalArgumentException("The default directory page cannot exceed the maximum");
+            }
+        }
+    }
+
+    /**
+     * The sweep that keeps §6.1's scheduled launch a promise rather than a sentence.
+     *
+     * <p>A creator sets a launch time in the editor and the review tab tells them the
+     * campaign "goes live when you launch it, or at the launch time you set". Nothing kept
+     * the second half: {@code ProjectTransitionService.launch} was the only producer of
+     * {@code LIVE}, so a campaign with a launch time and a creator asleep at it stayed
+     * approved and invisible.
+     *
+     * @param schedule how often the sweep runs. Every minute, the same interval
+     *     {@link Finalisation} uses and for the same reason: the gap between the time a
+     *     creator chose and the campaign actually opening is exactly this number, and it is
+     *     visible to everybody they told
+     * @param batchSize a bound on one pass, not a target. Launch times cluster on the hour
+     *     and at the start of months; the pass takes the oldest and comes back a minute
+     *     later for the rest
+     */
+    public record Launches(String schedule, int batchSize) {
+
+        /** Every minute, matching §8.4's other campaign sweep. */
+        private static final String DEFAULT_SCHEDULE = "0 * * * * *";
+
+        private static final int DEFAULT_BATCH_SIZE = 100;
+
+        static Launches defaults() {
+            return new Launches(DEFAULT_SCHEDULE, DEFAULT_BATCH_SIZE);
+        }
+
+        public Launches {
+            schedule = schedule == null || schedule.isBlank() ? DEFAULT_SCHEDULE : schedule;
+            batchSize = batchSize == 0 ? DEFAULT_BATCH_SIZE : batchSize;
+
+            if (batchSize < 1) {
+                // A pass that launches nothing is the feature switched off, and switched off
+                // silently: every scheduled campaign sitting approved past its own launch
+                // time with nothing in the log saying why. An operator sees this at start-up
+                // instead.
+                throw new IllegalArgumentException("A launch pass that opens no campaigns never opens any");
+            }
+        }
+    }
+
+    /**
+     * How much of the submission queue one request may read.
+     *
+     * <p>The same shape and the same argument as {@code ModerationProperties.Queue},
+     * kept here rather than borrowed from it: that block bounds the report queue, this
+     * one bounds a different query over a different table, and one number governing
+     * both is a number that cannot be tuned for either.
+     *
+     * @param defaultPageSize what a request that names no size gets
+     * @param maxPageSize the ceiling. Not an abuse control — the caller is a signed-in
+     *     moderator — but what stops one request from loading every campaign ever
+     *     submitted into one response and one screen
+     */
+    public record Submissions(int defaultPageSize, int maxPageSize) {
+
+        private static final int DEFAULT_PAGE_SIZE = 25;
+
+        private static final int DEFAULT_MAX_PAGE_SIZE = 100;
+
+        static Submissions defaults() {
+            return new Submissions(DEFAULT_PAGE_SIZE, DEFAULT_MAX_PAGE_SIZE);
+        }
+
+        public Submissions {
+            // Zero is what an absent property binds to, and is read as "not set"
+            // rather than as a page holding nothing.
+            defaultPageSize = defaultPageSize == 0 ? DEFAULT_PAGE_SIZE : defaultPageSize;
+            maxPageSize = maxPageSize == 0 ? DEFAULT_MAX_PAGE_SIZE : maxPageSize;
+
+            if (defaultPageSize < 1 || maxPageSize < 1) {
+                throw new IllegalArgumentException("A queue page holds at least one campaign");
+            }
+            if (defaultPageSize > maxPageSize) {
+                // Otherwise every request naming no size is refused by the ceiling --
+                // a start-up problem wearing a runtime costume.
+                throw new IllegalArgumentException("The default queue page cannot exceed the maximum");
+            }
+        }
     }
 
     /**
