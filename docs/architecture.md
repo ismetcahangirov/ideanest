@@ -1311,7 +1311,7 @@ Preferences are per category and per channel, with a digest option.
 
 | # | Module | Capabilities |
 |---|---|---|
-| AD-01 | Project moderation | Queue, approve, reject, request changes, notes, history |
+| AD-01 | Project moderation | Queue, approve, reject, request changes, notes, history. **The queue was the missing half until #381**: the three outcomes shipped with #101 and nothing listed what they applied to, so the console's only route to a submitted campaign was a report somebody had filed about it — a campaign nobody complained about waited in `SUBMITTED` indefinitely, invisible here, while its creator was shown "submitted for review". `/admin/moderation/submissions` is that queue |
 | AD-02 | Trust and safety | Report queue, fraud signals, suspension. Reporting and the queue are built (#102, §7.2's `content_reports`), **suspension is built (#103)**, and **fraud signals are built (#108)** — `risk_assessments`, a queue at `/v1/admin/risk/queue`, and the identity review at `/v1/admin/verifications/queue` (#105). The signals **advise and do not decide**: nothing refuses a pledge or suspends an account on a score. See §17.2 |
 | AD-03 | Curation | Editorial badges, collections, open calls, placement. The endpoints arrived with #48; **the four screens are built (#300 to #303)** at `/admin/curation` and its three siblings |
 | AD-04 | User management | Search, inspect, ban, verification status, audited impersonation. **Search, inspect and the ban are built (#104)**, and **`/admin/staff` is built (#295)** — the role model that replaced the configured list. Impersonation is not, and is the one thing in this table still waiting on a decision (#299) |
@@ -3467,7 +3467,7 @@ POST   /v1/media/{id}/complete
 POST   /v1/webhooks/psp/{provider}
 
 # Administration
-GET    /v1/admin/moderation/queue
+GET    /v1/admin/moderation/submissions # AD-01 (#381); campaigns awaiting a decision, oldest first
 POST   /v1/admin/moderation/{id}/approve
 POST   /v1/admin/moderation/{id}/reject
 POST   /v1/admin/moderation/{id}/request-changes
