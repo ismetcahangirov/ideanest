@@ -715,18 +715,30 @@
           "collection": "Koleksiyonlar"
         },
         "action": {
-          "project.approved": "Kampanya onaylandı",
-          "project.rejected": "Kampanya reddedildi",
-          "project.changes_requested": "Değişiklik istendi",
-          "project.suspended": "Kampanya askıya alındı",
-          "report.upheld": "Şikayet haklı bulundu",
-          "report.dismissed": "Şikayet reddedildi",
-          "account.searched": "Hesaplar arandı",
-          "account.suspended": "Hesap askıya alındı",
-          "account.reinstated": "Hesap yeniden açıldı",
-          "audit.trail_read": "Denetim izi okundu",
-          "payment.log_read": "Ödeme günlüğü okundu",
-          "ledger.read": "Defter okundu"
+          "project": {
+            "approved": "Kampanya onaylandı",
+            "rejected": "Kampanya reddedildi",
+            "changes_requested": "Değişiklik istendi",
+            "suspended": "Kampanya askıya alındı"
+          },
+          "report": {
+            "upheld": "Şikayet haklı bulundu",
+            "dismissed": "Şikayet reddedildi"
+          },
+          "account": {
+            "searched": "Hesaplar arandı",
+            "suspended": "Hesap askıya alındı",
+            "reinstated": "Hesap yeniden açıldı"
+          },
+          "audit": {
+            "trail_read": "Denetim izi okundu"
+          },
+          "payment": {
+            "log_read": "Ödeme günlüğü okundu"
+          },
+          "ledger": {
+            "read": "Defter okundu"
+          }
         }
       },
       "health": {

@@ -715,18 +715,30 @@
           "collection": "Подборки"
         },
         "action": {
-          "project.approved": "Кампания одобрена",
-          "project.rejected": "Кампания отклонена",
-          "project.changes_requested": "Запрошены изменения",
-          "project.suspended": "Кампания приостановлена",
-          "report.upheld": "Жалоба удовлетворена",
-          "report.dismissed": "Жалоба отклонена",
-          "account.searched": "Поиск по учётным записям",
-          "account.suspended": "Учётная запись приостановлена",
-          "account.reinstated": "Учётная запись восстановлена",
-          "audit.trail_read": "Журнал аудита прочитан",
-          "payment.log_read": "Журнал платежей прочитан",
-          "ledger.read": "Книга прочитана"
+          "project": {
+            "approved": "Кампания одобрена",
+            "rejected": "Кампания отклонена",
+            "changes_requested": "Запрошены изменения",
+            "suspended": "Кампания приостановлена"
+          },
+          "report": {
+            "upheld": "Жалоба удовлетворена",
+            "dismissed": "Жалоба отклонена"
+          },
+          "account": {
+            "searched": "Поиск по учётным записям",
+            "suspended": "Учётная запись приостановлена",
+            "reinstated": "Учётная запись восстановлена"
+          },
+          "audit": {
+            "trail_read": "Журнал аудита прочитан"
+          },
+          "payment": {
+            "log_read": "Журнал платежей прочитан"
+          },
+          "ledger": {
+            "read": "Книга прочитана"
+          }
         }
       },
       "health": {
