@@ -715,18 +715,30 @@
           "collection": "Kolleksiyalar"
         },
         "action": {
-          "project.approved": "Kampaniya təsdiqləndi",
-          "project.rejected": "Kampaniya rədd edildi",
-          "project.changes_requested": "Dəyişiklik tələb olundu",
-          "project.suspended": "Kampaniya dayandırıldı",
-          "report.upheld": "Şikayət təsdiqləndi",
-          "report.dismissed": "Şikayət rədd edildi",
-          "account.searched": "Hesablar axtarıldı",
-          "account.suspended": "Hesab dayandırıldı",
-          "account.reinstated": "Hesab bərpa edildi",
-          "audit.trail_read": "Audit izi oxundu",
-          "payment.log_read": "Ödəniş jurnalı oxundu",
-          "ledger.read": "Baş kitab oxundu"
+          "project": {
+            "approved": "Kampaniya təsdiqləndi",
+            "rejected": "Kampaniya rədd edildi",
+            "changes_requested": "Dəyişiklik tələb olundu",
+            "suspended": "Kampaniya dayandırıldı"
+          },
+          "report": {
+            "upheld": "Şikayət təsdiqləndi",
+            "dismissed": "Şikayət rədd edildi"
+          },
+          "account": {
+            "searched": "Hesablar axtarıldı",
+            "suspended": "Hesab dayandırıldı",
+            "reinstated": "Hesab bərpa edildi"
+          },
+          "audit": {
+            "trail_read": "Audit izi oxundu"
+          },
+          "payment": {
+            "log_read": "Ödəniş jurnalı oxundu"
+          },
+          "ledger": {
+            "read": "Baş kitab oxundu"
+          }
         }
       },
       "health": {
