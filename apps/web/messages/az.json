@@ -406,7 +406,8 @@
       "/admin/audit": "Audit jurnalı",
       "/admin/email-templates": "E-poçt şablonları",
       "/admin/flags": "Funksiya bayraqları",
-      "/admin/health": "Sistem vəziyyəti"
+      "/admin/health": "Sistem vəziyyəti",
+      "/admin/moderation/submissions": "Baxış gözləyən kampaniyalar"
     },
     "states": {
       "built": "Hazırdır",
@@ -683,6 +684,12 @@
         "metaDescription": "Platforma hesablarını axtarın və dayandırılmalı olanları dayandırın.",
         "title": "Hesablar",
         "intro": "Platformadakı hər hesab, ünvana, göstərilən ada və ya profil qısa adına görə axtarılır. Birini dayandırmaq onu hər yerdən çıxarır və girişdə rədd edir; yaratdığı kampaniyalar və etdiyi dəstəklər haqqında heç nəyi dəyişmir, onlar ayrı nəticələri olan ayrı qərarlardır."
+      },
+      "submissions": {
+        "metaTitle": "Baxış gözləyən kampaniyalar",
+        "metaDescription": "Yaradıcılarının təqdim etdiyi, qərar gözləyən kampaniyalar.",
+        "title": "Baxış gözləyən kampaniyalar",
+        "intro": "Yaradıcılarının təqdim etdiyi kampaniyalar, ən köhnəsi əvvəldə. Qərar kampaniyanın öz vəziyyətini dəyişir: təsdiq onu başlanğıca hazırlayır, dəyişiklik tələbi qeydlə birlikdə geri qaytarır, rədd isə qəti olur."
       }
     },
     "screens": {
@@ -1568,6 +1575,51 @@
           "CANCELED": "Bitirilib",
           "EXPIRED": "Muddeti bitib"
         }
+      },
+      "submissionQueue": {
+        "signedOutTitle": "Növbə ilə işləmək üçün daxil olun",
+        "signedOutBody": "Bu ekran qərar gözləyən kampaniyaları oxuyur; bunun üçün daxil olmuş işçi hesabı lazımdır.",
+        "forbiddenTitle": "Bu növbəni görə bilmirsiniz",
+        "forbiddenBody": "Kampaniyalara baxmaq üçün məzmun moderasiyası səlahiyyəti lazımdır. Bunun sizdə olması gərəkdiyini düşünürsünüzsə, administratora müraciət edin.",
+        "notStaff": "Kampaniyalara platforma işçiləri baxır.",
+        "transitionNotAllowed": "Kampaniya artıq bu qərarın verilə biləcəyi vəziyyətdə deyil. Növbəni yeniləyin.",
+        "transitionNotAllowedFrom": "Bu kampaniya barədə artıq qərar verilib — indi {state} vəziyyətindədir.",
+        "refused": "Xidmət bunu qəbul etmədi.",
+        "unreachable": "Xidmətə çata bilmədik. Yenidən cəhd edin.",
+        "heading": {
+          "SUBMITTED": "Qərar gözləyir",
+          "CHANGES_REQUESTED": "Yaradıcılarına geri qaytarılıb",
+          "APPROVED": "Başlanğıca hazırdır",
+          "REJECTED": "Rədd edilib"
+        },
+        "state": {
+          "SUBMITTED": "Gözləyir",
+          "CHANGES_REQUESTED": "Dəyişiklik tələb olunub",
+          "APPROVED": "Təsdiqlənib",
+          "REJECTED": "Rədd edilib"
+        },
+        "statusLabel": "Hansı kampaniyalar",
+        "loadingList": "Kampaniyalar yüklənir",
+        "emptyTitle": {
+          "SUBMITTED": "Gözləyən yoxdur",
+          "CHANGES_REQUESTED": "Geri qaytarılan yoxdur",
+          "APPROVED": "Hələ təsdiqlənən yoxdur",
+          "REJECTED": "Rədd edilən yoxdur"
+        },
+        "emptyBody": {
+          "SUBMITTED": "İndiyədək təqdim edilmiş bütün kampaniyalar barədə qərar verilib.",
+          "CHANGES_REQUESTED": "Hazırda yaradıcısında dəyişiklik gözləyən kampaniya yoxdur.",
+          "APPROVED": "Təsdiqlənmiş kampaniyalar başlayanadək burada görünür.",
+          "REJECTED": "Rədd edilmiş kampaniyalar burada qalır ki, qərar sonradan oxuna bilsin."
+        },
+        "waiting": "{days} gündür gözləyir",
+        "goalLabel": "Hədəf",
+        "noGoal": "Hədəf təyin edilməyib",
+        "stateLabel": "Vəziyyət",
+        "creatorGone": "Yaradıcının hesabı bağlanıb",
+        "decideHeading": "Bu kampaniya barədə qərar verin",
+        "decideGroup": "{title} barədə qərar ver",
+        "notice": "{title} indi {state} vəziyyətindədir."
       }
     },
     "moderation": {

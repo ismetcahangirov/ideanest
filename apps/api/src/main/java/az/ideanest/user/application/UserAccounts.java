@@ -5,8 +5,12 @@ import az.ideanest.shared.Slugs;
 import az.ideanest.user.domain.User;
 import az.ideanest.user.infrastructure.UserRepository;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,6 +65,33 @@ public class UserAccounts {
     @Transactional(readOnly = true)
     public Optional<UserAccount> findById(UUID id) {
         return users.findByIdAndDeletedAtIsNull(id).map(UserAccounts::toAccount);
+    }
+
+    /**
+     * Several accounts at once, keyed by identifier.
+     *
+     * <p>For a caller holding a page of rows that each name an account — the moderation
+     * submission queue is the first — where the alternative is {@link #findById} in a
+     * loop and therefore one query per row on a screen whose whole purpose is a list.
+     *
+     * <p><strong>An identifier with no account is absent from the map rather than
+     * mapped to null.</strong> Deleted and anonymised accounts both disappear here, and
+     * a caller that cannot tell "no such account" from "a null name" would render one
+     * as the other. Callers are expected to have something to say about a row whose
+     * author is gone, because §17.4 leaves those rows behind on purpose.
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, UserAccount> findAllById(Collection<UUID> ids) {
+        if (ids.isEmpty()) {
+            // Spring Data would answer an empty list anyway; this saves the round trip
+            // on the common case of a page with nothing in it.
+            return Map.of();
+        }
+        Map<UUID, UserAccount> accounts = new LinkedHashMap<>();
+        for (User user : users.findAllByIdInAndDeletedAtIsNull(ids)) {
+            accounts.put(user.getId(), toAccount(user));
+        }
+        return accounts;
     }
 
     /**

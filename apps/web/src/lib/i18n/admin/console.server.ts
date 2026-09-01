@@ -10,9 +10,11 @@ import {
   contentReportQueueCopyFrom,
   moderationQueueCopyFrom,
   reportDetailCopyFrom,
+  submissionQueueCopyFrom,
   type ContentReportQueueCopy,
   type ModerationQueueCopy,
   type ReportDetailCopy,
+  type SubmissionQueueCopy,
 } from './content-copy';
 import {
   badgeManagerCopyFrom,
@@ -212,4 +214,8 @@ export async function contentReportQueueCopy(): Promise<ContentReportQueueCopy> 
 
 export async function reportDetailCopy(): Promise<ReportDetailCopy> {
   return reportDetailCopyFrom(await getTranslations('admin'), await consoleChrome());
+}
+
+export async function submissionQueueCopy(): Promise<SubmissionQueueCopy> {
+  return submissionQueueCopyFrom(await getTranslations('admin'), await consoleChrome());
 }
