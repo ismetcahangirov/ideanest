@@ -692,6 +692,22 @@ export interface paths {
         patch: operations["adminSubscriptionChange"];
         trace?: never;
     };
+    "/v1/admin/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["campaignDirectoryCampaigns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/projects/{id}/suspend": {
         parameters: {
             query?: never;
@@ -3464,6 +3480,12 @@ export interface components {
             state?: string;
             title?: string;
         };
+        CampaignDirectoryResponse: {
+            campaigns?: components["schemas"]["Campaign"][];
+            /** Format: uuid */
+            nextCursor?: string;
+            state?: string;
+        };
         CampaignFinanceResponse: {
             /** @enum {string} */
             basis?: "PROJECTED" | "SETTLED";
@@ -5673,6 +5695,7 @@ export type SchemaBranch = components['schemas']['Branch'];
 export type SchemaBuyAddonsRequest = components['schemas']['BuyAddonsRequest'];
 export type SchemaCalculateRequest = components['schemas']['CalculateRequest'];
 export type SchemaCampaign = components['schemas']['Campaign'];
+export type SchemaCampaignDirectoryResponse = components['schemas']['CampaignDirectoryResponse'];
 export type SchemaCampaignFinanceResponse = components['schemas']['CampaignFinanceResponse'];
 export type SchemaCampaignMessageListResponse = components['schemas']['CampaignMessageListResponse'];
 export type SchemaCampaignMessageResponse = components['schemas']['CampaignMessageResponse'];
@@ -7131,6 +7154,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Plan"];
+                };
+            };
+        };
+    };
+    campaignDirectoryCampaigns: {
+        parameters: {
+            query?: {
+                state?: "DRAFT" | "PRELAUNCH" | "SUBMITTED" | "CHANGES_REQUESTED" | "REJECTED" | "APPROVED" | "SCHEDULED" | "LIVE" | "SUSPENDED" | "CANCELED" | "SUCCESSFUL" | "UNSUCCESSFUL" | "COLLECTING" | "LATE_PLEDGE" | "FULFILLING" | "COMPLETED";
+                after?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignDirectoryResponse"];
                 };
             };
         };
