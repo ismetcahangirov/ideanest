@@ -350,4 +350,28 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
             nativeQuery = true)
     List<CampaignDirectoryRow> findCampaignDirectoryInStateAfter(
             @Param("state") String state, @Param("after") UUID after, @Param("limit") int limit);
+
+    /**
+     * Campaigns whose launch time has arrived — issue #389.
+     *
+     * <p>Both states, because {@code SCHEDULED} is reachable in §6.1 and nothing performs
+     * that edge today: a campaign waiting for a time it was given is {@code APPROVED} with
+     * a {@code scheduledLaunchAt}, and a sweep that read only {@code SCHEDULED} would find
+     * nothing for as long as that remains true. Reading both is what makes this job correct
+     * before and after anything sets that state.
+     *
+     * <p>Oldest first, so a backlog is opened in the order the times were chosen rather
+     * than in whatever order the planner returns. A campaign whose time passed while the
+     * service was down opens before one whose time is a minute old.
+     */
+    @Query(
+            """
+            SELECT p.id FROM Project p
+            WHERE p.state IN (az.ideanest.project.domain.ProjectState.APPROVED,
+                              az.ideanest.project.domain.ProjectState.SCHEDULED)
+              AND p.scheduledLaunchAt IS NOT NULL
+              AND p.scheduledLaunchAt <= :now
+            ORDER BY p.scheduledLaunchAt ASC
+            """)
+    List<UUID> findDueForLaunch(@Param("now") Instant now, Pageable page);
 }
