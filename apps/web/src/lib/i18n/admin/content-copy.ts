@@ -6,6 +6,7 @@ import type {
   ReportTargetType,
   SubmissionState,
 } from '../../moderation/api';
+import type { AuditActionLabels } from '../../admin/audit';
 import type { ProjectState } from '../../projects/api';
 import type { AdminTranslator } from '../admin-copy';
 import type { PluralForms } from '../plurals';
@@ -203,7 +204,7 @@ export interface ReportDetailCopy extends ConsoleChromeCopy {
    * The same rows, drawn by a second screen. A copy of the table under this screen's node
    * would be a second set of translations for `report.upheld` that nothing keeps in step.
    */
-  readonly auditAction: Readonly<Record<string, string>>;
+  readonly auditAction: AuditActionLabels;
   readonly subject: string;
   readonly historySubject: string;
   readonly loadingList: string;
@@ -495,7 +496,7 @@ export function reportDetailCopyFrom(
   return {
     ...chrome,
     moderation: moderationCopyFrom(t, chrome.cancel),
-    auditAction: t.raw('screens.audit.action') as Readonly<Record<string, string>>,
+    auditAction: t.raw('screens.audit.action') as AuditActionLabels,
     subject: t(at('subject')),
     historySubject: t(at('historySubject')),
     loadingList: t(at('loadingList')),
