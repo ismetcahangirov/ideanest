@@ -1311,7 +1311,7 @@ Preferences are per category and per channel, with a digest option.
 
 | # | Module | Capabilities |
 |---|---|---|
-| AD-01 | Project moderation | Queue, approve, reject, request changes, notes, history. **The queue was the missing half until #381**: the three outcomes shipped with #101 and nothing listed what they applied to, so the console's only route to a submitted campaign was a report somebody had filed about it — a campaign nobody complained about waited in `SUBMITTED` indefinitely, invisible here, while its creator was shown "submitted for review". `/admin/moderation/submissions` is that queue |
+| AD-01 | Project moderation | Queue, approve, reject, request changes, notes, history. **The queue was the missing half until #381**: the three outcomes shipped with #101 and nothing listed what they applied to, so the console's only route to a submitted campaign was a report somebody had filed about it — a campaign nobody complained about waited in `SUBMITTED` indefinitely, invisible here, while its creator was shown "submitted for review". `/admin/moderation/submissions` is that queue. **And the directory since #387**: both that queue and the report queue list campaigns that have DONE something, so a draft, a live campaign, or one cleared for launch and never launched was on no screen here and could be reached only through psql. `/admin/campaigns` lists §6.1 entire, newest first |
 | AD-02 | Trust and safety | Report queue, fraud signals, suspension. Reporting and the queue are built (#102, §7.2's `content_reports`), **suspension is built (#103)**, and **fraud signals are built (#108)** — `risk_assessments`, a queue at `/v1/admin/risk/queue`, and the identity review at `/v1/admin/verifications/queue` (#105). The signals **advise and do not decide**: nothing refuses a pledge or suspends an account on a score. See §17.2 |
 | AD-03 | Curation | Editorial badges, collections, open calls, placement. The endpoints arrived with #48; **the four screens are built (#300 to #303)** at `/admin/curation` and its three siblings |
 | AD-04 | User management | Search, inspect, ban, verification status, audited impersonation. **Search, inspect and the ban are built (#104)**, and **`/admin/staff` is built (#295)** — the role model that replaced the configured list. Impersonation is not, and is the one thing in this table still waiting on a decision (#299) |
@@ -3475,6 +3475,7 @@ GET    /v1/admin/moderation/reports      # AD-02/AD-09; ?target= narrows to one 
 GET    /v1/admin/moderation/reports/{id} # AD-01 (#296); one complaint and its decision
 POST   /v1/admin/moderation/reports/{id}/uphold
 POST   /v1/admin/moderation/reports/{id}/dismiss
+GET    /v1/admin/projects              # AD-01 (#387); every campaign, any state, newest first
 POST   /v1/admin/projects/{id}/suspend   # AD-02 (#103); staff only, audited, ends every pledge
 GET    /v1/admin/users                   # AD-04 (#104); staff only, audited, no-store
 GET    /v1/admin/users/{id}              # AD-04 (#104); one account, audited

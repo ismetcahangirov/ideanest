@@ -407,7 +407,8 @@
       "/admin/email-templates": "E-posta şablonları",
       "/admin/flags": "Özellik bayrakları",
       "/admin/health": "Sistem durumu",
-      "/admin/moderation/submissions": "İncelemedeki kampanyalar"
+      "/admin/moderation/submissions": "İncelemedeki kampanyalar",
+      "/admin/campaigns": "Tüm kampanyalar"
     },
     "states": {
       "built": "Hazır",
@@ -690,6 +691,12 @@
         "metaDescription": "Kurucularının gönderdiği, karar bekleyen kampanyalar.",
         "title": "İncelemedeki kampanyalar",
         "intro": "Kurucularının gönderdiği kampanyalar, en eskisi başta. Karar kampanyanın kendi durumunu değiştirir: onay yayına hazır hâle getirir, değişiklik isteği bir notla birlikte geri gönderir, ret ise kesindir."
+      },
+      "campaigns": {
+        "metaTitle": "Kampanyalar",
+        "metaDescription": "Platformdaki tüm kampanyalar, her durumda, en yenisi önce.",
+        "title": "Kampanyalar",
+        "intro": "Platformdaki tüm kampanyalar, en yenisi önce, hangi durumda olursa olsun. İnceleme kuyruğu yalnızca karar bekleyenleri listeler; burası ise kimsenin göndermediği taslaklar ve onaylanıp henüz yayımlanmamış kampanyalar dahil her şeyi listeler."
       }
     },
     "screens": {
@@ -1620,6 +1627,44 @@
         "decideHeading": "Bu kampanya için karar verin",
         "decideGroup": "{title} için karar ver",
         "notice": "{title} artık {state}."
+      },
+      "campaignDirectory": {
+        "subject": "kampanya dizini",
+        "heading": "Kampanyalar",
+        "filterLabel": "Durum",
+        "everything": "Tüm durumlar",
+        "loadingList": "Kampanyalar yükleniyor",
+        "emptyTitle": "Henüz kampanya yok",
+        "emptyBody": "Bir kampanya, incelemeye gönderilmeden çok önce, biri onu başlattığı anda burada görünür.",
+        "filteredTitle": "Bu durumda kampanya yok",
+        "filteredBody": "Başka bir durum seçin ya da tüm durumlara bakın.",
+        "creatorGone": "Kurucunun hesabı kapatıldı",
+        "goalLabel": "Hedef",
+        "noGoal": "Hedef belirlenmedi",
+        "raisedLabel": "Toplanan",
+        "backersLabel": "Destekçi",
+        "startedLabel": "Başlatıldı",
+        "launchedLabel": "Yayımlandı",
+        "deadlineLabel": "Kapanış",
+        "notLaunched": "Yayımlanmadı",
+        "state": {
+          "DRAFT": "Taslak",
+          "PRELAUNCH": "Lansman öncesi",
+          "SUBMITTED": "İnceleme bekliyor",
+          "CHANGES_REQUESTED": "Değişiklik istendi",
+          "APPROVED": "Onaylandı",
+          "SCHEDULED": "Planlandı",
+          "LIVE": "Etkin",
+          "COLLECTING": "Tahsilat",
+          "LATE_PLEDGE": "Geç destekler",
+          "SUCCESSFUL": "Fonlandı",
+          "UNSUCCESSFUL": "Fonlanmadı",
+          "FULFILLING": "Gönderim",
+          "COMPLETED": "Tamamlandı",
+          "REJECTED": "Reddedildi",
+          "SUSPENDED": "Askıya alındı",
+          "CANCELED": "İptal edildi"
+        }
       }
     },
     "moderation": {

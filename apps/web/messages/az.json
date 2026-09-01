@@ -407,7 +407,8 @@
       "/admin/email-templates": "E-poçt şablonları",
       "/admin/flags": "Funksiya bayraqları",
       "/admin/health": "Sistem vəziyyəti",
-      "/admin/moderation/submissions": "Baxış gözləyən kampaniyalar"
+      "/admin/moderation/submissions": "Baxış gözləyən kampaniyalar",
+      "/admin/campaigns": "Bütün kampaniyalar"
     },
     "states": {
       "built": "Hazırdır",
@@ -690,6 +691,12 @@
         "metaDescription": "Yaradıcılarının təqdim etdiyi, qərar gözləyən kampaniyalar.",
         "title": "Baxış gözləyən kampaniyalar",
         "intro": "Yaradıcılarının təqdim etdiyi kampaniyalar, ən köhnəsi əvvəldə. Qərar kampaniyanın öz vəziyyətini dəyişir: təsdiq onu başlanğıca hazırlayır, dəyişiklik tələbi qeydlə birlikdə geri qaytarır, rədd isə qəti olur."
+      },
+      "campaigns": {
+        "metaTitle": "Kampaniyalar",
+        "metaDescription": "Platformadakı bütün kampaniyalar, hər vəziyyətdə, ən yenisi əvvəl.",
+        "title": "Kampaniyalar",
+        "intro": "Platformadakı bütün kampaniyalar, ən yenisi əvvəl, hansı vəziyyətdə olmasından asılı olmayaraq. Baxış növbəsi yalnız qərar gözləyənləri göstərir; bura isə hər şeyi — heç kimin göndərmədiyi qaralamaları və təsdiqlənib hələ yayımlanmayan kampaniyaları da — göstərir."
       }
     },
     "screens": {
@@ -1620,6 +1627,44 @@
         "decideHeading": "Bu kampaniya barədə qərar verin",
         "decideGroup": "{title} barədə qərar ver",
         "notice": "{title} indi {state} vəziyyətindədir."
+      },
+      "campaignDirectory": {
+        "subject": "kampaniya siyahısı",
+        "heading": "Kampaniyalar",
+        "filterLabel": "Vəziyyət",
+        "everything": "Bütün vəziyyətlər",
+        "loadingList": "Kampaniyalar yüklənir",
+        "emptyTitle": "Hələ kampaniya yoxdur",
+        "emptyBody": "Kampaniya yaradılan kimi, baxışa göndərilməsindən çox əvvəl burada görünür.",
+        "filteredTitle": "Bu vəziyyətdə kampaniya yoxdur",
+        "filteredBody": "Başqa vəziyyət seçin və ya bütün vəziyyətlərə baxın.",
+        "creatorGone": "Yaradıcının hesabı bağlanıb",
+        "goalLabel": "Hədəf",
+        "noGoal": "Hədəf təyin edilməyib",
+        "raisedLabel": "Toplanıb",
+        "backersLabel": "Dəstəkçi",
+        "startedLabel": "Yaradılıb",
+        "launchedLabel": "Yayımlanıb",
+        "deadlineLabel": "Bitir",
+        "notLaunched": "Yayımlanmayıb",
+        "state": {
+          "DRAFT": "Qaralama",
+          "PRELAUNCH": "Başlanğıcdan əvvəl",
+          "SUBMITTED": "Baxış gözləyir",
+          "CHANGES_REQUESTED": "Dəyişiklik tələb olunub",
+          "APPROVED": "Təsdiqlənib",
+          "SCHEDULED": "Planlaşdırılıb",
+          "LIVE": "Aktiv",
+          "COLLECTING": "Yığılır",
+          "LATE_PLEDGE": "Gecikmiş dəstəklər",
+          "SUCCESSFUL": "Maliyyələşdi",
+          "UNSUCCESSFUL": "Maliyyələşmədi",
+          "FULFILLING": "İcra olunur",
+          "COMPLETED": "Tamamlandı",
+          "REJECTED": "Rədd edilib",
+          "SUSPENDED": "Dayandırılıb",
+          "CANCELED": "Ləğv edildi"
+        }
       }
     },
     "moderation": {

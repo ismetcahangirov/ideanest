@@ -407,7 +407,8 @@
       "/admin/email-templates": "Email templates",
       "/admin/flags": "Feature flags",
       "/admin/health": "System health",
-      "/admin/moderation/submissions": "Campaigns for review"
+      "/admin/moderation/submissions": "Campaigns for review",
+      "/admin/campaigns": "All campaigns"
     },
     "states": {
       "built": "Built",
@@ -690,6 +691,12 @@
         "metaDescription": "Campaigns their creators have submitted, waiting on a decision.",
         "title": "Campaigns for review",
         "intro": "Campaigns their creators have submitted, oldest first. Deciding one moves the campaign's own state: approving clears it for launch, requesting changes sends it back with a note, and rejecting is final."
+      },
+      "campaigns": {
+        "metaTitle": "Campaigns",
+        "metaDescription": "Every campaign on the platform, in any state, newest first.",
+        "title": "Campaigns",
+        "intro": "Every campaign on the platform, newest first, whatever state it is in. The review queue lists what is waiting on a decision; this lists everything, including drafts nobody has submitted and campaigns cleared for launch that have not launched."
       }
     },
     "screens": {
@@ -1620,6 +1627,44 @@
         "decideHeading": "Decide this campaign",
         "decideGroup": "Decide {title}",
         "notice": "{title} is now {state}."
+      },
+      "campaignDirectory": {
+        "subject": "the campaign directory",
+        "heading": "Campaigns",
+        "filterLabel": "State",
+        "everything": "Every state",
+        "loadingList": "Loading campaigns",
+        "emptyTitle": "There are no campaigns yet",
+        "emptyBody": "A campaign appears here the moment somebody starts one, long before it is submitted for review.",
+        "filteredTitle": "No campaign is in this state",
+        "filteredBody": "Choose another state, or every state.",
+        "creatorGone": "Creator account closed",
+        "goalLabel": "Goal",
+        "noGoal": "No goal set",
+        "raisedLabel": "Raised",
+        "backersLabel": "Backers",
+        "startedLabel": "Started",
+        "launchedLabel": "Launched",
+        "deadlineLabel": "Closes",
+        "notLaunched": "Not launched",
+        "state": {
+          "DRAFT": "Draft",
+          "PRELAUNCH": "Pre-launch",
+          "SUBMITTED": "Awaiting review",
+          "CHANGES_REQUESTED": "Changes requested",
+          "APPROVED": "Approved",
+          "SCHEDULED": "Scheduled",
+          "LIVE": "Live",
+          "COLLECTING": "Collecting",
+          "LATE_PLEDGE": "Late pledges",
+          "SUCCESSFUL": "Funded",
+          "UNSUCCESSFUL": "Not funded",
+          "FULFILLING": "Fulfilling",
+          "COMPLETED": "Completed",
+          "REJECTED": "Rejected",
+          "SUSPENDED": "Suspended",
+          "CANCELED": "Cancelled"
+        }
       }
     },
     "moderation": {
