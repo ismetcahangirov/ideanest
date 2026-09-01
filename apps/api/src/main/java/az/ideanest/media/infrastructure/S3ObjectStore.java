@@ -186,7 +186,11 @@ public class S3ObjectStore implements ObjectStore {
              * should prefer -- a credential nobody had to paste into a variable is a
              * credential nobody can leak from one.
              */
-            return DefaultCredentialsProvider.create();
+            // `builder().build()` rather than `create()`, which 2.54 deprecates: the
+            // factory allocated a provider holding a background thread nobody closed,
+            // and the builder is the same chain with a lifecycle. `-Werror` is what
+            // turns the deprecation into a build failure, and it is right to.
+            return DefaultCredentialsProvider.builder().build();
         }
 
         S3Configuration serviceConfiguration() {
