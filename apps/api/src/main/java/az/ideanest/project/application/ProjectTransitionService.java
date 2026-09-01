@@ -237,15 +237,81 @@ public class ProjectTransitionService {
         requireLaunchable(project);
 
         Project launched = apply(project, ProjectState.LIVE, access.roleOf(project, accountId), accountId, null);
-        // Recorded from the row rather than from anything this method computed, so the
-        // event's instants are the ones the campaign now carries.
+        announceLaunch(launched);
+        return launched;
+    }
+
+    /**
+     * The same edge, taken by the clock: {@code APPROVED} or {@code SCHEDULED} → {@code LIVE}
+     * for a campaign whose launch time has arrived — issue #389.
+     *
+     * <p><strong>The promise this keeps was already being made.</strong> The review tab tells
+     * a creator their cleared campaign "goes live when you launch it, or at the launch time
+     * you set", and §6.1 has carried {@code SCHEDULED} since the state machine was written.
+     * Nothing performed the second half: {@link #launch} was the only producer of
+     * {@code LIVE}, so a campaign with a launch time and a creator asleep at it stayed
+     * approved. A promise about somebody's marketing that only a human keeps is a promise
+     * the platform should not have made.
+     *
+     * <p><strong>Empty rather than an exception for everything the sweep should skip.</strong>
+     * The same shape as {@link #finalise}, and for the same reason: a campaign somebody
+     * launched by hand a second before this pass reached it, or one a moderator suspended, is
+     * an ordinary race on a sweep rather than a fault, and a throw would abandon every
+     * campaign behind it in the batch.
+     *
+     * <p><strong>No access check, and no actor.</strong> There is nobody signed in; the row
+     * records {@link ActorRole#SYSTEM}, which is what the trail should say. The authority
+     * came from the creator when they set the time and from the moderator who cleared the
+     * campaign, and both are already in the trail above this row.
+     *
+     * @param now the instant the pass is judging against, so one pass reads one clock
+     * @return the campaign if this pass launched it, empty if it was not this pass's to launch
+     */
+    @Transactional
+    public Optional<Project> launchScheduled(UUID projectId, Instant now) {
+        Project project =
+                projects.findByIdForUpdate(projectId).orElseThrow(() -> new ProjectNotFoundException(projectId));
+
+        if (project.getState() != ProjectState.APPROVED && project.getState() != ProjectState.SCHEDULED) {
+            log.debug("Campaign {} is in {} and is not this pass's to launch.", projectId, project.getState());
+            return Optional.empty();
+        }
+        Instant at = project.getScheduledLaunchAt();
+        if (at == null || at.isAfter(now)) {
+            log.debug("Campaign {} opens at {}, which is not yet.", projectId, at);
+            return Optional.empty();
+        }
+        if (project.getGoalAmount() == null || project.getDurationDays() == null) {
+            // Not reachable through the application -- §5.3 refuses a submission without
+            // either, and a campaign cannot be approved without being submitted. Left as a
+            // skip rather than a throw because a sweep that raises on one impossible row
+            // stops launching everybody else's campaigns, and because the row would be
+            // retried, and would fail, every minute for as long as it existed.
+            log.warn("Campaign {} is due to launch and has no goal or no duration; skipping it.", projectId);
+            return Optional.empty();
+        }
+
+        Project launched = apply(project, ProjectState.LIVE, ActorRole.SYSTEM, null, null);
+        announceLaunch(launched);
+        log.info("Campaign {} opened at its scheduled time of {}.", projectId, at);
+        return Optional.of(launched);
+    }
+
+    /**
+     * That a campaign is live, told twice on purpose.
+     *
+     * <p>Both halves are what {@link #launch} has always done and what the scheduled launch
+     * must do identically — a campaign that opened on a timer and told nobody is the same
+     * defect as one that did not open. The event is recorded from the row rather than from
+     * anything the caller computed, so the instants are the ones the campaign now carries.
+     */
+    private void announceLaunch(Project launched) {
         outbox.record(
                 ProjectLaunchedEvent.AGGREGATE_TYPE,
                 launched.getId(),
                 ProjectLaunchedEvent.EVENT_TYPE,
                 ProjectLaunchedEvent.of(launched));
         events.publishEvent(new ProjectEvents.ProjectLaunched(launched.getId()));
-        return launched;
     }
 
     /**
