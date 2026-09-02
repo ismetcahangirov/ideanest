@@ -1,5 +1,7 @@
 import { authorizedFetch } from '../api/client';
 import { errorFrom } from '../api/problem';
+import { numberFormat } from '../i18n/formats';
+import type { Locale } from '../i18n/locale';
 
 /**
  * §4.11's AD-11: what the platform charges — §9, issue #311.
@@ -88,19 +90,27 @@ export async function replaceFeeSchedule(request: ReplaceFeeRequest): Promise<Fe
 }
 
 /**
- * A fraction rendered as a percentage, for reading.
+ * A fraction rendered as a percentage, in the reader's language.
  *
  * <strong>Display only.</strong> Nothing on this screen multiplies a rate by money — that
  * is the service's, on `BigDecimal` — so this is allowed to be a float. The moment
  * something here computes a fee, it uses `decimal.js` instead, which is what CLAUDE.md
  * requires of the frontend.
+ *
+ * <h2>The language decides the separator and the sign's side — issue #403</h2>
+ *
+ * <p>This built the string by hand and always rendered `2.9%`, next to a note somebody had
+ * typed as `2,9%`; on an Azerbaijani screen the generated half was the wrong one. Nor is the
+ * separator the whole of it — Turkish writes `%2,9`, with the sign in front — so the
+ * percentage is a formatter's job rather than a template's.
+ *
+ * <p>Three decimal places, because the service stores five and a rate of 0.00125 is a real
+ * eighth of a percent somebody may have negotiated. Trailing zeroes are dropped, so the
+ * ordinary five percent reads as "5%" rather than "5.000%".
  */
-export function asPercentage(rate: string): string {
+export function asPercentage(rate: string, locale: Locale): string {
   const parsed = Number(rate);
   if (!Number.isFinite(parsed)) return rate;
 
-  // Three decimal places, because the service stores five and a rate of 0.00125 is a real
-  // eighth of a percent somebody may have negotiated. Trailing zeroes are trimmed so the
-  // ordinary five percent reads as "5%" rather than "5.000%".
-  return `${Number((parsed * 100).toFixed(3))}%`;
+  return numberFormat(locale, { style: 'percent', maximumFractionDigits: 3 }, 'rate').format(parsed);
 }

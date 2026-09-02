@@ -119,6 +119,39 @@ export interface AzerbaijaniRelativeTimeFormat {
   format(value: number, unit: Intl.RelativeTimeFormatUnit): string;
 }
 
+export interface AzerbaijaniNumberFormat {
+  format(value: number): string;
+}
+
+/**
+ * `1.234,5`, `2,9%` — issue #403.
+ *
+ * <p>The same defect one type over: Chromium's `az` groups with a comma and points with a
+ * dot, which is the root locale, so `/admin/fees` rendered a generated `2.9%` beside a
+ * hand-written `2,9%` in the note next to it and the generated half was the wrong one.
+ *
+ * <p>Azerbaijani groups with a dot and points with a comma, which is `en-GB` with the two
+ * swapped and nothing else moved: the rounding, the digit count, the percent sign's position
+ * — after the number in both — and the minus sign are already right. Doing it this way rather
+ * than substituting a surrogate locale wholesale is what keeps the currency and percent
+ * options behaving as the caller asked.
+ */
+export function azerbaijaniNumberFormat(options: Intl.NumberFormatOptions): AzerbaijaniNumberFormat {
+  const rendered = new Intl.NumberFormat('en-GB', options);
+
+  return {
+    format(value: number): string {
+      let written = '';
+      for (const part of rendered.formatToParts(value)) {
+        if (part.type === 'group') written += '.';
+        else if (part.type === 'decimal') written += ',';
+        else written += part.value;
+      }
+      return written;
+    },
+  };
+}
+
 /** `week`, `weeks` and `week` again — `Intl` accepts a plural and this table is keyed singular. */
 function singular(unit: Intl.RelativeTimeFormatUnit): string {
   return unit.endsWith('s') ? unit.slice(0, -1) : unit;

@@ -5,13 +5,17 @@ import { InlineAlert, Pill, Skeleton, SkeletonGroup, Tag } from '@ideanest/ui';
 import {
   readReconciliation,
   runReconciliation,
+  type FindingKind,
   type ReconciliationFinding,
   type ReconciliationReport,
 } from '../../lib/admin/reconciliation';
+import { accountLabel } from '../../lib/admin/ledger';
+import { formatMoney } from '../../lib/money';
 import { consoleMessageFor, statusFor } from '../../lib/admin/refusals';
 import { fillNodes, fillPlaceholders } from '../../lib/i18n/placeholders';
 import { pluralise } from '../../lib/i18n/plurals';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
+import { formatExactTime } from '../../lib/time';
 import type { Locale } from '../../lib/i18n/locale';
 import type { ReconciliationCopy } from '../../lib/i18n/admin/money-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
@@ -134,15 +138,26 @@ export function ReconciliationPanel({ copy }: ReconciliationPanelProps) {
           <h2 id="findings-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
             {copy.findingsHeading}
           </h2>
-          <ul className="mt-4 flex list-none flex-col gap-3">
-            {found.findings.map((finding, index) => (
-              <FindingCard
-                key={`${finding.kind}:${finding.currency}:${index}`}
-                finding={finding}
-                copy={copy}
-              />
-            ))}
-          </ul>
+          {groupByKind(found.findings).map(([kind, findings]) => (
+            <section key={kind} className="mt-4">
+              {/*
+                The meaning is printed once above its findings rather than under each of them.
+                It is context for the check — "a balance below zero is money the platform paid
+                out and never took" — and four findings of one kind printed it four times,
+                which is a paragraph the reader learns to skip past the rows that matter.
+              */}
+              <p className="max-w-[68ch] text-xs text-white/48">{copy.findingMeaning[kind]}</p>
+              <ul className="mt-2 flex list-none flex-col gap-3">
+                {findings.map((finding, index) => (
+                  <FindingCard
+                    key={`${finding.code}:${finding.currency}:${index}`}
+                    finding={finding}
+                    copy={copy}
+                  />
+                ))}
+              </ul>
+            </section>
+          ))}
         </section>
       )}
 
@@ -180,7 +195,9 @@ function Summary({
     );
   }
 
-  const when = new Date(report.runAt as string).toISOString();
+  // #403: this was `new Date(runAt).toISOString()` — `2026-09-02T06:50:26.291Z`, to the
+  // millisecond and in UTC, inside a sentence otherwise written for a person.
+  const when = formatExactTime(report.runAt as string, locale);
   const positions = pluralise(locale, copy.positionCount, report.accountsChecked);
 
   if (!report.balanced) {
@@ -212,6 +229,51 @@ function Summary({
   );
 }
 
+/**
+ * The findings of one kind, in the order the checks produced them.
+ *
+ * <p>Grouped rather than sorted, so a kind that produced four findings keeps them together and
+ * the sentence explaining what that kind means can be printed once above them.
+ */
+function groupByKind(
+  findings: readonly ReconciliationFinding[],
+): ReadonlyArray<readonly [FindingKind, readonly ReconciliationFinding[]]> {
+  const grouped = new Map<FindingKind, ReconciliationFinding[]>();
+  for (const finding of findings) {
+    const held = grouped.get(finding.kind);
+    if (held === undefined) grouped.set(finding.kind, [finding]);
+    else held.push(finding);
+  }
+  return [...grouped.entries()];
+}
+
+/**
+ * What one finding says, in the reader's language — issue #403.
+ *
+ * <p>The service sends its own sentence in `detail` and this does not render it: it is
+ * English prose with `creator:07afbabf-fec4-505f-7a75-69eca0979182` and `1103.59` in it, and
+ * it was the only text on this screen that stayed English in all four languages. The parts
+ * travel beside it now, so the account is named the way the ledger names it and the money is
+ * formatted the way every other figure on the platform is.
+ *
+ * <p>A code this catalogue has no sentence for falls back to the service's, which is worse to
+ * read and better than blank.
+ */
+function describe(finding: ReconciliationFinding, copy: ReconciliationCopy): string {
+  const sentence = copy.finding[finding.code];
+  if (sentence === undefined) return finding.detail;
+
+  return fillPlaceholders(sentence, {
+    account: finding.account == null ? '' : accountLabel(finding.account, copy.money),
+    amount: formatMoney({ amount: finding.amount, currency: finding.currency }),
+    other:
+      finding.otherAmount == null
+        ? ''
+        : formatMoney({ amount: finding.otherAmount, currency: finding.currency }),
+    currency: finding.currency,
+  });
+}
+
 function FindingCard({
   finding,
   copy,
@@ -227,8 +289,7 @@ function FindingCard({
             one, and it is what somebody scans the list by. */}
         <Tag>{finding.currency}</Tag>
       </div>
-      <p className="mt-2 break-words text-sm text-white/64">{finding.detail}</p>
-      <p className="mt-2 max-w-[68ch] text-xs text-white/48">{copy.findingMeaning[finding.kind]}</p>
+      <p className="mt-2 break-words text-sm text-white/64">{describe(finding, copy)}</p>
     </li>
   );
 }

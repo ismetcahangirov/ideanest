@@ -80,12 +80,19 @@ describe('the campaign review queue', () => {
     expect(await screen.findByText(/9/)).toBeInTheDocument();
   });
 
-  it('renders the goal as the string the service sent', async () => {
+  it('renders the goal from the string the service sent, grouped', async () => {
     render(<SubmissionQueue copy={COPY} />);
 
-    // §10.3: money crosses as a string and is never parsed into a float on the way to a
-    // screen. Asserted here because the row is one of the few places it is rendered raw.
-    expect(await screen.findByText('5000.00 AZN')).toBeInTheDocument();
+    /*
+     * §10.3: money crosses as a string and is never parsed into a float on the way to a
+     * screen — `formatMoney` groups the digits without going through a number, which is why
+     * it takes the amount as text.
+     *
+     * It was `${amount} ${currency}` until #403, on this screen and the campaign directory
+     * and nowhere else, so a console that renders `63,286.79 AZN` on the payout file
+     * rendered `28000.00 AZN` on the queue deciding whether that campaign may run.
+     */
+    expect(await screen.findByText('5,000.00 AZN')).toBeInTheDocument();
   });
 
   it('names a campaign whose creator has been anonymised rather than showing a blank', async () => {

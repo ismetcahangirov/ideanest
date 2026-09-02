@@ -145,10 +145,12 @@ export function HealthDashboard({ copy }: HealthDashboardProps) {
                 <StatusTag status={job.status} copy={copy} />
               </div>
               <p className="mt-2 text-xs text-white/48">
-                {/* `job.state` is the scheduler's own wire word and is not translated: it is
-                    what somebody greps the logs for, and a translated copy of it would be a
-                    second spelling of a value nothing else in the system knows. */}
-                {job.state}
+                {/* The wire word is on the `title` and the sentence is on the screen — the
+                    reverse of what this did, and #403's argument for the change: `READY` on
+                    nineteen rows is not information in any language, and the value somebody
+                    greps for is still one hover away. A state with no sentence is drawn as
+                    itself. */}
+                <span title={job.state}>{copy.jobState[job.state] ?? job.state}</span>
                 {job.overdueBySeconds > 0
                   ? ` · ${fillPlaceholders(copy.overdue, {
                       count: String(Math.floor(job.overdueBySeconds / 60)),

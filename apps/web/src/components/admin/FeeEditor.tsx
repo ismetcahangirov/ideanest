@@ -20,6 +20,9 @@ import {
   type FeeScope,
 } from '../../lib/admin/fees';
 import { consoleMessageFor, shortId } from '../../lib/admin/refusals';
+import { formatMoney } from '../../lib/money';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
+import type { Locale } from '../../lib/i18n/locale';
 import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import type { FeeEditorCopy } from '../../lib/i18n/admin/money-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
@@ -58,6 +61,7 @@ export interface FeeEditorProps {
 }
 
 export function FeeEditor({ copy }: FeeEditorProps) {
+  const locale = useRouteLocale();
   const history = useConsoleResource(
     (signal) => readFeeHistory(signal),
     copy.subject,
@@ -156,7 +160,7 @@ export function FeeEditor({ copy }: FeeEditorProps) {
         {history.status === 'ready' && open.length > 0 && (
           <ul className="mt-4 flex list-none flex-col gap-2">
             {open.map((schedule) => (
-              <ScheduleRow key={schedule.id} schedule={schedule} copy={copy} />
+              <ScheduleRow key={schedule.id} schedule={schedule} locale={locale} copy={copy} />
             ))}
           </ul>
         )}
@@ -194,7 +198,7 @@ export function FeeEditor({ copy }: FeeEditorProps) {
             <Field
               label={copy.platformRateLabel}
               hint={fillPlaceholders(copy.fractionHint, {
-                percentage: asPercentage(platformRate),
+                percentage: asPercentage(platformRate, locale),
               })}
               className="min-w-[180px]"
             >
@@ -208,7 +212,7 @@ export function FeeEditor({ copy }: FeeEditorProps) {
             <Field
               label={copy.processingRateLabel}
               hint={fillPlaceholders(copy.fractionHint, {
-                percentage: asPercentage(processingRate),
+                percentage: asPercentage(processingRate, locale),
               })}
               className="min-w-[180px]"
             >
@@ -260,7 +264,7 @@ export function FeeEditor({ copy }: FeeEditorProps) {
 
           <ul className="mt-4 flex list-none flex-col gap-2">
             {closed.map((schedule) => (
-              <ScheduleRow key={schedule.id} schedule={schedule} copy={copy} />
+              <ScheduleRow key={schedule.id} schedule={schedule} locale={locale} copy={copy} />
             ))}
           </ul>
         </section>
@@ -272,9 +276,11 @@ export function FeeEditor({ copy }: FeeEditorProps) {
 /** One set of terms and the window it applied over. */
 function ScheduleRow({
   schedule,
+  locale,
   copy,
 }: {
   readonly schedule: FeeSchedule;
+  readonly locale: Locale;
   readonly copy: FeeEditorCopy;
 }) {
   return (
@@ -291,10 +297,11 @@ function ScheduleRow({
 
       <p className="mt-2 text-sm text-white/80">
         {fillPlaceholders(copy.rates, {
-          platform: asPercentage(schedule.platformRate),
-          processing: asPercentage(schedule.processingRate),
-          fixed: schedule.processingFixed,
-          currency: schedule.currency,
+          platform: asPercentage(schedule.platformRate, locale),
+          processing: asPercentage(schedule.processingRate, locale),
+          // #403: the raw column, which the service stores at four decimal places, read
+          // `0.3000 AZN` — four decimals on a currency amount, beside two everywhere else.
+          fixed: formatMoney({ amount: schedule.processingFixed, currency: schedule.currency }),
         })}
       </p>
 

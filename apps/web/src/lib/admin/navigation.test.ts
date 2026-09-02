@@ -121,6 +121,55 @@ describe('the console navigation', () => {
   });
 });
 
+/**
+ * The rail and the screen it opens — issue #403.
+ *
+ * <p>The rail called `/admin/disputes` "Ödəniş mübahisələri" and the screen's own `<h1>` and
+ * `<title>` said "Geri tələblər". Somebody clicked one word and arrived at another, in a
+ * console where every other entry agrees with its page, and nothing said so.
+ */
+describe('the rail and the page it opens', () => {
+  /**
+   * The catalogue node a console href's page copy lives under.
+   *
+   * <p>Derived rather than tabulated: the key is the path under `/admin` camel-cased, which
+   * holds for twenty-five of the twenty-six. The submission queue is the exception, and it is
+   * named here rather than renamed — the key is in four catalogues and in a route, and the
+   * inconsistency worth catching is between the two words a reader sees.
+   */
+  function pageKeyFor(href: string): string {
+    if (href === '/admin/moderation/submissions') return 'submissions';
+
+    const [head = '', ...rest] = href.slice('/admin/'.length).split(/[/-]/);
+    return head + rest.map((part) => part.slice(0, 1).toUpperCase() + part.slice(1)).join('');
+  }
+
+  it('calls a screen the same thing in both places, in every language', () => {
+    for (const catalogue of CATALOGUES) {
+      const links = catalogue.admin.links as Record<string, string>;
+      const pages = catalogue.admin.pages as Record<string, { title?: string }>;
+
+      for (const [href, label] of Object.entries(links)) {
+        const title = pages[pageKeyFor(href)]?.title;
+        expect(title, `${href} has a rail entry and no page title`).toBeTruthy();
+
+        /*
+         * One name has to contain the other rather than equal it. A rail is narrower than a
+         * heading and "Analytics" opening "Platform analytics" is the same name said shorter,
+         * which is not the failure — two different nouns is, and containment is what tells
+         * them apart.
+         */
+        const one = label.toLocaleLowerCase();
+        const other = (title as string).toLocaleLowerCase();
+        expect(
+          one.includes(other) || other.includes(one),
+          `${href} is "${label}" in the rail and "${title as string}" on the page`,
+        ).toBe(true);
+      }
+    }
+  });
+});
+
 describe('isCurrentConsoleLink', () => {
   it('marks the entry whose path is being rendered', () => {
     expect(isCurrentConsoleLink('/admin/audit', '/admin/audit')).toBe(true);

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { azerbaijaniDateTimeFormat, azerbaijaniRelativeTimeFormat } from './azerbaijani';
-import { dateTimeFormat, relativeTimeFormat } from './formats';
+import {
+  azerbaijaniDateTimeFormat,
+  azerbaijaniNumberFormat,
+  azerbaijaniRelativeTimeFormat,
+} from './azerbaijani';
+import { dateTimeFormat, numberFormat, relativeTimeFormat } from './formats';
 
 /**
  * Azerbaijani, asserted twice — issue #401.
@@ -145,6 +149,37 @@ describe('Azerbaijani dates', () => {
   });
 });
 
+describe('Azerbaijani numbers', () => {
+  it('groups with a dot and points with a comma', () => {
+    const format = azerbaijaniNumberFormat({ maximumFractionDigits: 3 });
+
+    // Chromium's `az` is the root locale here too, so it grouped with a comma and pointed
+    // with a dot — the opposite of both — which is #403's `2.9%` beside a `2,9%` typed by a
+    // person into the note next to it.
+    expect(format.format(1234.5)).toBe('1.234,5');
+    expect(format.format(2.9)).toBe('2,9');
+    expect(format.format(-0.125)).toBe('-0,125');
+  });
+
+  it('writes a percentage the way Azerbaijani writes one', () => {
+    const format = azerbaijaniNumberFormat({ style: 'percent', maximumFractionDigits: 3 });
+
+    expect(format.format(0.05)).toBe('5%');
+    expect(format.format(0.029)).toBe('2,9%');
+  });
+
+  it('leaves the other three languages to Intl, sign and separator both', () => {
+    const percent = { style: 'percent', maximumFractionDigits: 3 } as const;
+
+    expect(numberFormat('az', percent, 'test-rate').format(0.029)).toBe('2,9%');
+    expect(numberFormat('en', percent, 'test-rate').format(0.029)).toBe('2.9%');
+    // Russian puts a space before the sign and Turkish puts the sign in front of the
+    // number, which is why this is a formatter's job and not a template's.
+    expect(numberFormat('ru', percent, 'test-rate').format(0.029)).toBe('2,9 %');
+    expect(numberFormat('tr', percent, 'test-rate').format(0.029)).toBe('%2,9');
+  });
+});
+
 describe('the formatter table', () => {
   it('sends Azerbaijani to this module and leaves the other three to Intl', () => {
     expect(relativeTimeFormat('az', { numeric: 'auto' }, 'test-relative').format(-3, 'week')).toBe(
@@ -206,6 +241,21 @@ describe.skipIf(!engineHasAzerbaijani())('against an engine that does have the d
 
     for (const instant of INSTANTS) {
       expect(ours.format(instant)).toBe(icu.format(instant));
+    }
+  });
+
+  it('matches ICU for the numbers a rate is written with', () => {
+    for (const options of [
+      { maximumFractionDigits: 3 },
+      { style: 'percent', maximumFractionDigits: 3 },
+      { style: 'percent', maximumFractionDigits: 0 },
+    ] as const) {
+      const ours = azerbaijaniNumberFormat(options);
+      const icu = new Intl.NumberFormat('az', options);
+
+      for (const value of [0, 0.00125, 0.029, 0.05, 1, 12.5, 1234.5, 1234567.891, -0.125, -1234.5]) {
+        expect(ours.format(value)).toBe(icu.format(value));
+      }
     }
   });
 

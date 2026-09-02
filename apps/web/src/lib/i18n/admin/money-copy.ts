@@ -3,7 +3,7 @@ import type { FeeScope } from '../../admin/fees';
 import type { TransactionStatus, TransactionType } from '../../admin/payments';
 import type { PayoutState } from '../../admin/payouts';
 import type { RefundReason, RefundState } from '../../admin/refunds';
-import type { FindingKind } from '../../admin/reconciliation';
+import type { FindingCode, FindingKind } from '../../admin/reconciliation';
 import type { AdminTranslator } from '../admin-copy';
 import type { PluralForms } from '../plurals';
 import type { ConsoleChromeCopy } from './common-copy';
@@ -211,6 +211,22 @@ export interface ReconciliationCopy extends ConsoleChromeCopy {
   readonly findingTitle: Readonly<Record<FindingKind, string>>;
   /** What each kind means for somebody who has to act on it. */
   readonly findingMeaning: Readonly<Record<FindingKind, string>>;
+  /**
+   * The finding itself, one sentence per code — issue #403.
+   *
+   * <p>Keyed on the code rather than the kind, because two of the four codes are
+   * `IMPOSSIBLE_SIGN` and read in opposite directions: a creator paid too much, and platform
+   * money paid out that was never taken. Carries `{account}`, `{amount}`, `{other}` and
+   * `{currency}`, of which each sentence uses what it needs.
+   *
+   * <p>The service still sends its own English `detail`, and this replaces it on the screen.
+   * That sentence is the log line, and it arrives with a raw account identifier and an
+   * unformatted amount in it — it was the only text on this screen an Azerbaijani reader
+   * could not read, on the four rows carrying the actual result.
+   */
+  readonly finding: Readonly<Record<FindingCode, string>>;
+  /** For naming the ledger account a finding is about, the way the ledger screen names it. */
+  readonly money: MoneyCopy;
 }
 
 export function reconciliationCopyFrom(
@@ -241,6 +257,8 @@ export function reconciliationCopyFrom(
     runNote: t('screens.reconciliation.runNote'),
     findingTitle: t.raw('screens.reconciliation.findingTitle') as Readonly<Record<FindingKind, string>>,
     findingMeaning: t.raw('screens.reconciliation.findingMeaning') as Readonly<Record<FindingKind, string>>,
+    finding: t.raw('screens.reconciliation.finding') as Readonly<Record<FindingCode, string>>,
+    money: moneyCopyFrom(t),
   };
 }
 
@@ -461,6 +479,14 @@ export interface DisputeConsoleCopy extends ConsoleChromeCopy {
   readonly emptyBody: string;
   /** Carries `{code}`, `{provider}`. */
   readonly providerAndReason: string;
+  /**
+   * The card network's reason codes, worded — issue #403.
+   *
+   * <p>Keyed by the provider's own spelling, and a code with no sentence falls through to
+   * itself: the set belongs to the networks and they add to it, so this is a table of the
+   * ones seen rather than a closed enum.
+   */
+  readonly reason: Readonly<Record<string, string>>;
   /** Carries `{fee}`, `{pledge}`. */
   readonly pledgeLine: string;
   readonly noDeadline: string;
@@ -501,6 +527,7 @@ export function disputeConsoleCopyFrom(
     emptyTitle: t('screens.disputes.emptyTitle'),
     emptyBody: t('screens.disputes.emptyBody'),
     providerAndReason: String(t.raw('screens.disputes.providerAndReason')),
+    reason: t.raw('screens.disputes.reason') as Readonly<Record<string, string>>,
     pledgeLine: String(t.raw('screens.disputes.pledgeLine')),
     noDeadline: t('screens.disputes.noDeadline'),
     deadlinePassed: t('screens.disputes.deadlinePassed'),

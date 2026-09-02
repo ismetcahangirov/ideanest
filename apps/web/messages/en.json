@@ -716,37 +716,121 @@
         "requestId": "request {id}",
         "footnote": "Reading this page writes a row to it. An audit surface nobody audits is the one an investigation starts by distrusting, so a read is recorded like a write — with the filter and the number of rows, and never the rows themselves.",
         "entity": {
-          "project": "Campaigns",
           "account": "Accounts",
-          "report": "Reports",
           "collaborator": "Collaborators",
+          "collection": "Collections",
+          "dispute": "Chargebacks",
+          "email_template": "Email templates",
+          "feature_flag": "Feature flags",
+          "fee_schedule": "Fee schedules",
+          "payout": "Payouts",
+          "project": "Campaigns",
+          "refund": "Refunds",
+          "report": "Reports",
           "session": "Sessions",
-          "collection": "Collections"
+          "subscription": "Subscriptions",
+          "subscription_plan": "Subscription plans",
+          "support_ticket": "Support tickets",
+          "taxonomy": "Taxonomy"
         },
         "action": {
-          "project": {
-            "approved": "Campaign approved",
-            "rejected": "Campaign rejected",
-            "changes_requested": "Changes requested",
-            "suspended": "Campaign suspended"
-          },
-          "report": {
-            "upheld": "Report upheld",
-            "dismissed": "Report dismissed"
-          },
           "account": {
+            "deletion_cancelled": "Account deletion cancelled",
+            "deletion_requested": "Account deletion requested",
+            "email_change_requested": "Email change requested",
+            "email_changed": "Email changed",
+            "exported": "Account data exported",
+            "password_changed": "Password changed",
+            "password_reset_requested": "Password reset requested",
+            "password_reset": "Password reset",
+            "reinstated": "Account reinstated",
             "searched": "Accounts searched",
-            "suspended": "Account suspended",
-            "reinstated": "Account reinstated"
+            "suspended": "Account suspended"
           },
           "audit": {
             "trail_read": "Audit trail read"
           },
+          "collaborator": {
+            "capabilities_changed": "Collaborator capabilities changed",
+            "invited": "Collaborator invited",
+            "revoked": "Collaborator removed"
+          },
+          "dispute": {
+            "handled": "Chargeback handled"
+          },
+          "email": {
+            "template_edited": "Email template edited"
+          },
+          "feature": {
+            "flag_changed": "Feature flag changed"
+          },
+          "fee": {
+            "schedule_changed": "Fee schedule changed"
+          },
+          "identity": {
+            "document_read": "Identity document read",
+            "document_submitted": "Identity document submitted",
+            "verification_approved": "Identity verification approved",
+            "verification_rejected": "Identity verification rejected"
+          },
+          "ledger": {
+            "read": "Ledger read",
+            "reconciled": "Ledger reconciled"
+          },
           "payment": {
             "log_read": "Payment log read"
           },
-          "ledger": {
-            "read": "Ledger read"
+          "payout": {
+            "approved": "Payout approved",
+            "calculated": "Payout calculated",
+            "sent": "Payout sent"
+          },
+          "project": {
+            "addresses_locked": "Addresses locked",
+            "approved": "Campaign approved",
+            "backers_exported": "Backers exported",
+            "changes_requested": "Changes requested",
+            "comment_removed": "Comment removed",
+            "fulfilments_imported": "Fulfilments imported",
+            "rejected": "Campaign rejected",
+            "segment_messaged": "Backer segment messaged",
+            "survey_sent": "Survey sent",
+            "suspended": "Campaign suspended",
+            "update_published": "Update published"
+          },
+          "refund": {
+            "issued": "Refund issued"
+          },
+          "report": {
+            "dismissed": "Report dismissed",
+            "upheld": "Report upheld"
+          },
+          "risk": {
+            "queue_read": "Risk queue read"
+          },
+          "session": {
+            "revoked_all": "All sessions revoked",
+            "revoked": "Session revoked"
+          },
+          "staff": {
+            "role_granted": "Staff role granted",
+            "role_revoked": "Staff role withdrawn"
+          },
+          "subscription": {
+            "activated": "Subscription activated",
+            "canceled": "Subscription cancelled",
+            "plan_changed": "Subscription plan changed",
+            "plan_created": "Subscription plan created"
+          },
+          "support": {
+            "ticket_handled": "Support ticket handled"
+          },
+          "taxonomy": {
+            "changed": "Taxonomy changed"
+          },
+          "two_factor": {
+            "disabled": "Two-factor sign-in disabled",
+            "enabled": "Two-factor sign-in enabled"
           }
         }
       },
@@ -773,6 +857,12 @@
           "HEALTHY": "Healthy",
           "DEGRADED": "Worth a look",
           "CRITICAL": "Stopped"
+        },
+        "jobState": {
+          "READY": "Ready for its next run",
+          "RUNNING": "Running",
+          "FAILED": "Failed on its last run",
+          "DISABLED": "Switched off"
         }
       },
       "flags": {
@@ -820,7 +910,11 @@
         "successRate": "Success rate",
         "dailyHeading": "Daily volume",
         "nothingPledged": "Nothing was pledged in this window.",
-        "notBuiltHeading": "What this screen does not answer"
+        "notBuiltHeading": "What this screen does not answer",
+        "notBuilt": {
+          "COHORTS": "Cohorts need a rollup keyed on a backer's first pledge, which does not exist (#313).",
+          "FUNNELS": "Funnels need the visit-to-pledge path; referral_touches records arrival, not what happened next (#313)."
+        }
       },
       "emailTemplates": {
         "subject": "the email templates",
@@ -1344,6 +1438,12 @@
           "other": "{count} account positions"
         },
         "findingsHeading": "What is wrong",
+        "finding": {
+          "LEDGER_NOT_ZERO": "The ledger does not sum to zero in {currency}: net {amount}.",
+          "CREATOR_OVERPAID": "{account} is positive at {amount}, which is a creator paid more than they earned.",
+          "PLATFORM_ACCOUNT_NEGATIVE": "{account} is negative at {amount}, which is money disbursed that was never taken.",
+          "DISAGREES_WITH_PAYMENTS": "The ledger holds {amount} and the transactions say {other}."
+        },
         "checkAgain": "Check again now",
         "checking": "Checking…",
         "runNote": "Two queries over the whole platform. It reads and writes nothing, so running it is safe at any time — and it is the only way to get an answer from the replica you are talking to.",
@@ -1465,6 +1565,20 @@
         "emptyTitle": "No open chargebacks",
         "emptyBody": "Nothing is waiting for an answer. Cases arrive here from a provider webhook, so an empty queue means no network has disputed a charge.",
         "providerAndReason": "{provider} · {code}",
+        "reason": {
+          "fraudulent": "Not the cardholder",
+          "product_not_received": "Product not received",
+          "product_unacceptable": "Product not as described",
+          "duplicate": "Charged twice",
+          "subscription_canceled": "Subscription was cancelled",
+          "credit_not_processed": "Promised refund never issued",
+          "unrecognized": "Charge not recognised",
+          "incorrect_account_details": "Account details were wrong",
+          "insufficient_funds": "Insufficient funds",
+          "bank_cannot_process": "The bank could not process it",
+          "debit_not_authorized": "The debit was not authorised",
+          "general": "No reason given"
+        },
         "pledgeLine": "Pledge {pledge} · fee {fee} · ",
         "noDeadline": "No deadline given",
         "deadlinePassed": "Deadline passed",
@@ -1527,7 +1641,7 @@
         "pastHeading": "Past terms",
         "pastIntro": "What the platform charged, and when. §22.1 makes this a record with a retention rule rather than a changelog.",
         "inForceTag": "In force",
-        "rates": "Platform {platform} · processing {processing} + {fixed} {currency}",
+        "rates": "Platform {platform} · processing {processing} + {fixed}",
         "window": "{from} — {to} · {note}",
         "now": "now",
         "scope": {

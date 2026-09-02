@@ -105,7 +105,10 @@ describe('the reconciliation panel', () => {
         findings: [
           {
             kind: 'DISAGREES_WITH_PAYMENTS',
+            code: 'DISAGREES_WITH_PAYMENTS',
             currency: 'AZN',
+            amount: '900.00',
+            otherAmount: '1000.00',
             detail: 'The ledger holds 900.00 and the transactions say 1000.00',
           },
         ],
@@ -115,9 +118,17 @@ describe('the reconciliation panel', () => {
     render(<ReconciliationPanel copy={COPY} />);
 
     expect(await screen.findByText(/The books do not balance/i)).toBeInTheDocument();
+    /*
+     * The console's own sentence, not the service's — issue #403. `detail` is the log line:
+     * English prose with a raw account identifier and an unformatted amount in it, and it
+     * stayed English under an Azerbaijani heading on the one row carrying the result.
+     */
     expect(
-      screen.getByText('The ledger holds 900.00 and the transactions say 1000.00'),
+      screen.getByText('The ledger holds 900.00 AZN and the transactions say 1,000.00 AZN.'),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText('The ledger holds 900.00 and the transactions say 1000.00'),
+    ).toBeNull();
     // The kind as a title somebody can act on, not as a code they have to look up.
     expect(screen.getByText(/The ledger and the payment records disagree/i)).toBeInTheDocument();
     expect(screen.getByText(/never made at all/i)).toBeInTheDocument();
@@ -127,7 +138,15 @@ describe('the reconciliation panel', () => {
     readMock.mockResolvedValue(
       report({
         balanced: false,
-        findings: [{ kind: 'UNBALANCED', currency: 'AZN', detail: 'net 0.01' }],
+        findings: [
+          {
+            kind: 'UNBALANCED',
+            code: 'LEDGER_NOT_ZERO',
+            currency: 'AZN',
+            amount: '0.01',
+            detail: 'The ledger does not sum to zero: net 0.01',
+          },
+        ],
       }),
     );
 
@@ -149,7 +168,16 @@ describe('the reconciliation panel', () => {
       report({
         balanced: false,
         accountsChecked: 13,
-        findings: [{ kind: 'IMPOSSIBLE_SIGN', currency: 'AZN', detail: 'escrow is negative' }],
+        findings: [
+          {
+            kind: 'IMPOSSIBLE_SIGN',
+            code: 'PLATFORM_ACCOUNT_NEGATIVE',
+            account: 'escrow',
+            currency: 'AZN',
+            amount: '-12.00',
+            detail: 'escrow is negative at -12.00, which is money disbursed that was never taken',
+          },
+        ],
       }),
     );
 
@@ -159,7 +187,11 @@ describe('the reconciliation panel', () => {
     await userEvent.click(screen.getByRole('button', { name: /Check again now/i }));
 
     expect(await screen.findByText(/The books do not balance/i)).toBeInTheDocument();
-    expect(screen.getByText('escrow is negative')).toBeInTheDocument();
+    // Built from the parts rather than echoed: the account named the way the ledger names
+    // it, and the money formatted the way the rest of the platform formats it.
+    expect(
+      screen.getByText(/Escrow is negative at -12\.00 AZN/),
+    ).toBeInTheDocument();
     // One request, not two: the run answers with the report, so re-reading would spend a
     // round trip to be told what the reader just caused.
     expect(readMock).toHaveBeenCalledTimes(1);
@@ -169,7 +201,15 @@ describe('the reconciliation panel', () => {
     readMock.mockResolvedValue(
       report({
         balanced: false,
-        findings: [{ kind: 'UNBALANCED', currency: 'AZN', detail: 'net 0.01' }],
+        findings: [
+          {
+            kind: 'UNBALANCED',
+            code: 'LEDGER_NOT_ZERO',
+            currency: 'AZN',
+            amount: '0.01',
+            detail: 'The ledger does not sum to zero: net 0.01',
+          },
+        ],
       }),
     );
     runMock.mockRejectedValue(new ApiError(503, null));
@@ -182,7 +222,7 @@ describe('the reconciliation panel', () => {
     await waitFor(() => expect(screen.getByText(/That check did not run/i)).toBeInTheDocument());
     // Still there. Blanking a discrepancy because a retry failed would hide the one thing
     // the reader came for.
-    expect(screen.getByText('net 0.01')).toBeInTheDocument();
+    expect(screen.getByText(/does not sum to zero in AZN: net 0\.01 AZN/)).toBeInTheDocument();
   });
 
   it('refuses honestly when the account may not read finance', async () => {

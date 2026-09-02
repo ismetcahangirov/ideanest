@@ -136,12 +136,18 @@ export function DisputeConsole({ copy }: DisputeConsoleProps) {
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <p className="text-sm text-white">
                       {formatMoney(dispute.amount)}
-                      <span className="ml-2 text-white/48">
-                        {/* The provider's name and the network's reason code are quoted into a
-                            dispute, so both stay in the spelling the provider uses. */}
+                      <span className="ml-2 text-white/48" title={dispute.reasonCode}>
+                        {/* The provider's name stays in its own spelling. The network's
+                            reason code does not, since #403: `/admin/refunds` puts its reason
+                            codes through a catalogue on the same screen group, and a reader
+                            deciding whether to answer a chargeback should not have to know
+                            that `product_not_received` is a delivery complaint. A code with no
+                            sentence falls through to itself, because the set is the card
+                            networks' and they add to it. The code itself is on the `title`,
+                            so whoever is about to quote it to the provider still has it. */}
                         {fillPlaceholders(copy.providerAndReason, {
                           provider: dispute.provider,
-                          code: dispute.reasonCode,
+                          code: copy.reason[dispute.reasonCode] ?? dispute.reasonCode,
                         })}
                       </span>
                     </p>

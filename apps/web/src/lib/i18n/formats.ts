@@ -1,8 +1,10 @@
 import { type Locale } from './locale';
 import {
   azerbaijaniDateTimeFormat,
+  azerbaijaniNumberFormat,
   azerbaijaniRelativeTimeFormat,
   type AzerbaijaniDateTimeFormat,
+  type AzerbaijaniNumberFormat,
   type AzerbaijaniRelativeTimeFormat,
 } from './azerbaijani';
 
@@ -147,5 +149,26 @@ export function relativeTimeFormat(
     locale === 'az'
       ? azerbaijaniRelativeTimeFormat(options)
       : new Intl.RelativeTimeFormat(INTL_LOCALE[locale], options),
+  );
+}
+
+/**
+ * A number formatter for one language, built once — issue #403.
+ *
+ * <p><strong>Not for money.</strong> `@ideanest/money` formats an amount from its digits and
+ * never through a number, because `999999999999.99` loses its last digit on the way into an
+ * IEEE 754 double — and it formats the same way in all four languages deliberately. This is
+ * for the figures that are not money and do belong to the reader's language: a rate, a count,
+ * a percentage.
+ */
+export function numberFormat(
+  locale: Locale,
+  options: Intl.NumberFormatOptions,
+  key: string,
+): AzerbaijaniNumberFormat {
+  return cached(`n:${key}:${locale}`, () =>
+    locale === 'az'
+      ? azerbaijaniNumberFormat(options)
+      : new Intl.NumberFormat(INTL_LOCALE[locale], options),
   );
 }

@@ -10432,6 +10432,16 @@
       "Finding" : {
         "type" : "object",
         "properties" : {
+          "account" : {
+            "type" : "string"
+          },
+          "amount" : {
+            "type" : "string"
+          },
+          "code" : {
+            "type" : "string",
+            "enum" : [ "LEDGER_NOT_ZERO", "CREATOR_OVERPAID", "PLATFORM_ACCOUNT_NEGATIVE", "DISAGREES_WITH_PAYMENTS" ]
+          },
           "currency" : {
             "type" : "string"
           },
@@ -10441,6 +10451,9 @@
           "kind" : {
             "type" : "string",
             "enum" : [ "UNBALANCED", "IMPOSSIBLE_SIGN", "DISAGREES_WITH_PAYMENTS" ]
+          },
+          "otherAmount" : {
+            "type" : "string"
           }
         }
       },

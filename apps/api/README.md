@@ -202,6 +202,19 @@ platform's balance rather than from a backer's card: it is the one movement with
 a ledger posting and no transaction row, and adding it back puts both sides in
 the same terms.
 
+### A finding carries its parts as well as its sentence
+
+`ReconciliationFinding.detail` is the log line — English prose with the account and the
+figures in it — and it is what the `ERROR` above prints. Beside it the finding carries
+`code`, `account`, `amount` and `otherAmount`, because `/admin/reconciliation` renders these
+to a person in one of four languages and cannot translate prose (#403). The console builds
+its own sentence from the parts; the log keeps its own.
+
+`code` is finer than `kind` and has to be: two of the four codes are `IMPOSSIBLE_SIGN` and
+read in opposite directions — a creator paid more than they earned, and platform money
+disbursed that was never taken — so a reader given only the kind is given the severity and
+not the meaning.
+
 ### It reports and never repairs
 
 Nothing writes to the ledger. A correcting entry depends on which of a dozen

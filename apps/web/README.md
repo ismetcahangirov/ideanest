@@ -229,6 +229,15 @@ to render `7/27/2026` under an Azerbaijani heading. `lib/time.ts` and `lib/i18n/
 take a `Locale` and it is a required parameter, deliberately: a default would have compiled
 every call site unchanged and left them quietly wrong.
 
+**Money is formatted the same way in all four languages, and rates are not (#403).**
+`@ideanest/money` groups an amount from its digits rather than through a number — a JSON
+number is an IEEE 754 double and `999999999999.99` loses its last digit on the way into one —
+and it renders the ISO code after the amount because neither language the product ships in
+has an agreed manat symbol. Every amount in the console goes through it. A *rate* is not
+money and does belong to the reader: `lib/i18n/formats.ts`'s `numberFormat` writes `2,9%` in
+Azerbaijani, `2.9%` in English, `2,9 %` in Russian and `%2,9` in Turkish, which is why a
+percentage is a formatter's job and never a template's.
+
 **Which routes are key-based, and which are still English literals (#324).** The
 message catalogue lives in `messages/{az,en,ru,tr}.json` and covers, in full:
 

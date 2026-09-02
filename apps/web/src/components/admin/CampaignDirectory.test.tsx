@@ -83,7 +83,10 @@ describe('the campaign directory', () => {
 
     render(<CampaignDirectory copy={COPY} />);
 
-    expect(await screen.findByText('1250.00 AZN')).toBeInTheDocument();
+    // Through `formatMoney`, like every other amount on the platform — #403. This screen
+     // and the submission queue printed `${amount} ${currency}` and were the only two that
+     // did, so `15000.00 AZN` sat on a console whose public site says `12,000.00 AZN`.
+    expect(await screen.findByText('1,250.00 AZN')).toBeInTheDocument();
     expect(screen.getByText('34')).toBeInTheDocument();
   });
 

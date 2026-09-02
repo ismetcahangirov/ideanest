@@ -20,6 +20,7 @@ import type { ProjectState } from '../../lib/projects/api';
 import type { CampaignDirectoryCopy } from '../../lib/i18n/admin/content-copy';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 import { formatDate } from '../../lib/time';
+import { formatMoney } from '../../lib/money';
 import type { Locale } from '../../lib/i18n/locale';
 import { ConsoleRefusal } from './ConsoleRefusal';
 
@@ -274,15 +275,13 @@ function CampaignRow({ campaign, locale, copy }: CampaignRowProps) {
         <div className="flex gap-2">
           <dt className="text-white/40">{copy.goalLabel}</dt>
           <dd className="text-white/80">
-            {campaign.goal == null
-              ? copy.noGoal
-              : `${campaign.goal.amount} ${campaign.goal.currency}`}
+            {campaign.goal == null ? copy.noGoal : formatMoney(campaign.goal)}
           </dd>
         </div>
         <div className="flex gap-2">
           <dt className="text-white/40">{copy.raisedLabel}</dt>
           <dd className="text-white/80">
-            {`${campaign.pledged.amount} ${campaign.pledged.currency}`}
+            {formatMoney(campaign.pledged)}
           </dd>
         </div>
         <div className="flex gap-2">
