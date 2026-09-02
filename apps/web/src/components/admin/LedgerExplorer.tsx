@@ -33,6 +33,8 @@ import { formatMoney } from '../../lib/money';
 import { fillNodes } from '../../lib/i18n/placeholders';
 import { pluralise } from '../../lib/i18n/plurals';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
+import { formatExactTime } from '../../lib/time';
+import type { Locale } from '../../lib/i18n/locale';
 import type { LedgerExplorerCopy } from '../../lib/i18n/admin/money-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
 
@@ -258,7 +260,7 @@ export function LedgerExplorer({ copy }: LedgerExplorerProps) {
       {status === 'ready' && postings.length > 0 && (
         <ul className="mt-4 flex list-none flex-col gap-2">
           {postings.map((posting) => (
-            <PostingCard key={posting.transactionId} posting={posting} copy={copy} />
+            <PostingCard key={posting.transactionId} posting={posting} locale={locale} copy={copy} />
           ))}
         </ul>
       )}
@@ -334,9 +336,11 @@ function BalancePanel({
  */
 function PostingCard({
   posting,
+  locale,
   copy,
 }: {
   readonly posting: LedgerPosting;
+  readonly locale: Locale;
   readonly copy: LedgerExplorerCopy;
 }) {
   return (
@@ -363,7 +367,7 @@ function PostingCard({
             className="text-xs text-white/40"
             title={posting.createdAt}
           >
-            {new Date(posting.createdAt).toLocaleString()}
+            {formatExactTime(posting.createdAt, locale)}
           </time>
         </div>
       </div>

@@ -27,6 +27,8 @@ import {
 import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import { pluralise } from '../../lib/i18n/plurals';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
+import { formatDate } from '../../lib/time';
+import type { Locale } from '../../lib/i18n/locale';
 import type { UserDirectoryCopy } from '../../lib/i18n/admin/people-copy';
 import { requiredCapabilityFrom } from '../../lib/admin/refusals';
 import { ConsoleRefusal } from './ConsoleRefusal';
@@ -58,11 +60,15 @@ function wasAborted(cause: unknown): boolean {
   return cause instanceof DOMException && cause.name === 'AbortError';
 }
 
-/** The day, in the reader's locale. An instant to the second says more than anybody needs here. */
-function day(instant: string | null): string | null {
-  if (instant === null) return null;
-  const parsed = new Date(instant);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toLocaleDateString();
+/**
+ * The day, in the reader's language. An instant to the second says more than anybody needs.
+ *
+ * <p>`toLocaleDateString()` with no argument until #401, which is the *browser's* language
+ * rather than the route's — so an Azerbaijani console on an American laptop rendered
+ * `7/27/2026` under a heading in Azerbaijani.
+ */
+function day(instant: string | null, locale: Locale): string | null {
+  return instant === null ? null : formatDate(instant, locale);
 }
 
 /**
@@ -378,7 +384,7 @@ export function UserDirectory({ copy }: UserDirectoryProps) {
                   <p className="mt-1 truncate text-xs text-white/40">
                     /{user.slug} ·{' '}
                     {fillPlaceholders(copy.joined, {
-                      date: day(user.createdAt) ?? copy.unknownDate,
+                      date: day(user.createdAt, locale) ?? copy.unknownDate,
                     })}
                   </p>
                 </div>
@@ -398,7 +404,7 @@ export function UserDirectory({ copy }: UserDirectoryProps) {
               {user.suspended && (
                 <p className="mt-3 text-sm text-white/64">
                   {fillPlaceholders(copy.suspendedOn, {
-                    date: day(user.suspendedAt) ?? copy.unknownDate,
+                    date: day(user.suspendedAt, locale) ?? copy.unknownDate,
                   })}
                   {user.suspensionReason !== null && `: ${user.suspensionReason}`}
                 </p>

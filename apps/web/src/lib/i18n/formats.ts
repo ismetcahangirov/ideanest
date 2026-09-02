@@ -1,4 +1,10 @@
 import { type Locale } from './locale';
+import {
+  azerbaijaniDateTimeFormat,
+  azerbaijaniRelativeTimeFormat,
+  type AzerbaijaniDateTimeFormat,
+  type AzerbaijaniRelativeTimeFormat,
+} from './azerbaijani';
 
 /**
  * What the platform's four language tags mean to `Intl` — issue #324, §21.1.
@@ -21,6 +27,18 @@ import { type Locale } from './locale';
  * `lib/i18n/locale.ts` carries primary subtags and nothing else, because that is what the
  * service's RFC 4647 lookup folds to and what `users_locale_supported` will accept. This map
  * is the one place a region may appear, and it appears only where a formatter needs one.
+ *
+ * <h2>`az` is in this table and is not read from it — #401</h2>
+ *
+ * <p>Chromium claims `az` and formats it from root-locale data: `-3 w`, `2026 M08 14`, and a
+ * twelve-hour clock on a page whose whole reason for existing is the opposite. Node does not,
+ * so it is right on the server, right in every test, and wrong in front of the reader — and
+ * `supportedLocalesOf` reports support, so no feature test can see it.
+ *
+ * <p>So the two constructors below send Azerbaijani to `lib/i18n/azerbaijani.ts` instead, on
+ * every engine, and that file has the argument for why it is every engine rather than the
+ * broken one. The entry stays because it is still what `az` means to `Intl` — the surrogate
+ * that module renders its numbers with is `en-GB`, for the same reason English is.
  */
 export const INTL_LOCALE: Readonly<Record<Locale, string>> = {
   az: 'az',
@@ -101,12 +119,33 @@ function cached<T>(key: string, build: () => T): T {
   return made;
 }
 
-/** A date and time formatter for one language, built once. */
-export function dateTimeFormat(locale: Locale, options: Intl.DateTimeFormatOptions, key: string): Intl.DateTimeFormat {
-  return cached(`d:${key}:${locale}`, () => new Intl.DateTimeFormat(INTL_LOCALE[locale], options));
+/**
+ * A date and time formatter for one language, built once.
+ *
+ * <p>The return type is the one method every caller uses rather than `Intl.DateTimeFormat`,
+ * because Azerbaijani is not one — see {@link azerbaijaniDateTimeFormat} and #401.
+ */
+export function dateTimeFormat(
+  locale: Locale,
+  options: Intl.DateTimeFormatOptions,
+  key: string,
+): AzerbaijaniDateTimeFormat {
+  return cached(`d:${key}:${locale}`, () =>
+    locale === 'az'
+      ? azerbaijaniDateTimeFormat(options)
+      : new Intl.DateTimeFormat(INTL_LOCALE[locale], options),
+  );
 }
 
 /** A relative-time formatter for one language, built once. */
-export function relativeTimeFormat(locale: Locale, options: Intl.RelativeTimeFormatOptions, key: string): Intl.RelativeTimeFormat {
-  return cached(`r:${key}:${locale}`, () => new Intl.RelativeTimeFormat(INTL_LOCALE[locale], options));
+export function relativeTimeFormat(
+  locale: Locale,
+  options: Intl.RelativeTimeFormatOptions,
+  key: string,
+): AzerbaijaniRelativeTimeFormat {
+  return cached(`r:${key}:${locale}`, () =>
+    locale === 'az'
+      ? azerbaijaniRelativeTimeFormat(options)
+      : new Intl.RelativeTimeFormat(INTL_LOCALE[locale], options),
+  );
 }

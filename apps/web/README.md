@@ -212,6 +212,23 @@ from the matched segment, and `src/i18n/navigation.tsx` is what every `Link`, `u
 sends the reader through the redirect, which reads to them as the site forgetting what they
 picked.
 
+**Azerbaijani is formatted here rather than by the browser (#401).** Chromium claims `az`
+— `Intl.RelativeTimeFormat.supportedLocalesOf(['az'])` answers `['az']` and
+`resolvedOptions().locale` says `az` — and then formats it from root-locale data: `-3 w`,
+`2026 M08 14`, and a twelve-hour clock. Node's full ICU has the real data, so it is right on
+the server, right in every test, and wrong in front of the reader, and no feature test can
+see it. So `src/lib/i18n/formats.ts` sends `az` to `src/lib/i18n/azerbaijani.ts` on every
+engine rather than only on the broken one — a client component is rendered on the server
+first, and two ICUs disagreeing is a hydration mismatch. `azerbaijani.test.ts` asserts that
+module is byte-for-byte what full ICU produces, which is a comparison Node can make and the
+browser cannot.
+
+**Nothing formats a date without being told the language.** `toLocaleDateString()` with no
+argument is the *browser's* language, not the route's, which is how six console screens came
+to render `7/27/2026` under an Azerbaijani heading. `lib/time.ts` and `lib/i18n/formats.ts`
+take a `Locale` and it is a required parameter, deliberately: a default would have compiled
+every call site unchanged and left them quietly wrong.
+
 **Which routes are key-based, and which are still English literals (#324).** The
 message catalogue lives in `messages/{az,en,ru,tr}.json` and covers, in full:
 

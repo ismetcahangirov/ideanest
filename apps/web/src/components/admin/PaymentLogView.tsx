@@ -28,6 +28,9 @@ import {
 import { formatMoney } from '../../lib/money';
 import { fillNodes, fillPlaceholders } from '../../lib/i18n/placeholders';
 import type { PaymentLogCopy } from '../../lib/i18n/admin/money-copy';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
+import { formatExactTime } from '../../lib/time';
+import type { Locale } from '../../lib/i18n/locale';
 import { ConsoleRefusal } from './ConsoleRefusal';
 
 /** Which of the two identifiers the search box is holding. */
@@ -68,6 +71,7 @@ export interface PaymentLogViewProps {
 }
 
 export function PaymentLogView({ copy }: PaymentLogViewProps) {
+  const locale = useRouteLocale();
   const [status, setStatus] = useState<ConsoleStatus>('loading');
   // #400: which of the two 403s this is. Only read while `status` is `forbidden`.
   const [capability, setCapability] = useState<string | null>(null);
@@ -242,7 +246,7 @@ export function PaymentLogView({ copy }: PaymentLogViewProps) {
       {status === 'ready' && rows.length > 0 && (
         <ul className="mt-4 flex list-none flex-col gap-2">
           {rows.map((row) => (
-            <TransactionRow key={row.id} transaction={row} copy={copy} />
+            <TransactionRow key={row.id} transaction={row} locale={locale} copy={copy} />
           ))}
         </ul>
       )}
@@ -283,9 +287,11 @@ export function PaymentLogView({ copy }: PaymentLogViewProps) {
  */
 function TransactionRow({
   transaction,
+  locale,
   copy,
 }: {
   readonly transaction: LoggedTransaction;
+  readonly locale: Locale;
   readonly copy: PaymentLogCopy;
 }) {
   return (
@@ -338,7 +344,7 @@ function TransactionRow({
             className="text-xs text-white/40"
             title={transaction.createdAt}
           >
-            {new Date(transaction.createdAt).toLocaleString()}
+            {formatExactTime(transaction.createdAt, locale)}
           </time>
         </div>
       </div>

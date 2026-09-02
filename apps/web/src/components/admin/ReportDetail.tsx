@@ -411,7 +411,7 @@ export function ReportDetail({ reportId, copy }: ReportDetailProps) {
                       className="text-xs text-white/40"
                       title={entry.occurredAt}
                     >
-                      {new Date(entry.occurredAt).toLocaleString()}
+                      {formatExactTime(entry.occurredAt, locale)}
                     </time>
                   </div>
                 </div>

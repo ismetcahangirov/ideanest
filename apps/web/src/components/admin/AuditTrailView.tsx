@@ -19,6 +19,9 @@ import {
 } from '../../lib/admin/refusals';
 import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import type { AuditTrailCopy } from '../../lib/i18n/admin/platform-copy';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
+import { formatExactTime } from '../../lib/time';
+import type { Locale } from '../../lib/i18n/locale';
 import { ConsoleRefusal } from './ConsoleRefusal';
 
 /**
@@ -71,6 +74,7 @@ export interface AuditTrailViewProps {
 }
 
 export function AuditTrailView({ copy }: AuditTrailViewProps) {
+  const locale = useRouteLocale();
   const [status, setStatus] = useState<ConsoleStatus>('loading');
   // #400: which of the two 403s this is. Only read while `status` is `forbidden`.
   const [capability, setCapability] = useState<string | null>(null);
@@ -194,7 +198,7 @@ export function AuditTrailView({ copy }: AuditTrailViewProps) {
       {status === 'ready' && entries.length > 0 && (
         <ul className="mt-4 flex list-none flex-col gap-2">
           {entries.map((entry) => (
-            <AuditRow key={entry.id} entry={entry} copy={copy} />
+            <AuditRow key={entry.id} entry={entry} locale={locale} copy={copy} />
           ))}
         </ul>
       )}
@@ -237,9 +241,11 @@ export function AuditTrailView({ copy }: AuditTrailViewProps) {
  */
 function AuditRow({
   entry,
+  locale,
   copy,
 }: {
   readonly entry: AuditEntry;
+  readonly locale: Locale;
   readonly copy: AuditTrailCopy;
 }) {
   return (
@@ -272,7 +278,7 @@ function AuditRow({
             className="text-xs text-white/40"
             title={entry.occurredAt}
           >
-            {new Date(entry.occurredAt).toLocaleString()}
+            {formatExactTime(entry.occurredAt, locale)}
           </time>
         </div>
       </div>
