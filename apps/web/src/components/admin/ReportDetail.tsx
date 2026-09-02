@@ -8,7 +8,6 @@ import { actionLabel, readTrail, type AuditEntry } from '../../lib/admin/audit';
 import {
   consoleMessageFor,
   requiredCapabilityFrom,
-  shortId,
   statusFor,
   wasAborted,
   type ConsoleStatus,
@@ -28,6 +27,8 @@ import { fillNodes } from '../../lib/i18n/placeholders';
 import type { ReportDetailCopy } from '../../lib/i18n/admin/content-copy';
 import { DecisionDialog, type Decision } from '../moderation/DecisionDialog';
 import { ConsoleRefusal } from './ConsoleRefusal';
+import { EntityName } from './ConsoleIdentity';
+import { useDirectoryNames } from './useDirectoryNames';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
 export interface ReportDetailProps {
@@ -88,6 +89,30 @@ export function ReportDetail({ reportId, copy }: ReportDetailProps) {
   const [pending, setPending] = useState<Decision | null>(null);
   const [dialogBusy, setDialogBusy] = useState(false);
   const [dialogError, setDialogError] = useState<string | null>(null);
+
+  /*
+   * Everybody this page mentions — #402.
+   *
+   * <p>The reporter used to be rendered as an identifier on purpose: "there is no endpoint
+   * that turns one into a person", and inventing a name would have been worse than the
+   * fragment. #402 built the endpoint. What has not changed is that a report is an
+   * accusation and the identifier stays beside the name, because "this account has reported
+   * forty campaigns this week" is the question that catches abuse of the feature and it is
+   * asked by identifier.
+   *
+   * <p>The target is named only when it is a thing the directory knows about. A comment or
+   * a campaign update has no name to look up, and the fragment is the honest answer there —
+   * which is #399's subject rather than this one's.
+   */
+  const names = useDirectoryNames(
+    [
+      report?.reporterId ?? null,
+      report?.resolution?.moderatorId ?? null,
+      report?.target.type === 'USER' ? report.target.id : null,
+      ...(history ?? []).map((entry) => entry.actorId ?? null),
+    ].filter((id): id is string => id != null),
+    report?.target.type === 'PROJECT' ? [report.target.id] : [],
+  );
 
   const loadHistory = useCallback(
     async (signal?: AbortSignal): Promise<void> => {
@@ -256,11 +281,20 @@ export function ReportDetail({ reportId, copy }: ReportDetailProps) {
             <p className="mt-1 text-sm text-white/64">
               {fillNodes(copy.reportedAbout, {
                 kind,
-                id: (
-                  <span className="font-mono" title={report.target.id}>
-                    {report.target.id}
-                  </span>
-                ),
+                id:
+                  report.target.type === 'USER' || report.target.type === 'PROJECT' ? (
+                    <EntityName
+                      id={report.target.id}
+                      names={names}
+                      kind={report.target.type === 'USER' ? 'account' : 'project'}
+                      copy={copy.identity}
+                      copyable
+                    />
+                  ) : (
+                    <span className="font-mono" title={report.target.id}>
+                      {report.target.id}
+                    </span>
+                  ),
               })}
             </p>
           </div>
@@ -287,12 +321,19 @@ export function ReportDetail({ reportId, copy }: ReportDetailProps) {
           <div className="flex gap-2">
             <dt className="text-white/40">{copy.reporter}</dt>
             {/*
-              An account id and not a name. A report is an accusation, "this account has
-              reported forty campaigns this week" is the question that catches abuse of the
-              feature, and nothing turns an identifier into a person here.
+              Named since #402, with the identifier still beside it. A report is an
+              accusation and "this account has reported forty campaigns this week" is the
+              question that catches abuse of the feature — which is asked by identifier and
+              answered by a person, so the row needs both.
             */}
-            <dd className="font-mono text-white/64" title={report.reporterId}>
-              {shortId(report.reporterId)}
+            <dd className="text-white/64">
+              <EntityName
+                id={report.reporterId}
+                names={names}
+                kind="account"
+                copy={copy.identity}
+                copyable
+              />
             </dd>
           </div>
         </dl>
@@ -310,9 +351,12 @@ export function ReportDetail({ reportId, copy }: ReportDetailProps) {
             <p className="mt-1 text-sm text-white/64">
               {fillNodes(copy.moderation.decidedBy[report.state], {
                 moderator: (
-                  <span className="font-mono" title={report.resolution.moderatorId}>
-                    {shortId(report.resolution.moderatorId)}
-                  </span>
+                  <EntityName
+                    id={report.resolution.moderatorId}
+                    names={names}
+                    kind="account"
+                    copy={copy.identity}
+                  />
                 ),
                 at: (
                   <time dateTime={report.resolution.at}>
@@ -398,9 +442,12 @@ export function ReportDetail({ reportId, copy }: ReportDetailProps) {
                         fillNodes(copy.actionBy, {
                           action: actionLabel(entry.action, copy.auditAction),
                           actor: (
-                            <span className="font-mono text-white/64" title={entry.actorId}>
-                              {shortId(entry.actorId)}
-                            </span>
+                            <EntityName
+                              id={entry.actorId}
+                              names={names}
+                              kind="account"
+                              copy={copy.identity}
+                            />
                           ),
                         })}
                   </p>

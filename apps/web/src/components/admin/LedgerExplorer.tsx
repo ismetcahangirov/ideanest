@@ -36,7 +36,11 @@ import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 import { formatExactTime } from '../../lib/time';
 import type { Locale } from '../../lib/i18n/locale';
 import type { LedgerExplorerCopy } from '../../lib/i18n/admin/money-copy';
+import { creatorIdsIn } from '../../lib/admin/ledger';
+import type { DirectoryNames } from '../../lib/admin/directory';
 import { ConsoleRefusal } from './ConsoleRefusal';
+import { EntityName } from './ConsoleIdentity';
+import { useDirectoryNames } from './useDirectoryNames';
 
 /**
  * §4.11's AD-05: the double-entry ledger, readable by account and by campaign — issue #305.
@@ -93,6 +97,19 @@ export function LedgerExplorer({ copy }: LedgerExplorerProps) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+
+  /*
+   * The campaigns each posting is about, and the creators whose accounts it moved — #402.
+   * A creator's ledger account is stored as `creator:{uuid}`, so the identifiers come out
+   * of the account names rather than out of a field of their own.
+   */
+  const names = useDirectoryNames(
+    creatorIdsIn([
+      ...balances.map((balance) => balance.account),
+      ...postings.flatMap((posting) => posting.lines.map((line) => line.account)),
+    ]),
+    postings.map((posting) => posting.projectId),
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -179,7 +196,7 @@ export function LedgerExplorer({ copy }: LedgerExplorerProps) {
       )}
 
       {status === 'ready' && balances.length > 0 && (
-        <BalancePanel balances={balances} scoped={projectId !== null} copy={copy} />
+        <BalancePanel balances={balances} names={names} scoped={projectId !== null} copy={copy} />
       )}
 
       <div className="mt-6 space-y-3">
@@ -260,7 +277,13 @@ export function LedgerExplorer({ copy }: LedgerExplorerProps) {
       {status === 'ready' && postings.length > 0 && (
         <ul className="mt-4 flex list-none flex-col gap-2">
           {postings.map((posting) => (
-            <PostingCard key={posting.transactionId} posting={posting} locale={locale} copy={copy} />
+            <PostingCard
+              key={posting.transactionId}
+              posting={posting}
+              locale={locale}
+              names={names}
+              copy={copy}
+            />
           ))}
         </ul>
       )}
@@ -300,10 +323,12 @@ export function LedgerExplorer({ copy }: LedgerExplorerProps) {
  */
 function BalancePanel({
   balances,
+  names,
   scoped,
   copy,
 }: {
   readonly balances: readonly LedgerBalance[];
+  readonly names: DirectoryNames;
   readonly scoped: boolean;
   readonly copy: LedgerExplorerCopy;
 }) {
@@ -316,7 +341,7 @@ function BalancePanel({
         {balances.map((balance) => (
           <div key={`${balance.account}-${balance.net.currency}`} className="flex justify-between gap-4">
             <dt className="text-white/48" title={balance.account}>
-              {accountLabel(balance.account, copy.money)}
+              {accountLabel(balance.account, copy.money, names)}
             </dt>
             <dd className="font-mono tabular-nums text-white">{formatMoney(balance.net)}</dd>
           </div>
@@ -337,10 +362,12 @@ function BalancePanel({
 function PostingCard({
   posting,
   locale,
+  names,
   copy,
 }: {
   readonly posting: LedgerPosting;
   readonly locale: Locale;
+  readonly names: DirectoryNames;
   readonly copy: LedgerExplorerCopy;
 }) {
   return (
@@ -354,9 +381,12 @@ function PostingCard({
               </span>
             ),
             campaign: (
-              <span className="font-mono" title={posting.projectId}>
-                {shortId(posting.projectId)}
-              </span>
+              <EntityName
+                id={posting.projectId}
+                names={names}
+                kind="project"
+                copy={copy.identity}
+              />
             ),
           })}
         </p>
@@ -382,8 +412,13 @@ function PostingCard({
             key={`${line.account}-${line.direction}-${index}`}
             className="flex items-baseline justify-between gap-4 text-sm"
           >
+            {/*
+              #402: a creator's ledger account is stored as `creator:{uuid}` and used to
+              render as "Creator 07afbabf" — the one account on the ledger that belongs to
+              a person, and the only one that could not be read as a person.
+            */}
             <span className="text-white/64" title={line.account}>
-              {accountLabel(line.account, copy.money)}
+              {accountLabel(line.account, copy.money, names)}
             </span>
             <span className="flex items-baseline gap-3">
               <span className="text-xs uppercase tracking-wide text-white/40">

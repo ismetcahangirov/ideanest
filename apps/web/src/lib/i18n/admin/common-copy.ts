@@ -41,6 +41,33 @@ import type { AdminTranslator } from '../admin-copy';
  * both of them already inflected for the position they sit in; a component that tried to build
  * that would be writing grammar for four languages in TypeScript.
  */
+/**
+ * What the console says when it names something — issue #402.
+ *
+ * <p>On the chrome rather than on each screen, because the alternative is nine copies of
+ * the word "Copy" and nine chances for the eighth to be the one nobody translated. It is
+ * the same argument the refusal table makes one field down, and the same one that put
+ * `Save` in the root `common` namespace rather than in the console's.
+ *
+ * <p><strong>Nothing here names a kind of thing.</strong> "Copy" is a control, not a
+ * sentence about accounts — the screen supplies the noun, exactly as it supplies
+ * {@link ConsoleRefusalsCopy}'s `subject`, because "the campaign" is already inflected for
+ * its position in the two languages that inflect it.
+ */
+export interface ConsoleIdentityCopy {
+  /** The control that puts a whole identifier on the clipboard. One word: it ends a row. */
+  readonly copy: string;
+  /**
+   * Its accessible name. Carries `{id}`.
+   *
+   * <p>A list of twenty-five controls all named "Copy" is a list nobody can navigate by
+   * name, so the shortened identifier goes into the name rather than only onto the row.
+   */
+  readonly copyLabel: string;
+  /** Announced when the clipboard took it — colour is never the only signal. */
+  readonly copied: string;
+}
+
 export interface ConsoleChromeCopy {
   /** The heading over a failure that is not one of the two refusals. */
   readonly errorTitle: string;
@@ -55,6 +82,8 @@ export interface ConsoleChromeCopy {
   readonly saving: string;
   readonly cancel: string;
   readonly refusals: ConsoleRefusalsCopy;
+  /** How an identifier is named and copied, on every screen that renders one — #402. */
+  readonly identity: ConsoleIdentityCopy;
 }
 
 export interface ConsoleRefusalsCopy {
@@ -120,6 +149,17 @@ export function consoleChromeCopyFrom(t: AdminTranslator, common: AdminTranslato
     saving: common('saving'),
     cancel: common('cancel'),
     refusals: consoleRefusalsCopyFrom(t),
+    identity: consoleIdentityCopyFrom(t),
+  };
+}
+
+export function consoleIdentityCopyFrom(t: AdminTranslator): ConsoleIdentityCopy {
+  return {
+    copy: t('common.identity.copy'),
+    /* `raw`, because next-intl renders a template's own key when it is read with `t()` and
+       has no value for the argument — `src/test-copy.ts` refuses the same mistake in tests. */
+    copyLabel: String(t.raw('common.identity.copyLabel')),
+    copied: t('common.identity.copied'),
   };
 }
 

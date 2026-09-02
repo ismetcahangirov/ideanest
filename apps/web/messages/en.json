@@ -43,7 +43,8 @@
       "notifications": "Notifications",
       "notificationSettings": "Notification settings",
       "sessions": "Devices and sessions",
-      "startCampaign": "Start a campaign"
+      "startCampaign": "Start a campaign",
+      "console": "Administration console"
     },
     "footer": {
       "label": "Footer",
@@ -418,7 +419,7 @@
     "index": {
       "title": "Administration console",
       "metaDescription": "The platform modules, which of them have a screen, and what the rest wait on.",
-      "standfirst": "The {total} modules §4.11 describes. {built} of them have a screen; the rest say what they are waiting for, because a backlog that reads as though the console were nearly finished is worse than one that names the gap.",
+      "standfirst": "The {total} modules §4.11 describes. {complete} of them are finished and {partial} are partly built; each of those says what it is still waiting for, because a backlog that reads as though the console were nearly done is worse than one that names the gap.",
       "issue": "Issue #{issue}",
       "footnote": "No screen here is a gate. Every endpoint the console calls checks the caller itself — refusing a stranger as a stranger, and a colleague by the capability the screen wanted — and each screen renders that refusal as it arrived. A check in the browser would be a second, weaker copy of one the service already makes correctly."
     },
@@ -524,7 +525,12 @@
       "loadMore": "Load more",
       "loading": "Loading",
       "previous": "Previous",
-      "next": "Next"
+      "next": "Next",
+      "identity": {
+        "copy": "Copy identifier",
+        "copyLabel": "Copy the full identifier beginning {id}",
+        "copied": "Copied"
+      }
     },
     "pages": {
       "audit": {
@@ -863,6 +869,10 @@
           "RUNNING": "Running",
           "FAILED": "Failed on its last run",
           "DISABLED": "Switched off"
+        },
+        "queue": {
+          "outbox": "Outbox",
+          "scheduled-jobs": "Scheduled jobs"
         }
       },
       "flags": {
@@ -914,7 +924,8 @@
         "notBuilt": {
           "COHORTS": "Cohorts need a rollup keyed on a backer's first pledge, which does not exist (#313).",
           "FUNNELS": "Funnels need the visit-to-pledge path; referral_touches records arrival, not what happened next (#313)."
-        }
+        },
+        "busiestDay": "Busiest day {day}, {amount}"
       },
       "emailTemplates": {
         "subject": "the email templates",
@@ -1315,8 +1326,6 @@
         "withdraw": "Withdraw",
         "grantHeading": "Grant a role",
         "grantIntro": "Roles are additive: an account holds the union of every role granted to it. Nothing here takes a capability away, which is why there is no order to resolve.",
-        "accountLabel": "Account",
-        "accountHint": "The whole identifier, from the account directory.",
         "roleLabel": "Role",
         "noteLabel": "Note",
         "noteHint": "Why, for the next administrator.",
@@ -1325,8 +1334,8 @@
         "confers": "{role} confers: {capabilities}",
         "doneTitle": "Done",
         "failedTitle": "That did not work",
-        "grantedNotice": "{role} granted to {id}.",
-        "withdrawnNotice": "{role} withdrawn from {id}.",
+        "grantedNotice": "{role} was granted to {name}.",
+        "withdrawnNotice": "{role} was withdrawn from {name}.",
         "role": {
           "MODERATOR": "Moderator",
           "CURATOR": "Curator",
@@ -1346,7 +1355,19 @@
           "VIEW_AUDIT": "Read the audit trail",
           "VIEW_HEALTH": "Read queue depth and provider status",
           "ADMINISTER_STAFF": "Grant and withdraw roles"
-        }
+        },
+        "picker": {
+          "subject": "the account directory",
+          "label": "Account",
+          "hint": "Search by name, email address or profile path. Every search of the directory is recorded, so it runs when you ask for it.",
+          "search": "Search",
+          "searching": "Searching",
+          "change": "Choose somebody else",
+          "noneFound": "No account matches “{term}”.",
+          "resultsLabel": "Matching accounts",
+          "failedTitle": "The directory could not be searched"
+        },
+        "chooseAccountFirst": "Choose an account before granting a role."
       },
       "payments": {
         "subject": "the payment log",
@@ -1506,7 +1527,12 @@
           "PAID": "Paid",
           "FAILED": "Failed",
           "CANCELLED": "Cancelled"
-        }
+        },
+        "meSubject": "your own standing",
+        "thisIsYou": "this is you",
+        "youHaveSigned": "You have already signed this payout. A second signature has to be somebody else.",
+        "awaitingHold": "Cannot be signed until the hold expires on {date}.",
+        "destinationNeeded": "Enter a destination to send this payout to. There is no stored one yet."
       },
       "refunds": {
         "subject": "the refund log",
@@ -1928,8 +1954,10 @@
         "tax_payable": "Tax payable",
         "refunds": "Refunds"
       },
-      "creatorAccount": "Creator {id}"
-    }
+      "creatorAccount": "Creator {id}",
+      "creatorNamed": "{name}, creator account"
+    },
+    "signedInAs": "Signed in as {name} — {roles}"
   },
   "settings": {
     "language": {

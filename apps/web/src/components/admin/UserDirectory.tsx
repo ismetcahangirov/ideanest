@@ -32,6 +32,7 @@ import type { Locale } from '../../lib/i18n/locale';
 import type { UserDirectoryCopy } from '../../lib/i18n/admin/people-copy';
 import { requiredCapabilityFrom } from '../../lib/admin/refusals';
 import { ConsoleRefusal } from './ConsoleRefusal';
+import { CopyIdentifier } from './ConsoleIdentity';
 
 type Status = 'loading' | 'ready' | 'failed' | 'signed-out' | 'forbidden';
 
@@ -381,11 +382,26 @@ export function UserDirectory({ copy }: UserDirectoryProps) {
                   {/* The address is why this screen exists and why every read of it
                       is audited. Nothing else on the platform shows one. */}
                   <p className="truncate text-sm text-white/64">{user.email}</p>
-                  <p className="mt-1 truncate text-xs text-white/40">
-                    /{user.slug} ·{' '}
-                    {fillPlaceholders(copy.joined, {
-                      date: day(user.createdAt, locale) ?? copy.unknownDate,
-                    })}
+                  <p className="mt-1 flex flex-wrap items-baseline gap-x-2 text-xs text-white/40">
+                    <span className="truncate">
+                      /{user.slug} ·{' '}
+                      {fillPlaceholders(copy.joined, {
+                        date: day(user.createdAt, locale) ?? copy.unknownDate,
+                      })}
+                    </span>
+                    {/*
+                      #402: this screen is what `/admin/staff` calls "the account directory"
+                      and what its help text tells an operator to get a full identifier
+                      from. It displayed none — not in the row's markup, not anywhere in the
+                      page's text — so the identifier the form required was not obtainable
+                      from the screen the form named, and granting a role could not be
+                      finished inside the console. The fragment is here, the whole value is
+                      on the control, and `AccountPicker` removes the need for either.
+                    */}
+                    <span className="font-mono text-white/32" title={user.id}>
+                      {user.id.slice(0, 8)}
+                    </span>
+                    <CopyIdentifier id={user.id} copy={copy.identity} />
                   </p>
                 </div>
 

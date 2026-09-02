@@ -30,6 +30,7 @@ import { requiredCapabilityFrom } from '../../lib/admin/refusals';
 import { ConsoleRefusal } from '../admin/ConsoleRefusal';
 import { DecisionDialog, type Decision } from './DecisionDialog';
 import { ReportCard } from './ReportCard';
+import { useDirectoryNames } from '../admin/useDirectoryNames';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
 type Status = 'loading' | 'ready' | 'failed' | 'signed-out' | 'forbidden';
@@ -161,6 +162,19 @@ export function ModerationQueue({ pinnedTarget, detailHrefBase, copy }: Moderati
   const [attempt, setAttempt] = useState(0);
 
   const [busyIds, setBusyIds] = useState<ReadonlySet<string>>(() => new Set());
+
+  /*
+   * Who filed each complaint and who or what it is about — #402. Resolved once for the
+   * whole queue rather than per card: twenty cards each asking about their own target is
+   * twenty requests for one screen.
+   */
+  const names = useDirectoryNames(
+    loaded.flatMap((report) => [
+      report.reporterId,
+      report.target.type === 'USER' ? report.target.id : null,
+    ]).filter((id): id is string => id != null),
+    loaded.filter((report) => report.target.type === 'PROJECT').map((report) => report.target.id),
+  );
 
   const [pending, setPending] = useState<Pending | null>(null);
   const [dialogBusy, setDialogBusy] = useState(false);
@@ -516,6 +530,7 @@ export function ModerationQueue({ pinnedTarget, detailHrefBase, copy }: Moderati
               report={report}
               now={now}
               locale={locale}
+              names={names}
               busy={busyIds.has(report.id)}
               copy={copy}
               detailHref={

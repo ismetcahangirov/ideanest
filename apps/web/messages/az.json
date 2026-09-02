@@ -43,7 +43,8 @@
       "notifications": "Bildirişlər",
       "notificationSettings": "Bildiriş parametrləri",
       "sessions": "Cihazlar və sessiyalar",
-      "startCampaign": "Kampaniya başladın"
+      "startCampaign": "Kampaniya başladın",
+      "console": "İdarəetmə konsolu"
     },
     "footer": {
       "label": "Altlıq",
@@ -418,7 +419,7 @@
     "index": {
       "title": "İdarəetmə konsolu",
       "metaDescription": "Platforma modulları, hansılarının ekranı var və qalanların nəyi gözlədiyi.",
-      "standfirst": "§4.11-in təsvir etdiyi {total} modul. Onlardan {built} ədədinin ekranı var; qalanları nəyi gözlədiyini bildirir, çünki konsolun az qala bitdiyi təəssüratını yaradan siyahı, boşluğu adı ilə çağıran siyahıdan pisdir.",
+      "standfirst": "§4.11-in təsvir etdiyi {total} modul. Onlardan {complete} ədədi tamamlanıb, {partial} ədədi isə qismən qurulub; hər biri nəyi gözlədiyini bildirir, çünki konsolun az qala bitdiyi təəssüratını yaradan siyahı, boşluğu adı ilə çağıran siyahıdan pisdir.",
       "issue": "Məsələ #{issue}",
       "footnote": "Buradakı heç bir ekran keçid nəzarəti deyil. Konsolun müraciət etdiyi hər son nöqtə çağırışı özü yoxlayır — işçi olmayanı rədd edir, işçini isə ekranın tələb etdiyi səlahiyyətə görə — və hər ekran həmin rəddi olduğu kimi göstərir. Brauzerdəki yoxlama, xidmətin onsuz da düzgün etdiyi yoxlamanın ikinci, daha zəif surəti olardı."
     },
@@ -524,7 +525,12 @@
       "loadMore": "Daha çox yüklə",
       "loading": "Yüklənir",
       "previous": "Əvvəlki",
-      "next": "Növbəti"
+      "next": "Növbəti",
+      "identity": {
+        "copy": "İdentifikatoru kopyala",
+        "copyLabel": "{id} ilə başlayan tam identifikatoru kopyala",
+        "copied": "Kopyalandı"
+      }
     },
     "pages": {
       "audit": {
@@ -863,6 +869,10 @@
           "RUNNING": "İşləyir",
           "FAILED": "Sonuncu dəfə uğursuz olub",
           "DISABLED": "Söndürülüb"
+        },
+        "queue": {
+          "outbox": "Göndərilənlər növbəsi",
+          "scheduled-jobs": "Planlaşdırılmış işlər"
         }
       },
       "flags": {
@@ -914,7 +924,8 @@
         "notBuilt": {
           "COHORTS": "Kohortlar üçün dəstəkçinin ilk dəstəyinə görə qurulmuş yığım lazımdır; belə bir şey yoxdur (#313).",
           "FUNNELS": "Huniler üçün ziyarətdən dəstəyə gedən yol lazımdır; referral_touches gəlişi qeyd edir, sonra nə olduğunu yox (#313)."
-        }
+        },
+        "busiestDay": "Ən yüksək gün {day}, {amount}"
       },
       "emailTemplates": {
         "subject": "e-poçt şablonlarını",
@@ -1315,8 +1326,6 @@
         "withdraw": "Geri al",
         "grantHeading": "Rol ver",
         "grantIntro": "Rollar bir-birinin üstünə gəlir: hesab ona verilmiş bütün rolların birləşməsini daşıyır. Burada heç nə səlahiyyəti geri almır, ona görə həll ediləcək sıra da yoxdur.",
-        "accountLabel": "Hesab",
-        "accountHint": "Tam identifikator, hesab kataloqundan.",
         "roleLabel": "Rol",
         "noteLabel": "Qeyd",
         "noteHint": "Səbəb, növbəti administrator üçün.",
@@ -1325,8 +1334,8 @@
         "confers": "{role} bunları verir: {capabilities}",
         "doneTitle": "Hazırdır",
         "failedTitle": "Bu alınmadı",
-        "grantedNotice": "{role} rolu {id} hesabına verildi.",
-        "withdrawnNotice": "{role} rolu {id} hesabından geri alındı.",
+        "grantedNotice": "{role} rolu {name} hesabına verildi.",
+        "withdrawnNotice": "{role} rolu {name} hesabından geri alındı.",
         "role": {
           "MODERATOR": "Moderator",
           "CURATOR": "Kurator",
@@ -1346,7 +1355,19 @@
           "VIEW_AUDIT": "Audit izini oxumaq",
           "VIEW_HEALTH": "Növbə dərinliyini və provayder vəziyyətini oxumaq",
           "ADMINISTER_STAFF": "Rol vermək və geri almaq"
-        }
+        },
+        "picker": {
+          "subject": "hesab kataloqunu",
+          "label": "Hesab",
+          "hint": "Ad, e-poçt ünvanı və ya profil yolu ilə axtarın. Kataloqda hər axtarış qeydə alınır, ona görə yalnız siz istədikdə işə düşür.",
+          "search": "Axtar",
+          "searching": "Axtarılır",
+          "change": "Başqasını seç",
+          "noneFound": "“{term}” üzrə uyğun hesab yoxdur.",
+          "resultsLabel": "Uyğun hesablar",
+          "failedTitle": "Kataloqda axtarış aparıla bilmədi"
+        },
+        "chooseAccountFirst": "Rol verməzdən əvvəl hesabı seçin."
       },
       "payments": {
         "subject": "ödəniş jurnalını",
@@ -1506,7 +1527,12 @@
           "PAID": "Ödənilib",
           "FAILED": "Uğursuz",
           "CANCELLED": "Ləğv edilib"
-        }
+        },
+        "meSubject": "öz statusunuzu",
+        "thisIsYou": "bu sizsiniz",
+        "youHaveSigned": "Bu ödənişi artıq imzalamısınız. İkinci imza başqa şəxsə aiddir.",
+        "awaitingHold": "{date} tarixində saxlama müddəti bitənə qədər imzalana bilməz.",
+        "destinationNeeded": "Bu ödənişin göndəriləcəyi ünvanı daxil edin. Hələ saxlanılmış ünvan yoxdur."
       },
       "refunds": {
         "subject": "geri qaytarma jurnalını",
@@ -1928,8 +1954,10 @@
         "tax_payable": "Ödəniləcək vergi",
         "refunds": "Geri qaytarmalar"
       },
-      "creatorAccount": "Yaradıcı {id}"
-    }
+      "creatorAccount": "Yaradıcı {id}",
+      "creatorNamed": "{name}, yaradıcı hesabı"
+    },
+    "signedInAs": "{name} kimi daxil olmusunuz — {roles}"
   },
   "settings": {
     "language": {

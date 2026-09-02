@@ -52,6 +52,15 @@ export interface ShellCopy {
     readonly notificationSettings: string;
     readonly sessions: string;
     readonly startCampaign: string;
+    /**
+     * The way into the administration console, for staff — issue #405.
+     *
+     * <p>In the account menu and nowhere else. Signed in as an account holding all four
+     * staff roles, `/admin` appeared in neither the header, this menu, nor the footer, so
+     * the console was reached by typing a URL. `AccountMenu` carries the argument for why
+     * the row is drawn from an answer asked for on open rather than on every page view.
+     */
+    readonly console: string;
   };
 }
 
@@ -114,6 +123,7 @@ export function shellCopyFrom(t: ShellTranslator): ShellCopy {
       notificationSettings: t('actions.notificationSettings'),
       sessions: t('actions.sessions'),
       startCampaign: t('actions.startCampaign'),
+      console: t('actions.console'),
     },
   };
 }

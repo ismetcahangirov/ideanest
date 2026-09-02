@@ -26,8 +26,11 @@ import {
 import { consoleMessageFor, shortId } from '../../lib/admin/refusals';
 import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import type { PlanManagerCopy } from '../../lib/i18n/admin/money-copy';
+import type { DirectoryNames } from '../../lib/admin/directory';
 import { ConsoleRefusal } from './ConsoleRefusal';
+import { EntityName } from './ConsoleIdentity';
 import { useConsoleResource } from './useConsoleResource';
+import { useDirectoryNames } from './useDirectoryNames';
 
 const PERIODS: readonly BillingPeriod[] = ['MONTHLY', 'YEARLY'];
 
@@ -80,6 +83,12 @@ export function PlanManager({ copy }: PlanManagerProps) {
     copy.subject,
     copy.refusals,
     [queueOnly],
+  );
+
+  /* Whose subscription each row is — #402. */
+  const names = useDirectoryNames(
+    (queue.data?.subscriptions ?? []).map((subscription) => subscription.accountId),
+    [],
   );
 
   const [code, setCode] = useState('');
@@ -362,6 +371,7 @@ export function PlanManager({ copy }: PlanManagerProps) {
               <SubscriptionRow
                 key={subscription.id}
                 subscription={subscription}
+                names={names}
                 copy={copy}
                 busy={busy}
                 onActivate={(note) => void recordPayment(subscription, note)}
@@ -454,13 +464,21 @@ function PlanRow({ plan, copy, busy, onList, onReprice }: PlanRowProps) {
 
 interface SubscriptionRowProps {
   subscription: ConsoleSubscription;
+  names: DirectoryNames;
   copy: PlanManagerCopy;
   busy: boolean;
   onActivate: (note: string) => void;
   onEnd: (reason: string) => void;
 }
 
-function SubscriptionRow({ subscription, copy, busy, onActivate, onEnd }: SubscriptionRowProps) {
+function SubscriptionRow({
+  subscription,
+  names,
+  copy,
+  busy,
+  onActivate,
+  onEnd,
+}: SubscriptionRowProps) {
   // Two fields, two pieces of state. One shared string would put whatever somebody typed as
   // a reason for ending a subscription into the payment reference of the one above it.
   const [note, setNote] = useState('');
@@ -473,7 +491,12 @@ function SubscriptionRow({ subscription, copy, busy, onActivate, onEnd }: Subscr
         <div className="min-w-0">
           <p className="text-[15px] text-white">
             {subscription.planName ?? subscription.planCode ?? copy.unknownPlan}{' '}
-            <span className="text-white/40">{shortId(subscription.accountId)}</span>
+            <EntityName
+              id={subscription.accountId}
+              names={names}
+              kind="account"
+              copy={copy.identity}
+            />
           </p>
           <p className="mt-1 text-[13px] text-white/64">
             {fillPlaceholders(copy.subscriptionSummary, {

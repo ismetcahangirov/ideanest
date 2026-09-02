@@ -36,7 +36,40 @@ import { useConsoleResource } from './useConsoleResource';
  *
  * `lib/i18n/admin/platform-copy.ts` records why: a unit concatenated onto a figure is a
  * sentence no translation can reorder, and this screen used to build four of them that way.
+ *
+ * <h2>"Late by zero minutes" cannot be said any more — issue #405</h2>
+ *
+ * <p>Ten of the nineteen jobs rendered as amber with the detail "READY · 0 minutes late",
+ * beside two that were six and nine thousand minutes behind and were the same colour. The
+ * severity was the service's — `SystemHealthService` now has a threshold and the argument
+ * for it — and the sentence was this file's: it printed the overdue line for anything at all
+ * past due and then floored the seconds to minutes, so a job one second late was reported as
+ * late by none.
+ *
+ * <p>Both halves are the same threshold now: under a minute is on time, in words as well as
+ * in colour.
+ *
+ * <h2>The queues are named in the reader's language — issue #405</h2>
+ *
+ * <p>They used to be the service's own words. So `/admin/health` listed "Outbox" and
+ * "Scheduled jobs" under the Azerbaijani heading "Növbələr", directly above a section headed
+ * "Planlaşdırılmış işlər" — the Azerbaijani for the second of them. One concept, two
+ * languages, one screen. `QueueDepthSource.queueName()` answers an identifier now and the
+ * label is looked up here, with the identifier as the fallback so a queue this catalogue has
+ * not been taught about renders as itself rather than as nothing.
  */
+
+/**
+ * Below this, a job is not late — the same minute {@code ideanest.platform.health.late-job-after}
+ * defaults to.
+ *
+ * <p>Duplicated rather than sent, deliberately: it decides a sentence here and a severity
+ * there, and the two agreeing is what #405 is about. A deployment that widens the service's
+ * threshold makes this screen say "on time" for a shorter range than it grades healthy, which
+ * is the harmless direction — the tag would read amber beside "on time", where the reverse
+ * would read healthy beside "late".
+ */
+const LATE_AFTER_SECONDS = 60;
 export interface HealthDashboardProps {
   readonly copy: HealthDashboardCopy;
 }
@@ -120,7 +153,10 @@ export function HealthDashboard({ copy }: HealthDashboardProps) {
               key={queue.name}
               className="flex flex-wrap items-baseline justify-between gap-2 rounded-lg border border-white/8 bg-surface-1 p-4"
             >
-              <p className="text-sm text-white">{queue.name}</p>
+              {/* The identifier is the fallback, so a new queue renders as itself. */}
+              <p className="text-sm text-white" title={queue.name}>
+                {copy.queue[queue.name] ?? queue.name}
+              </p>
               <p className="text-sm text-white/64">
                 {fillPlaceholders(copy.waiting, { count: String(queue.waiting) })}
                 {queue.dead > 0
@@ -151,7 +187,12 @@ export function HealthDashboard({ copy }: HealthDashboardProps) {
                     greps for is still one hover away. A state with no sentence is drawn as
                     itself. */}
                 <span title={job.state}>{copy.jobState[job.state] ?? job.state}</span>
-                {job.overdueBySeconds > 0
+                {/*
+                  #405: the threshold and not "anything past due". A job picked up a second
+                  after it fell due was reported as "late by 0 minutes", which is a sentence
+                  that contradicts itself and was drawn beside an amber tag.
+                */}
+                {job.overdueBySeconds >= LATE_AFTER_SECONDS
                   ? ` · ${fillPlaceholders(copy.overdue, {
                       count: String(Math.floor(job.overdueBySeconds / 60)),
                     })}`

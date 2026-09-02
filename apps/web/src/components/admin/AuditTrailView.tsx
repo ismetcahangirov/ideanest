@@ -22,7 +22,10 @@ import type { AuditTrailCopy } from '../../lib/i18n/admin/platform-copy';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 import { formatExactTime } from '../../lib/time';
 import type { Locale } from '../../lib/i18n/locale';
+import type { DirectoryNames } from '../../lib/admin/directory';
 import { ConsoleRefusal } from './ConsoleRefusal';
+import { EntityName } from './ConsoleIdentity';
+import { useDirectoryNames } from './useDirectoryNames';
 
 /**
  * §4.11's AD-14: what has been done, by whom, to what — issue #314.
@@ -135,6 +138,19 @@ export function AuditTrailView({ copy }: AuditTrailViewProps) {
     }
   }, [cursor, entityType, loadingMore, copy]);
 
+  /*
+   * Who did it and, where the platform can say, what it was done to — #402. An audit trail
+   * exists to be read after the fact by somebody who was not there, and "moderator 4ae450ba
+   * suspended account c8edac99" is a sentence that cannot be read at all.
+   */
+  const names = useDirectoryNames(
+    entries.flatMap((entry) => [
+      entry.actorId ?? null,
+      entry.entityType === 'account' ? entry.entityId : null,
+    ]).filter((id): id is string => id != null),
+    entries.filter((entry) => entry.entityType === 'project').map((entry) => entry.entityId),
+  );
+
   if (status === 'signed-out' || status === 'forbidden') {
     return <ConsoleRefusal status={status} capability={capability} subject={copy.subject} copy={copy.refusals} />;
   }
@@ -198,7 +214,7 @@ export function AuditTrailView({ copy }: AuditTrailViewProps) {
       {status === 'ready' && entries.length > 0 && (
         <ul className="mt-4 flex list-none flex-col gap-2">
           {entries.map((entry) => (
-            <AuditRow key={entry.id} entry={entry} locale={locale} copy={copy} />
+            <AuditRow key={entry.id} entry={entry} locale={locale} names={names} copy={copy} />
           ))}
         </ul>
       )}
@@ -242,10 +258,12 @@ export function AuditTrailView({ copy }: AuditTrailViewProps) {
 function AuditRow({
   entry,
   locale,
+  names,
   copy,
 }: {
   readonly entry: AuditEntry;
   readonly locale: Locale;
+  readonly names: DirectoryNames;
   readonly copy: AuditTrailCopy;
 }) {
   return (
@@ -255,17 +273,35 @@ function AuditRow({
           <p className="text-[15px] font-medium text-white">{actionLabel(entry.action, copy.action)}</p>
           <p className="mt-1 text-sm text-white/64">
             {copy.entity[entry.entityType] ?? entry.entityType}{' '}
-            <span className="font-mono" title={entry.entityId}>
-              {shortId(entry.entityId)}
-            </span>
+            {/*
+              #402: an audit row's whole purpose is accountability, and "who" and "what"
+              were both eight hexadecimal characters. Two of the six entity kinds are things
+              the directory can name — a campaign and an account — and the rest keep the
+              fragment, because a session or a collection is not a thing with a name.
+            */}
+            {entry.entityType === 'project' || entry.entityType === 'account' ? (
+              <EntityName
+                id={entry.entityId}
+                names={names}
+                kind={entry.entityType === 'project' ? 'project' : 'account'}
+                copy={copy.identity}
+              />
+            ) : (
+              <span className="font-mono" title={entry.entityId}>
+                {shortId(entry.entityId)}
+              </span>
+            )}
             {' · '}
             {entry.actorType.toLowerCase()}
             {entry.actorId != null && (
               <>
                 {' '}
-                <span className="font-mono" title={entry.actorId}>
-                  {shortId(entry.actorId)}
-                </span>
+                <EntityName
+                  id={entry.actorId}
+                  names={names}
+                  kind="account"
+                  copy={copy.identity}
+                />
               </>
             )}
           </p>

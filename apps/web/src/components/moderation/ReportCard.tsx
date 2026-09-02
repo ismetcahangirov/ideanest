@@ -16,9 +16,19 @@ import { pluralise } from '../../lib/i18n/plurals';
 import type { ModerationQueueCopy } from '../../lib/i18n/admin/content-copy';
 import type { Decision } from './DecisionDialog';
 import type { Locale } from '../../lib/i18n/locale';
+import type { DirectoryNames } from '../../lib/admin/directory';
+import { EntityName } from '../admin/ConsoleIdentity';
 
 export interface ReportCardProps {
   readonly report: QueuedReport;
+  /**
+   * What the console directory resolved for the identifiers on this card — issue #402.
+   *
+   * <p>Passed down rather than looked up here: twenty cards each asking about their own
+   * target is twenty requests for one screen, and the queue already holds every identifier
+   * before the first card renders.
+   */
+  readonly names: DirectoryNames;
   /** Pinned per load, so every card on one render ages from the same instant. */
   readonly now: Date;
   /** Fixed by the caller for the same reason `now` is — #324. */
@@ -65,6 +75,7 @@ export function ReportCard({
   report,
   now,
   locale,
+  names,
   busy,
   detailHref,
   onDecide,
@@ -102,9 +113,22 @@ export function ReportCard({
               */}
               {fillNodes(copy.reportedAbout, {
                 kind,
-                id: (
-                  <span className="font-mono text-white/64">{shortId(report.target.id)}</span>
-                ),
+                /*
+                  #402: a card read "complaint about account c8edac99", which is a decision
+                  about somebody the screen could not name. A comment or an update has no
+                  name to look up and keeps its fragment — that gap is #399's.
+                */
+                id:
+                  report.target.type === 'USER' || report.target.type === 'PROJECT' ? (
+                    <EntityName
+                      id={report.target.id}
+                      names={names}
+                      kind={report.target.type === 'USER' ? 'account' : 'project'}
+                      copy={copy.identity}
+                    />
+                  ) : (
+                    <span className="font-mono text-white/64">{shortId(report.target.id)}</span>
+                  ),
               })}
             </p>
             {/*
@@ -166,12 +190,19 @@ export function ReportCard({
           <div className="flex gap-2">
             <dt className="text-white/40">{copy.reporter}</dt>
             {/*
-              An account id, not a name — a report is an accusation and "this
-              account has reported forty campaigns this week" is the question
-              that catches abuse of the feature. Nothing turns an id into a
-              person yet, so the card says what it is showing.
+              Named since #402, with the identifier still beside it. A report is an
+              accusation, and "this account has reported forty campaigns this week" is the
+              question that catches abuse of the feature — asked by identifier, answered by
+              a person, so the row needs both.
             */}
-            <dd className="font-mono text-white/64">{shortId(report.reporterId)}</dd>
+            <dd className="text-white/64">
+              <EntityName
+                id={report.reporterId}
+                names={names}
+                kind="account"
+                copy={copy.identity}
+              />
+            </dd>
           </div>
           <div className="flex gap-2">
             <dt className="text-white/40">{copy.targetTerm}</dt>
