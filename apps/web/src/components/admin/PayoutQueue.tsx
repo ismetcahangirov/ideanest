@@ -23,12 +23,16 @@ import {
   withdrawApproval,
   type Payout,
 } from '../../lib/admin/payouts';
+import { readMembership } from '../../lib/admin/staff';
 import { consoleMessageFor, shortId } from '../../lib/admin/refusals';
 import { formatMoney } from '../../lib/money';
 import { fillNodes, fillPlaceholders } from '../../lib/i18n/placeholders';
+import type { DirectoryNames } from '../../lib/admin/directory';
 import type { PayoutQueueCopy } from '../../lib/i18n/admin/money-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
+import { EntityName } from './ConsoleIdentity';
 import { useConsoleResource } from './useConsoleResource';
+import { useDirectoryNames } from './useDirectoryNames';
 
 /**
  * §4.11's AD-05: the payout queue and its approvals — issues #69 and #306.
@@ -54,6 +58,29 @@ import { useConsoleResource } from './useConsoleResource';
  * for `stillNeeded`: the browser cannot see that two approval rows are two different accounts,
  * which is the rule dual approval actually turns on.
  *
+ * <h2>The signature list names its signers — issue #402</h2>
+ *
+ * <p>Two-person approval exists to answer <em>which two people</em>, and this screen
+ * rendered both of them as eight hexadecimal characters — a control nobody could audit by
+ * reading it. The creator being paid was the same. Both are resolved through the console
+ * directory now, with the fragment kept beside each name because that is what a support
+ * ticket quotes.
+ *
+ * <h2>Every control matches the reader's own state — issue #405</h2>
+ *
+ * <p>The file used to offer <strong>Approve</strong> to somebody who had already signed it,
+ * <strong>Withdraw mine</strong> to somebody who had not, and a <strong>Send</strong> that
+ * was disabled at two signatures of two with nothing on the screen saying why. Each of those
+ * is a control describing an action the reader cannot take, which is how a working screen
+ * comes to read as a broken one.
+ *
+ * <p>So the reader's own membership is read once here and threaded into the file: the
+ * signature list is compared against it, `Approve` is not offered to somebody already on
+ * that list, `Withdraw mine` is offered only to somebody who is, and every control that is
+ * disabled says beside itself what would enable it. <strong>None of this is a permission
+ * check</strong> — the service decides all three, and `approve()` is idempotent, so what
+ * changes here is only what the screen claims about itself.
+ *
  * <h2>Motion: none</h2>
  *
  * The last screen on the platform that should feel eager.
@@ -75,6 +102,25 @@ export function PayoutQueue({ copy }: PayoutQueueProps) {
     copy.subject,
     copy.refusals,
     [page],
+  );
+
+  /*
+   * Who is reading, so the file can offer the control that matches their own signature
+   * state (#405). Read here rather than inside each expanded file: `/v1/admin/me` refuses
+   * nobody and answers the same thing every time, and one read per opened row would be a
+   * request per click for a fact that does not change during a sitting.
+   */
+  const me = useConsoleResource(
+    (signal) => readMembership(signal),
+    copy.meSubject,
+    copy.refusals,
+    [],
+  );
+
+  /* The creators being paid, named — #402. */
+  const names = useDirectoryNames(
+    queue.data?.payouts.map((payout) => payout.creatorId) ?? [],
+    queue.data?.payouts.map((payout) => payout.projectId) ?? [],
   );
 
   if (queue.status === 'signed-out' || queue.status === 'forbidden') {
@@ -198,7 +244,14 @@ export function PayoutQueue({ copy }: PayoutQueueProps) {
                       {formatMoney(payout.net)}
                       <span className="ml-2 text-white/48">
                         {fillNodes(copy.toCreator, {
-                          id: <span className="font-mono">{shortId(payout.creatorId)}</span>,
+                          id: (
+                            <EntityName
+                              id={payout.creatorId}
+                              names={names}
+                              kind="account"
+                              copy={copy.identity}
+                            />
+                          ),
                         })}
                       </span>
                     </p>
@@ -211,7 +264,13 @@ export function PayoutQueue({ copy }: PayoutQueueProps) {
                 </button>
 
                 {openPayout === payout.id && (
-                  <PayoutDetail payoutId={payout.id} copy={copy} onChanged={queue.reload} />
+                  <PayoutDetail
+                    payoutId={payout.id}
+                    readerId={me.data?.accountId ?? null}
+                    names={names}
+                    copy={copy}
+                    onChanged={queue.reload}
+                  />
                 )}
               </li>
             ))}
@@ -262,13 +321,24 @@ function Breakdown({
   );
 }
 
-/** One payout, who has signed it, and the three things that can be done to it. */
+/**
+ * One payout, who has signed it, and the three things that can be done to it.
+ *
+ * <p>`readerId` is null while `/v1/admin/me` is still loading, and the file is honest about
+ * that rather than guessing: with no answer yet it offers `Approve` and withholds
+ * `Withdraw mine`, which is the state of a payout nobody has signed. Guessing the other way
+ * would offer to withdraw a signature that may not exist.
+ */
 function PayoutDetail({
   payoutId,
+  readerId,
+  names,
   copy,
   onChanged,
 }: {
   readonly payoutId: string;
+  readonly readerId: string | null;
+  readonly names: DirectoryNames;
   readonly copy: PayoutQueueCopy;
   readonly onChanged: () => void;
 }) {
@@ -316,6 +386,12 @@ function PayoutDetail({
 
   const { payout, approvals, stillNeeded } = file.data;
 
+  // The three facts every control below turns on. `approve()` is idempotent server-side and
+  // the service decides all of this anyway; what these change is what the screen claims.
+  const iHaveSigned = readerId !== null && approvals.some((one) => one.approverId === readerId);
+  const canApprove = payout.payableNow && !iHaveSigned;
+  const destinationGiven = destination.trim() !== '';
+
   return (
     <div className="mt-2 rounded-lg border border-white/8 bg-surface-1 p-4">
       <h3 className="text-sm font-medium text-white">
@@ -338,10 +414,23 @@ function PayoutDetail({
           {approvals.map((approval) => (
             <li key={approval.approverId} className="text-xs text-white/64">
               {fillNodes(copy.approvalLine, {
-                approver: <span className="font-mono">{shortId(approval.approverId)}</span>,
+                approver: (
+                  <EntityName
+                    id={approval.approverId}
+                    names={names}
+                    kind="account"
+                    copy={copy.identity}
+                  />
+                ),
                 date: approval.approvedAt.slice(0, 10),
               })}
               {approval.note ? ` — ${approval.note}` : ''}
+              {/*
+                Marked rather than left for the reader to compare identifiers. "One of
+                these two is you" is the fact the controls below turn on, and a reader who
+                cannot see which is being asked to trust the buttons.
+              */}
+              {readerId === approval.approverId ? ` — ${copy.thisIsYou}` : ''}
             </li>
           ))}
         </ul>
@@ -362,7 +451,7 @@ function PayoutDetail({
           variant="outline"
           size="sm"
           className="mb-1"
-          disabled={busy || !payout.payableNow}
+          disabled={busy || !canApprove}
           onClick={() =>
             void act(async () => {
               await approvePayout(payoutId, note.trim() === '' ? null : note.trim());
@@ -373,15 +462,35 @@ function PayoutDetail({
           {copy.approve}
         </Pill>
 
-        <Pill
-          variant="ghost"
-          size="sm"
-          className="mb-1"
-          disabled={busy}
-          onClick={() => void act(() => withdrawApproval(payoutId))}
-        >
-          {copy.withdrawMine}
-        </Pill>
+        {/*
+          Every disabled control says what would enable it — #405. The hold is checked
+          first because it is the one a reader can wait out; having signed already is
+          permanent for them.
+        */}
+        {!canApprove && (
+          <p className="mb-2 text-xs text-white/48">
+            {!payout.payableNow
+              ? fillPlaceholders(copy.awaitingHold, { date: payout.payableAt.slice(0, 10) })
+              : copy.youHaveSigned}
+          </p>
+        )}
+
+        {/*
+          Offered only to somebody who has something to withdraw. At one signature of two
+          with only a colleague's name on the file, this used to offer to take back a
+          signature the reader had never given.
+        */}
+        {iHaveSigned && (
+          <Pill
+            variant="ghost"
+            size="sm"
+            className="mb-1"
+            disabled={busy}
+            onClick={() => void act(() => withdrawApproval(payoutId))}
+          >
+            {copy.withdrawMine}
+          </Pill>
+        )}
       </div>
 
       <div className="mt-4 flex flex-wrap items-end gap-3">
@@ -401,13 +510,23 @@ function PayoutDetail({
           variant="outline"
           size="sm"
           className="mb-1"
-          disabled={busy || stillNeeded > 0 || destination.trim() === ''}
+          disabled={busy || stillNeeded > 0 || !destinationGiven}
           onClick={() => void act(() => sendPayout(payoutId, destination.trim()))}
         >
           {stillNeeded > 0
             ? fillPlaceholders(copy.needsMore, { count: String(stillNeeded) })
             : copy.send}
         </Pill>
+
+        {/*
+          #405: at two signatures of two the label changed from "one more signature
+          needed" to "Send" and the control then simply did not work. The reason was real
+          and stated nowhere on the row — a disabled control with no reason reads as a bug,
+          and this is the row where somebody is trying to pay a creator.
+        */}
+        {stillNeeded === 0 && !destinationGiven && (
+          <p className="mb-2 text-xs text-white/48">{copy.destinationNeeded}</p>
+        )}
 
         <Pill
           variant="ghost"

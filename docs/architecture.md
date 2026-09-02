@@ -1382,6 +1382,32 @@ Preferences are per category and per channel, with a digest option.
 > no way to learn it exists, and the first thing they do is ask whether the console is
 > broken. Every screen refuses and names the capability it wanted, which is a better answer
 > than an absence.
+>
+> **The console can name what it shows, since #402.** Every list under this prefix returns
+> identifiers and none of them returned a name, so the payout file paid `18844dbc`, the audit
+> trail recorded that `4ae450ba` suspended somebody, `/admin/staff` told the operator they
+> were signed in as `c5c5493d`, and the two-person payout signature list — whose entire
+> purpose is *which two people* — named neither of them. `GET /v1/admin/directory` takes
+> account and campaign identifiers and answers with display names and public paths.
+>
+> It is **staff-wide and needs no capability beyond that**, because every screen that holds
+> an identifier is already behind its own; and it is **the one console read that is not
+> audited**, because it discloses nothing `GET /v1/users/{slug}` does not serve publicly and
+> is called on every render of every screen that holds identifiers — recording it would put
+> several rows per page view into the one table with no retention rule. **It hands over no
+> email address**, and that boundary is what makes both of those true: the address stays with
+> `GET /v1/admin/users`, which requires `ADMINISTER_ACCOUNTS` and is audited.
+>
+> The identifiers a console screen asks about are still rendered beside the names it gets
+> back. A fragment is what somebody quotes to an engineer and what the service names back in
+> a refusal; a screen that showed only the name would have removed one fact to add another.
+> An identifier the directory cannot resolve — §17.4 anonymises accounts and leaves their
+> rows behind — renders as the fragment it always did.
+>
+> **A staff account reaches the console from the account menu, since #405.** Before that
+> `/admin` was in neither the header, the menu nor the footer, and staff typed the URL. The
+> membership check behind that row is asked for when the menu is opened rather than on every
+> page view, because it is in the shell.
 
 > **AD-04, as #104 built it.** `GET /v1/admin/users` searches the accounts by address,
 > display name or profile slug — staff arrive holding whatever the complaint gave them, so
@@ -3492,6 +3518,7 @@ PATCH  /v1/me/currency                   # §4.2 P-10 (#327); the currency this 
 GET    /v1/admin/reconciliation          # AD-05 (#106); the last pass this replica made
 POST   /v1/admin/reconciliation/runs     # AD-05 (#106); one now. VIEW_FINANCE; writes nothing
 GET    /v1/admin/audit                   # AD-14 (#314); the trail, newest first
+GET    /v1/admin/directory               # #402; names for identifiers a console screen holds
 GET    /v1/admin/collections
 POST   /v1/admin/collections
 GET    /v1/admin/collections/{slug}

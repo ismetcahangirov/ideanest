@@ -119,6 +119,17 @@ export interface HealthDashboardCopy extends ConsoleChromeCopy {
    * whoever is about to grep for it, and a state with no sentence is drawn as itself.
    */
   readonly jobState: Readonly<Record<string, string>>;
+  /**
+   * A queue's name in the reader's language, keyed by the identifier the service sends —
+   * issue #405.
+   *
+   * <p>The service used to answer "Outbox" and "Scheduled jobs", which this screen rendered
+   * verbatim under an Azerbaijani heading and above a section headed with the Azerbaijani
+   * for the second of them. `QueueDepthSource.queueName()` answers an identifier now, and a
+   * queue this table has not been taught about renders as that identifier rather than as
+   * nothing — the same rule the job states one field up follow.
+   */
+  readonly queue: Readonly<Record<string, string>>;
 }
 
 export function healthDashboardCopyFrom(
@@ -147,6 +158,7 @@ export function healthDashboardCopyFrom(
     notConfigured: t('screens.health.notConfigured'),
     status: t.raw('screens.health.status') as Readonly<Record<string, string>>,
     jobState: t.raw('screens.health.jobState') as Readonly<Record<string, string>>,
+    queue: t.raw('screens.health.queue') as Readonly<Record<string, string>>,
   };
 }
 
@@ -243,6 +255,14 @@ export interface PlatformAnalyticsCopy extends ConsoleChromeCopy {
   readonly successRate: string;
   readonly dailyHeading: string;
   readonly nothingPledged: string;
+  /**
+   * The chart's one stated figure, under the series — issue #405.
+   *
+   * <p>Carries `{day}` and `{amount}`. A column chart shows shape and not magnitude, so the
+   * peak is named: without it, thirty bars scaled to their own maximum look identical
+   * whether the busiest day took two hundred manat or two hundred thousand.
+   */
+  readonly busiestDay: string;
   readonly notBuiltHeading: string;
   /** Keyed by the code the service sends. Unknown codes fall through to themselves. */
   readonly notBuilt: Readonly<Record<string, string>>;
@@ -272,6 +292,9 @@ export function platformAnalyticsCopyFrom(
     successRate: t('screens.analytics.successRate'),
     dailyHeading: t('screens.analytics.dailyHeading'),
     nothingPledged: t('screens.analytics.nothingPledged'),
+    /* `raw`, because next-intl renders a template's own key when it is read with `t()` and
+       has no value for the argument. */
+    busiestDay: String(t.raw('screens.analytics.busiestDay')),
     notBuiltHeading: t('screens.analytics.notBuiltHeading'),
     notBuilt: t.raw('screens.analytics.notBuilt') as Readonly<Record<string, string>>,
   };

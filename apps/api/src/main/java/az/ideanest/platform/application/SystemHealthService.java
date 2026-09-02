@@ -93,7 +93,7 @@ public class SystemHealthService {
                 .toList();
 
         List<JobHealth> jobHealth = jobs.allJobs().stream()
-                .map(job -> gradeJob(job, now, thresholds.staleJobAfter()))
+                .map(job -> gradeJob(job, now, thresholds))
                 .toList();
 
         List<ProviderHealth> providerHealth = gradeProviders();
@@ -119,9 +119,25 @@ public class SystemHealthService {
      * degraded rather than critical until it has been overdue for longer than the
      * configured window — a scheduler under load is behind by seconds, and a scheduler
      * that is not running is behind by hours. {@code PlatformProperties.Health} carries
-     * the argument for the number.
+     * the argument for the numbers.
+     *
+     * <h2>Being due is not being late — issue #405</h2>
+     *
+     * <p>This used to grade anything at all past its next attempt as degraded, and the
+     * console showed the result: ten of nineteen rows amber, every one of them reading
+     * {@code READY · 0 minutes late}, in the same colour as the two that were six and nine
+     * thousand minutes behind. Every healthy job on the platform spends the seconds
+     * between falling due and being picked up in exactly that state, so the amber said
+     * nothing except that the scheduler had not run in the last instant — and a dashboard
+     * whose majority is amber for no stated reason is how the row that matters gets
+     * missed.
+     *
+     * <p>{@code lateJobAfter} is therefore a floor and not a rounding convenience: under
+     * it a job is on time, which is what the screen already said in words while the tag
+     * beside it said otherwise. The default is the minute the screen renders in, so the
+     * two can no longer disagree.
      */
-    private JobHealth gradeJob(JobRecord job, Instant now, Duration staleAfter) {
+    private JobHealth gradeJob(JobRecord job, Instant now, PlatformProperties.Health thresholds) {
         Instant nextAttemptAt = job.getNextAttemptAt();
         long overdueBy = nextAttemptAt == null || nextAttemptAt.isAfter(now)
                 ? 0L
@@ -130,9 +146,9 @@ public class SystemHealthService {
         HealthStatus status;
         if (job.getState() == JobState.DEAD) {
             status = HealthStatus.CRITICAL;
-        } else if (overdueBy > staleAfter.toSeconds()) {
+        } else if (overdueBy > thresholds.staleJobAfter().toSeconds()) {
             status = HealthStatus.CRITICAL;
-        } else if (overdueBy > 0) {
+        } else if (overdueBy >= thresholds.lateJobAfter().toSeconds()) {
             status = HealthStatus.DEGRADED;
         } else {
             status = HealthStatus.HEALTHY;

@@ -49,11 +49,34 @@ export interface AdminShellCopy {
   readonly groups: Readonly<Record<string, string>>;
   /** Keyed by href, which is what a rail entry is. */
   readonly links: Readonly<Record<string, string>>;
+  /**
+   * Who is reading the console and with what authority — issue #405.
+   *
+   * <p>Carries `{name}` and `{roles}`. One sentence with two holes rather than a name, a
+   * separator and a list: Azerbaijani and Turkish put the verb after both, and three JSX
+   * fragments cannot be reordered by a translation.
+   */
+  readonly signedInAs: string;
+  /**
+   * The four roles, as ordinary nouns. Keyed by `StaffRole`.
+   *
+   * <p>The same table `/admin/staff` draws, resolved again here rather than threaded from
+   * there: this is the shell and that is a screen inside it, and a shell that took a prop
+   * from one of its children would be the wrong way round.
+   */
+  readonly role: Readonly<Record<string, string>>;
 }
 
 export interface ConsoleIndexCopy {
   readonly title: string;
-  /** Carries `{total}` and `{built}`. */
+  /**
+   * Carries `{total}`, `{complete}` and `{partial}` — issue #405.
+   *
+   * <p>It used to carry `{built}` and promise that "the rest say what they are waiting for".
+   * All sixteen modules have a screen, so there was no rest and the clause described
+   * nothing; nine of them are partly built and each does carry a waiting-on note, which is
+   * the fact the sentence was reaching for.
+   */
   readonly standfirst: string;
   /** Carries `{issue}`. */
   readonly issue: string;
@@ -71,6 +94,10 @@ export function adminShellCopyFrom(t: AdminTranslator): AdminShellCopy {
     navLabel: t('navLabel'),
     groups: t.raw('groups') as Readonly<Record<string, string>>,
     links: t.raw('links') as Readonly<Record<string, string>>,
+    /* `raw`, because next-intl renders a template's own key when it is read with `t()` and
+       has no value for the argument. */
+    signedInAs: String(t.raw('signedInAs')),
+    role: t.raw('screens.staff.role') as Readonly<Record<string, string>>,
   };
 }
 

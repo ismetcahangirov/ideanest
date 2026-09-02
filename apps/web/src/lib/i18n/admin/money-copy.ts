@@ -34,12 +34,21 @@ export interface MoneyCopy {
   readonly account: Readonly<Record<string, string>>;
   /** Carries `{id}`. A creator's account is `creator:{uuid}` and has no name the ledger knows. */
   readonly creatorAccount: string;
+  /**
+   * The same account once the console directory has named the creator — issue #402.
+   *
+   * Carries `{name}`. A separate template rather than the same one with a different value,
+   * because "Creator 07afbabf" and "Kamran Əliyev's account" are different sentences in
+   * every language and the second one does not want the word "Creator" in front of it.
+   */
+  readonly creatorNamed: string;
 }
 
 export function moneyCopyFrom(t: AdminTranslator): MoneyCopy {
   return {
     account: t.raw('money.account') as Readonly<Record<string, string>>,
     creatorAccount: String(t.raw('money.creatorAccount')),
+    creatorNamed: String(t.raw('money.creatorNamed')),
   };
 }
 
@@ -273,6 +282,8 @@ export function reconciliationCopyFrom(
 export interface PayoutQueueCopy extends ConsoleChromeCopy {
   readonly subject: string;
   readonly payoutSubject: string;
+  /** What the reader was trying to read when `/v1/admin/me` refused — their own standing. */
+  readonly meSubject: string;
   readonly calculateHeading: string;
   readonly calculateIntro: string;
   readonly campaignLabel: string;
@@ -305,18 +316,43 @@ export interface PayoutQueueCopy extends ConsoleChromeCopy {
   readonly needsTwo: string;
   /** Carries `{approver}`, `{date}`. */
   readonly approvalLine: string;
+  /**
+   * Marks the reader's own signature in the list — #405.
+   *
+   * <p>The controls below the list turn on "one of these is you", and a reader who cannot
+   * see which one is being asked to take the buttons on trust.
+   */
+  readonly thisIsYou: string;
   readonly stillHeldTitle: string;
   /** Carries `{date}`. */
   readonly stillHeldBody: string;
   readonly noteLabel: string;
   readonly noteHint: string;
   readonly approve: string;
+  /**
+   * Why approving is not offered: the reader has already signed — #405.
+   *
+   * <p>The control used to stay enabled and offer a second signature from the same person.
+   * `approve()` is idempotent, so nothing was ever written twice; what was wrong was the
+   * screen, which could not be told apart from one where the click had not registered.
+   */
+  readonly youHaveSigned: string;
+  /** Why approving is not offered yet: §9's hold has not expired. Carries `{date}`. */
+  readonly awaitingHold: string;
   readonly withdrawMine: string;
   readonly destinationLabel: string;
   readonly destinationHint: string;
   readonly send: string;
   /** Carries `{count}`. */
   readonly needsMore: string;
+  /**
+   * Why sending is disabled at a full set of signatures — #405.
+   *
+   * <p>The label changes from "one more signature needed" to "Send" and then the control
+   * does nothing, because §9's payout destination scheme is not built and there is nothing
+   * to send it to until somebody types one. That reason was on the screen nowhere.
+   */
+  readonly destinationNeeded: string;
   readonly state: Readonly<Record<PayoutState, string>>;
 }
 
@@ -328,6 +364,7 @@ export function payoutQueueCopyFrom(
     ...chrome,
     subject: t('screens.payouts.subject'),
     payoutSubject: t('screens.payouts.payoutSubject'),
+    meSubject: t('screens.payouts.meSubject'),
     calculateHeading: t('screens.payouts.calculateHeading'),
     calculateIntro: t('screens.payouts.calculateIntro'),
     campaignLabel: t('screens.payouts.campaignLabel'),
@@ -356,16 +393,20 @@ export function payoutQueueCopyFrom(
     noSignatures: t('screens.payouts.noSignatures'),
     needsTwo: t('screens.payouts.needsTwo'),
     approvalLine: String(t.raw('screens.payouts.approvalLine')),
+    thisIsYou: t('screens.payouts.thisIsYou'),
     stillHeldTitle: t('screens.payouts.stillHeldTitle'),
     stillHeldBody: String(t.raw('screens.payouts.stillHeldBody')),
     noteLabel: t('screens.payouts.noteLabel'),
     noteHint: t('screens.payouts.noteHint'),
     approve: t('screens.payouts.approve'),
+    youHaveSigned: t('screens.payouts.youHaveSigned'),
+    awaitingHold: String(t.raw('screens.payouts.awaitingHold')),
     withdrawMine: t('screens.payouts.withdrawMine'),
     destinationLabel: t('screens.payouts.destinationLabel'),
     destinationHint: t('screens.payouts.destinationHint'),
     send: t('screens.payouts.send'),
     needsMore: String(t.raw('screens.payouts.needsMore')),
+    destinationNeeded: t('screens.payouts.destinationNeeded'),
     state: t.raw('screens.payouts.state') as Readonly<Record<PayoutState, string>>,
   };
 }

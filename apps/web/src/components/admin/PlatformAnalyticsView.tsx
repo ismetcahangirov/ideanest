@@ -2,12 +2,22 @@
 
 import { useState } from 'react';
 import { InlineAlert, Pill, Skeleton, SkeletonGroup, StatBlock, StatRow } from '@ideanest/ui';
-import { peakVolume, readPlatformAnalytics } from '../../lib/admin/platform-analytics';
+import {
+  peakVolume,
+  readPlatformAnalytics,
+  type PlatformDailyPoint,
+} from '../../lib/admin/platform-analytics';
 import { formatMoney } from '../../lib/money';
 import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import type { PlatformAnalyticsCopy } from '../../lib/i18n/admin/platform-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { useConsoleResource } from './useConsoleResource';
+
+/**
+ * The tallest column, in pixels. Enough to tell a quiet day from a busy one at a glance and
+ * short enough that thirty of them sit beside the totals rather than below the fold.
+ */
+const CHART_HEIGHT = 120;
 
 /**
  * The windows somebody actually reads a platform dashboard over.
@@ -40,9 +50,25 @@ const WINDOWS = [30, 90, 365] as const;
  *
  * <h2>The chart is CSS, not a charting library</h2>
  *
- * Bars sized by percentage width, and nothing imported. A charting library in a
+ * Bars sized by percentage, and nothing imported. A charting library in a
  * `transpilePackages` graph lands in the shared chunk for every console route — `MinimalShell`
- * records what that cost the last time — and this is one screen with one series.
+ * records what that cost the last time — and this is one screen with one series. It is also
+ * why the route's performance budget did not move for #405: the change below is markup.
+ *
+ * <h2>Daily volume reads left to right, because that is what a trend is — issue #405</h2>
+ *
+ * <p>It used to be thirty rows, one per day, each with a horizontal bar beside the figure.
+ * Every number was on the screen and the shape was not: a reader comparing the fourth of
+ * August with the twelfth was comparing two bar lengths eight rows apart, which is the one
+ * arrangement that hides a series. Time runs along the axis now and the columns share a
+ * baseline, so "volume fell after the fifteenth" is something somebody sees rather than
+ * something they work out.
+ *
+ * <p><strong>Every figure is still readable, and not only as a length.</strong> Each column
+ * carries its day and its amount as text for a screen reader, the axis is labelled with the
+ * first and last day, and the busiest day is stated — CLAUDE.md's rule that colour must never
+ * carry meaning applies to length in exactly the same way. What was removed is the
+ * repetition, not the data.
  */
 export interface PlatformAnalyticsViewProps {
   readonly copy: PlatformAnalyticsCopy;
@@ -163,30 +189,11 @@ export function PlatformAnalyticsView({ copy }: PlatformAnalyticsViewProps) {
             {analytics.data.daily.length === 0 ? (
               <p className="mt-2 text-sm text-white/48">{copy.nothingPledged}</p>
             ) : (
-              <ul className="mt-4 flex list-none flex-col gap-1">
-                {analytics.data.daily.map((point) => {
-                  const peak = peakVolume(analytics.data!);
-                  const value = Number(point.volume.amount);
-                  const width = peak === 0 ? 0 : Math.round((value / peak) * 100);
-
-                  return (
-                    <li key={point.day} className="flex items-center gap-3 text-xs">
-                      <span className="w-[5.5rem] shrink-0 text-white/40">{point.day}</span>
-                      {/*
-                        The bar is presentational; the figure beside it is the datum. A screen
-                        reader is given the number and not a width, which is what CLAUDE.md
-                        means by colour never carrying meaning on its own.
-                      */}
-                      <span
-                        aria-hidden="true"
-                        className="h-2 rounded-sm bg-[var(--lime-500)]"
-                        style={{ width: `${width}%` }}
-                      />
-                      <span className="text-white/64">{formatMoney(point.volume)}</span>
-                    </li>
-                  );
-                })}
-              </ul>
+              <DailyVolume
+                points={analytics.data.daily}
+                peak={peakVolume(analytics.data)}
+                copy={copy}
+              />
             )}
           </section>
 
@@ -209,5 +216,90 @@ export function PlatformAnalyticsView({ copy }: PlatformAnalyticsViewProps) {
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * One day per column, oldest on the left — issue #405.
+ *
+ * <p><strong>An ordered list of columns rather than an `<svg>`.</strong> What a reader needs
+ * is thirty comparable lengths on one baseline, and that is what a flex row of list items is.
+ * An SVG would add a coordinate system, a viewBox to keep responsive, and text nodes no
+ * screen reader treats as a list — and a charting library would have moved the route's
+ * performance budget, which markup does not.
+ *
+ * <p><strong>Each column says what it is.</strong> The bar is `aria-hidden` and the day and
+ * the amount are real text beside it, visually hidden — so the series is a list of labelled
+ * figures to a screen reader and a trend to everybody else, and neither is the poorer
+ * version. CLAUDE.md: colour alone must never carry meaning, and neither may length.
+ *
+ * <p><strong>A day with nothing pledged is a column of no height and not a gap.</strong> A
+ * missing column would read as a day that was not measured, and "nobody pledged on the
+ * fourteenth" is one of the observations somebody opens this screen for. Anything above zero
+ * gets at least a pixel for the same reason.
+ */
+function DailyVolume({
+  points,
+  peak,
+  copy,
+}: {
+  readonly points: readonly PlatformDailyPoint[];
+  readonly peak: number;
+  readonly copy: PlatformAnalyticsCopy;
+}) {
+  const first = points[0];
+  const last = points[points.length - 1];
+  const busiest = points.reduce(
+    (highest, point) =>
+      Number(point.volume.amount) > Number(highest.volume.amount) ? point : highest,
+    points[0]!,
+  );
+
+  return (
+    <figure className="mt-4">
+      <ol
+        className="flex list-none items-end gap-[2px] overflow-x-auto"
+        style={{ height: `${CHART_HEIGHT}px` }}
+      >
+        {points.map((point) => {
+          const value = Number(point.volume.amount);
+          const height =
+            peak === 0 ? 0 : Math.max(value > 0 ? 1 : 0, Math.round((value / peak) * CHART_HEIGHT));
+
+          return (
+            <li
+              key={point.day}
+              className="flex min-w-[6px] flex-1 flex-col justify-end"
+              title={`${point.day} \u00b7 ${formatMoney(point.volume)}`}
+            >
+              <span className="sr-only">
+                {point.day}: {formatMoney(point.volume)}
+              </span>
+              <span
+                aria-hidden="true"
+                className="w-full rounded-t-[2px] bg-[var(--lime-500)]"
+                style={{ height: `${height}px` }}
+              />
+            </li>
+          );
+        })}
+      </ol>
+
+      {/*
+        The axis, as the two ends and the peak rather than as gridlines. Thirty tick labels
+        do not fit at any width this screen is read at, and an axis nobody can read is a
+        decoration on a chart.
+      */}
+      <figcaption className="mt-2 flex flex-wrap items-baseline justify-between gap-x-4 text-xs text-white/40">
+        <span>{first?.day}</span>
+        <span className="text-white/64">
+          {fillPlaceholders(copy.busiestDay, {
+            day: busiest.day,
+            amount: formatMoney(busiest.volume),
+          })}
+        </span>
+        <span>{last?.day}</span>
+      </figcaption>
+    </figure>
   );
 }

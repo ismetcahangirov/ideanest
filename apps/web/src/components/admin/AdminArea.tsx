@@ -2,6 +2,7 @@ import { Link } from '../../i18n/navigation';
 import type { ReactNode } from 'react';
 import { MAIN_CONTENT_ID, SkipLink } from '../shell/SkipLink';
 import { AdminNav } from './AdminNav';
+import { ConsoleReader } from './ConsoleReader';
 import { adminShellCopy, shellCopy } from '../../lib/i18n/shell-copy.server';
 
 /**
@@ -45,6 +46,20 @@ import { adminShellCopy, shellCopy } from '../../lib/i18n/shell-copy.server';
  * definition of one: ten destinations somebody moves between while holding one complaint in
  * their head. Above the content it would push every screen down and would compete with the
  * bar a few pixels above it.
+ *
+ * <h2>It says who <em>is</em> looking, and still gates nothing — issue #405</h2>
+ *
+ * <strong>`ConsoleReader` is a statement, not a check.</strong> The bar named neither the
+ * reader nor their authority, so somebody moving between screens could not tell a screen
+ * that was not theirs from one that was broken — on a surface where a machine and a shift
+ * are shared. That is a sentence the console can now say, because #295 gave it
+ * `GET /v1/admin/me` and #402 gave it somewhere to turn an identifier into a name.
+ *
+ * <p>It changes nothing about the paragraph below, which is still the rule: the line renders
+ * what the service told the browser, the service refuses every read behind every screen
+ * regardless of what the line says, and a reader who is not staff gets no line rather than a
+ * refusal — because the console index already says that in a sentence, and a shell is the
+ * wrong place to tell somebody they do not work here.
  *
  * <h2>Nothing here says who may be looking</h2>
  *
@@ -94,17 +109,22 @@ export async function AdminArea({ children }: AdminAreaProps) {
             <span className="font-normal text-white/48">{copy.console}</span>
           </Link>
 
-          {/*
-            The way out. A console with no link back to the platform is one somebody leaves
-            by editing the address bar, and the screens here are read alongside the pages
-            they are about.
-          */}
-          <Link
-            href="/"
-            className="rounded-lg text-sm text-white/64 transition-colors duration-150 ease-in-out hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
-          >
-            {copy.backToSite}
-          </Link>
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Who is reading, and with what authority. Nothing at all for anybody else. */}
+            <ConsoleReader copy={copy} />
+
+            {/*
+              The way out. A console with no link back to the platform is one somebody
+              leaves by editing the address bar, and the screens here are read alongside the
+              pages they are about.
+            */}
+            <Link
+              href="/"
+              className="rounded-lg text-sm text-white/64 transition-colors duration-150 ease-in-out hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
+            >
+              {copy.backToSite}
+            </Link>
+          </div>
         </div>
       </div>
 

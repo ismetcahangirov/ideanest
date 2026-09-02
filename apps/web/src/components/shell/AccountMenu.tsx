@@ -5,6 +5,7 @@ import { Link } from '../../i18n/navigation';
 import { usePathname } from '../../i18n/navigation';
 import { ChevronDown } from 'lucide-react';
 import { Avatar, cn, useDismiss } from '@ideanest/ui';
+import { readMembership } from '../../lib/admin/staff';
 import type { Session } from '../../lib/session/session';
 import type { ShellCopy } from '../../lib/i18n/shell-copy';
 
@@ -37,6 +38,23 @@ import type { ShellCopy } from '../../lib/i18n/shell-copy';
  * The panel closes on Escape, on a click outside, and on a navigation — the last because
  * Next routes without unmounting the shell, so a menu left open would follow the reader onto
  * the page they just chose.
+ *
+ * <h2>The way into the console, and why it is asked for on open — issue #405</h2>
+ *
+ * Signed in as an account holding all four staff roles, `/admin` appeared in neither the
+ * header, this menu, nor the footer. Staff reached the console by typing the URL, which is
+ * not a route anybody discovers and is one people write down in the wrong places.
+ *
+ * <p><strong>The staff check happens when the menu is first opened, not on render.</strong>
+ * This component is in the shell, so a check on render would be a request on every page view
+ * by every signed-in visitor on the platform, to decide whether to draw one row that almost
+ * nobody sees. Opening the menu is the moment the answer is needed, `GET /v1/admin/me`
+ * refuses nobody and is a primary-key lookup, and it is asked once per mount.
+ *
+ * <p>A failure is not staff. The console refuses anybody who should not be there, so the
+ * cost of being wrong in this direction is a row somebody has to reach by URL — which is
+ * exactly where they were before — and the cost of being wrong in the other is a link to a
+ * refusal in front of every backer on the site.
  */
 
 export interface AccountMenuProps {
@@ -56,6 +74,24 @@ export function AccountMenu({ session, onSignOut, copy }: AccountMenuProps) {
 
   const close = useCallback(() => setOpen(false), []);
   useDismiss({ open, onDismiss: close });
+
+  // Null until asked. See the docblock on why the question waits for the menu to open.
+  const [staff, setStaff] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!open || staff !== null) return;
+
+    const controller = new AbortController();
+    void readMembership(controller.signal)
+      .then((membership) => {
+        if (!controller.signal.aborted) setStaff(membership.staff);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setStaff(false);
+      });
+
+    return () => controller.abort();
+  }, [open, staff]);
 
   // A navigation is a dismissal. The shell does not unmount between routes, so without this
   // the panel would still be open over whatever the reader chose.
@@ -156,6 +192,17 @@ export function AccountMenu({ session, onSignOut, copy }: AccountMenuProps) {
                 {copy.startCampaign}
               </Link>
             </li>
+            {/*
+              #405: the console had no link into it from anywhere on the site. Drawn only
+              once the answer is in, so nobody sees a row appear and disappear.
+            */}
+            {staff === true && (
+              <li>
+                <Link href="/admin" className={ROW}>
+                  {copy.console}
+                </Link>
+              </li>
+            )}
           </ul>
 
           <div className="mt-2 border-t border-white/6 pt-2">

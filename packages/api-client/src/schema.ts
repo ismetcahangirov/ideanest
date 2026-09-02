@@ -148,6 +148,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/directory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["consoleDirectoryLookUp"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/disputes": {
         parameters: {
             query?: never;
@@ -3898,6 +3914,10 @@ export interface components {
             /** Format: date-time */
             registeredAt?: string;
         };
+        Directory: {
+            accounts?: components["schemas"]["Account"][];
+            projects?: components["schemas"]["Project"][];
+        };
         DisableTwoFactorRequest: {
             code?: string;
             password: string;
@@ -4656,6 +4676,15 @@ export interface components {
         ProfileVisibilityRequest: {
             /** @enum {string} */
             visibility: "PUBLIC" | "PRIVATE";
+        };
+        Project: {
+            /** Format: uuid */
+            creatorId?: string;
+            creatorSlug?: string;
+            /** Format: uuid */
+            id?: string;
+            slug?: string;
+            title?: string;
         };
         ProjectAnalyticsResponse: {
             /** Format: date-time */
@@ -5749,6 +5778,7 @@ export type SchemaDay = components['schemas']['Day'];
 export type SchemaDeleteAccountRequest = components['schemas']['DeleteAccountRequest'];
 export type SchemaDeletionScheduledResponse = components['schemas']['DeletionScheduledResponse'];
 export type SchemaDeviceResponse = components['schemas']['DeviceResponse'];
+export type SchemaDirectory = components['schemas']['Directory'];
 export type SchemaDisableTwoFactorRequest = components['schemas']['DisableTwoFactorRequest'];
 export type SchemaDispute = components['schemas']['Dispute'];
 export type SchemaDisputePage = components['schemas']['DisputePage'];
@@ -5833,6 +5863,7 @@ export type SchemaProfilePatchRequest = components['schemas']['ProfilePatchReque
 export type SchemaProfileProjectCard = components['schemas']['ProfileProjectCard'];
 export type SchemaProfileProjectListResponse = components['schemas']['ProfileProjectListResponse'];
 export type SchemaProfileVisibilityRequest = components['schemas']['ProfileVisibilityRequest'];
+export type SchemaProject = components['schemas']['Project'];
 export type SchemaProjectAnalyticsResponse = components['schemas']['ProjectAnalyticsResponse'];
 export type SchemaProjectChecklist = components['schemas']['ProjectChecklist'];
 export type SchemaProjectEdit = components['schemas']['ProjectEdit'];
@@ -6225,6 +6256,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminCollectionResponse"];
+                };
+            };
+        };
+    };
+    consoleDirectoryLookUp: {
+        parameters: {
+            query?: {
+                account?: string[];
+                project?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Directory"];
                 };
             };
         };

@@ -1,3 +1,4 @@
+import type { DirectoryNames } from './directory';
 import { authorizedFetch } from '../api/client';
 import { errorFrom } from '../api/problem';
 import { fillPlaceholders } from '../i18n/placeholders';
@@ -144,27 +145,60 @@ export async function readLedger(request: LedgerRequest = {}): Promise<LedgerVie
   return (await response.json()) as LedgerView;
 }
 
+/** The prefix a creator's own ledger account is stored under — `creator:{uuid}`. */
+const CREATOR_PREFIX = 'creator:';
+
+/**
+ * The creator identifiers inside a set of ledger account names — issue #402.
+ *
+ * <p>A creator's account is the one account on the ledger that belongs to a person, and the
+ * person is in the account's own name rather than in a field of its own. This is what lets a
+ * screen ask the console directory who they are; everything that is not a creator account
+ * falls out, including a malformed one, because a lookup on a value that is not an
+ * identifier is a request that can only come back empty.
+ */
+export function creatorIdsIn(accounts: readonly string[]): string[] {
+  const found = new Set<string>();
+  for (const account of accounts) {
+    if (!account.startsWith(CREATOR_PREFIX)) continue;
+    const id = account.slice(CREATOR_PREFIX.length);
+    if (id !== '') found.add(id);
+  }
+  return [...found];
+}
+
 /**
  * An account's name, in words.
  *
- * <p>A creator's account is rendered as "Creator" plus the first characters of the
- * identifier, which is all the ledger knows: nothing turns a creator id into a person here,
- * and a screen that pretended otherwise would be inventing a name. An account outside the six
- * is shown verbatim rather than hidden — the column has a check constraint, so a value that
- * is not one of these is something worth seeing.
+ * <p>A creator's account used to be rendered as "Creator" plus the first characters of the
+ * identifier, which was all the ledger knew: nothing turned a creator id into a person, and a
+ * screen that pretended otherwise would have been inventing a name. <strong>#402 gave it
+ * somewhere to ask.</strong> With the directory's answer the account is the creator's name;
+ * without it — before the lookup answers, or when it failed, or when §17.4 has anonymised the
+ * account — it is the fragment it always was, which is the honest fallback rather than a
+ * blank.
+ *
+ * <p>An account outside the six is shown verbatim rather than hidden: the column has a check
+ * constraint, so a value that is not one of these is something worth seeing.
  *
  * <p>The names arrive as a parameter since #324. They are `admin.money.account`, keyed by the
  * same stored values {@link LEDGER_ACCOUNTS} lists, and this module is imported by a client
  * component that cannot read a catalogue.
+ *
+ * @param names what the console directory resolved, or nothing. Optional so that the two
+ *     callers with no identifiers to resolve — and every test of the six fixed names — do
+ *     not have to invent an empty one
  */
-export function accountLabel(account: string, copy: MoneyCopy): string {
+export function accountLabel(account: string, copy: MoneyCopy, names?: DirectoryNames): string {
   const known = copy.account[account];
   if (known !== undefined) return known;
 
-  if (account.startsWith('creator:')) {
-    return fillPlaceholders(copy.creatorAccount, {
-      id: account.slice('creator:'.length, 'creator:'.length + 8),
-    });
+  if (account.startsWith(CREATOR_PREFIX)) {
+    const id = account.slice(CREATOR_PREFIX.length);
+    const name = names?.accounts.get(id)?.name;
+    return name === undefined
+      ? fillPlaceholders(copy.creatorAccount, { id: id.slice(0, 8) })
+      : fillPlaceholders(copy.creatorNamed, { name });
   }
   return account;
 }

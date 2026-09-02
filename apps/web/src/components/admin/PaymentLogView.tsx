@@ -31,7 +31,10 @@ import type { PaymentLogCopy } from '../../lib/i18n/admin/money-copy';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 import { formatExactTime } from '../../lib/time';
 import type { Locale } from '../../lib/i18n/locale';
+import type { DirectoryNames } from '../../lib/admin/directory';
 import { ConsoleRefusal } from './ConsoleRefusal';
+import { CopyIdentifier, EntityName } from './ConsoleIdentity';
+import { useDirectoryNames } from './useDirectoryNames';
 
 /** Which of the two identifiers the search box is holding. */
 type Scope = 'pledge' | 'project';
@@ -85,6 +88,9 @@ export function PaymentLogView({ copy }: PaymentLogViewProps) {
   const [attempt, setAttempt] = useState(0);
 
   const filter = submitted;
+
+  /* Which campaign each provider call was about — #402. */
+  const names = useDirectoryNames([], rows.map((row) => row.projectId));
 
   useEffect(() => {
     const controller = new AbortController();
@@ -246,7 +252,13 @@ export function PaymentLogView({ copy }: PaymentLogViewProps) {
       {status === 'ready' && rows.length > 0 && (
         <ul className="mt-4 flex list-none flex-col gap-2">
           {rows.map((row) => (
-            <TransactionRow key={row.id} transaction={row} locale={locale} copy={copy} />
+            <TransactionRow
+              key={row.id}
+              transaction={row}
+              locale={locale}
+              names={names}
+              copy={copy}
+            />
           ))}
         </ul>
       )}
@@ -286,11 +298,13 @@ export function PaymentLogView({ copy }: PaymentLogViewProps) {
  * in useful ways.
  */
 function TransactionRow({
+  names,
   transaction,
   locale,
   copy,
 }: {
   readonly transaction: LoggedTransaction;
+  readonly names: DirectoryNames;
   readonly locale: Locale;
   readonly copy: PaymentLogCopy;
 }) {
@@ -310,9 +324,12 @@ function TransactionRow({
             */}
             {fillNodes(copy.campaignPart, {
               id: (
-                <span className="font-mono" title={transaction.projectId}>
-                  {shortId(transaction.projectId)}
-                </span>
+                <EntityName
+                  id={transaction.projectId}
+                  names={names}
+                  kind="project"
+                  copy={copy.identity}
+                />
               ),
             })}
             {transaction.pledgeId != null && (
@@ -320,8 +337,17 @@ function TransactionRow({
                 {' · '}
                 {fillNodes(copy.pledgePart, {
                   id: (
-                    <span className="font-mono" title={transaction.pledgeId}>
-                      {shortId(transaction.pledgeId)}
+                    <span className="inline-flex flex-wrap items-baseline gap-x-2">
+                      <span className="font-mono" title={transaction.pledgeId}>
+                        {shortId(transaction.pledgeId)}
+                      </span>
+                      {/*
+                        #402: `/admin/refunds` takes a full pledge identifier typed by hand
+                        and this is the only console screen that lists pledges at all. Every
+                        identifier the console asks somebody to type is now copyable from the
+                        screen that supplies it.
+                      */}
+                      <CopyIdentifier id={transaction.pledgeId} copy={copy.identity} />
                     </span>
                   ),
                 })}

@@ -3,7 +3,8 @@ import type { ConsoleIndexCopy } from '../../lib/i18n/admin-copy';
 import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import {
   CONSOLE_MODULES,
-  builtModuleCount,
+  completeModuleCount,
+  partialModuleCount,
   type ConsoleModule,
   type ModuleState,
 } from '../../lib/admin/navigation';
@@ -135,7 +136,15 @@ export interface ConsoleIndexProps {
 }
 
 export function ConsoleIndex({ copy }: ConsoleIndexProps) {
-  const built = builtModuleCount();
+  /*
+   * #405: this sentence used to say how many modules have a screen and then promise that
+   * "the rest say what they are waiting for". All sixteen have a screen, so there was no
+   * rest and the second clause described nothing — while nine of the sixteen are partly
+   * built and do carry a waiting-on note, which is the fact it was reaching for. It says
+   * how many are finished and how many are not.
+   */
+  const complete = completeModuleCount();
+  const partial = partialModuleCount();
 
   return (
     <div>
@@ -145,7 +154,8 @@ export function ConsoleIndex({ copy }: ConsoleIndexProps) {
       <p className="mt-2 max-w-[68ch] text-sm text-white/64">
         {fillPlaceholders(copy.standfirst, {
           total: String(CONSOLE_MODULES.length),
-          built: String(built),
+          complete: String(complete),
+          partial: String(partial),
         })}
       </p>
 

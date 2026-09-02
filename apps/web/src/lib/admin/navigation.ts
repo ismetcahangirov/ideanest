@@ -372,9 +372,41 @@ export function isCurrentConsoleLink(href: string, pathname: string): boolean {
   return false;
 }
 
-/** How many of §4.11's modules have a screen, for the sentence the console index opens with. */
+/**
+ * How many of §4.11's modules have a screen, for the sentence the console index opens with.
+ *
+ * <p><strong>Kept, and no longer what the sentence is built from — issue #405.</strong> The
+ * standfirst read "sixteen modules; sixteen of them have a screen; the rest say what they
+ * are waiting for", and there was no rest: every module has an `href`, so this counted all
+ * sixteen and the clause after the semicolon described nothing. Meanwhile nine of the
+ * sixteen are marked `partial` and each does carry a waiting-on note, which is the useful
+ * fact the sentence was trying to state and got backwards.
+ *
+ * <p>It stays because "has a screen" is still a question worth being able to ask — a
+ * `blocked` module is one this rail must not link to — and because a function nothing calls
+ * is cheaper to delete than a fact nothing records.
+ */
 export function builtModuleCount(): number {
   return CONSOLE_MODULES.filter((module) => module.href !== null).length;
+}
+
+/**
+ * How many modules are finished, for the sentence the console index opens with — #405.
+ *
+ * <p>Complete means `built`: a screen exists and nothing about the module is outstanding.
+ */
+export function completeModuleCount(): number {
+  return CONSOLE_MODULES.filter((module) => module.state === 'built').length;
+}
+
+/**
+ * How many are partly built — a screen, and a note saying which part is missing.
+ *
+ * <p>This is the number the standfirst was reaching for. Nine of sixteen is a fact about
+ * the state of the console; "sixteen of sixteen have a screen" is a fact about routing.
+ */
+export function partialModuleCount(): number {
+  return CONSOLE_MODULES.filter((module) => module.state === 'partial').length;
 }
 
 /** Every path a module owns, for a check that the rail lists nothing that is not one. */

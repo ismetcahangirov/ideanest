@@ -43,7 +43,8 @@
       "notifications": "Bildirimler",
       "notificationSettings": "Bildirim ayarları",
       "sessions": "Cihazlar ve oturumlar",
-      "startCampaign": "Kampanya başlat"
+      "startCampaign": "Kampanya başlat",
+      "console": "Yönetim konsolu"
     },
     "footer": {
       "label": "Alt bilgi",
@@ -418,7 +419,7 @@
     "index": {
       "title": "Yönetim konsolu",
       "metaDescription": "Platform modülleri, hangilerinin ekranı var ve geri kalanı neyi bekliyor.",
-      "standfirst": "§4.11 bölümünün tarif ettiği {total} modül. Bunlardan {built} tanesinin bir ekranı var; geri kalanı neyi beklediğini söylüyor, çünkü konsolu neredeyse bitmiş gibi gösteren bir liste, boşluğu adıyla anan bir listeden kötüdür.",
+      "standfirst": "§4.11’in tanımladığı {total} modül. Bunlardan {complete} tanesi tamamlandı, {partial} tanesi kısmen kuruldu; bunların her biri neyi beklediğini söylüyor, çünkü konsolun neredeyse bittiği izlenimini veren bir liste, boşluğu adıyla anan bir listeden kötüdür.",
       "issue": "Konu #{issue}",
       "footnote": "Buradaki hiçbir ekran bir kapı değil. Konsolun çağırdığı her uç nokta çağıranı kendisi denetler — yabancıyı yabancı olarak, çalışanı ise ekranın istediği yetkiye göre reddeder — ve her ekran bu reddi geldiği gibi gösterir. Tarayıcıdaki bir denetim, servisin zaten doğru yaptığı denetimin ikinci ve daha zayıf bir kopyası olurdu."
     },
@@ -524,7 +525,12 @@
       "loadMore": "Daha fazla yükle",
       "loading": "Yükleniyor",
       "previous": "Önceki",
-      "next": "Sonraki"
+      "next": "Sonraki",
+      "identity": {
+        "copy": "Tanımlayıcıyı kopyala",
+        "copyLabel": "{id} ile başlayan tam tanımlayıcıyı kopyala",
+        "copied": "Kopyalandı"
+      }
     },
     "pages": {
       "audit": {
@@ -863,6 +869,10 @@
           "RUNNING": "Çalışıyor",
           "FAILED": "Son çalışmasında başarısız oldu",
           "DISABLED": "Kapatılmış"
+        },
+        "queue": {
+          "outbox": "Giden kuyruğu",
+          "scheduled-jobs": "Planlanmış işler"
         }
       },
       "flags": {
@@ -914,7 +924,8 @@
         "notBuilt": {
           "COHORTS": "Kohortlar için destekçinin ilk desteğine göre bir toplama gerekir; böylesi yok (#313).",
           "FUNNELS": "Huniler için ziyaretten desteğe giden yol gerekir; referral_touches varışı kaydeder, sonrasını değil (#313)."
-        }
+        },
+        "busiestDay": "En yoğun gün {day}, {amount}"
       },
       "emailTemplates": {
         "subject": "e-posta şablonlarını",
@@ -1315,8 +1326,6 @@
         "withdraw": "Geri al",
         "grantHeading": "Rol ver",
         "grantIntro": "Roller birbirinin üstüne eklenir: bir hesap kendisine verilmiş tüm rollerin birleşimini taşır. Burada hiçbir şey bir yetkiyi geri almaz, bu yüzden çözülecek bir sıra da yoktur.",
-        "accountLabel": "Hesap",
-        "accountHint": "Tam tanımlayıcı, hesap dizininden.",
         "roleLabel": "Rol",
         "noteLabel": "Not",
         "noteHint": "Gerekçe, sonraki yönetici için.",
@@ -1325,8 +1334,8 @@
         "confers": "{role} şunları verir: {capabilities}",
         "doneTitle": "Tamam",
         "failedTitle": "Bu işe yaramadı",
-        "grantedNotice": "{role} rolü {id} hesabına verildi.",
-        "withdrawnNotice": "{role} rolü {id} hesabından geri alındı.",
+        "grantedNotice": "{role} rolü {name} hesabına verildi.",
+        "withdrawnNotice": "{role} rolü {name} hesabından geri alındı.",
         "role": {
           "MODERATOR": "Moderatör",
           "CURATOR": "Küratör",
@@ -1346,7 +1355,19 @@
           "VIEW_AUDIT": "Denetim izini okumak",
           "VIEW_HEALTH": "Kuyruk derinliğini ve sağlayıcı durumunu okumak",
           "ADMINISTER_STAFF": "Rol vermek ve geri almak"
-        }
+        },
+        "picker": {
+          "subject": "hesap dizinini",
+          "label": "Hesap",
+          "hint": "Ad, e-posta adresi veya profil yolu ile arayın. Dizindeki her arama kaydedilir, bu yüzden yalnızca siz istediğinizde çalışır.",
+          "search": "Ara",
+          "searching": "Aranıyor",
+          "change": "Başkasını seç",
+          "noneFound": "“{term}” ile eşleşen hesap yok.",
+          "resultsLabel": "Eşleşen hesaplar",
+          "failedTitle": "Dizinde arama yapılamadı"
+        },
+        "chooseAccountFirst": "Rol vermeden önce bir hesap seçin."
       },
       "payments": {
         "subject": "ödeme günlüğünü",
@@ -1506,7 +1527,12 @@
           "PAID": "Ödendi",
           "FAILED": "Başarısız",
           "CANCELLED": "İptal edildi"
-        }
+        },
+        "meSubject": "kendi yetkinizi",
+        "thisIsYou": "bu sizsiniz",
+        "youHaveSigned": "Bu ödemeyi zaten imzaladınız. İkinci imza başka birine ait olmalı.",
+        "awaitingHold": "{date} tarihinde bekletme süresi dolana kadar imzalanamaz.",
+        "destinationNeeded": "Bu ödemenin gönderileceği adresi girin. Kayıtlı bir adres henüz yok."
       },
       "refunds": {
         "subject": "iade günlüğünü",
@@ -1928,8 +1954,10 @@
         "tax_payable": "Ödenecek vergi",
         "refunds": "İadeler"
       },
-      "creatorAccount": "Yaratıcı {id}"
-    }
+      "creatorAccount": "Yaratıcı {id}",
+      "creatorNamed": "{name}, kurucu hesabı"
+    },
+    "signedInAs": "{name} olarak oturum açtınız — {roles}"
   },
   "settings": {
     "language": {

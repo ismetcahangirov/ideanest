@@ -11,11 +11,15 @@ import {
   type StaffGrant,
   type StaffRole,
 } from '../../lib/admin/staff';
-import { consoleMessageFor, shortId } from '../../lib/admin/refusals';
+import type { AdminUser } from '../../lib/admin/api';
+import { consoleMessageFor } from '../../lib/admin/refusals';
 import { fillNodes, fillPlaceholders } from '../../lib/i18n/placeholders';
 import type { StaffRolesCopy } from '../../lib/i18n/admin/people-copy';
+import { AccountPicker } from './AccountPicker';
 import { ConsoleRefusal } from './ConsoleRefusal';
+import { EntityName } from './ConsoleIdentity';
 import { useConsoleResource } from './useConsoleResource';
+import { useDirectoryNames } from './useDirectoryNames';
 
 const ROLES: readonly StaffRole[] = ['MODERATOR', 'CURATOR', 'FINANCE', 'ADMINISTRATOR'];
 
@@ -44,6 +48,21 @@ const ROLES: readonly StaffRole[] = ['MODERATOR', 'CURATOR', 'FINANCE', 'ADMINIS
  * only way to remove it is to change that and restart. A roster that showed them as ordinary
  * administrators would be a list somebody would try to revoke from and quietly fail.
  *
+ * <h2>Everybody on it has a name — issue #402</h2>
+ *
+ * <p>This screen told the person reading it that they were signed in as `c5c5493d`, on a
+ * session whose site header renders their name three centimetres above. The roster listed
+ * grants by fragment, so "who may move money on this platform" could not be answered by
+ * reading the screen that decides it. Both are resolved through the console directory now,
+ * and the fragment stays beside each name because that is what somebody quotes to an
+ * engineer.
+ *
+ * <p><strong>And the grant form no longer asks for something it cannot supply.</strong> It
+ * used to take a full UUID with the help text "from the account directory", and the account
+ * directory rendered no identifier anywhere — so the one privileged action on this screen
+ * could not be completed inside the console at all. {@link AccountPicker} is the fix, and
+ * carries the argument for why this field gets a picker and the console's other five do not.
+ *
  * <h2>Motion: none</h2>
  *
  * docs/motion-system.md §5 gives an administrative surface 150ms of colour on a control and
@@ -68,12 +87,26 @@ export function StaffRoles({ copy }: StaffRolesProps) {
     [],
   );
 
-  const [accountId, setAccountId] = useState('');
+  const [account, setAccount] = useState<AdminUser | null>(null);
   const [role, setRole] = useState<StaffRole>('MODERATOR');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [writeError, setWriteError] = useState<string | null>(null);
   const [written, setWritten] = useState<string | null>(null);
+
+  /*
+   * Everybody this screen mentions: the reader, whoever holds a grant, and whoever made
+   * it. Named through the console directory since #402 — the fragments this used to render
+   * are still beside each name, because a fragment is what gets quoted and a name is what
+   * gets recognised.
+   */
+  const names = useDirectoryNames(
+    [
+      me.data?.accountId ?? null,
+      ...(roster.data?.grants.flatMap((grant) => [grant.accountId, grant.grantedBy]) ?? []),
+    ].filter((id): id is string => id != null),
+    [],
+  );
 
   // `me` is read first and refuses nobody, so a signed-out reader is caught here rather
   // than by the roster — which would otherwise report "not staff" to somebody whose session
@@ -84,18 +117,19 @@ export function StaffRoles({ copy }: StaffRolesProps) {
 
   async function submit(event: React.FormEvent): Promise<void> {
     event.preventDefault();
-    const id = accountId.trim();
-    if (id === '') return;
+    if (account === null) return;
 
     setBusy(true);
     setWriteError(null);
     setWritten(null);
     try {
-      await grantRole(id, role, note.trim() === '' ? null : note.trim());
+      await grantRole(account.id, role, note.trim() === '' ? null : note.trim());
+      // The person, not the fragment. "MODERATOR granted to 4a10278a" is a sentence
+      // somebody has to go and check; this one can be read.
       setWritten(
-        fillPlaceholders(copy.grantedNotice, { role: copy.role[role], id: shortId(id) }),
+        fillPlaceholders(copy.grantedNotice, { role: copy.role[role], name: account.name }),
       );
-      setAccountId('');
+      setAccount(null);
       setNote('');
       roster.reload();
     } catch (cause) {
@@ -114,7 +148,7 @@ export function StaffRoles({ copy }: StaffRolesProps) {
       setWritten(
         fillPlaceholders(copy.withdrawnNotice, {
           role: copy.role[grant.role],
-          id: shortId(grant.accountId),
+          name: names.accounts.get(grant.accountId)?.name ?? grant.accountId,
         }),
       );
       roster.reload();
@@ -154,7 +188,12 @@ export function StaffRoles({ copy }: StaffRolesProps) {
               */}
               {fillNodes(copy.signedInAs, {
                 id: (
-                  <span className="font-mono text-white/80">{shortId(me.data.accountId)}</span>
+                  <EntityName
+                    id={me.data.accountId}
+                    names={names}
+                    kind="account"
+                    copy={copy.identity}
+                  />
                 ),
                 roles: me.data.roles.map((held) => (
                   <Tag key={held} className="mx-1">
@@ -241,12 +280,25 @@ export function StaffRoles({ copy }: StaffRolesProps) {
               >
                 <div className="min-w-0">
                   <p className="text-sm text-white">
-                    <span className="font-mono text-white/80">{shortId(grant.accountId)}</span>{' '}
+                    <EntityName
+                      id={grant.accountId}
+                      names={names}
+                      kind="account"
+                      copy={copy.identity}
+                      copyable
+                    />{' '}
                     <Tag className="ml-1">{copy.role[grant.role]}</Tag>
                   </p>
                   <p className="mt-1 text-xs text-white/48">
                     {fillNodes(copy.grantedBy, {
-                      by: <span className="font-mono">{shortId(grant.grantedBy)}</span>,
+                      by: (
+                        <EntityName
+                          id={grant.grantedBy}
+                          names={names}
+                          kind="account"
+                          copy={copy.identity}
+                        />
+                      ),
                       date: new Date(grant.grantedAt).toISOString().slice(0, 10),
                     })}
                     {grant.note ? ` — ${grant.note}` : ''}
@@ -269,19 +321,21 @@ export function StaffRoles({ copy }: StaffRolesProps) {
           </h2>
           <p className="mt-2 max-w-[62ch] text-sm text-white/64">{copy.grantIntro}</p>
 
-          <form onSubmit={(event) => void submit(event)} className="mt-4 flex flex-wrap items-end gap-3">
-            <Field
-              label={copy.accountLabel}
-              hint={copy.accountHint}
-              className="min-w-[280px] flex-1"
-            >
-              <TextInput
-                value={accountId}
-                onChange={(event) => setAccountId(event.target.value)}
-                placeholder="00000000-0000-0000-0000-000000000000"
-              />
-            </Field>
+          <form onSubmit={(event) => void submit(event)} className="mt-4 flex flex-col gap-4">
+            {/*
+              The picker, not a UUID field. #402: the identifier this asked for was not
+              obtainable from the screen its own help text named, so the grant could not be
+              completed inside the console. `AccountPicker` says why this field gets a
+              picker and the console's other five keep a text input.
+            */}
+            <AccountPicker
+              chosen={account}
+              onChoose={setAccount}
+              copy={copy.picker}
+              disabled={busy}
+            />
 
+            <div className="flex flex-wrap items-end gap-3">
             <Field label={copy.roleLabel} className="min-w-[180px]">
               <Select value={role} onChange={(event) => setRole(event.target.value as StaffRole)}>
                 {ROLES.map((option) => (
@@ -296,9 +350,24 @@ export function StaffRoles({ copy }: StaffRolesProps) {
               <TextInput value={note} onChange={(event) => setNote(event.target.value)} />
             </Field>
 
-            <Pill type="submit" variant="outline" size="sm" className="mb-1" disabled={busy}>
+            {/*
+              Disabled until somebody is chosen, with the reason beside it — #405's rule
+              about disabled controls applies to this screen too, and "Grant" with nobody
+              to grant to is a control offering an action the reader cannot take.
+            */}
+            <Pill
+              type="submit"
+              variant="outline"
+              size="sm"
+              className="mb-1"
+              disabled={busy || account === null}
+            >
               {busy ? copy.working : copy.grant}
             </Pill>
+            {account === null && (
+              <p className="mb-2 text-xs text-white/48">{copy.chooseAccountFirst}</p>
+            )}
+            </div>
           </form>
 
           <p className="mt-3 text-xs text-white/48">

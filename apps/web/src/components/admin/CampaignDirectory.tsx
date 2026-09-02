@@ -18,6 +18,7 @@ import {
 } from '../../lib/admin/refusals';
 import type { ProjectState } from '../../lib/projects/api';
 import type { CampaignDirectoryCopy } from '../../lib/i18n/admin/content-copy';
+import { CopyIdentifier } from './ConsoleIdentity';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 import { formatDate } from '../../lib/time';
 import { formatMoney } from '../../lib/money';
@@ -256,9 +257,18 @@ function CampaignRow({ campaign, locale, copy }: CampaignRowProps) {
               {campaign.title}
             </a>
           </h3>
-          <p className="mt-1 text-sm text-white/64">
-            {campaign.creatorName ?? copy.creatorGone}
-            <span className="text-white/32"> · {shortId(campaign.projectId)}</span>
+          <p className="mt-1 flex flex-wrap items-baseline gap-x-2 text-sm text-white/64">
+            <span>{campaign.creatorName ?? copy.creatorGone}</span>
+            {/*
+              #402: four console screens take a campaign identifier typed by hand — the
+              payout calculator, the ledger filter, the refund console and the payment log —
+              and this is the one screen that lists campaigns in every state. Copying it
+              from here is what makes those four reachable without a psql session.
+            */}
+            <span className="font-mono text-white/32" title={campaign.projectId}>
+              {shortId(campaign.projectId)}
+            </span>
+            <CopyIdentifier id={campaign.projectId} copy={copy.identity} />
           </p>
         </div>
         {/*

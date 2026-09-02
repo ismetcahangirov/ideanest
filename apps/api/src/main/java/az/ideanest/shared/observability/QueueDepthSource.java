@@ -22,11 +22,18 @@ package az.ideanest.shared.observability;
 public interface QueueDepthSource {
 
     /**
-     * What the screen calls this queue.
+     * What this queue is called, as an identifier.
      *
-     * <p>In the words a member of staff uses — "Outbox", "Scheduled jobs", "Emails" — and
-     * not the table name. The reader is answering a question about the platform, not
-     * about the schema.
+     * <p>{@code outbox}, {@code scheduled-jobs}, {@code emails} — a stable machine value in
+     * one case with no spaces, because it is two things and neither of them is a sentence:
+     * it is a metric tag, and it is the key the console looks a translated label up under.
+     *
+     * <p><strong>It used to be the words a member of staff uses, and #405 is what that
+     * cost.</strong> The console rendered "Outbox" and "Scheduled jobs" verbatim under an
+     * Azerbaijani heading, directly above a section headed with the Azerbaijani for the
+     * second of them — one concept in two languages on one screen. A name a screen can
+     * render without a catalogue is one that can only ever be in one language, and §21.1
+     * says which language a service's own strings are in until it is translated.
      */
     String queueName();
 

@@ -26,8 +26,11 @@ import { consoleMessageFor, shortId } from '../../lib/admin/refusals';
 import { formatMoney } from '../../lib/money';
 import { fillNodes, fillPlaceholders } from '../../lib/i18n/placeholders';
 import type { RefundConsoleCopy } from '../../lib/i18n/admin/money-copy';
+import type { DirectoryNames } from '../../lib/admin/directory';
 import { ConsoleRefusal } from './ConsoleRefusal';
+import { EntityName } from './ConsoleIdentity';
 import { useConsoleResource } from './useConsoleResource';
+import { useDirectoryNames } from './useDirectoryNames';
 
 const STATES: readonly RefundState[] = ['REQUESTED', 'SUCCEEDED', 'FAILED'];
 
@@ -81,6 +84,13 @@ export function RefundConsole({ copy }: RefundConsoleProps) {
   const [busy, setBusy] = useState(false);
   const [writeError, setWriteError] = useState<string | null>(null);
   const [issued, setIssued] = useState<Refund | null>(null);
+
+  /* Who asked for each refund — #402. A refund is a privileged act, and "requested by
+     4a10278a" is a record nobody can read back. */
+  const names = useDirectoryNames(
+    (refunds.data?.refunds ?? []).map((refund) => refund.requestedBy),
+    [],
+  );
 
   if (refunds.status === 'signed-out' || refunds.status === 'forbidden') {
     return <ConsoleRefusal status={refunds.status} capability={refunds.capability} subject={copy.subject} copy={copy.refusals} />;
@@ -265,7 +275,7 @@ export function RefundConsole({ copy }: RefundConsoleProps) {
         {refunds.status === 'ready' && refunds.data !== null && refunds.data.refunds.length > 0 && (
           <ul className="mt-4 flex list-none flex-col gap-2">
             {refunds.data.refunds.map((refund) => (
-              <RefundRow key={refund.id} refund={refund} copy={copy} />
+              <RefundRow key={refund.id} refund={refund} names={names} copy={copy} />
             ))}
           </ul>
         )}
@@ -292,10 +302,12 @@ export function RefundConsole({ copy }: RefundConsoleProps) {
 
 /** One refund. The reason is a tag because it is the thing this list is counted by. */
 function RefundRow({
+  names,
   refund,
   copy,
 }: {
   readonly refund: Refund;
+  readonly names: DirectoryNames;
   readonly copy: RefundConsoleCopy;
 }) {
   return (
@@ -322,7 +334,14 @@ function RefundRow({
 
       <p className="mt-2 text-xs text-white/40">
         {fillNodes(copy.requestedBy, {
-          by: <span className="font-mono">{shortId(refund.requestedBy)}</span>,
+          by: (
+            <EntityName
+              id={refund.requestedBy}
+              names={names}
+              kind="account"
+              copy={copy.identity}
+            />
+          ),
           date: new Date(refund.requestedAt).toISOString().slice(0, 10),
         })}
         {refund.failureCode

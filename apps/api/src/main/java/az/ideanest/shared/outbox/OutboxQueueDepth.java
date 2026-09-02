@@ -24,9 +24,10 @@ public class OutboxQueueDepth implements QueueDepthSource {
         this.events = events;
     }
 
+    /** An identifier rather than a word, for the reason {@code JobQueueDepth} states — #405. */
     @Override
     public String queueName() {
-        return "Outbox";
+        return "outbox";
     }
 
     @Override

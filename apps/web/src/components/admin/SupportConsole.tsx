@@ -24,12 +24,14 @@ import {
   type TicketPriority,
   type TicketState,
 } from '../../lib/admin/tickets';
-import { consoleMessageFor, shortId } from '../../lib/admin/refusals';
+import { consoleMessageFor } from '../../lib/admin/refusals';
 import { pluralise } from '../../lib/i18n/plurals';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 import type { SupportConsoleCopy } from '../../lib/i18n/admin/people-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
+import { EntityName } from './ConsoleIdentity';
 import { useConsoleResource } from './useConsoleResource';
+import { useDirectoryNames } from './useDirectoryNames';
 
 /**
  * §4.11's AD-10: tickets with user context and action history — issue #310.
@@ -64,6 +66,19 @@ export function SupportConsole({ copy }: SupportConsoleProps) {
     copy.subject,
     copy.refusals,
     [page],
+  );
+
+  /*
+   * Who asked and who is handling it — #402. A ticket row read "7d09800a · 2026-08-22 ·
+   * 4a10278a", which is a conversation between two people neither of whom the screen could
+   * name, on the screen whose whole subject is that conversation.
+   */
+  const names = useDirectoryNames(
+    (queue.data?.tickets ?? []).flatMap((ticket) => [
+      ticket.requesterId,
+      ticket.assigneeId ?? null,
+    ]).filter((id): id is string => id != null),
+    [],
   );
 
   if (queue.status === 'signed-out' || queue.status === 'forbidden') {
@@ -133,12 +148,29 @@ export function SupportConsole({ copy }: SupportConsoleProps) {
                       <Tag>{copy.state[ticket.state]}</Tag>
                     </span>
                   </div>
-                  <p className="mt-2 text-xs text-white/40">
-                    <span className="font-mono">{shortId(ticket.requesterId)}</span> ·{' '}
-                    {ticket.createdAt.slice(0, 10)}
-                    {ticket.assigneeId == null
-                      ? ` · ${copy.unassigned}`
-                      : ` · ${shortId(ticket.assigneeId)}`}
+                  <p className="mt-2 flex flex-wrap items-baseline gap-x-1 text-xs text-white/40">
+                    {/*
+                      #402: a ticket read as "7d09800a · 2026-08-22 · 4a10278a" — the person
+                      who asked and the person handling it, neither of them nameable, on the
+                      screen whose whole subject is a conversation between the two.
+                    */}
+                    <EntityName
+                      id={ticket.requesterId}
+                      names={names}
+                      kind="account"
+                      copy={copy.identity}
+                    />
+                    <span>· {ticket.createdAt.slice(0, 10)} ·</span>
+                    {ticket.assigneeId == null ? (
+                      <span>{copy.unassigned}</span>
+                    ) : (
+                      <EntityName
+                        id={ticket.assigneeId}
+                        names={names}
+                        kind="account"
+                        copy={copy.identity}
+                      />
+                    )}
                   </p>
                 </button>
 

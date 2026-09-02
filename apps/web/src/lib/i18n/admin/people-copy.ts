@@ -2,7 +2,7 @@ import type { StaffCapability, StaffRole } from '../../admin/staff';
 import type { TicketPriority, TicketState } from '../../admin/tickets';
 import type { AdminTranslator } from '../admin-copy';
 import type { PluralForms } from '../plurals';
-import type { ConsoleChromeCopy } from './common-copy';
+import type { ConsoleChromeCopy, ConsoleRefusalsCopy } from './common-copy';
 
 /**
  * The words the console's people screens draw — issue #324, epic #259.
@@ -223,6 +223,51 @@ export function supportConsoleCopyFrom(
  * this is what sits on its `title`. It moved out of `lib/admin/staff.ts`, where it was the one
  * English table in a module otherwise made of identifiers.
  */
+/**
+ * `AccountPicker`'s own words — issue #402.
+ *
+ * <p>Its own interface rather than more fields on the screen that uses it, because the
+ * control is a candidate for the five other screens that take a hand-typed identifier the
+ * day #404 makes the campaign directory searchable. A screen hands it one object.
+ */
+export interface AccountPickerCopy {
+  /** What the reader was trying to read, for the shared refusals. "the account directory". */
+  readonly subject: string;
+  readonly refusals: ConsoleRefusalsCopy;
+  readonly label: string;
+  /** Says that searching is a recorded read, which is why it happens on demand. */
+  readonly hint: string;
+  readonly search: string;
+  readonly searching: string;
+  /** Puts the chosen account back to nothing. */
+  readonly change: string;
+  /** Carries `{term}`. */
+  readonly noneFound: string;
+  /** The list's accessible name. */
+  readonly resultsLabel: string;
+  readonly failedTitle: string;
+}
+
+export function accountPickerCopyFrom(
+  t: AdminTranslator,
+  refusals: ConsoleRefusalsCopy,
+): AccountPickerCopy {
+  return {
+    subject: t('screens.staff.picker.subject'),
+    refusals,
+    label: t('screens.staff.picker.label'),
+    hint: t('screens.staff.picker.hint'),
+    search: t('screens.staff.picker.search'),
+    searching: t('screens.staff.picker.searching'),
+    change: t('screens.staff.picker.change'),
+    /* `raw`, because next-intl renders a template's own key when it is read with `t()` and
+       has no value for the argument. */
+    noneFound: String(t.raw('screens.staff.picker.noneFound')),
+    resultsLabel: t('screens.staff.picker.resultsLabel'),
+    failedTitle: t('screens.staff.picker.failedTitle'),
+  };
+}
+
 export interface StaffRolesCopy extends ConsoleChromeCopy {
   readonly subject: string;
   readonly meSubject: string;
@@ -247,8 +292,10 @@ export interface StaffRolesCopy extends ConsoleChromeCopy {
   readonly withdraw: string;
   readonly grantHeading: string;
   readonly grantIntro: string;
-  readonly accountLabel: string;
-  readonly accountHint: string;
+  /** The search-and-pick control that replaced the UUID field — #402. */
+  readonly picker: AccountPickerCopy;
+  /** Why the grant control is disabled, beside it. #405's rule, applied here. */
+  readonly chooseAccountFirst: string;
   readonly roleLabel: string;
   readonly noteLabel: string;
   readonly noteHint: string;
@@ -258,9 +305,9 @@ export interface StaffRolesCopy extends ConsoleChromeCopy {
   readonly confers: string;
   readonly doneTitle: string;
   readonly failedTitle: string;
-  /** Carries `{id}`, `{role}`. */
+  /** Carries `{name}`, `{role}`. The person, not the fragment — #402. */
   readonly grantedNotice: string;
-  /** Carries `{id}`, `{role}`. */
+  /** Carries `{name}`, `{role}`. */
   readonly withdrawnNotice: string;
   readonly role: Readonly<Record<StaffRole, string>>;
   readonly capability: Readonly<Record<StaffCapability, string>>;
@@ -291,8 +338,8 @@ export function staffRolesCopyFrom(
     withdraw: t('screens.staff.withdraw'),
     grantHeading: t('screens.staff.grantHeading'),
     grantIntro: t('screens.staff.grantIntro'),
-    accountLabel: t('screens.staff.accountLabel'),
-    accountHint: t('screens.staff.accountHint'),
+    picker: accountPickerCopyFrom(t, chrome.refusals),
+    chooseAccountFirst: t('screens.staff.chooseAccountFirst'),
     roleLabel: t('screens.staff.roleLabel'),
     noteLabel: t('screens.staff.noteLabel'),
     noteHint: t('screens.staff.noteHint'),
