@@ -178,6 +178,34 @@ public class Payout {
         state = PayoutState.APPROVED;
     }
 
+    /**
+     * A signature was withdrawn and the payout no longer has enough of them - issue #398.
+     *
+     * <p><strong>Why this is not {@link #payable()}.</strong> That method is called by the
+     * queue read on every row it lists, so it has to be a no-op on everything except a held
+     * one - {@code PayoutApprovalTests.payableOnlyMovesFromCalculated} asserts exactly that,
+     * and widening it would let a listing un-approve a payout two people had signed.
+     *
+     * <p>Which made it the wrong method for the withdrawal path, and silently so: called
+     * with the state at {@code APPROVED} it returned without doing anything, so the guard in
+     * {@code PayoutService.withdrawApproval} compiled, ran, and left the payout {@code
+     * APPROVED} with one signature of two. The comment above that call said the line
+     * prevented precisely that.
+     *
+     * <p>So this transition is its own method and it is total: it moves an approved payout
+     * back to waiting, and it throws on anything else rather than returning quietly. A state
+     * machine that ignores the state it is handed cannot be relied on by a caller, and the
+     * money is gated on it.
+     *
+     * @throws IllegalStateException when the payout is not {@code APPROVED}
+     */
+    public void backToPendingApproval() {
+        if (state != PayoutState.APPROVED) {
+            throw new IllegalStateException("Payout " + id + " is " + state + ", not APPROVED");
+        }
+        state = PayoutState.PENDING_APPROVAL;
+    }
+
     /** The provider took it. */
     public void paid(UUID transactionId, Instant at) {
         this.state = PayoutState.PAID;

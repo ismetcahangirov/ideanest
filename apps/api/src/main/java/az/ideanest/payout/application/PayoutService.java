@@ -295,8 +295,12 @@ public class PayoutService {
         // Back to waiting, if the withdrawal took it below the bar. Without this a payout
         // could be approved, un-approved, and still sent — which is the whole rule defeated
         // by a button.
+        //
+        // This called `payable()` until #398, and `payable()` only transitions from
+        // CALCULATED — so from APPROVED it returned silently and the guard did nothing.
+        // `backToPendingApproval()` asserts the state it was handed instead of ignoring it.
         if (payout.state() == PayoutState.APPROVED && signatures < payout.approvalsRequired()) {
-            payout.payable();
+            payout.backToPendingApproval();
         }
 
         audit.record(
@@ -319,8 +323,14 @@ public class PayoutService {
      * different amount is a different decision, and the signatures on file were given for
      * this one.
      *
+     * <p><strong>And the signatures are counted rather than assumed.</strong> See #398:
+     * {@code state} is a summary of rows in {@code payout_approvals}, and a summary can be
+     * wrong. The instruction that moves money reads the rows.
+     *
      * @throws PayoutNotSendableException when it has not been approved, or the figures have
      *     moved underneath it
+     * @throws PayoutSignaturesShortException when the row says approved and the signatures
+     *     on file do not reach {@code approvalsRequired}
      */
     @Transactional
     public Payout send(UUID staffId, UUID payoutId, String destinationReference) {
@@ -329,6 +339,29 @@ public class PayoutService {
         Payout payout = payouts.findAndLock(payoutId).orElseThrow(() -> new PayoutNotFoundException(payoutId));
         if (payout.state() != PayoutState.APPROVED) {
             throw new PayoutNotSendableException(payoutId, payout.state());
+        }
+
+        // The signatures are counted here as well as in `approve` — issue #398.
+        //
+        // `state` is a cache of a fact that lives in `payout_approvals`, and the money is
+        // gated on the fact. A state-only guard cannot see a row that says APPROVED while
+        // the table holds fewer signatures than the rule requires, which is a state #398
+        // could produce and which anything writing that column by hand could produce again.
+        // Counting costs one query on a path that is taken once per payout by a human.
+        long signatures = approvals.countFor(payoutId);
+        if (signatures < payout.approvalsRequired()) {
+            // `recordIndependently`, which is what AuditLog documents for a refusal: this
+            // method throws, the transaction rolls back, and a record written with `record`
+            // would roll back with it. An attempt to send a payout that is short of
+            // signatures is exactly the thing somebody would later go looking for.
+            audit.recordIndependently(
+                    AuditAction.PAYOUT_SENT,
+                    payoutId,
+                    AuditActor.moderator(staffId),
+                    AuditOutcome.REFUSED,
+                    "signaturesShort; signatures=%d/%d".formatted(signatures, payout.approvalsRequired()));
+
+            throw new PayoutSignaturesShortException(payoutId, signatures, payout.approvalsRequired());
         }
 
         CampaignFunds funds = gateway.fundsOf(payout.projectId(), payout.currency());
