@@ -29,11 +29,18 @@ public record PlatformAnalyticsResponse(
         Outcomes outcomes,
         List<String> notBuilt) {
 
-    /** What AD-13 lists that no rollup can answer yet. {@code PlatformAnalyticsService} has why. */
-    private static final List<String> NOT_BUILT = List.of(
-            "Cohorts need a rollup keyed on a backer's first pledge, which does not exist (#313).",
-            "Funnels need the visit-to-pledge path; referral_touches records arrival, not what "
-                    + "happened next (#313).");
+    /**
+     * What AD-13 lists that no rollup can answer yet. {@code PlatformAnalyticsService} has why.
+     *
+     * <p><strong>Codes rather than sentences, since #403.</strong> These were English prose,
+     * and the console rendered them under a translated heading in all four languages — the
+     * only untranslated paragraph on the screen. A code the console looks up keeps the
+     * property this field exists for, which is that the day cohorts are built the panel
+     * disappears without a frontend change: the service stops sending the code. A code the
+     * console does not recognise is drawn as itself, so a new one shows up rather than
+     * vanishing.
+     */
+    private static final List<String> NOT_BUILT = List.of("COHORTS", "FUNNELS");
 
     public static PlatformAnalyticsResponse of(PlatformAnalytics analytics) {
         return new PlatformAnalyticsResponse(

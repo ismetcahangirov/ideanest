@@ -11,6 +11,22 @@ import type { AdminTranslator } from '../admin-copy';
  * those sentences means the twenty-fifth is the one nobody teaches about a new refusal code.
  * One table, keyed by §10.4's codes, so a code the service adds is a key somebody adds once.
  *
+ * <h2>There are two 403s, and #400 is what it costs to render only one of them</h2>
+ *
+ * `StaffDirectory.requireCapability` separates them deliberately — "a stranger is told they do
+ * not work here; a colleague is told which authority this screen wanted" — and the console
+ * rendered `forbiddenBody` for both. So a moderator opening the payout queue was told they were
+ * not a moderator, on a screen they had reached from a console that had just loaded the
+ * moderation queue for them, and the sentence went on to explain a role model the platform
+ * replaced in #295. Three wrong statements in four lines, in front of somebody who had done
+ * nothing but open a URL.
+ *
+ * <p>So `capabilityTitle` and `capabilityAsk` head and close the sentence `needsCapability`
+ * already was, and `forbiddenBody` is now only about standing. The capability itself is drawn
+ * as its own identifier — `VIEW_FINANCE` — for the reason `people-copy.ts` records: it is what
+ * a member of staff asks an administrator for and what the service names back at them, so a
+ * translated one would be a word nothing else in the system answers to.
+ *
  * <h2>The 403s carry `{subject}`, and that is what unblocked `ConsoleRefusal`</h2>
  *
  * `apps/web/README.md` recorded `ConsoleRefusal` as the one component that could not be
@@ -45,12 +61,17 @@ export interface ConsoleRefusalsCopy {
   readonly signedOutTitle: string;
   /** Carries `{subject}`. */
   readonly signedOutBody: string;
+  /** The 403 that is about standing rather than authority: a stranger. */
   readonly forbiddenTitle: string;
   readonly forbiddenBody: string;
   /** The 403 with no capability in it. Carries `{subject}`. */
   readonly notStaff: string;
   /** The 403 that names one, since #295. Carries `{subject}` and `{capability}`. */
   readonly needsCapability: string;
+  /** The heading over {@link needsCapability} — a colleague, on a screen that is not theirs. */
+  readonly capabilityTitle: string;
+  /** What to do about it. The capability is named, so the ask is a sentence rather than a hunt. */
+  readonly capabilityAsk: string;
   readonly unknownLedgerAccount: string;
   readonly collectionNotFound: string;
   readonly collectionSlugTaken: string;
@@ -112,6 +133,8 @@ export function consoleRefusalsCopyFrom(t: AdminTranslator): ConsoleRefusalsCopy
     forbiddenBody: t('refusals.forbiddenBody'),
     notStaff: String(t.raw('refusals.notStaff')),
     needsCapability: String(t.raw('refusals.needsCapability')),
+    capabilityTitle: t('refusals.capabilityTitle'),
+    capabilityAsk: t('refusals.capabilityAsk'),
     unknownLedgerAccount: t('refusals.unknownLedgerAccount'),
     collectionNotFound: t('refusals.collectionNotFound'),
     collectionSlugTaken: t('refusals.collectionSlugTaken'),

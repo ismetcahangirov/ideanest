@@ -92,16 +92,43 @@ public class ReconciliationController {
     /**
      * One thing that is wrong.
      *
+     * <p><strong>The parts travel as well as the sentence — issue #403.</strong> The console
+     * renders these to a person in one of four languages, and {@code detail} is English prose
+     * with a raw account identifier and an unformatted amount in it. It was the only text on
+     * that screen the reader could not read. So the console builds its own sentence from
+     * {@code code}, {@code account} and the amounts, and {@code detail} stays because it is
+     * what the log line prints and what an operator reading a stack of alerts wants.
+     *
      * @param kind which of the three questions was answered wrongly. What a screen groups
      *     on, and what an alert routes on
+     * @param code which of the four checks produced it, and therefore which sentence it is.
+     *     Finer than {@code kind}, because two of the four are {@code IMPOSSIBLE_SIGN} and
+     *     say opposite things
+     * @param account the ledger account, or null for a finding about a whole currency
      * @param currency §21.2 refuses to add two, so a finding is about exactly one
-     * @param detail the sentence, with the figures in it. Prose for a person to act on
-     *     rather than a code to look up — {@code ReconciliationFinding} has the argument
+     * @param amount the figure the sentence turns on, as a string, per §10.3 — a JSON number
+     *     is an IEEE 754 double and this is money
+     * @param otherAmount the second figure, for the finding that compares two. Null elsewhere
+     * @param detail the sentence, with the figures in it, in English
      */
-    public record Finding(ReconciliationFinding.Kind kind, String currency, String detail) {
+    public record Finding(
+            ReconciliationFinding.Kind kind,
+            ReconciliationFinding.Code code,
+            String account,
+            String currency,
+            String amount,
+            String otherAmount,
+            String detail) {
 
         static Finding of(ReconciliationFinding finding) {
-            return new Finding(finding.kind(), finding.currency(), finding.detail());
+            return new Finding(
+                    finding.kind(),
+                    finding.code(),
+                    finding.account(),
+                    finding.currency(),
+                    finding.amount().toPlainString(),
+                    finding.otherAmount() == null ? null : finding.otherAmount().toPlainString(),
+                    finding.detail());
         }
     }
 

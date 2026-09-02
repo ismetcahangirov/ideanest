@@ -14,6 +14,7 @@ import {
 } from '../../lib/moderation/api';
 import { humaniseState, shortId } from '../../lib/moderation/describe';
 import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import { formatMoney } from '../../lib/money';
 import type { SubmissionQueueCopy } from '../../lib/i18n/admin/content-copy';
 import { DecisionDialog, type Decision } from './DecisionDialog';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
@@ -395,9 +396,7 @@ function SubmissionRow({
         <div className="flex gap-2">
           <dt className="text-white/40">{copy.goalLabel}</dt>
           <dd className="text-white/80">
-            {submission.goal == null
-              ? copy.noGoal
-              : `${submission.goal.amount} ${submission.goal.currency}`}
+            {submission.goal == null ? copy.noGoal : formatMoney(submission.goal)}
           </dd>
         </div>
         <div className="flex gap-2">

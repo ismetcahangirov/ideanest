@@ -134,7 +134,12 @@ export interface ModerationQueueCopy extends ConsoleChromeCopy {
    * The queue said something different from the rest of the console before #324 — it names the
    * queue and what clearing it means — and translating a surface is not the change that gets to
    * reword it.
+   *
+   * <p>Only the 403 about standing, since #400. The one that names a capability is the
+   * console's, because the sentence is the same everywhere and the service supplies the only
+   * part of it that differs — which is why `subject` above is now a key of its own.
    */
+  readonly subject: string;
   readonly signedOutTitle: string;
   readonly signedOutBody: string;
   readonly forbiddenTitle: string;
@@ -283,6 +288,7 @@ export function moderationQueueCopyFrom(
   return {
     ...chrome,
     moderation: moderationCopyFrom(t, chrome.cancel),
+    subject: t(at('subject')),
     signedOutTitle: t(at('signedOutTitle')),
     signedOutBody: t(at('signedOutBody')),
     forbiddenTitle: t(at('forbiddenTitle')),

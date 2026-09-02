@@ -56,7 +56,7 @@ export interface PlacementEditorProps {
 }
 
 export function PlacementEditor({ copy }: PlacementEditorProps) {
-  const { status, collections, error, reload, setError } = useCollections(
+  const { status, collections, error, capability, reload, setError } = useCollections(
     copy.subject,
     copy.refusals,
   );
@@ -64,7 +64,7 @@ export function PlacementEditor({ copy }: PlacementEditorProps) {
   const [notice, setNotice] = useState<string | null>(null);
 
   if (status === 'signed-out' || status === 'forbidden') {
-    return <ConsoleRefusal status={status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={status} capability={capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   /*

@@ -10,6 +10,7 @@ import {
 } from '../../lib/admin/campaigns';
 import {
   consoleMessageFor,
+  requiredCapabilityFrom,
   shortId,
   statusFor,
   wasAborted,
@@ -18,6 +19,9 @@ import {
 import type { ProjectState } from '../../lib/projects/api';
 import type { CampaignDirectoryCopy } from '../../lib/i18n/admin/content-copy';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
+import { formatDate } from '../../lib/time';
+import { formatMoney } from '../../lib/money';
+import type { Locale } from '../../lib/i18n/locale';
 import { ConsoleRefusal } from './ConsoleRefusal';
 
 /**
@@ -57,11 +61,15 @@ import { ConsoleRefusal } from './ConsoleRefusal';
  * control and §8 forbids animation in long lists. This is both.
  */
 
-/** The day, in the reader's locale. An instant to the second says more than anybody needs here. */
-function day(instant: string | null | undefined): string | null {
-  if (instant == null) return null;
-  const parsed = new Date(instant);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toLocaleDateString();
+/**
+ * The day, in the reader's language. An instant to the second says more than anybody needs.
+ *
+ * <p>`toLocaleDateString()` with no argument until #401, which is the *browser's* language
+ * rather than the route's — so an Azerbaijani console on an American laptop rendered
+ * `9/1/2026` under a heading in Azerbaijani.
+ */
+function day(instant: string | null | undefined, locale: Locale): string | null {
+  return instant == null ? null : formatDate(instant, locale);
 }
 
 export interface CampaignDirectoryProps {
@@ -72,6 +80,8 @@ export interface CampaignDirectoryProps {
 export function CampaignDirectory({ copy }: CampaignDirectoryProps) {
   const locale = useRouteLocale();
   const [status, setStatus] = useState<ConsoleStatus>('loading');
+  // #400: which of the two 403s this is. Only read while `status` is `forbidden`.
+  const [capability, setCapability] = useState<string | null>(null);
   const [state, setState] = useState<ProjectState | null>(null);
   const [campaigns, setCampaigns] = useState<readonly DirectoryCampaign[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -100,6 +110,7 @@ export function CampaignDirectory({ copy }: CampaignDirectoryProps) {
         if (controller.signal.aborted || wasAborted(cause)) return;
 
         const next = statusFor(cause);
+        setCapability(requiredCapabilityFrom(cause));
         if (next === 'failed') setError(consoleMessageFor(cause, copy.subject, copy.refusals));
         setStatus(next);
       }
@@ -129,7 +140,7 @@ export function CampaignDirectory({ copy }: CampaignDirectoryProps) {
   }, [cursor, loadingMore, state, copy]);
 
   if (status === 'signed-out' || status === 'forbidden') {
-    return <ConsoleRefusal status={status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={status} capability={capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   return (
@@ -214,7 +225,8 @@ export function CampaignDirectory({ copy }: CampaignDirectoryProps) {
 
 interface CampaignRowProps {
   readonly campaign: DirectoryCampaign;
-  readonly locale: string;
+  /** Narrowed from `string` with #401: it now decides how a date reads, not only a URL. */
+  readonly locale: Locale;
   readonly copy: CampaignDirectoryCopy;
 }
 
@@ -231,9 +243,9 @@ function CampaignRow({ campaign, locale, copy }: CampaignRowProps) {
       ? `/${locale}/projects/${encodeURIComponent(campaign.projectId)}`
       : `/${locale}/projects/${encodeURIComponent(campaign.creatorSlug)}/${encodeURIComponent(campaign.slug)}`;
 
-  const started = day(campaign.createdAt);
-  const launched = day(campaign.launchedAt);
-  const closes = day(campaign.deadline);
+  const started = day(campaign.createdAt, locale);
+  const launched = day(campaign.launchedAt, locale);
+  const closes = day(campaign.deadline, locale);
 
   return (
     <li className="rounded-lg border border-white/8 bg-surface-2 p-5">
@@ -263,15 +275,13 @@ function CampaignRow({ campaign, locale, copy }: CampaignRowProps) {
         <div className="flex gap-2">
           <dt className="text-white/40">{copy.goalLabel}</dt>
           <dd className="text-white/80">
-            {campaign.goal == null
-              ? copy.noGoal
-              : `${campaign.goal.amount} ${campaign.goal.currency}`}
+            {campaign.goal == null ? copy.noGoal : formatMoney(campaign.goal)}
           </dd>
         </div>
         <div className="flex gap-2">
           <dt className="text-white/40">{copy.raisedLabel}</dt>
           <dd className="text-white/80">
-            {`${campaign.pledged.amount} ${campaign.pledged.currency}`}
+            {formatMoney(campaign.pledged)}
           </dd>
         </div>
         <div className="flex gap-2">

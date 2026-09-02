@@ -83,7 +83,7 @@ export function RefundConsole({ copy }: RefundConsoleProps) {
   const [issued, setIssued] = useState<Refund | null>(null);
 
   if (refunds.status === 'signed-out' || refunds.status === 'forbidden') {
-    return <ConsoleRefusal status={refunds.status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={refunds.status} capability={refunds.capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   async function send(event: React.FormEvent): Promise<void> {

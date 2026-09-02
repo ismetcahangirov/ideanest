@@ -19,6 +19,7 @@ import {
 } from '../../lib/admin/payments';
 import {
   consoleMessageFor,
+  requiredCapabilityFrom,
   shortId,
   statusFor,
   wasAborted,
@@ -27,6 +28,9 @@ import {
 import { formatMoney } from '../../lib/money';
 import { fillNodes, fillPlaceholders } from '../../lib/i18n/placeholders';
 import type { PaymentLogCopy } from '../../lib/i18n/admin/money-copy';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
+import { formatExactTime } from '../../lib/time';
+import type { Locale } from '../../lib/i18n/locale';
 import { ConsoleRefusal } from './ConsoleRefusal';
 
 /** Which of the two identifiers the search box is holding. */
@@ -67,7 +71,10 @@ export interface PaymentLogViewProps {
 }
 
 export function PaymentLogView({ copy }: PaymentLogViewProps) {
+  const locale = useRouteLocale();
   const [status, setStatus] = useState<ConsoleStatus>('loading');
+  // #400: which of the two 403s this is. Only read while `status` is `forbidden`.
+  const [capability, setCapability] = useState<string | null>(null);
   const [scope, setScope] = useState<Scope>('project');
   const [term, setTerm] = useState('');
   const [submitted, setSubmitted] = useState<{ scope: Scope; id: string } | null>(null);
@@ -101,6 +108,7 @@ export function PaymentLogView({ copy }: PaymentLogViewProps) {
         if (controller.signal.aborted || wasAborted(cause)) return;
 
         const next = statusFor(cause);
+        setCapability(requiredCapabilityFrom(cause));
         if (next === 'failed') setError(consoleMessageFor(cause, copy.subject, copy.refusals));
         setStatus(next);
       }
@@ -134,7 +142,7 @@ export function PaymentLogView({ copy }: PaymentLogViewProps) {
   }, [cursor, filter, loadingMore, copy]);
 
   if (status === 'signed-out' || status === 'forbidden') {
-    return <ConsoleRefusal status={status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={status} capability={capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   function submit(event: React.FormEvent): void {
@@ -238,7 +246,7 @@ export function PaymentLogView({ copy }: PaymentLogViewProps) {
       {status === 'ready' && rows.length > 0 && (
         <ul className="mt-4 flex list-none flex-col gap-2">
           {rows.map((row) => (
-            <TransactionRow key={row.id} transaction={row} copy={copy} />
+            <TransactionRow key={row.id} transaction={row} locale={locale} copy={copy} />
           ))}
         </ul>
       )}
@@ -279,9 +287,11 @@ export function PaymentLogView({ copy }: PaymentLogViewProps) {
  */
 function TransactionRow({
   transaction,
+  locale,
   copy,
 }: {
   readonly transaction: LoggedTransaction;
+  readonly locale: Locale;
   readonly copy: PaymentLogCopy;
 }) {
   return (
@@ -334,7 +344,7 @@ function TransactionRow({
             className="text-xs text-white/40"
             title={transaction.createdAt}
           >
-            {new Date(transaction.createdAt).toLocaleString()}
+            {formatExactTime(transaction.createdAt, locale)}
           </time>
         </div>
       </div>

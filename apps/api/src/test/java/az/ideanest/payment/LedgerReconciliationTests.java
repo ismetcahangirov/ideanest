@@ -117,6 +117,23 @@ class LedgerReconciliationTests {
         assertThat(kinds(report)).contains(ReconciliationFinding.Kind.IMPOSSIBLE_SIGN);
         assertThat(report.findings().stream().map(ReconciliationFinding::detail))
                 .anySatisfy(detail -> assertThat(detail).contains("paid more than they earned"));
+
+        /*
+         * And the parts beside the sentence — issue #403. The console renders this to a
+         * person in one of four languages and cannot translate English prose, so it builds
+         * its own sentence from these: which of the two IMPOSSIBLE_SIGN findings this is,
+         * whose account, and how much. `kind` alone cannot say, because the other one reads
+         * in the opposite direction.
+         */
+        assertThat(report.findings())
+                .filteredOn(finding -> finding.code() == ReconciliationFinding.Code.CREATOR_OVERPAID)
+                .singleElement()
+                .satisfies(finding -> {
+                    assertThat(finding.account()).isEqualTo(CREATOR);
+                    assertThat(finding.amount()).isEqualByComparingTo("500.00");
+                    assertThat(finding.otherAmount()).isNull();
+                    assertThat(finding.kind()).isEqualTo(ReconciliationFinding.Kind.IMPOSSIBLE_SIGN);
+                });
     }
 
     @Test

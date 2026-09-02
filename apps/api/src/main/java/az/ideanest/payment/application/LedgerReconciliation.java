@@ -97,10 +97,7 @@ public class LedgerReconciliation {
 
         for (Map.Entry<String, BigDecimal> currency : summedPerCurrency(balances).entrySet()) {
             if (currency.getValue().signum() != 0) {
-                findings.add(new ReconciliationFinding(
-                        ReconciliationFinding.Kind.UNBALANCED,
-                        currency.getKey(),
-                        "The ledger does not sum to zero: net %s".formatted(currency.getValue().toPlainString())));
+                findings.add(ReconciliationFinding.ledgerNotZero(currency.getKey(), currency.getValue()));
             }
         }
         return findings;
@@ -121,17 +118,11 @@ public class LedgerReconciliation {
             int sign = balance.net().amount().signum();
 
             if (creator && sign > 0) {
-                findings.add(new ReconciliationFinding(
-                        ReconciliationFinding.Kind.IMPOSSIBLE_SIGN,
-                        balance.net().currency(),
-                        "%s is positive at %s, which is a creator paid more than they earned"
-                                .formatted(balance.account(), balance.net().amount().toPlainString())));
+                findings.add(ReconciliationFinding.creatorOverpaid(
+                        balance.account(), balance.net().currency(), balance.net().amount()));
             } else if (!creator && sign < 0) {
-                findings.add(new ReconciliationFinding(
-                        ReconciliationFinding.Kind.IMPOSSIBLE_SIGN,
-                        balance.net().currency(),
-                        "%s is negative at %s, which is money disbursed that was never taken"
-                                .formatted(balance.account(), balance.net().amount().toPlainString())));
+                findings.add(ReconciliationFinding.platformAccountNegative(
+                        balance.account(), balance.net().currency(), balance.net().amount()));
             }
         }
         return findings;
@@ -185,11 +176,8 @@ public class LedgerReconciliation {
             // `compareTo` and not `equals`: `0` and `0.00` are the same amount and different
             // BigDecimals, and one comes from a SUM over an empty set.
             if (ledgerSide.compareTo(paymentSide) != 0) {
-                findings.add(new ReconciliationFinding(
-                        ReconciliationFinding.Kind.DISAGREES_WITH_PAYMENTS,
-                        currency,
-                        "The ledger holds %s and the transactions say %s"
-                                .formatted(ledgerSide.toPlainString(), paymentSide.toPlainString())));
+                findings.add(
+                        ReconciliationFinding.disagreesWithPayments(currency, ledgerSide, paymentSide));
             }
         }
         return findings;

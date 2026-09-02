@@ -399,14 +399,14 @@
       "/admin/reconciliation": "Uzlaşdırma",
       "/admin/payouts": "Ödənişlər",
       "/admin/refunds": "Geri qaytarmalar",
-      "/admin/disputes": "Ödəniş mübahisələri",
+      "/admin/disputes": "Geri tələblər",
       "/admin/fees": "Komissiyalar",
       "/admin/plans": "Planlar",
       "/admin/analytics": "Analitika",
       "/admin/audit": "Audit jurnalı",
       "/admin/email-templates": "E-poçt şablonları",
       "/admin/flags": "Funksiya bayraqları",
-      "/admin/health": "Sistem vəziyyəti",
+      "/admin/health": "Sistemin vəziyyəti",
       "/admin/moderation/submissions": "Baxış gözləyən kampaniyalar",
       "/admin/campaigns": "Bütün kampaniyalar"
     },
@@ -420,7 +420,7 @@
       "metaDescription": "Platforma modulları, hansılarının ekranı var və qalanların nəyi gözlədiyi.",
       "standfirst": "§4.11-in təsvir etdiyi {total} modul. Onlardan {built} ədədinin ekranı var; qalanları nəyi gözlədiyini bildirir, çünki konsolun az qala bitdiyi təəssüratını yaradan siyahı, boşluğu adı ilə çağıran siyahıdan pisdir.",
       "issue": "Məsələ #{issue}",
-      "footnote": "Buradakı heç bir ekran keçid nəzarəti deyil. Giriş tokenində rol modeli olana qədər konsolun müraciət etdiyi hər son nöqtə platforma işçisi olmayan çağırışı rədd edir və hər ekran həmin rəddi göstərir — brauzerdəki yoxlama, xidmətin onsuz da düzgün etdiyi yoxlamanın ikinci, daha zəif surəti olardı."
+      "footnote": "Buradakı heç bir ekran keçid nəzarəti deyil. Konsolun müraciət etdiyi hər son nöqtə çağırışı özü yoxlayır — işçi olmayanı rədd edir, işçini isə ekranın tələb etdiyi səlahiyyətə görə — və hər ekran həmin rəddi olduğu kimi göstərir. Brauzerdəki yoxlama, xidmətin onsuz da düzgün etdiyi yoxlamanın ikinci, daha zəif surəti olardı."
     },
     "modules": {
       "AD-01": {
@@ -500,10 +500,12 @@
     "refusals": {
       "signedOutTitle": "Sessiyanız bitib",
       "signedOutBody": "Bu brauzerin artıq sessiyası yoxdur. {subject} oxumaq üçün yenidən daxil olun.",
-      "forbiddenTitle": "Moderator deyilsiniz",
-      "forbiddenBody": "Konsolu platforma işçiləri oxuyur və hesabınız konfiqurasiya edilmiş moderator siyahısında deyil. Giriş tokenində hələ rol modeli yoxdur, ona görə yoxlamanın hamısı həmin siyahıdır.",
+      "forbiddenTitle": "Siz burada işləmirsiniz",
+      "forbiddenBody": "Konsolu platforma işçiləri oxuyur və hesabınız heç bir platforma rolu daşımır. Bu, səhv deyil — xidmət bunun arxasındakı hər ekranı rədd edir.",
       "notStaff": "Hesabınız bu platformada işləmir, ona görə {subject} oxumaq sizə aid deyil.",
       "needsCapability": "{subject} oxumaq üçün {capability} lazımdır, rollarınız isə onu daxil etmir.",
+      "capabilityTitle": "Bu ekran sizə aid deyil",
+      "capabilityAsk": "Bunu administrator verə bilər.",
       "unknownLedgerAccount": "Bu, platformanın baş kitab hesablarından biri deyil.",
       "collectionNotFound": "Bu kolleksiya artıq mövcud deyil. Səhifə yüklənəndən bəri adı dəyişdirilmiş ola bilər.",
       "collectionSlugTaken": "Bu qısa adı artıq bir kolleksiya istifadə edir. Qısa adlar daimidir, ona görə başqasını seçin.",
@@ -714,37 +716,121 @@
         "requestId": "sorğu {id}",
         "footnote": "Bu səhifəni oxumaq ona bir sətir yazır. Heç kimin yoxlamadığı audit səthi araşdırmanın şübhə ilə başladığı səthdir, ona görə oxumaq da yazmaq kimi qeyd olunur — filtr və sətirlərin sayı ilə, heç vaxt sətirlərin özü ilə deyil.",
         "entity": {
-          "project": "Kampaniyalar",
           "account": "Hesablar",
-          "report": "Şikayətlər",
           "collaborator": "Əməkdaşlar",
+          "collection": "Kolleksiyalar",
+          "dispute": "Geri tələblər",
+          "email_template": "E-poçt şablonları",
+          "feature_flag": "Funksiya bayraqları",
+          "fee_schedule": "Komissiya cədvəlləri",
+          "payout": "Ödənişlər",
+          "project": "Kampaniyalar",
+          "refund": "Geri qaytarmalar",
+          "report": "Şikayətlər",
           "session": "Sessiyalar",
-          "collection": "Kolleksiyalar"
+          "subscription": "Abunəliklər",
+          "subscription_plan": "Abunəlik planları",
+          "support_ticket": "Dəstək müraciətləri",
+          "taxonomy": "Taksonomiya"
         },
         "action": {
-          "project": {
-            "approved": "Kampaniya təsdiqləndi",
-            "rejected": "Kampaniya rədd edildi",
-            "changes_requested": "Dəyişiklik tələb olundu",
-            "suspended": "Kampaniya dayandırıldı"
-          },
-          "report": {
-            "upheld": "Şikayət təsdiqləndi",
-            "dismissed": "Şikayət rədd edildi"
-          },
           "account": {
+            "deletion_cancelled": "Hesabın silinməsi ləğv edildi",
+            "deletion_requested": "Hesabın silinməsi tələb olundu",
+            "email_change_requested": "E-poçt dəyişikliyi tələb olundu",
+            "email_changed": "E-poçt dəyişdirildi",
+            "exported": "Hesab məlumatları ixrac edildi",
+            "password_changed": "Parol dəyişdirildi",
+            "password_reset_requested": "Parolun sıfırlanması tələb olundu",
+            "password_reset": "Parol sıfırlandı",
+            "reinstated": "Hesab bərpa edildi",
             "searched": "Hesablar axtarıldı",
-            "suspended": "Hesab dayandırıldı",
-            "reinstated": "Hesab bərpa edildi"
+            "suspended": "Hesab dayandırıldı"
           },
           "audit": {
             "trail_read": "Audit izi oxundu"
           },
+          "collaborator": {
+            "capabilities_changed": "Əməkdaşın səlahiyyətləri dəyişdirildi",
+            "invited": "Əməkdaş dəvət edildi",
+            "revoked": "Əməkdaşlıq geri alındı"
+          },
+          "dispute": {
+            "handled": "Geri tələb qərara bağlandı"
+          },
+          "email": {
+            "template_edited": "E-poçt şablonu dəyişdirildi"
+          },
+          "feature": {
+            "flag_changed": "Funksiya bayrağı dəyişdirildi"
+          },
+          "fee": {
+            "schedule_changed": "Komissiya cədvəli dəyişdirildi"
+          },
+          "identity": {
+            "document_read": "Şəxsiyyət sənədi açıldı",
+            "document_submitted": "Şəxsiyyət sənədi göndərildi",
+            "verification_approved": "Şəxsiyyət təsdiqləndi",
+            "verification_rejected": "Şəxsiyyət təsdiqi rədd edildi"
+          },
+          "ledger": {
+            "read": "Baş kitab oxundu",
+            "reconciled": "Baş kitab uzlaşdırıldı"
+          },
           "payment": {
             "log_read": "Ödəniş jurnalı oxundu"
           },
-          "ledger": {
-            "read": "Baş kitab oxundu"
+          "payout": {
+            "approved": "Ödəniş təsdiqləndi",
+            "calculated": "Ödəniş hesablandı",
+            "sent": "Ödəniş göndərildi"
+          },
+          "project": {
+            "addresses_locked": "Ünvanlar bağlandı",
+            "approved": "Kampaniya təsdiqləndi",
+            "backers_exported": "Dəstəkçilər ixrac edildi",
+            "changes_requested": "Dəyişiklik tələb olundu",
+            "comment_removed": "Şərh silindi",
+            "fulfilments_imported": "Çatdırılmalar idxal edildi",
+            "rejected": "Kampaniya rədd edildi",
+            "segment_messaged": "Dəstəkçi qrupuna yazıldı",
+            "survey_sent": "Sorğu göndərildi",
+            "suspended": "Kampaniya dayandırıldı",
+            "update_published": "Yenilik dərc edildi"
+          },
+          "refund": {
+            "issued": "Geri qaytarma edildi"
+          },
+          "report": {
+            "dismissed": "Şikayət rədd edildi",
+            "upheld": "Şikayət təsdiqləndi"
+          },
+          "risk": {
+            "queue_read": "Risk növbəsi oxundu"
+          },
+          "session": {
+            "revoked_all": "Bütün sessiyalar bağlandı",
+            "revoked": "Sessiya bağlandı"
+          },
+          "staff": {
+            "role_granted": "İşçi rolu verildi",
+            "role_revoked": "İşçi rolu geri alındı"
+          },
+          "subscription": {
+            "activated": "Abunəlik başladı",
+            "canceled": "Abunəlik dayandırıldı",
+            "plan_changed": "Abunəlik planı dəyişdirildi",
+            "plan_created": "Abunəlik planı yaradıldı"
+          },
+          "support": {
+            "ticket_handled": "Dəstək müraciəti cavablandırıldı"
+          },
+          "taxonomy": {
+            "changed": "Taksonomiya dəyişdirildi"
+          },
+          "two_factor": {
+            "disabled": "İki mərhələli giriş söndürüldü",
+            "enabled": "İki mərhələli giriş qoşuldu"
           }
         }
       },
@@ -771,6 +857,12 @@
           "HEALTHY": "Sağlam",
           "DEGRADED": "Baxmağa dəyər",
           "CRITICAL": "Dayanıb"
+        },
+        "jobState": {
+          "READY": "Növbəti işə hazır",
+          "RUNNING": "İşləyir",
+          "FAILED": "Sonuncu dəfə uğursuz olub",
+          "DISABLED": "Söndürülüb"
         }
       },
       "flags": {
@@ -818,7 +910,11 @@
         "successRate": "Uğur nisbəti",
         "dailyHeading": "Günlük həcm",
         "nothingPledged": "Bu dövrdə heç nə dəstəklənməyib.",
-        "notBuiltHeading": "Bu ekranın cavab vermədikləri"
+        "notBuiltHeading": "Bu ekranın cavab vermədikləri",
+        "notBuilt": {
+          "COHORTS": "Kohortlar üçün dəstəkçinin ilk dəstəyinə görə qurulmuş yığım lazımdır; belə bir şey yoxdur (#313).",
+          "FUNNELS": "Huniler üçün ziyarətdən dəstəyə gedən yol lazımdır; referral_touches gəlişi qeyd edir, sonra nə olduğunu yox (#313)."
+        }
       },
       "emailTemplates": {
         "subject": "e-poçt şablonlarını",
@@ -868,10 +964,11 @@
         "live": "Canlı"
       },
       "moderationQueue": {
+        "subject": "moderasiya növbəsini",
         "signedOutTitle": "Sessiyanız bitib",
         "signedOutBody": "Bu brauzerin artıq sessiyası yoxdur. Moderasiya növbəsini oxumaq üçün yenidən daxil olun.",
-        "forbiddenTitle": "Moderator deyilsiniz",
-        "forbiddenBody": "Şikayət növbəsini platforma işçiləri oxuyur və təmizləyir. Hesabınız konfiqurasiya edilmiş moderator siyahısında deyil.",
+        "forbiddenTitle": "Siz burada işləmirsiniz",
+        "forbiddenBody": "Şikayət növbəsini platforma işçiləri oxuyur və təmizləyir. Hesabınız isə heç bir platforma rolu daşımır.",
         "notStaff": "Hesabınız platformanın moderator siyahısında deyil, ona görə bu növbəni təmizləmək sizə aid deyil.",
         "transitionNotAllowed": "O kampaniya bu nəticəyə keçilə bilən vəziyyətdə deyil.",
         "transitionNotAllowedFrom": "O kampaniya {state} vəziyyətindədir və bu nəticəyə oradan keçmək olmur. Şikayətin özünü təsdiqləmək və ya rədd etmək hələ də sizin işinizdir.",
@@ -1108,10 +1205,11 @@
         "noTags": "Hələ heç bir yaradıcı teq istifadə etməyib."
       },
       "users": {
+        "subject": "hesab kataloqunu",
         "signedOutTitle": "Sessiyanız bitib",
         "signedOutBody": "Bu brauzerin artıq sessiyası yoxdur. Hesab kataloqunu oxumaq üçün yenidən daxil olun.",
-        "forbiddenTitle": "Moderator deyilsiniz",
-        "forbiddenBody": "Hesabları platforma işçiləri axtarır və dayandırır. Hesabınız konfiqurasiya edilmiş moderator siyahısında deyil.",
+        "forbiddenTitle": "Siz burada işləmirsiniz",
+        "forbiddenBody": "Hesabları platforma işçiləri axtarır və dayandırır. Hesabınız isə heç bir platforma rolu daşımır.",
         "notStaff": "Hesabınız platformanın moderator siyahısında deyil, ona görə hesab kataloqunu oxumaq sizə aid deyil.",
         "accountNotFound": "Bu hesab artıq mövcud deyil. Səhifə yüklənəndən bəri silinmiş ola bilər.",
         "selfSuspend": "Hesab özünü dayandıra bilməz. Başqa moderatordan xahiş edin.",
@@ -1340,6 +1438,12 @@
           "other": "{count} hesab mövqeyi"
         },
         "findingsHeading": "Nə səhvdir",
+        "finding": {
+          "LEDGER_NOT_ZERO": "{currency} üzrə baş kitab sıfıra bərabər deyil: xalis {amount}.",
+          "CREATOR_OVERPAID": "{account} müsbətdir: {amount}. Bu, qazandığından çox ödənilmiş yaradıcıdır.",
+          "PLATFORM_ACCOUNT_NEGATIVE": "{account} mənfidir: {amount}. Bu, heç vaxt alınmamış, amma verilmiş puldur.",
+          "DISAGREES_WITH_PAYMENTS": "Baş kitab {amount} saxlayır, tranzaksiyalar isə {other} deyir."
+        },
         "checkAgain": "İndi yenidən yoxla",
         "checking": "Yoxlanılır…",
         "runNote": "Bütün platforma üzrə iki sorğu. Heç nə oxumur və yazmır, ona görə onu istənilən vaxt işlətmək təhlükəsizdir — və danışdığınız replikadan cavab almağın yeganə yolu budur.",
@@ -1461,6 +1565,20 @@
         "emptyTitle": "Açıq geri tələb yoxdur",
         "emptyBody": "Cavab gözləyən heç nə yoxdur. İşlər buraya provayder vebhukundan gəlir, ona görə boş növbə heç bir şəbəkənin tutulmaya etiraz etmədiyini bildirir.",
         "providerAndReason": "{provider} · {code}",
+        "reason": {
+          "fraudulent": "Kart sahibi deyil",
+          "product_not_received": "Məhsul çatmayıb",
+          "product_unacceptable": "Məhsul təsvirə uyğun deyil",
+          "duplicate": "İki dəfə tutulub",
+          "subscription_canceled": "Abunəlik ləğv edilmişdi",
+          "credit_not_processed": "Vəd edilən geri qaytarma edilməyib",
+          "unrecognized": "Ödənişi tanımır",
+          "incorrect_account_details": "Hesab məlumatları yanlışdır",
+          "insufficient_funds": "Vəsait çatmayıb",
+          "bank_cannot_process": "Bank emal edə bilmədi",
+          "debit_not_authorized": "Tutulma icazəsizdir",
+          "general": "Səbəb bildirilməyib"
+        },
         "pledgeLine": "Dəstək {pledge} · komissiya {fee} · ",
         "noDeadline": "Son tarix verilməyib",
         "deadlinePassed": "Son tarix keçib",
@@ -1523,7 +1641,7 @@
         "pastHeading": "Keçmiş şərtlər",
         "pastIntro": "Platformanın nə tutduğu və nə vaxt. §22.1 bunu dəyişikliklər siyahısı deyil, saxlama qaydası olan qeyd edir.",
         "inForceTag": "Qüvvədə",
-        "rates": "Platforma {platform} · emal {processing} + {fixed} {currency}",
+        "rates": "Platforma {platform} · emal {processing} + {fixed}",
         "window": "{from} — {to} · {note}",
         "now": "indi",
         "scope": {

@@ -6,6 +6,7 @@ import az.ideanest.payout.application.PayoutAlreadyInFlightException;
 import az.ideanest.payout.application.PayoutNotApprovableException;
 import az.ideanest.payout.application.PayoutNotFoundException;
 import az.ideanest.payout.application.PayoutNotSendableException;
+import az.ideanest.payout.application.PayoutSignaturesShortException;
 import az.ideanest.payout.application.UnknownPayoutCampaignException;
 import az.ideanest.staff.api.StaffRefusals;
 import az.ideanest.staff.application.InsufficientStaffCapabilityException;
@@ -18,11 +19,11 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
- * AD-05's payout refusals — issues #69 and #306.
+ * AD-05's payout refusals — issues #69, #306 and #398.
  *
- * <p>Seven handlers rather than one over a shared supertype, and that is deliberate: each
+ * <p>Eight handlers rather than one over a shared supertype, and that is deliberate: each
  * carries a different {@code code} and leads the reader to a different next action. A base
- * class would invite an advice that caught it and flattened all seven into "the payout
+ * class would invite an advice that caught it and flattened all eight into "the payout
  * could not be processed", which is the sentence support tickets are made of.
  */
 @RestControllerAdvice(assignableTypes = PayoutController.class)
@@ -121,6 +122,29 @@ public class PayoutExceptionHandler {
                 + ". If the figures changed since it was calculated, work out a new one.");
         problem.setProperty("code", "PAYOUT_NOT_SENDABLE");
         problem.setProperty("meta", Map.of("state", exception.state().name()));
+        return problem;
+    }
+
+    /**
+     * 409 when the row says approved and the signatures do not reach the bar - issue #398.
+     *
+     * <p>Separate from {@code PAYOUT_NOT_SENDABLE} because it is separately actionable:
+     * the payout needs a signature, not a recalculation, and the counts travel in
+     * {@code meta} so the console can say which of the two it is short by.
+     */
+    @ExceptionHandler(PayoutSignaturesShortException.class)
+    public ProblemDetail handleSignaturesShort(PayoutSignaturesShortException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/payout-signatures-short"));
+        problem.setTitle("Not enough signatures");
+        problem.setDetail("This payout has " + exception.signatures() + " of the "
+                + exception.required() + " signatures it requires, and cannot be sent.");
+        problem.setProperty("code", "PAYOUT_SIGNATURES_SHORT");
+        problem.setProperty(
+                "meta",
+                Map.of(
+                        "signatures", String.valueOf(exception.signatures()),
+                        "required", String.valueOf(exception.required())));
         return problem;
     }
 

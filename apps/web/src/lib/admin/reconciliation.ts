@@ -25,11 +25,38 @@ import { errorFrom } from '../api/problem';
 /** Which of the three questions was answered wrongly. What the screen groups on. */
 export type FindingKind = 'UNBALANCED' | 'IMPOSSIBLE_SIGN' | 'DISAGREES_WITH_PAYMENTS';
 
+/**
+ * Which of the four checks produced a finding — issue #403.
+ *
+ * <p>Finer than {@link FindingKind}, and it has to be: two of these are `IMPOSSIBLE_SIGN` and
+ * say opposite things, so a screen given only the kind is given the severity and not the
+ * meaning. The catalogue keys its sentences on this.
+ */
+export type FindingCode =
+  | 'LEDGER_NOT_ZERO'
+  | 'CREATOR_OVERPAID'
+  | 'PLATFORM_ACCOUNT_NEGATIVE'
+  | 'DISAGREES_WITH_PAYMENTS';
+
 export interface ReconciliationFinding {
   kind: FindingKind;
+  code: FindingCode;
+  /** The ledger account, or absent for a finding about a whole currency rather than one position. */
+  account?: string | null;
   /** §21.2 refuses to add two currencies, so a finding is about exactly one. */
   currency: string;
-  /** The sentence, with the figures in it. Prose to act on, not a code to look up. */
+  /** The figure the sentence turns on, as a string, because it is money. */
+  amount: string;
+  /** The second figure, for the finding that compares two. Absent everywhere else. */
+  otherAmount?: string | null;
+  /**
+   * The service's own sentence, in English, with the figures in it.
+   *
+   * <p><strong>Not what the screen renders, since #403.</strong> It is the log line: English
+   * prose carrying a raw account identifier and an unformatted amount, and it was the only
+   * text on the reconciliation screen an Azerbaijani reader could not read — on the rows
+   * carrying the actual result. The console builds its own sentence from the parts above.
+   */
   detail: string;
 }
 

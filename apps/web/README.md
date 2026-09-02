@@ -212,6 +212,32 @@ from the matched segment, and `src/i18n/navigation.tsx` is what every `Link`, `u
 sends the reader through the redirect, which reads to them as the site forgetting what they
 picked.
 
+**Azerbaijani is formatted here rather than by the browser (#401).** Chromium claims `az`
+— `Intl.RelativeTimeFormat.supportedLocalesOf(['az'])` answers `['az']` and
+`resolvedOptions().locale` says `az` — and then formats it from root-locale data: `-3 w`,
+`2026 M08 14`, and a twelve-hour clock. Node's full ICU has the real data, so it is right on
+the server, right in every test, and wrong in front of the reader, and no feature test can
+see it. So `src/lib/i18n/formats.ts` sends `az` to `src/lib/i18n/azerbaijani.ts` on every
+engine rather than only on the broken one — a client component is rendered on the server
+first, and two ICUs disagreeing is a hydration mismatch. `azerbaijani.test.ts` asserts that
+module is byte-for-byte what full ICU produces, which is a comparison Node can make and the
+browser cannot.
+
+**Nothing formats a date without being told the language.** `toLocaleDateString()` with no
+argument is the *browser's* language, not the route's, which is how six console screens came
+to render `7/27/2026` under an Azerbaijani heading. `lib/time.ts` and `lib/i18n/formats.ts`
+take a `Locale` and it is a required parameter, deliberately: a default would have compiled
+every call site unchanged and left them quietly wrong.
+
+**Money is formatted the same way in all four languages, and rates are not (#403).**
+`@ideanest/money` groups an amount from its digits rather than through a number — a JSON
+number is an IEEE 754 double and `999999999999.99` loses its last digit on the way into one —
+and it renders the ISO code after the amount because neither language the product ships in
+has an agreed manat symbol. Every amount in the console goes through it. A *rate* is not
+money and does belong to the reader: `lib/i18n/formats.ts`'s `numberFormat` writes `2,9%` in
+Azerbaijani, `2.9%` in English, `2,9 %` in Russian and `%2,9` in Turkish, which is why a
+percentage is a formatter's job and never a template's.
+
 **Which routes are key-based, and which are still English literals (#324).** The
 message catalogue lives in `messages/{az,en,ru,tr}.json` and covers, in full:
 
@@ -356,12 +382,16 @@ issue owns it. `lib/admin/navigation.ts` is the single list behind both that pag
 rail, and `navigation.test.ts` asserts the two cannot disagree — a rail entry belonging to no
 module, or a screen in no rail, fails the suite.
 
-**None of those routes is a gate, and none of them may become one.** There is no role model
-in the schema or in the access token, so every endpoint the console calls refuses a caller
-who is not on the configured moderator list and each screen renders that refusal. A check in
-a layout would be a second, weaker copy of one the service already makes correctly, and the
-dangerous direction is the one where the browser says yes. #295 is the issue that replaces
-the list with something a client could honestly read.
+**None of those routes is a gate, and none of them may become one.** Every endpoint the
+console calls checks the caller itself, and answers two different refusals — a stranger is
+told they do not work here, and a colleague is told which capability the screen wanted, in
+`meta.capability`. Each screen renders the one it was given. A check in a layout would be a
+second, weaker copy of one the service already makes correctly, and the dangerous direction
+is the one where the browser says yes.
+
+#295 built the role model this paragraph used to say did not exist. #400 is what it cost to
+keep rendering only the first of the two refusals afterwards: a moderator opening the payout
+queue was told they were not a moderator.
 
 **`/maintenance` has no switch in front of it.** It is a page an edge or a load
 balancer can be pointed at during a planned outage, and nothing in this

@@ -658,54 +658,64 @@ GROUP BY p.project_id, (p.created_at AT TIME ZONE 'Asia/Baku')::date,
 ON CONFLICT (project_id, day, channel) DO NOTHING;
 
 -- ── Audit trail ─────────────────────────────────────────────────────────────
+--
+-- The action codes and entity types below are the ones `AuditAction` actually writes,
+-- lower-cased exactly as the enum spells them -- issue #403. They were invented here
+-- (`project.suspend`, `PROJECT`) and the console's catalogue could not name a single one,
+-- so every row on `/admin/audit` read as a machine code under a translated heading.
+--
+-- Five keep an invented code deliberately: the platform audits neither the finalisation of
+-- a campaign nor the publication of a collection nor a sign-in, so there is no real action
+-- to use and borrowing one would describe a different event. `AuditTrailView` draws an
+-- action it has no sentence for as itself, and these five are what that looks like.
 
 INSERT INTO audit_logs (id, occurred_at, actor_type, actor_id, on_behalf_of_id, action, entity_type,
                         entity_id, outcome, source_address, user_agent, request_id, trace_id, detail) VALUES
   (seed_id('audit:1'), now() - interval '11 days', 'MODERATOR', seed_id('user:moderator'), NULL,
-   'project.suspend', 'PROJECT', seed_id('project:saxta'), 'SUCCEEDED', '10.0.0.14',
+   'project.suspended', 'project', seed_id('project:saxta'), 'SUCCEEDED', '10.0.0.14',
    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0', 'req-a1f2', 'trace-9d1', 'Şikayət #2 üzrə.'),
   (seed_id('audit:2'), now() - interval '12 days', 'MODERATOR', seed_id('user:moderator'), NULL,
-   'account.suspend', 'USER', seed_id('user:spammer'), 'SUCCEEDED', '10.0.0.14',
+   'account.suspended', 'account', seed_id('user:spammer'), 'SUCCEEDED', '10.0.0.14',
    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0', 'req-a1f3', 'trace-9d2', 'Təkrarlanan spam.'),
   (seed_id('audit:3'), now() - interval '13 days', 'MODERATOR', seed_id('user:moderator'), NULL,
-   'comment.delete', 'COMMENT', seed_id('comment:spam:1'), 'SUCCEEDED', '10.0.0.14',
+   'project.comment_removed', 'project', seed_id('project:tumar'), 'SUCCEEDED', '10.0.0.14',
    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0', 'req-a1f4', 'trace-9d3', NULL),
   (seed_id('audit:4'), now() - interval '2 days', 'USER', seed_id('user:finance'), NULL,
-   'payout.approve', 'PAYOUT', seed_id('payout:qab'), 'SUCCEEDED', '10.0.0.21',
+   'payout.approved', 'payout', seed_id('payout:qab'), 'SUCCEEDED', '10.0.0.21',
    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) Safari/18.0', 'req-b220', 'trace-c11', 'Birinci təsdiq.'),
   (seed_id('audit:5'), now() - interval '2 days', 'USER', seed_id('user:finance'), NULL,
-   'payout.approve', 'PAYOUT', seed_id('payout:qab'), 'REFUSED', '10.0.0.21',
+   'payout.approved', 'payout', seed_id('payout:qab'), 'REFUSED', '10.0.0.21',
    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) Safari/18.0', 'req-b221', 'trace-c12',
    'Eyni istifadəçi ikinci təsdiqi verə bilməz.'),
   (seed_id('audit:6'), now() - interval '6 days', 'USER', seed_id('user:finance'), NULL,
-   'refund.issue', 'REFUND', seed_id('refund:pending'), 'SUCCEEDED', '10.0.0.21',
+   'refund.issued', 'refund', seed_id('refund:pending'), 'SUCCEEDED', '10.0.0.21',
    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) Safari/18.0', 'req-b230', 'trace-c20', NULL),
   (seed_id('audit:7'), now() - interval '20 days', 'USER', seed_id('user:admin'), NULL,
-   'fee-schedule.create', 'FEE_SCHEDULE', seed_id('fee:cat:journalism'), 'SUCCEEDED', '10.0.0.9',
+   'fee.schedule_changed', 'fee_schedule', seed_id('fee:cat:journalism'), 'SUCCEEDED', '10.0.0.9',
    'Mozilla/5.0 (X11; Linux x86_64) Firefox/143.0', 'req-c001', 'trace-e01',
    'Jurnalistika kateqoriyası üçün endirimli dərəcə.'),
   (seed_id('audit:8'), now() - interval '7 days', 'USER', seed_id('user:admin'), NULL,
-   'feature-flag.update', 'FEATURE_FLAG', seed_id('flag:cohorts'), 'SUCCEEDED', '10.0.0.9',
+   'feature.flag_changed', 'feature_flag', seed_id('flag:cohorts'), 'SUCCEEDED', '10.0.0.9',
    'Mozilla/5.0 (X11; Linux x86_64) Firefox/143.0', 'req-c002', 'trace-e02',
    'creator-analytics-cohorts: yalnız iki hesab üçün.'),
   (seed_id('audit:9'), now() - interval '20 days', 'USER', seed_id('user:curator'), NULL,
-   'collection.publish', 'COLLECTION', seed_id('collection:qis'), 'SUCCEEDED', '10.0.0.33',
+   'collection.publish', 'collection', seed_id('collection:qis'), 'SUCCEEDED', '10.0.0.33',
    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edge/141.0', 'req-d100', 'trace-f10', NULL),
   (seed_id('audit:10'), now() - interval '30 minutes', 'SYSTEM', NULL, NULL,
-   'campaign.finalize', 'PROJECT', seed_id('project:usta'), 'SUCCEEDED', NULL, NULL,
+   'campaign.finalize', 'project', seed_id('project:usta'), 'SUCCEEDED', NULL, NULL,
    'job-campaign-finalizer', 'trace-sys-1', 'Kampaniya müddəti bitdi, hədəfə çatıldı.'),
   (seed_id('audit:11'), now() - interval '30 minutes', 'SYSTEM', NULL, NULL,
-   'campaign.finalize', 'PROJECT', seed_id('project:komiks'), 'SUCCEEDED', NULL, NULL,
+   'campaign.finalize', 'project', seed_id('project:komiks'), 'SUCCEEDED', NULL, NULL,
    'job-campaign-finalizer', 'trace-sys-2', 'Kampaniya müddəti bitdi, hədəfə çatılmadı.'),
   (seed_id('audit:12'), now() - interval '3 days', 'USER', seed_id('user:admin'), NULL,
-   'staff-role.grant', 'USER', seed_id('user:curator'), 'SUCCEEDED', '10.0.0.9',
+   'staff.role_granted', 'account', seed_id('user:curator'), 'SUCCEEDED', '10.0.0.9',
    'Mozilla/5.0 (X11; Linux x86_64) Firefox/143.0', 'req-c010', 'trace-e10', 'CURATOR rolu verildi.'),
   (seed_id('audit:13'), now() - interval '5 days', 'USER', seed_id('user:zaur'), NULL,
-   'auth.login', 'USER', seed_id('user:zaur'), 'FAILED', '95.85.10.4',
+   'auth.login', 'account', seed_id('user:zaur'), 'FAILED', '95.85.10.4',
    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_2) Safari/18.2', 'req-x900', 'trace-x90',
    'Yanlış parol, üçüncü cəhd.'),
   (seed_id('audit:14'), now() - interval '5 days', 'USER', seed_id('user:zaur'), NULL,
-   'auth.login', 'USER', seed_id('user:zaur'), 'SUCCEEDED', '95.85.10.4',
+   'auth.login', 'account', seed_id('user:zaur'), 'SUCCEEDED', '95.85.10.4',
    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_2) Safari/18.2', 'req-x901', 'trace-x91', NULL)
 ON CONFLICT (id) DO NOTHING;
 

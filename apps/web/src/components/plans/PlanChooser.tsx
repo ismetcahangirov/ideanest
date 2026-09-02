@@ -14,6 +14,8 @@ import {
 } from '../../lib/plans/api';
 import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import type { PricingCopy } from '../../lib/i18n/plans-copy';
+import { dateTimeFormat } from '../../lib/i18n/formats';
+import type { Locale } from '../../lib/i18n/locale';
 import { Link, useRouter } from '../../i18n/navigation';
 
 /**
@@ -47,7 +49,7 @@ import { Link, useRouter } from '../../i18n/navigation';
 export interface PlanChooserProps {
   readonly plans: readonly Plan[];
   readonly copy: PricingCopy;
-  readonly locale: string;
+  readonly locale: Locale;
   /**
    * The campaign a refused submission came from, if that is why the reader is here.
    *
@@ -276,7 +278,7 @@ export function PlanChooser({ plans, copy, locale, fromProjectId }: PlanChooserP
 interface HeldPanelProps {
   held: HeldSubscription;
   copy: PricingCopy;
-  locale: string;
+  locale: Locale;
   cancelling: boolean;
   onCancel: () => void;
 }
@@ -322,7 +324,7 @@ function HeldPanel({ held, copy, locale, cancelling, onCancel }: HeldPanelProps)
  * "Growth, pending" tells a creator nothing about what to do; "we are waiting for your
  * transfer" does.
  */
-function describeHeld(held: HeldSubscription, copy: PricingCopy, locale: string): string {
+function describeHeld(held: HeldSubscription, copy: PricingCopy, locale: Locale): string {
   const plan = held.plan.name;
   const date = formatDate(held.currentPeriodEnd, locale);
 
@@ -339,7 +341,7 @@ function describeHeld(held: HeldSubscription, copy: PricingCopy, locale: string)
 interface PlanCardProps {
   plan: Plan;
   copy: PricingCopy;
-  locale: string;
+  locale: Locale;
   current: boolean;
   busy: boolean;
   disabled: boolean;
@@ -445,10 +447,21 @@ function messageFor(cause: unknown, copy: PricingCopy): string {
   return copy.errors.generic;
 }
 
-function formatDate(iso: string | null | undefined, locale: string): string {
+/**
+ * The renewal date, in the reader's language.
+ *
+ * <p>Through `dateTimeFormat` rather than `toLocaleDateString` since #401: Chromium claims
+ * `az` and formats it from root-locale data, so this rendered `2026 M08 14` in the one
+ * language the platform ships as its primary. `lib/i18n/azerbaijani.ts` has the argument.
+ */
+function formatDate(iso: string | null | undefined, locale: Locale): string {
   if (iso == null) return '';
   const when = new Date(iso);
   if (Number.isNaN(when.getTime())) return iso;
 
-  return when.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
+  return dateTimeFormat(
+    locale,
+    { day: 'numeric', month: 'long', year: 'numeric' },
+    'plan-renewal',
+  ).format(when);
 }

@@ -383,17 +383,17 @@
       "platform": "Platform"
     },
     "links": {
-      "/admin/moderation": "Denetim kuyruğu",
-      "/admin/moderation/content": "İçerik şikâyetleri",
-      "/admin/moderation/profiles": "Profil şikâyetleri",
-      "/admin/curation": "Derlemeler",
+      "/admin/moderation": "Moderasyon kuyruğu",
+      "/admin/moderation/content": "İçerik şikayetleri",
+      "/admin/moderation/profiles": "Profil şikayetleri",
+      "/admin/curation": "Koleksiyonlar",
       "/admin/curation/badges": "Editör rozetleri",
       "/admin/curation/open-calls": "Açık çağrılar",
       "/admin/curation/placements": "Yerleşim",
       "/admin/taxonomy": "Taksonomi",
       "/admin/users": "Hesaplar",
       "/admin/support": "Destek",
-      "/admin/staff": "Çalışanlar ve roller",
+      "/admin/staff": "Ekip ve roller",
       "/admin/payments": "Ödeme günlüğü",
       "/admin/ledger": "Defter",
       "/admin/reconciliation": "Mutabakat",
@@ -402,11 +402,11 @@
       "/admin/disputes": "Ters ibrazlar",
       "/admin/fees": "Ücretler",
       "/admin/plans": "Planlar",
-      "/admin/analytics": "Analitik",
+      "/admin/analytics": "Platform analitiği",
       "/admin/audit": "Denetim günlüğü",
       "/admin/email-templates": "E-posta şablonları",
       "/admin/flags": "Özellik bayrakları",
-      "/admin/health": "Sistem durumu",
+      "/admin/health": "Sistem sağlığı",
       "/admin/moderation/submissions": "İncelemedeki kampanyalar",
       "/admin/campaigns": "Tüm kampanyalar"
     },
@@ -420,7 +420,7 @@
       "metaDescription": "Platform modülleri, hangilerinin ekranı var ve geri kalanı neyi bekliyor.",
       "standfirst": "§4.11 bölümünün tarif ettiği {total} modül. Bunlardan {built} tanesinin bir ekranı var; geri kalanı neyi beklediğini söylüyor, çünkü konsolu neredeyse bitmiş gibi gösteren bir liste, boşluğu adıyla anan bir listeden kötüdür.",
       "issue": "Konu #{issue}",
-      "footnote": "Buradaki hiçbir ekran bir kapı değil. Erişim jetonunda bir rol modeli olana dek konsolun çağırdığı her uç nokta, platform çalışanı olmayan bir çağıranı reddeder ve her ekran bu reddi gösterir — tarayıcıdaki bir denetim, servisin zaten doğru yaptığı denetimin ikinci ve daha zayıf bir kopyası olurdu."
+      "footnote": "Buradaki hiçbir ekran bir kapı değil. Konsolun çağırdığı her uç nokta çağıranı kendisi denetler — yabancıyı yabancı olarak, çalışanı ise ekranın istediği yetkiye göre reddeder — ve her ekran bu reddi geldiği gibi gösterir. Tarayıcıdaki bir denetim, servisin zaten doğru yaptığı denetimin ikinci ve daha zayıf bir kopyası olurdu."
     },
     "modules": {
       "AD-01": {
@@ -500,10 +500,12 @@
     "refusals": {
       "signedOutTitle": "Oturumunuz kapalı",
       "signedOutBody": "Bu tarayıcının artık bir oturumu yok. {subject} okumak için yeniden giriş yapın.",
-      "forbiddenTitle": "Moderatör değilsiniz",
-      "forbiddenBody": "Konsolu platform ekibi okur ve hesabınız yapılandırılmış moderatör listesinde değil. Erişim belirtecinde henüz bir rol modeli yok, dolayısıyla denetimin tamamı bu listedir.",
+      "forbiddenTitle": "Burada çalışmıyorsunuz",
+      "forbiddenBody": "Konsolu platform ekibi okur ve hesabınız hiçbir platform rolü taşımıyor. Bu bir hata değil — servis bunun arkasındaki her ekranı reddeder.",
       "notStaff": "Hesabınız bu platformda çalışmıyor, bu yüzden {subject} okumak size düşmez.",
       "needsCapability": "{subject} okumak için {capability} gerekir, rolleriniz ise bunu içermiyor.",
+      "capabilityTitle": "Bu ekran size ait değil",
+      "capabilityAsk": "Bunu bir yönetici verebilir.",
       "unknownLedgerAccount": "Bu, platform defteri hesaplarından biri değil.",
       "collectionNotFound": "Bu koleksiyon artık yok. Sayfa yüklendiğinden beri adı değiştirilmiş olabilir.",
       "collectionSlugTaken": "Bu kısa adı zaten bir koleksiyon kullanıyor. Kısa adlar kalıcıdır, bu yüzden başka birini seçin.",
@@ -714,37 +716,121 @@
         "requestId": "istek {id}",
         "footnote": "Bu sayfayı okumak ona bir satır yazar. Kimsenin denetlemediği bir denetim yüzeyi, bir soruşturmanın güvenmemekle başladığı yüzeydir, bu yüzden okuma da yazma gibi kaydedilir — filtre ve satır sayısıyla, asla satırların kendisiyle değil.",
         "entity": {
-          "project": "Kampanyalar",
           "account": "Hesaplar",
-          "report": "Şikayetler",
           "collaborator": "Ortak çalışanlar",
+          "collection": "Koleksiyonlar",
+          "dispute": "Ters ibrazlar",
+          "email_template": "E-posta şablonları",
+          "feature_flag": "Özellik bayrakları",
+          "fee_schedule": "Ücret çizelgeleri",
+          "payout": "Ödemeler",
+          "project": "Kampanyalar",
+          "refund": "İadeler",
+          "report": "Şikayetler",
           "session": "Oturumlar",
-          "collection": "Koleksiyonlar"
+          "subscription": "Abonelikler",
+          "subscription_plan": "Abonelik planları",
+          "support_ticket": "Destek talepleri",
+          "taxonomy": "Taksonomi"
         },
         "action": {
-          "project": {
-            "approved": "Kampanya onaylandı",
-            "rejected": "Kampanya reddedildi",
-            "changes_requested": "Değişiklik istendi",
-            "suspended": "Kampanya askıya alındı"
-          },
-          "report": {
-            "upheld": "Şikayet haklı bulundu",
-            "dismissed": "Şikayet reddedildi"
-          },
           "account": {
+            "deletion_cancelled": "Hesap silme iptal edildi",
+            "deletion_requested": "Hesap silme talep edildi",
+            "email_change_requested": "E-posta değişikliği istendi",
+            "email_changed": "E-posta değiştirildi",
+            "exported": "Hesap verileri dışa aktarıldı",
+            "password_changed": "Parola değiştirildi",
+            "password_reset_requested": "Parola sıfırlama istendi",
+            "password_reset": "Parola sıfırlandı",
+            "reinstated": "Hesap yeniden açıldı",
             "searched": "Hesaplar arandı",
-            "suspended": "Hesap askıya alındı",
-            "reinstated": "Hesap yeniden açıldı"
+            "suspended": "Hesap askıya alındı"
           },
           "audit": {
             "trail_read": "Denetim izi okundu"
           },
+          "collaborator": {
+            "capabilities_changed": "Ortak çalışan yetkileri değiştirildi",
+            "invited": "Ortak çalışan davet edildi",
+            "revoked": "Ortak çalışan kaldırıldı"
+          },
+          "dispute": {
+            "handled": "Ters ibraz sonuçlandırıldı"
+          },
+          "email": {
+            "template_edited": "E-posta şablonu düzenlendi"
+          },
+          "feature": {
+            "flag_changed": "Özellik bayrağı değiştirildi"
+          },
+          "fee": {
+            "schedule_changed": "Ücret çizelgesi değiştirildi"
+          },
+          "identity": {
+            "document_read": "Kimlik belgesi okundu",
+            "document_submitted": "Kimlik belgesi gönderildi",
+            "verification_approved": "Kimlik doğrulaması onaylandı",
+            "verification_rejected": "Kimlik doğrulaması reddedildi"
+          },
+          "ledger": {
+            "read": "Defter okundu",
+            "reconciled": "Defter mutabakatı yapıldı"
+          },
           "payment": {
             "log_read": "Ödeme günlüğü okundu"
           },
-          "ledger": {
-            "read": "Defter okundu"
+          "payout": {
+            "approved": "Ödeme onaylandı",
+            "calculated": "Ödeme hesaplandı",
+            "sent": "Ödeme gönderildi"
+          },
+          "project": {
+            "addresses_locked": "Adresler kilitlendi",
+            "approved": "Kampanya onaylandı",
+            "backers_exported": "Destekçiler dışa aktarıldı",
+            "changes_requested": "Değişiklik istendi",
+            "comment_removed": "Yorum kaldırıldı",
+            "fulfilments_imported": "Teslimatlar içe aktarıldı",
+            "rejected": "Kampanya reddedildi",
+            "segment_messaged": "Destekçi grubuna mesaj gönderildi",
+            "survey_sent": "Anket gönderildi",
+            "suspended": "Kampanya askıya alındı",
+            "update_published": "Güncelleme yayımlandı"
+          },
+          "refund": {
+            "issued": "İade yapıldı"
+          },
+          "report": {
+            "dismissed": "Şikayet reddedildi",
+            "upheld": "Şikayet haklı bulundu"
+          },
+          "risk": {
+            "queue_read": "Risk kuyruğu okundu"
+          },
+          "session": {
+            "revoked_all": "Tüm oturumlar kapatıldı",
+            "revoked": "Oturum kapatıldı"
+          },
+          "staff": {
+            "role_granted": "Personel rolü verildi",
+            "role_revoked": "Personel rolü geri alındı"
+          },
+          "subscription": {
+            "activated": "Abonelik başlatıldı",
+            "canceled": "Abonelik iptal edildi",
+            "plan_changed": "Abonelik planı değiştirildi",
+            "plan_created": "Abonelik planı oluşturuldu"
+          },
+          "support": {
+            "ticket_handled": "Destek talebi yanıtlandı"
+          },
+          "taxonomy": {
+            "changed": "Taksonomi değiştirildi"
+          },
+          "two_factor": {
+            "disabled": "İki adımlı giriş kapatıldı",
+            "enabled": "İki adımlı giriş açıldı"
           }
         }
       },
@@ -771,6 +857,12 @@
           "HEALTHY": "Sağlıklı",
           "DEGRADED": "Bakmaya değer",
           "CRITICAL": "Durdu"
+        },
+        "jobState": {
+          "READY": "Sonraki çalışması için hazır",
+          "RUNNING": "Çalışıyor",
+          "FAILED": "Son çalışmasında başarısız oldu",
+          "DISABLED": "Kapatılmış"
         }
       },
       "flags": {
@@ -818,7 +910,11 @@
         "successRate": "Başarı oranı",
         "dailyHeading": "Günlük hacim",
         "nothingPledged": "Bu dönemde hiçbir destek verilmedi.",
-        "notBuiltHeading": "Bu ekranın yanıtlamadıkları"
+        "notBuiltHeading": "Bu ekranın yanıtlamadıkları",
+        "notBuilt": {
+          "COHORTS": "Kohortlar için destekçinin ilk desteğine göre bir toplama gerekir; böylesi yok (#313).",
+          "FUNNELS": "Huniler için ziyaretten desteğe giden yol gerekir; referral_touches varışı kaydeder, sonrasını değil (#313)."
+        }
       },
       "emailTemplates": {
         "subject": "e-posta şablonlarını",
@@ -868,10 +964,11 @@
         "live": "Yayında"
       },
       "moderationQueue": {
+        "subject": "moderasyon kuyruğunu",
         "signedOutTitle": "Oturumunuz kapalı",
         "signedOutBody": "Bu tarayıcının artık bir oturumu yok. Moderasyon kuyruğunu okumak için yeniden giriş yapın.",
-        "forbiddenTitle": "Moderatör değilsiniz",
-        "forbiddenBody": "Şikayet kuyruğunu platform ekibi okur ve temizler. Hesabınız yapılandırılmış moderatör listesinde değil.",
+        "forbiddenTitle": "Burada çalışmıyorsunuz",
+        "forbiddenBody": "Şikayet kuyruğunu platform ekibi okur ve temizler, hesabınız ise hiçbir platform rolü taşımıyor.",
         "notStaff": "Hesabınız platformun moderatör listesinde değil, bu yüzden bu kuyruğu temizlemek size düşmez.",
         "transitionNotAllowed": "O kampanya, bu sonuca geçilebilecek bir durumda değil.",
         "transitionNotAllowedFrom": "O kampanya {state} durumunda ve bu sonuca oradan geçilemez. Şikayetin kendisini kabul etmek ya da reddetmek hâlâ size düşer.",
@@ -1108,10 +1205,11 @@
         "noTags": "Henüz hiçbir yaratıcı etiket kullanmadı."
       },
       "users": {
+        "subject": "hesap dizinini",
         "signedOutTitle": "Oturumunuz kapalı",
         "signedOutBody": "Bu tarayıcının artık bir oturumu yok. Hesap dizinini okumak için yeniden giriş yapın.",
-        "forbiddenTitle": "Moderatör değilsiniz",
-        "forbiddenBody": "Hesapları platform ekibi arar ve askıya alır. Hesabınız yapılandırılmış moderatör listesinde değil.",
+        "forbiddenTitle": "Burada çalışmıyorsunuz",
+        "forbiddenBody": "Hesapları platform ekibi arar ve askıya alır, hesabınız ise hiçbir platform rolü taşımıyor.",
         "notStaff": "Hesabınız platformun moderatör listesinde değil, bu yüzden hesap dizinini okumak size düşmez.",
         "accountNotFound": "Bu hesap artık yok. Sayfa yüklendiğinden beri silinmiş olabilir.",
         "selfSuspend": "Bir hesap kendini askıya alamaz. Başka bir moderatöre sorun.",
@@ -1340,6 +1438,12 @@
           "other": "{count} hesap pozisyonu"
         },
         "findingsHeading": "Ne yanlış",
+        "finding": {
+          "LEDGER_NOT_ZERO": "{currency} için defter sıfıra gitmiyor: net {amount}.",
+          "CREATOR_OVERPAID": "{account} pozitif: {amount}. Bu, hak ettiğinden fazla ödenmiş bir kurucu demektir.",
+          "PLATFORM_ACCOUNT_NEGATIVE": "{account} negatif: {amount}. Bu, hiç alınmamış olduğu hâlde ödenmiş paradır.",
+          "DISAGREES_WITH_PAYMENTS": "Defter {amount} tutuyor, işlemler ise {other} diyor."
+        },
         "checkAgain": "Şimdi yeniden kontrol et",
         "checking": "Kontrol ediliyor…",
         "runNote": "Tüm platform üzerinde iki sorgu. Hiçbir şey okumaz ve yazmaz, bu yüzden onu istediğiniz zaman çalıştırmak güvenlidir — ve konuştuğunuz kopyadan yanıt almanın tek yolu budur.",
@@ -1461,6 +1565,20 @@
         "emptyTitle": "Açık ters ibraz yok",
         "emptyBody": "Yanıt bekleyen bir şey yok. Vakalar buraya bir sağlayıcı web kancasından gelir, bu yüzden boş bir kuyruk hiçbir ağın bir tahsilata itiraz etmediği anlamına gelir.",
         "providerAndReason": "{provider} · {code}",
+        "reason": {
+          "fraudulent": "Kart sahibi değil",
+          "product_not_received": "Ürün ulaşmadı",
+          "product_unacceptable": "Ürün açıklandığı gibi değil",
+          "duplicate": "İki kez çekildi",
+          "subscription_canceled": "Abonelik iptal edilmişti",
+          "credit_not_processed": "Söz verilen iade yapılmadı",
+          "unrecognized": "Ödeme tanınmadı",
+          "incorrect_account_details": "Hesap bilgileri yanlış",
+          "insufficient_funds": "Yetersiz bakiye",
+          "bank_cannot_process": "Banka işleyemedi",
+          "debit_not_authorized": "Borçlandırmaya izin verilmedi",
+          "general": "Neden belirtilmedi"
+        },
         "pledgeLine": "Destek {pledge} · ücret {fee} · ",
         "noDeadline": "Son tarih verilmedi",
         "deadlinePassed": "Son tarih geçti",
@@ -1523,7 +1641,7 @@
         "pastHeading": "Geçmiş koşullar",
         "pastIntro": "Platformun ne aldığı ve ne zaman. §22.1 bunu bir değişiklik listesi değil, saklama kuralı olan bir kayıt yapar.",
         "inForceTag": "Yürürlükte",
-        "rates": "Platform {platform} · işlem {processing} + {fixed} {currency}",
+        "rates": "Platform {platform} · işlem {processing} + {fixed}",
         "window": "{from} — {to} · {note}",
         "now": "şimdi",
         "scope": {

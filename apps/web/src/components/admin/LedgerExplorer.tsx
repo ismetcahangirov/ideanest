@@ -23,6 +23,7 @@ import {
 } from '../../lib/admin/ledger';
 import {
   consoleMessageFor,
+  requiredCapabilityFrom,
   shortId,
   statusFor,
   wasAborted,
@@ -32,6 +33,8 @@ import { formatMoney } from '../../lib/money';
 import { fillNodes } from '../../lib/i18n/placeholders';
 import { pluralise } from '../../lib/i18n/plurals';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
+import { formatExactTime } from '../../lib/time';
+import type { Locale } from '../../lib/i18n/locale';
 import type { LedgerExplorerCopy } from '../../lib/i18n/admin/money-copy';
 import { ConsoleRefusal } from './ConsoleRefusal';
 
@@ -79,6 +82,8 @@ export interface LedgerExplorerProps {
 export function LedgerExplorer({ copy }: LedgerExplorerProps) {
   const locale = useRouteLocale();
   const [status, setStatus] = useState<ConsoleStatus>('loading');
+  // #400: which of the two 403s this is. Only read while `status` is `forbidden`.
+  const [capability, setCapability] = useState<string | null>(null);
   const [account, setAccount] = useState<string | null>(null);
   const [term, setTerm] = useState('');
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -112,6 +117,7 @@ export function LedgerExplorer({ copy }: LedgerExplorerProps) {
         if (controller.signal.aborted || wasAborted(cause)) return;
 
         const next = statusFor(cause);
+        setCapability(requiredCapabilityFrom(cause));
         if (next === 'failed') setError(consoleMessageFor(cause, copy.subject, copy.refusals));
         setStatus(next);
       }
@@ -140,7 +146,7 @@ export function LedgerExplorer({ copy }: LedgerExplorerProps) {
   }, [account, cursor, loadingMore, projectId, copy]);
 
   if (status === 'signed-out' || status === 'forbidden') {
-    return <ConsoleRefusal status={status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={status} capability={capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   function submit(event: React.FormEvent): void {
@@ -254,7 +260,7 @@ export function LedgerExplorer({ copy }: LedgerExplorerProps) {
       {status === 'ready' && postings.length > 0 && (
         <ul className="mt-4 flex list-none flex-col gap-2">
           {postings.map((posting) => (
-            <PostingCard key={posting.transactionId} posting={posting} copy={copy} />
+            <PostingCard key={posting.transactionId} posting={posting} locale={locale} copy={copy} />
           ))}
         </ul>
       )}
@@ -330,9 +336,11 @@ function BalancePanel({
  */
 function PostingCard({
   posting,
+  locale,
   copy,
 }: {
   readonly posting: LedgerPosting;
+  readonly locale: Locale;
   readonly copy: LedgerExplorerCopy;
 }) {
   return (
@@ -359,7 +367,7 @@ function PostingCard({
             className="text-xs text-white/40"
             title={posting.createdAt}
           >
-            {new Date(posting.createdAt).toLocaleString()}
+            {formatExactTime(posting.createdAt, locale)}
           </time>
         </div>
       </div>

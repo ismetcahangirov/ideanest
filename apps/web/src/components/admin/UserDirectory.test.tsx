@@ -157,8 +157,26 @@ describe('UserDirectory', () => {
       listUsersMock.mockRejectedValue(new ApiError(403, { code: 'NOT_A_MODERATOR' }, 'Forbidden'));
       render(<UserDirectory copy={COPY} />);
 
-      expect(await screen.findByText('Not a moderator')).toBeInTheDocument();
+      expect(await screen.findByText('You do not work here')).toBeInTheDocument();
       expect(screen.queryByLabelText('Search')).not.toBeInTheDocument();
+    });
+
+    it('tells a colleague which capability the directory wanted, and not that they are a stranger', async () => {
+      listUsersMock.mockRejectedValue(
+        new ApiError(
+          403,
+          { code: 'INSUFFICIENT_STAFF_CAPABILITY', meta: { capability: 'ADMINISTER_ACCOUNTS' } },
+          'Forbidden',
+        ),
+      );
+      render(<UserDirectory copy={COPY} />);
+
+      // #400. This screen keeps its own not-staff sentence — it names the directory and what
+      // searching it costs — and the other 403 is the console's, because the only part of it
+      // that differs is the capability and the service supplies that.
+      expect(await screen.findByText('This screen is not yours')).toBeInTheDocument();
+      expect(screen.getByText(/ADMINISTER_ACCOUNTS/)).toBeInTheDocument();
+      expect(screen.queryByText('You do not work here')).toBeNull();
     });
 
     it('offers another go when the service could not be reached', async () => {

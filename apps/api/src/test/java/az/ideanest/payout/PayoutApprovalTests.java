@@ -82,6 +82,33 @@ class PayoutApprovalTests {
     }
 
     @Test
+    @DisplayName("an approved payout goes back to waiting explicitly, and refuses anything else")
+    void backToPendingApprovalAssertsTheStateItIsHanded() {
+        Payout signed = payout((short) 2, Instant.parse("2026-01-01T00:00:00Z"));
+        signed.payable();
+        signed.approved();
+
+        signed.backToPendingApproval();
+        assertThat(signed.state()).isEqualTo(PayoutState.PENDING_APPROVAL);
+
+        /*
+         * Issue #398. The withdrawal path used `payable()` for this, and `payable()` is a
+         * no-op from APPROVED by design — the test above asserts that it is — so the guard
+         * that called it did nothing and the payout stayed APPROVED with one signature of
+         * two. The transition the withdrawal needs is a different transition, and it is
+         * total: it moves an approved payout back, and it throws on everything else rather
+         * than returning quietly. A method that ignores the state it is handed cannot be
+         * relied on by a caller, and the money is gated on this one.
+         */
+        assertThatThrownBy(signed::backToPendingApproval)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("PENDING_APPROVAL");
+
+        Payout held = payout((short) 2, Instant.parse("2026-01-01T00:00:00Z"));
+        assertThatThrownBy(held::backToPendingApproval).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
     @DisplayName("only a payout that has been sent carries a transaction and a sent-at")
     void paidCarriesItsTransaction() {
         Payout sending = payout((short) 1, Instant.parse("2026-01-01T00:00:00Z"));

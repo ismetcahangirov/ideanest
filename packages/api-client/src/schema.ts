@@ -4033,10 +4033,15 @@ export interface components {
             nextCursor?: string;
         };
         Finding: {
+            account?: string;
+            amount?: string;
+            /** @enum {string} */
+            code?: "LEDGER_NOT_ZERO" | "CREATOR_OVERPAID" | "PLATFORM_ACCOUNT_NEGATIVE" | "DISAGREES_WITH_PAYMENTS";
             currency?: string;
             detail?: string;
             /** @enum {string} */
             kind?: "UNBALANCED" | "IMPOSSIBLE_SIGN" | "DISAGREES_WITH_PAYMENTS";
+            otherAmount?: string;
         };
         Flag: {
             description?: string;

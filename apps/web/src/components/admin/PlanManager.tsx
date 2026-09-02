@@ -95,7 +95,7 @@ export function PlanManager({ copy }: PlanManagerProps) {
   const [written, setWritten] = useState<string | null>(null);
 
   if (catalogue.status === 'signed-out' || catalogue.status === 'forbidden') {
-    return <ConsoleRefusal status={catalogue.status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={catalogue.status} capability={catalogue.capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   async function add(event: React.FormEvent): Promise<void> {

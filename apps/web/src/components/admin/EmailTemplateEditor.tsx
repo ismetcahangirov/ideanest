@@ -92,7 +92,7 @@ export function EmailTemplateEditor({ type, copy }: EmailTemplateEditorProps) {
   );
 
   if (draft.status === 'signed-out' || draft.status === 'forbidden') {
-    return <ConsoleRefusal status={draft.status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={draft.status} capability={draft.capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   async function act(work: () => Promise<unknown>): Promise<void> {

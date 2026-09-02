@@ -25,6 +25,7 @@ import {
 } from '../../lib/admin/curation';
 import {
   consoleMessageFor,
+  requiredCapabilityFrom,
   statusFor,
   wasAborted,
   type ConsoleStatus,
@@ -77,6 +78,8 @@ export interface CollectionEditorProps {
 export function CollectionEditor({ slug, copy, note }: CollectionEditorProps) {
   const locale = useRouteLocale();
   const [status, setStatus] = useState<ConsoleStatus>('loading');
+  // #400: which of the two 403s this is. Only read while `status` is `forbidden`.
+  const [capability, setCapability] = useState<string | null>(null);
   const [collection, setCollection] = useState<AdminCollection | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -113,6 +116,7 @@ export function CollectionEditor({ slug, copy, note }: CollectionEditorProps) {
           return;
         }
         const next = statusFor(cause);
+        setCapability(requiredCapabilityFrom(cause));
         if (next === 'failed') setError(consoleMessageFor(cause, copy.subject, copy.refusals));
         setStatus(next);
       }
@@ -154,7 +158,7 @@ export function CollectionEditor({ slug, copy, note }: CollectionEditorProps) {
   );
 
   if (status === 'signed-out' || status === 'forbidden') {
-    return <ConsoleRefusal status={status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={status} capability={capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   if (status === 'loading') {

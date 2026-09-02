@@ -71,6 +71,22 @@ export function formatRelativeTime(iso: string, now: Date, locale: Locale): stri
   return relative.format(Math.round(duration), 'year');
 }
 
+/**
+ * The day, with no time on it — issue #401.
+ *
+ * <p>For the console's list rows, where "joined 27 July 2026" is the whole of what anybody
+ * wants and the hour is noise. Those rows called `Date.prototype.toLocaleDateString` with no
+ * argument, which is not the reader's language at all: it is the browser's, so an
+ * Azerbaijani console on an American laptop rendered `7/27/2026`. There was no locale in
+ * scope to pass, which is what a helper is for.
+ */
+export function formatDate(iso: string, locale: Locale): string {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return UNKNOWN_TIME[locale];
+
+  return dateTimeFormat(locale, { dateStyle: 'medium' }, 'date').format(at);
+}
+
 /** The exact timestamp, for the `title` of the relative one. */
 export function formatExactTime(iso: string, locale: Locale): string {
   const at = new Date(iso);

@@ -60,7 +60,7 @@ export function EmailTemplateIndex({ copy }: EmailTemplateIndexProps) {
   );
 
   if (templates.status === 'signed-out' || templates.status === 'forbidden') {
-    return <ConsoleRefusal status={templates.status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={templates.status} capability={templates.capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   if (templates.status === 'loading') {

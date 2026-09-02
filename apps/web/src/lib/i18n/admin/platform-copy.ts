@@ -111,6 +111,14 @@ export interface HealthDashboardCopy extends ConsoleChromeCopy {
   readonly notConfigured: string;
   /** Keyed by `HealthStatus`. The word, never only the colour — CLAUDE.md §2. */
   readonly status: Readonly<Record<string, string>>;
+  /**
+   * The scheduler's own states, worded — issue #403.
+   *
+   * <p>`READY` was drawn raw on all nineteen rows, which is not information in any
+   * language. The wire word moved to the row's `title`, so it is still one hover from
+   * whoever is about to grep for it, and a state with no sentence is drawn as itself.
+   */
+  readonly jobState: Readonly<Record<string, string>>;
 }
 
 export function healthDashboardCopyFrom(
@@ -138,6 +146,7 @@ export function healthDashboardCopyFrom(
     providers: t('screens.health.providers'),
     notConfigured: t('screens.health.notConfigured'),
     status: t.raw('screens.health.status') as Readonly<Record<string, string>>,
+    jobState: t.raw('screens.health.jobState') as Readonly<Record<string, string>>,
   };
 }
 
@@ -204,9 +213,14 @@ export function flagConsoleCopyFrom(
  * `${n} days` in JSX is three sentences no translation can reach. The keys are the values the
  * screen already offers.
  *
- * <p>What the screen does <em>not</em> answer â€” cohorts and funnels â€” is not here at all: the
- * service sends those sentences in `notBuilt`, and a copy of them in the catalogue would be a
- * second answer that goes stale the day the first one changes.
+ * <p>What the screen does <em>not</em> answer — cohorts and funnels — is named by the service
+ * and worded here, since #403. It sent the sentences themselves until then, in English, under
+ * a translated heading, which made them the only untranslated paragraph on the screen.
+ *
+ * <p>Codes keep the property the arrangement existed for: the day cohorts are built the
+ * service stops sending `COHORTS` and the panel disappears without a frontend change. A code
+ * this table has no sentence for is drawn as itself, so a new one shows up in English rather
+ * than vanishing.
  */
 export interface PlatformAnalyticsCopy extends ConsoleChromeCopy {
   readonly subject: string;
@@ -230,6 +244,8 @@ export interface PlatformAnalyticsCopy extends ConsoleChromeCopy {
   readonly dailyHeading: string;
   readonly nothingPledged: string;
   readonly notBuiltHeading: string;
+  /** Keyed by the code the service sends. Unknown codes fall through to themselves. */
+  readonly notBuilt: Readonly<Record<string, string>>;
 }
 
 export function platformAnalyticsCopyFrom(
@@ -257,6 +273,7 @@ export function platformAnalyticsCopyFrom(
     dailyHeading: t('screens.analytics.dailyHeading'),
     nothingPledged: t('screens.analytics.nothingPledged'),
     notBuiltHeading: t('screens.analytics.notBuiltHeading'),
+    notBuilt: t.raw('screens.analytics.notBuilt') as Readonly<Record<string, string>>,
   };
 }
 

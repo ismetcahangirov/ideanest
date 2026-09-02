@@ -54,7 +54,7 @@ export function FlagConsole({ copy }: FlagConsoleProps) {
   const [error, setError] = useState<string | null>(null);
 
   if (flags.status === 'signed-out' || flags.status === 'forbidden') {
-    return <ConsoleRefusal status={flags.status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={flags.status} capability={flags.capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   async function save(flag: FeatureFlag, change: Partial<FeatureFlag>): Promise<void> {

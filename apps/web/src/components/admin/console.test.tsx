@@ -167,9 +167,31 @@ describe('the ledger explorer', () => {
     readLedgerMock.mockRejectedValue(new ApiError(403, { code: 'NOT_A_MODERATOR' }, 'no'));
     render(<LedgerExplorer copy={LEDGER} />);
 
-    expect(await screen.findByText('Not a moderator')).toBeInTheDocument();
+    expect(await screen.findByText('You do not work here')).toBeInTheDocument();
     // And not an empty state, which on a ledger reads as "no money has moved".
     expect(screen.queryByText('Nothing has been posted yet')).toBeNull();
+  });
+
+  it('names the capability a colleague is short of, rather than calling them a stranger', async () => {
+    readLedgerMock.mockRejectedValue(
+      new ApiError(
+        403,
+        { code: 'INSUFFICIENT_STAFF_CAPABILITY', meta: { capability: 'VIEW_FINANCE' } },
+        'no',
+      ),
+    );
+    render(<LedgerExplorer copy={LEDGER} />);
+
+    /*
+     * Issue #400. `StaffDirectory.requireCapability` separates the two 403s deliberately and
+     * says why: "a stranger is told they do not work here; a colleague is told which
+     * authority this screen wanted". The console rendered the stranger's sentence for both,
+     * so a moderator opening a money screen was told they were not a moderator — on a
+     * console that had just loaded the moderation queue for them.
+     */
+    expect(await screen.findByText('This screen is not yours')).toBeInTheDocument();
+    expect(screen.getByText(/VIEW_FINANCE/)).toBeInTheDocument();
+    expect(screen.queryByText('You do not work here')).toBeNull();
   });
 });
 

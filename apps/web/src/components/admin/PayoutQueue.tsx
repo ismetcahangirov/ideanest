@@ -78,7 +78,7 @@ export function PayoutQueue({ copy }: PayoutQueueProps) {
   );
 
   if (queue.status === 'signed-out' || queue.status === 'forbidden') {
-    return <ConsoleRefusal status={queue.status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={queue.status} capability={queue.capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   async function calculate(event: React.FormEvent): Promise<void> {

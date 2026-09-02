@@ -67,7 +67,7 @@ export function PlatformAnalyticsView({ copy }: PlatformAnalyticsViewProps) {
   );
 
   if (analytics.status === 'signed-out' || analytics.status === 'forbidden') {
-    return <ConsoleRefusal status={analytics.status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={analytics.status} capability={analytics.capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   return (
@@ -198,7 +198,9 @@ export function PlatformAnalyticsView({ copy }: PlatformAnalyticsViewProps) {
               <ul className="mt-2 flex list-none flex-col gap-2">
                 {analytics.data.notBuilt.map((reason) => (
                   <li key={reason} className="text-sm text-white/64">
-                    {reason}
+                    {/* #403: the service sends a code and the sentence is the catalogue's.
+                        A code with no sentence is drawn as itself rather than dropped. */}
+                    {copy.notBuilt[reason] ?? reason}
                   </li>
                 ))}
               </ul>

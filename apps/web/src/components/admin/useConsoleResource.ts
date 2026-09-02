@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   consoleMessageFor,
+  requiredCapabilityFrom,
   statusFor,
   wasAborted,
   type ConsoleStatus,
@@ -42,6 +43,14 @@ export interface ConsoleResource<T> {
   readonly data: T | null;
   /** Set only when {@link status} is `failed`. The two refusals render through `ConsoleRefusal`. */
   readonly error: string | null;
+  /**
+   * The capability the 403 named, when it named one — #295's `meta.capability`, and #400.
+   *
+   * <p>Null for everything else, including the 403 that is about standing. Handed to
+   * `ConsoleRefusal` beside the status, because the status alone cannot tell the two
+   * refusals apart and rendering the wrong one tells a colleague they do not work here.
+   */
+  readonly capability: string | null;
   /** Reads again. Also what a "try again" control calls. */
   readonly reload: () => void;
   /**
@@ -76,6 +85,7 @@ export function useConsoleResource<T>(
   const [status, setStatus] = useState<ConsoleStatus>('loading');
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [capability, setCapability] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -99,6 +109,7 @@ export function useConsoleResource<T>(
 
         const next = statusFor(cause);
         setError(next === 'failed' ? consoleMessageFor(cause, subject, refusals) : null);
+        setCapability(requiredCapabilityFrom(cause));
         setStatus(next);
       }
     }
@@ -114,5 +125,5 @@ export function useConsoleResource<T>(
   const reload = useCallback(() => setAttempt((n) => n + 1), []);
   const set = useCallback((next: T) => setData(next), []);
 
-  return { status, data, error, reload, set };
+  return { status, data, error, capability, reload, set };
 }

@@ -130,7 +130,7 @@ describe('ModerationQueue', () => {
       );
       render(<ModerationQueue copy={COPY} />);
 
-      expect(await screen.findByText('Not a moderator')).toBeInTheDocument();
+      expect(await screen.findByText('You do not work here')).toBeInTheDocument();
     });
   });
 
