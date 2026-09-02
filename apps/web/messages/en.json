@@ -526,6 +526,12 @@
       "loading": "Loading",
       "previous": "Previous",
       "next": "Next",
+      "count": {
+        "exact": "{count}",
+        "partial": "{count}+",
+        "exactLabel": "{count} shown, which is all of them",
+        "partialLabel": "{count} shown, and there are more"
+      },
       "identity": {
         "copy": "Copy identifier",
         "copyLabel": "Copy the full identifier beginning {id}",
@@ -705,6 +711,12 @@
         "metaDescription": "Every campaign on the platform, in any state, newest first.",
         "title": "Campaigns",
         "intro": "Every campaign on the platform, newest first, whatever state it is in. The review queue lists what is waiting on a decision; this lists everything, including drafts nobody has submitted and campaigns cleared for launch that have not launched."
+      },
+      "campaignPreview": {
+        "metaTitle": "Campaign preview",
+        "metaDescription": "One campaign as its page reads, in any state, for the moderator deciding it.",
+        "title": "Campaign preview",
+        "intro": "The campaign as its public page would render it, whatever state it is in. The review queue links here because a campaign awaiting a decision has no public page — and a decision taken on a title and a goal figure is a guess."
       }
     },
     "screens": {
@@ -1063,7 +1075,25 @@
         "loadingHistory": "Loading the decision history",
         "historyEmpty": "Nothing has been done to this report yet. A row appears here the moment somebody decides it.",
         "actionBy": "{action} by {actor}",
-        "refused": "Refused"
+        "refused": "Refused",
+        "evidence": {
+          "subject": "the reported content",
+          "heading": "What was reported",
+          "intro": "The content the complaint is about, read from the platform rather than from the complaint. A removed item is still shown, because a report filed before the removal still has to be decided.",
+          "loading": "Loading the reported content",
+          "failedTitle": "The reported content could not be read",
+          "removedTitle": "This has already been removed",
+          "removedBody": "Somebody has taken this down since the report was filed. It is shown here so that the complaint can still be decided — it does not need removing again.",
+          "goneTitle": "This is no longer on the platform",
+          "goneBody": "The identifier the report names no longer exists. It may have been purged, or its author's account anonymised. The complaint can still be decided; there is nothing left to read.",
+          "addressedBody": "This report is about a campaign or an account rather than a piece of text. Open it to read it in full — a fragment beside a link to the page it came from would be worse than the link alone.",
+          "authorLabel": "Written by",
+          "campaignLabel": "On",
+          "writtenLabel": "Written",
+          "updateNumber": "Update {number}",
+          "openCampaign": "Open the campaign",
+          "noText": "This item has no text of its own."
+        }
       },
       "collections": {
         "subject": "the collections",
@@ -1821,6 +1851,30 @@
           "SUSPENDED": "Suspended",
           "CANCELED": "Cancelled"
         }
+      },
+      "campaignPreview": {
+        "subject": "this campaign",
+        "loadingPreview": "Loading the campaign",
+        "notFoundTitle": "No such campaign",
+        "notFoundBody": "That identifier does not name a campaign, or its creator is inside the deletion grace period and the page has nobody to attribute it to.",
+        "backToDirectory": "Back to campaigns",
+        "previewNoticeTitle": "Staff preview",
+        "previewNoticeBody": "The campaign as its public page would render it, in whatever state it is in — including a draft, which its creator has shown nobody. Nothing on this screen changes anything: approving, rejecting and suspending are elsewhere, and closing this tab loses none of them.",
+        "goalLabel": "Goal",
+        "noGoal": "Not set yet",
+        "raisedLabel": "Raised",
+        "backersLabel": "Backers",
+        "filedUnder": "Filed under",
+        "notFiled": "Not filed yet",
+        "launchedLabel": "Launched",
+        "deadlineLabel": "Closes",
+        "publicPage": "Open the public page",
+        "notPublicYet": "This campaign has no public page in its current state.",
+        "storyHeading": "The story",
+        "noStory": "The creator has not written one yet. Submission requires it, so a campaign awaiting review will have it.",
+        "risksHeading": "Risks and challenges",
+        "noRisks": "Nothing written yet. Submission requires two hundred characters of it.",
+        "coverAlt": "Cover image for {title}"
       }
     },
     "moderation": {

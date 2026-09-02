@@ -73,6 +73,22 @@ describe('the campaign review queue', () => {
     );
   });
 
+  it('links the campaign to the staff preview, because its public page is a 404 by construction', async () => {
+    render(<SubmissionQueue copy={COPY} />);
+
+    const link = await screen.findByRole('link', { name: 'Xari Bulbul Ceramics' });
+    /*
+     * #399, and the defect that epic was mostly about. This link pointed at
+     * `/projects/{creatorSlug}/{slug}`, which for every campaign in this queue answers 404 —
+     * a campaign awaiting review is not public, and that is what awaiting review means. So
+     * the only route from "decide about this campaign" to "read this campaign" was broken,
+     * and approval happened on a title, a creator's name and a goal figure.
+     */
+    expect(link).toHaveAttribute('href', expect.stringContaining('/admin/campaigns/'));
+    // A new tab, so the queue and its filters survive the trip.
+    expect(link).toHaveAttribute('target', '_blank');
+  });
+
   it('says how long the campaign has been waiting', async () => {
     render(<SubmissionQueue copy={COPY} />);
 

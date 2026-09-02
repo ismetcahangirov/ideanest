@@ -38,6 +38,7 @@ import type { Locale } from '../../lib/i18n/locale';
 import type { LedgerExplorerCopy } from '../../lib/i18n/admin/money-copy';
 import { creatorIdsIn } from '../../lib/admin/ledger';
 import type { DirectoryNames } from '../../lib/admin/directory';
+import { ConsoleCount } from './ConsoleCount';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { EntityName } from './ConsoleIdentity';
 import { useDirectoryNames } from './useDirectoryNames';
@@ -179,7 +180,7 @@ export function LedgerExplorer({ copy }: LedgerExplorerProps) {
       <h2 id="ledger-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
         {copy.heading}
         {status === 'ready' && (
-          <span className="ml-2 text-xs font-normal text-white/40">{postings.length}</span>
+          <ConsoleCount loaded={postings.length} more={cursor !== null} copy={copy.count} />
         )}
       </h2>
 

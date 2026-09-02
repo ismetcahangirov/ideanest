@@ -774,4 +774,153 @@ class ContentReportApiTests extends AbstractIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).containsEntry("code", "REPORT_NOT_FOUND");
     }
+
+    // ------------------------------------------------------------------
+    // What the report is about -- #399
+    // ------------------------------------------------------------------
+    //
+    // The detail page rendered the reporter's claim, the reporter, and two buttons, and
+    // nothing at all about the thing being complained of: not the text, not the author,
+    // not the campaign, and no link to any of them. A moderator asked to uphold something
+    // they cannot read either guesses or leaves the queue, and the cheap guess is always
+    // to dismiss -- which is how a moderation queue quietly stops working.
+
+    @Test
+    @DisplayName("the content of a report about a comment is the comment")
+    void aCommentReportCarriesTheComment() {
+        UUID campaign = liveCampaign(account("creator"));
+        Account author = account("author");
+        UUID comment = idOf(post(
+                        "/v1/projects/" + campaign + "/comments",
+                        author.accessToken(),
+                        Map.of("body", "Free download here, follow the link."))
+                .getBody());
+        UUID report = idOf(post(
+                        "/v1/comments/" + comment + "/report",
+                        account("reporter").accessToken(),
+                        reportBody("SPAM", "The comment contains a free download link."))
+                .getBody());
+
+        Map<String, Object> content = contentOf(report);
+
+        assertThat(content).containsEntry("targetType", "COMMENT");
+        assertThat(content).containsEntry("state", "PRESENT");
+        assertThat(content)
+                .as("the sentence the decision is actually about")
+                .containsEntry("body", "Free download here, follow the link.");
+        assertThat(content).containsEntry("authorId", author.id().toString());
+        assertThat(content.get("createdAt"))
+                .as("when it was written, which is not when it was reported")
+                .isNotNull();
+
+        Map<String, Object> project = campaignOf(content);
+        assertThat(project).as("which campaign it is on, and a path to it").isNotNull();
+        assertThat(project).containsEntry("id", campaign.toString());
+        assertThat(project.get("slug")).isNotNull();
+        assertThat(project.get("creatorSlug")).isNotNull();
+    }
+
+    @Test
+    @DisplayName("a comment that has since been removed is still readable, and says it was removed")
+    void aRemovedCommentIsStillReadable() {
+        UUID campaign = liveCampaign(account("creator"));
+        Account author = account("author");
+        UUID comment = idOf(post(
+                        "/v1/projects/" + campaign + "/comments",
+                        author.accessToken(),
+                        Map.of("body", "Something worth complaining about."))
+                .getBody());
+        UUID report = idOf(post(
+                        "/v1/comments/" + comment + "/report",
+                        account("reporter").accessToken(),
+                        reportBody("OFFENSIVE", null))
+                .getBody());
+
+        delete("/v1/comments/" + comment, author.accessToken());
+
+        Map<String, Object> content = contentOf(report);
+
+        // V25 keeps the row and its text for exactly this: a report filed before the
+        // removal still has to be decidable, and a moderator told only "removed" cannot
+        // tell an upheld report from a dismissed one.
+        assertThat(content).containsEntry("state", "REMOVED");
+        assertThat(content).containsEntry("body", "Something worth complaining about.");
+    }
+
+    @Test
+    @DisplayName("a report about a campaign points at the campaign rather than inlining a fragment of it")
+    void aCampaignReportIsAddressedDirectly() {
+        UUID campaign = liveCampaign(account("creator"));
+        UUID report = idOf(post(
+                        "/v1/projects/" + campaign + "/report",
+                        account("reporter").accessToken(),
+                        reportBody("FRAUD", null))
+                .getBody());
+
+        Map<String, Object> content = contentOf(report);
+
+        // A campaign has a staff preview that renders it in any state, so there is no blob
+        // of text to inline -- and a blurb next to a link to the page it came from is
+        // worse than the link alone.
+        assertThat(content).containsEntry("targetType", "PROJECT");
+        assertThat(content).containsEntry("state", "ADDRESSED_DIRECTLY");
+        assertThat(campaignOf(content)).containsEntry("id", campaign.toString());
+    }
+
+    @Test
+    @DisplayName("the content of a report is not readable by an account that is not staff")
+    void theContentRefusesAnAccountThatIsNotStaff() {
+        UUID campaign = liveCampaign(account("creator"));
+        Account reporter = account("reporter");
+        UUID report = idOf(post(
+                        "/v1/projects/" + campaign + "/report", reporter.accessToken(), reportBody("SPAM", null))
+                .getBody());
+
+        // Including the reporter. A report is an accusation, and the evidence behind one
+        // is read by the people who decide it.
+        assertThat(get("/v1/admin/moderation/reports/" + report + "/content", reporter.accessToken())
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(get("/v1/admin/moderation/reports/" + report + "/content", null)
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    @DisplayName("asking about a report that does not exist is a 404, not an empty answer")
+    void theContentOfAnUnknownReportIsNotFound() {
+        ResponseEntity<Map<String, Object>> missing = get(
+                "/v1/admin/moderation/reports/" + UUID.randomUUID() + "/content",
+                moderator().accessToken());
+
+        // Distinct from content that has gone, which is a 200 carrying GONE: "there is no
+        // such report" and "the comment it was about has been purged" send a moderator to
+        // two different places.
+        assertThat(missing.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(missing.getBody()).containsEntry("code", "REPORT_NOT_FOUND");
+    }
+
+    /** The evidence behind one report, as staff reads it. */
+    private Map<String, Object> contentOf(UUID reportId) {
+        ResponseEntity<Map<String, Object>> response =
+                get("/v1/admin/moderation/reports/" + reportId + "/content", moderator().accessToken());
+
+        assertThat(response.getStatusCode())
+                .as("reading the evidence: %s", response.getBody())
+                .isEqualTo(HttpStatus.OK);
+        return response.getBody();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> campaignOf(Map<String, Object> content) {
+        return (Map<String, Object>) content.get("project");
+    }
+
+    private ResponseEntity<Map<String, Object>> delete(String path, String accessToken) {
+        return rest.exchange(
+                path,
+                HttpMethod.DELETE,
+                new HttpEntity<>(bearer(accessToken)),
+                new ParameterizedTypeReference<Map<String, Object>>() {});
+    }
 }

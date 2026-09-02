@@ -219,6 +219,87 @@ class CampaignDirectoryApiTests extends AbstractIntegrationTest {
     }
 
     // ------------------------------------------------------------------
+    // The staff preview — #399
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("staff can read a campaign the public cannot, which is the whole of #399")
+    void aCampaignInReviewIsReadableByStaffAndNotByAnybodyElse() {
+        Account creator = creator();
+        UUID id = submitted(creator, "Waiting on a decision");
+
+        ResponseEntity<Map<String, Object>> preview = get(DIRECTORY + "/" + id, staff().accessToken());
+        assertThat(preview.getStatusCode())
+                .as("the moderator deciding this campaign: %s", preview.getBody())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(preview.getBody()).containsEntry("title", "Waiting on a decision");
+        assertThat(preview.getBody()).containsEntry("state", "SUBMITTED");
+
+        // And the link that used to be the queue's only route to the campaign. It is a
+        // 404 by construction — a campaign in review is not public, which is what being
+        // in review means — so approval was happening on a title and a goal figure.
+        @SuppressWarnings("unchecked")
+        Map<String, Object> creatorBlock = (Map<String, Object>) preview.getBody().get("creator");
+        ResponseEntity<Map<String, Object>> publicPage = get(
+                "/v1/projects/" + creatorBlock.get("slug") + "/" + preview.getBody().get("slug"), null);
+        assertThat(publicPage.getStatusCode())
+                .as("the public page for the same campaign")
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("the preview carries the story, which is the thing a decision is actually about")
+    void thePreviewCarriesWhatTheCreatorWrote() {
+        Account creator = creator();
+        UUID id = idOf(submittableDraft(creator, "A campaign with a story"));
+
+        ResponseEntity<Map<String, Object>> preview = get(DIRECTORY + "/" + id, staff().accessToken());
+
+        assertThat(preview.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // A draft: not public in any state, and the one a moderator has least other
+        // ways of reading.
+        assertThat(preview.getBody()).containsEntry("state", "DRAFT");
+        assertThat(preview.getBody().get("story"))
+                .as("the document, parsed, rather than a string containing JSON")
+                .isInstanceOf(Map.class);
+        assertThat(preview.getBody().get("risks")).isNotNull();
+    }
+
+    @Test
+    @DisplayName("the preview refuses an account that is not platform staff")
+    void thePreviewRefusesAnAccountThatIsNotStaff() {
+        Account creator = creator();
+        UUID id = idOf(post("/v1/projects", creator.accessToken(), Map.of("title", "Somebody's draft"))
+                .getBody());
+
+        ResponseEntity<Map<String, Object>> refused = get(DIRECTORY + "/" + id, creator().accessToken());
+
+        // Including the creator's own neighbour: this endpoint serves any campaign in any
+        // state, so the only thing standing between a signed-in stranger and every draft
+        // on the platform is this check.
+        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("the preview refuses a request with no credentials at all")
+    void thePreviewRefusesAnAnonymousRequest() {
+        Account creator = creator();
+        UUID id = idOf(post("/v1/projects", creator.accessToken(), Map.of("title", "Somebody's draft"))
+                .getBody());
+
+        assertThat(get(DIRECTORY + "/" + id, null).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    @DisplayName("an identifier that names no campaign is a 404")
+    void thePreviewIsNotFoundForAnIdentifierThatNamesNothing() {
+        ResponseEntity<Map<String, Object>> missing =
+                get(DIRECTORY + "/" + UUID.randomUUID(), staff().accessToken());
+
+        assertThat(missing.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    // ------------------------------------------------------------------
     // Paging
     // ------------------------------------------------------------------
 

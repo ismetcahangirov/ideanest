@@ -84,6 +84,26 @@ export interface ConsoleChromeCopy {
   readonly refusals: ConsoleRefusalsCopy;
   /** How an identifier is named and copied, on every screen that renders one — #402. */
   readonly identity: ConsoleIdentityCopy;
+  /** How a list says how many rows it is showing, on the five that page — #404. */
+  readonly count: ConsoleCountCopy;
+}
+
+/**
+ * The badge beside a list's heading.
+ *
+ * <p>Two forms rather than one, because the number means two different things: on a list
+ * that has reached its end it is the population, and on one that has not it is the page.
+ * `ConsoleCount` has the whole argument, including why this is not a real total.
+ */
+export interface ConsoleCountCopy {
+  /** The whole list is loaded. Carries `{count}`. */
+  readonly exact: string;
+  /** There are more rows behind these. Carries `{count}`. */
+  readonly partial: string;
+  /** {@link exact} in words, for the accessible name. Carries `{count}`. */
+  readonly exactLabel: string;
+  /** {@link partial} in words — the plus sign must not be the only thing that says it. */
+  readonly partialLabel: string;
 }
 
 export interface ConsoleRefusalsCopy {
@@ -150,6 +170,19 @@ export function consoleChromeCopyFrom(t: AdminTranslator, common: AdminTranslato
     cancel: common('cancel'),
     refusals: consoleRefusalsCopyFrom(t),
     identity: consoleIdentityCopyFrom(t),
+    count: consoleCountCopyFrom(t),
+  };
+}
+
+export function consoleCountCopyFrom(t: AdminTranslator): ConsoleCountCopy {
+  return {
+    /* `raw` on all four, because next-intl renders a template's own key when it is read with
+       `t()` and has no value for the argument — `src/test-copy.ts` refuses the same mistake
+       in tests. */
+    exact: String(t.raw('common.count.exact')),
+    partial: String(t.raw('common.count.partial')),
+    exactLabel: String(t.raw('common.count.exactLabel')),
+    partialLabel: String(t.raw('common.count.partialLabel')),
   };
 }
 

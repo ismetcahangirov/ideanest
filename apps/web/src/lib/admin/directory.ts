@@ -47,8 +47,14 @@ export interface NamedProject {
   /**
    * Absent together with {@link creatorSlug} when the campaign has no public path.
    *
-   * A campaign in review has none, and half a path is a link to no route at all — which is
-   * the 404 #399 is about. A caller with neither renders the title without a link.
+   * <p><strong>No longer what decides whether the console links to it.</strong> `EntityName`
+   * used to build `/projects/{creatorSlug}/{slug}` from this pair, which is a 404 for any
+   * campaign that is not currently public — a suspended one, a rejected one, one in review —
+   * and those are precisely the campaigns a console screen names. It links to the staff
+   * preview at `/admin/campaigns/{id}` since #399, which renders any state.
+   *
+   * <p>Both halves stay on the record because a screen that means the <em>public</em> page
+   * needs them, and half a path is a link to no route at all rather than a shorter one.
    */
   slug?: string | null;
   creatorSlug?: string | null;

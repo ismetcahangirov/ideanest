@@ -31,6 +31,7 @@ import { formatDate } from '../../lib/time';
 import type { Locale } from '../../lib/i18n/locale';
 import type { UserDirectoryCopy } from '../../lib/i18n/admin/people-copy';
 import { requiredCapabilityFrom } from '../../lib/admin/refusals';
+import { ConsoleCount } from './ConsoleCount';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { CopyIdentifier } from './ConsoleIdentity';
 
@@ -290,7 +291,7 @@ export function UserDirectory({ copy }: UserDirectoryProps) {
         >
           {copy.heading}
           {status === 'ready' && (
-            <span className="ml-2 text-xs font-normal text-white/40">{loaded.length}</span>
+            <ConsoleCount loaded={loaded.length} more={cursor !== null} copy={copy.count} />
           )}
         </h2>
       </div>

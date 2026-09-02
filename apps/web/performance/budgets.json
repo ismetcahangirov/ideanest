@@ -13,6 +13,7 @@
     "/[locale]/admin/analytics": 619,
     "/[locale]/admin/audit": 585,
     "/[locale]/admin/campaigns": 621,
+    "/[locale]/admin/campaigns/[projectId]": 656,
     "/[locale]/admin/curation": 718,
     "/[locale]/admin/curation/[slug]": 718,
     "/[locale]/admin/curation/badges": 716,

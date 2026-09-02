@@ -82,8 +82,7 @@
           "name" : "after",
           "required" : false,
           "schema" : {
-            "type" : "string",
-            "format" : "uuid"
+            "type" : "string"
           }
         }, {
           "in" : "query",
@@ -1082,6 +1081,33 @@
         "tags" : [ "report-queue-controller" ]
       }
     },
+    "/v1/admin/moderation/reports/{id}/content" : {
+      "get" : {
+        "operationId" : "reportQueueContent",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReportedContentResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "report-queue-controller" ]
+      }
+    },
     "/v1/admin/moderation/reports/{id}/dismiss" : {
       "post" : {
         "operationId" : "reportQueueDismiss",
@@ -1716,6 +1742,40 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/CampaignDirectoryResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "campaign-directory-controller" ]
+      }
+    },
+    "/v1/admin/projects/{id}" : {
+      "get" : {
+        "operationId" : "campaignDirectoryPreview",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "Accept-Language",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectPageResponse"
                 }
               }
             },
@@ -13175,6 +13235,56 @@
           },
           "target" : {
             "$ref" : "#/components/schemas/Target"
+          }
+        }
+      },
+      "ReportedCampaign" : {
+        "type" : "object",
+        "properties" : {
+          "creatorSlug" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ReportedContentResponse" : {
+        "type" : "object",
+        "properties" : {
+          "authorId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "body" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "number" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "project" : {
+            "$ref" : "#/components/schemas/ReportedCampaign"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "targetType" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
           }
         }
       },

@@ -85,10 +85,17 @@ export interface EntityNameProps {
  * renders a skeleton: a queue that shimmered in twenty places while its names arrived would
  * be a screen that looks broken every time it loads.
  *
- * <p><strong>The link is only ever a real one.</strong> A campaign with no public path — one
- * in review, which is exactly the case a moderation queue holds — gets a name and no link,
- * because half a path resolves to no route at all. That is the 404 #399 is about, and this
- * component's job is not to reproduce it.
+ * <p><strong>A campaign links to the console's own preview, never to its public page —
+ * #399.</strong> It used to link to `/projects/{creatorSlug}/{slug}` whenever the directory
+ * had both halves of that path, and the directory has both halves for every campaign
+ * regardless of state. So a report about a suspended campaign, or an audit row about a
+ * rejected one, offered a link that answers 404 — at exactly the moment somebody is trying
+ * to find out what was suspended. `/admin/campaigns/{id}` renders any campaign in any state,
+ * so the link is now always a real one and the "no path, no link" case has stopped existing
+ * for campaigns.
+ *
+ * <p>An account still links to its public profile, which is public for every account that
+ * has one.
  */
 export function EntityName({
   id,
@@ -105,8 +112,8 @@ export function EntityName({
   const href =
     account !== undefined
       ? `/${account.slug}`
-      : project?.slug != null && project.creatorSlug != null
-        ? `/projects/${project.creatorSlug}/${project.slug}`
+      : project !== undefined
+        ? `/admin/campaigns/${encodeURIComponent(project.id)}`
         : null;
 
   return (

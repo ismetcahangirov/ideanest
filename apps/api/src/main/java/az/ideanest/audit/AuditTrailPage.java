@@ -20,12 +20,14 @@ import java.util.UUID;
  * @param filter what was asked for, carried back so a client with two filters open can tell
  *     which response belongs to which
  * @param entries the matching rows, newest first
- * @param nextCursor the identifier of the last row on this page, to send as {@code after}
- *     for the next one, or null when this was the last page. It is a UUID v7 and therefore
- *     a position in arrival order (§7.3), which is why the trail needs no compound cursor
- *     over {@code occurred_at}
+ * @param nextCursor where the last row on this page sits, to send as {@code after} for the
+ *     next one, or null when this was the last page. Both an instant and an identifier
+ *     since #404: the trail is ordered by {@code occurred_at}, which is the column the
+ *     screen displays and is not unique, so the key breaks the tie. This used to be the
+ *     identifier alone, on the argument that a UUID v7 is a position in arrival order
+ *     (§7.3) — {@link AuditCursor} records what was wrong with that
  */
-public record AuditTrailPage(AuditTrailFilter filter, List<AuditEntry> entries, UUID nextCursor) {
+public record AuditTrailPage(AuditTrailFilter filter, List<AuditEntry> entries, AuditCursor nextCursor) {
 
     public AuditTrailPage {
         entries = List.copyOf(entries);

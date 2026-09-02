@@ -526,6 +526,12 @@
       "loading": "Yükleniyor",
       "previous": "Önceki",
       "next": "Sonraki",
+      "count": {
+        "exact": "{count}",
+        "partial": "{count}+",
+        "exactLabel": "{count} gösteriliyor, hepsi bu",
+        "partialLabel": "{count} gösteriliyor, dahası var"
+      },
       "identity": {
         "copy": "Tanımlayıcıyı kopyala",
         "copyLabel": "{id} ile başlayan tam tanımlayıcıyı kopyala",
@@ -705,6 +711,12 @@
         "metaDescription": "Platformdaki tüm kampanyalar, her durumda, en yenisi önce.",
         "title": "Kampanyalar",
         "intro": "Platformdaki tüm kampanyalar, en yenisi önce, hangi durumda olursa olsun. İnceleme kuyruğu yalnızca karar bekleyenleri listeler; burası ise kimsenin göndermediği taslaklar ve onaylanıp henüz yayımlanmamış kampanyalar dahil her şeyi listeler."
+      },
+      "campaignPreview": {
+        "metaTitle": "Kampanya önizlemesi",
+        "metaDescription": "Bir kampanya, sayfasının okunduğu hâliyle, her durumda — kararı verecek moderatör için.",
+        "title": "Kampanya önizlemesi",
+        "intro": "Kampanya, herkese açık sayfasının göstereceği hâliyle, hangi durumda olursa olsun. İnceleme kuyruğu buraya bağlanır; çünkü karar bekleyen bir kampanyanın herkese açık sayfası yoktur — ve yalnızca başlığa ve hedef rakamına bakarak verilen karar bir tahmindir."
       }
     },
     "screens": {
@@ -1063,7 +1075,25 @@
         "loadingHistory": "Karar geçmişi yükleniyor",
         "historyEmpty": "Bu şikayete henüz hiçbir şey yapılmadı. Biri onu karara bağladığı anda burada bir satır belirir.",
         "actionBy": "{action} — {actor}",
-        "refused": "Reddedildi"
+        "refused": "Reddedildi",
+        "evidence": {
+          "subject": "şikâyet edilen içerik",
+          "heading": "Neyin şikâyet edildiği",
+          "intro": "Şikâyetin konusu olan içerik, şikâyetten değil platformdan okundu. Kaldırılmış içerik de gösterilir; kaldırılmadan önce açılmış bir şikâyetin yine de karara bağlanması gerekir.",
+          "loading": "Şikâyet edilen içerik yükleniyor",
+          "failedTitle": "Şikâyet edilen içerik okunamadı",
+          "removedTitle": "Bu zaten kaldırılmış",
+          "removedBody": "Şikâyet açıldıktan sonra biri bunu kaldırmış. Şikâyetin yine de karara bağlanabilmesi için burada gösteriliyor — yeniden kaldırmaya gerek yok.",
+          "goneTitle": "Bu artık platformda değil",
+          "goneBody": "Şikâyetin adlandırdığı tanımlayıcı artık yok. Kayıt temizlenmiş ya da yazarın hesabı anonimleştirilmiş olabilir. Şikâyet yine de karara bağlanabilir; okunacak bir şey kalmadı.",
+          "addressedBody": "Bu şikâyet bir metin parçası değil, bir kampanya ya da bir hesap hakkında. Tamamını okumak için açın — sayfaya giden bağlantının yanındaki bir parça, tek başına bağlantıdan kötüdür.",
+          "authorLabel": "Yazan",
+          "campaignLabel": "Kampanya",
+          "writtenLabel": "Yazıldı",
+          "updateNumber": "Güncelleme {number}",
+          "openCampaign": "Kampanyayı aç",
+          "noText": "Bu ögenin kendine ait metni yok."
+        }
       },
       "collections": {
         "subject": "koleksiyonları",
@@ -1821,6 +1851,30 @@
           "SUSPENDED": "Askıya alındı",
           "CANCELED": "İptal edildi"
         }
+      },
+      "campaignPreview": {
+        "subject": "bu kampanya",
+        "loadingPreview": "Kampanya yükleniyor",
+        "notFoundTitle": "Böyle bir kampanya yok",
+        "notFoundBody": "Bu tanımlayıcı bir kampanyayı adlandırmıyor ya da kurucusu silinme bekleme süresinde ve sayfanın atfedecek kimsesi yok.",
+        "backToDirectory": "Kampanyalara dön",
+        "previewNoticeTitle": "Ekip önizlemesi",
+        "previewNoticeBody": "Kampanya, herkese açık sayfasının göstereceği hâliyle, hangi durumda olursa olsun — kurucusunun kimseye göstermediği bir taslak dâhil. Bu ekranda hiçbir şey değişmez: onaylama, reddetme ve askıya alma başka yerdedir ve bu sekmeyi kapatmak hiçbirini kaybettirmez.",
+        "goalLabel": "Hedef",
+        "noGoal": "Henüz belirlenmedi",
+        "raisedLabel": "Toplanan",
+        "backersLabel": "Destekçiler",
+        "filedUnder": "Kategori",
+        "notFiled": "Henüz sınıflandırılmadı",
+        "launchedLabel": "Yayına alındı",
+        "deadlineLabel": "Kapanıyor",
+        "publicPage": "Herkese açık sayfayı aç",
+        "notPublicYet": "Bu kampanyanın mevcut durumunda herkese açık bir sayfası yok.",
+        "storyHeading": "Hikâye",
+        "noStory": "Kurucu henüz yazmadı. Gönderim için gerekli olduğundan, incelemeyi bekleyen bir kampanyada bulunur.",
+        "risksHeading": "Riskler ve zorluklar",
+        "noRisks": "Henüz bir şey yazılmadı. Gönderim için iki yüz karakter gerekir.",
+        "coverAlt": "{title} kapak görseli"
       }
     },
     "moderation": {

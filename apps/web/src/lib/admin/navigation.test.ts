@@ -188,4 +188,27 @@ describe('isCurrentConsoleLink', () => {
     // Opening one collection must not make the rail go blank.
     expect(isCurrentConsoleLink('/admin/curation', '/admin/curation/autumn-picks')).toBe(true);
   });
+
+  it('marks the parent current on every other detail route, not only a collection', () => {
+    /*
+     * #399 generalised the rule. It named `/admin/curation` alone, so a report opened from
+     * the queue and a campaign opened from the review queue both showed nothing as current —
+     * on the two screens somebody arrives at with the queue still in mind and has to get back
+     * to. A named list would have needed a third entry now and a fourth later, and the entry
+     * it eventually forgot would be the one nobody notices.
+     */
+    expect(
+      isCurrentConsoleLink('/admin/moderation', '/admin/moderation/0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0'),
+    ).toBe(true);
+    expect(
+      isCurrentConsoleLink('/admin/campaigns', '/admin/campaigns/0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0'),
+    ).toBe(true);
+  });
+
+  it('still prefers the nested entry over its parent where one exists', () => {
+    // The moderation queue has three nested screens of its own, and each is an entry. The
+    // generalised rule must not start marking two things current on those.
+    expect(isCurrentConsoleLink('/admin/moderation', '/admin/moderation/content')).toBe(false);
+    expect(isCurrentConsoleLink('/admin/moderation/content', '/admin/moderation/content')).toBe(true);
+  });
 });

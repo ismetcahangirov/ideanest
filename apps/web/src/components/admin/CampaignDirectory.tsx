@@ -19,10 +19,12 @@ import {
 import type { ProjectState } from '../../lib/projects/api';
 import type { CampaignDirectoryCopy } from '../../lib/i18n/admin/content-copy';
 import { CopyIdentifier } from './ConsoleIdentity';
+import { localeHref } from '../../i18n/navigation';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 import { formatDate } from '../../lib/time';
 import { formatMoney } from '../../lib/money';
 import type { Locale } from '../../lib/i18n/locale';
+import { ConsoleCount } from './ConsoleCount';
 import { ConsoleRefusal } from './ConsoleRefusal';
 
 /**
@@ -149,7 +151,7 @@ export function CampaignDirectory({ copy }: CampaignDirectoryProps) {
       <h2 id="campaign-directory-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
         {copy.heading}
         {status === 'ready' && (
-          <span className="ml-2 text-xs font-normal text-white/40">{campaigns.length}</span>
+          <ConsoleCount loaded={campaigns.length} more={cursor !== null} copy={copy.count} />
         )}
       </h2>
 
@@ -239,10 +241,17 @@ interface CampaignRowProps {
  * the link to a profile — §17.4 removes the person, not the campaign.
  */
 function CampaignRow({ campaign, locale, copy }: CampaignRowProps) {
-  const href =
-    campaign.creatorSlug == null
-      ? `/${locale}/projects/${encodeURIComponent(campaign.projectId)}`
-      : `/${locale}/projects/${encodeURIComponent(campaign.creatorSlug)}/${encodeURIComponent(campaign.slug)}`;
+  /*
+   * The staff preview, not the public page — issue #399.
+   *
+   * This directory is the one screen that lists campaigns in every state, so the public URL
+   * was a 404 for a good half of the rows on it: a draft, a submission awaiting review, a
+   * rejected campaign and a suspended one all have no public page, and every one of them is
+   * a row here. `/admin/campaigns/{id}` renders the same page a backer would see, whatever
+   * state the campaign is in, and it exists on the console rather than being a wider version
+   * of the public route.
+   */
+  const href = localeHref(`/admin/campaigns/${encodeURIComponent(campaign.projectId)}`, locale);
 
   const started = day(campaign.createdAt, locale);
   const launched = day(campaign.launchedAt, locale);
