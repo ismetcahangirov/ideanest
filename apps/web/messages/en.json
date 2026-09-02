@@ -1086,7 +1086,7 @@
           "removedBody": "Somebody has taken this down since the report was filed. It is shown here so that the complaint can still be decided — it does not need removing again.",
           "goneTitle": "This is no longer on the platform",
           "goneBody": "The identifier the report names no longer exists. It may have been purged, or its author's account anonymised. The complaint can still be decided; there is nothing left to read.",
-          "addressedBody": "This report is about a campaign or an account rather than a piece of text. Open it to read it in full — a fragment beside a link to the page it came from would be worse than the link alone.",
+          "addressedBody": "This report is about a campaign or an account rather than a piece of text. The console names it above and links to it — a fragment of a page beside a link to that page would be worse than the link alone.",
           "authorLabel": "Written by",
           "campaignLabel": "On",
           "writtenLabel": "Written",

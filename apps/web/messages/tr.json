@@ -1086,7 +1086,7 @@
           "removedBody": "Şikâyet açıldıktan sonra biri bunu kaldırmış. Şikâyetin yine de karara bağlanabilmesi için burada gösteriliyor — yeniden kaldırmaya gerek yok.",
           "goneTitle": "Bu artık platformda değil",
           "goneBody": "Şikâyetin adlandırdığı tanımlayıcı artık yok. Kayıt temizlenmiş ya da yazarın hesabı anonimleştirilmiş olabilir. Şikâyet yine de karara bağlanabilir; okunacak bir şey kalmadı.",
-          "addressedBody": "Bu şikâyet bir metin parçası değil, bir kampanya ya da bir hesap hakkında. Tamamını okumak için açın — sayfaya giden bağlantının yanındaki bir parça, tek başına bağlantıdan kötüdür.",
+          "addressedBody": "Bu şikâyet bir metin parçası değil, bir kampanya ya da bir hesap hakkında. Konsol onu yukarıda adlandırır ve ona bağlanır — sayfaya giden bağlantının yanındaki bir parça, tek başına bağlantıdan kötüdür.",
           "authorLabel": "Yazan",
           "campaignLabel": "Kampanya",
           "writtenLabel": "Yazıldı",

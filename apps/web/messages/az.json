@@ -1086,7 +1086,7 @@
           "removedBody": "Şikayət veriləndən sonra kimsə bunu silib. Şikayətin yenə də qərara bağlana bilməsi üçün burada göstərilir — ikinci dəfə silmək lazım deyil.",
           "goneTitle": "Bu artıq platformada yoxdur",
           "goneBody": "Şikayətin göstərdiyi identifikator artıq mövcud deyil. Ya tamamilə təmizlənib, ya da müəllifin hesabı anonimləşdirilib. Şikayət yenə də qərara bağlana bilər; oxunacaq bir şey qalmayıb.",
-          "addressedBody": "Bu şikayət mətn parçası deyil, kampaniya və ya hesab haqqındadır. Tam oxumaq üçün açın — səhifəyə keçidin yanındakı parça keçidin özündən pisdir.",
+          "addressedBody": "Bu şikayət mətn parçası deyil, kampaniya və ya hesab haqqındadır. Konsol onu yuxarıda adlandırır və ona keçid verir — səhifəyə keçidin yanındakı parça keçidin özündən pisdir.",
           "authorLabel": "Müəllif",
           "campaignLabel": "Kampaniya",
           "writtenLabel": "Yazılıb",
