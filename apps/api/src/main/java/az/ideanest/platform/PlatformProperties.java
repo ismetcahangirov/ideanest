@@ -46,27 +46,41 @@ public record PlatformProperties(Flags flags, Health health) {
     /**
      * @param queueDepthWarning how many waiting rows make a queue worth looking at
      * @param queueDepthCritical how many make it worth waking somebody
+     * @param lateJobAfter how far past its due time a job may be before it is late at all —
+     *     issue #405. <strong>Being due is not being late.</strong> A scheduler picks a
+     *     job up in the seconds after its next attempt falls due, so every healthy job on
+     *     the platform spends part of its cycle a few seconds past due; grading those
+     *     amber painted ten of nineteen rows as worth looking at, each of them reading
+     *     "0 minutes late", beside the two that were genuinely days behind and were the
+     *     same colour. A dashboard whose majority is amber for no stated reason is how a
+     *     real one gets missed. One minute, so that the screen's own rounding and the
+     *     severity agree: nothing can be shown as late by zero minutes again
      * @param staleJobAfter how far past its due time a job may be before the screen calls
      *     it late. <strong>Not the same as failed:</strong> a job whose next attempt is
      *     three minutes overdue is a scheduler under load, and one that is three hours
      *     overdue is a scheduler that is not running. Only the second is worth a page,
      *     and a screen that could not tell them apart would be one people stop reading
      */
-    public record Health(int queueDepthWarning, int queueDepthCritical, Duration staleJobAfter) {
+    public record Health(
+            int queueDepthWarning, int queueDepthCritical, Duration lateJobAfter, Duration staleJobAfter) {
 
         private static final int DEFAULT_WARNING = 100;
 
         private static final int DEFAULT_CRITICAL = 1000;
 
+        /** One minute: the smallest lateness the screen can render as a number above zero. */
+        private static final Duration DEFAULT_LATE_AFTER = Duration.ofMinutes(1);
+
         private static final Duration DEFAULT_STALE_AFTER = Duration.ofMinutes(15);
 
         public static Health defaults() {
-            return new Health(DEFAULT_WARNING, DEFAULT_CRITICAL, DEFAULT_STALE_AFTER);
+            return new Health(DEFAULT_WARNING, DEFAULT_CRITICAL, DEFAULT_LATE_AFTER, DEFAULT_STALE_AFTER);
         }
 
         public Health {
             queueDepthWarning = queueDepthWarning == 0 ? DEFAULT_WARNING : queueDepthWarning;
             queueDepthCritical = queueDepthCritical == 0 ? DEFAULT_CRITICAL : queueDepthCritical;
+            lateJobAfter = lateJobAfter == null ? DEFAULT_LATE_AFTER : lateJobAfter;
             staleJobAfter = staleJobAfter == null ? DEFAULT_STALE_AFTER : staleJobAfter;
 
             if (queueDepthWarning < 1 || queueDepthCritical <= queueDepthWarning) {
@@ -74,6 +88,12 @@ public record PlatformProperties(Flags flags, Health health) {
                 // red before amber, which is the shape of a dashboard people learn to
                 // ignore.
                 throw new IllegalArgumentException("Queue thresholds go warning, then critical");
+            }
+            if (lateJobAfter.isNegative() || !lateJobAfter.minus(staleJobAfter).isNegative()) {
+                // The same rule one layer up: amber has to come before red, or the screen
+                // never shows amber at all and the distinction the two thresholds exist to
+                // draw is not drawn.
+                throw new IllegalArgumentException("Job thresholds go late, then stale");
             }
         }
     }

@@ -24,9 +24,22 @@ public class JobQueueDepth implements QueueDepthSource {
         this.clock = clock;
     }
 
+    /**
+     * The queue's name as an identifier, not as a sentence — issue #405.
+     *
+     * <p>This used to answer "Scheduled jobs", which the console rendered verbatim under an
+     * Azerbaijani heading and directly above a section headed "Planlaşdırılmış işlər" — the
+     * Azerbaijani for the same three words. One concept, two languages, one screen.
+     *
+     * <p>A queue name is a machine value: it is a metric tag, and it is the key the console
+     * looks a translated label up under. That is the rule §21.1 and {@code HealthDashboard}
+     * already follow for a job's state and for a capability — the wire word stays the wire
+     * word and the sentence beside it is the reader's. A name a screen can render without a
+     * catalogue is one that can only ever be in one language.
+     */
     @Override
     public String queueName() {
-        return "Scheduled jobs";
+        return "scheduled-jobs";
     }
 
     @Override

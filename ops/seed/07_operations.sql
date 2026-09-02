@@ -471,7 +471,11 @@ INSERT INTO payout_approvals (payout_id, approver_id, approved_at, note) VALUES
   (seed_id('payout:foto'),  seed_id('user:admin'),   now() - interval '153 days', NULL),
   (seed_id('payout:usta'),  seed_id('user:finance'), now() - interval '59 days', 'Sıfır platforma komissiyası təsdiqləndi.'),
   (seed_id('payout:usta'),  seed_id('user:admin'),   now() - interval '58 days', NULL),
-  (seed_id('payout:qab'),   seed_id('user:finance'), now() - interval '2 days', 'Birinci təsdiq. İkinci təsdiq gözlənilir.'),
+  -- #405: a signature's note says why that person signed, and this one used to narrate the
+  -- file's state instead -- "first approval, awaiting the second" -- so it sat unchanged
+  -- under "2 of 2 signatures" as soon as anybody added one. A note about the payout is a
+  -- note that goes stale; a note about the reason does not.
+  (seed_id('payout:qab'),   seed_id('user:finance'), now() - interval '2 days', 'Hesablama yoxlanıldı, komissiyalar uyğundur.'),
   (seed_id('payout:masa'),  seed_id('user:finance'), now() - interval '21 days', NULL),
   (seed_id('payout:masa'),  seed_id('user:admin'),   now() - interval '20 days', NULL)
 ON CONFLICT (payout_id, approver_id) DO NOTHING;

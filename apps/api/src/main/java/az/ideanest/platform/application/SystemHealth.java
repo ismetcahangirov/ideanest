@@ -32,7 +32,9 @@ public record SystemHealth(
     /**
      * One queue and how much is in it.
      *
-     * @param name the table, in the words the console uses — "Outbox", "Emails"
+     * @param name the queue, as an identifier — {@code outbox}, {@code scheduled-jobs}.
+     *     Not a sentence: see {@link az.ideanest.shared.observability.QueueDepthSource#queueName()}
+     *     and issue #405
      * @param waiting rows not yet handled
      * @param dead rows that ran out of attempts. <strong>Counted separately and never
      *     added into {@code waiting}</strong>: a deep queue is a platform under load and a

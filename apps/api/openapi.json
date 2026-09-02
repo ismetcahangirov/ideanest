@@ -401,6 +401,47 @@
         "tags" : [ "admin-curation-controller" ]
       }
     },
+    "/v1/admin/directory" : {
+      "get" : {
+        "operationId" : "consoleDirectoryLookUp",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "account",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid"
+            }
+          }
+        }, {
+          "in" : "query",
+          "name" : "project",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid"
+            }
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Directory"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "console-directory-controller" ]
+      }
+    },
     "/v1/admin/disputes" : {
       "get" : {
         "operationId" : "disputeList",
@@ -10018,6 +10059,23 @@
           }
         }
       },
+      "Directory" : {
+        "type" : "object",
+        "properties" : {
+          "accounts" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Account"
+            }
+          },
+          "projects" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Project"
+            }
+          }
+        }
+      },
       "DisableTwoFactorRequest" : {
         "type" : "object",
         "properties" : {
@@ -12078,6 +12136,28 @@
           }
         },
         "required" : [ "visibility" ]
+      },
+      "Project" : {
+        "type" : "object",
+        "properties" : {
+          "creatorId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "creatorSlug" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
       },
       "ProjectAnalyticsResponse" : {
         "type" : "object",
