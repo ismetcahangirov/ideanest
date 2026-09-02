@@ -67,7 +67,7 @@ export function SupportConsole({ copy }: SupportConsoleProps) {
   );
 
   if (queue.status === 'signed-out' || queue.status === 'forbidden') {
-    return <ConsoleRefusal status={queue.status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={queue.status} capability={queue.capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   return (

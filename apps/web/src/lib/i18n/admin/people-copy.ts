@@ -34,6 +34,15 @@ import type { ConsoleChromeCopy } from './common-copy';
  * not express either.
  */
 export interface UserDirectoryCopy extends ConsoleChromeCopy {
+  /**
+   * What the reader was trying to read, for the shared capability refusal — #400.
+   *
+   * <p>This screen keeps its own not-staff sentence, which names the directory and what
+   * searching it costs. The other 403 is the console's, because "you need
+   * `ADMINISTER_ACCOUNTS`" is the same sentence everywhere and the service supplies the
+   * only part of it that differs.
+   */
+  readonly subject: string;
   readonly signedOutTitle: string;
   readonly signedOutBody: string;
   readonly forbiddenTitle: string;
@@ -93,6 +102,7 @@ export function userDirectoryCopyFrom(
 ): UserDirectoryCopy {
   return {
     ...chrome,
+    subject: t('screens.users.subject'),
     signedOutTitle: t('screens.users.signedOutTitle'),
     signedOutBody: t('screens.users.signedOutBody'),
     forbiddenTitle: t('screens.users.forbiddenTitle'),

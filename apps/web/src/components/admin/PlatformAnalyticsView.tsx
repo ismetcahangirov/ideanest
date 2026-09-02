@@ -67,7 +67,7 @@ export function PlatformAnalyticsView({ copy }: PlatformAnalyticsViewProps) {
   );
 
   if (analytics.status === 'signed-out' || analytics.status === 'forbidden') {
-    return <ConsoleRefusal status={analytics.status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={analytics.status} capability={analytics.capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   return (

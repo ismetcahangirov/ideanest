@@ -78,7 +78,7 @@ export function TaxonomyManager({ copy }: TaxonomyManagerProps) {
   const [error, setError] = useState<string | null>(null);
 
   if (tree.status === 'signed-out' || tree.status === 'forbidden') {
-    return <ConsoleRefusal status={tree.status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={tree.status} capability={tree.capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   async function act(work: () => Promise<unknown>): Promise<void> {

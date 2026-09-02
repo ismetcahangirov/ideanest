@@ -28,6 +28,8 @@ import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import { pluralise } from '../../lib/i18n/plurals';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 import type { UserDirectoryCopy } from '../../lib/i18n/admin/people-copy';
+import { requiredCapabilityFrom } from '../../lib/admin/refusals';
+import { ConsoleRefusal } from './ConsoleRefusal';
 
 type Status = 'loading' | 'ready' | 'failed' | 'signed-out' | 'forbidden';
 
@@ -89,6 +91,8 @@ export interface UserDirectoryProps {
 export function UserDirectory({ copy }: UserDirectoryProps) {
   const locale = useRouteLocale();
   const [status, setStatus] = useState<Status>('loading');
+  // #400: which of the two 403s this is. Only read while `status` is `forbidden`.
+  const [capability, setCapability] = useState<string | null>(null);
   const [term, setTerm] = useState('');
   const [submitted, setSubmitted] = useState('');
   const [suspendedOnly, setSuspendedOnly] = useState(false);
@@ -132,6 +136,7 @@ export function UserDirectory({ copy }: UserDirectoryProps) {
           return;
         }
         if (cause instanceof ApiError && cause.status === 403) {
+          setCapability(requiredCapabilityFrom(cause));
           setStatus('forbidden');
           return;
         }
@@ -246,6 +251,20 @@ export function UserDirectory({ copy }: UserDirectoryProps) {
   }
 
   if (status === 'forbidden') {
+    // Two 403s, and only the first is this screen's — #400. A colleague short of a
+    // capability gets the console's sentence, which names the one the service asked for;
+    // the screen's own words are for somebody who does not work here at all.
+    if (capability != null && capability !== '') {
+      return (
+        <ConsoleRefusal
+          status={status}
+          capability={capability}
+          subject={copy.subject}
+          copy={copy.refusals}
+        />
+      );
+    }
+
     return (
       <InlineAlert variant="info" title={copy.forbiddenTitle}>
         {copy.forbiddenBody}

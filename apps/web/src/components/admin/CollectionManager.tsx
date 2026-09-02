@@ -94,7 +94,7 @@ export function CollectionManager({
   copy,
   note,
 }: CollectionManagerProps) {
-  const { status, collections, error, apply, reload, setError } = useCollections(
+  const { status, collections, error, capability, apply, reload, setError } = useCollections(
     copy.subject,
     copy.refusals,
   );
@@ -110,7 +110,7 @@ export function CollectionManager({
   const [creating, setCreating] = useState(false);
 
   if (status === 'signed-out' || status === 'forbidden') {
-    return <ConsoleRefusal status={status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={status} capability={capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   const visible = only === undefined ? collections : collections.filter(only);

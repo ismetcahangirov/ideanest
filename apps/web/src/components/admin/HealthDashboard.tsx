@@ -50,7 +50,7 @@ export function HealthDashboard({ copy }: HealthDashboardProps) {
   );
 
   if (health.status === 'signed-out' || health.status === 'forbidden') {
-    return <ConsoleRefusal status={health.status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={health.status} capability={health.capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   if (health.status === 'loading') {

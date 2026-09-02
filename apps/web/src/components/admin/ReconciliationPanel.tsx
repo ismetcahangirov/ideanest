@@ -90,7 +90,7 @@ export function ReconciliationPanel({ copy }: ReconciliationPanelProps) {
   }
 
   if (report.status === 'signed-out' || report.status === 'forbidden') {
-    return <ConsoleRefusal status={report.status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={report.status} capability={report.capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   if (report.status === 'loading' && report.data === null) {

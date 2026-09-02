@@ -356,12 +356,16 @@ issue owns it. `lib/admin/navigation.ts` is the single list behind both that pag
 rail, and `navigation.test.ts` asserts the two cannot disagree — a rail entry belonging to no
 module, or a screen in no rail, fails the suite.
 
-**None of those routes is a gate, and none of them may become one.** There is no role model
-in the schema or in the access token, so every endpoint the console calls refuses a caller
-who is not on the configured moderator list and each screen renders that refusal. A check in
-a layout would be a second, weaker copy of one the service already makes correctly, and the
-dangerous direction is the one where the browser says yes. #295 is the issue that replaces
-the list with something a client could honestly read.
+**None of those routes is a gate, and none of them may become one.** Every endpoint the
+console calls checks the caller itself, and answers two different refusals — a stranger is
+told they do not work here, and a colleague is told which capability the screen wanted, in
+`meta.capability`. Each screen renders the one it was given. A check in a layout would be a
+second, weaker copy of one the service already makes correctly, and the dangerous direction
+is the one where the browser says yes.
+
+#295 built the role model this paragraph used to say did not exist. #400 is what it cost to
+keep rendering only the first of the two refusals afterwards: a moderator opening the payout
+queue was told they were not a moderator.
 
 **`/maintenance` has no switch in front of it.** It is a page an edge or a load
 balancer can be pointed at during a planned outage, and nothing in this

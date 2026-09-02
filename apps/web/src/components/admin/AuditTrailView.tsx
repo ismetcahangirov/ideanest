@@ -11,6 +11,7 @@ import {
 } from '../../lib/admin/audit';
 import {
   consoleMessageFor,
+  requiredCapabilityFrom,
   shortId,
   statusFor,
   wasAborted,
@@ -71,6 +72,8 @@ export interface AuditTrailViewProps {
 
 export function AuditTrailView({ copy }: AuditTrailViewProps) {
   const [status, setStatus] = useState<ConsoleStatus>('loading');
+  // #400: which of the two 403s this is. Only read while `status` is `forbidden`.
+  const [capability, setCapability] = useState<string | null>(null);
   const [entityType, setEntityType] = useState<string | null>(null);
   const [entries, setEntries] = useState<readonly AuditEntry[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -99,6 +102,7 @@ export function AuditTrailView({ copy }: AuditTrailViewProps) {
         if (controller.signal.aborted || wasAborted(cause)) return;
 
         const next = statusFor(cause);
+        setCapability(requiredCapabilityFrom(cause));
         if (next === 'failed') setError(consoleMessageFor(cause, copy.subject, copy.refusals));
         setStatus(next);
       }
@@ -128,7 +132,7 @@ export function AuditTrailView({ copy }: AuditTrailViewProps) {
   }, [cursor, entityType, loadingMore, copy]);
 
   if (status === 'signed-out' || status === 'forbidden') {
-    return <ConsoleRefusal status={status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={status} capability={capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   return (

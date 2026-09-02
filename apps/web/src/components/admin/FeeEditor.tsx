@@ -76,7 +76,7 @@ export function FeeEditor({ copy }: FeeEditorProps) {
   const [written, setWritten] = useState<string | null>(null);
 
   if (history.status === 'signed-out' || history.status === 'forbidden') {
-    return <ConsoleRefusal status={history.status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={history.status} capability={history.capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   async function replace(event: React.FormEvent): Promise<void> {

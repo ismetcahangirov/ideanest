@@ -190,6 +190,6 @@ describe('the reconciliation panel', () => {
 
     render(<ReconciliationPanel copy={COPY} />);
 
-    expect(await screen.findByText(/Not a moderator/i)).toBeInTheDocument();
+    expect(await screen.findByText(/You do not work here/i)).toBeInTheDocument();
   });
 });

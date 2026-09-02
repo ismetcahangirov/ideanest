@@ -420,7 +420,7 @@
       "metaDescription": "The platform modules, which of them have a screen, and what the rest wait on.",
       "standfirst": "The {total} modules §4.11 describes. {built} of them have a screen; the rest say what they are waiting for, because a backlog that reads as though the console were nearly finished is worse than one that names the gap.",
       "issue": "Issue #{issue}",
-      "footnote": "No screen here is a gate. Until there is a role model in the access token, every endpoint the console calls refuses a caller who is not platform staff, and each screen renders that refusal — a check in the browser would be a second, weaker copy of one the service already makes correctly."
+      "footnote": "No screen here is a gate. Every endpoint the console calls checks the caller itself — refusing a stranger as a stranger, and a colleague by the capability the screen wanted — and each screen renders that refusal as it arrived. A check in the browser would be a second, weaker copy of one the service already makes correctly."
     },
     "modules": {
       "AD-01": {
@@ -500,10 +500,12 @@
     "refusals": {
       "signedOutTitle": "You are signed out",
       "signedOutBody": "This browser no longer has a session. Sign in again to read {subject}.",
-      "forbiddenTitle": "Not a moderator",
-      "forbiddenBody": "The console is read by platform staff, and your account is not on the configured moderator list. There is no role model in the access token yet, so that list is the whole of the check.",
+      "forbiddenTitle": "You do not work here",
+      "forbiddenBody": "The console is read by platform staff, and your account holds no platform role. This is not a fault — the service refuses every screen behind it.",
       "notStaff": "Your account does not work on this platform, so {subject} is not yours to read.",
       "needsCapability": "Reading {subject} needs {capability}, which your roles do not include.",
+      "capabilityTitle": "This screen is not yours",
+      "capabilityAsk": "An administrator can grant it.",
       "unknownLedgerAccount": "That is not one of the platform ledger accounts.",
       "collectionNotFound": "That collection no longer exists. It may have been renamed since this page was loaded.",
       "collectionSlugTaken": "A collection already uses that handle. Handles are permanent, so pick another.",
@@ -868,10 +870,11 @@
         "live": "Live"
       },
       "moderationQueue": {
+        "subject": "the moderation queue",
         "signedOutTitle": "You are signed out",
         "signedOutBody": "This browser no longer has a session. Sign in again to read the moderation queue.",
-        "forbiddenTitle": "Not a moderator",
-        "forbiddenBody": "The report queue is read and cleared by platform staff. Your account is not on the configured moderator list.",
+        "forbiddenTitle": "You do not work here",
+        "forbiddenBody": "The report queue is read and cleared by platform staff, and your account holds no platform role.",
         "notStaff": "Your account is not on the platform moderator list, so this queue is not yours to clear.",
         "transitionNotAllowed": "That campaign is not in a state this outcome can be reached from.",
         "transitionNotAllowedFrom": "That campaign is {state}, and this outcome cannot be reached from there. The report itself is still yours to uphold or dismiss.",
@@ -1108,10 +1111,11 @@
         "noTags": "No creator has used a tag yet."
       },
       "users": {
+        "subject": "the account directory",
         "signedOutTitle": "You are signed out",
         "signedOutBody": "This browser no longer has a session. Sign in again to read the account directory.",
-        "forbiddenTitle": "Not a moderator",
-        "forbiddenBody": "Accounts are searched and suspended by platform staff. Your account is not on the configured moderator list.",
+        "forbiddenTitle": "You do not work here",
+        "forbiddenBody": "Accounts are searched and suspended by platform staff, and your account holds no platform role.",
         "notStaff": "Your account is not on the platform moderator list, so the account directory is not yours to read.",
         "accountNotFound": "That account no longer exists. It may have been deleted since this page was loaded.",
         "selfSuspend": "An account cannot suspend itself. Ask another moderator.",

@@ -65,7 +65,7 @@ export interface OpenCallManagerProps {
 }
 
 export function OpenCallManager({ copy }: OpenCallManagerProps) {
-  const { status, collections, error, apply, reload, setError } = useCollections(
+  const { status, collections, error, capability, apply, reload, setError } = useCollections(
     copy.subject,
     copy.refusals,
   );
@@ -73,7 +73,7 @@ export function OpenCallManager({ copy }: OpenCallManagerProps) {
   const [notice, setNotice] = useState<string | null>(null);
 
   if (status === 'signed-out' || status === 'forbidden') {
-    return <ConsoleRefusal status={status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={status} capability={capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   const openCalls = collections.filter((collection) => collection.kind === 'open_call');

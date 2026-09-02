@@ -23,6 +23,7 @@ import {
 } from '../../lib/admin/ledger';
 import {
   consoleMessageFor,
+  requiredCapabilityFrom,
   shortId,
   statusFor,
   wasAborted,
@@ -79,6 +80,8 @@ export interface LedgerExplorerProps {
 export function LedgerExplorer({ copy }: LedgerExplorerProps) {
   const locale = useRouteLocale();
   const [status, setStatus] = useState<ConsoleStatus>('loading');
+  // #400: which of the two 403s this is. Only read while `status` is `forbidden`.
+  const [capability, setCapability] = useState<string | null>(null);
   const [account, setAccount] = useState<string | null>(null);
   const [term, setTerm] = useState('');
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -112,6 +115,7 @@ export function LedgerExplorer({ copy }: LedgerExplorerProps) {
         if (controller.signal.aborted || wasAborted(cause)) return;
 
         const next = statusFor(cause);
+        setCapability(requiredCapabilityFrom(cause));
         if (next === 'failed') setError(consoleMessageFor(cause, copy.subject, copy.refusals));
         setStatus(next);
       }
@@ -140,7 +144,7 @@ export function LedgerExplorer({ copy }: LedgerExplorerProps) {
   }, [account, cursor, loadingMore, projectId, copy]);
 
   if (status === 'signed-out' || status === 'forbidden') {
-    return <ConsoleRefusal status={status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={status} capability={capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   function submit(event: React.FormEvent): void {

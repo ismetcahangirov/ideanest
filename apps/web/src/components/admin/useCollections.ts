@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { listCollections, type AdminCollection } from '../../lib/admin/curation';
 import {
   consoleMessageFor,
+  requiredCapabilityFrom,
   statusFor,
   wasAborted,
   type ConsoleStatus,
@@ -14,6 +15,8 @@ export interface Collections {
   readonly status: ConsoleStatus;
   readonly collections: readonly AdminCollection[];
   readonly error: string | null;
+  /** The capability a 403 named, for `ConsoleRefusal` — #400. Read only when refused. */
+  readonly capability: string | null;
   /** Puts the service's own version of one collection back into the list. */
   readonly apply: (updated: AdminCollection) => void;
   /** Re-reads the whole list, for a change that can reorder it. */
@@ -56,6 +59,7 @@ export function useCollections(subject: string, refusals: ConsoleRefusalsCopy): 
   const [status, setStatus] = useState<ConsoleStatus>('loading');
   const [collections, setCollections] = useState<readonly AdminCollection[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [capability, setCapability] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -75,6 +79,7 @@ export function useCollections(subject: string, refusals: ConsoleRefusalsCopy): 
 
         const next = statusFor(cause);
         if (next === 'failed') setError(consoleMessageFor(cause, subject, refusals));
+        setCapability(requiredCapabilityFrom(cause));
         setStatus(next);
       }
     }
@@ -95,5 +100,5 @@ export function useCollections(subject: string, refusals: ConsoleRefusalsCopy): 
     setAttempt((n) => n + 1);
   }, []);
 
-  return { status, collections, error, apply, reload, setError };
+  return { status, collections, error, capability, apply, reload, setError };
 }

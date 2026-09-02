@@ -420,7 +420,7 @@
       "metaDescription": "Platform modülleri, hangilerinin ekranı var ve geri kalanı neyi bekliyor.",
       "standfirst": "§4.11 bölümünün tarif ettiği {total} modül. Bunlardan {built} tanesinin bir ekranı var; geri kalanı neyi beklediğini söylüyor, çünkü konsolu neredeyse bitmiş gibi gösteren bir liste, boşluğu adıyla anan bir listeden kötüdür.",
       "issue": "Konu #{issue}",
-      "footnote": "Buradaki hiçbir ekran bir kapı değil. Erişim jetonunda bir rol modeli olana dek konsolun çağırdığı her uç nokta, platform çalışanı olmayan bir çağıranı reddeder ve her ekran bu reddi gösterir — tarayıcıdaki bir denetim, servisin zaten doğru yaptığı denetimin ikinci ve daha zayıf bir kopyası olurdu."
+      "footnote": "Buradaki hiçbir ekran bir kapı değil. Konsolun çağırdığı her uç nokta çağıranı kendisi denetler — yabancıyı yabancı olarak, çalışanı ise ekranın istediği yetkiye göre reddeder — ve her ekran bu reddi geldiği gibi gösterir. Tarayıcıdaki bir denetim, servisin zaten doğru yaptığı denetimin ikinci ve daha zayıf bir kopyası olurdu."
     },
     "modules": {
       "AD-01": {
@@ -500,10 +500,12 @@
     "refusals": {
       "signedOutTitle": "Oturumunuz kapalı",
       "signedOutBody": "Bu tarayıcının artık bir oturumu yok. {subject} okumak için yeniden giriş yapın.",
-      "forbiddenTitle": "Moderatör değilsiniz",
-      "forbiddenBody": "Konsolu platform ekibi okur ve hesabınız yapılandırılmış moderatör listesinde değil. Erişim belirtecinde henüz bir rol modeli yok, dolayısıyla denetimin tamamı bu listedir.",
+      "forbiddenTitle": "Burada çalışmıyorsunuz",
+      "forbiddenBody": "Konsolu platform ekibi okur ve hesabınız hiçbir platform rolü taşımıyor. Bu bir hata değil — servis bunun arkasındaki her ekranı reddeder.",
       "notStaff": "Hesabınız bu platformda çalışmıyor, bu yüzden {subject} okumak size düşmez.",
       "needsCapability": "{subject} okumak için {capability} gerekir, rolleriniz ise bunu içermiyor.",
+      "capabilityTitle": "Bu ekran size ait değil",
+      "capabilityAsk": "Bunu bir yönetici verebilir.",
       "unknownLedgerAccount": "Bu, platform defteri hesaplarından biri değil.",
       "collectionNotFound": "Bu koleksiyon artık yok. Sayfa yüklendiğinden beri adı değiştirilmiş olabilir.",
       "collectionSlugTaken": "Bu kısa adı zaten bir koleksiyon kullanıyor. Kısa adlar kalıcıdır, bu yüzden başka birini seçin.",
@@ -868,10 +870,11 @@
         "live": "Yayında"
       },
       "moderationQueue": {
+        "subject": "moderasyon kuyruğunu",
         "signedOutTitle": "Oturumunuz kapalı",
         "signedOutBody": "Bu tarayıcının artık bir oturumu yok. Moderasyon kuyruğunu okumak için yeniden giriş yapın.",
-        "forbiddenTitle": "Moderatör değilsiniz",
-        "forbiddenBody": "Şikayet kuyruğunu platform ekibi okur ve temizler. Hesabınız yapılandırılmış moderatör listesinde değil.",
+        "forbiddenTitle": "Burada çalışmıyorsunuz",
+        "forbiddenBody": "Şikayet kuyruğunu platform ekibi okur ve temizler, hesabınız ise hiçbir platform rolü taşımıyor.",
         "notStaff": "Hesabınız platformun moderatör listesinde değil, bu yüzden bu kuyruğu temizlemek size düşmez.",
         "transitionNotAllowed": "O kampanya, bu sonuca geçilebilecek bir durumda değil.",
         "transitionNotAllowedFrom": "O kampanya {state} durumunda ve bu sonuca oradan geçilemez. Şikayetin kendisini kabul etmek ya da reddetmek hâlâ size düşer.",
@@ -1108,10 +1111,11 @@
         "noTags": "Henüz hiçbir yaratıcı etiket kullanmadı."
       },
       "users": {
+        "subject": "hesap dizinini",
         "signedOutTitle": "Oturumunuz kapalı",
         "signedOutBody": "Bu tarayıcının artık bir oturumu yok. Hesap dizinini okumak için yeniden giriş yapın.",
-        "forbiddenTitle": "Moderatör değilsiniz",
-        "forbiddenBody": "Hesapları platform ekibi arar ve askıya alır. Hesabınız yapılandırılmış moderatör listesinde değil.",
+        "forbiddenTitle": "Burada çalışmıyorsunuz",
+        "forbiddenBody": "Hesapları platform ekibi arar ve askıya alır, hesabınız ise hiçbir platform rolü taşımıyor.",
         "notStaff": "Hesabınız platformun moderatör listesinde değil, bu yüzden hesap dizinini okumak size düşmez.",
         "accountNotFound": "Bu hesap artık yok. Sayfa yüklendiğinden beri silinmiş olabilir.",
         "selfSuspend": "Bir hesap kendini askıya alamaz. Başka bir moderatöre sorun.",

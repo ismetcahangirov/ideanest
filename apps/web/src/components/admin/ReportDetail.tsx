@@ -7,6 +7,7 @@ import { ApiError } from '../../lib/api/problem';
 import { actionLabel, readTrail, type AuditEntry } from '../../lib/admin/audit';
 import {
   consoleMessageFor,
+  requiredCapabilityFrom,
   shortId,
   statusFor,
   wasAborted,
@@ -75,6 +76,8 @@ export interface ReportDetailProps {
 export function ReportDetail({ reportId, copy }: ReportDetailProps) {
   const locale = useRouteLocale();
   const [status, setStatus] = useState<ConsoleStatus>('loading');
+  // #400: which of the two 403s this is. Only read while `status` is `forbidden`.
+  const [capability, setCapability] = useState<string | null>(null);
   const [report, setReport] = useState<QueuedReport | null>(null);
   const [history, setHistory] = useState<readonly AuditEntry[] | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -128,6 +131,7 @@ export function ReportDetail({ reportId, copy }: ReportDetailProps) {
           return;
         }
         const next = statusFor(cause);
+        setCapability(requiredCapabilityFrom(cause));
         if (next === 'failed') setError(consoleMessageFor(cause, copy.subject, copy.refusals));
         setStatus(next);
       }
@@ -177,7 +181,7 @@ export function ReportDetail({ reportId, copy }: ReportDetailProps) {
   }
 
   if (status === 'signed-out' || status === 'forbidden') {
-    return <ConsoleRefusal status={status} subject={copy.subject} copy={copy.refusals} />;
+    return <ConsoleRefusal status={status} capability={capability} subject={copy.subject} copy={copy.refusals} />;
   }
 
   if (status === 'loading') {

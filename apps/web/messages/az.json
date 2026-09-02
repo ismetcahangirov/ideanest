@@ -420,7 +420,7 @@
       "metaDescription": "Platforma modulları, hansılarının ekranı var və qalanların nəyi gözlədiyi.",
       "standfirst": "§4.11-in təsvir etdiyi {total} modul. Onlardan {built} ədədinin ekranı var; qalanları nəyi gözlədiyini bildirir, çünki konsolun az qala bitdiyi təəssüratını yaradan siyahı, boşluğu adı ilə çağıran siyahıdan pisdir.",
       "issue": "Məsələ #{issue}",
-      "footnote": "Buradakı heç bir ekran keçid nəzarəti deyil. Giriş tokenində rol modeli olana qədər konsolun müraciət etdiyi hər son nöqtə platforma işçisi olmayan çağırışı rədd edir və hər ekran həmin rəddi göstərir — brauzerdəki yoxlama, xidmətin onsuz da düzgün etdiyi yoxlamanın ikinci, daha zəif surəti olardı."
+      "footnote": "Buradakı heç bir ekran keçid nəzarəti deyil. Konsolun müraciət etdiyi hər son nöqtə çağırışı özü yoxlayır — işçi olmayanı rədd edir, işçini isə ekranın tələb etdiyi səlahiyyətə görə — və hər ekran həmin rəddi olduğu kimi göstərir. Brauzerdəki yoxlama, xidmətin onsuz da düzgün etdiyi yoxlamanın ikinci, daha zəif surəti olardı."
     },
     "modules": {
       "AD-01": {
@@ -500,10 +500,12 @@
     "refusals": {
       "signedOutTitle": "Sessiyanız bitib",
       "signedOutBody": "Bu brauzerin artıq sessiyası yoxdur. {subject} oxumaq üçün yenidən daxil olun.",
-      "forbiddenTitle": "Moderator deyilsiniz",
-      "forbiddenBody": "Konsolu platforma işçiləri oxuyur və hesabınız konfiqurasiya edilmiş moderator siyahısında deyil. Giriş tokenində hələ rol modeli yoxdur, ona görə yoxlamanın hamısı həmin siyahıdır.",
+      "forbiddenTitle": "Siz burada işləmirsiniz",
+      "forbiddenBody": "Konsolu platforma işçiləri oxuyur və hesabınız heç bir platforma rolu daşımır. Bu, səhv deyil — xidmət bunun arxasındakı hər ekranı rədd edir.",
       "notStaff": "Hesabınız bu platformada işləmir, ona görə {subject} oxumaq sizə aid deyil.",
       "needsCapability": "{subject} oxumaq üçün {capability} lazımdır, rollarınız isə onu daxil etmir.",
+      "capabilityTitle": "Bu ekran sizə aid deyil",
+      "capabilityAsk": "Bunu administrator verə bilər.",
       "unknownLedgerAccount": "Bu, platformanın baş kitab hesablarından biri deyil.",
       "collectionNotFound": "Bu kolleksiya artıq mövcud deyil. Səhifə yüklənəndən bəri adı dəyişdirilmiş ola bilər.",
       "collectionSlugTaken": "Bu qısa adı artıq bir kolleksiya istifadə edir. Qısa adlar daimidir, ona görə başqasını seçin.",
@@ -868,10 +870,11 @@
         "live": "Canlı"
       },
       "moderationQueue": {
+        "subject": "moderasiya növbəsini",
         "signedOutTitle": "Sessiyanız bitib",
         "signedOutBody": "Bu brauzerin artıq sessiyası yoxdur. Moderasiya növbəsini oxumaq üçün yenidən daxil olun.",
-        "forbiddenTitle": "Moderator deyilsiniz",
-        "forbiddenBody": "Şikayət növbəsini platforma işçiləri oxuyur və təmizləyir. Hesabınız konfiqurasiya edilmiş moderator siyahısında deyil.",
+        "forbiddenTitle": "Siz burada işləmirsiniz",
+        "forbiddenBody": "Şikayət növbəsini platforma işçiləri oxuyur və təmizləyir. Hesabınız isə heç bir platforma rolu daşımır.",
         "notStaff": "Hesabınız platformanın moderator siyahısında deyil, ona görə bu növbəni təmizləmək sizə aid deyil.",
         "transitionNotAllowed": "O kampaniya bu nəticəyə keçilə bilən vəziyyətdə deyil.",
         "transitionNotAllowedFrom": "O kampaniya {state} vəziyyətindədir və bu nəticəyə oradan keçmək olmur. Şikayətin özünü təsdiqləmək və ya rədd etmək hələ də sizin işinizdir.",
@@ -1108,10 +1111,11 @@
         "noTags": "Hələ heç bir yaradıcı teq istifadə etməyib."
       },
       "users": {
+        "subject": "hesab kataloqunu",
         "signedOutTitle": "Sessiyanız bitib",
         "signedOutBody": "Bu brauzerin artıq sessiyası yoxdur. Hesab kataloqunu oxumaq üçün yenidən daxil olun.",
-        "forbiddenTitle": "Moderator deyilsiniz",
-        "forbiddenBody": "Hesabları platforma işçiləri axtarır və dayandırır. Hesabınız konfiqurasiya edilmiş moderator siyahısında deyil.",
+        "forbiddenTitle": "Siz burada işləmirsiniz",
+        "forbiddenBody": "Hesabları platforma işçiləri axtarır və dayandırır. Hesabınız isə heç bir platforma rolu daşımır.",
         "notStaff": "Hesabınız platformanın moderator siyahısında deyil, ona görə hesab kataloqunu oxumaq sizə aid deyil.",
         "accountNotFound": "Bu hesab artıq mövcud deyil. Səhifə yüklənəndən bəri silinmiş ola bilər.",
         "selfSuspend": "Hesab özünü dayandıra bilməz. Başqa moderatordan xahiş edin.",
