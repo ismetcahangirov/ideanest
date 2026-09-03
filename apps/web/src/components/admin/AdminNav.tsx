@@ -28,6 +28,24 @@ import type { AdminShellCopy } from '../../lib/i18n/admin-copy';
  * docs/ui-kit.md §9.2 forbids colour alone. The current entry is white on `--surface-2` with
  * a lime rule down its leading edge, and it is the `aria-current` a screen reader reads.
  *
+ * <h2>It scrolls on its own Y axis, and here it had to</h2>
+ *
+ * The fix `AccountNav` took in #349, applied to the rail that needed it more. `sticky` pins
+ * this below the header and keeps it there while the page moves, which is the point of it;
+ * the consequence was that a rail taller than the viewport had a bottom nobody could reach.
+ * Scrolling the page moved the screen on the right and left the rail exactly where it was.
+ *
+ * <p>The account rail has thirteen destinations and could hide its last group on a short
+ * laptop. This one has **twenty-six across six groups** — `CONSOLE_GROUPS` is the whole
+ * console — so on any ordinary viewport the last group or two were unreachable by
+ * construction rather than at a particular zoom level. Support, the staff roster and the
+ * health board sat below the fold of a container that does not scroll.
+ *
+ * <p>`100dvh` and not `100vh`: the dynamic unit tracks a collapsing browser toolbar, and
+ * `vh` would size the rail to a viewport the reader does not have. `overscroll-contain` is
+ * the half that makes it independent rather than merely scrollable — without it, reaching the
+ * end of the rail hands the wheel to the page and scrolls the screen nobody was looking at.
+ *
  * <h2>Motion: none</h2>
  *
  * docs/motion-system.md §5 gives an administrative surface the same budget as account
@@ -43,8 +61,26 @@ export function AdminNav({ copy }: AdminNavProps) {
   const pathname = usePathname();
 
   return (
-    <nav aria-label={copy.navLabel} className="lg:sticky lg:top-8">
-      <ul className="flex list-none gap-x-6 gap-y-8 overflow-x-auto pb-2 lg:flex-col lg:overflow-visible lg:pb-0">
+    <nav
+      aria-label={copy.navLabel}
+      className={[
+        'lg:sticky lg:top-8',
+        /*
+          The rail is its own scroll container above the breakpoint — see the docblock. The
+          offset is the `top-8` above it (2rem) plus 2rem, so the last entry does not sit
+          flush against the bottom edge of the viewport.
+        */
+        'lg:max-h-[calc(100dvh-4rem)] lg:overflow-y-auto lg:overscroll-contain',
+        /*
+          Room for the focus ring, which the scroll container would otherwise clip. The links
+          take `outline-2 outline-offset-2` — four pixels outside their own box — and
+          docs/ui-kit.md §9.3 requires it visible on every interactive element. The negative
+          margin gives the padding back, so nothing moves.
+        */
+        'lg:-mx-1 lg:px-1',
+      ].join(' ')}
+    >
+      <ul className="flex list-none gap-x-6 gap-y-8 overflow-x-auto pb-2 lg:flex-col lg:overflow-visible lg:pb-1">
         {CONSOLE_GROUPS.map((group) => (
           <li key={group.heading} className="min-w-max lg:min-w-0">
             <h2 className="px-3 text-xs font-medium tracking-[0.08em] text-white/40 uppercase">
