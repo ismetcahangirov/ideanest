@@ -70,6 +70,9 @@ export interface PaymentLogCopy extends ConsoleChromeCopy {
   readonly scopePledge: string;
   readonly search: string;
   readonly clear: string;
+  /** The chip row's accessible name — issue #404's outcome filter. */
+  readonly outcomeLabel: string;
+  readonly everyOutcome: string;
   readonly loadingList: string;
   readonly emptyTitle: string;
   readonly emptyBody: string;
@@ -102,6 +105,8 @@ export function paymentLogCopyFrom(
     scopePledge: t('screens.payments.scopePledge'),
     search: t('screens.payments.search'),
     clear: t('screens.payments.clear'),
+    outcomeLabel: t('screens.payments.outcomeLabel'),
+    everyOutcome: t('screens.payments.everyOutcome'),
     loadingList: t('screens.payments.loadingList'),
     emptyTitle: t('screens.payments.emptyTitle'),
     emptyBody: t('screens.payments.emptyBody'),

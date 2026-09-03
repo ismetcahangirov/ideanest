@@ -5,11 +5,13 @@ import { ApiError } from '../../lib/api/problem';
 import { readTrail } from '../../lib/admin/audit';
 import { listCollections, replaceCollection } from '../../lib/admin/curation';
 import { readLedger } from '../../lib/admin/ledger';
+import { readPaymentLog } from '../../lib/admin/payments';
 import type { AdminCollection } from '../../lib/admin/curation';
 import type { LedgerView } from '../../lib/admin/ledger';
 import { AuditTrailView } from './AuditTrailView';
 import { BadgeManager } from './BadgeManager';
 import { LedgerExplorer } from './LedgerExplorer';
+import { PaymentLogView } from './PaymentLogView';
 import { translatorFor } from '../../test-copy';
 import {
   consoleChromeCopyFrom,
@@ -18,7 +20,7 @@ import {
 import { curationChromeFrom } from '../../lib/i18n/admin/curation-copy';
 import { badgeManagerCopyFrom } from '../../lib/i18n/admin/curation-copy';
 import { auditTrailCopyFrom } from '../../lib/i18n/admin/platform-copy';
-import { ledgerExplorerCopyFrom } from '../../lib/i18n/admin/money-copy';
+import { ledgerExplorerCopyFrom, paymentLogCopyFrom } from '../../lib/i18n/admin/money-copy';
 
 /*
  * The copy is built from `messages/en.json` with the same builders the routes call, rather
@@ -30,6 +32,7 @@ const ADMIN = translatorFor('admin');
 const CHROME = consoleChromeCopyFrom(ADMIN, translatorFor('common'));
 const AUDIT = auditTrailCopyFrom(ADMIN, CHROME);
 const LEDGER = ledgerExplorerCopyFrom(ADMIN, CHROME);
+const PAYMENTS = paymentLogCopyFrom(ADMIN, CHROME);
 const BADGES = badgeManagerCopyFrom(ADMIN, curationChromeFrom(ADMIN, CHROME));
 const NOTE = noteDialogCopyFrom(ADMIN, translatorFor('common'));
 
@@ -43,6 +46,11 @@ vi.mock('../../lib/admin/ledger', async (importOriginal) => {
   return { ...actual, readLedger: vi.fn() };
 });
 
+vi.mock('../../lib/admin/payments', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/admin/payments')>();
+  return { ...actual, readPaymentLog: vi.fn() };
+});
+
 vi.mock('../../lib/admin/curation', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../lib/admin/curation')>();
   return { ...actual, listCollections: vi.fn(), replaceCollection: vi.fn() };
@@ -50,6 +58,7 @@ vi.mock('../../lib/admin/curation', async (importOriginal) => {
 
 const readTrailMock = vi.mocked(readTrail);
 const readLedgerMock = vi.mocked(readLedger);
+const readPaymentLogMock = vi.mocked(readPaymentLog);
 const listCollectionsMock = vi.mocked(listCollections);
 const replaceCollectionMock = vi.mocked(replaceCollection);
 
@@ -100,6 +109,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   readTrailMock.mockResolvedValue({ entries: [], nextCursor: null });
   readLedgerMock.mockResolvedValue(ledgerView());
+  readPaymentLogMock.mockResolvedValue({ transactions: [], nextCursor: null });
   listCollectionsMock.mockResolvedValue([collection()]);
 });
 
@@ -217,6 +227,125 @@ describe('the audit trail', () => {
     render(<AuditTrailView copy={AUDIT} />);
 
     expect(await screen.findByText('Nothing has been recorded yet')).toBeInTheDocument();
+  });
+
+  it('narrows to a day, in the reader\u2019s timezone rather than in UTC — #404', async () => {
+    const user = userEvent.setup();
+    render(<AuditTrailView copy={AUDIT} />);
+    await screen.findByRole('button', { name: 'Everything' });
+
+    await user.type(screen.getByLabelText(AUDIT.fromLabel), '2026-09-02');
+    await user.type(screen.getByLabelText(AUDIT.toLabel), '2026-09-02');
+
+    /*
+     * "What did this person do last Tuesday" is the question an audit log exists to answer,
+     * and until #404 the only way to ask it was to page until the dates stopped being
+     * interesting. The upper bound is the NEXT midnight, which is what makes "the 2nd to the
+     * 2nd" one whole day rather than one instant.
+     */
+    await waitFor(() => {
+      const asked = readTrailMock.mock.calls.at(-1)?.[0];
+      expect(asked?.from).toBe(new Date(2026, 8, 2).toISOString());
+      expect(asked?.to).toBe(new Date(2026, 8, 3).toISOString());
+    });
+  });
+
+  it('clears the range back to the whole trail', async () => {
+    const user = userEvent.setup();
+    render(<AuditTrailView copy={AUDIT} />);
+    await screen.findByRole('button', { name: 'Everything' });
+
+    await user.type(screen.getByLabelText(AUDIT.fromLabel), '2026-09-02');
+    await waitFor(() =>
+      expect(readTrailMock.mock.calls.at(-1)?.[0]?.from).not.toBeNull(),
+    );
+
+    await user.click(screen.getByRole('button', { name: AUDIT.clearDates }));
+
+    await waitFor(() => {
+      const asked = readTrailMock.mock.calls.at(-1)?.[0];
+      expect(asked?.from).toBeNull();
+      expect(asked?.to).toBeNull();
+    });
+  });
+
+  it('offers the range and the actor as controls, which it never did before #404', async () => {
+    render(<AuditTrailView copy={AUDIT} />);
+    await screen.findByRole('button', { name: 'Everything' });
+
+    /*
+     * The service has accepted `actorId` since #314 and the screen offered no way to set
+     * one, so the trail's central question was reachable only by editing the URL.
+     */
+    expect(screen.getByLabelText(AUDIT.actorPicker.label)).toBeInTheDocument();
+    expect(screen.getByLabelText(AUDIT.fromLabel)).toBeInTheDocument();
+    expect(screen.getByLabelText(AUDIT.toLabel)).toBeInTheDocument();
+  });
+
+  it('says nothing matched rather than that nothing has ever happened', async () => {
+    const user = userEvent.setup();
+    render(<AuditTrailView copy={AUDIT} />);
+    await screen.findByRole('button', { name: 'Everything' });
+
+    await user.type(screen.getByLabelText(AUDIT.fromLabel), '2026-09-02');
+
+    // An empty page under a filter is "nothing matches"; the unfiltered sentence would be a
+    // statement about the platform, and a false one.
+    expect(await screen.findByText(AUDIT.filteredTitle)).toBeInTheDocument();
+    expect(screen.queryByText(AUDIT.emptyTitle)).not.toBeInTheDocument();
+  });
+});
+
+describe('the payment log', () => {
+  it('asks the service for one outcome rather than narrowing the page it holds', async () => {
+    const user = userEvent.setup();
+    render(<PaymentLogView copy={PAYMENTS} />);
+    await screen.findByRole('button', { name: PAYMENTS.everyOutcome });
+
+    await user.click(screen.getByRole('button', { name: PAYMENTS.status.FAILED }));
+
+    /*
+     * #404: the log's own description promises it includes rejected calls, failed provider
+     * calls are the main reason anybody opens the screen, and they were the one view it
+     * could not select. V63's index is what made the filter affordable.
+     */
+    await waitFor(() =>
+      expect(readPaymentLogMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ status: 'FAILED' }),
+      ),
+    );
+  });
+
+  it('goes back to every outcome, and does not leave the chip selected', async () => {
+    const user = userEvent.setup();
+    render(<PaymentLogView copy={PAYMENTS} />);
+    await screen.findByRole('button', { name: PAYMENTS.everyOutcome });
+
+    await user.click(screen.getByRole('button', { name: PAYMENTS.status.FAILED }));
+    await waitFor(() =>
+      expect(readPaymentLogMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ status: 'FAILED' }),
+      ),
+    );
+
+    await user.click(screen.getByRole('button', { name: PAYMENTS.everyOutcome }));
+
+    await waitFor(() =>
+      expect(readPaymentLogMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ status: null }),
+      ),
+    );
+  });
+
+  it('says no calls matched rather than that nothing has been charged', async () => {
+    const user = userEvent.setup();
+    render(<PaymentLogView copy={PAYMENTS} />);
+    await screen.findByRole('button', { name: PAYMENTS.everyOutcome });
+
+    await user.click(screen.getByRole('button', { name: PAYMENTS.status.PENDING }));
+
+    expect(await screen.findByText(PAYMENTS.filteredTitle)).toBeInTheDocument();
+    expect(screen.queryByText(PAYMENTS.emptyTitle)).not.toBeInTheDocument();
   });
 });
 

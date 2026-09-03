@@ -85,14 +85,53 @@ export async function readTicketQueue(page = 0, signal?: AbortSignal): Promise<T
   return (await response.json()) as TicketPage;
 }
 
-/** Everything, newest first, optionally narrowed to one state. */
+/**
+ * What the list may be narrowed by — issue #404.
+ *
+ * <p>The three things every row already displayed and none of which could be filtered:
+ * §4.11's four states, the four priorities staff set, and who is handling it. The screen's own
+ * copy explains that priority is a decision staff take, which nobody could then act on.
+ *
+ * <p>`unassigned` is separate from `assigneeId` rather than being a null one, because a null
+ * assignee already means "anybody's" and one value cannot also mean "nobody's". Sent together
+ * they are a contradiction, and the service answers it with nothing — which is the honest
+ * answer to "assigned to Ayan and to no one".
+ */
+export interface TicketFilter {
+  readonly state?: TicketState | null;
+  readonly priority?: TicketPriority | null;
+  readonly assigneeId?: string | null;
+  readonly unassigned?: boolean;
+}
+
+/** Whether a filter narrows anything, which decides what an empty list means. */
+export function narrows(filter: TicketFilter): boolean {
+  return (
+    filter.state != null ||
+    filter.priority != null ||
+    (filter.assigneeId != null && filter.assigneeId !== '') ||
+    filter.unassigned === true
+  );
+}
+
+/**
+ * Everything, newest first, narrowed by the filter.
+ *
+ * <p>Not the queue. `readTicketQueue` answers "what is still somebody's work", most urgent
+ * first; this is ordered by when a ticket arrived, and narrowing it is what #404 asked for. A
+ * queue that grew filters would be a queue whose order stopped meaning "work from the front".
+ */
 export async function listTickets(
-  state: TicketState | null,
+  filter: TicketFilter = {},
   page = 0,
   signal?: AbortSignal,
 ): Promise<TicketPage> {
   const parameters = new URLSearchParams({ page: String(page) });
-  if (state != null) parameters.set('state', state);
+  if (filter.state != null) parameters.set('state', filter.state);
+  if (filter.priority != null) parameters.set('priority', filter.priority);
+  if (filter.assigneeId != null && filter.assigneeId !== '')
+    parameters.set('assigneeId', filter.assigneeId);
+  if (filter.unassigned === true) parameters.set('unassigned', 'true');
 
   const response = await authorizedFetch(`/v1/admin/tickets?${parameters}`, { signal });
   if (!response.ok) throw await errorFrom(response);

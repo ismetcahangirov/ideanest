@@ -16,6 +16,7 @@ import {
   Textarea,
 } from '@ideanest/ui';
 import { Modal } from '@ideanest/ui/motion';
+import { Link } from '../../i18n/navigation';
 import { ApiError } from '../../lib/api/problem';
 import {
   REASON_MAX_CHARACTERS,
@@ -379,7 +380,23 @@ export function UserDirectory({ copy }: UserDirectoryProps) {
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-white">{user.name}</p>
+                  {/*
+                    #404: the row's only control was "suspend", and the copy under it says
+                    that suspending changes nothing about the campaigns somebody created or
+                    the pledges they made — context that was reachable from nowhere in the
+                    console. The name is the way in now.
+
+                    The name and not a separate "view" control, because the row already has
+                    one destructive button and a second control beside it is a second thing
+                    to aim at; a person's name leading to that person is the ordinary
+                    arrangement, and the heading of the page it opens is the same name.
+                  */}
+                  <Link
+                    href={`/admin/users/${encodeURIComponent(user.id)}`}
+                    className="block truncate rounded-lg text-sm font-medium text-white underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lime-500)]"
+                  >
+                    {user.name}
+                  </Link>
                   {/* The address is why this screen exists and why every read of it
                       is audited. Nothing else on the platform shows one. */}
                   <p className="truncate text-sm text-white/64">{user.email}</p>

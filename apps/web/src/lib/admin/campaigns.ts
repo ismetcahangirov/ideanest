@@ -84,6 +84,16 @@ export interface DirectoryCampaign {
 export interface CampaignDirectoryPage {
   /** The filter this page was read with, or absent for every campaign. */
   state?: ProjectState | null;
+  /** Whose campaigns were asked for, or absent for everybody's — issue #404. */
+  creatorId?: string | null;
+  /**
+   * The search this page was read with, trimmed, or absent when there was none.
+   *
+   * <p>Echoed so a screen with two requests in flight can tell which answer it is looking
+   * at. A search box typed into twice has two reads outstanding, and the older one
+   * arriving second would otherwise leave the list disagreeing with the box above it.
+   */
+  query?: string | null;
   campaigns: readonly DirectoryCampaign[];
   /** Absent at the end of the list. A full page is the only signal there may be more. */
   nextCursor?: string | null;
@@ -92,19 +102,37 @@ export interface CampaignDirectoryPage {
 /**
  * One page of the directory, newest first.
  *
- * <p>The filter reaches the service rather than narrowing a loaded page, which is the
+ * <p>Every filter reaches the service rather than narrowing a loaded page, which is the
  * rule the report queue states: twenty-five campaigns of which two are drafts is not a
  * page of two, and a client that dropped rows locally would hold a cursor that has
  * already moved past them.
+ *
+ * <p><strong>`query` is #404's search, and until it existed this screen had no input of any
+ * kind</strong> — sixteen status chips and "load more", on the one screen that lists
+ * campaigns in every state. It matches the title, the campaign's path, the creator's name
+ * and path, or an identifier when the term is one; `CampaignDirectoryRows` on the service
+ * side records what each of those costs.
+ *
+ * <p>`creatorId` is the same endpoint answering "what has this person created", which is
+ * what the account detail screen reads. It combines with the other two rather than
+ * replacing them.
  */
 export async function listCampaigns(options: {
   state?: ProjectState | null;
+  creatorId?: string | null;
+  query?: string | null;
   after?: string | null;
   limit?: number;
   signal?: AbortSignal;
 }): Promise<CampaignDirectoryPage> {
   const query = new URLSearchParams();
   if (options.state != null) query.set('state', options.state);
+  if (options.creatorId != null && options.creatorId !== '')
+    query.set('creatorId', options.creatorId);
+  // Blank is no search rather than a search for nothing, matching the service: a cleared
+  // box behaves like a fresh one instead of asking for every campaign the slow way.
+  if (options.query != null && options.query.trim() !== '')
+    query.set('query', options.query.trim());
   if (options.after != null && options.after !== '') query.set('after', options.after);
   query.set('limit', String(options.limit ?? DIRECTORY_PAGE_SIZE));
 

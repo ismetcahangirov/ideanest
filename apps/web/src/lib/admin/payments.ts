@@ -78,6 +78,8 @@ export interface PaymentLogPage {
   /** Echoed, and absent when the request did not ask for it. See {@link PaymentLogRequest}. */
   pledgeId?: string | null;
   projectId?: string | null;
+  /** Echoed in the spelling the column uses, so `?status=failed` comes back as `FAILED`. */
+  status?: TransactionStatus | null;
   transactions: LoggedTransaction[];
   nextCursor?: string | null;
 }
@@ -85,20 +87,46 @@ export interface PaymentLogPage {
 export const PAYMENT_PAGE_SIZE = 25;
 
 /**
+ * The three outcomes, in the order a reader thinks about them — issue #404.
+ *
+ * <p>Failures first, because they are why this screen is opened. `PENDING` last: it is the
+ * rarest and the least final, and putting it between the two settled states would separate
+ * them.
+ */
+export const TRANSACTION_STATUSES: readonly TransactionStatus[] = Object.freeze([
+  'FAILED',
+  'SUCCEEDED',
+  'PENDING',
+]);
+
+/**
  * What the log may be narrowed by.
  *
- * <p>A pledge or a campaign, and nothing else — those are the two indexes V41 created. There
- * is deliberately no filter on status, provider or type: "every failed charge on the
- * platform" is a real question with no index behind it, and the screen shows the status of
- * every row it draws. The pledge filter is the question §9.6's retry schedule is actually
- * argued from.
+ * <p>A pledge, a campaign, an outcome, or nothing. The first two are V41's indexes; the
+ * third is V63's, added with this filter rather than before it.
  *
- * <p><strong>A request naming both is resolved to the pledge by the service</strong>, which
- * is the narrower question; the response echoes what it actually applied.
+ * <h2>The outcome filter, and why the screen went without one</h2>
+ *
+ * <p>This comment used to say there was deliberately no filter on status, because "every
+ * failed charge on the platform" is a real question with no index behind it and the screen
+ * shows the status of every row it draws. #404 is what that cost: the log's own description
+ * promises it includes rejected calls, failed provider calls are the main reason anybody
+ * opens it, and they were the one view it could not select — so "the screen shows the status"
+ * meant scrolling twenty-five successes to find one failure. The answer is the index.
+ *
+ * <p><strong>The outcome combines with the other two</strong>, unlike them with each other:
+ * "what did this collection run leave behind" is a campaign and a status together, and the
+ * campaign's own index serves it with the status as a filter step.
+ *
+ * <p><strong>A request naming both a pledge and a campaign is resolved to the pledge by the
+ * service</strong>, which is the narrower question; the response echoes what it actually
+ * applied. There is still deliberately no filter on provider, on type or on a date range —
+ * `PaymentLogScope` on the service side records what each would cost.
  */
 export interface PaymentLogRequest {
   pledgeId?: string | null;
   projectId?: string | null;
+  status?: TransactionStatus | null;
   after?: string | null;
   limit?: number;
   signal?: AbortSignal;
@@ -110,6 +138,7 @@ export function paymentLogQuery(request: PaymentLogRequest): string {
   if (request.pledgeId != null && request.pledgeId !== '') params.set('pledgeId', request.pledgeId);
   if (request.projectId != null && request.projectId !== '')
     params.set('projectId', request.projectId);
+  if (request.status != null) params.set('status', request.status);
   if (request.after != null && request.after !== '') params.set('after', request.after);
   return params.toString();
 }

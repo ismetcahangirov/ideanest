@@ -223,4 +223,114 @@ describe('the campaign directory', () => {
     expect(await screen.findByText('2')).toBeInTheDocument();
     expect(screen.queryByText('2+')).not.toBeInTheDocument();
   });
+
+  describe("the search — issue #404", () => {
+    it('sends the term to the service rather than narrowing the loaded page', async () => {
+      render(<CampaignDirectory copy={COPY} />);
+      await screen.findByText('Xari Bulbul Ceramics');
+
+      await userEvent.type(screen.getByLabelText(COPY.searchLabel), 'ceramic');
+      await userEvent.click(screen.getByRole('button', { name: COPY.search }));
+
+      /*
+       * The rule this screen already applied to its state chips. Twenty-five campaigns of
+       * which two match is not a page of two, and a client that dropped rows locally would
+       * hold a cursor that has already moved past them.
+       */
+      await waitFor(() =>
+        expect(listCampaignsMock).toHaveBeenCalledWith(
+          expect.objectContaining({ query: 'ceramic' }),
+        ),
+      );
+    });
+
+    it('is a form, so typing does not put a request behind every keystroke', async () => {
+      render(<CampaignDirectory copy={COPY} />);
+      await screen.findByText('Xari Bulbul Ceramics');
+      listCampaignsMock.mockClear();
+
+      await userEvent.type(screen.getByLabelText(COPY.searchLabel), 'ceramic');
+
+      // Seven characters, no reads. The search is a contains-match over `projects` joined
+      // to `users`; once per intention is affordable and once per keypress is not.
+      expect(listCampaignsMock).not.toHaveBeenCalled();
+    });
+
+    it('keeps the search when the state chip changes, because the two narrow together', async () => {
+      render(<CampaignDirectory copy={COPY} />);
+      await screen.findByText('Xari Bulbul Ceramics');
+
+      await userEvent.type(screen.getByLabelText(COPY.searchLabel), 'ceramic');
+      await userEvent.click(screen.getByRole('button', { name: COPY.search }));
+      await waitFor(() =>
+        expect(listCampaignsMock).toHaveBeenCalledWith(expect.objectContaining({ query: 'ceramic' })),
+      );
+
+      await userEvent.click(screen.getByRole('button', { name: COPY.state.LIVE }));
+
+      await waitFor(() =>
+        expect(listCampaignsMock).toHaveBeenCalledWith(
+          expect.objectContaining({ query: 'ceramic', state: 'LIVE' }),
+        ),
+      );
+    });
+
+    it('carries the search into the next page, so "load more" does not widen the list', async () => {
+      listCampaignsMock.mockResolvedValue(page({ nextCursor: 'cursor-1' }));
+
+      render(<CampaignDirectory copy={COPY} />);
+      await screen.findByText('Xari Bulbul Ceramics');
+
+      await userEvent.type(screen.getByLabelText(COPY.searchLabel), 'ceramic');
+      await userEvent.click(screen.getByRole('button', { name: COPY.search }));
+      await waitFor(() =>
+        expect(listCampaignsMock).toHaveBeenCalledWith(expect.objectContaining({ query: 'ceramic' })),
+      );
+
+      await userEvent.click(screen.getByRole('button', { name: COPY.loadMore }));
+
+      // A cursor that lost the filter would make page two the whole directory — the failure
+      // a keyset makes easy to ship and hard to notice.
+      await waitFor(() =>
+        expect(listCampaignsMock).toHaveBeenCalledWith(
+          expect.objectContaining({ query: 'ceramic', after: 'cursor-1' }),
+        ),
+      );
+    });
+
+    it('clears back to every campaign, and the control goes with the search', async () => {
+      render(<CampaignDirectory copy={COPY} />);
+      await screen.findByText('Xari Bulbul Ceramics');
+
+      // Nothing to clear until something has been searched for.
+      expect(screen.queryByRole('button', { name: COPY.clearSearch })).not.toBeInTheDocument();
+
+      await userEvent.type(screen.getByLabelText(COPY.searchLabel), 'ceramic');
+      await userEvent.click(screen.getByRole('button', { name: COPY.search }));
+      await waitFor(() =>
+        expect(listCampaignsMock).toHaveBeenCalledWith(expect.objectContaining({ query: 'ceramic' })),
+      );
+
+      await userEvent.click(screen.getByRole('button', { name: COPY.clearSearch }));
+
+      await waitFor(() =>
+        expect(listCampaignsMock).toHaveBeenLastCalledWith(expect.objectContaining({ query: '' })),
+      );
+      expect(screen.queryByRole('button', { name: COPY.clearSearch })).not.toBeInTheDocument();
+    });
+
+    it('says nothing matched rather than that there are no campaigns', async () => {
+      render(<CampaignDirectory copy={COPY} />);
+      await screen.findByText('Xari Bulbul Ceramics');
+
+      listCampaignsMock.mockResolvedValue(page({ campaigns: [] }));
+      await userEvent.type(screen.getByLabelText(COPY.searchLabel), 'nothing like this');
+      await userEvent.click(screen.getByRole('button', { name: COPY.search }));
+
+      // "There are no campaigns" is a statement about the platform; under a search it would
+      // be a false one. #404 draws the same distinction on every list in the console.
+      expect(await screen.findByText(COPY.filteredTitle)).toBeInTheDocument();
+      expect(screen.queryByText(COPY.emptyTitle)).not.toBeInTheDocument();
+    });
+  });
 });
