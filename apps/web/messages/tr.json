@@ -2691,8 +2691,16 @@
       "share": "Paylaş",
       "remind": "Hatırlat"
     },
+    "back": {
+      "cta": "Bu kampanyayı destekle",
+      "late": "Geç destek ver"
+    },
     "rewards": {
-      "heading": "Ödüller"
+      "heading": "Ödüller",
+      "select": "Bu ödülü seç",
+      "selectNamed": "Bu ödülü seç: {title}",
+      "soldOut": "Tükendi",
+      "remaining": "{count, plural, other {# yer kaldı}}"
     },
     "media": {
       "hasVideo": "Bu kampanyanın videosu var."

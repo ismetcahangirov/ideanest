@@ -214,9 +214,11 @@ function draftKey(call: number): string | undefined {
   return draftMock.mock.calls[call]?.[1];
 }
 
-async function open(): Promise<UserEvent> {
+async function open(initialRewardId: string | null = null): Promise<UserEvent> {
   const user = userEvent.setup();
-  render(<CheckoutView projectId="project-1" copy={COPY} />);
+  render(
+    <CheckoutView projectId="project-1" copy={COPY} initialRewardId={initialRewardId} />,
+  );
   await screen.findByRole('radio', { name: /Pledge without a reward/ });
   return user;
 }
@@ -271,6 +273,57 @@ describe('choosing a reward', () => {
 
     expect(within(summary()).getByText('Reward')).toBeInTheDocument();
     expect(total()).toBe('50.00 AZN');
+  });
+
+  /*
+   * `?reward=` — arriving from the campaign page's per-tier control.
+   *
+   * The identifier is a SEED and never a commitment: it reserves nothing, it prices nothing,
+   * and every one of these cases ends somewhere the backer can still change their mind. The
+   * three failures worth pinning are all "the link is older than the catalogue".
+   */
+  it('starts on the tier the campaign page named, priced as if it had been clicked', async () => {
+    await open(MUG.id);
+
+    await waitFor(() => expect(screen.getByRole('radio', { name: /Enamel mug/ })).toBeChecked());
+
+    // Through `chooseReward`, so PL-03's floor is applied exactly as it is for a click. A
+    // seeded choice with an empty contribution is refused by the service.
+    expect(screen.getByLabelText(/Your contribution/)).toHaveValue('45.00');
+  });
+
+  it('leaves the seeded tier changeable, because it is a suggestion and not a lock', async () => {
+    const user = await open(MUG.id);
+
+    await waitFor(() => expect(screen.getByRole('radio', { name: /Enamel mug/ })).toBeChecked());
+    await user.click(screen.getByRole('radio', { name: /Digital album/ }));
+
+    expect(screen.getByRole('radio', { name: /Enamel mug/ })).not.toBeChecked();
+    expect(screen.getByLabelText(/Your contribution/)).toHaveValue('10.00');
+  });
+
+  /**
+   * A tier the creator withdrew after the link was shared. The reader gets the ordinary empty
+   * form rather than a refusal about a tier they never saw.
+   */
+  it('ignores an identifier that names no tier', async () => {
+    await open('reward-that-was-withdrawn');
+
+    for (const name of [/Enamel mug/, /Digital album/, /Pledge without a reward/]) {
+      expect(screen.getByRole('radio', { name })).not.toBeChecked();
+    }
+  });
+
+  /**
+   * Sold out between the campaign page and this one. Seeding it would open the checkout on a
+   * selection whose only possible next step is `REWARD_SOLD_OUT`.
+   */
+  it('ignores a tier that has sold out since the link was made', async () => {
+    await open(SOLD_OUT.id);
+
+    const badge = screen.getByRole('radio', { name: /Founder badge/ });
+    expect(badge).not.toBeChecked();
+    expect(badge).toBeDisabled();
   });
 
   it('shows a sold-out tier and refuses to let it be chosen', async () => {

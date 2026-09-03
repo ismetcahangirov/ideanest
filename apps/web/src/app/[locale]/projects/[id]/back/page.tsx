@@ -28,6 +28,10 @@ import { checkoutCopy } from '../../../../../lib/i18n/shell-copy.server';
  * button that could re-enter the review step would routinely land on a hold that
  * has expired. `CheckoutView` explains the same decision from the other side.
  *
+ * `?reward=` is not a counter-example, and `rewardId` below says why: a tier
+ * identifier is public catalogue data that reserves nothing, and it seeds step
+ * one rather than skipping it.
+ *
  * <h2>Not indexed, and not followed either</h2>
  *
  * A checkout is not a landing page. A search result pointing here is a dead end
@@ -65,6 +69,31 @@ function secretTokens(value: string | string[] | undefined): readonly string[] {
   return (Array.isArray(value) ? value : [value]).filter((token) => token !== '');
 }
 
+/**
+ * `?reward=` — the tier the reader pressed on the campaign page, or null.
+ *
+ * <h2>Why a tier identifier may be in the URL when a pledge may not</h2>
+ *
+ * `useCheckout` states the rule this looks like an exception to: the selection is React
+ * state and the route has no query string, because a half-made pledge is not shareable and
+ * a back button must not re-enter a reservation that has expired.
+ *
+ * Neither argument reaches this parameter. It is not a pledge — it reserves nothing, prices
+ * nothing and belongs to nobody; it is an identifier this campaign's public page already
+ * printed, and the worst a shared link can do is open somebody else's checkout with a tier
+ * highlighted that they are free to change. The `?token=` parameter beside it has been
+ * carrying more sensitive data than this since PL-15.
+ *
+ * <p><strong>Repeated or empty is treated as absent.</strong> Next hands a repeated parameter
+ * over as an array, and there is no sensible reading of two tiers: the reader pressed one
+ * control. Guessing at the first would preselect a tier nobody chose on a screen whose next
+ * step commits money.
+ */
+function rewardId(value: string | string[] | undefined): string | null {
+  if (typeof value !== 'string' || value === '') return null;
+  return value;
+}
+
 export default async function BackProjectPage({
   params,
   searchParams,
@@ -88,6 +117,7 @@ export default async function BackProjectPage({
       <CheckoutView
         projectId={id}
         secretTokens={secretTokens(query['token'])}
+        initialRewardId={rewardId(query['reward'])}
         copy={copy}
       />
     </main>

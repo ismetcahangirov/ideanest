@@ -119,6 +119,19 @@ export interface PublicReward {
 }
 
 /**
+ * Whether the tier has run out. Absent stock is unlimited, never sold out.
+ *
+ * <p>Beside `PublicReward` rather than in the radio group that first needed it. Three
+ * callers ask it now — the reward list, the add-on list, and the seeding of a `?reward=`
+ * preselection in `useCheckout` — and the third would have made `useCheckout` import from a
+ * component that imports `useCheckout`. A rule about what the catalogue says does not belong
+ * to any one control that draws it.
+ */
+export function isSoldOut(reward: PublicReward): boolean {
+  return reward.remainingQuantity === 0;
+}
+
+/**
  * `GET /v1/projects/{id}/rewards/public`.
  *
  * `rewards` and `addons` are two arrays rather than one with a flag because they
