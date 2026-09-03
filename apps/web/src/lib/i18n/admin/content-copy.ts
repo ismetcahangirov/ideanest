@@ -232,6 +232,40 @@ export interface ReportDetailCopy extends ConsoleChromeCopy {
   /** Carries `{action}` and `{actor}`, the second a styled node. */
   readonly actionBy: string;
   readonly refused: string;
+  /** What was reported — the block this page spent its whole life without. See #399. */
+  readonly evidence: ReportedContentCopy;
+}
+
+/**
+ * The reported content, in words — issue #399.
+ *
+ * <p>This page used to render the reporter's claim, the reporter, and two irreversible
+ * buttons. Counted in the DOM, zero links: not the comment, not who wrote it, not which
+ * campaign it is on, and no route to any of the three. Everything below is the sentence
+ * "here is what you are being asked to rule on", said four different ways because the
+ * platform can be in four different positions about it.
+ */
+export interface ReportedContentCopy {
+  /** What this block calls what it reads, for a refusal. Already inflected. */
+  readonly subject: string;
+  readonly heading: string;
+  readonly intro: string;
+  readonly loading: string;
+  readonly failedTitle: string;
+  /** The one thing a moderator must not miss: somebody has already taken this down. */
+  readonly removedTitle: string;
+  readonly removedBody: string;
+  readonly goneTitle: string;
+  readonly goneBody: string;
+  /** A campaign or an account: the console reaches it directly rather than inlining it. */
+  readonly addressedBody: string;
+  readonly authorLabel: string;
+  readonly campaignLabel: string;
+  readonly writtenLabel: string;
+  /** Carries `{number}` — "Update 4", which is what a creator and a backer both call it. */
+  readonly updateNumber: string;
+  readonly openCampaign: string;
+  readonly noText: string;
 }
 
 function verb(t: AdminTranslator, outcome: string): DecisionVerbCopy {
@@ -414,6 +448,80 @@ export interface CampaignDirectoryCopy extends ConsoleChromeCopy {
   readonly state: Readonly<Record<ProjectState, string>>;
 }
 
+/**
+ * The staff preview of one campaign — issue #399.
+ *
+ * <p>The state table is borrowed from `admin.screens.campaignDirectory`, for the reason
+ * {@link ReportDetailCopy} gives about the audit action table: sixteen state names under a
+ * second key is a second set of translations for `CHANGES_REQUESTED` that nothing keeps in
+ * step with the first.
+ */
+export interface CampaignPreviewCopy extends ConsoleChromeCopy {
+  /** What this screen calls the thing it reads, for the refusals. Already inflected. */
+  readonly subject: string;
+  readonly loadingPreview: string;
+  readonly notFoundTitle: string;
+  readonly notFoundBody: string;
+  readonly backToDirectory: string;
+  /** The notice at the top. Never dismissible — this screen renders drafts. */
+  readonly previewNoticeTitle: string;
+  readonly previewNoticeBody: string;
+  readonly goalLabel: string;
+  readonly noGoal: string;
+  readonly raisedLabel: string;
+  readonly backersLabel: string;
+  readonly filedUnder: string;
+  readonly notFiled: string;
+  readonly launchedLabel: string;
+  readonly deadlineLabel: string;
+  readonly publicPage: string;
+  /** What is said instead of a link, on a campaign that has no public page yet. */
+  readonly notPublicYet: string;
+  readonly storyHeading: string;
+  readonly noStory: string;
+  readonly risksHeading: string;
+  readonly noRisks: string;
+  /** Carries `{title}`. */
+  readonly coverAlt: string;
+  readonly state: Readonly<Record<ProjectState, string>>;
+}
+
+export function campaignPreviewCopyFrom(
+  t: AdminTranslator,
+  chrome: ConsoleChromeCopy,
+): CampaignPreviewCopy {
+  const at = (key: string) => `screens.campaignPreview.${key}`;
+
+  return {
+    ...chrome,
+    subject: t(at('subject')),
+    loadingPreview: t(at('loadingPreview')),
+    notFoundTitle: t(at('notFoundTitle')),
+    notFoundBody: t(at('notFoundBody')),
+    backToDirectory: t(at('backToDirectory')),
+    previewNoticeTitle: t(at('previewNoticeTitle')),
+    previewNoticeBody: t(at('previewNoticeBody')),
+    goalLabel: t(at('goalLabel')),
+    noGoal: t(at('noGoal')),
+    raisedLabel: t(at('raisedLabel')),
+    backersLabel: t(at('backersLabel')),
+    filedUnder: t(at('filedUnder')),
+    notFiled: t(at('notFiled')),
+    launchedLabel: t(at('launchedLabel')),
+    deadlineLabel: t(at('deadlineLabel')),
+    publicPage: t(at('publicPage')),
+    notPublicYet: t(at('notPublicYet')),
+    storyHeading: t(at('storyHeading')),
+    noStory: t(at('noStory')),
+    risksHeading: t(at('risksHeading')),
+    noRisks: t(at('noRisks')),
+    /* `raw`, because next-intl renders a template's own key when it is read with `t()` and
+       has no value for the argument — `src/test-copy.ts` refuses the same mistake in tests. */
+    coverAlt: String(t.raw(at('coverAlt'))),
+    state: t.raw('screens.campaignDirectory.state') as Readonly<Record<ProjectState, string>>,
+  };
+}
+
 export function campaignDirectoryCopyFrom(
   t: AdminTranslator,
   chrome: ConsoleChromeCopy,
@@ -523,5 +631,25 @@ export function reportDetailCopyFrom(
     historyEmpty: t(at('historyEmpty')),
     actionBy: String(t.raw(at('actionBy'))),
     refused: t(at('refused')),
+    evidence: {
+      subject: t(at('evidence.subject')),
+      heading: t(at('evidence.heading')),
+      intro: t(at('evidence.intro')),
+      loading: t(at('evidence.loading')),
+      failedTitle: t(at('evidence.failedTitle')),
+      removedTitle: t(at('evidence.removedTitle')),
+      removedBody: t(at('evidence.removedBody')),
+      goneTitle: t(at('evidence.goneTitle')),
+      goneBody: t(at('evidence.goneBody')),
+      addressedBody: t(at('evidence.addressedBody')),
+      authorLabel: t(at('evidence.authorLabel')),
+      campaignLabel: t(at('evidence.campaignLabel')),
+      writtenLabel: t(at('evidence.writtenLabel')),
+      /* `raw`, because next-intl renders a template's own key when it is read with `t()`
+         and has no value for the argument — `src/test-copy.ts` refuses it in tests too. */
+      updateNumber: String(t.raw(at('evidence.updateNumber'))),
+      openCampaign: t(at('evidence.openCampaign')),
+      noText: t(at('evidence.noText')),
+    },
   };
 }

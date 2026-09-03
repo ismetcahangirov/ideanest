@@ -1,6 +1,8 @@
+import type { components } from '@ideanest/api-client';
 import { authorizedFetch } from '../api/client';
 import { errorFrom } from '../api/problem';
 import type { ProjectState } from '../projects/api';
+import { readCampaignFields, type CampaignPage } from '../projects/publicPage';
 
 /**
  * §4.11's campaign directory: what campaigns exist — issue #387.
@@ -110,4 +112,51 @@ export async function listCampaigns(options: {
   if (!response.ok) throw await errorFrom(response);
 
   return (await response.json()) as CampaignDirectoryPage;
+}
+
+/**
+ * One campaign, as its page reads, in whatever state it is in — issue #399.
+ *
+ * <h2>The link the submission queue was missing</h2>
+ *
+ * <p>That queue asks a moderator to approve, reject or send back a campaign, and the only
+ * link on each card pointed at the public page. A campaign in review is not public — that
+ * is what being in review means — so the link answered 404 by construction, and approval
+ * happened on a title, a creator's name and a goal figure. Everything the creator actually
+ * wrote was one screen away and unreachable.
+ *
+ * <h2>The same projection the public page is served from</h2>
+ *
+ * <p>`GET /v1/admin/projects/{id}` returns `ProjectPageResponse`, unchanged, without the
+ * state filter that makes the public endpoint public. A moderator decides whether a
+ * campaign may be published, so what they are shown has to be what publishing it would
+ * show; a narrower preview would be a second description of the campaign, and the decision
+ * would be taken against the description.
+ *
+ * <p>Narrowed by {@link readCampaignFields} rather than by `readCampaignPage`, which is the
+ * one difference and is the whole reason that function exists — see it for why the public
+ * reader's state check is not a parameter.
+ *
+ * @returns the campaign, or `null` when the response is missing something every campaign
+ *     has. The screen renders that as "this could not be read" rather than as a page with
+ *     holes in it: a half-built preview is a decision taken against a page that is not there
+ */
+export async function readCampaignPreview(
+  projectId: string,
+  signal?: AbortSignal,
+): Promise<CampaignPage | null> {
+  const response = await authorizedFetch(`/v1/admin/projects/${encodeURIComponent(projectId)}`, {
+    signal,
+  });
+  if (!response.ok) throw await errorFrom(response);
+
+  const body = (await response.json()) as components['schemas']['ProjectPageResponse'];
+
+  /*
+   * The creator's slug comes from the body rather than from the caller. The public page is
+   * addressed by the pair of slugs in its URL, so `readCampaignPage` takes the creator's
+   * half as an argument; this screen is addressed by identifier and has no such half until
+   * the response arrives.
+   */
+  return readCampaignFields(body, body.creator?.slug ?? '');
 }

@@ -2,6 +2,8 @@ package az.ideanest.project.api;
 
 import az.ideanest.project.application.CapabilityNotGrantedException;
 import az.ideanest.project.application.LatePledgesNotEnabledException;
+import az.ideanest.staff.api.StaffRefusals;
+import az.ideanest.staff.application.InsufficientStaffCapabilityException;
 import az.ideanest.staff.application.NotAModeratorException;
 import az.ideanest.project.application.ProjectFieldLockedException;
 import az.ideanest.project.application.ProjectFieldRejectedException;
@@ -115,6 +117,25 @@ public class ProjectExceptionHandler {
         problem.setDetail("Moderation decisions are taken by platform staff.");
         problem.setProperty("code", "NOT_A_MODERATOR");
         return problem;
+    }
+
+    /**
+     * 403 for a member of staff whose role does not carry the authority this asked for.
+     *
+     * <p><strong>Not the same refusal as the one above, and it used to be a 500.</strong>
+     * {@code PlatformStaff.requireCapability} raises either of two exceptions — this one
+     * for somebody who does work here and holds the wrong role — and this advice is scoped
+     * by type, so the one it did not name reached the fallback handler. A member of
+     * finance staff opening the campaign directory was therefore told the server had
+     * broken, which is the failure #400 was filed about and the reason every other
+     * console advice in the service handles both.
+     *
+     * <p>{@link StaffRefusals} writes the body, so the capability that was wanted is named
+     * in it and the console can say which authority it needed rather than "not allowed".
+     */
+    @ExceptionHandler(InsufficientStaffCapabilityException.class)
+    public ProblemDetail handleInsufficientCapability(InsufficientStaffCapabilityException exception) {
+        return StaffRefusals.insufficient(exception);
     }
 
     /**

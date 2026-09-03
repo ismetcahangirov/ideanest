@@ -33,7 +33,7 @@ final class AuditTrailResponses {
                 page.filter().entityId(),
                 page.filter().actorId(),
                 page.entries().stream().map(AuditTrailResponses::entry).toList(),
-                page.nextCursor());
+                page.nextCursor() == null ? null : page.nextCursor().encode());
     }
 
     private static Entry entry(AuditEntry row) {
@@ -65,15 +65,20 @@ final class AuditTrailResponses {
      * @param actorId which account's actions, echoed for the same reason
      * @param entries the matching rows, newest first
      * @param nextCursor what to send as {@code after} for the next page, or absent when
-     *     this was the last one. There is no total: counting a table nothing is ever
-     *     deleted from is a scan for a number that is stale before it renders
+     *     this was the last one. An opaque string since #404 rather than an identifier: the
+     *     trail is ordered by {@code occurred_at}, which is not unique, so the cursor
+     *     carries the instant and the identifier that breaks its tie. Encoded rather than
+     *     published as two fields so that no client comes to depend on which columns the
+     *     ordering uses — {@code AuditCursor} makes the argument. There is no total either:
+     *     counting a table nothing is ever deleted from is a scan for a number that is
+     *     stale before it renders
      */
     record Page(
             String entityType,
             UUID entityId,
             UUID actorId,
             List<Entry> entries,
-            UUID nextCursor) {
+            String nextCursor) {
     }
 
     /**

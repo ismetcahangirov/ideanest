@@ -1,5 +1,6 @@
 package az.ideanest.admin.api;
 
+import az.ideanest.audit.InvalidAuditCursorException;
 import az.ideanest.staff.application.NotAModeratorException;
 import java.net.URI;
 import java.util.Map;
@@ -41,6 +42,29 @@ public class ConsoleExceptionHandler {
         // Deliberately not the exception's message, which names the account.
         problem.setDetail("The administration console is read by platform staff.");
         problem.setProperty("code", "NOT_A_MODERATOR");
+        return problem;
+    }
+
+    /**
+     * 400 for a paging cursor {@code /v1/admin/audit} did not produce.
+     *
+     * <p>A refusal rather than the first page, which is the same distinction the handler
+     * below draws and matters here for a sharper reason: quietly restarting the list would
+     * hand an investigator the top of the log again in place of the part they had not read,
+     * and there is nothing on the screen to tell them which one they are looking at.
+     *
+     * <p>The body does not say which half of the cursor was wrong. There is nothing to act
+     * on in that — the client's next move is to start the list again either way — and
+     * naming it would tell whoever is probing how the value is built.
+     */
+    @ExceptionHandler(InvalidAuditCursorException.class)
+    public ProblemDetail handleInvalidCursor(InvalidAuditCursorException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("https://ideanest.az/problems/invalid-cursor"));
+        problem.setTitle("Invalid cursor");
+        problem.setDetail("Send the nextCursor from the previous page, or nothing for the first.");
+        problem.setProperty("code", "INVALID_CURSOR");
+        problem.setProperty("meta", Map.of("parameter", "after"));
         return problem;
     }
 

@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.WebRequest;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -146,24 +145,12 @@ public class PublicProjectController {
     /**
      * The story document as JSON, not as a string containing JSON.
      *
-     * <p>{@code ProjectEditResponses} does the same for the creator's own view and
-     * explains the parse: the column is {@code jsonb}, the projection holds it as text,
-     * and returning the text would hand every client an escaped document to parse a
-     * second time.
+     * <p>{@link StoryJson} holds the parse and says why it is not on this class: the
+     * console's staff preview serves the same page and has to answer a malformed document
+     * the same way this does.
      */
     private JsonNode storyOf(PublicProjectPage page) {
-        String story = page.story();
-        if (story == null) {
-            return null;
-        }
-        try {
-            return json.readTree(story);
-        } catch (JacksonException e) {
-            // Unreachable: PostgreSQL validates jsonb on the way in, so a row that fails
-            // here was written by something that bypassed the column type. Serving it as
-            // though it were fine would spread the problem onto a public page.
-            throw new IllegalStateException("Project " + page.id() + " holds a story that is not JSON", e);
-        }
+        return StoryJson.of(json, page.id(), page.story());
     }
 
     /**

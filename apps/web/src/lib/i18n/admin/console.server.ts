@@ -11,11 +11,13 @@ import {
   moderationQueueCopyFrom,
   reportDetailCopyFrom,
   campaignDirectoryCopyFrom,
+  campaignPreviewCopyFrom,
   submissionQueueCopyFrom,
   type ContentReportQueueCopy,
   type ModerationQueueCopy,
   type ReportDetailCopy,
   type CampaignDirectoryCopy,
+  type CampaignPreviewCopy,
   type SubmissionQueueCopy,
 } from './content-copy';
 import {
@@ -224,4 +226,8 @@ export async function submissionQueueCopy(): Promise<SubmissionQueueCopy> {
 
 export async function campaignDirectoryCopy(): Promise<CampaignDirectoryCopy> {
   return campaignDirectoryCopyFrom(await getTranslations('admin'), await consoleChrome());
+}
+
+export async function campaignPreviewCopy(): Promise<CampaignPreviewCopy> {
+  return campaignPreviewCopyFrom(await getTranslations('admin'), await consoleChrome());
 }

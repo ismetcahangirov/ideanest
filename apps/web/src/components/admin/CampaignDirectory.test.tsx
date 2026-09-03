@@ -186,4 +186,41 @@ describe('the campaign directory', () => {
 
     expect(await screen.findByRole('button', { name: COPY.tryAgain })).toBeInTheDocument();
   });
+
+  it('links a campaign to the staff preview, not to a public page half these rows do not have', async () => {
+    render(<CampaignDirectory copy={COPY} />);
+
+    const link = await screen.findByRole('link', { name: 'Xari Bulbul Ceramics' });
+    /*
+     * #399. This directory is the one screen that lists campaigns in every state, so the
+     * public URL was a 404 for a good half of the rows on it — a draft, a submission
+     * awaiting review, a rejected campaign and a suspended one all have no public page, and
+     * every one of them is a row here.
+     */
+    expect(link).toHaveAttribute('href', `/en/admin/campaigns/${DRAFT.projectId}`);
+  });
+
+  it('says the count is a page when there are more campaigns behind it', async () => {
+    listCampaignsMock.mockResolvedValue(page({ campaigns: [DRAFT, LIVE], nextCursor: 'more' }));
+
+    render(<CampaignDirectory copy={COPY} />);
+
+    /*
+     * #404: the badge printed the length of the loaded page, so `/admin/campaigns` reported
+     * "25" about a platform with thirty-three campaigns on it. The number beside a heading is
+     * where a count gets read, and it was reporting the page size as the population.
+     */
+    expect(await screen.findByText('2+')).toBeInTheDocument();
+    // The plus sign is not the only thing that says it — docs/ui-kit.md §9.2.
+    expect(screen.getByLabelText('2 shown, and there are more')).toBeInTheDocument();
+  });
+
+  it('states the count plainly once the list has reached its end', async () => {
+    listCampaignsMock.mockResolvedValue(page({ campaigns: [DRAFT, LIVE], nextCursor: null }));
+
+    render(<CampaignDirectory copy={COPY} />);
+
+    expect(await screen.findByText('2')).toBeInTheDocument();
+    expect(screen.queryByText('2+')).not.toBeInTheDocument();
+  });
 });

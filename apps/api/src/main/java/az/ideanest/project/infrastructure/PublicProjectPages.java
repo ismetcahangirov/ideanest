@@ -50,21 +50,23 @@ public class PublicProjectPages {
     private static final String PRIMARY_LOCALE = "az";
 
     /**
-     * The campaign, its creator, and its filing — addressed the way its URL addresses it.
-     *
-     * <p>The {@code WHERE} is {@code (users.slug, projects.slug)}, which is exactly the
-     * pair {@code projects_creator_slug_key} makes unique once the creator is resolved.
-     * Two creators may both have a {@code coffee-table-book}, which is why the public URL
-     * carries both halves and why this query cannot be written against {@code projects}
-     * alone.
+     * The campaign, its creator, and its filing. Everything but the {@code WHERE}.
      *
      * <p>The four outer joins to the translation tables are two per taxon: the locale the
      * reader asked for, and {@code az}. Outer, because a campaign need not be filed and a
      * taxon need not have a row in the requested language — the second is the case that
      * would otherwise render an empty breadcrumb, and an inner join would drop the whole
      * campaign over a missing translation.
+     *
+     * <p><strong>Two callers address the same row two different ways</strong>, which is
+     * why the predicate is separate from the projection rather than the query being
+     * written twice. The public page is addressed by the pair of slugs its URL carries;
+     * the console's staff preview (#399) is addressed by identifier, because the queue it
+     * is opened from holds identifiers and a campaign in review has no public URL. A
+     * second copy of these thirty columns would be the copy that stops carrying a field
+     * the day one is added.
      */
-    private static final String QUERY =
+    private static final String SELECT =
             """
             SELECT p.id, p.slug, p.state, p.title, p.blurb, p.risks, p.story::text AS story,
                    p.currency, p.goal_amount, p.pledged_amount, p.backers_count,
@@ -85,8 +87,35 @@ public class PublicProjectPages {
               LEFT JOIN subcategories s ON s.id = p.subcategory_id
               LEFT JOIN subcategory_translations st ON st.subcategory_id = s.id AND st.locale = :locale
               LEFT JOIN subcategory_translations sfb ON sfb.subcategory_id = s.id AND sfb.locale = :fallback
+            """;
+
+    /**
+     * The public URL's predicate: {@code (users.slug, projects.slug)}, which is exactly
+     * the pair {@code projects_creator_slug_key} makes unique once the creator is
+     * resolved. Two creators may both have a {@code coffee-table-book}, which is why the
+     * public URL carries both halves and why this cannot be written against
+     * {@code projects} alone.
+     */
+    private static final String BY_SLUGS =
+            """
              WHERE u.slug = :creatorSlug
                AND p.slug = :projectSlug
+               AND u.deleted_at IS NULL
+            """;
+
+    /**
+     * The console's predicate: the primary key, and the same creator condition.
+     *
+     * <p>{@code u.deleted_at IS NULL} is kept rather than relaxed for staff, for the
+     * reason {@link #find(String, String, String)} gives about the join: a campaign whose
+     * creator is inside §17.4's deletion grace period has nobody to name in its header,
+     * and the console has {@code /admin/campaigns} to say the campaign exists. Serving a
+     * preview with a blank byline would be the one place on the platform that renders an
+     * account the platform has undertaken to stop rendering.
+     */
+    private static final String BY_ID =
+            """
+             WHERE p.id = :projectId
                AND u.deleted_at IS NULL
             """;
 
@@ -121,9 +150,34 @@ public class PublicProjectPages {
                 "locale", locale,
                 "fallback", PRIMARY_LOCALE);
 
-        List<PublicProjectPage> found = jdbc.query(QUERY, parameters, (resultSet, row) -> page(resultSet));
+        List<PublicProjectPage> found =
+                jdbc.query(SELECT + BY_SLUGS, parameters, (resultSet, row) -> page(resultSet));
         // At most one by construction — projects_creator_slug_key and users_slug_key are
         // both unique — so this is a `findFirst` over a list that cannot have two.
+        return found.stream().findFirst();
+    }
+
+    /**
+     * The same campaign, addressed by identifier — #399's staff preview.
+     *
+     * <p><strong>Identical projection, and deliberately not a narrower one.</strong> The
+     * screen this feeds exists so that a moderator deciding a submission can read what
+     * they are deciding, and "what they are deciding" is the page a backer would see. A
+     * preview assembled from a shorter row would be a second answer to "what is this
+     * campaign", and the decision would be taken against the wrong one.
+     *
+     * <p>Visibility is not decided here either, for the reason above: this method answers
+     * "is there a row" and its caller answers "may this account see it". The caller is
+     * {@code CampaignDirectory}, which asks for {@code MODERATE_CONTENT} — the check that
+     * makes reading a draft, a rejected campaign or a suspended one legitimate.
+     */
+    public Optional<PublicProjectPage> find(UUID projectId, String locale) {
+        Map<String, Object> parameters =
+                Map.of("projectId", projectId, "locale", locale, "fallback", PRIMARY_LOCALE);
+
+        List<PublicProjectPage> found =
+                jdbc.query(SELECT + BY_ID, parameters, (resultSet, row) -> page(resultSet));
+        // At most one: the predicate is the primary key.
         return found.stream().findFirst();
     }
 

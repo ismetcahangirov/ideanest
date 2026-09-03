@@ -32,6 +32,7 @@ import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 import { formatExactTime } from '../../lib/time';
 import type { Locale } from '../../lib/i18n/locale';
 import type { DirectoryNames } from '../../lib/admin/directory';
+import { ConsoleCount } from './ConsoleCount';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { CopyIdentifier, EntityName } from './ConsoleIdentity';
 import { useDirectoryNames } from './useDirectoryNames';
@@ -162,7 +163,7 @@ export function PaymentLogView({ copy }: PaymentLogViewProps) {
       <h2 id="payment-log-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
         {copy.heading}
         {status === 'ready' && (
-          <span className="ml-2 text-xs font-normal text-white/40">{rows.length}</span>
+          <ConsoleCount loaded={rows.length} more={cursor !== null} copy={copy.count} />
         )}
       </h2>
 

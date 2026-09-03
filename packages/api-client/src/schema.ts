@@ -468,6 +468,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/moderation/reports/{id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["reportQueueContent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/moderation/reports/{id}/dismiss": {
         parameters: {
             query?: never;
@@ -716,6 +732,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["campaignDirectoryCampaigns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/projects/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["campaignDirectoryPreview"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5049,6 +5081,26 @@ export interface components {
             state?: string;
             target?: components["schemas"]["Target"];
         };
+        ReportedCampaign: {
+            creatorSlug?: string;
+            /** Format: uuid */
+            id?: string;
+            slug?: string;
+            title?: string;
+        };
+        ReportedContentResponse: {
+            /** Format: uuid */
+            authorId?: string;
+            body?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: int32 */
+            number?: number;
+            project?: components["schemas"]["ReportedCampaign"];
+            state?: string;
+            targetType?: string;
+            title?: string;
+        };
         ResetPasswordRequest: {
             password: string;
             token: string;
@@ -5907,6 +5959,8 @@ export type SchemaReportQueueResponse = components['schemas']['ReportQueueRespon
 export type SchemaReportRequest = components['schemas']['ReportRequest'];
 export type SchemaReportResolutionRequest = components['schemas']['ReportResolutionRequest'];
 export type SchemaReportResponse = components['schemas']['ReportResponse'];
+export type SchemaReportedCampaign = components['schemas']['ReportedCampaign'];
+export type SchemaReportedContentResponse = components['schemas']['ReportedContentResponse'];
 export type SchemaResetPasswordRequest = components['schemas']['ResetPasswordRequest'];
 export type SchemaResolution = components['schemas']['Resolution'];
 export type SchemaResolveRequest = components['schemas']['ResolveRequest'];
@@ -6781,6 +6835,28 @@ export interface operations {
             };
         };
     };
+    reportQueueContent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportedContentResponse"];
+                };
+            };
+        };
+    };
     reportQueueDismiss: {
         parameters: {
             query?: never;
@@ -7237,6 +7313,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CampaignDirectoryResponse"];
+                };
+            };
+        };
+    };
+    campaignDirectoryPreview: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectPageResponse"];
                 };
             };
         };

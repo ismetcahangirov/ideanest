@@ -353,23 +353,36 @@ export const CONSOLE_GROUPS: readonly ConsoleGroup[] = Object.freeze([
  * appearing twice is worse than not appearing at all — it tells a screen reader the page is
  * in two places.
  *
- * <p>The one exception is `/admin/curation/[slug]`, a collection's own editor, which has no
- * entry of its own and belongs under Collections. It is matched here rather than left
- * unmarked, so that opening a collection does not make the rail go blank.
+ * <p><strong>The exception is a detail route, and there are three of them.</strong> A screen
+ * addressed by something the rail cannot enumerate — a collection's handle, a report's
+ * identifier, a campaign's identifier — has no entry of its own and belongs under its parent.
+ * It is matched here rather than left unmarked, so that opening one does not make the rail go
+ * blank: a member of staff who has followed a link from a queue into a detail page still has
+ * to be able to see where they are and get back.
+ *
+ * <p>The rule is written once rather than per parent, which is the change #399 made. It used
+ * to name `/admin/curation` specifically, so the report detail page and the campaign preview
+ * — both reached from a queue, both places somebody arrives at with the queue still in mind —
+ * showed nothing as current. A named list would have grown a third entry now and a fourth
+ * later, and the entry it eventually forgot would be the one nobody notices.
+ *
+ * <p>The exclusion is what keeps it from being a prefix rule: a nested path that <em>is</em>
+ * an entry — `/admin/curation/badges`, `/admin/moderation/content` — marks that entry and not
+ * its parent, so `aria-current="page"` never appears twice.
  */
 export function isCurrentConsoleLink(href: string, pathname: string): boolean {
   if (pathname === href) return true;
+  if (!pathname.startsWith(`${href}/`)) return false;
 
-  if (href === '/admin/curation') {
-    return (
-      pathname.startsWith('/admin/curation/') &&
-      !CONSOLE_GROUPS.some((group) =>
-        group.links.some((link) => link !== href && link === pathname),
-      )
-    );
-  }
-
-  return false;
+  return !CONSOLE_GROUPS.some((group) =>
+    group.links.some(
+      (link) =>
+        // Compared on a path boundary rather than as a bare string prefix: `/admin/plans`
+        // must not claim `/admin/plansomething`, and a rule that reads as a prefix match is
+        // the rule somebody widens by accident.
+        link !== href && (pathname === link || pathname.startsWith(`${link}/`)),
+    ),
+  );
 }
 
 /**

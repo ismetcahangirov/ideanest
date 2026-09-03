@@ -2,6 +2,7 @@ package az.ideanest.admin.application;
 
 import az.ideanest.audit.AuditAction;
 import az.ideanest.audit.AuditActor;
+import az.ideanest.audit.AuditCursor;
 import az.ideanest.audit.AuditLog;
 import az.ideanest.audit.AuditOutcome;
 import az.ideanest.audit.AuditTrail;
@@ -79,7 +80,7 @@ public class ConsoleReadService {
      * @throws az.ideanest.staff.application.NotAModeratorException for a caller who is not
      *     platform staff
      */
-    public AuditTrailPage auditTrail(UUID staffId, AuditTrailFilter filter, UUID before, int limit) {
+    public AuditTrailPage auditTrail(UUID staffId, AuditTrailFilter filter, AuditCursor before, int limit) {
         staff.requireStaff(staffId);
         AuditTrailPage page = trail.page(filter, before, limit);
 

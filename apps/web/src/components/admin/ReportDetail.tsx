@@ -26,8 +26,10 @@ import {
 import { fillNodes } from '../../lib/i18n/placeholders';
 import type { ReportDetailCopy } from '../../lib/i18n/admin/content-copy';
 import { DecisionDialog, type Decision } from '../moderation/DecisionDialog';
+import { readReportedContent, type ReportedContent } from '../../lib/admin/reported-content';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { EntityName } from './ConsoleIdentity';
+import { ReportedContentPanel } from './ReportedContentPanel';
 import { useDirectoryNames } from './useDirectoryNames';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
@@ -82,6 +84,9 @@ export function ReportDetail({ reportId, copy }: ReportDetailProps) {
   const [report, setReport] = useState<QueuedReport | null>(null);
   const [history, setHistory] = useState<readonly AuditEntry[] | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  // #399: what the complaint is actually about. A third independent read — see `loadContent`.
+  const [content, setContent] = useState<ReportedContent | null>(null);
+  const [contentError, setContentError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -109,6 +114,9 @@ export function ReportDetail({ reportId, copy }: ReportDetailProps) {
       report?.reporterId ?? null,
       report?.resolution?.moderatorId ?? null,
       report?.target.type === 'USER' ? report.target.id : null,
+      // #399: whoever wrote the comment or the update being complained of. The one person
+      // on this page a decision is actually about, and the one it never named.
+      content?.authorId ?? null,
       ...(history ?? []).map((entry) => entry.actorId ?? null),
     ].filter((id): id is string => id != null),
     report?.target.type === 'PROJECT' ? [report.target.id] : [],
@@ -129,6 +137,29 @@ export function ReportDetail({ reportId, copy }: ReportDetailProps) {
          * cost a line of text rather than the screen.
          */
         setHistoryError(consoleMessageFor(cause, copy.historySubject, copy.refusals));
+      }
+    },
+    [reportId, copy],
+  );
+
+  /**
+   * What the complaint is about — #399.
+   *
+   * <p>The third independent read on this page, and it degrades the way the second one
+   * does: evidence that fails to load costs a line of text, not the screen. A moderator who
+   * cannot see the comment must still be able to see the complaint, the reporter and the
+   * decision history, because those are what an appeal is answered from.
+   */
+  const loadContent = useCallback(
+    async (signal?: AbortSignal): Promise<void> => {
+      try {
+        const found = await readReportedContent(reportId, signal);
+        if (signal?.aborted === true) return;
+        setContent(found);
+        setContentError(null);
+      } catch (cause) {
+        if (signal?.aborted === true || wasAborted(cause)) return;
+        setContentError(consoleMessageFor(cause, copy.evidence.subject, copy.refusals));
       }
     },
     [reportId, copy],
@@ -164,11 +195,12 @@ export function ReportDetail({ reportId, copy }: ReportDetailProps) {
 
     void load();
     void loadHistory(controller.signal);
+    void loadContent(controller.signal);
     return () => controller.abort();
     // `copy` is one object per server render; the language is a path segment, so a change to
     // it remounts this tree rather than re-running the effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportId, attempt, loadHistory]);
+  }, [reportId, attempt, loadHistory, loadContent]);
 
   async function commit(note: string | null): Promise<void> {
     if (pending === null || report === null || pending.kind !== 'report') return;
@@ -373,31 +405,54 @@ export function ReportDetail({ reportId, copy }: ReportDetailProps) {
           </div>
         )}
 
-        {open && (
-          <div className="mt-5" role="group" aria-label={copy.decideGroup}>
-            <p className="text-xs font-medium uppercase tracking-wide text-white/40">
-              {copy.decideHeading}
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {(['uphold', 'dismiss'] as const).map((outcome: ReportOutcome) => (
-                <Pill
-                  key={outcome}
-                  variant="outline"
-                  size="sm"
-                  disabled={dialogBusy}
-                  onClick={() => {
-                    setDialogError(null);
-                    setPending({ kind: 'report', outcome });
-                  }}
-                >
-                  {copy.moderation.reportOutcome[outcome]}
-                </Pill>
-              ))}
-            </div>
-            <p className="mt-3 max-w-[62ch] text-sm text-white/40">{copy.decideFootnote}</p>
-          </div>
-        )}
       </section>
+
+      {/*
+        #399, and its position is the whole of the argument. The complaint is above; the two
+        irreversible controls are below. A moderator reaching the decision has passed the
+        thing they are deciding about, rather than being offered "Uphold" and "Dismiss"
+        beside a UUID and left to go and find the comment by other means.
+
+        The issue's acceptance says it in one line: neither screen presents a decision
+        control next to an entity it cannot display.
+      */}
+      <ReportedContentPanel
+        content={content}
+        error={contentError}
+        names={names}
+        locale={locale}
+        copy={copy.evidence}
+        identity={copy.identity}
+      />
+
+      {open && (
+        <section
+          className="mt-8 rounded-xl border border-white/8 bg-surface-1 p-5"
+          role="group"
+          aria-label={copy.decideGroup}
+        >
+          <p className="text-xs font-medium uppercase tracking-wide text-white/40">
+            {copy.decideHeading}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {(['uphold', 'dismiss'] as const).map((outcome: ReportOutcome) => (
+              <Pill
+                key={outcome}
+                variant="outline"
+                size="sm"
+                disabled={dialogBusy}
+                onClick={() => {
+                  setDialogError(null);
+                  setPending({ kind: 'report', outcome });
+                }}
+              >
+                {copy.moderation.reportOutcome[outcome]}
+              </Pill>
+            ))}
+          </div>
+          <p className="mt-3 max-w-[62ch] text-sm text-white/40">{copy.decideFootnote}</p>
+        </section>
+      )}
 
       <section aria-labelledby="report-history-heading" className="mt-8">
         <h2

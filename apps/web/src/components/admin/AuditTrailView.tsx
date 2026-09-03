@@ -23,6 +23,7 @@ import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 import { formatExactTime } from '../../lib/time';
 import type { Locale } from '../../lib/i18n/locale';
 import type { DirectoryNames } from '../../lib/admin/directory';
+import { ConsoleCount } from './ConsoleCount';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { EntityName } from './ConsoleIdentity';
 import { useDirectoryNames } from './useDirectoryNames';
@@ -31,6 +32,15 @@ import { useDirectoryNames } from './useDirectoryNames';
  * §4.11's AD-14: what has been done, by whom, to what — issue #314.
  *
  * <h2>Newest first, where the report queue is oldest first</h2>
+ *
+ * <p><strong>And it now is — issue #404.</strong> This heading was true of the intent and
+ * false of the page. The service ordered by the primary key, on the argument that a UUID v7
+ * carries the millisecond it was minted in (§7.3); the key is minted by the application and
+ * `occurred_at` is `DEFAULT now()`, so the two disagree, and this screen displays the second
+ * while the query ordered by the first. Walked against the local seed, the first fourteen
+ * rows were from the previous month and that morning's eight privileged actions began at
+ * position fifteen. An investigator who opens the log and sees August at the top has no
+ * reason to scroll for this morning.
  *
  * Not a preference. A queue is worked from the front — the complaint that has waited longest
  * is the one that matters — and a trail is read from the end: "what has just happened", "what
@@ -163,7 +173,7 @@ export function AuditTrailView({ copy }: AuditTrailViewProps) {
       >
         {copy.heading}
         {status === 'ready' && (
-          <span className="ml-2 text-xs font-normal text-white/40">{entries.length}</span>
+          <ConsoleCount loaded={entries.length} more={cursor !== null} copy={copy.count} />
         )}
       </h2>
 
