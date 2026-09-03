@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
+  Chip,
+  ChipRow,
   EmptyState,
   Field,
   InlineAlert,
@@ -13,9 +15,11 @@ import {
 } from '@ideanest/ui';
 import {
   PAYMENT_PAGE_SIZE,
+  TRANSACTION_STATUSES,
   readPaymentLog,
   statusVariant,
   type LoggedTransaction,
+  type TransactionStatus,
 } from '../../lib/admin/payments';
 import {
   consoleMessageFor,
@@ -82,6 +86,14 @@ export function PaymentLogView({ copy }: PaymentLogViewProps) {
   const [scope, setScope] = useState<Scope>('project');
   const [term, setTerm] = useState('');
   const [submitted, setSubmitted] = useState<{ scope: Scope; id: string } | null>(null);
+  /*
+   * #404: which outcome, or every outcome. Chips rather than part of the form above, because
+   * this filter is not a search — there is nothing to type and nothing to submit, and a
+   * three-way choice behind a button is a click somebody forgets to make. It is also the
+   * question this screen is opened with, where the identifier is the question it is narrowed
+   * with, so it belongs above the results rather than inside the lookup.
+   */
+  const [outcome, setOutcome] = useState<TransactionStatus | null>(null);
   const [rows, setRows] = useState<readonly LoggedTransaction[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -102,6 +114,7 @@ export function PaymentLogView({ copy }: PaymentLogViewProps) {
         const page = await readPaymentLog({
           pledgeId: filter?.scope === 'pledge' ? filter.id : null,
           projectId: filter?.scope === 'project' ? filter.id : null,
+          status: outcome,
           limit: PAYMENT_PAGE_SIZE,
           signal: controller.signal,
         });
@@ -125,7 +138,7 @@ export function PaymentLogView({ copy }: PaymentLogViewProps) {
     return () => controller.abort();
     // The copy is one object per server render — see `useConsoleResource` for the argument.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, attempt]);
+  }, [filter, outcome, attempt]);
 
   const loadMore = useCallback(async (): Promise<void> => {
     if (cursor === null || loadingMore) return;
@@ -136,6 +149,7 @@ export function PaymentLogView({ copy }: PaymentLogViewProps) {
       const page = await readPaymentLog({
         pledgeId: filter?.scope === 'pledge' ? filter.id : null,
         projectId: filter?.scope === 'project' ? filter.id : null,
+        status: outcome,
         after: cursor,
         limit: PAYMENT_PAGE_SIZE,
       });
@@ -146,7 +160,7 @@ export function PaymentLogView({ copy }: PaymentLogViewProps) {
     } finally {
       setLoadingMore(false);
     }
-  }, [cursor, filter, loadingMore, copy]);
+  }, [cursor, filter, outcome, loadingMore, copy]);
 
   if (status === 'signed-out' || status === 'forbidden') {
     return <ConsoleRefusal status={status} capability={capability} subject={copy.subject} copy={copy.refusals} />;
@@ -222,6 +236,25 @@ export function PaymentLogView({ copy }: PaymentLogViewProps) {
         )}
       </form>
 
+      {/*
+        #404: the outcome, and every chip reaches the service. The screen's own description
+        promises the log includes rejected calls, and until V63 there was no index that could
+        select them — so the view an operator opens this screen for was the one view it could
+        not offer. Narrowing the loaded page in the browser would have been the cheap version
+        and a wrong one: "3 results" about a page of twenty-five is not an answer about a table
+        with four thousand failures in it. `AuditTrailView` states the same rule.
+      */}
+      <ChipRow aria-label={copy.outcomeLabel} className="mt-3">
+        <Chip active={outcome === null} onClick={() => setOutcome(null)}>
+          {copy.everyOutcome}
+        </Chip>
+        {TRANSACTION_STATUSES.map((value) => (
+          <Chip key={value} active={outcome === value} onClick={() => setOutcome(value)}>
+            {copy.status[value]}
+          </Chip>
+        ))}
+      </ChipRow>
+
       {error && (
         <InlineAlert variant="danger" title={copy.errorTitle} className="mt-4">
           {error}
@@ -244,9 +277,13 @@ export function PaymentLogView({ copy }: PaymentLogViewProps) {
       {status === 'ready' && rows.length === 0 && (
         <EmptyState
           className="mt-4"
-          variant={submitted === null ? 'empty' : 'filtered'}
-          title={submitted === null ? copy.emptyTitle : copy.filteredTitle}
-          description={submitted === null ? copy.emptyBody : copy.filteredBody}
+          /* An outcome chip narrows the list exactly as the identifier does, so a page of
+             nothing under one is "no failures", not "no provider calls" — #404. */
+          variant={submitted === null && outcome === null ? 'empty' : 'filtered'}
+          title={submitted === null && outcome === null ? copy.emptyTitle : copy.filteredTitle}
+          description={
+            submitted === null && outcome === null ? copy.emptyBody : copy.filteredBody
+          }
         />
       )}
 

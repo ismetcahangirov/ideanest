@@ -238,118 +238,21 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
     List<SubmissionQueueRow> findSubmissionQueueAfter(
             @Param("state") String state, @Param("after") UUID after, @Param("limit") int limit);
 
-    /**
-     * The console's campaign directory: everything on the platform, newest first.
-     *
-     * <p><strong>Not the submission queue with the filter removed.</strong> That query
-     * reads the transition that put a campaign in its state, oldest first, because it
-     * answers "what has been waiting longest". This answers "what is on the platform",
-     * so it is ordered by when the campaign was created and carries what a member of
-     * staff looking at a campaign wants to know — how much it has raised and from how
-     * many people — which the queue has no use for.
-     *
-     * <p><strong>Ordered by {@code (created_at, id)} rather than by the key alone.</strong>
-     * The primary key is a UUIDv7 and is therefore time-ordered for everything this
-     * platform has written, but not for anything seeded or migrated in with a key from
-     * somewhere else. Ordering on the column that means what it says costs an index and
-     * cannot be wrong.
-     */
-    @Query(
-            value =
-                    """
-                    SELECT p.id AS projectId, p.title AS title, p.slug AS slug,
-                           p.state AS state, p.created_at AS createdAt,
-                           p.launched_at AS launchedAt, p.deadline AS deadline,
-                           p.goal_amount AS goalAmount, p.currency AS currency,
-                           p.pledged_amount AS pledgedAmount, p.backers_count AS backersCount,
-                           p.creator_id AS creatorId
-                    FROM projects p
-                    ORDER BY p.created_at DESC, p.id DESC
-                    LIMIT :limit
-                    """,
-            nativeQuery = true)
-    List<CampaignDirectoryRow> findCampaignDirectory(@Param("limit") int limit);
 
-    /**
-     * The page after {@code after}, which names a campaign rather than a position.
+    /*
+     * The console's campaign directory used to be four methods here — issue #387's
+     * `findCampaignDirectory`, and one variant per combination of "a state or every state"
+     * and "the first page or a later one".
      *
-     * <p>The row comparison is what makes one key enough for a two-column order: it asks
-     * PostgreSQL for everything that sorts after that campaign, in the same terms the
-     * {@code ORDER BY} uses. A cursor carrying both halves would be the alternative, and
-     * it would put a parseable structure in a URL for no gain — the id is already unique
-     * and the subquery is a primary-key lookup.
-     *
-     * <p>A cursor naming a campaign that has since been deleted answers nothing at all
-     * rather than answering the first page again. §17.4 deletes an account and leaves its
-     * campaigns behind, so this is a narrow case, and an empty page is the honest one:
-     * silently restarting a list somebody is halfway through is how a moderator reads the
-     * same twenty campaigns twice.
+     * #404 gave that list a search term and a creator filter, and four combinations became
+     * sixteen. Spring Data cannot express a predicate that is sometimes absent without a
+     * nullable parameter, and this file spells its variants out precisely to avoid one: a
+     * `:state IS NULL OR …` predicate in a native query hands the driver a parameter whose
+     * type it has to guess. So the directory moved to `CampaignDirectoryRows`, which
+     * assembles the statement — a predicate that is absent is absent from the SQL rather
+     * than present and disabled, and every bound parameter still has exactly one type.
      */
-    @Query(
-            value =
-                    """
-                    SELECT p.id AS projectId, p.title AS title, p.slug AS slug,
-                           p.state AS state, p.created_at AS createdAt,
-                           p.launched_at AS launchedAt, p.deadline AS deadline,
-                           p.goal_amount AS goalAmount, p.currency AS currency,
-                           p.pledged_amount AS pledgedAmount, p.backers_count AS backersCount,
-                           p.creator_id AS creatorId
-                    FROM projects p
-                    WHERE (p.created_at, p.id) <
-                          (SELECT c.created_at, c.id FROM projects c WHERE c.id = :after)
-                    ORDER BY p.created_at DESC, p.id DESC
-                    LIMIT :limit
-                    """,
-            nativeQuery = true)
-    List<CampaignDirectoryRow> findCampaignDirectoryAfter(
-            @Param("after") UUID after, @Param("limit") int limit);
 
-    /**
-     * The same list, narrowed to one state.
-     *
-     * <p>Spelled out rather than folded into the query above behind a nullable parameter,
-     * which is the choice the submission queue made two methods up and for the same
-     * reason: a {@code :state IS NULL OR …} predicate hands the driver a parameter whose
-     * type it has to guess.
-     */
-    @Query(
-            value =
-                    """
-                    SELECT p.id AS projectId, p.title AS title, p.slug AS slug,
-                           p.state AS state, p.created_at AS createdAt,
-                           p.launched_at AS launchedAt, p.deadline AS deadline,
-                           p.goal_amount AS goalAmount, p.currency AS currency,
-                           p.pledged_amount AS pledgedAmount, p.backers_count AS backersCount,
-                           p.creator_id AS creatorId
-                    FROM projects p
-                    WHERE p.state = :state
-                    ORDER BY p.created_at DESC, p.id DESC
-                    LIMIT :limit
-                    """,
-            nativeQuery = true)
-    List<CampaignDirectoryRow> findCampaignDirectoryInState(
-            @Param("state") String state, @Param("limit") int limit);
-
-    /** One state, the page after {@code after}. */
-    @Query(
-            value =
-                    """
-                    SELECT p.id AS projectId, p.title AS title, p.slug AS slug,
-                           p.state AS state, p.created_at AS createdAt,
-                           p.launched_at AS launchedAt, p.deadline AS deadline,
-                           p.goal_amount AS goalAmount, p.currency AS currency,
-                           p.pledged_amount AS pledgedAmount, p.backers_count AS backersCount,
-                           p.creator_id AS creatorId
-                    FROM projects p
-                    WHERE p.state = :state
-                      AND (p.created_at, p.id) <
-                          (SELECT c.created_at, c.id FROM projects c WHERE c.id = :after)
-                    ORDER BY p.created_at DESC, p.id DESC
-                    LIMIT :limit
-                    """,
-            nativeQuery = true)
-    List<CampaignDirectoryRow> findCampaignDirectoryInStateAfter(
-            @Param("state") String state, @Param("after") UUID after, @Param("limit") int limit);
 
     /**
      * Campaigns whose launch time has arrived — issue #389.

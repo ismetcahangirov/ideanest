@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import {
   Checkbox,
+  Chip,
+  ChipRow,
   EmptyState,
   Field,
   InlineAlert,
@@ -16,11 +18,14 @@ import {
 import {
   TICKET_PRIORITIES,
   TICKET_STATES,
+  listTickets,
+  narrows,
   readTicket,
   readTicketQueue,
   replyToTicket,
   updateTicket,
   type Ticket,
+  type TicketFilter,
   type TicketPriority,
   type TicketState,
 } from '../../lib/admin/tickets';
@@ -28,6 +33,7 @@ import { consoleMessageFor } from '../../lib/admin/refusals';
 import { pluralise } from '../../lib/i18n/plurals';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 import type { SupportConsoleCopy } from '../../lib/i18n/admin/people-copy';
+import { ConsoleCount } from './ConsoleCount';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { EntityName } from './ConsoleIdentity';
 import { useConsoleResource } from './useConsoleResource';
@@ -60,12 +66,33 @@ export interface SupportConsoleProps {
 export function SupportConsole({ copy }: SupportConsoleProps) {
   const [page, setPage] = useState(0);
   const [openTicket, setOpenTicket] = useState<string | null>(null);
+  /*
+   * #404: five tickets and no filter of any kind — not by priority, not by state, not by who
+   * is handling it, though every row displayed all three and the copy under the list explains
+   * that staff set the priority.
+   *
+   * `filter` being empty is the queue and not "the list with nothing selected", which is the
+   * one design decision here. The queue is a different question with a different order —
+   * `readTicketQueue` is open work, most urgent first, and the list is everything, newest
+   * first — so the default view stays what this screen has always been, and choosing any
+   * filter moves to the list. Widening the queue with filters would have been the smaller
+   * change and would have left a queue whose order no longer means "work this from the front".
+   */
+  const [filter, setFilter] = useState<TicketFilter>({});
+  const filtering = narrows(filter);
+
+  /** Every change of filter starts at the first page; page four of a different list is not a page. */
+  function narrow(next: TicketFilter): void {
+    setFilter(next);
+    setPage(0);
+    setOpenTicket(null);
+  }
 
   const queue = useConsoleResource(
-    (signal) => readTicketQueue(page, signal),
+    (signal) => (filtering ? listTickets(filter, page, signal) : readTicketQueue(page, signal)),
     copy.subject,
     copy.refusals,
-    [page],
+    [page, filter],
   );
 
   /*
@@ -90,13 +117,76 @@ export function SupportConsole({ copy }: SupportConsoleProps) {
       <section aria-labelledby="queue-heading">
         <h2 id="queue-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
           {copy.heading}
+          {/*
+            #404 again, in miniature: this badge printed the length of the loaded page as
+            though it were the population, which is the defect `ConsoleCount` exists for. The
+            list pages rather than cursors, so "there are more" comes from `hasMore` — the same
+            fact the pager below is built on, and the two can no longer disagree.
+          */}
           {queue.status === 'ready' && (
-            <span className="ml-2 text-xs font-normal text-white/40">
-              {queue.data?.tickets.length ?? 0}
-            </span>
+            <ConsoleCount
+              loaded={queue.data?.tickets.length ?? 0}
+              more={queue.data?.hasMore ?? false}
+              copy={copy.count}
+            />
           )}
         </h2>
         <p className="mt-2 max-w-[62ch] text-sm text-white/64">{copy.intro}</p>
+
+        {/*
+          Three rows, because they are three independent questions and a reader combines them:
+          "urgent things nobody has picked up" is one chip from each. Every chip reaches the
+          service — a page of fifty narrowed in the browser would report a count about the page
+          under a heading that reads as a count about the platform.
+        */}
+        <ChipRow aria-label={copy.stateFilterLabel} className="mt-4">
+          <Chip active={!filtering} onClick={() => narrow({})}>
+            {copy.queueOnly}
+          </Chip>
+          {TICKET_STATES.map((value) => (
+            <Chip
+              key={value}
+              active={filter.state === value}
+              onClick={() =>
+                narrow({ ...filter, state: filter.state === value ? null : value })
+              }
+            >
+              {copy.state[value]}
+            </Chip>
+          ))}
+        </ChipRow>
+
+        <ChipRow aria-label={copy.priorityFilterLabel} className="mt-2">
+          <Chip active={filter.priority == null} onClick={() => narrow({ ...filter, priority: null })}>
+            {copy.anyPriority}
+          </Chip>
+          {TICKET_PRIORITIES.map((value) => (
+            <Chip
+              key={value}
+              active={filter.priority === value}
+              onClick={() =>
+                narrow({ ...filter, priority: filter.priority === value ? null : value })
+              }
+            >
+              {copy.priority[value]}
+            </Chip>
+          ))}
+        </ChipRow>
+
+        <ChipRow aria-label={copy.assignmentFilterLabel} className="mt-2">
+          <Chip
+            active={filter.unassigned !== true}
+            onClick={() => narrow({ ...filter, unassigned: false })}
+          >
+            {copy.anyAssignee}
+          </Chip>
+          <Chip
+            active={filter.unassigned === true}
+            onClick={() => narrow({ ...filter, unassigned: filter.unassigned !== true })}
+          >
+            {copy.unassignedOnly}
+          </Chip>
+        </ChipRow>
 
         {queue.status === 'loading' && (
           <SkeletonGroup label={copy.loadingList} className="mt-4">
@@ -125,9 +215,11 @@ export function SupportConsole({ copy }: SupportConsoleProps) {
         {queue.status === 'ready' && queue.data !== null && queue.data.tickets.length === 0 && (
           <EmptyState
             className="mt-4"
-            variant="empty"
-            title={copy.emptyTitle}
-            description={copy.emptyBody}
+            /* A filtered list that is empty says nothing matched, not that there are no
+               tickets — the distinction #404 draws about every list in the console. */
+            variant={filtering ? 'filtered' : 'empty'}
+            title={filtering ? copy.filteredTitle : copy.emptyTitle}
+            description={filtering ? copy.filteredBody : copy.emptyBody}
           />
         )}
 

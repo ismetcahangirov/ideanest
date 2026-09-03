@@ -101,6 +101,79 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     List<PaymentTransaction> newestOfPledgeBefore(
             @Param("pledgeId") UUID pledgeId, @Param("before") UUID before, Pageable limit);
 
+    /*
+     * The six below are the same six narrowed to one outcome — #404's status filter.
+     *
+     * Six more methods rather than one nullable parameter on each of the six above, which is
+     * the choice ProjectRepository makes for the same reason: a `:status IS NULL OR
+     * t.status = :status` predicate is one query whose plan has to serve two very different
+     * reads, and the read that matters here is the filtered one over the largest table the
+     * platform holds. Spelled out, each of these is exactly the index it uses — V63's
+     * (status, id DESC) for the unscoped one, V41's pledge and project indexes with the status
+     * as a filter step for the other two — and the six above are untouched, so nothing that
+     * already worked can regress on the way in.
+     */
+
+    /** The newest calls of one outcome, whatever they were about. V63's index. */
+    @Query("SELECT t FROM PaymentTransaction t WHERE t.status = :status ORDER BY t.id DESC")
+    List<PaymentTransaction> newestWithStatus(@Param("status") TransactionStatus status, Pageable limit);
+
+    /** The page after {@code before}, within one outcome. */
+    @Query(
+            """
+            SELECT t FROM PaymentTransaction t
+            WHERE t.status = :status AND t.id < :before
+            ORDER BY t.id DESC
+            """)
+    List<PaymentTransaction> newestWithStatusBefore(
+            @Param("status") TransactionStatus status, @Param("before") UUID before, Pageable limit);
+
+    /** One campaign's calls of one outcome — "what did this collection run leave behind". */
+    @Query(
+            """
+            SELECT t FROM PaymentTransaction t
+            WHERE t.projectId = :projectId AND t.status = :status
+            ORDER BY t.id DESC
+            """)
+    List<PaymentTransaction> newestOfProjectWithStatus(
+            @Param("projectId") UUID projectId, @Param("status") TransactionStatus status, Pageable limit);
+
+    /** The page after {@code before}, within one campaign and one outcome. */
+    @Query(
+            """
+            SELECT t FROM PaymentTransaction t
+            WHERE t.projectId = :projectId AND t.status = :status AND t.id < :before
+            ORDER BY t.id DESC
+            """)
+    List<PaymentTransaction> newestOfProjectWithStatusBefore(
+            @Param("projectId") UUID projectId,
+            @Param("status") TransactionStatus status,
+            @Param("before") UUID before,
+            Pageable limit);
+
+    /** One pledge's attempts of one outcome — "every time this card was refused". */
+    @Query(
+            """
+            SELECT t FROM PaymentTransaction t
+            WHERE t.pledgeId = :pledgeId AND t.status = :status
+            ORDER BY t.id DESC
+            """)
+    List<PaymentTransaction> newestOfPledgeWithStatus(
+            @Param("pledgeId") UUID pledgeId, @Param("status") TransactionStatus status, Pageable limit);
+
+    /** The page after {@code before}, within one pledge and one outcome. */
+    @Query(
+            """
+            SELECT t FROM PaymentTransaction t
+            WHERE t.pledgeId = :pledgeId AND t.status = :status AND t.id < :before
+            ORDER BY t.id DESC
+            """)
+    List<PaymentTransaction> newestOfPledgeWithStatusBefore(
+            @Param("pledgeId") UUID pledgeId,
+            @Param("status") TransactionStatus status,
+            @Param("before") UUID before,
+            Pageable limit);
+
     /**
      * The settled charge on a pledge, newest first — #67.
      *

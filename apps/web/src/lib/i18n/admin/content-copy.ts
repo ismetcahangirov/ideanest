@@ -421,6 +421,11 @@ export interface CampaignDirectoryCopy extends ConsoleChromeCopy {
   /** What this screen calls the thing it reads, for the refusals. Already inflected. */
   readonly subject: string;
   readonly heading: string;
+  /** The search box, its hint and its two controls — issue #404. */
+  readonly searchLabel: string;
+  readonly searchHint: string;
+  readonly search: string;
+  readonly clearSearch: string;
   readonly filterLabel: string;
   readonly everything: string;
   readonly loadingList: string;
@@ -532,6 +537,10 @@ export function campaignDirectoryCopyFrom(
     ...chrome,
     subject: t(at('subject')),
     heading: t(at('heading')),
+    searchLabel: t(at('searchLabel')),
+    searchHint: t(at('searchHint')),
+    search: t(at('search')),
+    clearSearch: t(at('clearSearch')),
     filterLabel: t(at('filterLabel')),
     everything: t(at('everything')),
     loadingList: t(at('loadingList')),

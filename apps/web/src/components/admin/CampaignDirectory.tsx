@@ -1,7 +1,17 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Chip, ChipRow, EmptyState, InlineAlert, Pill, Skeleton, SkeletonGroup } from '@ideanest/ui';
+import {
+  Chip,
+  ChipRow,
+  EmptyState,
+  Field,
+  InlineAlert,
+  Pill,
+  Skeleton,
+  SkeletonGroup,
+  TextInput,
+} from '@ideanest/ui';
 import {
   DIRECTORY_PAGE_SIZE,
   DIRECTORY_STATES,
@@ -86,6 +96,16 @@ export function CampaignDirectory({ copy }: CampaignDirectoryProps) {
   // #400: which of the two 403s this is. Only read while `status` is `forbidden`.
   const [capability, setCapability] = useState<string | null>(null);
   const [state, setState] = useState<ProjectState | null>(null);
+  /*
+   * #404's search, and it is a form rather than a keystroke handler — the rule
+   * `UserDirectory` set for the account directory next door. `term` is what is in the box;
+   * `search` is what has been asked for. Two pieces of state rather than one, because a
+   * request per character would be a request per character against a contains-match over
+   * `projects` joined to `users`, which is the scan `CampaignDirectoryRows` says is
+   * affordable once per intention and not once per keypress.
+   */
+  const [term, setTerm] = useState('');
+  const [search, setSearch] = useState('');
   const [campaigns, setCampaigns] = useState<readonly DirectoryCampaign[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -100,6 +120,7 @@ export function CampaignDirectory({ copy }: CampaignDirectoryProps) {
       try {
         const page = await listCampaigns({
           state,
+          query: search,
           limit: DIRECTORY_PAGE_SIZE,
           signal: controller.signal,
         });
@@ -124,7 +145,7 @@ export function CampaignDirectory({ copy }: CampaignDirectoryProps) {
     // `copy` is one object per server render and changes only with the language, which is a
     // path segment and remounts this tree rather than re-running this.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, attempt]);
+  }, [state, search, attempt]);
 
   const loadMore = useCallback(async (): Promise<void> => {
     if (cursor === null || loadingMore) return;
@@ -132,7 +153,12 @@ export function CampaignDirectory({ copy }: CampaignDirectoryProps) {
     setLoadingMore(true);
     setError(null);
     try {
-      const page = await listCampaigns({ state, after: cursor, limit: DIRECTORY_PAGE_SIZE });
+      const page = await listCampaigns({
+        state,
+        query: search,
+        after: cursor,
+        limit: DIRECTORY_PAGE_SIZE,
+      });
       setCampaigns((previous) => [...previous, ...page.campaigns]);
       setCursor(page.nextCursor ?? null);
     } catch (cause) {
@@ -140,7 +166,7 @@ export function CampaignDirectory({ copy }: CampaignDirectoryProps) {
     } finally {
       setLoadingMore(false);
     }
-  }, [cursor, loadingMore, state, copy]);
+  }, [cursor, loadingMore, state, search, copy]);
 
   if (status === 'signed-out' || status === 'forbidden') {
     return <ConsoleRefusal status={status} capability={capability} subject={copy.subject} copy={copy.refusals} />;
@@ -155,9 +181,50 @@ export function CampaignDirectory({ copy }: CampaignDirectoryProps) {
         )}
       </h2>
 
+      {/*
+        #404: the screen that lists campaigns in every state had no input of any kind, so
+        finding one among hundreds meant paging through sixteen chips and reading. The account
+        directory has had a search box since #104 and shows it is not hard.
+
+        A form and not a keystroke handler, for the reason the state above gives. Submitting an
+        empty box clears the search, which is why there is no separate "clear" control: the
+        box is the control.
+      */}
+      <form
+        className="mt-4 flex flex-wrap items-end gap-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setSearch(term.trim());
+        }}
+      >
+        <Field label={copy.searchLabel} hint={copy.searchHint} className="min-w-[260px] flex-1">
+          <TextInput
+            type="search"
+            value={term}
+            onChange={(event) => setTerm(event.target.value)}
+          />
+        </Field>
+        <Pill type="submit" variant="ghost" size="sm" className="mb-1">
+          {copy.search}
+        </Pill>
+        {search !== '' && (
+          <Pill
+            variant="ghost"
+            size="sm"
+            className="mb-1"
+            onClick={() => {
+              setTerm('');
+              setSearch('');
+            }}
+          >
+            {copy.clearSearch}
+          </Pill>
+        )}
+      </form>
+
       {/* Every chip here reaches the service — see the docblock on why nothing is narrowed
           in the browser. */}
-      <ChipRow aria-label={copy.filterLabel} className="mt-4">
+      <ChipRow aria-label={copy.filterLabel} className="mt-3">
         <Chip active={state === null} onClick={() => setState(null)}>
           {copy.everything}
         </Chip>
@@ -191,9 +258,11 @@ export function CampaignDirectory({ copy }: CampaignDirectoryProps) {
       {status === 'ready' && campaigns.length === 0 && (
         <EmptyState
           className="mt-4"
-          variant={state === null ? 'empty' : 'filtered'}
-          title={state === null ? copy.emptyTitle : copy.filteredTitle}
-          description={state === null ? copy.emptyBody : copy.filteredBody}
+          /* A search narrows the list exactly as a state chip does, so a page of nothing
+             under one is "nothing matched", not "there are no campaigns" — #404. */
+          variant={state === null && search === '' ? 'empty' : 'filtered'}
+          title={state === null && search === '' ? copy.emptyTitle : copy.filteredTitle}
+          description={state === null && search === '' ? copy.emptyBody : copy.filteredBody}
         />
       )}
 

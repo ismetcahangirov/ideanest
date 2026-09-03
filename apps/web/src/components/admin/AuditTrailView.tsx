@@ -1,14 +1,27 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Chip, ChipRow, EmptyState, InlineAlert, Pill, Skeleton, SkeletonGroup, Tag } from '@ideanest/ui';
+import {
+  Chip,
+  ChipRow,
+  EmptyState,
+  Field,
+  InlineAlert,
+  Pill,
+  Skeleton,
+  SkeletonGroup,
+  Tag,
+  TextInput,
+} from '@ideanest/ui';
 import {
   AUDIT_ENTITY_TYPES,
   TRAIL_PAGE_SIZE,
   actionLabel,
+  dayBounds,
   readTrail,
   type AuditEntry,
 } from '../../lib/admin/audit';
+import type { AdminUser } from '../../lib/admin/api';
 import {
   consoleMessageFor,
   requiredCapabilityFrom,
@@ -23,6 +36,7 @@ import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 import { formatExactTime } from '../../lib/time';
 import type { Locale } from '../../lib/i18n/locale';
 import type { DirectoryNames } from '../../lib/admin/directory';
+import { AccountPicker } from './AccountPicker';
 import { ConsoleCount } from './ConsoleCount';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { EntityName } from './ConsoleIdentity';
@@ -47,14 +61,24 @@ import { useDirectoryNames } from './useDirectoryNames';
  * did that account do before it was stopped". The row somebody wants is almost always the
  * most recent one that matches.
  *
- * <h2>Three filters, and the reason there are not more</h2>
+ * <h2>Four filters, and the reason there are not more</h2>
  *
  * The service narrows by entity kind, by one entity, or by one actor, because those are the
- * three indexes V21 created. There is no filter on the action, no date range and no search
- * over the free text, and this screen does not offer any of them client-side either — a chip
- * that filtered the twenty-five rows in the browser would say "3 results" about a table with
- * four thousand matching rows in it, which on an audit surface is not a rough edge but a
- * wrong answer. `lib/admin/audit.ts` records what each missing filter would cost.
+ * three indexes V21 created — and, since #404, by a date range, which is the one filter that
+ * costs nothing because `occurred_at DESC` is the trailing column of all four of those
+ * indexes.
+ *
+ * That issue is also why the actor filter has a control at all. The service had accepted
+ * `actorId` since #314 and the screen offered no way to set one, so "what did this person do"
+ * — the question an audit log exists to answer — was reachable only by editing the URL.
+ * `AccountPicker` is the control, for the reason it was built: an identifier a moderator has
+ * to already hold is not a filter they can use.
+ *
+ * There is still no filter on the action and no search over the free text, and this screen
+ * does not offer either client-side — a chip that filtered the twenty-five loaded rows in the
+ * browser would say "3 results" about a table with four thousand matching rows in it, which
+ * on an audit surface is not a rough edge but a wrong answer. `lib/admin/audit.ts` records
+ * what each missing filter would cost.
  *
  * <h2>Nothing here can change anything</h2>
  *
@@ -92,11 +116,35 @@ export function AuditTrailView({ copy }: AuditTrailViewProps) {
   // #400: which of the two 403s this is. Only read while `status` is `forbidden`.
   const [capability, setCapability] = useState<string | null>(null);
   const [entityType, setEntityType] = useState<string | null>(null);
+  /*
+   * #404: who, and when. Both reach the service.
+   *
+   * `actor` holds the whole account rather than its identifier, because that is what
+   * `AccountPicker` hands back and what lets the applied filter be rendered as a person
+   * instead of thirty-six characters — on the one screen whose purpose is that somebody who
+   * was not there can read what happened.
+   *
+   * The two dates are the reader's own days, `YYYY-MM-DD` as an `<input type="date">`
+   * produces them. `dayBounds` turns each into the instant the service wants, in the
+   * browser's timezone, which is the only definition of "last Tuesday" a moderator would
+   * recognise.
+   */
+  const [actor, setActor] = useState<AdminUser | null>(null);
+  const [fromDay, setFromDay] = useState('');
+  const [toDay, setToDay] = useState('');
   const [entries, setEntries] = useState<readonly AuditEntry[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+
+  /* The effect depends on who, not on the object holding them: `AccountPicker` hands back a
+     fresh record each time it searches, and depending on the object would re-read the trail
+     when somebody picked the same person twice. */
+  const actorId = actor?.id ?? null;
+
+  /** Whether the reader has narrowed the trail at all, which decides what an empty page says. */
+  const narrowed = entityType !== null || actorId !== null || fromDay !== '' || toDay !== '';
 
   useEffect(() => {
     const controller = new AbortController();
@@ -106,6 +154,9 @@ export function AuditTrailView({ copy }: AuditTrailViewProps) {
       try {
         const page = await readTrail({
           entityType,
+          actorId,
+          from: dayBounds(fromDay, 'from'),
+          to: dayBounds(toDay, 'to'),
           limit: TRAIL_PAGE_SIZE,
           signal: controller.signal,
         });
@@ -130,7 +181,7 @@ export function AuditTrailView({ copy }: AuditTrailViewProps) {
     // `copy` is not a dependency: it is one object per server render, so it changes only when
     // the language does, and the language is a path segment that remounts this tree.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entityType, attempt]);
+  }, [entityType, actorId, fromDay, toDay, attempt]);
 
   const loadMore = useCallback(async (): Promise<void> => {
     if (cursor === null || loadingMore) return;
@@ -138,7 +189,14 @@ export function AuditTrailView({ copy }: AuditTrailViewProps) {
     setLoadingMore(true);
     setError(null);
     try {
-      const page = await readTrail({ entityType, after: cursor, limit: TRAIL_PAGE_SIZE });
+      const page = await readTrail({
+        entityType,
+        actorId,
+        from: dayBounds(fromDay, 'from'),
+        to: dayBounds(toDay, 'to'),
+        after: cursor,
+        limit: TRAIL_PAGE_SIZE,
+      });
       setEntries((previous) => [...previous, ...page.entries]);
       setCursor(page.nextCursor ?? null);
     } catch (cause) {
@@ -146,7 +204,7 @@ export function AuditTrailView({ copy }: AuditTrailViewProps) {
     } finally {
       setLoadingMore(false);
     }
-  }, [cursor, entityType, loadingMore, copy]);
+  }, [cursor, entityType, actorId, fromDay, toDay, loadingMore, copy]);
 
   /*
    * Who did it and, where the platform can say, what it was done to — #402. An audit trail
@@ -193,6 +251,68 @@ export function AuditTrailView({ copy }: AuditTrailViewProps) {
         ))}
       </ChipRow>
 
+      {/*
+        #404: who, and when.
+
+        Not a form with a submit button, unlike the account directory's search. Nothing here
+        is typed — a day comes from a date picker and an actor from `AccountPicker`, which has
+        its own search and its own submit — so there is nothing to hold back until an
+        intention is complete. Each control produces one read when it changes.
+
+        `fieldset` rather than three loose fields, so that a screen reader announces the group
+        before its parts: "when" is what the two dates mean together, and either alone is an
+        open-ended range rather than half a filter.
+      */}
+      <fieldset className="mt-4">
+        <legend className="text-sm text-white/64">{copy.narrowLabel}</legend>
+
+        <div className="mt-2 flex flex-wrap items-end gap-3">
+          <AccountPicker
+            chosen={actor}
+            onChoose={setActor}
+            copy={copy.actorPicker}
+            className="min-w-[280px] flex-1"
+          />
+
+          {/*
+            `type="date"` rather than a text field. The format a person types differs by
+            language — §21.1 puts the console in four — and the browser's own control renders
+            the reader's format over a value that is always `YYYY-MM-DD`.
+          */}
+          <Field label={copy.fromLabel} hint={copy.fromHint} className="min-w-[160px]">
+            <TextInput
+              type="date"
+              value={fromDay}
+              max={toDay === '' ? undefined : toDay}
+              onChange={(event) => setFromDay(event.target.value)}
+            />
+          </Field>
+
+          <Field label={copy.toLabel} hint={copy.toHint} className="min-w-[160px]">
+            <TextInput
+              type="date"
+              value={toDay}
+              min={fromDay === '' ? undefined : fromDay}
+              onChange={(event) => setToDay(event.target.value)}
+            />
+          </Field>
+
+          {(fromDay !== '' || toDay !== '') && (
+            <Pill
+              variant="ghost"
+              size="sm"
+              className="mb-1"
+              onClick={() => {
+                setFromDay('');
+                setToDay('');
+              }}
+            >
+              {copy.clearDates}
+            </Pill>
+          )}
+        </div>
+      </fieldset>
+
       {error && (
         <InlineAlert variant="danger" title={copy.errorTitle} className="mt-4">
           {error}
@@ -215,9 +335,11 @@ export function AuditTrailView({ copy }: AuditTrailViewProps) {
       {status === 'ready' && entries.length === 0 && (
         <EmptyState
           className="mt-4"
-          variant={entityType === null ? 'empty' : 'filtered'}
-          title={entityType === null ? copy.emptyTitle : copy.filteredTitle}
-          description={entityType === null ? copy.emptyBody : copy.filteredBody}
+          /* Any of the four narrows the trail, so an empty page under one of them is
+             "nothing matched" rather than "nothing has ever happened" — #404. */
+          variant={narrowed ? 'filtered' : 'empty'}
+          title={narrowed ? copy.filteredTitle : copy.emptyTitle}
+          description={narrowed ? copy.filteredBody : copy.emptyBody}
         />
       )}
 

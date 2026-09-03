@@ -56,6 +56,8 @@ import {
   staffRolesCopyFrom,
   supportConsoleCopyFrom,
   type StaffRolesCopy,
+  accountDetailCopyFrom,
+  type AccountDetailCopy,
   type SupportConsoleCopy,
   type UserDirectoryCopy,
   userDirectoryCopyFrom,
@@ -165,6 +167,11 @@ export async function taxonomyManagerCopy(): Promise<TaxonomyManagerCopy> {
 
 export async function userDirectoryCopy(): Promise<UserDirectoryCopy> {
   return userDirectoryCopyFrom(await getTranslations('admin'), await consoleChrome());
+}
+
+/** AD-04's other screen: one account, its campaigns and its pledges — issue #404. */
+export async function accountDetailCopy(): Promise<AccountDetailCopy> {
+  return accountDetailCopyFrom(await getTranslations('admin'), await consoleChrome());
 }
 
 export async function supportConsoleCopy(): Promise<SupportConsoleCopy> {

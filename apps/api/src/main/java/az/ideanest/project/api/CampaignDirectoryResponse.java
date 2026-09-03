@@ -16,14 +16,22 @@ import java.util.UUID;
  * is added to an internal type.
  *
  * @param state the filter this page was read with, or null for every campaign
+ * @param creatorId whose campaigns were asked for, or null for everybody's — #404
+ * @param query the search this page was read with, trimmed, or null when there was none.
+ *     Echoed so that a screen with two requests in flight can tell which answer it is
+ *     looking at: a search box typed into twice would otherwise show the wrong list under
+ *     the right term when the second answer arrives first
  * @param campaigns the rows, newest first
  * @param nextCursor what to pass as {@code after} for the next page, or null at the end
  */
-public record CampaignDirectoryResponse(String state, List<Campaign> campaigns, UUID nextCursor) {
+public record CampaignDirectoryResponse(
+        String state, UUID creatorId, String query, List<Campaign> campaigns, UUID nextCursor) {
 
     static CampaignDirectoryResponse of(CampaignDirectoryPage page) {
         return new CampaignDirectoryResponse(
                 page.state() == null ? null : page.state().name(),
+                page.creatorId(),
+                page.query(),
                 page.campaigns().stream().map(Campaign::of).toList(),
                 page.nextCursor());
     }

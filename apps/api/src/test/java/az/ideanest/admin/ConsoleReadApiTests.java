@@ -265,6 +265,106 @@ class ConsoleReadApiTests extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("an outcome filter answers the question this screen is opened with")
+    void anOutcomeFilterNarrowsTheLog() {
+        Fixture fixture = campaignWithPledge("payments-outcome");
+        charge(fixture, "FAILED", "100.00", 1, "51", "Insufficient funds.");
+        charge(fixture, "SUCCEEDED", "100.00", 2, null, null);
+
+        // #404: the log's own description promises it includes rejected calls, failed
+        // provider calls are the main reason anybody opens it, and they were the one view
+        // it could not select.
+        List<Map<String, Object>> failures = transactionsIn(get(
+                "/v1/admin/payments?pledgeId=" + fixture.pledgeId() + "&status=FAILED",
+                staff().accessToken()));
+
+        assertThat(failures).hasSize(1);
+        assertThat(failures.get(0)).containsEntry("status", "FAILED");
+        assertThat(failures.get(0)).containsEntry("attemptNumber", 1);
+    }
+
+    @Test
+    @DisplayName("an outcome combines with a campaign rather than replacing it")
+    void anOutcomeCombinesWithTheCampaignFilter() {
+        Fixture mine = campaignWithPledge("payments-outcome-mine");
+        Fixture theirs = campaignWithPledge("payments-outcome-theirs");
+        charge(mine, "FAILED", "100.00", 1, "51", "Insufficient funds.");
+        charge(theirs, "FAILED", "100.00", 1, "51", "Insufficient funds.");
+
+        // The one filter on this endpoint that composes. "What did this collection run
+        // leave behind" is a campaign and a status together, served by the campaign's own
+        // index with the status as a filter step.
+        List<Map<String, Object>> log = transactionsIn(get(
+                "/v1/admin/payments?projectId=" + mine.projectId() + "&status=FAILED",
+                staff().accessToken()));
+
+        assertThat(log).hasSize(1);
+        assertThat(log.get(0)).containsEntry("projectId", mine.projectId().toString());
+    }
+
+    @Test
+    @DisplayName("an outcome is matched whatever case it was typed in, and echoed as the column spells it")
+    void anOutcomeIsCaseInsensitiveAndEchoedCanonically() {
+        Fixture fixture = campaignWithPledge("payments-outcome-case");
+        charge(fixture, "FAILED", "100.00", 1, "51", "Insufficient funds.");
+
+        ResponseEntity<Map<String, Object>> page = get(
+                "/v1/admin/payments?pledgeId=" + fixture.pledgeId() + "&status=failed", staff().accessToken());
+
+        // A query parameter is typed by whoever is holding the URL, and `?status=failed`
+        // means one thing. What comes back is what was applied.
+        assertThat(transactionsIn(page)).hasSize(1);
+        assertThat(page.getBody()).containsEntry("status", "FAILED");
+    }
+
+    @Test
+    @DisplayName("an outcome that is not one is refused rather than quietly dropped")
+    void anUnknownOutcomeIsRefused() {
+        ResponseEntity<Map<String, Object>> refused =
+                get("/v1/admin/payments?status=REFUNDED", staff().accessToken());
+
+        // The mistake somebody actually makes, because a refund IS a thing this table
+        // records -- as a `type`, never as a `status`. Dropping the filter would draw every
+        // successful charge on the platform under a chip that says "rejected".
+        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(refused.getBody()).containsEntry("code", "UNKNOWN_TRANSACTION_OUTCOME");
+    }
+
+    @Test
+    @DisplayName("no outcome asked for means every outcome, and the answer says so")
+    void noOutcomeMeansEveryOutcome() {
+        Fixture fixture = campaignWithPledge("payments-outcome-none");
+        charge(fixture, "FAILED", "100.00", 1, "51", "Insufficient funds.");
+        charge(fixture, "SUCCEEDED", "100.00", 2, null, null);
+
+        ResponseEntity<Map<String, Object>> page =
+                get("/v1/admin/payments?pledgeId=" + fixture.pledgeId(), staff().accessToken());
+
+        assertThat(transactionsIn(page)).hasSize(2);
+        assertThat(page.getBody().get("status")).isNull();
+    }
+
+    @Test
+    @DisplayName("an outcome filter pages, and the second page keeps the filter")
+    void anOutcomeFilterPages() {
+        Fixture fixture = campaignWithPledge("payments-outcome-paging");
+        charge(fixture, "FAILED", "100.00", 1, "51", "Insufficient funds.");
+        charge(fixture, "SUCCEEDED", "100.00", 2, null, null);
+        charge(fixture, "FAILED", "100.00", 3, "51", "Insufficient funds.");
+
+        String scope = "/v1/admin/payments?pledgeId=" + fixture.pledgeId() + "&status=FAILED";
+        ResponseEntity<Map<String, Object>> first = get(scope + "&limit=1", staff().accessToken());
+        assertThat(transactionsIn(first)).hasSize(1);
+
+        // A cursor that lost the filter would make page two the whole log, which is the
+        // failure mode a keyset makes easy to ship and hard to notice.
+        List<Map<String, Object>> second = transactionsIn(
+                get(scope + "&limit=1&after=" + first.getBody().get("nextCursor"), staff().accessToken()));
+        assertThat(second).hasSize(1);
+        assertThat(second.get(0)).containsEntry("status", "FAILED");
+    }
+
+    @Test
     @DisplayName("the payment log is not cached anywhere")
     void thePaymentLogIsNotCached() {
         Fixture fixture = campaignWithPledge("payments-cache");

@@ -40,6 +40,7 @@
     "/[locale]/admin/support": 588,
     "/[locale]/admin/taxonomy": 589,
     "/[locale]/admin/users": 713,
+    "/[locale]/admin/users/[userId]": 630,
     "/[locale]/categories": 585,
     "/[locale]/categories/[category]": 600,
     "/[locale]/categories/[category]/[subcategory]": 600,

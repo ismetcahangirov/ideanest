@@ -67,6 +67,10 @@ export interface AuditTrailPage {
   entityType?: string | null;
   entityId?: string | null;
   actorId?: string | null;
+  /** The earliest instant included, echoed, absent when unbounded — issue #404. */
+  from?: string | null;
+  /** The first instant excluded, echoed, absent when unbounded. */
+  to?: string | null;
   entries: AuditEntry[];
   /**
    * Absent on the last page. Opaque, and hand it back as `after` unchanged.
@@ -94,9 +98,16 @@ export const TRAIL_PAGE_SIZE = 25;
  *
  * <p>The service accepts an entity kind, one entity, or one actor, and nothing else — those
  * are the three indexes V21 created, and a filter outside them is a sequential scan over the
- * one table on the platform that only ever grows and is never pruned. Notably absent, and
- * each one migration away on the day somebody needs it: a filter on the action, a date range,
- * and any search over `detail`.
+ * one table on the platform that only ever grows and is never pruned. Still absent, and each
+ * one migration away on the day somebody needs it: a filter on the action, and any search
+ * over `detail`.
+ *
+ * <p><strong>The date range is the exception, and #404 is why it is here.</strong> Every one
+ * of V21's four indexes ends in `occurred_at DESC`, so a range over that column narrows the
+ * scan the shape above had already chosen rather than adding one — it is the only filter that
+ * composes with all four for free. "What did this person do last Tuesday" is the question an
+ * audit log exists to answer, and answering it by paging until the dates stopped being
+ * interesting was not reading, it was scrolling.
  *
  * <p>An entity identifier without a kind is <strong>dropped by the service</strong> rather
  * than applied — the index leads on the kind — and the response says so by echoing an empty
@@ -106,10 +117,48 @@ export interface TrailRequest {
   entityType?: string | null;
   entityId?: string | null;
   actorId?: string | null;
+  /** ISO-8601 instant. Inclusive: a reader who asks for Tuesday means from its midnight. */
+  from?: string | null;
+  /**
+   * ISO-8601 instant. **Exclusive**, so two adjacent days partition the rows between them
+   * rather than both claiming midnight. {@link dayBounds} is what turns a chosen day into
+   * this pair.
+   */
+  to?: string | null;
   /** The previous page's `nextCursor`. */
   after?: string | null;
   limit?: number;
   signal?: AbortSignal;
+}
+
+/**
+ * A day the reader chose, as the pair of instants the service wants — issue #404.
+ *
+ * <p><strong>The reader's day and not UTC's.</strong> An `<input type="date">` yields
+ * `2026-09-02` with no zone, and a moderator asking about the second of September means the
+ * second of September where they are. `new Date(year, month, day)` reads the browser's
+ * timezone, which is the only definition of "that day" the reader would recognise; parsing
+ * the string as UTC would give somebody in Baku a window running from three in the morning.
+ *
+ * <p>The upper bound is the *next* day's midnight, because the service's `to` is exclusive.
+ * That is what makes "from the 2nd to the 2nd" one whole day rather than one instant.
+ *
+ * @param day `YYYY-MM-DD`, or empty for no bound
+ * @param edge which end of the range this value is
+ * @returns the instant, or null when there is no bound and for a value that is not a date
+ */
+export function dayBounds(day: string, edge: 'from' | 'to'): string | null {
+  const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day.trim());
+  if (parts === null) return null;
+
+  const year = Number(parts[1]);
+  const month = Number(parts[2]);
+  const date = Number(parts[3]);
+
+  // Local midnight, then one day later for the exclusive end. The constructor rolls a day
+  // past the end of its month over, so the 31st of a 31-day month gives the 1st of the next.
+  const moment = new Date(year, month - 1, edge === 'to' ? date + 1 : date);
+  return Number.isNaN(moment.getTime()) ? null : moment.toISOString();
 }
 
 export function trailQuery(request: TrailRequest): string {
@@ -119,6 +168,8 @@ export function trailQuery(request: TrailRequest): string {
     params.set('entityType', request.entityType);
   if (request.entityId != null && request.entityId !== '') params.set('entityId', request.entityId);
   if (request.actorId != null && request.actorId !== '') params.set('actorId', request.actorId);
+  if (request.from != null && request.from !== '') params.set('from', request.from);
+  if (request.to != null && request.to !== '') params.set('to', request.to);
   if (request.after != null && request.after !== '') params.set('after', request.after);
   return params.toString();
 }

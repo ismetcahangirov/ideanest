@@ -1412,11 +1412,22 @@ Preferences are per category and per channel, with a digest option.
 > **AD-04, as #104 built it.** `GET /v1/admin/users` searches the accounts by address,
 > display name or profile slug — staff arrive holding whatever the complaint gave them, so
 > matching one of the three would send them to guess which — with a `suspended=true` filter
-> and a keyset cursor. `GET /v1/admin/users/{id}` inspects one. Both are **staff-only and
-> both are audited**, which almost no read on this platform is: it is the one endpoint that
-> hands somebody else's email address to an account with no relationship to them, and "who
-> looked up whom" cannot be asked afterwards of a read nobody recorded. Both answer
-> `no-store`.
+> and a keyset cursor. `GET /v1/admin/users/{id}` inspects one, and
+> `GET /v1/admin/users/{id}/pledges` (#404) is what that account has backed. All three are
+> **staff-only and all three are audited**, which almost no read on this platform is: these are
+> the endpoints that hand somebody else's email address, and the record of what they have
+> paid for, to an account with no relationship to them — and "who looked up whom" cannot be
+> asked afterwards of a read nobody recorded. All three answer `no-store`.
+>
+> **#404 built the screen those reads were missing.** `GET /v1/admin/users/{id}` shipped with
+> #104 and nothing ever called it: the directory listed accounts and the only control on a row
+> was "suspend", whose own copy says that suspending changes nothing about the campaigns
+> somebody created or the pledges they made. That is exactly the context the decision turns on,
+> and none of it was reachable. `/admin/users/{id}` is those three facts on one page — the
+> standing from this endpoint, the campaigns from `GET /v1/admin/projects?creatorId=`, the
+> pledges from the route above. **No decision is taken there**: suspending stays on the
+> directory, with the confirmation and the reason it requires, because a second path into an
+> audited session-revoking write would be the one without the dialog.
 >
 > **The ban is two writes and they are one transaction**: V40's `suspended_at`,
 > `suspended_by` and `suspension_reason` — all three or none, by constraint — and every
@@ -3503,16 +3514,20 @@ GET    /v1/admin/moderation/reports/{id}/content # AD-01 (#399); the comment or 
 POST   /v1/admin/moderation/reports/{id}/uphold
 POST   /v1/admin/moderation/reports/{id}/dismiss
 GET    /v1/admin/projects              # AD-01 (#387); every campaign, any state, newest first
+                                         #   ?query= title, creator, path or identifier (#404)
+                                         #   ?creatorId= one person's campaigns (#404)
 GET    /v1/admin/projects/{id}           # AD-01 (#399); the staff preview: one campaign as its page reads, in any state
 POST   /v1/admin/projects/{id}/suspend   # AD-02 (#103); staff only, audited, ends every pledge
 GET    /v1/admin/users                   # AD-04 (#104); staff only, audited, no-store
 GET    /v1/admin/users/{id}              # AD-04 (#104); one account, audited
+GET    /v1/admin/users/{id}/pledges      # AD-04 (#404); what they backed, before deciding to stop them
 POST   /v1/admin/users/{id}/ban          # AD-04 (#104); suspends and revokes every session
 POST   /v1/admin/users/{id}/reinstate    # the way back; not in this list before #104
 GET    /v1/admin/finance/payouts
 POST   /v1/admin/finance/payouts/{id}/approve
 POST   /v1/admin/finance/refunds
 GET    /v1/admin/payments                # AD-05 (#304); charges, provider references, declines
+                                         #   ?status= SUCCEEDED|FAILED|PENDING (#404, V63's index)
 GET    /v1/admin/ledger                  # AD-05 (#305); postings with both sides, and balances
 GET    /v1/exchange-rates                # §21.2 (#327); public, cacheable. Empty when the platform can offer nothing
 PATCH  /v1/me/currency                   # §4.2 P-10 (#327); the currency this reader sees amounts in
@@ -3520,6 +3535,7 @@ PATCH  /v1/me/currency                   # §4.2 P-10 (#327); the currency this 
 GET    /v1/admin/reconciliation          # AD-05 (#106); the last pass this replica made
 POST   /v1/admin/reconciliation/runs     # AD-05 (#106); one now. VIEW_FINANCE; writes nothing
 GET    /v1/admin/audit                   # AD-14 (#314); the trail, newest first
+                                         #   ?from=&to= an ISO instant each; from inclusive, to exclusive (#404)
 GET    /v1/admin/directory               # #402; names for identifiers a console screen holds
 GET    /v1/admin/collections
 POST   /v1/admin/collections

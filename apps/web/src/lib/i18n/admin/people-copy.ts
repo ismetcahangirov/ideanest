@@ -1,3 +1,4 @@
+import type { ProjectState } from '../../projects/api';
 import type { StaffCapability, StaffRole } from '../../admin/staff';
 import type { TicketPriority, TicketState } from '../../admin/tickets';
 import type { AdminTranslator } from '../admin-copy';
@@ -163,6 +164,17 @@ export interface SupportConsoleCopy extends ConsoleChromeCopy {
   readonly loadingList: string;
   readonly emptyTitle: string;
   readonly emptyBody: string;
+  /** What an empty list says once one of #404's three filters is on. */
+  readonly filteredTitle: string;
+  readonly filteredBody: string;
+  /** The three chip rows' accessible names, and the "no filter" chip in each — issue #404. */
+  readonly stateFilterLabel: string;
+  readonly queueOnly: string;
+  readonly priorityFilterLabel: string;
+  readonly anyPriority: string;
+  readonly assignmentFilterLabel: string;
+  readonly anyAssignee: string;
+  readonly unassignedOnly: string;
   readonly unassigned: string;
   readonly loadingTicket: string;
   readonly ticketFailedTitle: string;
@@ -196,6 +208,15 @@ export function supportConsoleCopyFrom(
     loadingList: t('screens.support.loadingList'),
     emptyTitle: t('screens.support.emptyTitle'),
     emptyBody: t('screens.support.emptyBody'),
+    filteredTitle: t('screens.support.filteredTitle'),
+    filteredBody: t('screens.support.filteredBody'),
+    stateFilterLabel: t('screens.support.stateFilterLabel'),
+    queueOnly: t('screens.support.queueOnly'),
+    priorityFilterLabel: t('screens.support.priorityFilterLabel'),
+    anyPriority: t('screens.support.anyPriority'),
+    assignmentFilterLabel: t('screens.support.assignmentFilterLabel'),
+    anyAssignee: t('screens.support.anyAssignee'),
+    unassignedOnly: t('screens.support.unassignedOnly'),
     unassigned: t('screens.support.unassigned'),
     loadingTicket: t('screens.support.loadingTicket'),
     ticketFailedTitle: t('screens.support.ticketFailedTitle'),
@@ -230,6 +251,116 @@ export function supportConsoleCopyFrom(
  * control is a candidate for the five other screens that take a hand-typed identifier the
  * day #404 makes the campaign directory searchable. A screen hands it one object.
  */
+/**
+ * AD-04, one account — issue #404.
+ *
+ * <h2>Two state tables, and neither is written here twice</h2>
+ *
+ * `state` is `admin.screens.campaignDirectory.state`, borrowed rather than restated, for the
+ * reason {@link CampaignPreviewCopy} gives about the same table: sixteen state names under a
+ * second key is a second set of translations for `CHANGES_REQUESTED` that nothing keeps in
+ * step with the first.
+ *
+ * <p>`pledgeState` is this screen's own, and it has to be. `lib/pledges/backer.ts` carries a
+ * table for the same twelve states written for the person who made the pledge —
+ * "Cancelled by you", "Payment failed" — and a moderator is not that person. `CANCELED_BY_BACKER`
+ * reads "Cancelled by the backer" here, which is the same fact from the other side of the
+ * console. (That table is also untranslated English in a client module, which is a defect of
+ * its own and not this one's to fix.)
+ *
+ * <h2>The two panels fail separately, so they refuse separately</h2>
+ *
+ * `campaignsFailed` and `pledgesFailed` are one sentence each rather than the shared refusal
+ * table. `ConsoleRefusal`'s sentences are written for a whole screen that could not be read;
+ * these are for a panel beside a page that rendered perfectly well, and a reader who can see
+ * the account but not the pledges needs to be told which half is missing.
+ */
+export interface AccountDetailCopy extends ConsoleChromeCopy {
+  /** What the reader was trying to read, for the shared refusals. Already inflected. */
+  readonly subject: string;
+  readonly backToDirectory: string;
+  readonly loadingAccount: string;
+
+  /* The standing panel, which is the account directory's row said at length. */
+  /** Carries `{date}`. */
+  readonly joined: string;
+  readonly unknownDate: string;
+  readonly emailVerified: string;
+  readonly emailUnverified: string;
+  readonly suspendedTag: string;
+  readonly leaving: string;
+  /** Carries `{date}`. */
+  readonly suspendedOn: string;
+  /** Carries `{date}`. V5's grace period, which is not the same fact as a suspension. */
+  readonly leavingOn: string;
+
+  /* What they created. */
+  readonly campaignsHeading: string;
+  readonly loadingCampaigns: string;
+  readonly campaignsFailed: string;
+  readonly noCampaignsTitle: string;
+  readonly noCampaignsBody: string;
+  /** Carries `{date}`. */
+  readonly startedOn: string;
+  /** Borrowed from the campaign directory. See the interface note. */
+  readonly state: Readonly<Record<ProjectState, string>>;
+
+  /* What they backed. */
+  readonly pledgesHeading: string;
+  readonly loadingPledges: string;
+  readonly pledgesFailed: string;
+  readonly noPledgesTitle: string;
+  readonly noPledgesBody: string;
+  /** Carries `{date}`. */
+  readonly backedOn: string;
+  /** A pledge that never reached a confirmation, where a date would be a blank. */
+  readonly neverConfirmed: string;
+  /** A pledge whose campaign row is gone. It is still the person's money. */
+  readonly campaignGone: string;
+  /** Keyed by §6.2's twelve, worded for a moderator. Falls back to the wire spelling. */
+  readonly pledgeState: Readonly<Record<string, string>>;
+}
+
+export function accountDetailCopyFrom(
+  t: AdminTranslator,
+  chrome: ConsoleChromeCopy,
+): AccountDetailCopy {
+  const at = (key: string) => `screens.accountDetail.${key}`;
+
+  return {
+    ...chrome,
+    subject: t(at('subject')),
+    backToDirectory: t(at('backToDirectory')),
+    loadingAccount: t(at('loadingAccount')),
+    /* `raw`, because next-intl renders a template's own key when it is read with `t()` and
+       has no value for the argument — `src/test-copy.ts` refuses the same mistake in tests. */
+    joined: String(t.raw(at('joined'))),
+    unknownDate: t(at('unknownDate')),
+    emailVerified: t(at('emailVerified')),
+    emailUnverified: t(at('emailUnverified')),
+    suspendedTag: t(at('suspendedTag')),
+    leaving: t(at('leaving')),
+    suspendedOn: String(t.raw(at('suspendedOn'))),
+    leavingOn: String(t.raw(at('leavingOn'))),
+    campaignsHeading: t(at('campaignsHeading')),
+    loadingCampaigns: t(at('loadingCampaigns')),
+    campaignsFailed: t(at('campaignsFailed')),
+    noCampaignsTitle: t(at('noCampaignsTitle')),
+    noCampaignsBody: t(at('noCampaignsBody')),
+    startedOn: String(t.raw(at('startedOn'))),
+    state: t.raw('screens.campaignDirectory.state') as Readonly<Record<ProjectState, string>>,
+    pledgesHeading: t(at('pledgesHeading')),
+    loadingPledges: t(at('loadingPledges')),
+    pledgesFailed: t(at('pledgesFailed')),
+    noPledgesTitle: t(at('noPledgesTitle')),
+    noPledgesBody: t(at('noPledgesBody')),
+    backedOn: String(t.raw(at('backedOn'))),
+    neverConfirmed: t(at('neverConfirmed')),
+    campaignGone: t(at('campaignGone')),
+    pledgeState: t.raw(at('pledgeState')) as Readonly<Record<string, string>>,
+  };
+}
+
 export interface AccountPickerCopy {
   /** What the reader was trying to read, for the shared refusals. "the account directory". */
   readonly subject: string;

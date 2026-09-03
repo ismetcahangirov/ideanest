@@ -60,23 +60,71 @@ public interface AuditEntryRepository extends JpaRepository<AuditEntry, UUID> {
     /** What one account has done, most recent first. */
     List<AuditEntry> findByActorIdOrderByOccurredAtDesc(UUID actorId);
 
+    /*
+     * The eight below are AD-14's viewer, and every one of them carries the same two extra
+     * predicates since #404: `from` inclusive and `to` exclusive.
+     *
+     * Two parameters on eight queries rather than sixteen queries, which is the opposite of
+     * the call `PaymentTransactionRepository` makes about its own status filter, and the
+     * difference is where the column sits in the index. A status is not in any of V41's
+     * indexes at all, so a filter on it either has its own query and its own index or it is a
+     * scan — the plan genuinely differs. `occurred_at` is the *trailing* column of all four of
+     * V21's indexes, so a bound on it is a narrower scan of the range the query had already
+     * chosen, and the plan for a bounded read and an unbounded one is the same plan with
+     * different endpoints. Doubling this file to express that would be sixteen methods
+     * describing eight queries.
+     *
+     * **NEITHER BOUND IS EVER NULL, and that is not a style choice.** The obvious form is
+     * `(:from IS NULL OR e.occurredAt >= :from)`, which is what `UserRepository.search` has
+     * done with a String since #104. It does not work here: `:from IS NULL` gives Hibernate a
+     * parameter with no type to infer from, and the whole of AD-14 answered 500 —
+     * `AuditTrailOrderingApiTests` and every audit case in `ConsoleReadApiTests` went red
+     * together, which is how this was found rather than shipped.
+     *
+     * So "no bound" is expressed as a bound that excludes nothing: `AuditTrailFilter.SINCE`
+     * and `UNTIL` are the two ends of the column's useful range, and the caller substitutes
+     * them for a null. The predicate is then a plain comparison against a typed path, the
+     * planner sees an ordinary range scan over an index that is already ordered by this
+     * column, and there is no untyped parameter anywhere in the file.
+     */
+
     /** The newest rows in the table. AD-14's default view: what has just happened. */
-    @Query("SELECT e FROM AuditEntry e ORDER BY e.occurredAt DESC, e.id DESC")
-    List<AuditEntry> newest(Pageable limit);
+    @Query(
+            """
+            SELECT e FROM AuditEntry e
+            WHERE e.occurredAt >= :from AND e.occurredAt < :to
+            ORDER BY e.occurredAt DESC, e.id DESC
+            """)
+    List<AuditEntry> newest(@Param("from") Instant from, @Param("to") Instant to, Pageable limit);
 
     /** The page after the row at {@code (before, beforeId)}. Keyset: a row written mid-read shifts nothing. */
     @Query(
             """
             SELECT e FROM AuditEntry e
-            WHERE e.occurredAt < :before OR (e.occurredAt = :before AND e.id < :beforeId)
+            WHERE (e.occurredAt < :before OR (e.occurredAt = :before AND e.id < :beforeId))
+              AND e.occurredAt >= :from AND e.occurredAt < :to
             ORDER BY e.occurredAt DESC, e.id DESC
             """)
     List<AuditEntry> newestBefore(
-            @Param("before") Instant before, @Param("beforeId") UUID beforeId, Pageable limit);
+            @Param("before") Instant before,
+            @Param("beforeId") UUID beforeId,
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            Pageable limit);
 
     /** Everything that has happened to one kind of thing. */
-    @Query("SELECT e FROM AuditEntry e WHERE e.entityType = :entityType ORDER BY e.occurredAt DESC, e.id DESC")
-    List<AuditEntry> newestOfType(@Param("entityType") String entityType, Pageable limit);
+    @Query(
+            """
+            SELECT e FROM AuditEntry e
+            WHERE e.entityType = :entityType
+              AND e.occurredAt >= :from AND e.occurredAt < :to
+            ORDER BY e.occurredAt DESC, e.id DESC
+            """)
+    List<AuditEntry> newestOfType(
+            @Param("entityType") String entityType,
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            Pageable limit);
 
     /** The page after that row, within one kind of thing. */
     @Query(
@@ -84,12 +132,15 @@ public interface AuditEntryRepository extends JpaRepository<AuditEntry, UUID> {
             SELECT e FROM AuditEntry e
             WHERE e.entityType = :entityType
               AND (e.occurredAt < :before OR (e.occurredAt = :before AND e.id < :beforeId))
+              AND e.occurredAt >= :from AND e.occurredAt < :to
             ORDER BY e.occurredAt DESC, e.id DESC
             """)
     List<AuditEntry> newestOfTypeBefore(
             @Param("entityType") String entityType,
             @Param("before") Instant before,
             @Param("beforeId") UUID beforeId,
+            @Param("from") Instant from,
+            @Param("to") Instant to,
             Pageable limit);
 
     /** Everything that has happened to one thing. */
@@ -97,10 +148,15 @@ public interface AuditEntryRepository extends JpaRepository<AuditEntry, UUID> {
             """
             SELECT e FROM AuditEntry e
             WHERE e.entityType = :entityType AND e.entityId = :entityId
+              AND e.occurredAt >= :from AND e.occurredAt < :to
             ORDER BY e.occurredAt DESC, e.id DESC
             """)
     List<AuditEntry> newestOfEntity(
-            @Param("entityType") String entityType, @Param("entityId") UUID entityId, Pageable limit);
+            @Param("entityType") String entityType,
+            @Param("entityId") UUID entityId,
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            Pageable limit);
 
     /** The page after that row, within one thing. */
     @Query(
@@ -108,6 +164,7 @@ public interface AuditEntryRepository extends JpaRepository<AuditEntry, UUID> {
             SELECT e FROM AuditEntry e
             WHERE e.entityType = :entityType AND e.entityId = :entityId
               AND (e.occurredAt < :before OR (e.occurredAt = :before AND e.id < :beforeId))
+              AND e.occurredAt >= :from AND e.occurredAt < :to
             ORDER BY e.occurredAt DESC, e.id DESC
             """)
     List<AuditEntry> newestOfEntityBefore(
@@ -115,11 +172,23 @@ public interface AuditEntryRepository extends JpaRepository<AuditEntry, UUID> {
             @Param("entityId") UUID entityId,
             @Param("before") Instant before,
             @Param("beforeId") UUID beforeId,
+            @Param("from") Instant from,
+            @Param("to") Instant to,
             Pageable limit);
 
     /** Everything one account has done. */
-    @Query("SELECT e FROM AuditEntry e WHERE e.actorId = :actorId ORDER BY e.occurredAt DESC, e.id DESC")
-    List<AuditEntry> newestByActor(@Param("actorId") UUID actorId, Pageable limit);
+    @Query(
+            """
+            SELECT e FROM AuditEntry e
+            WHERE e.actorId = :actorId
+              AND e.occurredAt >= :from AND e.occurredAt < :to
+            ORDER BY e.occurredAt DESC, e.id DESC
+            """)
+    List<AuditEntry> newestByActor(
+            @Param("actorId") UUID actorId,
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            Pageable limit);
 
     /** The page after that row, within one account's actions. */
     @Query(
@@ -127,11 +196,14 @@ public interface AuditEntryRepository extends JpaRepository<AuditEntry, UUID> {
             SELECT e FROM AuditEntry e
             WHERE e.actorId = :actorId
               AND (e.occurredAt < :before OR (e.occurredAt = :before AND e.id < :beforeId))
+              AND e.occurredAt >= :from AND e.occurredAt < :to
             ORDER BY e.occurredAt DESC, e.id DESC
             """)
     List<AuditEntry> newestByActorBefore(
             @Param("actorId") UUID actorId,
             @Param("before") Instant before,
             @Param("beforeId") UUID beforeId,
+            @Param("from") Instant from,
+            @Param("to") Instant to,
             Pageable limit);
 }

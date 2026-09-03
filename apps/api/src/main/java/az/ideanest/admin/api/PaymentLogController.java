@@ -50,18 +50,25 @@ public class PaymentLogController {
      * @param projectId everything that moved on one campaign. Ignored when a pledge is
      *     named: the pledge is the narrower question, the two indexes do not combine, and
      *     the response echoes what was actually applied
+     * @param status {@code SUCCEEDED}, {@code FAILED} or {@code PENDING} — #404's outcome
+     *     filter, and the reason this screen is opened. Unlike the two above it combines with
+     *     them rather than replacing them. Case-insensitive; a value that is not an outcome is
+     *     a 400 rather than a page of everything. A {@code String} rather than the payment
+     *     module's enum because {@code ModuleBoundaryTests} forbids this package from naming
+     *     one, which is also why the outcome comes back out as a string
      * @param after the {@code nextCursor} of the previous page, or absent for the first
      * @param limit clamped to {@code ideanest.admin.payments.max-page-size}
      */
     @GetMapping
-    public ResponseEntity<PaymentLogResponses.Page> log(
+    public ResponseEntity<PaymentLogResponses.LogPage> log(
             @AuthenticationPrincipal Jwt accessToken,
             @RequestParam(required = false) UUID pledgeId,
             @RequestParam(required = false) UUID projectId,
+            @RequestParam(required = false) String status,
             @RequestParam(required = false) UUID after,
             @RequestParam(required = false) Integer limit) {
 
-        PaymentLogScope scope = new PaymentLogScope(pledgeId, projectId);
+        PaymentLogScope scope = new PaymentLogScope(pledgeId, projectId, status);
 
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())

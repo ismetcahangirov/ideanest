@@ -3,7 +3,7 @@ package az.ideanest.project.application;
 import az.ideanest.project.ProjectProperties;
 import az.ideanest.project.domain.ProjectState;
 import az.ideanest.project.infrastructure.CampaignDirectoryRow;
-import az.ideanest.project.infrastructure.ProjectRepository;
+import az.ideanest.project.infrastructure.CampaignDirectoryRows;
 import az.ideanest.project.infrastructure.PublicProjectPages;
 import az.ideanest.shared.access.PlatformStaff;
 import az.ideanest.shared.access.StaffCapability;
@@ -51,20 +51,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class CampaignDirectory {
 
-    private final ProjectRepository projects;
+    private final CampaignDirectoryRows directory;
     private final PublicProjectPages pages;
     private final UserAccounts accounts;
     private final PlatformStaff staff;
     private final ProjectProperties properties;
 
     public CampaignDirectory(
-            ProjectRepository projects,
+            CampaignDirectoryRows directory,
             PublicProjectPages pages,
             UserAccounts accounts,
             PlatformStaff staff,
             ProjectProperties properties) {
 
-        this.projects = projects;
+        this.directory = directory;
         this.pages = pages;
         this.accounts = accounts;
         this.staff = staff;
@@ -72,7 +72,21 @@ public class CampaignDirectory {
     }
 
     /**
-     * One page, newest first.
+     * One page, newest first, narrowed by any combination of the three filters.
+     *
+     * <h2>The search, and why the screen had none</h2>
+     *
+     * <p>#404: this is the only screen that lists campaigns in every state, and it had no
+     * input of any kind — sixteen status chips and a "load more" button. Finding one campaign
+     * among hundreds meant paging and reading. The account directory next door has had a
+     * search box since #104 and shows it is not hard.
+     *
+     * <p>What a term matches, and the cost of matching it, is
+     * {@link az.ideanest.project.infrastructure.CampaignDirectoryRows}'s to explain. What is
+     * decided here is that a term reaches the database rather than narrowing a loaded page:
+     * twenty-five campaigns of which two match is not a page of two, and a client that
+     * dropped rows locally would hold a cursor that has already moved past them. The report
+     * queue states the same rule about its own filters.
      *
      * @param staffId whoever is signed in
      * @param state the state to narrow to, or null for every campaign. Every value of the
@@ -80,26 +94,40 @@ public class CampaignDirectory {
      *     endpoint is not asking what can be decided, so "no campaigns are LIVE" is a fact
      *     about the platform rather than a misuse of the endpoint, and an empty page says
      *     it perfectly well
+     * @param creatorId one person's campaigns, or null for everybody's. What the console's
+     *     account detail screen reads — #404 asks that a moderator can see what somebody has
+     *     created before deciding whether to suspend them, and until this filter existed the
+     *     answer was reachable only through psql
+     * @param query a search over the title, the two paths, the creator's name, or an
+     *     identifier. Null or blank for no search
      * @param after the last campaign of the previous page, or null for the first
      * @param limit already clamped by the controller, which is where a request's shape is
      *     decided
      */
     @Transactional(readOnly = true)
-    public CampaignDirectoryPage page(UUID staffId, ProjectState state, UUID after, int limit) {
+    public CampaignDirectoryPage page(
+            UUID staffId, ProjectState state, UUID creatorId, String query, UUID after, int limit) {
+
         staff.requireCapability(staffId, StaffCapability.MODERATE_CONTENT);
 
-        List<CampaignDirectoryRow> rows = read(state, after, limit);
+        // Blank is no search rather than a search for nothing: `?query=` is what a form
+        // submits when the box has been cleared, and a pattern of "%%" would match every row
+        // through an index that cannot help with it.
+        String term = query == null || query.isBlank() ? null : query.trim();
+
+        List<CampaignDirectoryRow> rows =
+                directory.page(state == null ? null : state.name(), creatorId, term, after, limit);
         if (rows.isEmpty()) {
-            return new CampaignDirectoryPage(state, List.of(), null);
+            return new CampaignDirectoryPage(state, creatorId, term, List.of(), null);
         }
 
         Map<UUID, UserAccount> creators = accounts.findAllById(creatorIdsOf(rows));
 
         // A full page is the only honest signal that there may be more, which is the
         // argument the report queue makes and the submission queue repeats.
-        UUID nextCursor = rows.size() < limit ? null : rows.get(rows.size() - 1).getProjectId();
+        UUID nextCursor = rows.size() < limit ? null : rows.get(rows.size() - 1).projectId();
         return new CampaignDirectoryPage(
-                state, rows.stream().map(row -> toCampaign(row, creators)).toList(), nextCursor);
+                state, creatorId, term, rows.stream().map(row -> toCampaign(row, creators)).toList(), nextCursor);
     }
 
     /**
@@ -152,41 +180,29 @@ public class CampaignDirectory {
         return Math.clamp(requested, 1, limits.maxPageSize());
     }
 
-    /** Four queries and no nullable parameters — see {@code ProjectRepository}. */
-    private List<CampaignDirectoryRow> read(ProjectState state, UUID after, int limit) {
-        if (state == null) {
-            return after == null
-                    ? projects.findCampaignDirectory(limit)
-                    : projects.findCampaignDirectoryAfter(after, limit);
-        }
-        return after == null
-                ? projects.findCampaignDirectoryInState(state.name(), limit)
-                : projects.findCampaignDirectoryInStateAfter(state.name(), after, limit);
-    }
-
     /** Distinct, because one creator with three campaigns on the page is one lookup. */
     private static Set<UUID> creatorIdsOf(List<CampaignDirectoryRow> rows) {
         Set<UUID> ids = new LinkedHashSet<>();
         for (CampaignDirectoryRow row : rows) {
-            ids.add(row.getCreatorId());
+            ids.add(row.creatorId());
         }
         return ids;
     }
 
     private static DirectoryCampaign toCampaign(CampaignDirectoryRow row, Map<UUID, UserAccount> creators) {
-        UserAccount creator = creators.get(row.getCreatorId());
+        UserAccount creator = creators.get(row.creatorId());
         return new DirectoryCampaign(
-                row.getProjectId(),
-                row.getTitle(),
-                row.getSlug(),
-                ProjectState.valueOf(row.getState()),
-                row.getCreatedAt(),
-                row.getLaunchedAt(),
-                row.getDeadline(),
-                Money.orNull(row.getGoalAmount(), row.getCurrency()),
-                Money.of(row.getPledgedAmount(), row.getCurrency()),
-                row.getBackersCount(),
-                row.getCreatorId(),
+                row.projectId(),
+                row.title(),
+                row.slug(),
+                ProjectState.valueOf(row.state()),
+                row.createdAt(),
+                row.launchedAt(),
+                row.deadline(),
+                Money.orNull(row.goalAmount(), row.currency()),
+                Money.of(row.pledgedAmount(), row.currency()),
+                row.backersCount(),
+                row.creatorId(),
                 creator == null ? null : creator.name(),
                 creator == null ? null : creator.slug());
     }

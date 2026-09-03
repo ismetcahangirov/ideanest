@@ -58,6 +58,14 @@ public class CampaignDirectoryController {
      *     default because the question this screen exists to answer is "what is there"
      *     — any value of §6.1's enum is a legitimate filter, unlike the submission
      *     queue, and a value outside it is a 400 from the binder
+     * @param creatorId narrows to one person's campaigns — #404. What the console's account
+     *     detail screen reads, and it combines with the two filters beside it rather than
+     *     replacing them: "this creator's suspended campaigns" is a question a moderator
+     *     asks with the person's row already open
+     * @param query a search over the title, the campaign's path, the creator's name and
+     *     path, or an identifier — #404. This screen is the only one that lists campaigns in
+     *     every state and it had no input of any kind. Blank is no search rather than a
+     *     search for nothing, so a cleared form behaves like a fresh one
      * @param after the {@code nextCursor} of the previous page, or absent for the first.
      *     Keyset rather than an offset: campaigns are created while somebody is reading,
      *     and an offset against a growing list shows a row twice
@@ -68,11 +76,13 @@ public class CampaignDirectoryController {
     public CampaignDirectoryResponse campaigns(
             @AuthenticationPrincipal Jwt accessToken,
             @RequestParam(required = false) ProjectState state,
+            @RequestParam(required = false) UUID creatorId,
+            @RequestParam(required = false) String query,
             @RequestParam(required = false) UUID after,
             @RequestParam(required = false) Integer limit) {
 
-        return CampaignDirectoryResponse.of(
-                directory.page(staffOf(accessToken), state, after, directory.pageSize(limit)));
+        return CampaignDirectoryResponse.of(directory.page(
+                staffOf(accessToken), state, creatorId, query, after, directory.pageSize(limit)));
     }
 
     /**

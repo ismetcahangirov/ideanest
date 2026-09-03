@@ -16,38 +16,33 @@ import java.util.UUID;
  * answers "what is on the platform", where the questions are how a campaign is doing and
  * when it opened — so the funding figures are here and the note is not.
  *
- * <p>The creator is an id and nothing else. {@code users} belongs to another module and
- * a join across that boundary in a native query would be this module reading a table it
- * does not own; {@code CampaignDirectory} resolves the names through
- * {@code UserAccounts} in one lookup per page.
+ * <p>The creator is an id and nothing else. {@code CampaignDirectory} resolves the names
+ * through {@code UserAccounts} in one lookup per page. {@link CampaignDirectoryRows} does
+ * join {@code users} when there is a search term, and it still does not select a name from
+ * it: what crosses in SQL is a predicate, and the name crosses through the user module's
+ * own front door.
+ *
+ * <p><strong>A record since #404, where it was a Spring Data projection interface.</strong>
+ * The four {@code @Query} methods that produced it became one assembled statement when the
+ * directory gained a search and a creator filter — see {@link CampaignDirectoryRows} for
+ * why sixteen variants was the alternative — and a hand-written {@code RowMapper} needs a
+ * type it can construct. Nothing outside this module ever saw either shape.
+ *
+ * @param goalAmount null on a draft that has not said what it needs yet
+ * @param launchedAt null for everything that has never been live
+ * @param deadline null until the campaign launches, and frozen from that moment
+ * @param createdAt when the campaign was created, which is the order this list is read in
  */
-public interface CampaignDirectoryRow {
-
-    UUID getProjectId();
-
-    String getTitle();
-
-    String getSlug();
-
-    String getState();
-
-    /** When the campaign was created, which is the order this list is read in. */
-    Instant getCreatedAt();
-
-    /** Null for everything that has never been live. */
-    Instant getLaunchedAt();
-
-    /** Null until the campaign launches, and frozen from that moment. */
-    Instant getDeadline();
-
-    /** Null on a draft that has not said what it needs yet. */
-    BigDecimal getGoalAmount();
-
-    String getCurrency();
-
-    BigDecimal getPledgedAmount();
-
-    int getBackersCount();
-
-    UUID getCreatorId();
-}
+public record CampaignDirectoryRow(
+        UUID projectId,
+        String title,
+        String slug,
+        String state,
+        Instant createdAt,
+        Instant launchedAt,
+        Instant deadline,
+        BigDecimal goalAmount,
+        String currency,
+        BigDecimal pledgedAmount,
+        int backersCount,
+        UUID creatorId) {}

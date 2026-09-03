@@ -1,6 +1,7 @@
 import type { AuditActionLabels } from '../../admin/audit';
 import type { AdminTranslator } from '../admin-copy';
 import type { ConsoleChromeCopy } from './common-copy';
+import { accountPickerCopyFrom, type AccountPickerCopy } from './people-copy';
 
 /**
  * The words the console's platform screens draw — issue #324, epic #259.
@@ -37,6 +38,23 @@ export interface AuditTrailCopy extends ConsoleChromeCopy {
   readonly heading: string;
   readonly filterLabel: string;
   readonly everything: string;
+  /** The group holding the actor and the two dates — issue #404. */
+  readonly narrowLabel: string;
+  readonly fromLabel: string;
+  readonly fromHint: string;
+  readonly toLabel: string;
+  readonly toHint: string;
+  readonly clearDates: string;
+  /**
+   * The actor control's words.
+   *
+   * <p>`AccountPicker`'s own copy with two words replaced: the picker was built for
+   * `/admin/staff`, where the account being chosen is somebody about to be given a role, and
+   * here it is whoever performed an action. Everything else it says — that searching is a
+   * recorded read, what a search found, how to choose again — is the same on both screens and
+   * is not restated under a second key.
+   */
+  readonly actorPicker: AccountPickerCopy;
   readonly loadingList: string;
   readonly emptyTitle: string;
   readonly emptyBody: string;
@@ -59,6 +77,17 @@ export function auditTrailCopyFrom(t: AdminTranslator, chrome: ConsoleChromeCopy
     heading: t('screens.audit.heading'),
     filterLabel: t('screens.audit.filterLabel'),
     everything: t('screens.audit.everything'),
+    narrowLabel: t('screens.audit.narrowLabel'),
+    fromLabel: t('screens.audit.fromLabel'),
+    fromHint: t('screens.audit.fromHint'),
+    toLabel: t('screens.audit.toLabel'),
+    toHint: t('screens.audit.toHint'),
+    clearDates: t('screens.audit.clearDates'),
+    actorPicker: {
+      ...accountPickerCopyFrom(t, chrome.refusals),
+      label: t('screens.audit.actorLabel'),
+      hint: t('screens.audit.actorHint'),
+    },
     loadingList: t('screens.audit.loadingList'),
     emptyTitle: t('screens.audit.emptyTitle'),
     emptyBody: t('screens.audit.emptyBody'),
