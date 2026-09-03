@@ -1,6 +1,8 @@
 package az.ideanest.admin.api;
 
 import az.ideanest.admin.application.UserAdministrationService;
+import az.ideanest.pledge.api.BackerPledgeListResponse;
+import az.ideanest.pledge.application.BackerCursor;
 import az.ideanest.user.UserProperties;
 import az.ideanest.user.application.AdministeredAccount;
 import jakarta.validation.Valid;
@@ -82,6 +84,45 @@ public class AdminUserController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(AdminUserResponse.of(accounts.inspect(callerOf(accessToken), id)));
+    }
+
+    /**
+     * What one account has backed, newest first — #404.
+     *
+     * <p><strong>The context a suspension was being taken without.</strong> The account
+     * directory's own copy tells a moderator that suspending somebody "changes nothing about
+     * the campaigns they created or the pledges they made" — and offered no way to see
+     * either. This is the pledges half. The campaigns half is
+     * {@code GET /v1/admin/projects?creatorId=…}, which is the same change; the standing is
+     * {@link #inspect} above, which already existed and had no screen.
+     *
+     * <p><strong>The body is {@link BackerPledgeListResponse}, the same one
+     * {@code GET /v1/me/pledges} serves</strong>, and reusing it is the decision rather than
+     * an economy. A moderator deciding about somebody's account should be looking at what
+     * that person is looking at; a staff-shaped summary beside it would be a second
+     * description of the same pledges, free to disagree with the first, and the disagreement
+     * would surface inside a support conversation.
+     *
+     * <p>{@code no-store}, like everything else on this controller and more so: this carries
+     * every amount one person has committed on the platform.
+     *
+     * @param cursor the previous page's {@code nextCursor}, or absent for the first. Opaque,
+     *     and the same value the account's own list produces
+     * @return 404 for an identifier that names nothing or a deleted account — not an empty
+     *     page. "Has backed nothing" and "is not a person" are different answers, and a
+     *     moderator acting on the first when the second is true is acting on a typo
+     */
+    @GetMapping("/{id}/pledges")
+    public ResponseEntity<BackerPledgeListResponse> pledges(
+            @AuthenticationPrincipal Jwt accessToken,
+            @PathVariable UUID id,
+            @RequestParam(name = "cursor", required = false) String cursor,
+            @RequestParam(name = "limit", required = false) Integer limit) {
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(BackerPledgeListResponse.of(
+                        accounts.pledgesOf(callerOf(accessToken), id, BackerCursor.decode(cursor), limit)));
     }
 
     /**

@@ -57,16 +57,35 @@ public class SupportTicketController {
                 .body(TicketResponses.TicketPage.of(tickets.queue(callerOf(accessToken), page), page, 50));
     }
 
-    /** Everything, newest first, optionally narrowed to one state. */
+    /**
+     * Everything, newest first, narrowed by state, priority and who is handling it.
+     *
+     * <p>The last two arrived with #404: the console displayed all three of these on every
+     * row and could filter by none of them, on the screen whose copy explains that staff set
+     * the priority.
+     *
+     * @param state one of §4.11's four, or absent for every state
+     * @param priority one of four, or absent for every priority
+     * @param assigneeId one member of staff's workload, or absent for anybody's
+     * @param unassigned only what nobody has picked up. A separate parameter from
+     *     {@code assigneeId} because an absent assignee already means "anybody", and one
+     *     value cannot mean both "everybody" and "nobody"
+     */
     @GetMapping
     public ResponseEntity<TicketResponses.TicketPage> list(
             @AuthenticationPrincipal Jwt accessToken,
             @RequestParam(required = false) TicketState state,
+            @RequestParam(required = false) TicketPriority priority,
+            @RequestParam(required = false) UUID assigneeId,
+            @RequestParam(defaultValue = "false") boolean unassigned,
             @RequestParam(defaultValue = "0") int page) {
 
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
-                .body(TicketResponses.TicketPage.of(tickets.list(callerOf(accessToken), state, page), page, 50));
+                .body(TicketResponses.TicketPage.of(
+                        tickets.list(callerOf(accessToken), state, priority, assigneeId, unassigned, page),
+                        page,
+                        50));
     }
 
     /**

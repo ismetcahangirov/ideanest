@@ -20,16 +20,22 @@ import java.util.UUID;
  * single-file change, which it cannot be if this file names a {@code ProviderName}. This
  * class passes them through rather than converting them, because the conversion happened in
  * {@link LoggedTransaction}, inside the module that owns the vocabulary.
+ *
+ * <p><strong>{@code LogPage} rather than {@code Page} since #404.</strong> The other half of
+ * a schema-name collision {@link AuditTrailResponses} describes: two nested records called
+ * {@code Page}, one generated schema, and one of the two endpoints documenting the other's
+ * body. Both are named for what they are now.
  */
 final class PaymentLogResponses {
 
     private PaymentLogResponses() {
     }
 
-    static Page of(PaymentLogPage page) {
-        return new Page(
+    static LogPage of(PaymentLogPage page) {
+        return new LogPage(
                 page.scope().pledgeId(),
                 page.scope().projectId(),
+                page.scope().status(),
                 page.transactions().stream().map(PaymentLogResponses::transaction).toList(),
                 page.nextCursor());
     }
@@ -58,11 +64,17 @@ final class PaymentLogResponses {
      *     campaign down to the pledge — see {@code PaymentLogScope} — and this is how a
      *     client learns that happened
      * @param projectId which campaign was asked about, echoed for the same reason
+     * @param status which outcome was asked about, echoed and absent when none was — #404.
+     *     Echoed in the spelling the column uses rather than the one the query carried, so a
+     *     client that sent {@code ?status=failed} can see that {@code FAILED} is what was
+     *     applied. Combines with the two above rather than replacing them, so all three can be
+     *     present at once
      * @param transactions the matching provider calls, newest first
      * @param nextCursor what to send as {@code after} for the next page, or absent when
      *     this was the last one
      */
-    record Page(UUID pledgeId, UUID projectId, List<Transaction> transactions, UUID nextCursor) {
+    record LogPage(
+            UUID pledgeId, UUID projectId, String status, List<Transaction> transactions, UUID nextCursor) {
     }
 
     /**

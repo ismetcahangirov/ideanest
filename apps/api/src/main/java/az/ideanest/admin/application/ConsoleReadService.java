@@ -87,12 +87,18 @@ public class ConsoleReadService {
         record(
                 staffId,
                 AuditAction.AUDIT_TRAIL_READ,
-                "rows=%d; entityType=%s; entity=%s; actor=%s"
+                // The range is recorded by value, like the payment log's outcome and unlike
+                // the two identifiers beside it — #404. It says nothing about any person; it
+                // says which stretch of the trail somebody went looking through, which is the
+                // one fact about a read of an audit log that a later investigation wants.
+                "rows=%d; entityType=%s; entity=%s; actor=%s; from=%s; to=%s"
                         .formatted(
                                 page.entries().size(),
                                 page.filter().entityType(),
                                 present(page.filter().entityId()),
-                                present(page.filter().actorId())));
+                                present(page.filter().actorId()),
+                                page.filter().from() == null ? "any" : page.filter().from(),
+                                page.filter().to() == null ? "any" : page.filter().to()));
 
         return page;
     }
@@ -110,11 +116,17 @@ public class ConsoleReadService {
         record(
                 staffId,
                 AuditAction.PAYMENT_LOG_READ,
-                "rows=%d; pledge=%s; project=%s"
+                // The outcome is recorded by value where the two identifiers are recorded only
+                // as present or absent — #404. It is one of three closed words about the
+                // platform's own behaviour rather than a join key into a table full of
+                // people, so the line `present` draws does not apply to it, and "who was
+                // reading the failures" is a more useful row than "somebody filtered".
+                "rows=%d; pledge=%s; project=%s; status=%s"
                         .formatted(
                                 page.transactions().size(),
                                 present(page.scope().pledgeId()),
-                                present(page.scope().projectId())));
+                                present(page.scope().projectId()),
+                                page.scope().status() == null ? "any" : page.scope().status()));
 
         return page;
     }

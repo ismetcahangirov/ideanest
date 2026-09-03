@@ -194,6 +194,169 @@ class CampaignDirectoryApiTests extends AbstractIntegrationTest {
     }
 
     // ------------------------------------------------------------------
+    // Searching - issue #404
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("a search matches a fragment of the title and leaves the rest out")
+    void aSearchMatchesPartOfATitle() {
+        Account creator = creator();
+        UUID wanted = idOf(post("/v1/projects", creator.accessToken(), Map.of("title", "Handmade ceramic bowls"))
+                .getBody());
+        UUID other = idOf(post("/v1/projects", creator.accessToken(), Map.of("title", "A documentary film"))
+                .getBody());
+
+        List<String> found = idsIn(directory("?query=ceramic"));
+
+        // The defect #404 opened on: this is the only screen that lists campaigns in every
+        // state, and it had no input of any kind. Finding one among hundreds meant paging.
+        assertThat(found).containsExactly(wanted.toString());
+        assertThat(found).doesNotContain(other.toString());
+    }
+
+    @Test
+    @DisplayName("a search folds the letters of \u00a711.3, so kohne finds K\u00f6hn\u0259")
+    void aSearchFoldsTheAzerbaijaniLetters() {
+        Account creator = creator();
+        UUID wanted = idOf(post("/v1/projects", creator.accessToken(), Map.of("title", "K\u00f6hn\u0259 \u015e\u0259h\u0259r"))
+                .getBody());
+
+        // The same fold public search uses, over the same index V13 built. A console whose
+        // search needed the right keyboard would be a console nobody uses from a phone.
+        assertThat(idsIn(directory("?query=kohne"))).contains(wanted.toString());
+    }
+
+    @Test
+    @DisplayName("a search matches the creator, not only the campaign")
+    void aSearchMatchesTheCreator() {
+        Account creator = creator();
+        UUID theirs = idOf(post("/v1/projects", creator.accessToken(), Map.of("title", "Nothing in the title"))
+                .getBody());
+
+        // "Test Creator" is the name the fixture registers. #404 asks for title, creator and
+        // identifier, because those are the three things a complaint arrives holding.
+        // A space as `+`: see `directory` on why `%20` does not survive the test client.
+        assertThat(idsIn(directory("?query=test+creator"))).contains(theirs.toString());
+    }
+
+    @Test
+    @DisplayName("a whole identifier finds the campaign it names, and only that one")
+    void anIdentifierIsMatchedExactly() {
+        Account creator = creator();
+        UUID wanted = idOf(post("/v1/projects", creator.accessToken(), Map.of("title", "First")).getBody());
+        post("/v1/projects", creator.accessToken(), Map.of("title", "Second"));
+
+        assertThat(idsIn(directory("?query=" + wanted))).containsExactly(wanted.toString());
+    }
+
+    @Test
+    @DisplayName("a creator identifier as the search term finds everything they made")
+    void aCreatorIdentifierAsATermFindsTheirCampaigns() {
+        Account creator = creator();
+        UUID first = idOf(post("/v1/projects", creator.accessToken(), Map.of("title", "One")).getBody());
+        UUID second = idOf(post("/v1/projects", creator.accessToken(), Map.of("title", "Two")).getBody());
+        UUID somebodyElses =
+                idOf(post("/v1/projects", creator().accessToken(), Map.of("title", "Three")).getBody());
+
+        List<String> found = idsIn(directory("?query=" + creator.id()));
+
+        assertThat(found).containsExactlyInAnyOrder(second.toString(), first.toString());
+        assertThat(found).doesNotContain(somebodyElses.toString());
+    }
+
+    @Test
+    @DisplayName("a search combines with a state rather than replacing it")
+    void aSearchCombinesWithTheStateFilter() {
+        Account creator = creator();
+        UUID draft = idOf(post("/v1/projects", creator.accessToken(), Map.of("title", "Lantern festival"))
+                .getBody());
+        UUID sent = submitted(creator, "Lantern workshop");
+
+        assertThat(idsIn(directory("?query=lantern&state=SUBMITTED"))).containsExactly(sent.toString());
+        assertThat(idsIn(directory("?query=lantern&state=DRAFT"))).containsExactly(draft.toString());
+    }
+
+    @Test
+    @DisplayName("a wildcard a caller typed is searched for rather than matching everything")
+    void aTypedWildcardIsEscaped() {
+        Account creator = creator();
+        post("/v1/projects", creator.accessToken(), Map.of("title", "An ordinary campaign"));
+
+        // A percent sign reaching the LIKE unescaped would make this the whole directory.
+        assertThat(idsIn(directory("?query=%25"))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("a blank search is no search rather than a search for nothing")
+    void aBlankSearchIsNoSearch() {
+        Account creator = creator();
+        UUID id = idOf(post("/v1/projects", creator.accessToken(), Map.of("title", "Anything"))
+                .getBody());
+
+        Map<String, Object> body = directory("?query=++");
+
+        assertThat(idsIn(body)).contains(id.toString());
+        // Echoed as absent, so a cleared form behaves like a fresh one and the client can
+        // see which of the two the answer is.
+        assertThat(body.get("query")).isNull();
+    }
+
+    @Test
+    @DisplayName("the search that was applied is echoed, trimmed")
+    void theAppliedSearchIsEchoed() {
+        Map<String, Object> body = directory("?query=+ceramic+");
+
+        // A screen with two reads in flight has to be able to tell which answer it is
+        // holding; a term echoed untrimmed would not match what it sent.
+        assertThat(body).containsEntry("query", "ceramic");
+    }
+
+    @Test
+    @DisplayName("a creator filter lists that person's campaigns and nobody else's")
+    void aCreatorFilterNarrowsToOnePerson() {
+        Account creator = creator();
+        Account other = creator();
+        UUID theirs = idOf(post("/v1/projects", creator.accessToken(), Map.of("title", "Mine")).getBody());
+        UUID notTheirs = idOf(post("/v1/projects", other.accessToken(), Map.of("title", "Theirs")).getBody());
+
+        Map<String, Object> body = directory("?creatorId=" + creator.id());
+
+        // What the console's account detail screen is built on: #404 asks that a moderator
+        // can see what somebody created before deciding whether to suspend them.
+        assertThat(idsIn(body)).containsExactly(theirs.toString());
+        assertThat(idsIn(body)).doesNotContain(notTheirs.toString());
+        assertThat(body).containsEntry("creatorId", creator.id().toString());
+    }
+
+    @Test
+    @DisplayName("a creator who has made nothing is an empty page rather than a refusal")
+    void aCreatorWithNoCampaignsIsAnEmptyPage() {
+        Account nobody = creator();
+
+        ResponseEntity<Map<String, Object>> body =
+                get(DIRECTORY + "?creatorId=" + nobody.id(), staff().accessToken());
+
+        assertThat(body.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(campaignsIn(body.getBody())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("searching pages, and the second page continues rather than repeating")
+    void aSearchPagesLikeTheUnfilteredList() {
+        Account creator = creator();
+        UUID first = idOf(post("/v1/projects", creator.accessToken(), Map.of("title", "Bowl one")).getBody());
+        UUID second = idOf(post("/v1/projects", creator.accessToken(), Map.of("title", "Bowl two")).getBody());
+        UUID third = idOf(post("/v1/projects", creator.accessToken(), Map.of("title", "Bowl three")).getBody());
+
+        Map<String, Object> page = directory("?query=bowl&limit=2");
+        assertThat(idsIn(page)).containsExactly(third.toString(), second.toString());
+
+        // The keyset has to carry the filter with it, or page two is the whole directory.
+        Map<String, Object> next = directory("?query=bowl&limit=2&after=" + page.get("nextCursor"));
+        assertThat(idsIn(next)).containsExactly(first.toString());
+    }
+
+    // ------------------------------------------------------------------
     // Who may read it
     // ------------------------------------------------------------------
 
@@ -344,6 +507,11 @@ class CampaignDirectoryApiTests extends AbstractIntegrationTest {
     private record Account(String accessToken, UUID id) {
     }
 
+    /** The identifiers on a page, in the order they came back. */
+    private static List<String> idsIn(Map<String, Object> body) {
+        return campaignsIn(body).stream().map(row -> (String) row.get("projectId")).toList();
+    }
+
     private Account creator() {
         // Its own prefix: two suites sharing one handle sign in as each other's accounts
         // and fail three frames from the cause.
@@ -432,6 +600,16 @@ class CampaignDirectoryApiTests extends AbstractIntegrationTest {
     }
 
     /** The directory as staff sees it. */
+    /**
+     * One page of the directory, as staff.
+     *
+     * <p><strong>A space in {@code query} is written {@code +}, never {@code %20}.</strong>
+     * {@code TestRestTemplate} takes this string as a URI template and encodes the {@code %}
+     * in it, so {@code %20} reaches the service as the three characters {@code %20} and the
+     * search looks for them. {@code +} is the query-string spelling of a space, Tomcat decodes
+     * it, and it is what the browser sends anyway — {@code URLSearchParams} encodes a space as
+     * {@code +}.
+     */
     private Map<String, Object> directory(String query) {
         ResponseEntity<Map<String, Object>> response = get(DIRECTORY + query, staff().accessToken());
         assertThat(response.getStatusCode()).as("reading the directory: %s", response.getBody()).isEqualTo(HttpStatus.OK);

@@ -4,6 +4,7 @@ import az.ideanest.admin.AdminConsoleProperties;
 import az.ideanest.admin.application.ConsoleReadService;
 import az.ideanest.audit.AuditCursor;
 import az.ideanest.audit.AuditTrailFilter;
+import java.time.Instant;
 import java.util.UUID;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
@@ -62,6 +63,15 @@ public class AuditTrailController {
      *     no index serves both, and choosing one silently would be answering a different
      *     question from the one asked. {@code AuditTrailFilter} has the whole argument,
      *     including what is deliberately not filterable and why
+     * @param from the earliest instant to include, inclusive, or absent for the beginning of
+     *     the table — #404. An ISO-8601 instant ({@code 2026-09-02T00:00:00Z}), so the bound
+     *     is unambiguous about the timezone it is in; the column is UTC and a date with no
+     *     zone would mean one thing to the reader and another to the query. Composes with
+     *     every filter above rather than replacing one, because {@code occurred_at} is the
+     *     trailing column of all four of V21's indexes
+     * @param to the first instant to <strong>exclude</strong>, or absent for the end. Exclusive
+     *     so that two adjacent days partition the rows between them rather than both claiming
+     *     midnight — a caller asking for one day sends that day's midnight and the next
      * @param after the {@code nextCursor} of the previous page, or absent for the first.
      *     An opaque string rather than an identifier since #404: the trail is now ordered by
      *     {@code occurred_at}, which is the column this screen displays and is not unique,
@@ -76,15 +86,17 @@ public class AuditTrailController {
      *     as much as it can have, and a 400 there only teaches it to ask for the maximum
      */
     @GetMapping
-    public ResponseEntity<AuditTrailResponses.Page> trail(
+    public ResponseEntity<AuditTrailResponses.TrailPage> trail(
             @AuthenticationPrincipal Jwt accessToken,
             @RequestParam(required = false) String entityType,
             @RequestParam(required = false) UUID entityId,
             @RequestParam(required = false) UUID actorId,
+            @RequestParam(required = false) Instant from,
+            @RequestParam(required = false) Instant to,
             @RequestParam(required = false) String after,
             @RequestParam(required = false) Integer limit) {
 
-        AuditTrailFilter filter = new AuditTrailFilter(entityType, entityId, actorId);
+        AuditTrailFilter filter = new AuditTrailFilter(entityType, entityId, actorId, from, to);
 
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())

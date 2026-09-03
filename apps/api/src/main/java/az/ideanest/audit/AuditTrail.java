@@ -1,5 +1,6 @@
 package az.ideanest.audit;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -88,23 +89,40 @@ public class AuditTrail {
         return entries.findByEntityTypeAndEntityIdOrderByOccurredAtDesc(entityType, entityId);
     }
 
+    /**
+     * The rows, from whichever of the eight queries this filter names.
+     *
+     * <p>The date range is not a branch — it is two parameters every one of the eight takes.
+     * {@code occurred_at} is the trailing column of all four of V21's indexes, so a bound on
+     * it narrows whichever scan the shape above already chose; {@code AuditEntryRepository}
+     * carries the argument for why that makes it a parameter here and a separate query on the
+     * payment log, and for why neither bound is ever null.
+     */
     private List<AuditEntry> rowsFor(AuditTrailFilter filter, AuditCursor before, PageRequest page) {
+        // The effective bounds, never null: `AuditTrailFilter.SINCE` and `UNTIL` stand in for
+        // an absent one, because a nullable instant in the predicate is a parameter Hibernate
+        // cannot type. The filter still echoes the nulls, so the response says "unbounded".
+        Instant from = filter.effectiveFrom();
+        Instant to = filter.effectiveTo();
+
         if (filter.isSingleEntity()) {
             return before == null
-                    ? entries.newestOfEntity(filter.entityType(), filter.entityId(), page)
+                    ? entries.newestOfEntity(filter.entityType(), filter.entityId(), from, to, page)
                     : entries.newestOfEntityBefore(
-                            filter.entityType(), filter.entityId(), before.at(), before.id(), page);
+                            filter.entityType(), filter.entityId(), before.at(), before.id(), from, to, page);
         }
         if (filter.entityType() != null) {
             return before == null
-                    ? entries.newestOfType(filter.entityType(), page)
-                    : entries.newestOfTypeBefore(filter.entityType(), before.at(), before.id(), page);
+                    ? entries.newestOfType(filter.entityType(), from, to, page)
+                    : entries.newestOfTypeBefore(filter.entityType(), before.at(), before.id(), from, to, page);
         }
         if (filter.actorId() != null) {
             return before == null
-                    ? entries.newestByActor(filter.actorId(), page)
-                    : entries.newestByActorBefore(filter.actorId(), before.at(), before.id(), page);
+                    ? entries.newestByActor(filter.actorId(), from, to, page)
+                    : entries.newestByActorBefore(filter.actorId(), before.at(), before.id(), from, to, page);
         }
-        return before == null ? entries.newest(page) : entries.newestBefore(before.at(), before.id(), page);
+        return before == null
+                ? entries.newest(from, to, page)
+                : entries.newestBefore(before.at(), before.id(), from, to, page);
     }
 }

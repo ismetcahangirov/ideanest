@@ -1,6 +1,7 @@
 package az.ideanest.admin.api;
 
 import az.ideanest.audit.InvalidAuditCursorException;
+import az.ideanest.payment.application.UnknownTransactionOutcomeException;
 import az.ideanest.staff.application.NotAModeratorException;
 import java.net.URI;
 import java.util.Map;
@@ -65,6 +66,31 @@ public class ConsoleExceptionHandler {
         problem.setDetail("Send the nextCursor from the previous page, or nothing for the first.");
         problem.setProperty("code", "INVALID_CURSOR");
         problem.setProperty("meta", Map.of("parameter", "after"));
+        return problem;
+    }
+
+    /**
+     * 400 for a payment outcome that is not one of the three — #404.
+     *
+     * <p>The same distinction the ledger handler below draws, and it lands in the same place
+     * for a sharper reason: {@code ?status=refunded} is the mistake somebody actually makes,
+     * because a refund <em>is</em> a thing this table records — as a {@code type}, never as a
+     * {@code status}. Dropping the filter would draw every successful charge on the platform
+     * under a chip that says "rejected", which is worse than an empty page and much worse than
+     * a refusal.
+     *
+     * <p>{@code meta.parameter} names the query parameter rather than the value, and the detail
+     * quotes what was sent back. It came from the caller's own URL, so there is nothing in it
+     * a support ticket could leak.
+     */
+    @ExceptionHandler(UnknownTransactionOutcomeException.class)
+    public ProblemDetail handleUnknownOutcome(UnknownTransactionOutcomeException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("https://ideanest.az/problems/unknown-transaction-outcome"));
+        problem.setTitle("No such payment outcome");
+        problem.setDetail("Outcome is SUCCEEDED, FAILED or PENDING. Received: " + exception.asked());
+        problem.setProperty("code", "UNKNOWN_TRANSACTION_OUTCOME");
+        problem.setProperty("meta", Map.of("parameter", "status"));
         return problem;
     }
 

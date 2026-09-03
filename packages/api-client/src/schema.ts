@@ -1268,6 +1268,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/users/{id}/pledges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminUserPledges"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/users/{id}/reinstate": {
         parameters: {
             query?: never;
@@ -3531,7 +3547,10 @@ export interface components {
         CampaignDirectoryResponse: {
             campaigns?: components["schemas"]["Campaign"][];
             /** Format: uuid */
+            creatorId?: string;
+            /** Format: uuid */
             nextCursor?: string;
+            query?: string;
             state?: string;
         };
         CampaignFinanceResponse: {
@@ -4343,6 +4362,16 @@ export interface components {
             /** Format: int64 */
             stillEditable?: number;
         };
+        LogPage: {
+            /** Format: uuid */
+            nextCursor?: string;
+            /** Format: uuid */
+            pledgeId?: string;
+            /** Format: uuid */
+            projectId?: string;
+            status?: string;
+            transactions?: components["schemas"]["Transaction"][];
+        };
         MeResponse: {
             currency?: string;
             /** Format: date-time */
@@ -4477,15 +4506,6 @@ export interface components {
             slug?: string;
             socialLinks?: components["schemas"]["SocialLinkBody"][];
             websiteUrl?: string;
-        };
-        Page: {
-            /** Format: uuid */
-            nextCursor?: string;
-            /** Format: uuid */
-            pledgeId?: string;
-            /** Format: uuid */
-            projectId?: string;
-            transactions?: components["schemas"]["Transaction"][];
         };
         PatchPledgeRequest: {
             addons?: components["schemas"]["PledgeAddonBody"][];
@@ -5599,6 +5619,19 @@ export interface components {
             pledgeCount?: number;
             volume?: components["schemas"]["Money"];
         };
+        TrailPage: {
+            /** Format: uuid */
+            actorId?: string;
+            /** Format: uuid */
+            entityId?: string;
+            entityType?: string;
+            entries?: components["schemas"]["Entry"][];
+            /** Format: date-time */
+            from?: string;
+            nextCursor?: string;
+            /** Format: date-time */
+            to?: string;
+        };
         Transaction: {
             amount?: components["schemas"]["Money"];
             /** Format: int32 */
@@ -5878,6 +5911,7 @@ export type SchemaLocation = components['schemas']['Location'];
 export type SchemaLocationBody = components['schemas']['LocationBody'];
 export type SchemaLocationIndex = components['schemas']['LocationIndex'];
 export type SchemaLockAddressesResponse = components['schemas']['LockAddressesResponse'];
+export type SchemaLogPage = components['schemas']['LogPage'];
 export type SchemaMeResponse = components['schemas']['MeResponse'];
 export type SchemaMedia = components['schemas']['Media'];
 export type SchemaMembership = components['schemas']['Membership'];
@@ -5895,7 +5929,6 @@ export type SchemaOpenLatePledgesRequest = components['schemas']['OpenLatePledge
 export type SchemaOutcome = components['schemas']['Outcome'];
 export type SchemaOutcomes = components['schemas']['Outcomes'];
 export type SchemaOwnProfileResponse = components['schemas']['OwnProfileResponse'];
-export type SchemaPage = components['schemas']['Page'];
 export type SchemaPatchPledgeRequest = components['schemas']['PatchPledgeRequest'];
 export type SchemaPayoutFile = components['schemas']['PayoutFile'];
 export type SchemaPayoutPage = components['schemas']['PayoutPage'];
@@ -6022,6 +6055,7 @@ export type SchemaTicketFile = components['schemas']['TicketFile'];
 export type SchemaTicketPage = components['schemas']['TicketPage'];
 export type SchemaTokenResponse = components['schemas']['TokenResponse'];
 export type SchemaTotals = components['schemas']['Totals'];
+export type SchemaTrailPage = components['schemas']['TrailPage'];
 export type SchemaTransaction = components['schemas']['Transaction'];
 export type SchemaTranslation = components['schemas']['Translation'];
 export type SchemaTranslationRequest = components['schemas']['TranslationRequest'];
@@ -6071,6 +6105,8 @@ export interface operations {
                 entityType?: string;
                 entityId?: string;
                 actorId?: string;
+                from?: string;
+                to?: string;
                 after?: string;
                 limit?: number;
             };
@@ -6086,7 +6122,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page"];
+                    "application/json": components["schemas"]["TrailPage"];
                 };
             };
         };
@@ -7016,6 +7052,7 @@ export interface operations {
             query?: {
                 pledgeId?: string;
                 projectId?: string;
+                status?: string;
                 after?: string;
                 limit?: number;
             };
@@ -7031,7 +7068,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page"];
+                    "application/json": components["schemas"]["LogPage"];
                 };
             };
         };
@@ -7297,6 +7334,8 @@ export interface operations {
         parameters: {
             query?: {
                 state?: "DRAFT" | "PRELAUNCH" | "SUBMITTED" | "CHANGES_REQUESTED" | "REJECTED" | "APPROVED" | "SCHEDULED" | "LIVE" | "SUSPENDED" | "CANCELED" | "SUCCESSFUL" | "UNSUCCESSFUL" | "COLLECTING" | "LATE_PLEDGE" | "FULFILLING" | "COMPLETED";
+                creatorId?: string;
+                query?: string;
                 after?: string;
                 limit?: number;
             };
@@ -7956,6 +7995,9 @@ export interface operations {
         parameters: {
             query?: {
                 state?: "OPEN" | "PENDING" | "RESOLVED" | "CLOSED";
+                priority?: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+                assigneeId?: string;
+                unassigned?: boolean;
                 page?: number;
             };
             header?: never;
@@ -8186,6 +8228,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminUserResponse"];
+                };
+            };
+        };
+    };
+    adminUserPledges: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackerPledgeListResponse"];
                 };
             };
         };

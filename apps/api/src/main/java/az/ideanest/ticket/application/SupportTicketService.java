@@ -129,13 +129,44 @@ public class SupportTicketService {
         return tickets.queue(PageRequest.of(Math.max(page, 0), PAGE_SIZE));
     }
 
-    /** Everything, newest first, optionally narrowed to one state. */
+    /** Everything, newest first, optionally narrowed to one state. The shape #310 shipped. */
     @Transactional(readOnly = true)
     public List<SupportTicket> list(UUID staffId, TicketState state, int page) {
-        staff.requireCapability(staffId, StaffCapability.HANDLE_SUPPORT);
-        PageRequest request = PageRequest.of(Math.max(page, 0), PAGE_SIZE);
+        return list(staffId, state, null, null, false, page);
+    }
 
-        return state == null ? tickets.page(request) : tickets.pageByState(state, request);
+    /**
+     * Everything, newest first, narrowed by state, priority and who is handling it — #404.
+     *
+     * <p>The screen displayed all three of these on every row and could filter by none of
+     * them. Five tickets made that survivable; the copy under the list explains that staff
+     * set the priority, which is a thing nobody could then act on.
+     *
+     * <p><strong>This is not the queue.</strong> {@link #queue} answers "what is still
+     * somebody's work", most urgent first, and stays exactly as it was — a queue that grew
+     * filters would be a queue whose order stopped meaning "work this from the front". These
+     * filters are on the list, which is ordered by when a ticket arrived.
+     *
+     * @param state one of §4.11's four, or null for every state
+     * @param priority one of four, or null for every priority
+     * @param assigneeId one member of staff's workload, or null for anybody's
+     * @param unassigned only tickets nobody has picked up. Combines with {@code state} and
+     *     {@code priority}; with {@code assigneeId} it is a contradiction that answers
+     *     nothing, which is the honest answer to "assigned to Ayan and to nobody"
+     */
+    @Transactional(readOnly = true)
+    public List<SupportTicket> list(
+            UUID staffId,
+            TicketState state,
+            TicketPriority priority,
+            UUID assigneeId,
+            boolean unassigned,
+            int page) {
+
+        staff.requireCapability(staffId, StaffCapability.HANDLE_SUPPORT);
+
+        return tickets.filtered(
+                state, priority, assigneeId, unassigned, PageRequest.of(Math.max(page, 0), PAGE_SIZE));
     }
 
     /**

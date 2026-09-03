@@ -79,6 +79,22 @@
           }
         }, {
           "in" : "query",
+          "name" : "from",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }, {
+          "in" : "query",
+          "name" : "to",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }, {
+          "in" : "query",
           "name" : "after",
           "required" : false,
           "schema" : {
@@ -98,7 +114,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/Page"
+                  "$ref" : "#/components/schemas/TrailPage"
                 }
               }
             },
@@ -1355,6 +1371,13 @@
           }
         }, {
           "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
           "name" : "after",
           "required" : false,
           "schema" : {
@@ -1375,7 +1398,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/Page"
+                  "$ref" : "#/components/schemas/LogPage"
                 }
               }
             },
@@ -1718,6 +1741,21 @@
           "schema" : {
             "type" : "string",
             "enum" : [ "DRAFT", "PRELAUNCH", "SUBMITTED", "CHANGES_REQUESTED", "REJECTED", "APPROVED", "SCHEDULED", "LIVE", "SUSPENDED", "CANCELED", "SUCCESSFUL", "UNSUCCESSFUL", "COLLECTING", "LATE_PLEDGE", "FULFILLING", "COMPLETED" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "creatorId",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
           }
         }, {
           "in" : "query",
@@ -2592,6 +2630,30 @@
           }
         }, {
           "in" : "query",
+          "name" : "priority",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "LOW", "NORMAL", "HIGH", "URGENT" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "assigneeId",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "unassigned",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "in" : "query",
           "name" : "page",
           "required" : false,
           "schema" : {
@@ -2900,6 +2962,48 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/AdminUserResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-user-controller" ]
+      }
+    },
+    "/v1/admin/users/{id}/pledges" : {
+      "get" : {
+        "operationId" : "adminUserPledges",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "query",
+          "name" : "cursor",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BackerPledgeListResponse"
                 }
               }
             },
@@ -8976,9 +9080,16 @@
               "$ref" : "#/components/schemas/Campaign"
             }
           },
+          "creatorId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
           "nextCursor" : {
             "type" : "string",
             "format" : "uuid"
+          },
+          "query" : {
+            "type" : "string"
           },
           "state" : {
             "type" : "string"
@@ -11236,6 +11347,32 @@
           }
         }
       },
+      "LogPage" : {
+        "type" : "object",
+        "properties" : {
+          "nextCursor" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "pledgeId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "transactions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Transaction"
+            }
+          }
+        }
+      },
       "MeResponse" : {
         "type" : "object",
         "properties" : {
@@ -11594,29 +11731,6 @@
           },
           "websiteUrl" : {
             "type" : "string"
-          }
-        }
-      },
-      "Page" : {
-        "type" : "object",
-        "properties" : {
-          "nextCursor" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "pledgeId" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "projectId" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "transactions" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/Transaction"
-            }
           }
         }
       },
@@ -14619,6 +14733,39 @@
           },
           "volume" : {
             "$ref" : "#/components/schemas/Money"
+          }
+        }
+      },
+      "TrailPage" : {
+        "type" : "object",
+        "properties" : {
+          "actorId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "entityId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "entityType" : {
+            "type" : "string"
+          },
+          "entries" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Entry"
+            }
+          },
+          "from" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "nextCursor" : {
+            "type" : "string"
+          },
+          "to" : {
+            "type" : "string",
+            "format" : "date-time"
           }
         }
       },
