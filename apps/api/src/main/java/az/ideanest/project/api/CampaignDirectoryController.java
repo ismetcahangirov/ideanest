@@ -1,14 +1,22 @@
 package az.ideanest.project.api;
 
 import az.ideanest.project.application.CampaignDirectory;
+import az.ideanest.project.application.PublicProjectPage;
+import az.ideanest.project.application.Taxonomy;
 import az.ideanest.project.domain.ProjectState;
 import java.util.UUID;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * What campaigns exist, for the console.
@@ -35,8 +43,12 @@ public class CampaignDirectoryController {
 
     private final CampaignDirectory directory;
 
-    public CampaignDirectoryController(CampaignDirectory directory) {
+    /** For the story column, which is {@code jsonb} held as text. See {@link StoryJson}. */
+    private final ObjectMapper json;
+
+    public CampaignDirectoryController(CampaignDirectory directory, ObjectMapper json) {
         this.directory = directory;
+        this.json = json;
     }
 
     /**
@@ -61,6 +73,41 @@ public class CampaignDirectoryController {
 
         return CampaignDirectoryResponse.of(
                 directory.page(staffOf(accessToken), state, after, directory.pageSize(limit)));
+    }
+
+    /**
+     * One campaign as its page reads, in any state — #399's staff preview.
+     *
+     * <p><strong>The endpoint the submission queue was missing.</strong> That queue asks
+     * for an irreversible decision about a campaign and linked to the public page, which
+     * for a campaign in review is a 404 by construction — so approval happened on a title
+     * and a goal figure. This serves the same projection the public page is served from,
+     * without the state filter that makes the public one public.
+     *
+     * <p><strong>Never cached, unlike the endpoint it mirrors.</strong>
+     * {@link PublicProjectController} sets a public {@code max-age} because a campaign
+     * page is the same document for everybody; this one is a draft somebody is still
+     * writing, read by a member of staff on the strength of a capability, and a copy of it
+     * in a shared cache is a copy nothing revokes. Every other console read sets the same
+     * header for the same reason.
+     *
+     * @param acceptLanguage §10.3's localisation header, narrowed by
+     *     {@code Taxonomy.localeFor} exactly as on the public page — a moderator reading
+     *     the console in Azerbaijani should not be shown an English category name
+     * @return 404 when there is no such campaign; 403 when the caller is signed in and is
+     *     not staff, which is {@code CampaignDirectory}'s check rather than this method's
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<ProjectPageResponse> preview(
+            @AuthenticationPrincipal Jwt accessToken,
+            @RequestHeader(value = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage,
+            @PathVariable UUID id) {
+
+        PublicProjectPage page = directory.preview(staffOf(accessToken), id, Taxonomy.localeFor(acceptLanguage));
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(ProjectPageResponse.of(page, StoryJson.of(json, page.id(), page.story())));
     }
 
     private static UUID staffOf(Jwt accessToken) {

@@ -68,7 +68,16 @@ export interface AuditTrailPage {
   entityId?: string | null;
   actorId?: string | null;
   entries: AuditEntry[];
-  /** Absent on the last page. Keyset over the identifier, which is a UUID v7 (§7.3). */
+  /**
+   * Absent on the last page. Opaque, and hand it back as `after` unchanged.
+   *
+   * <p>It used to be the last row's identifier, on the argument that a UUID v7 carries the
+   * millisecond it was minted in (§7.3). #404 is what that cost: the key is minted by the
+   * application and `occurred_at` is the database's, so the two orders disagree — and this
+   * screen displays the second while the query ordered by the first. A page headed "newest
+   * first" opened on last month. The trail is ordered by `occurred_at` now, which is not
+   * unique, so the cursor carries the instant and the identifier that breaks its tie.
+   */
   nextCursor?: string | null;
 }
 

@@ -2,6 +2,7 @@ package az.ideanest.admin.api;
 
 import az.ideanest.admin.AdminConsoleProperties;
 import az.ideanest.admin.application.ConsoleReadService;
+import az.ideanest.audit.AuditCursor;
 import az.ideanest.audit.AuditTrailFilter;
 import java.util.UUID;
 import org.springframework.http.CacheControl;
@@ -62,9 +63,14 @@ public class AuditTrailController {
      *     question from the one asked. {@code AuditTrailFilter} has the whole argument,
      *     including what is deliberately not filterable and why
      * @param after the {@code nextCursor} of the previous page, or absent for the first.
-     *     Keyset over the identifier, which is a UUID v7 and therefore a position in time
-     *     (§7.3) — so no compound cursor over {@code occurred_at} is needed, and two rows
-     *     written by one transaction cannot hide behind each other
+     *     An opaque string rather than an identifier since #404: the trail is now ordered by
+     *     {@code occurred_at}, which is the column this screen displays and is not unique,
+     *     so the cursor carries the instant and the identifier that breaks its tie.
+     *     {@code AuditCursor} records what was wrong with ordering by the key — the two
+     *     columns are written by two different clocks, and the page headed "newest first"
+     *     opened on last month. A value this endpoint did not produce is a 400 rather than
+     *     the first page, so that a client paging wrongly does not look like one that has
+     *     finished
      * @param limit clamped to {@code ideanest.admin.audit.max-page-size} rather than
      *     refused, following the report queue: a client asking for a thousand is asking for
      *     as much as it can have, and a 400 there only teaches it to ask for the maximum
@@ -75,7 +81,7 @@ public class AuditTrailController {
             @RequestParam(required = false) String entityType,
             @RequestParam(required = false) UUID entityId,
             @RequestParam(required = false) UUID actorId,
-            @RequestParam(required = false) UUID after,
+            @RequestParam(required = false) String after,
             @RequestParam(required = false) Integer limit) {
 
         AuditTrailFilter filter = new AuditTrailFilter(entityType, entityId, actorId);
@@ -83,7 +89,10 @@ public class AuditTrailController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(AuditTrailResponses.of(console.auditTrail(
-                        staffOf(accessToken), filter, after, properties.audit().effective(limit))));
+                        staffOf(accessToken),
+                        filter,
+                        AuditCursor.decode(after),
+                        properties.audit().effective(limit))));
     }
 
     /**

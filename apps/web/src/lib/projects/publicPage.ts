@@ -150,6 +150,38 @@ export function readCampaignPage(
   creatorSlug: string,
   now: Date = new Date(),
 ): CampaignPage | null {
+  const page = readCampaignFields(response, creatorSlug, now);
+  if (page === null) return null;
+
+  return RENDERABLE_STATES.includes(page.state) ? page : null;
+}
+
+/**
+ * The same narrowing, without the question of who may see it — issue #399.
+ *
+ * <p><strong>The state check is the caller's, and there is exactly one caller that skips
+ * it.</strong> `/admin/campaigns/[projectId]` is the staff preview a moderator opens from
+ * the submission queue, and its whole purpose is to render a campaign the public cannot
+ * see: a campaign in review is not public, which is what being in review means, so the
+ * queue's only link to what it was asking about was a 404 by construction.
+ *
+ * <p>A parameter on {@link readCampaignPage} would have been the shorter change and the
+ * wrong one. That function's own comment calls the state check "the second lock on the same
+ * door", and a lock with an argument that opens it is one call site away from a draft in
+ * somebody's search results. Two functions, one of which is named after the audience that
+ * may use it, is what the service does for the identical problem — `PublicComments` answers
+ * for strangers and `ModeratedContent` answers for staff, and neither can be mistaken for
+ * the other.
+ *
+ * <p>What is <em>not</em> skipped is the narrowing. A response missing something every
+ * campaign has is still `null` here, because a half-built preview is a decision taken
+ * against a page that does not exist.
+ */
+export function readCampaignFields(
+  response: ProjectPageResponse | null,
+  creatorSlug: string,
+  now: Date = new Date(),
+): CampaignPage | null {
   if (response === null) return null;
 
   const { id, slug, state, title } = response;
@@ -162,8 +194,6 @@ export function readCampaignPage(
   ) {
     return null;
   }
-  if (!RENDERABLE_STATES.includes(state as ProjectState)) return null;
-
   const creator = readCreator(response.creator);
   if (creator === null) return null;
 

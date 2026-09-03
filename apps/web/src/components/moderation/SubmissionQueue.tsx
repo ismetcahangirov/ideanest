@@ -17,6 +17,8 @@ import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import { formatMoney } from '../../lib/money';
 import type { SubmissionQueueCopy } from '../../lib/i18n/admin/content-copy';
 import { DecisionDialog, type Decision } from './DecisionDialog';
+import { localeHref } from '../../i18n/navigation';
+import type { Locale } from '../../lib/i18n/locale';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 
 type Status = 'loading' | 'ready' | 'failed' | 'signed-out' | 'forbidden';
@@ -339,7 +341,11 @@ export function SubmissionQueue({ copy }: SubmissionQueueProps) {
 interface SubmissionRowProps {
   readonly submission: QueuedSubmission;
   readonly days: number;
-  readonly locale: string;
+  /**
+   * Narrowed from `string` with #399: it now decides a URL through `localeHref`, which
+   * refuses anything that is not one of §21.1's four. `useRouteLocale` already produces one.
+   */
+  readonly locale: Locale;
   readonly busy: boolean;
   /** The three verbs are offered only where they are reachable: from `SUBMITTED`. */
   readonly decidable: boolean;
@@ -363,17 +369,31 @@ function SubmissionRow({
   copy,
   onDecide,
 }: SubmissionRowProps) {
-  const href =
-    submission.creatorSlug == null
-      ? `/${locale}/projects/${encodeURIComponent(submission.projectId)}`
-      : `/${locale}/projects/${encodeURIComponent(submission.creatorSlug)}/${encodeURIComponent(submission.slug)}`;
+  /*
+   * The staff preview, not the public page — issue #399.
+   *
+   * This link used to be `/projects/{creatorSlug}/{slug}`, which is a 404 for every campaign
+   * this queue lists: a campaign awaiting review is not public, and that is what awaiting
+   * review means. So the one route from "decide about this campaign" to "read this campaign"
+   * was broken by construction, and approval happened on a title, a creator's name and a goal
+   * figure. `/admin/campaigns/{id}` renders the same page a backer would see, in any state.
+   *
+   * A new tab, so the queue and its filters survive the trip. A moderator who works twenty
+   * submissions should not have to rebuild the queue's state twenty times.
+   */
+  const href = localeHref(`/admin/campaigns/${encodeURIComponent(submission.projectId)}`, locale);
 
   return (
     <li className="rounded-lg border border-white/8 bg-surface-2 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-base font-medium text-white">
-            <a className="underline-offset-4 hover:underline" href={href}>
+            <a
+              className="underline-offset-4 hover:underline"
+              href={href}
+              target="_blank"
+              rel="noreferrer"
+            >
               {submission.title}
             </a>
           </h3>

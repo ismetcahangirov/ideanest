@@ -172,7 +172,17 @@ class ConsoleReadApiTests extends AbstractIntegrationTest {
         List<Map<String, Object>> first = entriesIn(firstPage);
         assertThat(first).hasSize(1);
         assertThat(first.get(0)).containsEntry("detail", "newer");
-        assertThat(firstPage.getBody().get("nextCursor")).isEqualTo(first.get(0).get("id"));
+        /*
+         * Opaque since #404, where it used to be the last row's identifier. The trail is
+         * ordered by `occurred_at` now — the column the screen displays, which is written by
+         * the database's clock while the key is minted by the application's — so the cursor
+         * has to carry the instant and the identifier that breaks its tie. What is asserted
+         * here is that a cursor comes back and that it works, which is the contract; the
+         * shape is `AuditCursor`'s business, and a test that pinned it would be the reason
+         * the ordering could not be changed again.
+         */
+        assertThat((String) firstPage.getBody().get("nextCursor")).isNotBlank();
+        assertThat(firstPage.getBody().get("nextCursor")).isNotEqualTo(first.get(0).get("id"));
 
         List<Map<String, Object>> second =
                 entriesIn(get(path + "&after=" + firstPage.getBody().get("nextCursor"), staff().accessToken()));

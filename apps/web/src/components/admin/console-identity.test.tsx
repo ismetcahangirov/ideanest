@@ -12,6 +12,7 @@ import { HealthDashboard } from './HealthDashboard';
 import { PayoutQueue } from './PayoutQueue';
 import { StaffRoles } from './StaffRoles';
 import { ConsoleIndex } from './ConsoleIndex';
+import { EntityName } from './ConsoleIdentity';
 import { translatorFor } from '../../test-copy';
 import { consoleChromeCopyFrom } from '../../lib/i18n/admin/common-copy';
 import { consoleIndexCopyFrom } from '../../lib/i18n/admin-copy';
@@ -170,6 +171,42 @@ describe('names on a console screen', () => {
      * dropped it would have traded one missing fact for another.
      */
     expect(screen.getAllByText(CREATOR.slice(0, 8)).length).toBeGreaterThan(0);
+  });
+
+  it('links a campaign to the staff preview, which renders it in any state', () => {
+    render(
+      <EntityName
+        id="a1b2c3d4-0000-4000-8000-000000000001"
+        names={{
+          accounts: new Map(),
+          projects: new Map([
+            [
+              'a1b2c3d4-0000-4000-8000-000000000001',
+              {
+                id: 'a1b2c3d4-0000-4000-8000-000000000001',
+                title: 'Xari Bulbul Ceramics',
+                slug: 'xari-bulbul-ceramics',
+                creatorSlug: 'aysel-studio',
+              },
+            ],
+          ]),
+        }}
+        kind="project"
+        copy={CHROME.identity}
+      />,
+    );
+
+    /*
+     * #399. This used to build `/projects/{creatorSlug}/{slug}` whenever the directory had
+     * both halves, and it has both halves for every campaign regardless of state — so a
+     * report about a suspended campaign, or an audit row about a rejected one, offered a
+     * link that answers 404 at exactly the moment somebody is trying to find out what was
+     * stopped.
+     */
+    expect(screen.getByRole('link', { name: 'Xari Bulbul Ceramics' })).toHaveAttribute(
+      'href',
+      '/en/admin/campaigns/a1b2c3d4-0000-4000-8000-000000000001',
+    );
   });
 
   it('leaves the screen working when the lookup fails', async () => {

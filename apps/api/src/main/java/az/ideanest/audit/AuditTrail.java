@@ -42,14 +42,15 @@ public class AuditTrail {
      *
      * @param filter one of the four shapes {@link AuditTrailFilter} allows. Normalised
      *     first, so the page and the echoed filter describe the same query
-     * @param before the identifier of the last row on the previous page, or null for the
-     *     first page. An identifier that is not in the table is not an error: it is a
-     *     position, and every row below it is still a correct answer
+     * @param before the last row on the previous page, or null for the first page. A
+     *     position rather than a row that has to exist: it names an instant and an
+     *     identifier, and every row below that pair is still a correct answer even if the
+     *     row it was taken from has been detached with its partition
      * @param limit already clamped by the caller, which is where a request's shape is
      *     decided
      */
     @Transactional(readOnly = true)
-    public AuditTrailPage page(AuditTrailFilter filter, UUID before, int limit) {
+    public AuditTrailPage page(AuditTrailFilter filter, AuditCursor before, int limit) {
         AuditTrailFilter asked = filter.normalised();
         PageRequest page = PageRequest.ofSize(limit);
         List<AuditEntry> rows = rowsFor(asked, before, page);
@@ -60,8 +61,18 @@ public class AuditTrail {
          * exactly would hide the tail; reporting a cursor on a short page would cost the
          * client one request to learn the same thing.
          */
-        UUID nextCursor = rows.size() < limit ? null : rows.get(rows.size() - 1).getId();
+        AuditCursor nextCursor = rows.size() < limit ? null : cursorTo(rows.get(rows.size() - 1));
         return new AuditTrailPage(asked, rows, nextCursor);
+    }
+
+    /**
+     * Where the page just served ends.
+     *
+     * <p>Both halves, because the trail is ordered by a column that is not unique — see
+     * {@link AuditCursor}, which is where the whole of #404's ordering argument lives.
+     */
+    private static AuditCursor cursorTo(AuditEntry last) {
+        return new AuditCursor(last.getOccurredAt(), last.getId());
     }
 
     /**
@@ -77,22 +88,23 @@ public class AuditTrail {
         return entries.findByEntityTypeAndEntityIdOrderByOccurredAtDesc(entityType, entityId);
     }
 
-    private List<AuditEntry> rowsFor(AuditTrailFilter filter, UUID before, PageRequest page) {
+    private List<AuditEntry> rowsFor(AuditTrailFilter filter, AuditCursor before, PageRequest page) {
         if (filter.isSingleEntity()) {
             return before == null
                     ? entries.newestOfEntity(filter.entityType(), filter.entityId(), page)
-                    : entries.newestOfEntityBefore(filter.entityType(), filter.entityId(), before, page);
+                    : entries.newestOfEntityBefore(
+                            filter.entityType(), filter.entityId(), before.at(), before.id(), page);
         }
         if (filter.entityType() != null) {
             return before == null
                     ? entries.newestOfType(filter.entityType(), page)
-                    : entries.newestOfTypeBefore(filter.entityType(), before, page);
+                    : entries.newestOfTypeBefore(filter.entityType(), before.at(), before.id(), page);
         }
         if (filter.actorId() != null) {
             return before == null
                     ? entries.newestByActor(filter.actorId(), page)
-                    : entries.newestByActorBefore(filter.actorId(), before, page);
+                    : entries.newestByActorBefore(filter.actorId(), before.at(), before.id(), page);
         }
-        return before == null ? entries.newest(page) : entries.newestBefore(before, page);
+        return before == null ? entries.newest(page) : entries.newestBefore(before.at(), before.id(), page);
     }
 }

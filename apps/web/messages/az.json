@@ -526,6 +526,12 @@
       "loading": "Yüklənir",
       "previous": "Əvvəlki",
       "next": "Növbəti",
+      "count": {
+        "exact": "{count}",
+        "partial": "{count}+",
+        "exactLabel": "{count} göstərilir, hamısı budur",
+        "partialLabel": "{count} göstərilir, daha çoxu var"
+      },
       "identity": {
         "copy": "İdentifikatoru kopyala",
         "copyLabel": "{id} ilə başlayan tam identifikatoru kopyala",
@@ -705,6 +711,12 @@
         "metaDescription": "Platformadakı bütün kampaniyalar, hər vəziyyətdə, ən yenisi əvvəl.",
         "title": "Kampaniyalar",
         "intro": "Platformadakı bütün kampaniyalar, ən yenisi əvvəl, hansı vəziyyətdə olmasından asılı olmayaraq. Baxış növbəsi yalnız qərar gözləyənləri göstərir; bura isə hər şeyi — heç kimin göndərmədiyi qaralamaları və təsdiqlənib hələ yayımlanmayan kampaniyaları da — göstərir."
+      },
+      "campaignPreview": {
+        "metaTitle": "Kampaniya önbaxışı",
+        "metaDescription": "Bir kampaniya, səhifəsinin oxunduğu kimi, istənilən vəziyyətdə — qərar verən moderator üçün.",
+        "title": "Kampaniya önbaxışı",
+        "intro": "Kampaniya, ictimai səhifəsinin göstərəcəyi kimi, hansı vəziyyətdə olmasından asılı olmayaraq. Baxış növbəsi buraya keçid verir, çünki qərar gözləyən kampaniyanın ictimai səhifəsi yoxdur — və yalnız başlıq və hədəf rəqəmi ilə verilən qərar təxmindir."
       }
     },
     "screens": {
@@ -1063,7 +1075,25 @@
         "loadingHistory": "Qərar tarixçəsi yüklənir",
         "historyEmpty": "Bu şikayətə hələ heç nə edilməyib. Kimsə onu qərara bağladığı an burada sətir görünəcək.",
         "actionBy": "{action} — {actor}",
-        "refused": "Rədd edildi"
+        "refused": "Rədd edildi",
+        "evidence": {
+          "subject": "şikayət edilən məzmun",
+          "heading": "Şikayət edilən məzmun",
+          "intro": "Şikayətin aid olduğu məzmun, şikayətdən deyil, platformadan oxunub. Silinmiş məzmun da göstərilir, çünki silinmədən əvvəl verilmiş şikayət hələ də qərara bağlanmalıdır.",
+          "loading": "Şikayət edilən məzmun yüklənir",
+          "failedTitle": "Şikayət edilən məzmun oxuna bilmədi",
+          "removedTitle": "Bu artıq silinib",
+          "removedBody": "Şikayət veriləndən sonra kimsə bunu silib. Şikayətin yenə də qərara bağlana bilməsi üçün burada göstərilir — ikinci dəfə silmək lazım deyil.",
+          "goneTitle": "Bu artıq platformada yoxdur",
+          "goneBody": "Şikayətin göstərdiyi identifikator artıq mövcud deyil. Ya tamamilə təmizlənib, ya da müəllifin hesabı anonimləşdirilib. Şikayət yenə də qərara bağlana bilər; oxunacaq bir şey qalmayıb.",
+          "addressedBody": "Bu şikayət mətn parçası deyil, kampaniya və ya hesab haqqındadır. Konsol onu yuxarıda adlandırır və ona keçid verir — səhifəyə keçidin yanındakı parça keçidin özündən pisdir.",
+          "authorLabel": "Müəllif",
+          "campaignLabel": "Kampaniya",
+          "writtenLabel": "Yazılıb",
+          "updateNumber": "Yenilik {number}",
+          "openCampaign": "Kampaniyanı aç",
+          "noText": "Bu elementin öz mətni yoxdur."
+        }
       },
       "collections": {
         "subject": "kolleksiyaları",
@@ -1821,6 +1851,30 @@
           "SUSPENDED": "Dayandırılıb",
           "CANCELED": "Ləğv edildi"
         }
+      },
+      "campaignPreview": {
+        "subject": "bu kampaniya",
+        "loadingPreview": "Kampaniya yüklənir",
+        "notFoundTitle": "Belə kampaniya yoxdur",
+        "notFoundBody": "Bu identifikator heç bir kampaniyanı göstərmir, ya da müəllifi silinmə gözləmə müddətindədir və səhifənin aid edəcəyi kimsə yoxdur.",
+        "backToDirectory": "Kampaniyalara qayıt",
+        "previewNoticeTitle": "Heyət üçün önbaxış",
+        "previewNoticeBody": "Kampaniya, ictimai səhifəsinin göstərəcəyi kimi, hansı vəziyyətdə olmasından asılı olmayaraq — müəllifinin heç kimə göstərmədiyi qaralama da daxil. Bu ekranda heç nə dəyişmir: təsdiq, rədd və dayandırma başqa yerdədir və bu vərəqi bağlamaqla onlardan heç biri itmir.",
+        "goalLabel": "Hədəf",
+        "noGoal": "Hələ təyin edilməyib",
+        "raisedLabel": "Toplanıb",
+        "backersLabel": "Dəstəkçilər",
+        "filedUnder": "Kateqoriya",
+        "notFiled": "Hələ təsnif edilməyib",
+        "launchedLabel": "Başlayıb",
+        "deadlineLabel": "Bitir",
+        "publicPage": "İctimai səhifəni aç",
+        "notPublicYet": "Bu kampaniyanın hazırkı vəziyyətində ictimai səhifəsi yoxdur.",
+        "storyHeading": "Hekayə",
+        "noStory": "Müəllif hələ yazmayıb. Təqdim etmək üçün tələb olunur, ona görə baxış gözləyən kampaniyada o var.",
+        "risksHeading": "Risklər və çətinliklər",
+        "noRisks": "Hələ heç nə yazılmayıb. Təqdim etmək üçün iki yüz simvol tələb olunur.",
+        "coverAlt": "{title} üçün üz şəkli"
       }
     },
     "moderation": {

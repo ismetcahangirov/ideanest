@@ -4,6 +4,7 @@ import az.ideanest.project.ProjectProperties;
 import az.ideanest.project.domain.ProjectState;
 import az.ideanest.project.infrastructure.CampaignDirectoryRow;
 import az.ideanest.project.infrastructure.ProjectRepository;
+import az.ideanest.project.infrastructure.PublicProjectPages;
 import az.ideanest.shared.access.PlatformStaff;
 import az.ideanest.shared.access.StaffCapability;
 import az.ideanest.shared.money.Money;
@@ -51,17 +52,20 @@ import org.springframework.transaction.annotation.Transactional;
 public class CampaignDirectory {
 
     private final ProjectRepository projects;
+    private final PublicProjectPages pages;
     private final UserAccounts accounts;
     private final PlatformStaff staff;
     private final ProjectProperties properties;
 
     public CampaignDirectory(
             ProjectRepository projects,
+            PublicProjectPages pages,
             UserAccounts accounts,
             PlatformStaff staff,
             ProjectProperties properties) {
 
         this.projects = projects;
+        this.pages = pages;
         this.accounts = accounts;
         this.staff = staff;
         this.properties = properties;
@@ -96,6 +100,45 @@ public class CampaignDirectory {
         UUID nextCursor = rows.size() < limit ? null : rows.get(rows.size() - 1).getProjectId();
         return new CampaignDirectoryPage(
                 state, rows.stream().map(row -> toCampaign(row, creators)).toList(), nextCursor);
+    }
+
+    /**
+     * One campaign, as its page would read, in whatever state it is in — #399.
+     *
+     * <h2>Why this exists at all</h2>
+     *
+     * <p>The submission queue asks a moderator to approve, reject or send back a campaign,
+     * and its only link to that campaign pointed at the public page. A campaign in review
+     * is not public — that is what being in review means — so the link was a 404 by
+     * construction, and the decision was taken on a title, a creator's name and a goal
+     * figure. Everything the creator actually wrote was one screen away and unreachable.
+     *
+     * <h2>The same page, not a summary of it</h2>
+     *
+     * <p>{@link PublicProjectPages#find(UUID, String)} is the projection the public page
+     * is served from, and this reads it unchanged. A moderator decides whether a campaign
+     * may be published, so what they must be shown is what publishing it would show;
+     * anything narrower would be a second description of the campaign, and the decision
+     * would be made against the description rather than the thing.
+     *
+     * <h2>Every state, and the check that makes that acceptable</h2>
+     *
+     * <p>{@code MODERATE_CONTENT}, the same capability {@link #page} requires and for the
+     * stronger version of its reason. The directory lists drafts; this reads one, and a
+     * draft is a private working document its creator has shown nobody. There is no
+     * capability between "staff at all" and this one, and the audience for this endpoint
+     * is exactly the audience that can already approve or reject the campaign.
+     *
+     * @param locale one of §21.1's four, already narrowed by {@code Taxonomy.localeFor};
+     *     decides what language the category and subcategory come back named in
+     * @throws ProjectNotFoundException when there is no such campaign, or its creator is
+     *     inside §17.4's deletion grace period — see {@code PublicProjectPages}
+     */
+    @Transactional(readOnly = true)
+    public PublicProjectPage preview(UUID staffId, UUID projectId, String locale) {
+        staff.requireCapability(staffId, StaffCapability.MODERATE_CONTENT);
+
+        return pages.find(projectId, locale).orElseThrow(() -> new ProjectNotFoundException(projectId));
     }
 
     /** The page size a request gets, clamped rather than refused. */

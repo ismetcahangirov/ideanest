@@ -2,10 +2,13 @@ package az.ideanest.moderation.api;
 
 import az.ideanest.moderation.ModerationProperties;
 import az.ideanest.moderation.application.ReportModerationService;
+import az.ideanest.moderation.application.ReportedContent;
 import az.ideanest.moderation.domain.ReportState;
 import az.ideanest.moderation.domain.ReportTargetType;
 import jakarta.validation.Valid;
 import java.util.UUID;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,10 +47,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class ReportQueueController {
 
     private final ReportModerationService moderation;
+    private final ReportedContent content;
     private final ModerationProperties properties;
 
-    public ReportQueueController(ReportModerationService moderation, ModerationProperties properties) {
+    public ReportQueueController(
+            ReportModerationService moderation, ReportedContent content, ModerationProperties properties) {
+
         this.moderation = moderation;
+        this.content = content;
         this.properties = properties;
     }
 
@@ -88,6 +95,40 @@ public class ReportQueueController {
     @GetMapping("/{id}")
     public QueuedReportResponse report(@AuthenticationPrincipal Jwt accessToken, @PathVariable UUID id) {
         return QueuedReportResponse.of(moderation.report(id, moderatorOf(accessToken)));
+    }
+
+    /**
+     * What the report is about — #399.
+     *
+     * <p><strong>The endpoint the detail page was deciding without.</strong>
+     * {@code /admin/moderation/{id}} rendered the reporter's claim, the reporter, and two
+     * buttons, and nothing at all about the comment or the update being complained of: not
+     * the text, not the author, not the campaign, and no link to any of them. A moderator
+     * asked to uphold something they cannot read either guesses or leaves the queue, and
+     * the cheap guess is to dismiss.
+     *
+     * <p><strong>A separate read rather than a field on {@link #report}.</strong> That
+     * response is also every row of the queue, and assembling the content, its author and
+     * its campaign twenty-five times a page is twenty-five lookups nobody reads. The detail
+     * page already loads the report and its audit trail independently so that a trail which
+     * fails costs a line rather than the screen; this is the third read in that shape and
+     * it degrades the same way.
+     *
+     * <p>Never cached — {@code no-store} on every console read, and here for a stronger
+     * reason than most: the body is text somebody may be about to have removed.
+     *
+     * @return 404 when there is no such report. <strong>Not</strong> when the content has
+     *     gone: that comes back {@code 200} with {@code state: GONE}, because "no such
+     *     report" and "the comment it was about has been purged" send a moderator to two
+     *     different places
+     */
+    @GetMapping("/{id}/content")
+    public ResponseEntity<ReportedContentResponse> content(
+            @AuthenticationPrincipal Jwt accessToken, @PathVariable UUID id) {
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(ReportedContentResponse.of(content.of(id, moderatorOf(accessToken))));
     }
 
     /**
