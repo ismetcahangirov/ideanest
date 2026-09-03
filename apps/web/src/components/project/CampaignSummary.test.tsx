@@ -103,6 +103,39 @@ async function renderSummary(page: CampaignPage) {
 
 const NOW = new Date('2026-08-19T12:00:00Z');
 
+/**
+ * What the tier list needs beyond the tiers themselves, since it grew a control per tier.
+ *
+ * `now` is passed for the reason `CampaignSummaryProps.now` is: the list asks whether the
+ * campaign is still open, and a suite that let it read the wall clock would start failing on
+ * the deadline in the fixture rather than on anything a developer changed.
+ */
+const TIERS = [
+  {
+    id: 'tier-1',
+    title: 'Early bird',
+    description: 'The book, signed.',
+    price: { amount: '45.00', currency: 'AZN' },
+    remainingQuantity: 0,
+    imageUrl: null,
+  },
+  {
+    id: 'tier-2',
+    title: 'Standard',
+    description: null,
+    price: { amount: '60.00', currency: 'AZN' },
+    remainingQuantity: null,
+    imageUrl: null,
+  },
+] as const;
+
+const REWARD_CONTEXT = {
+  projectId: '0193f2a1-0000-7000-8000-000000000001',
+  state: 'LIVE',
+  deadline: '2026-08-29T12:00:00Z',
+  now: NOW,
+} as const;
+
 function campaign(overrides: Partial<ProjectPageResponse> = {}): CampaignPage {
   const page = readCampaignPage(
     {
@@ -268,6 +301,7 @@ describe('the reward tiers', () => {
     render(
       await resolveServerTree(
         <CampaignRewards
+        {...REWARD_CONTEXT}
         tiers={[
           {
             id: 'tier-1',
@@ -293,13 +327,105 @@ describe('the reward tiers', () => {
     expect(screen.getByRole('heading', { name: 'Early bird' })).toBeInTheDocument();
     expect(screen.getByText('Sold out')).toBeInTheDocument();
     // An unlimited tier says nothing about how many are left, because there is no number.
-    expect(screen.queryByText(/of this reward left/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/places? left/)).not.toBeInTheDocument();
   });
 
   it('renders nothing when a campaign offers no tiers', async () => {
-    const { container } = render(await resolveServerTree(<CampaignRewards tiers={[]} />));
+    const { container } = render(await resolveServerTree(<CampaignRewards {...REWARD_CONTEXT} tiers={[]} />));
 
     expect(container).toBeEmptyDOMElement();
+  });
+
+  /**
+   * The half of the pledge flow this page owns. `/projects/{id}/back` has been complete since
+   * #54 and had nothing linking to it, so the tier a backer had just read was a dead end.
+   */
+  it('sends an available tier to the checkout, naming the tier in the link', async () => {
+    render(await resolveServerTree(<CampaignRewards {...REWARD_CONTEXT} tiers={TIERS} />));
+
+    const control = screen.getByRole('link', { name: 'Select this reward: Standard' });
+
+    expect(control).toHaveAttribute(
+      'href',
+      expect.stringContaining(`/projects/${REWARD_CONTEXT.projectId}/back?reward=tier-2`),
+    );
+    /* WCAG 2.5.3: speech input reaches the control by the words printed on it. */
+    expect(control).toHaveTextContent('Select this reward');
+  });
+
+  /**
+   * PL-01 again, from the other side. The tier is still on the page and still says it has run
+   * out; what it does not have is a control that exists only to be refused with
+   * `REWARD_SOLD_OUT` once a reservation is attempted.
+   */
+  it('offers no control on a sold-out tier', async () => {
+    render(await resolveServerTree(<CampaignRewards {...REWARD_CONTEXT} tiers={TIERS} />));
+
+    expect(screen.getByText('Sold out')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Select this reward: Early bird' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers no control at all once the campaign has closed', async () => {
+    render(
+      await resolveServerTree(
+        <CampaignRewards {...REWARD_CONTEXT} state="SUCCESSFUL" tiers={TIERS} />,
+      ),
+    );
+
+    /* The tiers are still printed — a funded campaign still says what it offered. */
+    expect(screen.getByText('Standard')).toBeInTheDocument();
+    expect(screen.queryAllByRole('link')).toHaveLength(0);
+  });
+});
+
+/**
+ * §4.4's call to action, which is the whole of what a campaign page is for.
+ *
+ * Asserted by accessible name rather than by class, because what matters is that a backer —
+ * and a crawler, and a reader with no JavaScript — is offered a real link to §4.5 in the
+ * initial HTML. Its absence is the defect this suite exists to keep out: every part of the
+ * checkout passed its own tests while nothing in the application linked to it.
+ */
+describe('backing the campaign', () => {
+  it('offers the pledge flow on a live campaign', async () => {
+    await renderSummary(campaign());
+
+    const cta = screen.getByRole('link', { name: 'Back this campaign' });
+
+    expect(cta).toHaveAttribute(
+      'href',
+      expect.stringContaining('/projects/0193f2a1-0000-7000-8000-000000000001/back'),
+    );
+  });
+
+  /**
+   * A late pledge is a different offer and does not borrow the funding campaign's words. The
+   * decision the campaign was asking for has already been made.
+   */
+  it('names a late pledge as a late pledge', async () => {
+    await renderSummary(campaign({ state: 'LATE_PLEDGE' }));
+
+    expect(screen.getByRole('link', { name: 'Make a late pledge' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Back this campaign' })).not.toBeInTheDocument();
+  });
+
+  it('offers nothing on a campaign that has finished', async () => {
+    await renderSummary(campaign({ state: 'SUCCESSFUL' }));
+
+    expect(screen.queryByRole('link', { name: /back this campaign|late pledge/iu })).toBeNull();
+  });
+
+  /**
+   * §8.4's finalizer runs every minute, so for up to a minute a campaign whose window closed
+   * is still LIVE in the table. `PledgeAcceptance` refuses a pledge in that minute; offering
+   * the control would send a backer to a checkout that cannot take it.
+   */
+  it('offers nothing in the minute after a live campaign closes', async () => {
+    await renderSummary(campaign({ deadline: '2026-08-19T11:59:00Z' }));
+
+    expect(screen.queryByRole('link', { name: 'Back this campaign' })).toBeNull();
   });
 });
 
@@ -322,6 +448,7 @@ describe('accessibility', () => {
     const { container } = render(
       await resolveServerTree(
         <CampaignRewards
+          {...REWARD_CONTEXT}
           tiers={[
             {
               id: 'tier-1',

@@ -3,7 +3,7 @@
 import { Ban } from 'lucide-react';
 import { Card, Field, Radio, RadioGroup, Tag } from '@ideanest/ui';
 import { formatMoney } from '../../lib/money';
-import { isShipped, type PublicReward } from '../../lib/pledges/api';
+import { isShipped, isSoldOut, type PublicReward } from '../../lib/pledges/api';
 import { NO_REWARD } from './useCheckout';
 import { type CheckoutCopy, fillPlaceholders } from '../../lib/i18n/checkout-copy';
 import { dateTimeFormat } from '../../lib/i18n/formats';
@@ -69,11 +69,6 @@ function deliveryMonth(date: string, locale: Locale): string | null {
     { month: 'long', year: 'numeric', timeZone: 'UTC' },
     'delivery-month',
   ).format(new Date(parsed));
-}
-
-/** Whether the tier has run out. Absent stock is unlimited, never sold out. */
-export function isSoldOut(reward: PublicReward): boolean {
-  return reward.remainingQuantity === 0;
 }
 
 function StockLine({

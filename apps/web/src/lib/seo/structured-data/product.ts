@@ -1,4 +1,5 @@
 import { parseAmount, toWireAmount, type Money } from '../../money';
+import { PLEDGEABLE_PROJECT_STATES } from '../../projects/pledgeable';
 import { isFetchableImageUrl, truncateAtWord } from '../metadata';
 import { withoutAbsent, type JsonLdNode } from './document';
 
@@ -120,8 +121,14 @@ export interface RewardProductsInput {
  * A state this build has never heard of is not one of them. Same rule as
  * `projectStateIndexability`: fail closed, because the state a future
  * deployment adds first is more likely to be a restriction than a permission.
+ *
+ * <p><strong>It is declared in `lib/projects/pledgeable.ts` now, and re-exported here.</strong>
+ * The list stopped being a structured-data concern the moment the campaign page grew controls
+ * that lead to the checkout: the markup saying a tier is on offer and the button that takes
+ * the offer have to agree, and two frozen arrays in two files agree only until one of them is
+ * edited. The re-export is kept because this is where the list has always been imported from.
  */
-export const PLEDGEABLE_PROJECT_STATES: readonly string[] = Object.freeze(['LIVE', 'LATE_PLEDGE']);
+export { PLEDGEABLE_PROJECT_STATES };
 
 /**
  * 500 characters.

@@ -3,8 +3,7 @@
 import { Ban } from 'lucide-react';
 import { Card, Select } from '@ideanest/ui';
 import { formatMoney } from '../../lib/money';
-import type { PublicReward } from '../../lib/pledges/api';
-import { isSoldOut } from './RewardChoice';
+import { isSoldOut, type PublicReward } from '../../lib/pledges/api';
 import type { CheckoutCopy } from '../../lib/i18n/checkout-copy';
 
 /**

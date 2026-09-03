@@ -2745,8 +2745,16 @@
       "share": "Paylaş",
       "remind": "Xatırlat"
     },
+    "back": {
+      "cta": "Bu kampaniyanı dəstəklə",
+      "late": "Gecikmiş dəstək ver"
+    },
     "rewards": {
-      "heading": "Mükafatlar"
+      "heading": "Mükafatlar",
+      "select": "Bu mükafatı seç",
+      "selectNamed": "Bu mükafatı seç: {title}",
+      "soldOut": "Tükənib",
+      "remaining": "{count, plural, other {# yer qalıb}}"
     },
     "media": {
       "hasVideo": "Bu kampaniyanın videosu var."

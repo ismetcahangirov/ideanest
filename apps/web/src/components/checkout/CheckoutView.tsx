@@ -235,6 +235,14 @@ export interface CheckoutViewProps {
    */
   secretTokens?: readonly string[];
   /**
+   * `?reward=` — the tier the campaign page's control named, or null.
+   *
+   * A prop for the same reason `secretTokens` is one, and it is a seed rather than a
+   * selection: `useCheckout` applies it once, only if the tier is still there and still has
+   * places, and the reader may change it like any other choice.
+   */
+  initialRewardId?: string | null;
+  /**
    * Every word this screen and its five children draw, resolved on the server by
    * `app/[locale]/projects/[id]/back/page.tsx`. `lib/i18n/checkout-copy.ts` explains why it
    * arrives whole rather than through `useTranslations`, and why on this screen in particular
@@ -243,8 +251,13 @@ export interface CheckoutViewProps {
   copy: CheckoutCopy;
 }
 
-export function CheckoutView({ projectId, secretTokens = [], copy }: CheckoutViewProps) {
-  const checkout = useCheckout(projectId, secretTokens);
+export function CheckoutView({
+  projectId,
+  secretTokens = [],
+  initialRewardId = null,
+  copy,
+}: CheckoutViewProps) {
+  const checkout = useCheckout(projectId, secretTokens, initialRewardId);
   const clock = useReservationClock(checkout.pledge?.reservationExpiresAt);
 
   /*

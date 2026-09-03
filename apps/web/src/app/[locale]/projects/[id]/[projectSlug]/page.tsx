@@ -372,7 +372,12 @@ export default async function CampaignPage({
           )}
         </div>
 
-        <CampaignRewards tiers={tiers} />
+        <CampaignRewards
+          tiers={tiers}
+          projectId={campaign.id}
+          state={campaign.state}
+          deadline={campaign.deadline}
+        />
       </div>
 
       {/*

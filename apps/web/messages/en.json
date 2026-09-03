@@ -2745,8 +2745,16 @@
       "share": "Share",
       "remind": "Remind me"
     },
+    "back": {
+      "cta": "Back this campaign",
+      "late": "Make a late pledge"
+    },
     "rewards": {
-      "heading": "Rewards"
+      "heading": "Rewards",
+      "select": "Select this reward",
+      "selectNamed": "Select this reward: {title}",
+      "soldOut": "Sold out",
+      "remaining": "{count, plural, one {# place left} other {# places left}}"
     },
     "media": {
       "hasVideo": "This campaign has a video."

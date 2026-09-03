@@ -9,6 +9,7 @@ import {
   confirmPledge,
   createPledgeDraft,
   getPublicRewards,
+  isSoldOut,
   type DraftPledgeRequest,
   type PledgeResponse,
   type PublicReward,
@@ -32,8 +33,12 @@ import {
  * counts. A half-made pledge is not shareable — the link would carry another
  * person's selection to somebody who cannot pay for it — and the back button must
  * not be able to re-enter a reservation that has since expired or been confirmed.
- * So the selection is React state, the route has no query string, and the steps
- * are steps rather than routes.
+ * So the selection is React state, and the steps are steps rather than routes.
+ *
+ * The route carries two query parameters and neither is a selection: PL-15's
+ * `?token=`, and `?reward=`, which names a tier the campaign page already
+ * printed. It seeds step one and reserves nothing — the effect beside
+ * `chooseReward` sets out what happens when it names a tier that has gone.
  *
  * <h2>Two amounts, and only one of them is true</h2>
  *
@@ -206,7 +211,11 @@ function wasAborted(cause: unknown): boolean {
   return cause instanceof DOMException && cause.name === 'AbortError';
 }
 
-export function useCheckout(projectId: string, secretTokens: readonly string[] = []): CheckoutState {
+export function useCheckout(
+  projectId: string,
+  secretTokens: readonly string[] = [],
+  initialRewardId: string | null = null,
+): CheckoutState {
   const [catalogue, setCatalogue] = useState<PublicRewardList | null>(null);
   const [catalogueStatus, setCatalogueStatus] = useState<CatalogueStatus>('loading');
   const [catalogueFailure, setCatalogueFailure] = useState<CheckoutFailure | null>(null);
@@ -305,6 +314,35 @@ export function useCheckout(projectId: string, secretTokens: readonly string[] =
     },
     [rewards],
   );
+
+  /*
+   * `?reward=` — THE TIER THE CAMPAIGN PAGE'S CONTROL NAMED, APPLIED ONCE.
+   *
+   * A reader who pressed "Select this reward" beside a tier has already made the choice this
+   * screen opens by asking for. Landing them on an empty radio group asks it again, and the
+   * one they answered is the one they then have to find in a list of eight.
+   *
+   * <p>It goes through `chooseReward` rather than `setChoice`, so the contribution field
+   * starts at the tier's price exactly as it does for a click. Setting the choice alone would
+   * seed a selection the service refuses with `CONTRIBUTION_BELOW_REWARD_PRICE`.
+   *
+   * <p><strong>Once, whatever happens.</strong> The ref is set before the tier is looked up,
+   * so an identifier that names nothing — a tier withdrawn since the link was shared, or one
+   * that sold out between the campaign page and this one — costs the preselection and nothing
+   * else: the reader gets the ordinary empty form rather than a refusal about a tier they
+   * never saw. It also means `startOver` clears the seeded choice like any other, instead of
+   * having it reappear underneath the reader.
+   */
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (seeded.current || initialRewardId === null || catalogue === null) return;
+    seeded.current = true;
+
+    const picked = catalogue.rewards.find((tier) => tier.id === initialRewardId);
+    if (picked === undefined || isSoldOut(picked)) return;
+
+    chooseReward(picked.id);
+  }, [catalogue, initialRewardId, chooseReward]);
 
   const setContribution = useCallback((value: string) => {
     setContributionText(value);

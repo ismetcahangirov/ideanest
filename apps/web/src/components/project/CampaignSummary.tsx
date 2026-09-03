@@ -6,6 +6,7 @@ import { formatMoney } from '../../lib/money';
 import { countdownLabel, remainingUntil } from '../../lib/projects/deadline';
 import type { CampaignPage } from '../../lib/projects/publicPage';
 import type { ProjectState } from '../../lib/projects/api';
+import { BackCampaignCta } from './BackCampaignCta';
 import { CampaignActions } from './CampaignActions';
 import { CampaignMedia } from './CampaignMedia';
 import { LiveFunding } from './LiveFunding';
@@ -259,6 +260,20 @@ export async function CampaignSummary({
         {campaign.deadline !== null && countdown !== null && (
           <CampaignCountdown deadline={campaign.deadline} initialLabel={countdown} />
         )}
+
+        {/*
+          §4.4's call to action, and the reason the pledge flow is reachable at all.
+
+          ABOVE the save and share controls, because it is what this page is for and those
+          three are what a reader does instead. It renders nothing on the seven states that
+          cannot be backed, so on a closed campaign the header ends where it always did.
+        */}
+        <BackCampaignCta
+          projectId={campaign.id}
+          state={campaign.state}
+          deadline={campaign.deadline}
+          now={now}
+        />
 
         {/*
           §4.4's save, share and reminder controls. The one client boundary in this header, and
