@@ -1367,6 +1367,8 @@
         "assignmentFilterLabel": "Kim ilgileniyor",
         "anyAssignee": "Herkes",
         "unassignedOnly": "Henüz kimse",
+        "assigneeLabel": "İlgilenen",
+        "assigneeHint": "Kimin taleplerinin gösterileceği. Birini seçmek «Henüz kimse» filtresinin yerine geçer. Dizinde arama da kaydedilen bir okumadır.",
         "unassigned": "atanmamış",
         "loadingTicket": "Talep yükleniyor",
         "ticketFailedTitle": "Talep okunamadı",

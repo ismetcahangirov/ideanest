@@ -1367,6 +1367,8 @@
         "assignmentFilterLabel": "Who is handling it",
         "anyAssignee": "Anyone",
         "unassignedOnly": "Nobody yet",
+        "assigneeLabel": "Assignee",
+        "assigneeHint": "Whose tickets to show. Choosing somebody replaces \"Nobody yet\". Searching the directory is itself a recorded read.",
         "unassigned": "unassigned",
         "loadingTicket": "Loading the ticket",
         "ticketFailedTitle": "The ticket could not be read",

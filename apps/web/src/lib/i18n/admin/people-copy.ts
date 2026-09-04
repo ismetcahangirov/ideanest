@@ -175,6 +175,22 @@ export interface SupportConsoleCopy extends ConsoleChromeCopy {
   readonly assignmentFilterLabel: string;
   readonly anyAssignee: string;
   readonly unassignedOnly: string;
+  /**
+   * The named-assignee control's words — issue #414.
+   *
+   * <p>`AccountPicker`'s own copy with two words replaced, which is the shape the audit
+   * trail's actor filter already uses: the picker was built for `/admin/staff`, where the
+   * account being chosen is somebody about to be given a role, and here it is whoever is
+   * handling a ticket. Everything else it says — that searching is a recorded read, what a
+   * search found, how to choose again — is the same on all three screens and is not restated
+   * under a third key.
+   *
+   * <p>The hint carries one thing the other two do not: that choosing somebody replaces
+   * "Nobody yet". The two cannot both be true and the service answers the contradiction with
+   * nothing, so the screen says which one wins rather than letting a reader discover it from
+   * an empty list.
+   */
+  readonly assigneePicker: AccountPickerCopy;
   readonly unassigned: string;
   readonly loadingTicket: string;
   readonly ticketFailedTitle: string;
@@ -217,6 +233,11 @@ export function supportConsoleCopyFrom(
     assignmentFilterLabel: t('screens.support.assignmentFilterLabel'),
     anyAssignee: t('screens.support.anyAssignee'),
     unassignedOnly: t('screens.support.unassignedOnly'),
+    assigneePicker: {
+      ...accountPickerCopyFrom(t, chrome.refusals),
+      label: t('screens.support.assigneeLabel'),
+      hint: t('screens.support.assigneeHint'),
+    },
     unassigned: t('screens.support.unassigned'),
     loadingTicket: t('screens.support.loadingTicket'),
     ticketFailedTitle: t('screens.support.ticketFailedTitle'),
