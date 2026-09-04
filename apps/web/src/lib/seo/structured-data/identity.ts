@@ -66,7 +66,7 @@ function siteHomeUrl(env: EnvSource): string {
 /**
  * The home page a reader of THIS language would be sent to — #123.
  *
- * `/` is no longer a document: `middleware.ts` answers it with a 307 to whichever language
+ * `/` is no longer a document: `proxy.ts` answers it with a 307 to whichever language
  * the reader's cookie names. So `url` names the localised home, which resolves with a 200,
  * while `@id` stays on the bare origin below.
  */

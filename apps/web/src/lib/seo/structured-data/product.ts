@@ -88,7 +88,7 @@ export interface RewardProductsInput {
    * set, one per language, the same way it would have minted four `Organization` nodes for one
    * company; `identity.ts` sets out that argument and this is the same one, a level down.
    *
-   * <p>It is deliberately an address nothing serves — `middleware.ts` answers it with a 307 —
+   * <p>It is deliberately an address nothing serves — `proxy.ts` answers it with a 307 —
    * because an `@id` is a name and not a link. `url` beside it is the document.
    */
   readonly campaignId: string;

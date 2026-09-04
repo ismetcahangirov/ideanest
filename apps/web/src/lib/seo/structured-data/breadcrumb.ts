@@ -143,7 +143,7 @@ export function breadcrumbNode(
        * trail is character for character the one in the `<link rel=canonical>`.
        *
        * `localePath` in the middle, since #123. Without it every step named
-       * the un-prefixed address, which `middleware.ts` answers with a 307 — so a
+       * the un-prefixed address, which `proxy.ts` answers with a 307 — so a
        * trail whose whole purpose is to name the pages a reader came through
        * would have named four redirects, and the last step would have
        * contradicted the canonical of the page it was emitted on.

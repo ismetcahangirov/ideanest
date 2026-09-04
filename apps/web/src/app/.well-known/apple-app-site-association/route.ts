@@ -10,7 +10,7 @@ import { appleAppSiteAssociation } from '../../../lib/mobile/association';
  * `application/json`, and it does not tell you when it did not get it — the file
  * is fetched by Apple's CDN, rejected, and universal links simply never activate.
  *
- * <h2>It is also why `src/middleware.ts` excludes `.well-known`</h2>
+ * <h2>It is also why `src/proxy.ts` excludes `.well-known`</h2>
  *
  * Having no extension is exactly what the matcher's `.*\.[\w]+$` clause relies
  * on to leave a file alone, so this address was the one that would have been

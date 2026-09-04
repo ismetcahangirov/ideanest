@@ -93,7 +93,7 @@ export function publicCacheControl(pathname: string): string | null {
   const segments = pathname.split('/');
 
   // `/az/discover` splits to `['', 'az', 'discover']`, so a path with no language is not one
-  // of these pages: `middleware.ts` redirects it before a render happens.
+  // of these pages: `proxy.ts` redirects it before a render happens.
   const locale = segments[1];
   if (locale === undefined || !(SUPPORTED_LOCALES as readonly string[]).includes(locale)) {
     return null;

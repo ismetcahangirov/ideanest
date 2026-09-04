@@ -10,7 +10,7 @@ type SitemapEntry = MetadataRoute.Sitemap[number];
  * <h2>Why the sitemap grew a language dimension</h2>
  *
  * Before the `[locale]` segment there was one address per page and the sitemap listed it.
- * There are now four, `middleware.ts` answers the un-prefixed one with a 307, and a sitemap
+ * There are now four, `proxy.ts` answers the un-prefixed one with a 307, and a sitemap
  * that still listed `/discover` would be handing a crawler a redirect for every entry it
  * contains — the one document whose entire job is to name addresses that resolve.
  *
@@ -38,7 +38,7 @@ export function localePath(path: string, locale: Locale): string {
  * <h2>`x-default` is English, and it is a fallback rather than a preference</h2>
  *
  * It names the page to serve a reader whose language is none of the four, which is what
- * `middleware.ts` does with no cookie set. Pointing it at Azerbaijani would be defensible for
+ * `proxy.ts` does with no cookie set. Pointing it at Azerbaijani would be defensible for
  * this market and would be a different claim: `x-default` is not "the main language", it is
  * "the one for readers we could not match", and the platform answers those in English.
  */

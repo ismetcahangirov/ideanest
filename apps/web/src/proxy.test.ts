@@ -8,7 +8,7 @@ import { LOCALE_COOKIE } from './lib/i18n/locale';
  * Two reasons, and the second is the real one. It resolves `next/server` through its own
  * package directory, which this repository's module layout does not satisfy under Vitest —
  * but even if it did, running it here would be testing next-intl. What this file is
- * responsible for is the code in `middleware.ts`: which requests get a redirect, where to,
+ * responsible for is the code in `proxy.ts`: which requests get a redirect, where to,
  * with what status, and — the loop guard — which ones are passed through untouched. The stub
  * makes "passed through" observable as a response with no `location` on it.
  */
@@ -16,7 +16,7 @@ vi.mock('next-intl/middleware', () => ({
   default: () => () => NextResponse.next(),
 }));
 
-const { default: middleware, config } = await import('./middleware');
+const { default: proxy, config } = await import('./proxy');
 
 /**
  * What happens to a request with no language in its path — issue #123.
@@ -35,16 +35,16 @@ function request(path: string, cookie?: string): NextRequest {
   return new NextRequest(url, headers === undefined ? undefined : { headers });
 }
 
-describe('the locale middleware', () => {
+describe('the locale proxy', () => {
   it('sends the bare path to the default language when nothing is stored', () => {
-    const response = middleware(request('/'));
+    const response = proxy(request('/'));
 
     expect(response.status).toBe(307);
     expect(response.headers.get('location')).toBe('https://ideanest.az/en');
   });
 
   it('sends the bare path to the language the reader last chose', () => {
-    const response = middleware(request('/', 'az'));
+    const response = proxy(request('/', 'az'));
 
     expect(response.headers.get('location')).toBe('https://ideanest.az/az');
   });
@@ -57,12 +57,12 @@ describe('the locale middleware', () => {
      * site's cookies does not fix.
      */
     for (const path of ['/', '/discover', '/projects/aysel/kilims']) {
-      expect(middleware(request(path)).status).toBe(307);
+      expect(proxy(request(path)).status).toBe(307);
     }
   });
 
   it('keeps the rest of the path and the query string', () => {
-    const response = middleware(request('/discover?category=games&page=2', 'ru'));
+    const response = proxy(request('/discover?category=games&page=2', 'ru'));
 
     expect(response.headers.get('location')).toBe(
       'https://ideanest.az/ru/discover?category=games&page=2',
@@ -71,12 +71,12 @@ describe('the locale middleware', () => {
 
   it('does not put a trailing slash on the language root', () => {
     /* `/az/` and `/az` would be two addresses for one page. */
-    expect(middleware(request('/', 'tr')).headers.get('location')).toBe('https://ideanest.az/tr');
+    expect(proxy(request('/', 'tr')).headers.get('location')).toBe('https://ideanest.az/tr');
   });
 
   it('falls back to English rather than trusting a cookie a reader can edit', () => {
     for (const value of ['xx', '', '../../etc/passwd', 'EN']) {
-      expect(middleware(request('/', value)).headers.get('location')).toBe(
+      expect(proxy(request('/', value)).headers.get('location')).toBe(
         'https://ideanest.az/en',
       );
     }
@@ -89,7 +89,7 @@ describe('the locale middleware', () => {
      * be an infinite one, reproducing only for readers who have a cookie set.
      */
     for (const path of ['/az', '/en/discover', '/ru/projects/aysel/kilims', '/tr/settings']) {
-      expect(middleware(request(path, 'az')).headers.get('location')).toBeNull();
+      expect(proxy(request(path, 'az')).headers.get('location')).toBeNull();
     }
   });
 });
@@ -104,7 +104,7 @@ describe('the locale middleware', () => {
  * redirect they assert is correct is the very thing that breaks it.
  *
  * That is not hypothetical. `/v1/:path*` is rewritten to the service by `next.config.mjs`,
- * and middleware runs before that rewrite. While `v1` was missing from the exclusions here,
+ * and the proxy runs before that rewrite. While `v1` was missing from the exclusions here,
  * every call the browser made to the API was answered with `307 → /en/v1/...`, which matches
  * no route and no rewrite. The sign-in and register forms both reported "the service could
  * not be reached" — a network failure with a healthy service behind it, because `fetch`
@@ -114,7 +114,7 @@ describe('the locale middleware', () => {
  * excluded prefix is only ever exercised by a `fetch` that has already failed by the time
  * anybody looks, which is why these are asserted rather than reviewed.
  */
-describe('the paths the locale middleware is asked about', () => {
+describe('the paths the locale proxy is asked about', () => {
   /*
    * Next compiles the matcher itself. Anchoring the source is close enough to catch what
    * this is for — a prefix that is in the exclusion list, or is missing from it.
