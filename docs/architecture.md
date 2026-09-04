@@ -1314,13 +1314,13 @@ Preferences are per category and per channel, with a digest option.
 | AD-01 | Project moderation | Queue, approve, reject, request changes, notes, history. **The queue was the missing half until #381**: the three outcomes shipped with #101 and nothing listed what they applied to, so the console's only route to a submitted campaign was a report somebody had filed about it — a campaign nobody complained about waited in `SUBMITTED` indefinitely, invisible here, while its creator was shown "submitted for review". `/admin/moderation/submissions` is that queue. **And the directory since #387**: both that queue and the report queue list campaigns that have DONE something, so a draft, a live campaign, or one cleared for launch and never launched was on no screen here and could be reached only through psql. `/admin/campaigns` lists §6.1 entire, newest first. **And the staff preview since #399**: both of those screens linked a campaign to its public page, which for a campaign awaiting review is a 404 by construction — a campaign in review is not public, and that is what being in review means — so approval was taken on a title, a creator's name and a goal figure. `/admin/campaigns/{id}` renders the same projection the public page is served from, without the state filter, and `/admin/moderation/{id}` now shows the reported comment or update inline with its author and its campaign |
 | AD-02 | Trust and safety | Report queue, fraud signals, suspension. Reporting and the queue are built (#102, §7.2's `content_reports`), **suspension is built (#103)**, and **fraud signals are built (#108)** — `risk_assessments`, a queue at `/v1/admin/risk/queue`, and the identity review at `/v1/admin/verifications/queue` (#105). The signals **advise and do not decide**: nothing refuses a pledge or suspends an account on a score. See §17.2 |
 | AD-03 | Curation | Editorial badges, collections, open calls, placement. The endpoints arrived with #48; **the four screens are built (#300 to #303)** at `/admin/curation` and its three siblings |
-| AD-04 | User management | Search, inspect, ban, verification status, audited impersonation. **Search, inspect and the ban are built (#104)**, and **`/admin/staff` is built (#295)** — the role model that replaced the configured list. Impersonation is not, and is the one thing in this table still waiting on a decision (#299) |
-| AD-05 | Finance | Payment log, ledger, payout queue, approvals, disputes, and whether the sum of them is right. **All of it is built**: the log and the ledger with #304 and #305, the payout queue and its dual approval with #69 and #306, and the reconciliation with #106 at `/admin/reconciliation`. That last screen is what kept "financial operations tooling" open with the other three built — #70's nightly pass answered "do the books balance" to a log line and a Prometheus gauge and to nobody who works in this console. It reports and never repairs, so there is no control on it that corrects anything |
+| AD-04 | User management | Search, inspect, ban, verification status, audited impersonation. **Search, inspect and the ban are built (#104)**, and **`/admin/staff` is built (#295)** — the role model that replaced the configured list. **The search folds like every other search since #413**: it matched on `lower()`, which leaves ə, ı, ö, ü, ğ, ş and ç alone, so this box found "Köhnə" from `köhnə` and not from `kohne` while the campaign directory beside it found both — and, matching a different expression from the one V63's indexes are built on, it read every row. It now names §11.3's `ideanest_fold`, which V64 completes with the third index the address needed. Impersonation is not, and is the one thing in this table still waiting on a decision (#299) |
+| AD-05 | Finance | Payment log, ledger, payout queue, approvals, disputes, and whether the sum of them is right. **All of it is built**: the log and the ledger with #304 and #305, the payout queue and its dual approval with #69 and #306, and the reconciliation with #106 at `/admin/reconciliation`. That last screen is what kept "financial operations tooling" open with the other three built — #70's nightly pass answered "do the books balance" to a log line and a Prometheus gauge and to nobody who works in this console. It reports and never repairs, so there is no control on it that corrects anything. **The payment log is ordered by `created_at` since #412**, not by the primary key — AD-14's defect on the one console surface that is entirely money, and it cost more there: §9.6 permits four collection attempts, so "declined, declined, collected" read in the wrong order is a different story about the same pledge. The cursor carries the instant and the identifier that breaks its tie, and is therefore an opaque string rather than a `uuid` |
 | AD-06 | Refunds | Full and partial with reason codes. **Built (#67, #307)** at `/admin/refunds`. The decision — reason code, author, state — is `refunds`; the money is a `REFUND` transaction and a ledger posting, and the two are deliberately separate tables |
 | AD-07 | Chargebacks | Notification, evidence, outcome. **Built (#68, #308)** at `/admin/disputes`. Intake is a provider webhook and no endpoint opens one; evidence is recorded here and still submitted through the provider's own console, because §9.3's interface has no upload |
 | AD-08 | Taxonomy | Category and tag management with translations. **Built (#309)** at `/admin/taxonomy`. Handles are permanent — they are in the public URL of every campaign filed under them — and nothing can be retired, because `projects.category_id` references these rows |
 | AD-09 | Content moderation | Comments, updates, profiles. **All three are built**: the profile queue with #298 and the comment and update queue with #297, which published `POST /v1/updates/{id}/report` and cost no migration because V23's constraint had named the value since #102 |
-| AD-10 | Support | Tickets with user context and action history. **Built (#310)** at `/admin/support`. Staff record a conversation against an account; there is no public form, which is a separate surface with its own rate limiting |
+| AD-10 | Support | Tickets with user context and action history. **Built (#310)** at `/admin/support`. Staff record a conversation against an account; there is no public form, which is a separate surface with its own rate limiting. The list narrows by state, priority and assignment (#404), and by **a named colleague since #414** — `?assigneeId=` had been accepted since #404 with no control to set it, so "what is on their plate" was reachable only by editing the URL. A named assignee and "nobody yet" are mutually exclusive on the screen, because the service answers the contradiction with nothing |
 | AD-11 | Fee configuration | Platform and processing rates, exceptions. **Built (#311)** at `/admin/fees`. There is no edit: a change closes the schedule in force and opens a new one, so a payout calculated last month still prices against last month's terms. **The creator subscription catalogue is here too**, at `/admin/plans` — §5.6's plans, and the payments waiting to be recorded against them. Filed under this module rather than a seventeenth row: a fee comes out of a backer's pledge and a plan comes out of a creator's pocket, which is one authority over two subjects. Unlike a fee schedule, a plan **is** edited in place, because what a subscriber was charged is written on their own subscription |
 | AD-12 | Feature flags | Gradual rollout, experiments. **Rollout is built (#312)** at `/admin/flags`; experiments are not, because a variant needs a metric to judge it by and nothing measures one |
 | AD-13 | Analytics | Volume, success rate, average pledge, cohorts, funnels. **The first three are built (#313)** at `/admin/analytics`, over V27's rollups summed across campaigns rather than within one. Cohorts and funnels are not, and the screen says what each waits on |
@@ -3527,6 +3527,7 @@ GET    /v1/admin/finance/payouts
 POST   /v1/admin/finance/payouts/{id}/approve
 POST   /v1/admin/finance/refunds
 GET    /v1/admin/payments                # AD-05 (#304); charges, provider references, declines
+                                         # newest by created_at, opaque cursor (#412)
                                          #   ?status= SUCCEEDED|FAILED|PENDING (#404, V63's index)
 GET    /v1/admin/ledger                  # AD-05 (#305); postings with both sides, and balances
 GET    /v1/exchange-rates                # §21.2 (#327); public, cacheable. Empty when the platform can offer nothing
@@ -3587,15 +3588,30 @@ POST   /v1/admin/subscriptions/{id}/cancel    # end one outright, with a require
 > list named the table; #314 shipped the shorter one, which names the thing, and
 > every other route under this prefix names a subject rather than a schema object.
 >
-> **What these three deliberately do not filter on.** The audit trail narrows by
-> entity kind, by one entity, or by actor, and by nothing else; the payment log
-> narrows by pledge or by campaign; the ledger by account, campaign, or both.
-> Every one of those is an index V21 or V41 already created. A filter outside that
-> set — "every failed charge", "every refund ever recorded", a date range — is a
-> sequential scan over the two tables that only ever grow, and the first person to
-> run it would be a moderator with a support ticket open rather than a load test.
-> Each is one migration on the day it is needed. The endpoint types say which are
-> missing and why.
+> **What these three filter on, and why the list grew.** The audit trail narrows by
+> entity kind, by one entity, or by actor, and — since #404 — by a date range; the
+> payment log by pledge, by campaign, and since #404 by outcome; the ledger by
+> account, campaign, or both. Every one of those is an index V21, V41, V63 or V64
+> created.
+>
+> **The rule that produced that list has not changed, and it is the rule rather than
+> the list that matters.** A filter with no index behind it is a sequential scan over
+> the two tables that only ever grow, and the first person to run it is a moderator
+> with a support ticket open rather than a load test. So a filter ships with the
+> migration that makes it affordable, in the same change — which is what #404 did for
+> "every failed charge", the view the payment log's own copy promised and was the one
+> thing it could not select. What is still absent — a filter on provider or type, a
+> date range on the payment log — is absent for the same reason and is one migration
+> on the day it is needed. The endpoint types say which are missing and why.
+>
+> **Both logs are ordered by the column they display**, which was not true of either
+> until #404 and #412. Both were ordered by the primary key on the argument that a
+> UUID v7 carries the millisecond it was minted in (§7.3), so the key and the
+> timestamp say the same thing and only one of them is unique. They are written by two
+> different clocks — the key in the application when the row is built, the timestamp by
+> `DEFAULT now()` when the insert lands — and a page headed "newest first" opened on
+> last month. Each cursor is therefore a pair, encoded opaquely so that no client
+> rebuilds it and fixes the ordering columns into the contract a second time.
 
 > **Moderation has three outcomes, not two.** `request-changes` was added to the
 > two above it because rejection is terminal (§6.1): a queue whose only outcomes
