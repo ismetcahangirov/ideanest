@@ -29,10 +29,12 @@ import {
   type TicketPriority,
   type TicketState,
 } from '../../lib/admin/tickets';
+import type { AdminUser } from '../../lib/admin/api';
 import { consoleMessageFor } from '../../lib/admin/refusals';
 import { pluralise } from '../../lib/i18n/plurals';
 import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 import type { SupportConsoleCopy } from '../../lib/i18n/admin/people-copy';
+import { AccountPicker } from './AccountPicker';
 import { ConsoleCount } from './ConsoleCount';
 import { ConsoleRefusal } from './ConsoleRefusal';
 import { EntityName } from './ConsoleIdentity';
@@ -81,11 +83,45 @@ export function SupportConsole({ copy }: SupportConsoleProps) {
   const [filter, setFilter] = useState<TicketFilter>({});
   const filtering = narrows(filter);
 
+  /*
+   * Who is handling it, as a person rather than an identifier — #414.
+   *
+   * `GET /v1/admin/tickets` has accepted `assigneeId` since #404 and the screen offered no way
+   * to set one, so "what is on my plate" and "what is on theirs" — the two questions a person
+   * working a queue actually asks — were reachable only by editing the URL. The third chip row
+   * was two chips wide and answered only the operational one: what has nobody picked up.
+   *
+   * Held as the whole account and not as its identifier, for the reason the audit trail's
+   * actor filter holds one: `AccountPicker` hands the account back, and it is what lets the
+   * applied filter be rendered as a colleague instead of thirty-six characters. `filter`
+   * carries the identifier, because that is what the service takes.
+   */
+  const [assignee, setAssignee] = useState<AdminUser | null>(null);
+
   /** Every change of filter starts at the first page; page four of a different list is not a page. */
   function narrow(next: TicketFilter): void {
     setFilter(next);
     setPage(0);
     setOpenTicket(null);
+  }
+
+  /*
+   * The assignment row is one question with three answers, so its three controls move together.
+   *
+   * "Nobody yet" and a named colleague are mutually exclusive: a null assignee already means
+   * "anybody's" and one value cannot also mean "nobody's". Sent together they are a
+   * contradiction, and the service answers it with nothing — which is correct, and is not
+   * something a screen should let a reader stumble into. So choosing somebody clears
+   * `unassigned`, choosing "Nobody yet" clears the person, and "Anyone" clears both.
+   */
+  function assignTo(account: AdminUser | null): void {
+    setAssignee(account);
+    narrow({ ...filter, assigneeId: account?.id ?? null, unassigned: false });
+  }
+
+  function showUnassigned(only: boolean): void {
+    setAssignee(null);
+    narrow({ ...filter, assigneeId: null, unassigned: only });
   }
 
   const queue = useConsoleResource(
@@ -175,18 +211,43 @@ export function SupportConsole({ copy }: SupportConsoleProps) {
 
         <ChipRow aria-label={copy.assignmentFilterLabel} className="mt-2">
           <Chip
-            active={filter.unassigned !== true}
-            onClick={() => narrow({ ...filter, unassigned: false })}
+            active={filter.unassigned !== true && filter.assigneeId == null}
+            onClick={() => showUnassigned(false)}
           >
             {copy.anyAssignee}
           </Chip>
           <Chip
             active={filter.unassigned === true}
-            onClick={() => narrow({ ...filter, unassigned: filter.unassigned !== true })}
+            onClick={() => showUnassigned(filter.unassigned !== true)}
           >
             {copy.unassignedOnly}
           </Chip>
         </ChipRow>
+
+        {/*
+          #414's third answer, and the reason it is a picker rather than a chip.
+
+          A chip per member of staff would be a row that grows with the team and orders itself
+          by nothing a reader recognises. `AccountPicker` is the control the audit trail already
+          reuses for its actor filter, with two of its words overridden — and it searches
+          accounts rather than staff, which is acceptable because an assignee is an account.
+
+          Not a "Mine" chip. That is the shorter route to "what is on my plate" and it needs
+          something the console does not hand this screen: who is signed in. `/admin/staff`
+          reads `GET /v1/admin/staff/me` for exactly that, and wiring a second screen to it is a
+          decision about the console's shape rather than a filter — #414 says so, and this stops
+          where that begins. A person can find themselves in the picker meanwhile.
+
+          Outside the `ChipRow` because it is not a chip: it has a text field, a button of its
+          own, and a result list, and a row that announces itself as a set of chips should not
+          contain a search form.
+        */}
+        <AccountPicker
+          chosen={assignee}
+          onChoose={assignTo}
+          copy={copy.assigneePicker}
+          className="mt-3 max-w-[420px]"
+        />
 
         {queue.status === 'loading' && (
           <SkeletonGroup label={copy.loadingList} className="mt-4">

@@ -1367,6 +1367,8 @@
         "assignmentFilterLabel": "Kim baxır",
         "anyAssignee": "Hamı",
         "unassignedOnly": "Hələ heç kim",
+        "assigneeLabel": "Məsul",
+        "assigneeHint": "Kimin müraciətləri göstərilsin. Kimisə seçmək «Hələ heç kim» filtrini əvəz edir. Kataloqda axtarış özü də qeydə alınan oxumadır.",
         "unassigned": "təyin edilməyib",
         "loadingTicket": "Müraciət yüklənir",
         "ticketFailedTitle": "Müraciəti oxumaq mümkün olmadı",

@@ -4363,7 +4363,6 @@ export interface components {
             stillEditable?: number;
         };
         LogPage: {
-            /** Format: uuid */
             nextCursor?: string;
             /** Format: uuid */
             pledgeId?: string;

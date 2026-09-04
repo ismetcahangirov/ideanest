@@ -8,8 +8,10 @@ import java.util.UUID;
  * Which slice of the payment log is being read — AD-05, #304.
  *
  * <p><strong>A pledge, a campaign, an outcome, or nothing.</strong> V41 gives
- * {@code transactions} an index on {@code (pledge_id, created_at DESC)}, one on
- * {@code (project_id, created_at DESC)} and the primary key; V63 adds {@code (status, id DESC)}.
+ * {@code transactions} an index on {@code (pledge_id, created_at DESC)} and one on
+ * {@code (project_id, created_at DESC)}; V64 adds {@code (status, created_at DESC, id DESC)} and
+ * {@code (created_at DESC, id DESC)}, replacing the {@code (status, id DESC)} V63 built for an
+ * ordering #412 removed.
  * A filter outside that set is a sequential scan over what §22.1 expects to become the largest
  * table the platform holds, and the person who runs it first is a moderator with a support
  * ticket open.
@@ -37,9 +39,15 @@ import java.util.UUID;
  *   <li><strong>No filter on provider or type.</strong> Only {@code CHARGE} is written today,
  *       so a type filter selects everything or nothing, and nobody has yet asked a question
  *       about one provider that the campaign filter did not answer.
- *   <li><strong>No date range.</strong> The identifier carries the millisecond (§7.3), so the
- *       order is the date and paging back <em>is</em> going back in time. The audit trail has
- *       one because that surface is asked "what happened last Tuesday" directly.
+ *   <li><strong>No date range.</strong> The log is ordered by {@code created_at} since #412, so
+ *       paging back <em>is</em> going back in time and a reader who wants last Tuesday can page
+ *       to it. That was the argument before, made about the identifier on the belief that the
+ *       key and the timestamp said the same thing; #412 is what that belief cost, and the
+ *       conclusion survives it because the order is now the column itself. The audit trail has
+ *       a range because that surface is asked "what happened last Tuesday" directly, and
+ *       {@code AuditEntryRepository} says why a bound there is a parameter rather than another
+ *       query. The day this screen is asked the same way, V64's two indexes both lead on
+ *       {@code created_at} and a bound on it is a narrower scan of a range already chosen.
  * </ul>
  *
  * @param pledgeId one pledge's whole attempt history — every decline and the collection that

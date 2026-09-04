@@ -2,6 +2,7 @@ package az.ideanest.payment.infrastructure;
 
 import az.ideanest.payment.domain.PaymentTransaction;
 import az.ideanest.payment.domain.TransactionStatus;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -49,106 +50,159 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     long countByProjectIdAndStatus(UUID projectId, TransactionStatus status);
 
     /*
-     * The six below are AD-05's log — #304. Three filter shapes, each with a first page
-     * and a keyset page; PaymentLogScope has the argument for why there are three.
+     * The twelve below are AD-05's log -- #304, with #404's outcome filter and #412's
+     * ordering. Three filter shapes, each with and without an outcome, each with a first page
+     * and a keyset page; PaymentLogScope has the argument for why there are three shapes and
+     * PaymentLogCursor has the one for why the keyset carries two values.
      *
-     * Ordered by identifier rather than by created_at, which is the same choice
-     * AuditEntryRepository makes and for the same reason: the identifier is a UUID v7
-     * carrying the millisecond it was minted in (§7.3), it is unique where the timestamp is
-     * not, and a unique sort key is a cursor of one value instead of two. Four attempts
-     * against one pledge inside the same second are the ordinary case here, not the edge.
+     * ORDERED BY `created_at`, AND IT USED TO BE BY THE IDENTIFIER.
+     *
+     * The old argument was AuditEntryRepository's, made here for the same reason and wrong
+     * here in the same way: both columns say the same thing -- the identifier is a UUID v7 and
+     * carries the millisecond it was minted in (§7.3) -- and only one of them is unique, so
+     * ordering by the primary key gave the same sequence with a cursor that was one value.
+     *
+     * The two columns are written by two different clocks. The identifier is minted in the
+     * application when `PaymentTransaction` builds the row; `created_at` is `DEFAULT now()`
+     * (V41) and is taken when the insert lands. A charge that mints its key before a provider
+     * call and commits after it, two instances whose clocks differ, and anything migrated in
+     * with a key from elsewhere all put the two orders out of step -- and `PaymentLogView`
+     * renders the timestamp while the query ordered by the key.
+     *
+     * #404 found that on `audit_logs`, where the cost was an investigator scrolling. #412 is
+     * the same defect on the one console surface that is entirely money, where the rows are
+     * retry attempts against somebody's card and the order IS the evidence: §9.6 permits four
+     * collection attempts, and "declined, declined, collected" read in the wrong order is a
+     * different story about the same pledge.
+     *
+     * So every query below orders by `(created_at DESC, id DESC)` -- the column the screen
+     * shows, with the key breaking the tie -- and each keyset predicate is the row-value
+     * comparison that pair implies, written out rather than as a tuple because JPQL has no row
+     * constructor. Four attempts on one pledge inside one second make the tie the ordinary
+     * case here rather than the edge one, which is why the cursor carries both halves.
+     *
+     * WHAT IT COSTS, STATED RATHER THAN DISCOVERED LATER. V41's `transactions_pledge_idx` and
+     * `transactions_project_idx` both end in `created_at DESC`, so the six scoped reads are
+     * now the index's own order instead of a sort -- they got cheaper, not dearer. The other
+     * two shapes had no index for this order at all, and V64 is that: it replaces V63's
+     * `(status, id DESC)` with `(status, created_at DESC, id DESC)` and adds
+     * `(created_at DESC, id DESC)` for the unfiltered read, which previously walked the
+     * primary key. Both carry the identifier, so the keyset is exact rather than nearly
+     * exact -- affordable here because they are new indexes, where adding `id` to V21's four
+     * would have been a rebuild on a table that only grows.
      */
 
-    /** The newest calls the platform has made, whatever they were about. */
-    @Query("SELECT t FROM PaymentTransaction t ORDER BY t.id DESC")
+    /** The newest calls the platform has made, whatever they were about. V64's index. */
+    @Query("SELECT t FROM PaymentTransaction t ORDER BY t.createdAt DESC, t.id DESC")
     List<PaymentTransaction> newest(Pageable limit);
 
-    /** The page after {@code before}. */
-    @Query("SELECT t FROM PaymentTransaction t WHERE t.id < :before ORDER BY t.id DESC")
-    List<PaymentTransaction> newestBefore(@Param("before") UUID before, Pageable limit);
-
-    /** Everything that moved on one campaign, newest first. */
-    @Query("SELECT t FROM PaymentTransaction t WHERE t.projectId = :projectId ORDER BY t.id DESC")
-    List<PaymentTransaction> newestOfProject(@Param("projectId") UUID projectId, Pageable limit);
-
-    /** The page after {@code before}, within one campaign. */
+    /** The page after the row at {@code (before, beforeId)}. */
     @Query(
             """
             SELECT t FROM PaymentTransaction t
-            WHERE t.projectId = :projectId AND t.id < :before
-            ORDER BY t.id DESC
+            WHERE t.createdAt < :before OR (t.createdAt = :before AND t.id < :beforeId)
+            ORDER BY t.createdAt DESC, t.id DESC
+            """)
+    List<PaymentTransaction> newestBefore(
+            @Param("before") Instant before, @Param("beforeId") UUID beforeId, Pageable limit);
+
+    /** Everything that moved on one campaign, newest first. V41's index, in its own order. */
+    @Query("SELECT t FROM PaymentTransaction t WHERE t.projectId = :projectId ORDER BY t.createdAt DESC, t.id DESC")
+    List<PaymentTransaction> newestOfProject(@Param("projectId") UUID projectId, Pageable limit);
+
+    /** The page after that row, within one campaign. */
+    @Query(
+            """
+            SELECT t FROM PaymentTransaction t
+            WHERE t.projectId = :projectId
+              AND (t.createdAt < :before OR (t.createdAt = :before AND t.id < :beforeId))
+            ORDER BY t.createdAt DESC, t.id DESC
             """)
     List<PaymentTransaction> newestOfProjectBefore(
-            @Param("projectId") UUID projectId, @Param("before") UUID before, Pageable limit);
+            @Param("projectId") UUID projectId,
+            @Param("before") Instant before,
+            @Param("beforeId") UUID beforeId,
+            Pageable limit);
 
     /**
      * One pledge's whole attempt history, newest first.
      *
-     * <p>The same rows as {@link #findByPledgeIdOrderByCreatedAtDesc}, paged. That one
-     * stays because the collection run reads it whole and wants no {@link Pageable}; this
-     * one exists because a screen cannot.
+     * <p>The same rows as {@link #findByPledgeIdOrderByCreatedAtDesc}, paged. That one stays
+     * because the collection run reads it whole and wants no {@link Pageable}; this one exists
+     * because a screen cannot. Since #412 the two also agree on the order, which they did not
+     * before — the unpaged one has always ordered by {@code created_at}.
      */
-    @Query("SELECT t FROM PaymentTransaction t WHERE t.pledgeId = :pledgeId ORDER BY t.id DESC")
+    @Query("SELECT t FROM PaymentTransaction t WHERE t.pledgeId = :pledgeId ORDER BY t.createdAt DESC, t.id DESC")
     List<PaymentTransaction> newestOfPledge(@Param("pledgeId") UUID pledgeId, Pageable limit);
 
-    /** The page after {@code before}, within one pledge. */
+    /** The page after that row, within one pledge. */
     @Query(
             """
             SELECT t FROM PaymentTransaction t
-            WHERE t.pledgeId = :pledgeId AND t.id < :before
-            ORDER BY t.id DESC
+            WHERE t.pledgeId = :pledgeId
+              AND (t.createdAt < :before OR (t.createdAt = :before AND t.id < :beforeId))
+            ORDER BY t.createdAt DESC, t.id DESC
             """)
     List<PaymentTransaction> newestOfPledgeBefore(
-            @Param("pledgeId") UUID pledgeId, @Param("before") UUID before, Pageable limit);
+            @Param("pledgeId") UUID pledgeId,
+            @Param("before") Instant before,
+            @Param("beforeId") UUID beforeId,
+            Pageable limit);
 
     /*
-     * The six below are the same six narrowed to one outcome — #404's status filter.
+     * The six below are the same six narrowed to one outcome -- #404's status filter.
      *
      * Six more methods rather than one nullable parameter on each of the six above, which is
      * the choice ProjectRepository makes for the same reason: a `:status IS NULL OR
      * t.status = :status` predicate is one query whose plan has to serve two very different
      * reads, and the read that matters here is the filtered one over the largest table the
-     * platform holds. Spelled out, each of these is exactly the index it uses — V63's
-     * (status, id DESC) for the unscoped one, V41's pledge and project indexes with the status
-     * as a filter step for the other two — and the six above are untouched, so nothing that
-     * already worked can regress on the way in.
+     * platform holds. Spelled out, each of these is exactly the index it uses -- V64's
+     * (status, created_at DESC, id DESC) for the unscoped one, V41's pledge and project indexes
+     * with the status as a filter step for the other two -- and the six above are untouched, so
+     * nothing that already worked can regress on the way in.
      */
 
-    /** The newest calls of one outcome, whatever they were about. V63's index. */
-    @Query("SELECT t FROM PaymentTransaction t WHERE t.status = :status ORDER BY t.id DESC")
+    /** The newest calls of one outcome, whatever they were about. V64's index. */
+    @Query("SELECT t FROM PaymentTransaction t WHERE t.status = :status ORDER BY t.createdAt DESC, t.id DESC")
     List<PaymentTransaction> newestWithStatus(@Param("status") TransactionStatus status, Pageable limit);
 
-    /** The page after {@code before}, within one outcome. */
+    /** The page after that row, within one outcome. */
     @Query(
             """
             SELECT t FROM PaymentTransaction t
-            WHERE t.status = :status AND t.id < :before
-            ORDER BY t.id DESC
+            WHERE t.status = :status
+              AND (t.createdAt < :before OR (t.createdAt = :before AND t.id < :beforeId))
+            ORDER BY t.createdAt DESC, t.id DESC
             """)
     List<PaymentTransaction> newestWithStatusBefore(
-            @Param("status") TransactionStatus status, @Param("before") UUID before, Pageable limit);
+            @Param("status") TransactionStatus status,
+            @Param("before") Instant before,
+            @Param("beforeId") UUID beforeId,
+            Pageable limit);
 
     /** One campaign's calls of one outcome — "what did this collection run leave behind". */
     @Query(
             """
             SELECT t FROM PaymentTransaction t
             WHERE t.projectId = :projectId AND t.status = :status
-            ORDER BY t.id DESC
+            ORDER BY t.createdAt DESC, t.id DESC
             """)
     List<PaymentTransaction> newestOfProjectWithStatus(
             @Param("projectId") UUID projectId, @Param("status") TransactionStatus status, Pageable limit);
 
-    /** The page after {@code before}, within one campaign and one outcome. */
+    /** The page after that row, within one campaign and one outcome. */
     @Query(
             """
             SELECT t FROM PaymentTransaction t
-            WHERE t.projectId = :projectId AND t.status = :status AND t.id < :before
-            ORDER BY t.id DESC
+            WHERE t.projectId = :projectId AND t.status = :status
+              AND (t.createdAt < :before OR (t.createdAt = :before AND t.id < :beforeId))
+            ORDER BY t.createdAt DESC, t.id DESC
             """)
     List<PaymentTransaction> newestOfProjectWithStatusBefore(
             @Param("projectId") UUID projectId,
             @Param("status") TransactionStatus status,
-            @Param("before") UUID before,
+            @Param("before") Instant before,
+            @Param("beforeId") UUID beforeId,
             Pageable limit);
 
     /** One pledge's attempts of one outcome — "every time this card was refused". */
@@ -156,22 +210,24 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
             """
             SELECT t FROM PaymentTransaction t
             WHERE t.pledgeId = :pledgeId AND t.status = :status
-            ORDER BY t.id DESC
+            ORDER BY t.createdAt DESC, t.id DESC
             """)
     List<PaymentTransaction> newestOfPledgeWithStatus(
             @Param("pledgeId") UUID pledgeId, @Param("status") TransactionStatus status, Pageable limit);
 
-    /** The page after {@code before}, within one pledge and one outcome. */
+    /** The page after that row, within one pledge and one outcome. */
     @Query(
             """
             SELECT t FROM PaymentTransaction t
-            WHERE t.pledgeId = :pledgeId AND t.status = :status AND t.id < :before
-            ORDER BY t.id DESC
+            WHERE t.pledgeId = :pledgeId AND t.status = :status
+              AND (t.createdAt < :before OR (t.createdAt = :before AND t.id < :beforeId))
+            ORDER BY t.createdAt DESC, t.id DESC
             """)
     List<PaymentTransaction> newestOfPledgeWithStatusBefore(
             @Param("pledgeId") UUID pledgeId,
             @Param("status") TransactionStatus status,
-            @Param("before") UUID before,
+            @Param("before") Instant before,
+            @Param("beforeId") UUID beforeId,
             Pageable limit);
 
     /**

@@ -2,6 +2,7 @@ package az.ideanest.admin.api;
 
 import az.ideanest.admin.AdminConsoleProperties;
 import az.ideanest.admin.application.ConsoleReadService;
+import az.ideanest.payment.application.PaymentLogCursor;
 import az.ideanest.payment.application.PaymentLogScope;
 import java.util.UUID;
 import org.springframework.http.CacheControl;
@@ -56,7 +57,12 @@ public class PaymentLogController {
      *     a 400 rather than a page of everything. A {@code String} rather than the payment
      *     module's enum because {@code ModuleBoundaryTests} forbids this package from naming
      *     one, which is also why the outcome comes back out as a string
-     * @param after the {@code nextCursor} of the previous page, or absent for the first
+     * @param after the {@code nextCursor} of the previous page, or absent for the first. An
+     *     opaque string rather than an identifier since #412: the log is ordered by
+     *     {@code created_at} and that column is not unique, so a position in it is an instant
+     *     and a key together. {@link PaymentLogCursor} carries the argument, and the shape is
+     *     the one {@link AuditTrailController} already uses. A value this endpoint did not
+     *     produce is a 400 rather than the first page
      * @param limit clamped to {@code ideanest.admin.payments.max-page-size}
      */
     @GetMapping
@@ -65,7 +71,7 @@ public class PaymentLogController {
             @RequestParam(required = false) UUID pledgeId,
             @RequestParam(required = false) UUID projectId,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) UUID after,
+            @RequestParam(required = false) String after,
             @RequestParam(required = false) Integer limit) {
 
         PaymentLogScope scope = new PaymentLogScope(pledgeId, projectId, status);
@@ -73,7 +79,10 @@ public class PaymentLogController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(PaymentLogResponses.of(console.paymentLog(
-                        staffOf(accessToken), scope, after, properties.payments().effective(limit))));
+                        staffOf(accessToken),
+                        scope,
+                        PaymentLogCursor.decode(after),
+                        properties.payments().effective(limit))));
     }
 
     /** Whoever is signed in. See {@link AuditTrailController} on why the token and not the body. */
