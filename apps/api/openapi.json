@@ -4902,6 +4902,40 @@
         "tags" : [ "profile-visibility-controller" ]
       }
     },
+    "/v1/me/projects" : {
+      "get" : {
+        "operationId" : "myProjectMine",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "cursor",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProfileProjectListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "my-project-controller" ]
+      }
+    },
     "/v1/me/saved" : {
       "get" : {
         "operationId" : "backerSignalSaved",

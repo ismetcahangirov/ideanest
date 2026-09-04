@@ -42,7 +42,9 @@
       "signOut": "Çıkış yap",
       "notifications": "Bildirimler",
       "notificationSettings": "Bildirim ayarları",
-      "sessions": "Cihazlar ve oturumlar",
+      "myCampaigns": "Kampanyalarım",
+      "profile": "Profilim",
+      "settings": "Ayarlar",
       "startCampaign": "Kampanya başlat",
       "console": "Yönetim konsolu"
     },
@@ -94,6 +96,10 @@
       "pledges": {
         "label": "Destekler",
         "summary": "Desteklediğiniz kampanyalar ve hâlâ değiştirebilecekleriniz."
+      },
+      "campaigns": {
+        "label": "Kampanyalarım",
+        "summary": "Başlattığınız kampanyalar, taslaklar dahil."
       },
       "saved": {
         "label": "Kaydedilen projeler",
@@ -150,6 +156,20 @@
         "metaDescription": "Desteklediğiniz tüm kampanyalar ve seçtikleriniz.",
         "title": "Destekleriniz",
         "intro": "Desteklediğiniz tüm kampanyalar. Henüz hiçbir tutar tahsil edilmedi — destek, kampanya başarıyla kapandığında tahsil edilir; o zamana kadar desteğinizi değiştirebilir veya geri çekebilirsiniz."
+      },
+      "campaigns": {
+        "metaTitle": "Kampanyalarım",
+        "metaDescription": "Başlattığınız kampanyalar, taslaklar dahil.",
+        "title": "Kampanyalarım",
+        "intro": "Başlattığınız her kampanya — taslaktan yayımlanmışa.",
+        "emptyTitle": "Henüz kampanya yok",
+        "emptyBody": "Başlattığınız kampanyalar burada kalır, böylece yarım bıraktığınıza dönebilirsiniz.",
+        "startCampaign": "Kampanya başlat",
+        "loadFailed": "Liste yüklenmedi",
+        "loadingList": "Kampanyalarınız yükleniyor",
+        "loadMore": "Daha fazla göster",
+        "loadingMore": "Yükleniyor",
+        "draftHint": "Henüz yayımlanmadı"
       },
       "saved": {
         "metaTitle": "Kaydedilen projeler",

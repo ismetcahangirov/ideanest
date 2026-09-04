@@ -40,7 +40,7 @@ import type { StoryBlock, StoryDocument, StorySpans } from '../../lib/projects/s
 const MEASURE = 'max-w-[68ch]';
 
 /** ui-kit §8.4's body: 17px on 1.75, which is the leading two thousand words need. */
-const BODY = 'text-[1.0625rem] leading-[1.75] text-reading';
+const BODY = 'wrap-anywhere text-[1.0625rem] leading-[1.75] text-reading';
 
 export interface CampaignStoryProps {
   readonly story: StoryDocument;

@@ -123,6 +123,15 @@ export const ACCOUNT_GROUPS: readonly AccountGroup[] = Object.freeze([
        * committed outranks what they have saved to look at later.
        */
       { href: '/pledges', key: 'pledges' },
+      /*
+       * Second, and the only entry here about work rather than about spending.
+       *
+       * <p>Nothing listed a creator's own campaigns before this. Every project route
+       * takes an identifier in its path, and the account menu's one campaign-shaped
+       * row posted a new draft, so an unfinished campaign was reachable only by a URL
+       * somebody had written down.
+       */
+      { href: '/account/campaigns', key: 'campaigns' },
       { href: '/account/saved', key: 'saved' },
       { href: '/account/following', key: 'following' },
       { href: '/account/surveys', key: 'surveys' },

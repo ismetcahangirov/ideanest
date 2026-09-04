@@ -50,7 +50,24 @@ export interface ShellCopy {
     readonly signOut: string;
     readonly notifications: string;
     readonly notificationSettings: string;
-    readonly sessions: string;
+    /**
+     * The reader's own campaigns, drafts included.
+     *
+     * <p>The menu used to offer only `startCampaign`, which always creates a new
+     * draft. A creator who left one half-finished had no route back to it from
+     * anywhere in the shell, and pressing the only campaign-shaped row they could
+     * see made a second empty draft rather than reopening the first.
+     */
+    readonly myCampaigns: string;
+    readonly profile: string;
+    /**
+     * The settings index, which replaced a row pointing at `/settings/sessions`.
+     *
+     * <p>Eight settings pages existed and the menu named one of them. Devices and
+     * sessions is not the page somebody opening an account menu is looking for, and
+     * naming it made the other seven unreachable from here.
+     */
+    readonly settings: string;
     readonly startCampaign: string;
     /**
      * The way into the administration console, for staff — issue #405.
@@ -121,7 +138,9 @@ export function shellCopyFrom(t: ShellTranslator): ShellCopy {
       signOut: t('actions.signOut'),
       notifications: t('actions.notifications'),
       notificationSettings: t('actions.notificationSettings'),
-      sessions: t('actions.sessions'),
+      myCampaigns: t('actions.myCampaigns'),
+      profile: t('actions.profile'),
+      settings: t('actions.settings'),
       startCampaign: t('actions.startCampaign'),
       console: t('actions.console'),
     },

@@ -42,7 +42,9 @@
       "signOut": "Sign out",
       "notifications": "Notifications",
       "notificationSettings": "Notification settings",
-      "sessions": "Devices and sessions",
+      "myCampaigns": "My campaigns",
+      "profile": "My profile",
+      "settings": "Settings",
       "startCampaign": "Start a campaign",
       "console": "Administration console"
     },
@@ -94,6 +96,10 @@
       "pledges": {
         "label": "Pledges",
         "summary": "What you have backed, and what you can still change."
+      },
+      "campaigns": {
+        "label": "My campaigns",
+        "summary": "The campaigns you have started, drafts included."
       },
       "saved": {
         "label": "Saved projects",
@@ -150,6 +156,20 @@
         "metaDescription": "Every campaign you have backed, and what you chose.",
         "title": "Your pledges",
         "intro": "Every campaign you have backed. Nothing has been charged yet — a pledge is collected when its campaign closes successfully, and you can change or withdraw one until then."
+      },
+      "campaigns": {
+        "metaTitle": "My campaigns",
+        "metaDescription": "The campaigns you have started, drafts included.",
+        "title": "My campaigns",
+        "intro": "Every campaign you have started, from draft to published.",
+        "emptyTitle": "No campaigns yet",
+        "emptyBody": "Campaigns you start stay here, so you can come back to one you left unfinished.",
+        "startCampaign": "Start a campaign",
+        "loadFailed": "That list did not load",
+        "loadingList": "Loading your campaigns",
+        "loadMore": "Show more",
+        "loadingMore": "Loading",
+        "draftHint": "Not published yet"
       },
       "saved": {
         "metaTitle": "Saved projects",

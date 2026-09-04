@@ -5,6 +5,7 @@ import az.ideanest.project.infrastructure.ProfileCampaignRows;
 import az.ideanest.user.application.ProfileNotFoundException;
 import az.ideanest.user.application.PublicProfile;
 import az.ideanest.user.application.PublicProfiles;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -82,6 +83,20 @@ public class ProfileCampaigns {
     private static final Set<String> VISIBLE_STATES =
             PublicProjects.VISIBLE.stream().map(ProjectState::name).collect(Collectors.toUnmodifiableSet());
 
+    /**
+     * Every state there is, for the one list whose reader is the creator.
+     *
+     * <p>Deliberately not {@link #VISIBLE_STATES} and deliberately not a second hand-written
+     * list. A creator reading their own campaigns is looking for the draft they left and the
+     * submission they are waiting on, which are exactly the rows the public filter removes,
+     * and a suspended campaign is one whose owner most needs to see that it is suspended.
+     * Derived from the enum so that a state added to §6.1 appears here without anybody
+     * remembering to add it.
+     */
+    private static final Set<String> ALL_STATES = Arrays.stream(ProjectState.values())
+            .map(ProjectState::name)
+            .collect(Collectors.toUnmodifiableSet());
+
     private final ProfileCampaignRows campaigns;
     private final PublicProfiles profiles;
 
@@ -115,6 +130,32 @@ public class ProfileCampaigns {
         // a second COUNT over the same predicate -- and without the count and the list
         // being able to disagree about a campaign suspended between the two statements.
         List<ProfileCampaign> found = campaigns.createdBy(profile.id(), VISIBLE_STATES, cursor, pageSize + 1);
+        return pageOf(found, pageSize);
+    }
+
+    /**
+     * One page of the caller's own campaigns, in whatever state each is in.
+     *
+     * <p><strong>No profile lookup and no state filter, because neither guards anything
+     * here.</strong> {@link #createdBy} resolves a slug so that P-07 can withdraw a
+     * stranger's view of somebody's work; this method is handed an account identifier taken
+     * from a verified access token, so the reader and the owner are the same person and
+     * there is nothing to withhold from them. Asking {@link PublicProfiles#requireVisible}
+     * would additionally mean a creator who set their profile to {@code PRIVATE} got a 404
+     * for their own drafts.
+     *
+     * <p><strong>Ordered and paged identically to the public list</strong>, through the same
+     * query and the same cursor. The two differ in the state set and in nothing else, which
+     * is why this is a second call rather than a second query.
+     *
+     * @param creatorId the caller, from the access token. Never from a parameter
+     * @param cursor the last row of the previous page, or null for the first
+     * @param limit what the client asked for, or null. Clamped, never refused
+     */
+    @Transactional(readOnly = true)
+    public Page mine(UUID creatorId, ProfileCursor cursor, Integer limit) {
+        int pageSize = pageSizeOf(limit);
+        List<ProfileCampaign> found = campaigns.createdBy(creatorId, ALL_STATES, cursor, pageSize + 1);
         return pageOf(found, pageSize);
     }
 

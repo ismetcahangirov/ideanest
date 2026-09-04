@@ -353,7 +353,7 @@ export default async function CampaignPage({
                   >
                     Risks and challenges
                   </h2>
-                  <p className="max-w-[68ch] text-[1.0625rem] leading-[1.75] whitespace-pre-line text-reading">
+                  <p className="max-w-[68ch] wrap-anywhere text-[1.0625rem] leading-[1.75] whitespace-pre-line text-reading">
                     {campaign.risks}
                   </p>
                 </section>

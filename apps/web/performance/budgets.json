@@ -5,6 +5,7 @@
     "/[locale]": 728,
     "/[locale]/about": 585,
     "/[locale]/account": 584,
+    "/[locale]/account/campaigns": 590,
     "/[locale]/account/deliveries": 592,
     "/[locale]/account/following": 590,
     "/[locale]/account/saved": 590,

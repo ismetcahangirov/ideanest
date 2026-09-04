@@ -162,9 +162,10 @@ export function MobileNavDrawer({ copy }: MobileNavDrawerProps) {
               <div className="mt-4 border-t border-white/6 pt-4">
                 {status === 'signed-in' && session !== null && (
                   <ul className="list-none">
+                    {/* The same rows as `AccountMenu`, for the same reasons. */}
                     <li>
-                      <Link href="/notifications" className={DRAWER_ROW}>
-                        {copy.actions.notifications}
+                      <Link href="/account/campaigns" className={DRAWER_ROW}>
+                        {copy.actions.myCampaigns}
                       </Link>
                     </li>
                     <li>
@@ -173,8 +174,21 @@ export function MobileNavDrawer({ copy }: MobileNavDrawerProps) {
                       </Link>
                     </li>
                     <li>
-                      <Link href="/settings/sessions" className={DRAWER_ROW}>
-                        {copy.actions.sessions}
+                      <Link
+                        href={`/u/${encodeURIComponent(session.slug)}`}
+                        className={DRAWER_ROW}
+                      >
+                        {copy.actions.profile}
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/notifications" className={DRAWER_ROW}>
+                        {copy.actions.notifications}
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/settings" className={DRAWER_ROW}>
+                        {copy.actions.settings}
                       </Link>
                     </li>
                     <li>
