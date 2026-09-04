@@ -4,7 +4,6 @@ import az.ideanest.payment.domain.PaymentTransaction;
 import az.ideanest.payment.domain.TransactionStatus;
 import az.ideanest.payment.infrastructure.PaymentTransactionRepository;
 import java.util.List;
-import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,13 +42,16 @@ public class PaymentLog {
      *
      * @param scope one of {@link PaymentLogScope}'s shapes, optionally narrowed to one
      *     outcome. Normalised first, so the page and the echoed scope describe the same query
-     * @param before the last identifier of the previous page, or null for the first
+     * @param before where the previous page ended, or null for the first. A position rather
+     *     than a row that has to exist: it names an instant and an identifier, and every row
+     *     below that pair is still a correct answer. Two values rather than one since #412 —
+     *     {@link PaymentLogCursor} carries why
      * @param limit already clamped by the caller
      * @throws UnknownTransactionOutcomeException when the scope names a status that is not one
      *     of the three. Refused rather than dropped — see {@link PaymentLogScope#outcome()}
      */
     @Transactional(readOnly = true)
-    public PaymentLogPage page(PaymentLogScope scope, UUID before, int limit) {
+    public PaymentLogPage page(PaymentLogScope scope, PaymentLogCursor before, int limit) {
         PaymentLogScope asked = scope.normalised();
         PageRequest page = PageRequest.ofSize(limit);
         // Resolved before the query rather than inside the dispatch, so that a status nobody
@@ -58,8 +60,20 @@ public class PaymentLog {
 
         // A full page is the only honest signal that there may be more; the report queue
         // and the audit trail both take the same line, and for the same reason.
-        UUID nextCursor = rows.size() < limit ? null : rows.get(rows.size() - 1).getId();
+        PaymentLogCursor nextCursor = rows.size() < limit ? null : cursorTo(rows.get(rows.size() - 1));
         return new PaymentLogPage(asked, rows.stream().map(LoggedTransaction::of).toList(), nextCursor);
+    }
+
+    /**
+     * Where the page just served ends.
+     *
+     * <p>Both halves, because the log is ordered by a column that is not unique — §9.6's four
+     * attempts against one card land inside one second often enough that a cursor of one
+     * instant would repeat a row or drop it, depending on which side of the boundary it fell.
+     * {@link PaymentLogCursor} holds the whole of #412's argument.
+     */
+    private static PaymentLogCursor cursorTo(PaymentTransaction last) {
+        return new PaymentLogCursor(last.getCreatedAt(), last.getId());
     }
 
     /**
@@ -71,34 +85,38 @@ public class PaymentLog {
      * round would put the same {@code status == null} test in three branches.
      */
     private List<PaymentTransaction> rowsFor(
-            PaymentLogScope scope, TransactionStatus status, UUID before, PageRequest page) {
+            PaymentLogScope scope, TransactionStatus status, PaymentLogCursor before, PageRequest page) {
 
         if (status == null) {
             if (scope.pledgeId() != null) {
                 return before == null
                         ? transactions.newestOfPledge(scope.pledgeId(), page)
-                        : transactions.newestOfPledgeBefore(scope.pledgeId(), before, page);
+                        : transactions.newestOfPledgeBefore(scope.pledgeId(), before.at(), before.id(), page);
             }
             if (scope.projectId() != null) {
                 return before == null
                         ? transactions.newestOfProject(scope.projectId(), page)
-                        : transactions.newestOfProjectBefore(scope.projectId(), before, page);
+                        : transactions.newestOfProjectBefore(scope.projectId(), before.at(), before.id(), page);
             }
-            return before == null ? transactions.newest(page) : transactions.newestBefore(before, page);
+            return before == null
+                    ? transactions.newest(page)
+                    : transactions.newestBefore(before.at(), before.id(), page);
         }
 
         if (scope.pledgeId() != null) {
             return before == null
                     ? transactions.newestOfPledgeWithStatus(scope.pledgeId(), status, page)
-                    : transactions.newestOfPledgeWithStatusBefore(scope.pledgeId(), status, before, page);
+                    : transactions.newestOfPledgeWithStatusBefore(
+                            scope.pledgeId(), status, before.at(), before.id(), page);
         }
         if (scope.projectId() != null) {
             return before == null
                     ? transactions.newestOfProjectWithStatus(scope.projectId(), status, page)
-                    : transactions.newestOfProjectWithStatusBefore(scope.projectId(), status, before, page);
+                    : transactions.newestOfProjectWithStatusBefore(
+                            scope.projectId(), status, before.at(), before.id(), page);
         }
         return before == null
                 ? transactions.newestWithStatus(status, page)
-                : transactions.newestWithStatusBefore(status, before, page);
+                : transactions.newestWithStatusBefore(status, before.at(), before.id(), page);
     }
 }

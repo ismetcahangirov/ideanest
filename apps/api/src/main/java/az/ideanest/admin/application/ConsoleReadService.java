@@ -12,6 +12,7 @@ import az.ideanest.ledger.application.LedgerReader;
 import az.ideanest.ledger.application.LedgerScope;
 import az.ideanest.ledger.application.LedgerView;
 import az.ideanest.payment.application.PaymentLog;
+import az.ideanest.payment.application.PaymentLogCursor;
 import az.ideanest.payment.application.PaymentLogPage;
 import az.ideanest.payment.application.PaymentLogScope;
 import az.ideanest.shared.access.PlatformStaff;
@@ -109,7 +110,7 @@ public class ConsoleReadService {
      * @throws az.ideanest.staff.application.NotAModeratorException for a caller who is not
      *     platform staff
      */
-    public PaymentLogPage paymentLog(UUID staffId, PaymentLogScope scope, UUID before, int limit) {
+    public PaymentLogPage paymentLog(UUID staffId, PaymentLogScope scope, PaymentLogCursor before, int limit) {
         staff.requireStaff(staffId);
         PaymentLogPage page = payments.page(scope, before, limit);
 

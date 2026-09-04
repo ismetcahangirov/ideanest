@@ -37,7 +37,7 @@ final class PaymentLogResponses {
                 page.scope().projectId(),
                 page.scope().status(),
                 page.transactions().stream().map(PaymentLogResponses::transaction).toList(),
-                page.nextCursor());
+                page.nextCursor() == null ? null : page.nextCursor().encode());
     }
 
     private static Transaction transaction(LoggedTransaction row) {
@@ -69,18 +69,26 @@ final class PaymentLogResponses {
      *     client that sent {@code ?status=failed} can see that {@code FAILED} is what was
      *     applied. Combines with the two above rather than replacing them, so all three can be
      *     present at once
-     * @param transactions the matching provider calls, newest first
+     * @param transactions the matching provider calls, newest first — by {@code createdAt}
+     *     since #412, which is the column {@link Transaction#createdAt()} renders. It was the
+     *     identifier, and the two are written by different clocks
      * @param nextCursor what to send as {@code after} for the next page, or absent when
-     *     this was the last one
+     *     this was the last one. <strong>A string and no longer a {@code uuid}</strong>: the
+     *     log is ordered by a column that is not unique, so a position in it is an instant and
+     *     a key, and {@code PaymentLogCursor} encodes the pair. Opaque so that no client
+     *     rebuilds it — the old bare identifier read as a promise that the identifier was the
+     *     order, and {@code openapi.json} documented it as one
      */
     record LogPage(
-            UUID pledgeId, UUID projectId, String status, List<Transaction> transactions, UUID nextCursor) {
+            UUID pledgeId, UUID projectId, String status, List<Transaction> transactions, String nextCursor) {
     }
 
     /**
      * One call to a provider, and what it said.
      *
-     * @param id the transaction row, and this log's cursor
+     * @param id the transaction row. No longer this log's cursor — see
+     *     {@link LogPage#nextCursor()}, and #412 for why a unique key was the wrong sort order
+     *     even though it was the convenient one
      * @param pledgeId which pledge this was about, absent on a payout
      * @param projectId whose money it is. Present on every row
      * @param type {@code CHARGE}, {@code VERIFICATION}, {@code REFUND}, {@code CHARGEBACK},

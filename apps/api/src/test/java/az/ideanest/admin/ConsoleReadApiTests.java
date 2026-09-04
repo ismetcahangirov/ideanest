@@ -546,10 +546,12 @@ class ConsoleReadApiTests extends AbstractIntegrationTest {
     /**
      * One row in {@code transactions}.
      *
-     * <p>The identifier is a UUID v7 rather than a version 4, and that is not incidental:
-     * the log pages by the primary key on the strength of it being time-ordered, and a
-     * fixture using {@link UUID#randomUUID()} would order at random and let a broken cursor
-     * pass.
+     * <p>The identifier is a UUID v7 rather than a version 4, and that is not incidental. The
+     * log pages by {@code (created_at, id)} since #412 — it used to page by the primary key
+     * alone, on the strength of that key being time-ordered, and {@code PaymentLogCursor} is
+     * where the two clocks that argument overlooked are written down. The key is still the
+     * tiebreak, so a fixture using {@link UUID#randomUUID()} would order tied rows at random
+     * and let a broken cursor pass.
      */
     private UUID charge(
             Fixture fixture, String status, String amount, int attempt, String failureCode, String failureMessage) {

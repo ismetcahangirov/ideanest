@@ -81,6 +81,16 @@ export interface PaymentLogPage {
   /** Echoed in the spelling the column uses, so `?status=failed` comes back as `FAILED`. */
   status?: TransactionStatus | null;
   transactions: LoggedTransaction[];
+  /**
+   * Where the last row on this page sits, to send back as `after` — opaque, and treated as
+   * opaque here.
+   *
+   * It used to be the last row's identifier and the contract documented it as a `uuid`. #412
+   * made it a pair: the log is ordered by `createdAt`, which is the column the screen renders
+   * and is not unique, so a position in it is an instant and a key together. Nothing on this
+   * side reads it, which is why the shape change cost this file nothing — and is exactly why
+   * the service encodes it rather than handing over two fields.
+   */
   nextCursor?: string | null;
 }
 
@@ -127,6 +137,7 @@ export interface PaymentLogRequest {
   pledgeId?: string | null;
   projectId?: string | null;
   status?: TransactionStatus | null;
+  /** The previous page's `nextCursor`, verbatim. Never constructed here — see that field. */
   after?: string | null;
   limit?: number;
   signal?: AbortSignal;

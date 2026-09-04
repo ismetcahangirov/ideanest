@@ -1,6 +1,7 @@
 package az.ideanest.admin.api;
 
 import az.ideanest.audit.InvalidAuditCursorException;
+import az.ideanest.payment.application.InvalidPaymentLogCursorException;
 import az.ideanest.payment.application.UnknownTransactionOutcomeException;
 import az.ideanest.staff.application.NotAModeratorException;
 import java.net.URI;
@@ -47,19 +48,28 @@ public class ConsoleExceptionHandler {
     }
 
     /**
-     * 400 for a paging cursor {@code /v1/admin/audit} did not produce.
+     * 400 for a paging cursor {@code /v1/admin/audit} or {@code /v1/admin/payments} did not
+     * produce.
      *
      * <p>A refusal rather than the first page, which is the same distinction the handler
      * below draws and matters here for a sharper reason: quietly restarting the list would
      * hand an investigator the top of the log again in place of the part they had not read,
      * and there is nothing on the screen to tell them which one they are looking at.
      *
+     * <p><strong>Two exception types and one body, since #412.</strong> The payment log's
+     * cursor became a pair for the reason the trail's did — it is ordered by a column that is
+     * not unique — so it gained the same way of being malformed. The types stay separate
+     * because {@link az.ideanest.payment.application.PaymentLogCursor} says why the cursors
+     * are: one endpoint must not accept the other's value and page somebody else's rows. What
+     * a client does about either is identical, so the answer is, and a second {@code code}
+     * would be a branch every client had to write for no decision.
+     *
      * <p>The body does not say which half of the cursor was wrong. There is nothing to act
      * on in that — the client's next move is to start the list again either way — and
      * naming it would tell whoever is probing how the value is built.
      */
-    @ExceptionHandler(InvalidAuditCursorException.class)
-    public ProblemDetail handleInvalidCursor(InvalidAuditCursorException exception) {
+    @ExceptionHandler({InvalidAuditCursorException.class, InvalidPaymentLogCursorException.class})
+    public ProblemDetail handleInvalidCursor(RuntimeException exception) {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
         problem.setType(URI.create("https://ideanest.az/problems/invalid-cursor"));
         problem.setTitle("Invalid cursor");

@@ -56,6 +56,24 @@ type Scope = 'pledge' | 'project';
  * is argued from. Collapsing them into one line per pledge would delete the only thing here
  * that answers "why was this person charged on a Thursday".
  *
+ * <h2>Newest first, and now it actually is — issue #412</h2>
+ *
+ * This screen renders `createdAt` and the service ordered by the primary key, on the argument
+ * that a UUID v7 carries the millisecond it was minted in (§7.3). The two are written by two
+ * different clocks — the key in the application when the row is built, `created_at` by
+ * `DEFAULT now()` when the insert lands — so the column shown here and the column sorted on
+ * could disagree, and #404 had already found what that cost on the audit trail.
+ *
+ * It costs more here. These rows are retry attempts against somebody's card and the order is
+ * the evidence: §9.6 permits four collection attempts, and "declined, declined, collected"
+ * read in the wrong order is a different story about the same pledge. Within one pledge
+ * `attemptNumber` disambiguates them; the unfiltered log, which is what this screen opens on,
+ * has nothing to fall back on.
+ *
+ * Nothing here changed for it. The cursor was already carried through as an opaque string and
+ * handed back untouched — it is now a pair rather than an identifier, and this screen is the
+ * proof that opacity was worth having.
+ *
  * <h2>The search is a form, not a keystroke handler</h2>
  *
  * Every read of this log is audited — it hands somebody's payment history to an account with
