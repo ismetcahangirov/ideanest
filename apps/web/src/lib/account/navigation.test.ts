@@ -41,6 +41,7 @@ const ROUTES_THAT_EXIST = new Set([
    * its expectation from the thing under test would pass for any navigation at all.
    */
   '/pledges',
+  '/account/campaigns',
   '/account/saved',
   '/account/following',
   '/account/surveys',

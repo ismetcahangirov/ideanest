@@ -299,7 +299,7 @@ export function CampaignPreview({ projectId, copy }: CampaignPreviewProps) {
         {campaign.risks === null ? (
           <p className="mt-2 max-w-[62ch] text-sm text-white/40">{copy.noRisks}</p>
         ) : (
-          <p className="mt-2 max-w-[68ch] whitespace-pre-line text-sm text-white/64">
+          <p className="mt-2 max-w-[68ch] wrap-anywhere whitespace-pre-line text-sm text-white/64">
             {campaign.risks}
           </p>
         )}

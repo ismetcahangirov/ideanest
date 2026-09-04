@@ -42,7 +42,9 @@
       "signOut": "Çıxış et",
       "notifications": "Bildirişlər",
       "notificationSettings": "Bildiriş parametrləri",
-      "sessions": "Cihazlar və sessiyalar",
+      "myCampaigns": "Kampaniyalarım",
+      "profile": "Profilim",
+      "settings": "Parametrlər",
       "startCampaign": "Kampaniya başladın",
       "console": "İdarəetmə konsolu"
     },
@@ -94,6 +96,10 @@
       "pledges": {
         "label": "Dəstəklər",
         "summary": "Dəstəklədikləriniz və hələ də dəyişə biləcəkləriniz."
+      },
+      "campaigns": {
+        "label": "Kampaniyalarım",
+        "summary": "Başladığınız kampaniyalar, qaralamalar daxil."
       },
       "saved": {
         "label": "Saxlanmış layihələr",
@@ -150,6 +156,20 @@
         "metaDescription": "Dəstəklədiyiniz bütün kampaniyalar və seçdikləriniz.",
         "title": "Dəstəkləriniz",
         "intro": "Dəstəklədiyiniz bütün kampaniyalar. Hələ heç bir məbləğ alınmayıb — dəstək yalnız kampaniya uğurla başa çatdıqda hesabınızdan çıxılır, o vaxta qədər isə onu dəyişə və ya geri götürə bilərsiniz."
+      },
+      "campaigns": {
+        "metaTitle": "Kampaniyalarım",
+        "metaDescription": "Başladığınız kampaniyalar, qaralamalar daxil.",
+        "title": "Kampaniyalarım",
+        "intro": "Başladığınız hər kampaniya burada — qaralamadan yayımlanmışa qədər.",
+        "emptyTitle": "Hələ kampaniya yoxdur",
+        "emptyBody": "Başladığınız kampaniyalar burada qalır, ona görə yarımçıq qoyduğunuza qayıda bilərsiniz.",
+        "startCampaign": "Kampaniya başladın",
+        "loadFailed": "Siyahı yüklənmədi",
+        "loadingList": "Kampaniyalarınız yüklənir",
+        "loadMore": "Daha çox göstər",
+        "loadingMore": "Yüklənir",
+        "draftHint": "Hələ yayımlanmayıb"
       },
       "saved": {
         "metaTitle": "Saxlanmış layihələr",

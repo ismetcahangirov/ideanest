@@ -172,6 +172,28 @@ export function AccountMenu({ session, onSignOut, copy }: AccountMenuProps) {
           )}
 
           <ul className="list-none">
+            {/*
+              THE TWO CAMPAIGN ROWS ARE FIRST, AND THERE ARE TWO OF THEM. This menu used to
+              offer `startCampaign` alone, which posts a new draft every time it is pressed.
+              A creator with a half-finished campaign had no route back to it from the shell,
+              so the only campaign-shaped row in front of them was the one that made a second
+              empty draft. Naming both tells them which is which before they press either.
+            */}
+            <li>
+              <Link href="/account/campaigns" className={ROW}>
+                {copy.myCampaigns}
+              </Link>
+            </li>
+            <li>
+              <Link href="/projects/new" className={ROW}>
+                {copy.startCampaign}
+              </Link>
+            </li>
+            <li>
+              <Link href={`/u/${encodeURIComponent(session.slug)}`} className={ROW}>
+                {copy.profile}
+              </Link>
+            </li>
             <li>
               <Link href="/notifications" className={ROW}>
                 {copy.notifications}
@@ -183,13 +205,8 @@ export function AccountMenu({ session, onSignOut, copy }: AccountMenuProps) {
               </Link>
             </li>
             <li>
-              <Link href="/settings/sessions" className={ROW}>
-                {copy.sessions}
-              </Link>
-            </li>
-            <li>
-              <Link href="/projects/new" className={ROW}>
-                {copy.startCampaign}
+              <Link href="/settings" className={ROW}>
+                {copy.settings}
               </Link>
             </li>
             {/*
