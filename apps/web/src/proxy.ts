@@ -51,7 +51,7 @@ import { routing } from './i18n/routing';
  */
 const intlMiddleware = createIntlMiddleware(routing);
 
-export default function middleware(request: NextRequest): NextResponse {
+export default function proxy(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
 
   /*
@@ -87,7 +87,7 @@ export const config = {
    * `api/` is the RUM beacon. It is called by `WebVitals` from every page including the
    * localised ones, and a redirect on a `sendBeacon` is a measurement silently lost.
    *
-   * `v1/` is the service. `next.config.mjs` rewrites it to the API origin, and middleware
+   * `v1/` is the service. `next.config.mjs` rewrites it to the API origin, and the proxy
    * runs before that rewrite — so a match here does not delay the call, it replaces it. While
    * this prefix was missing, every request the browser made to the API was answered with a
    * `307` to `/en/v1/...`, which matches no route and no rewrite. `fetch` follows the

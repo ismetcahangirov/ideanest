@@ -88,7 +88,7 @@ ENV PORT=3000 HOSTNAME=0.0.0.0
 # `/en/about` and not `/`. The root path is a 307 to a language, which a health
 # check that follows redirects would pass on a broken application and one that
 # does not would fail on a working one. A localised static page exercises the
-# router, the middleware and a render.
+# router, the proxy and a render.
 #
 # `127.0.0.1` AND NOT `localhost`. Inside the container `localhost` resolves to
 # `::1` first and the server binds IPv4 `0.0.0.0`, so the check answered

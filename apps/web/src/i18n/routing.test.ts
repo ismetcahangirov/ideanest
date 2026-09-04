@@ -33,10 +33,10 @@ describe('the localised routing configuration', () => {
 
   it('never negotiates on Accept-Language', () => {
     /*
-     * Detection would make the middleware's response vary by that header, and a
+     * Detection would make the proxy's response vary by that header, and a
      * `Vary: Accept-Language` on the routes a stranger meets first splits the shared CDN
      * cache per browser configuration — the per-visitor cost this design exists to avoid,
-     * arriving through the door instead of the window. `middleware.ts` reads the stored
+     * arriving through the door instead of the window. `proxy.ts` reads the stored
      * preference on the bare path instead, where the whole response is a redirect.
      */
     expect(routing.localeDetection).toBe(false);

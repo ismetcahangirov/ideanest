@@ -57,7 +57,7 @@ describe('breadcrumbNode', () => {
   });
 
   /**
-   * #123. Every step used to name the un-prefixed address, which `middleware.ts` answers with
+   * #123. Every step used to name the un-prefixed address, which `proxy.ts` answers with
    * a 307 — a trail whose entire job is to name the pages a reader came through, naming three
    * redirects, and contradicting the canonical of the page it was emitted on.
    */

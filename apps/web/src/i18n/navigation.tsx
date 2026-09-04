@@ -67,7 +67,7 @@ export type LinkProps = ComponentProps<typeof NextLink>;
  * `next/link`, with the current language kept.
  *
  * WITHOUT THIS, EVERY LINK IS A LANGUAGE RESET. `<Link href="/discover">` inside the Russian
- * site points at the un-prefixed path, which `middleware.ts` answers with a redirect decided
+ * site points at the un-prefixed path, which `proxy.ts` answers with a redirect decided
  * by a cookie — so a reader three pages into Russian can be moved to Azerbaijani by clicking
  * a navigation item, and it does not reproduce for anyone whose cookie happens to agree.
  *

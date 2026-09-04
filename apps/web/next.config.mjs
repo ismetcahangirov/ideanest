@@ -21,7 +21,7 @@ import createNextIntlPlugin from 'next-intl/plugin';
  * module somewhere none of its neighbours are is a module nobody finds.
  *
  * THE LANGUAGE IS A PATH SEGMENT (#123). `src/i18n/routing.ts` declares the
- * shape, `src/middleware.ts` sends a bare path to a prefixed one, and
+ * shape, `src/proxy.ts` sends a bare path to a prefixed one, and
  * `src/i18n/request.ts` resolves the catalogue from the matched `[locale]`
  * parameter. Nothing here reads a cookie, so a localised page is as static as
  * the English one it replaced.

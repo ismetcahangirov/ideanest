@@ -36,7 +36,7 @@ describe('languageAlternates', () => {
   it('points x-default at English, which is what an unmatched reader is served', () => {
     /*
      * `x-default` is not "the main language" — it is the page for a reader whose language is
-     * none of the four, which is exactly what `middleware.ts` does with no cookie set. The two
+     * none of the four, which is exactly what `proxy.ts` does with no cookie set. The two
      * have to agree or the annotation describes a redirect that does not happen.
      */
     const alternates = languageAlternates('/', BASE);

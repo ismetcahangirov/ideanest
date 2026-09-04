@@ -23,7 +23,7 @@ import { routing } from './routing';
  * cached documents instead of one dynamic one.
  *
  * The consequence worth stating plainly: **there is no longer a performance argument for
- * leaving any surface in English.** `middleware.ts` owns the one remaining cookie read, on
+ * leaving any surface in English.** `proxy.ts` owns the one remaining cookie read, on
  * the bare path only, where a redirect is the whole response.
  *
  * <h2>Trusting `requestLocale`, and still checking it</h2>

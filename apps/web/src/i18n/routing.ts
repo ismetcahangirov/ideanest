@@ -33,12 +33,12 @@ import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../lib/i18n/locale';
  * <h2>`localeDetection: false`, WHICH IS THE POINT THAT IS EASY TO GET WRONG</h2>
  *
  * next-intl's own detection reads `Accept-Language`. Turning it on would make the
- * middleware's response vary by that header, and a `Vary: Accept-Language` on the routes a
+ * proxy's response vary by that header, and a `Vary: Accept-Language` on the routes a
  * stranger meets first splits the shared CDN cache per browser configuration — the same
  * per-visitor render this file was written to avoid, arriving through the door rather than
  * the window.
  *
- * So detection happens in `middleware.ts` instead, once, on the bare path only, and the
+ * So detection happens in `proxy.ts` instead, once, on the bare path only, and the
  * pages it redirects to never negotiate anything.
  *
  * <h2>The list is imported, never spelled again</h2>

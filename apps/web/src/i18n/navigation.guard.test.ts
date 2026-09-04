@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest';
  *
  * <h2>What goes wrong without it</h2>
  *
- * `next/link` renders `<a href="/discover">`, with no language on it. `middleware.ts`
+ * `next/link` renders `<a href="/discover">`, with no language on it. `proxy.ts`
  * answers that with a redirect decided by a cookie, so a reader three pages into the Russian
  * site can be moved to Azerbaijani by clicking a navigation item — and it reproduces for
  * nobody whose cookie happens to agree with the page they are on, which is most people

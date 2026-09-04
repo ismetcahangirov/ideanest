@@ -205,7 +205,7 @@ have drawn thirteen entries with none of them marked `aria-current="page"`. It
 gave up a `<main>` of its own for the same reason the two screens above did.
 
 **Every route is served under a `[locale]` segment (#123).** `/az/discover`, `/ru/discover`
-and so on; `middleware.ts` answers a bare path with a 307 to the language the reader last
+and so on; `proxy.ts` answers a bare path with a 307 to the language the reader last
 chose. `src/i18n/routing.ts` declares the shape, `src/i18n/request.ts` resolves the catalogue
 from the matched segment, and `src/i18n/navigation.tsx` is what every `Link`, `useRouter` and
 `usePathname` in the application must come from — a raw `next/link` drops the language and
@@ -660,7 +660,7 @@ runs against staging and production alike.
 **The health check is `/en/about` and not `/`.** The root path is a 307 to a
 language. A check that follows redirects would pass on a broken application; one
 that does not would fail on a working one. A localised static page exercises the
-router, the middleware and a render, which is what the check is for.
+router, the proxy and a render, which is what the check is for.
 
 The build context is the repository root — this application compiles three
 source-only workspace packages — and `.dockerignore` is what keeps that context
@@ -829,7 +829,7 @@ guarantees.
 
 ### `Cache-Control` for a shared cache
 
-`src/lib/cache/publicRoutes.ts`, applied in `middleware.ts`. Public pages are
+`src/lib/cache/publicRoutes.ts`, applied in `proxy.ts`. Public pages are
 served `public, s-maxage=60, stale-while-revalidate=600`; everything else keeps
 the framework's `private, no-store`.
 
