@@ -1,0 +1,7 @@
+# Registers ideanest_fold with Hibernate so JPQL may name it -- issue #413.
+#
+# Hibernate builds its function registry before any Spring context exists, so
+# this cannot be a bean. See SearchFoldFunctionContributor for what it buys and
+# for why deleting this file breaks the account directory at startup rather
+# than at the query.
+az.ideanest.shared.SearchFoldFunctionContributor

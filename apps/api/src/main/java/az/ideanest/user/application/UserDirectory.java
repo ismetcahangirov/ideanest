@@ -1,12 +1,12 @@
 package az.ideanest.user.application;
 
+import az.ideanest.shared.Slugs;
 import az.ideanest.user.UserProperties;
 import az.ideanest.user.domain.User;
 import az.ideanest.user.infrastructure.UserRepository;
 import java.time.Clock;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -59,10 +59,21 @@ public class UserDirectory {
      */
     @Transactional(readOnly = true)
     public List<AdministeredAccount> search(String term, boolean suspendedOnly, UUID after, Integer limit) {
-        int size = pageSize(limit);
-        return users.search(patternOf(term), suspendedOnly, after, PageRequest.ofSize(size)).stream()
-                .map(UserDirectory::toAdministered)
-                .toList();
+        PageRequest page = PageRequest.ofSize(pageSize(limit));
+        String pattern = patternOf(term);
+
+        /*
+         * Two reads rather than a nullable term — #413. `UserRepository` carries the argument:
+         * a `:term IS NULL OR …` predicate is one statement whose plan has to serve both, and
+         * on the searching half PostgreSQL stops folding the null test away as soon as the
+         * statement earns a generic plan, which puts the search back on a sequential scan at
+         * exactly the moment it starts to matter.
+         */
+        List<User> rows = pattern == null
+                ? users.list(suspendedOnly, after, page)
+                : users.search(pattern, suspendedOnly, after, page);
+
+        return rows.stream().map(UserDirectory::toAdministered).toList();
     }
 
     /** One account, as an administrator sees it. Empty for one that does not exist or is deleted. */
@@ -128,20 +139,31 @@ public class UserDirectory {
     /**
      * The term as a {@code LIKE} pattern, folded.
      *
-     * <p>Wrapped in wildcards at both ends, which is a scan and is the right cost here:
-     * the search is made by a handful of staff accounts against a table read by an index
-     * on every other path, and a prefix-only match would fail on the one thing staff most
-     * often hold — a domain out of an email address.
+     * <p><strong>Folded by {@link Slugs#fold} and no longer by {@code toLowerCase} — #413.</strong>
+     * The columns are matched through {@code ideanest_fold}, and a term folded by a different
+     * rule than the column it is compared against matches nothing: {@code lower("Köhnə")} is
+     * {@code köhnə} and the column holds {@code kohne}. The two folds are the same rule written
+     * twice on purpose, and {@code SearchFoldingTests} is what keeps them that way.
      *
-     * <p>The wildcards a caller typed are escaped, so a search for {@code 100%} is a
-     * search for {@code 100%} rather than a match on everything.
+     * <p>What it fixes for whoever is typing: {@code kohne} now finds "Köhnə", exactly as it
+     * does in the campaign directory and in public search. The console had two spellings of one
+     * rule, and this box was the odd one.
+     *
+     * <p>Wrapped in wildcards at both ends, which is a contains-match and is the right cost
+     * here: V63's two trigram indexes and V64's third exist precisely to serve one, and a
+     * prefix-only match would fail on the one thing staff most often hold — a domain out of an
+     * email address.
+     *
+     * <p>The wildcards a caller typed are escaped, so a search for {@code 100%} is a search for
+     * {@code 100%} rather than a match on everything. Escaped <em>after</em> folding, because
+     * the fold maps letters only and would otherwise have to be trusted not to touch the escape
+     * character it had just introduced.
      */
     private static String patternOf(String term) {
         if (term == null || term.isBlank()) {
             return null;
         }
-        String escaped = term.trim()
-                .toLowerCase(Locale.ROOT)
+        String escaped = Slugs.fold(term.trim())
                 .replace("!", "!!")
                 .replace("%", "!%")
                 .replace("_", "!_");

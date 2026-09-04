@@ -75,35 +75,79 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             """)
     List<UUID> findDueForAnonymisation(@Param("now") Instant now, Pageable batch);
 
-    /**
-     * The admin user list — §4.11's AD-04 (#104).
+    /*
+     * The two below are the admin user list -- §4.11's AD-04 (#104), folded and indexed by
+     * #413.
      *
-     * <p>One query with two optional filters rather than four derived methods, because
-     * the screen has one search box and one checkbox and any combination of them is a
-     * page. A {@code null} term matches everything, which is the list a moderator opens
-     * before they have typed anything.
+     * TWO QUERIES BECAUSE ONE OF THEM SEARCHES. They used to be one, with `:term IS NULL`
+     * standing for "everything"; that is one statement whose plan has to serve two reads that
+     * have nothing in common, and on the searching half it quietly costs the indexes this
+     * issue is about. PostgreSQL folds `$1 IS NULL` away while it is planning with the actual
+     * value, and stops folding it the moment the statement is hot enough to earn a generic
+     * plan -- at which point the disjunction becomes a filter and the read falls back to the
+     * sequential scan it was just taken off. A filter that disappears under load is worse than
+     * one that was never claimed. Spelled as two, each is exactly the plan it says it is.
      *
-     * <p><strong>The term is matched against three columns and never against a name
-     * alone.</strong> Staff arrive holding whatever the complaint gave them — an
-     * address, a display name, or the slug out of a profile URL — and an endpoint that
-     * matched one of those would send them to guess which.
+     * It is also the call `PaymentTransactionRepository` makes about its own status filter,
+     * for the same reason and in the same words.
      *
-     * <p><strong>Keyset, on the identifier.</strong> {@code Identifiers} mints UUID v7,
-     * so descending by identifier is newest first and the cursor is the last row of the
-     * previous page. An offset would drift as accounts are created underneath the reader,
-     * which on this list means a moderator paging past the account they are looking for.
+     * MATCHED ON `ideanest_fold` AND NOT ON `lower`. §11.3's fold is the platform's one
+     * comparison form -- `Slugs.fold` in Java, `ideanest_fold(text)` in the database (V13) --
+     * and every other search on the platform uses it. This one did not, because JPQL may only
+     * name a function the dialect knows and nothing had registered it; `SearchFoldFunctionContributor`
+     * is that registration, and it is what makes the two halves of #413 one change.
      *
-     * <p>Soft-deleted accounts are excluded, like every finder above. An account that has
-     * been anonymised has nothing left to inspect, and suspending one would be a decision
+     * What it fixes is two things at once. `lower()` leaves ə, ı, ö, ü, ğ, ş and ç alone, so
+     * this screen found "Köhnə" from `köhnə` and not from `kohne` while the campaign directory
+     * beside it found both. And an expression index only serves a query repeating the
+     * expression exactly, so V63's `users_name_trgm_idx` and `users_slug_trgm_idx` -- built on
+     * the fold, and used by the campaign directory's creator search -- could not serve this
+     * one. V64 adds the third, over the address, because a disjunction is only as indexed as
+     * its least indexed branch: leaving `lower(email)` in the OR would have left all three
+     * predicates behind a sequential scan and made the other two indexes decorative.
+     *
+     * The term is matched against three columns and never against a name alone. Staff arrive
+     * holding whatever the complaint gave them -- an address, a display name, or the slug out
+     * of a profile URL -- and an endpoint that matched one of those would send them to guess
+     * which.
+     *
+     * KEYSET, ON THE IDENTIFIER, in both. `Identifiers` mints UUID v7, so descending by
+     * identifier is newest first and the cursor is the last row of the previous page. An offset
+     * would drift as accounts are created underneath the reader, which on this list means a
+     * moderator paging past the account they are looking for. `:after IS NULL` is left as it
+     * was: unlike the term it does not gate the indexed predicates, so a generic plan applies
+     * it as the filter it already is.
+     *
+     * Soft-deleted accounts are excluded from both, like every finder above. An account that
+     * has been anonymised has nothing left to inspect, and suspending one would be a decision
      * about somebody the platform has finished forgetting.
+     */
+
+    /** The list a moderator opens before they have typed anything. */
+    @Query("""
+            SELECT u FROM User u
+            WHERE u.deletedAt IS NULL
+              AND (:suspendedOnly = FALSE OR u.suspendedAt IS NOT NULL)
+              AND (:after IS NULL OR u.id < :after)
+            ORDER BY u.id DESC
+            """)
+    List<User> list(
+            @Param("suspendedOnly") boolean suspendedOnly, @Param("after") UUID after, Pageable page);
+
+    /**
+     * The same list narrowed to a search.
+     *
+     * @param term a {@code LIKE} pattern that has already been folded and wrapped in wildcards
+     *     by {@code UserDirectory.patternOf} — folded there by {@code Slugs.fold}, which is
+     *     {@code ideanest_fold}'s mirror, because a term folded one way and a column folded the
+     *     other match nothing at all. Never null: an absent term is {@link #list} instead
      */
     @Query("""
             SELECT u FROM User u
             WHERE u.deletedAt IS NULL
-              AND (:term IS NULL
-                   OR lower(CAST(u.email AS string)) LIKE :term ESCAPE '!'
-                   OR lower(u.name) LIKE :term ESCAPE '!'
-                   OR lower(u.slug) LIKE :term ESCAPE '!')
+              AND (ideanest_fold(u.email) LIKE :term ESCAPE '!'
+                   OR ideanest_fold(u.name) LIKE :term ESCAPE '!'
+                   OR ideanest_fold(u.slug) LIKE :term ESCAPE '!')
               AND (:suspendedOnly = FALSE OR u.suspendedAt IS NOT NULL)
               AND (:after IS NULL OR u.id < :after)
             ORDER BY u.id DESC
