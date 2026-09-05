@@ -385,8 +385,8 @@ class ProjectChecklistApiTests extends AbstractIntegrationTest {
         EmailAddress email = EmailAddress.of("checklist" + SEQUENCE.incrementAndGet() + "@example.com");
         Account account = signIn(email, "Test Creator");
         // Publishing needs a plan since V62. Written rather than bought, because this
-        // suite is not about subscriptions -- Campaigns.subscribe says why it is PRO.
-        Campaigns.subscribe(dataSource, account.id());
+        // suite is not about them -- Campaigns.mayPublish carries both preconditions.
+        Campaigns.mayPublish(dataSource, account.id());
         return account;
     }
 

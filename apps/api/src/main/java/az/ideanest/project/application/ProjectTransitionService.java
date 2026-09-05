@@ -53,12 +53,14 @@ import org.springframework.transaction.annotation.Transactional;
  * may not be ours, so this is where "state transitions are enforced server-side
  * and cannot be bypassed" is actually true.
  *
- * <p><strong>Publishing is also gated on a subscription.</strong> {@link PublishingGate}
- * is asked on submission, between the edge check and the checklist, and it refuses a
- * creator who has not paid or whose plan does not stretch to this campaign. It is a
- * collaborator here rather than four inline conditions for the reason the checklist is:
- * this class exists so that the edge, the write and the history stay one legible
- * guarantee, and every rule inlined into it makes that harder to see.
+ * <p><strong>Publishing is also gated on the creator agreement and on a
+ * subscription.</strong> {@link CreatorAgreementGate} and {@link PublishingGate} are
+ * asked on submission, between the edge check and the checklist: the first refuses a
+ * creator who has not accepted §22.2's creator agreement (#426), the second one who has
+ * not paid or whose plan does not stretch to this campaign (#368). They are collaborators
+ * here rather than inline conditions for the reason the checklist is: this class exists
+ * so that the edge, the write and the history stay one legible guarantee, and every rule
+ * inlined into it makes that harder to see.
  *
  * <p><strong>What is not here.</strong> Transitions driven by time rather than by
  * a person — a scheduled launch arriving, a deadline passing — are scheduled work
@@ -76,6 +78,7 @@ public class ProjectTransitionService {
     private final ProjectStateTransitionRepository transitions;
     private final ProjectChecklistService checklist;
     private final PublishingGate publishing;
+    private final CreatorAgreementGate agreement;
     private final ApplicationEventPublisher events;
     private final Outbox outbox;
     private final AuditLog audit;
@@ -88,6 +91,7 @@ public class ProjectTransitionService {
             ProjectStateTransitionRepository transitions,
             ProjectChecklistService checklist,
             PublishingGate publishing,
+            CreatorAgreementGate agreement,
             ApplicationEventPublisher events,
             Outbox outbox,
             AuditLog audit,
@@ -98,6 +102,7 @@ public class ProjectTransitionService {
         this.transitions = transitions;
         this.checklist = checklist;
         this.publishing = publishing;
+        this.agreement = agreement;
         this.events = events;
         this.outbox = outbox;
         this.audit = audit;
@@ -158,6 +163,14 @@ public class ProjectTransitionService {
         // finished. Same order, same reason, one step further out: a creator with no
         // subscription is not sent to write a longer risks section they will still not
         // be allowed to submit.
+        //
+        // The agreement before the subscription, and that order is deliberate. The
+        // creator agreement states the payout terms and the fee, so a platform that
+        // sent somebody to a price list before telling them the terms they would be
+        // operating under would be selling before disclosing. Accepting it is also
+        // free and takes a minute, where the other refusal may cost money -- the
+        // cheaper of the two to be told about first.
+        agreement.requireAccepted(project);
         publishing.requireEntitled(project);
         checklist.requireSubmittable(project);
 

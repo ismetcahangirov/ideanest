@@ -532,7 +532,37 @@ public enum AuditAction {
      * record. This is the one that removes an entitlement somebody is holding, which is
      * why it is audited and why its reason is required.
      */
-    SUBSCRIPTION_CANCELED("subscription.canceled", "subscription");
+    SUBSCRIPTION_CANCELED("subscription.canceled", "subscription"),
+
+    /**
+     * A version of one of §22.2's legal documents was published.
+     *
+     * <p><strong>The most far-reaching thing anybody does from the console.</strong>
+     * Publishing a version of the creator agreement changes what every creator who submits
+     * after it is bound by, and it cannot be undone — V65's trigger makes a published
+     * version immutable, so the correction is another publication and both rows are here.
+     *
+     * <p>The entity is the governing (Azerbaijani) version, because that is the text that
+     * governs and the one an acceptance names. The detail carries the kind, the version,
+     * the languages published with it and the content hash of the governing text — which
+     * is what lets somebody establish, years later, that the document in the table is the
+     * document that was published.
+     */
+    LEGAL_DOCUMENT_PUBLISHED("legal.document_published", "legal_document"),
+
+    /**
+     * A member of staff read what an account has agreed to, and when.
+     *
+     * <p>Audited because it is a read of somebody's own record rather than of the
+     * platform's — {@code AUDIT_TRAIL_READ}'s argument, unchanged: a screen that says who
+     * agreed to what, from which address, is one whose use should be answerable. It is
+     * cheap to record and the absence is only noticed during the investigation that needed
+     * it.
+     *
+     * <p>The entity is the account whose record was read, not the member of staff, so that
+     * "who has looked at this person's file" is one query.
+     */
+    ACCEPTANCE_RECORD_READ("legal.acceptance_record_read", "account");
 
 
 

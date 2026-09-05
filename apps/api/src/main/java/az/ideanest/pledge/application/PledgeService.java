@@ -5,11 +5,15 @@ import az.ideanest.pledge.domain.PledgeAddon;
 import az.ideanest.pledge.infrastructure.PledgeAddonRepository;
 import az.ideanest.pledge.infrastructure.PledgeRepository;
 import az.ideanest.project.application.PledgeAcceptance;
+import az.ideanest.shared.legal.AgreementInForce;
+import az.ideanest.shared.legal.AgreementKind;
+import az.ideanest.shared.legal.Agreements;
 import az.ideanest.shared.outbox.Outbox;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,6 +77,7 @@ public class PledgeService {
     private final PledgeDetails details;
     private final Outbox outbox;
     private final DisplayRates displayRates;
+    private final Agreements agreements;
     private final Clock clock;
 
     public PledgeService(
@@ -83,6 +88,7 @@ public class PledgeService {
             PledgeDetails details,
             Outbox outbox,
             DisplayRates displayRates,
+            Agreements agreements,
             Clock clock) {
         this.reservations = reservations;
         this.acceptance = acceptance;
@@ -91,6 +97,7 @@ public class PledgeService {
         this.details = details;
         this.outbox = outbox;
         this.displayRates = displayRates;
+        this.agreements = agreements;
         this.clock = clock;
     }
 
@@ -186,14 +193,32 @@ public class PledgeService {
      * own delivery is separately at-least-once, which is the consumer's problem and is
      * the contract {@code OutboxMessage} states.
      *
+     * <p><strong>The fourth thing that happens, and it is also the same transaction
+     * (#427).</strong> §22.3 requires that "rewards are not guaranteed" is stated within the
+     * pledge flow, and the sentence has been in the catalogues since #324 — what was missing
+     * was the record that anybody saw it. So the confirmation carries the version of the
+     * backer agreement the client showed, and an acceptance is written against it here.
+     *
+     * <p>At confirmation and not at registration, because the risk is a risk about
+     * <em>this</em> campaign and <em>this</em> reward. A statement accepted at sign-up,
+     * months earlier, on a platform the person was only browsing, is a statement nobody read
+     * about a thing that did not exist yet. It is also the moment §9.2 makes a commitment:
+     * nothing is charged, and the pledge counts towards whether the campaign succeeds.
+     *
+     * @param acknowledgedVersion the version of the backer agreement the client showed, or
+     *     null when it showed none. Compared against the version in force rather than
+     *     trusted, so a checkout page left open across a publication is refused and reloaded
+     *     rather than recording an acknowledgement of a sentence nobody read
      * @throws PledgeNotFoundException when the pledge is not this backer's
      * @throws PledgeNotDraftException when it is not in {@code DRAFT} — §10.4's
      *     {@code PLEDGE_NOT_DRAFT}
      * @throws ReservationExpiredException when its five minutes ran out — §10.4's
      *     {@code RESERVATION_EXPIRED}
+     * @throws BackerAgreementRequiredException when a backer agreement is in force and the
+     *     request did not acknowledge that version — §10.4's {@code AGREEMENT_REQUIRED}
      */
     @Transactional
-    public PledgeDetail confirm(UUID pledgeId, UUID backerId, UUID paymentMethodId) {
+    public PledgeDetail confirm(UUID pledgeId, UUID backerId, UUID paymentMethodId, Integer acknowledgedVersion) {
         Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
 
         Pledge pledge = pledges.findOwned(pledgeId, backerId)
@@ -217,6 +242,35 @@ public class PledgeService {
         List<PledgeAddon> heldAddons = addons.findByPledge(pledgeId);
 
         Pledge confirmed = reservations.confirm(pledge, heldAddons, now, paymentMethodId);
+
+        /*
+         * §22.3's acknowledgement (#427), recorded in this transaction.
+         *
+         * <p>After the transition and before the outbox, which is the same position and the
+         * same argument the event has: before it, an acceptance would be recorded against a
+         * confirmation the three refusals above may still prevent, and a person would be on
+         * record as having acknowledged a risk they never took.
+         *
+         * <p>The refusal is here rather than at the top of the method for the same reason.
+         * A backer whose reservation lapsed forty seconds ago should be told that, not told
+         * to re-read a sentence about a pledge they can no longer make.
+         *
+         * <p>Nothing happens when no backer agreement has been published, which is this
+         * repository's state until #439 seeds the text. `Agreements` argues why the legal
+         * gates fail open where the subscription gate fails closed: a platform refusing every
+         * confirmation until somebody writes a document is worse than one that starts asking
+         * the day the document exists.
+         */
+        Optional<AgreementInForce> required = agreements.inForce(AgreementKind.BACKER_AGREEMENT);
+        if (required.isPresent()) {
+            AgreementInForce agreement = required.get();
+            if (acknowledgedVersion == null || acknowledgedVersion != agreement.version()) {
+                // A mismatch is a stale checkout page, and it is the case worth refusing:
+                // the client acknowledged a sentence that is no longer the one in force.
+                throw new BackerAgreementRequiredException(pledgeId, agreement, acknowledgedVersion);
+            }
+            agreements.accept(backerId, agreement);
+        }
 
         /*
          * §21.2's rate retention (#327): "the rate used is stored on the pledge, for audit".

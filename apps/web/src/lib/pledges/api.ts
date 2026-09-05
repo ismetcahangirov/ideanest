@@ -392,6 +392,18 @@ export interface DraftPledgeRequest {
  */
 export interface ConfirmPledgeRequest {
   paymentMethodId: string | null;
+  /**
+   * The version of the backer agreement this checkout showed — #427, §22.3.
+   *
+   * A version and not a boolean, deliberately. A boolean would say "the client ticked
+   * something"; what has to be recorded is which sentence the person read. A page left open
+   * across a publication sends the old number and is refused with `AGREEMENT_REQUIRED`,
+   * which is the case the field exists for.
+   *
+   * Null when nothing is published, which is this platform's state until #439 seeds the
+   * words — the service treats an unpublished agreement as no requirement.
+   */
+  acknowledgedAgreementVersion: number | null;
 }
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' } as const;

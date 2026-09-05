@@ -150,6 +150,26 @@ public class SecurityConfiguration {
                         // catalogue is written only from /v1/admin/plans.
                         .requestMatchers(HttpMethod.GET, "/v1/plans")
                         .permitAll()
+                        // §22.2's documents, and §22.3's requirement that a
+                        // person can read what they are agreeing to before they
+                        // agree to it. Public for the reason the price list is,
+                        // and more so: these are the pages a stranger and a
+                        // regulator read, and terms of use behind
+                        // authentication are terms nobody can decide to be
+                        // bound by.
+                        //
+                        // Nothing in any answer belongs to a person -- it is the
+                        // same text for everybody -- which is what lets them be
+                        // Cache-Control: public for an hour, and an archived
+                        // version for a month.
+                        //
+                        // GET and nothing else. Drafting and publishing are
+                        // /v1/admin/legal/documents and need
+                        // CONFIGURE_PLATFORM; accepting one is a side effect of
+                        // submitting a campaign or confirming a pledge, both of
+                        // which are somebody's.
+                        .requestMatchers(HttpMethod.GET, "/v1/legal/documents", "/v1/legal/documents/**")
+                        .permitAll()
                         // Browsing, and the counts beside it. Public because
                         // discovery is the front door: a visitor who has not
                         // registered is exactly the audience it exists for, and

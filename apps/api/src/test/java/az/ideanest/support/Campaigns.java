@@ -494,6 +494,56 @@ public final class Campaigns {
     }
 
     /**
+     * Everything an account needs before a campaign of theirs may be submitted.
+     *
+     * <p><strong>The one method a suite that submits should call</strong>, and the reason it
+     * exists rather than a line per precondition in each suite. Submission has grown two
+     * preconditions that have nothing to do with campaigns: a subscription since #368, and an
+     * accepted creator agreement since #426. There are dozens of suites that submit; teaching
+     * each of them about the second one would mean teaching each of them about the third.
+     *
+     * <p>So the preconditions live here and the suites say what they mean. {@code #426}'s own
+     * tests and {@code ProjectPublishingGateTests} take the honest route and call the parts
+     * separately, because the gates are what they are about.
+     */
+    public static void mayPublish(DataSource dataSource, UUID accountId) {
+        subscribe(dataSource, accountId);
+        acceptCreatorAgreement(dataSource, accountId);
+    }
+
+    /**
+     * Records that an account accepted the creator agreement in force, if one is.
+     *
+     * <p><strong>A no-op when nothing is published</strong>, which is the state of every
+     * suite that has not seeded a document — and is exactly what the gate does in that case.
+     * {@code Agreements} argues why an unpublished agreement is not a requirement rather than
+     * a platform-wide refusal; this fixture inherits that and needs no branch for it.
+     *
+     * <p>What is written is what {@code LegalAgreements.accept} would write: the governing
+     * (Azerbaijani) version of the highest effective version, and no address, because a
+     * fixture has no request. {@code ON CONFLICT DO NOTHING} against V65's
+     * one-per-user-version index, so a second call is the first one.
+     */
+    public static void acceptCreatorAgreement(DataSource dataSource, UUID accountId) {
+        new JdbcTemplate(dataSource)
+                .update(
+                        """
+                        INSERT INTO document_acceptances (id, user_id, document_id, accepted_at)
+                        SELECT ?, ?, d.id, now()
+                          FROM legal_documents d
+                         WHERE d.kind = 'CREATOR_AGREEMENT'
+                           AND d.locale = 'az'
+                           AND d.published_at IS NOT NULL
+                           AND d.effective_from <= now()
+                         ORDER BY d.version DESC
+                         LIMIT 1
+                        ON CONFLICT DO NOTHING
+                        """,
+                        UUID.randomUUID(),
+                        accountId);
+    }
+
+    /**
      * Gives an account the plan that publishing needs, by writing the row.
      *
      * <p><strong>For suites that are not testing subscriptions.</strong> Submission is

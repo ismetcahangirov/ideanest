@@ -446,3 +446,105 @@ export function emailTemplateEditorCopyFrom(
     live: t('screens.emailTemplateEditor.live'),
   };
 }
+
+/**
+ * §22.2's eight documents, drafted and published — issue #425.
+ *
+ * <p>Exhaustive and typed rather than an index signature, for the reason this file's other
+ * shapes give and one of its own: the screen's whole job is to make an irreversible action
+ * legible, and a missing string here would be a blank where the sentence explaining that a
+ * published version cannot be edited should be.
+ */
+export interface LegalDocumentEditorCopy extends ConsoleChromeCopy {
+  readonly subject: string;
+  readonly noticeTitle: string;
+  readonly noticeBody: string;
+  readonly documentLabel: string;
+  readonly languageLabel: string;
+  readonly languageHint: string;
+  readonly draftHeading: string;
+  readonly draftIntro: string;
+  readonly titleLabel: string;
+  readonly bodyLabel: string;
+  readonly bodyHint: string;
+  readonly save: string;
+  readonly working: string;
+  /** Carries `{locale}`, `{version}`. */
+  readonly savedNotice: string;
+  readonly publishHeading: string;
+  readonly publishIntro: string;
+  /** Carries `{languages}`. */
+  readonly willPublish: string;
+  readonly governingMissingTitle: string;
+  readonly governingMissingBody: string;
+  readonly effectiveFromLabel: string;
+  readonly effectiveFromHint: string;
+  readonly publish: string;
+  /** Carries `{languages}`, `{version}`. */
+  readonly publishedNotice: string;
+  readonly nothingDraftedTitle: string;
+  readonly nothingDraftedBody: string;
+  readonly historyHeading: string;
+  readonly historyIntro: string;
+  readonly noVersionsTitle: string;
+  readonly noVersionsBody: string;
+  /** Carries `{version}`. */
+  readonly versionLabel: string;
+  /** Carries `{from}`, `{hash}`. */
+  readonly versionMeta: string;
+  readonly doneTitle: string;
+  readonly failedTitle: string;
+  readonly loadingList: string;
+  readonly tryAgain: string;
+  /** §22.2's eight, named in the reader's language rather than by their code. */
+  readonly kind: Readonly<Record<string, string>>;
+  /** §21.1's four, likewise. The Azerbaijani entry says that it is the governing text. */
+  readonly locale: Readonly<Record<string, string>>;
+}
+
+export function legalDocumentEditorCopyFrom(
+  t: AdminTranslator,
+  chrome: ConsoleChromeCopy,
+): LegalDocumentEditorCopy {
+  return {
+    ...chrome,
+    subject: t('screens.legal.subject'),
+    noticeTitle: t('screens.legal.noticeTitle'),
+    noticeBody: t('screens.legal.noticeBody'),
+    documentLabel: t('screens.legal.documentLabel'),
+    languageLabel: t('screens.legal.languageLabel'),
+    languageHint: t('screens.legal.languageHint'),
+    draftHeading: t('screens.legal.draftHeading'),
+    draftIntro: t('screens.legal.draftIntro'),
+    titleLabel: t('screens.legal.titleLabel'),
+    bodyLabel: t('screens.legal.bodyLabel'),
+    bodyHint: t('screens.legal.bodyHint'),
+    save: t('screens.legal.save'),
+    working: t('screens.legal.working'),
+    /* `t.raw`, because it carries placeholders — `test-copy.ts` refuses `t()` on one. */
+    savedNotice: String(t.raw('screens.legal.savedNotice')),
+    publishHeading: t('screens.legal.publishHeading'),
+    publishIntro: t('screens.legal.publishIntro'),
+    willPublish: String(t.raw('screens.legal.willPublish')),
+    governingMissingTitle: t('screens.legal.governingMissingTitle'),
+    governingMissingBody: t('screens.legal.governingMissingBody'),
+    effectiveFromLabel: t('screens.legal.effectiveFromLabel'),
+    effectiveFromHint: t('screens.legal.effectiveFromHint'),
+    publish: t('screens.legal.publish'),
+    publishedNotice: String(t.raw('screens.legal.publishedNotice')),
+    nothingDraftedTitle: t('screens.legal.nothingDraftedTitle'),
+    nothingDraftedBody: t('screens.legal.nothingDraftedBody'),
+    historyHeading: t('screens.legal.historyHeading'),
+    historyIntro: t('screens.legal.historyIntro'),
+    noVersionsTitle: t('screens.legal.noVersionsTitle'),
+    noVersionsBody: t('screens.legal.noVersionsBody'),
+    versionLabel: String(t.raw('screens.legal.versionLabel')),
+    versionMeta: String(t.raw('screens.legal.versionMeta')),
+    doneTitle: t('screens.legal.doneTitle'),
+    failedTitle: t('screens.legal.failedTitle'),
+    loadingList: t('screens.legal.loadingList'),
+    tryAgain: t('screens.legal.tryAgain'),
+    kind: t.raw('screens.legal.kind') as Readonly<Record<string, string>>,
+    locale: t.raw('screens.legal.locale') as Readonly<Record<string, string>>,
+  };
+}

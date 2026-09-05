@@ -68,12 +68,14 @@ import {
   emailTemplateIndexCopyFrom,
   flagConsoleCopyFrom,
   healthDashboardCopyFrom,
+  legalDocumentEditorCopyFrom,
   platformAnalyticsCopyFrom,
   type AuditTrailCopy,
   type EmailTemplateEditorCopy,
   type EmailTemplateIndexCopy,
   type FlagConsoleCopy,
   type HealthDashboardCopy,
+  type LegalDocumentEditorCopy,
   type PlatformAnalyticsCopy,
 } from './platform-copy';
 
@@ -139,6 +141,10 @@ export async function emailTemplateIndexCopy(): Promise<EmailTemplateIndexCopy> 
 
 export async function emailTemplateEditorCopy(): Promise<EmailTemplateEditorCopy> {
   return emailTemplateEditorCopyFrom(await getTranslations('admin'), await consoleChrome());
+}
+
+export async function legalDocumentEditorCopy(): Promise<LegalDocumentEditorCopy> {
+  return legalDocumentEditorCopyFrom(await getTranslations('admin'), await consoleChrome());
 }
 
 export async function collectionManagerCopy(): Promise<CollectionManagerCopy> {

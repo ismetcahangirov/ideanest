@@ -249,6 +249,18 @@ export interface CheckoutViewProps {
    * a missing string is a money question rather than a cosmetic one.
    */
   copy: CheckoutCopy;
+  /**
+   * The version of the backer agreement in force, resolved on the server — #427, §22.3.
+   *
+   * <p>Null when nothing is published, which is this platform's state until #439 seeds the
+   * words. The risk statement is then not drawn and the confirmation sends nothing, which is
+   * what the service does with it: an agreement that does not exist is not a requirement.
+   *
+   * <p>A number and not the text. The words come from the catalogue, where
+   * `wording.test.ts` pins them in four languages; a database row could not be pinned, and
+   * §22.3 is a requirement about a sentence somebody read rather than about a row.
+   */
+  backerAgreementVersion?: number | null;
 }
 
 export function CheckoutView({
@@ -256,8 +268,9 @@ export function CheckoutView({
   secretTokens = [],
   initialRewardId = null,
   copy,
+  backerAgreementVersion = null,
 }: CheckoutViewProps) {
-  const checkout = useCheckout(projectId, secretTokens, initialRewardId);
+  const checkout = useCheckout(projectId, secretTokens, initialRewardId, backerAgreementVersion);
   const clock = useReservationClock(checkout.pledge?.reservationExpiresAt);
 
   /*
@@ -688,6 +701,38 @@ export function CheckoutView({
 
             {step === 2 && (
               <>
+                {/*
+                  §22.3's RISK STATEMENT, INSIDE THE PLEDGE FLOW — #427.
+
+                  Directly above the confirm control, not behind a disclosure, not in a
+                  footer and not as a link. §22.3's requirement is about what a person saw,
+                  and a person did not see what was behind a link — so this is plain markup
+                  that is on the screen whenever the confirm button is.
+
+                  NO MOTION. CLAUDE.md: motion decreases as money gets closer, and checkout
+                  must not animate because every animation there reads as hesitation. There
+                  is no transition, no entry animation and nothing that moves when this
+                  appears — it is part of the step, not an interruption of it.
+
+                  `text-on-white`, not `text-white`: this panel is `--white-surface`, and
+                  `text-white/64` measures nothing on it. docs/ui-kit.md's context rule.
+
+                  Drawn only when a version is in force. Until #439 seeds the words there is
+                  nothing published, the service asks for no acknowledgement, and a statement
+                  the confirmation does not record would be decoration.
+                */}
+                {backerAgreementVersion !== null && (
+                  <section
+                    aria-labelledby="checkout-risk"
+                    className="flex flex-col gap-1 border-t border-on-white/12 pt-3"
+                  >
+                    <h2 id="checkout-risk" className="text-[13px] font-medium text-on-white">
+                      {copy.risk.heading}
+                    </h2>
+                    <p className="text-[13px] text-on-white/64">{copy.risk.body}</p>
+                  </section>
+                )}
+
                 {/* The one lime element on the screen (§8.5). */}
                 <Pill
                   fullWidth
@@ -695,7 +740,23 @@ export function CheckoutView({
                   onClick={checkout.confirm}
                   disabled={checkout.phase === 'confirming' || clock.expired}
                 >
-                  {checkout.phase === 'confirming' ? copy.review.confirming : copy.review.confirm}
+                  {/*
+                    THE LABEL CARRIES THE ACCEPTANCE — #427.
+
+                    One action rather than two. A separate tick is stronger evidence and is
+                    also friction on the platform's single most important conversion; a
+                    control whose own words say what pressing it means is unmissable in a way
+                    a checkbox beside it is not, and it cannot be clicked past.
+
+                    Reverts to the plain label when nothing is published, because a button
+                    claiming an understanding the service is not recording would be worse
+                    than either.
+                  */}
+                  {checkout.phase === 'confirming'
+                    ? copy.review.confirming
+                    : backerAgreementVersion !== null
+                      ? copy.risk.confirm
+                      : copy.review.confirm}
                 </Pill>
                 <p className="text-[13px] text-on-white/64">
                   {copy.review.notCharged}

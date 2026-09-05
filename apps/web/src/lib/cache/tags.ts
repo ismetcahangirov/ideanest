@@ -64,6 +64,18 @@ export const COLLECTIONS = 'collections';
  */
 export const PLANS = 'plans';
 
+/**
+ * §22.2's legal documents. One tag: publishing a version changes the whole set at once.
+ *
+ * <p>Long-lived beside the others, for {@link PLANS}' reason and more strongly. These change
+ * a few times a year, they are the same document for every reader in a language, and they are
+ * written by exactly one screen. The tag is what makes the long window survivable in the one
+ * direction that matters: a version published this morning must be the one somebody accepting
+ * this afternoon is shown, and an administrator who published it should not spend an hour
+ * being told the site is stale.
+ */
+export const LEGAL = 'legal';
+
 /** One campaign, by the identifier the service knows it as. */
 export function project(id: string): string {
   return `project:${id}`;

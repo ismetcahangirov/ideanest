@@ -214,10 +214,18 @@ function draftKey(call: number): string | undefined {
   return draftMock.mock.calls[call]?.[1];
 }
 
-async function open(initialRewardId: string | null = null): Promise<UserEvent> {
+async function open(
+  initialRewardId: string | null = null,
+  backerAgreementVersion: number | null = null,
+): Promise<UserEvent> {
   const user = userEvent.setup();
   render(
-    <CheckoutView projectId="project-1" copy={COPY} initialRewardId={initialRewardId} />,
+    <CheckoutView
+      projectId="project-1"
+      copy={COPY}
+      initialRewardId={initialRewardId}
+      backerAgreementVersion={backerAgreementVersion}
+    />,
   );
   await screen.findByRole('radio', { name: /Pledge without a reward/ });
   return user;
@@ -878,6 +886,63 @@ describe('the payment step', () => {
   });
 });
 
+describe('the risk statement §22.3 requires inside the pledge flow', () => {
+  it('is on the screen with the confirm control, and the control says what pressing it means', async () => {
+    /*
+     * ISSUE #427. §22.3 asks that "rewards are not guaranteed" be stated within the pledge
+     * flow — not in the terms, not behind a link, not in a footer. The requirement is about
+     * what a person saw, so this asserts the sentence is rendered on the step that has the
+     * confirm button rather than that a link to it exists.
+     */
+    const user = await open(null, 3);
+    await reserveTheMug(user);
+
+    const risk = within(await screen.findByRole('region', { name: 'What backing means' }));
+    expect(risk.getByText(/not a purchase/i)).toBeInTheDocument();
+    expect(risk.getByText(/not guaranteed/i)).toBeInTheDocument();
+
+    /*
+     * And the acceptance is the confirm control's own label, which is the design #427 settled
+     * on: one action rather than a tick beside a button. A separate checkbox is stronger
+     * evidence and is also friction on the platform's most important conversion; a control
+     * whose words say what pressing it means cannot be clicked past.
+     */
+    expect(screen.getByRole('button', { name: 'I understand — confirm my pledge' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Confirm pledge' })).not.toBeInTheDocument();
+  });
+
+  it('sends the version it showed, so a stale page is refused rather than recorded', async () => {
+    confirmMock.mockResolvedValue(
+      draft({ state: 'CONFIRMED', reservationExpiresAt: null, confirmedAt: '2026-08-17T10:00:00Z' }),
+    );
+
+    const user = await open(null, 3);
+    await reserveTheMug(user);
+    await user.click(await screen.findByRole('button', { name: 'I understand — confirm my pledge' }));
+
+    await screen.findByText('Your pledge is confirmed');
+    // The number, not a boolean. A boolean would say "the client ticked something"; what has
+    // to be recorded is which sentence the person read.
+    expect(confirmMock.mock.calls[0]?.[1]).toEqual({
+      paymentMethodId: null,
+      acknowledgedAgreementVersion: 3,
+    });
+  });
+
+  it('is absent, and asks for nothing, while no agreement is published', async () => {
+    /*
+     * The state of this platform until #439 seeds the words. The service treats an
+     * unpublished agreement as no requirement, and a statement the confirmation does not
+     * record would be decoration on the one screen where decoration costs the most.
+     */
+    const user = await open();
+    await reserveTheMug(user);
+
+    await screen.findByRole('button', { name: 'Confirm pledge' });
+    expect(screen.queryByRole('region', { name: 'What backing means' })).not.toBeInTheDocument();
+  });
+});
+
 describe('confirming', () => {
   it('states plainly that nothing has been charged', async () => {
     confirmMock.mockResolvedValue(
@@ -897,7 +962,12 @@ describe('confirming', () => {
     expect(screen.queryByText(/thank you for your payment/i)).not.toBeInTheDocument();
 
     // The confirm request carried its own key and a null payment method.
-    expect(confirmMock.mock.calls[0]?.[1]).toEqual({ paymentMethodId: null });
+    expect(confirmMock.mock.calls[0]?.[1]).toEqual({
+      paymentMethodId: null,
+      // #427: null because no backer agreement is published in this fixture, which is what
+      // the service reads as "nothing to acknowledge".
+      acknowledgedAgreementVersion: null,
+    });
     expect(confirmMock.mock.calls[0]?.[2]).toBeTruthy();
     expect(confirmMock.mock.calls[0]?.[2]).not.toBe(draftKey(0));
   });
@@ -948,7 +1018,10 @@ describe('confirming', () => {
     // Echoed from the draft rather than written as a literal null: the day a
     // draft carries a payment method, the confirmation sends it instead of
     // silently dropping it.
-    expect(confirmMock.mock.calls[0]?.[1]).toEqual({ paymentMethodId: 'payment-method-1' });
+    expect(confirmMock.mock.calls[0]?.[1]).toEqual({
+      paymentMethodId: 'payment-method-1',
+      acknowledgedAgreementVersion: null,
+    });
   });
 
   it('announces the outcome politely rather than stealing focus to a toast', async () => {

@@ -1,7 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import az from '../../../messages/az.json';
 import en from '../../../messages/en.json';
+import ru from '../../../messages/ru.json';
+import tr from '../../../messages/tr.json';
 import { TRUST_COPY } from '../../components/project/CampaignTrustBlock';
 import { REASON_LABELS } from '../moderation/describe';
 
@@ -79,6 +82,100 @@ describe('the English catalogue against the wording it replaced', () => {
     }
   });
 
+  it('states the risk within the pledge flow, in all four languages', () => {
+    /*
+     * §22.3 requires that "rewards are not guaranteed" is said INSIDE the pledge flow — not
+     * in the terms and not on a linked page — and #427 records that somebody was shown it.
+     * The record is only worth having if the sentence it records is the sentence §22.3 asks
+     * for, and a translator with no context is exactly who would soften it into "your reward
+     * will arrive soon".
+     *
+     * So each language is pinned on the two things that must survive translation: that a
+     * pledge is not a purchase, and that a reward is not guaranteed. Pinned as patterns
+     * rather than as whole sentences, because the wording is the translator's and the
+     * meaning is not.
+     */
+    expect(en.checkout.risk.body).toMatch(/not a purchase/iu);
+    expect(en.checkout.risk.body).toMatch(/not guaranteed/iu);
+    expect(az.checkout.risk.body).toMatch(/satın almaq deyil/iu);
+    expect(az.checkout.risk.body).toMatch(/zəmanət yoxdur/iu);
+    expect(ru.checkout.risk.body).toMatch(/не покупка/iu);
+    expect(ru.checkout.risk.body).toMatch(/не гарантировано/iu);
+    expect(tr.checkout.risk.body).toMatch(/satın almak değildir/iu);
+    expect(tr.checkout.risk.body).toMatch(/garanti değildir/iu);
+
+    /*
+     * And the confirm control's own label carries the acceptance, in all four. That is the
+     * design #427 settled on — one action rather than a tick beside a button — so a
+     * translation that reverted it to a bare "Confirm" would quietly turn the acknowledgement
+     * back into something nobody was asked about.
+     */
+    for (const [language, label] of [
+      ['en', en.checkout.risk.confirm],
+      ['az', az.checkout.risk.confirm],
+      ['ru', ru.checkout.risk.confirm],
+      ['tr', tr.checkout.risk.confirm],
+    ] as const) {
+      expect(label, language).not.toBe('');
+      expect(label.length, language).toBeGreaterThan(en.checkout.review.confirm.length);
+    }
+  });
+
+  it('never calls a pledge a purchase, in any language', () => {
+    /*
+     * ISSUE #438. The terms can say the platform is an intermediary; if the interface says
+     * "buy", "order" and "product", then §22.1's consumer-protection question is decided on
+     * what the interface said.
+     *
+     * <h2>Scoped, because a blanket ban would be wrong</h2>
+     *
+     * A reward tier genuinely HAS a price — `checkout.errors.belowRewardPrice` says "This
+     * reward costs {price}" and a creator sets that number — and a subscription plan has one
+     * too. The wrong usage is calling a *pledge* a purchase, not calling a tier's amount a
+     * price. So this reads the two namespaces a backer meets when committing money — the
+     * pledge flow and the campaign page — and the forbidden list is the vocabulary of buying
+     * rather than the vocabulary of amounts.
+     *
+     * <h2>Four languages, for the reason above</h2>
+     *
+     * The English catalogue is the one somebody thought about. `az` already carries the good
+     * long-form statement and drifted everywhere else, which is exactly the shape this
+     * catches.
+     */
+    const FORBIDDEN: Readonly<Record<string, RegExp>> = {
+      /* satın almaq / alış / məhsul / səbət / sifariş — buy, purchase, product, cart, order. */
+      az: /(satın al|alış-veriş|səbət|sifariş ver)/iu,
+      en: /\b(buy|buying|purchase|purchased|cart|checkout|order this|your order)\b/iu,
+      ru: /(купить|покупк|корзин|оформить заказ)/iu,
+      tr: /(satın al|sepet|sipariş ver)/iu,
+    };
+
+    /*
+     * The one exception, and it is the sentence this rule exists to protect. Saying "a pledge
+     * is NOT a purchase" has to be allowed to use the word, or the product cannot state its
+     * own position — so a message is exempt when it is one of the four negations, which are
+     * listed by key rather than matched by a cleverness that would exempt the next one too.
+     */
+    const NEGATIONS = new Set(['risk.body']);
+
+    for (const [language, catalogue] of [
+      ['az', az],
+      ['en', en],
+      ['ru', ru],
+      ['tr', tr],
+    ] as const) {
+      const forbidden = FORBIDDEN[language]!;
+
+      for (const [key, message] of flatten(catalogue.checkout)) {
+        if (NEGATIONS.has(key)) continue;
+        expect(message, `${language}.checkout.${key} — ${message}`).not.toMatch(forbidden);
+      }
+      for (const [key, message] of flatten(catalogue.campaign)) {
+        expect(message, `${language}.campaign.${key} — ${message}`).not.toMatch(forbidden);
+      }
+    }
+  });
+
   it('says the same nine report reasons as the public control still holds', () => {
     /*
      * `lib/moderation/describe.ts` keeps `REASON_LABELS` because `ReportControl` — the dialog
@@ -95,3 +192,19 @@ describe('the English catalogue against the wording it replaced', () => {
     expect(en.admin.moderation.reason).toEqual(REASON_LABELS);
   });
 });
+
+/**
+ * Every string under a namespace, as `key.path` pairs.
+ *
+ * <p>Recursive because the catalogues nest three deep in places, and a rule that only read
+ * the top level would pass on `checkout.review.confirm` — which is where the words that
+ * matter live.
+ */
+function flatten(node: unknown, prefix = ''): readonly (readonly [string, string])[] {
+  if (typeof node === 'string') return [[prefix, node]];
+  if (node === null || typeof node !== 'object') return [];
+
+  return Object.entries(node as Record<string, unknown>).flatMap(([key, value]) =>
+    flatten(value, prefix === '' ? key : `${prefix}.${key}`),
+  );
+}

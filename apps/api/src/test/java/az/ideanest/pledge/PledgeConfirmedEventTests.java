@@ -156,7 +156,7 @@ class PledgeConfirmedEventTests extends AbstractIntegrationTest {
     void confirmingRecordsOnePledgeConfirmedEvent() {
         UUID pledgeId = draft(null);
 
-        pledges.confirm(pledgeId, backer.id(), UUID.randomUUID());
+        pledges.confirm(pledgeId, backer.id(), UUID.randomUUID(), null);
 
         List<Map<String, Object>> events = eventsFor(pledgeId);
         assertThat(events).hasSize(1);
@@ -176,7 +176,7 @@ class PledgeConfirmedEventTests extends AbstractIntegrationTest {
         UUID pledgeId = draft("aB7-xY9_Qz");
         Instant confirmedAt = now();
 
-        pledges.confirm(pledgeId, backer.id(), null);
+        pledges.confirm(pledgeId, backer.id(), null, null);
 
         ConsumerShape event = json.readValue(payloadOf(pledgeId), ConsumerShape.class);
         assertThat(event.pledgeId()).isEqualTo(pledgeId);
@@ -202,7 +202,7 @@ class PledgeConfirmedEventTests extends AbstractIntegrationTest {
         // test here, and silently stops every consumer from reading it.
         UUID pledgeId = draft("aB7-xY9_Qz");
 
-        pledges.confirm(pledgeId, backer.id(), null);
+        pledges.confirm(pledgeId, backer.id(), null, null);
 
         assertThat(parse(payloadOf(pledgeId)))
                 .containsOnlyKeys("pledgeId", "projectId", "backerId", "total", "referrerCode", "confirmedAt");
@@ -218,7 +218,7 @@ class PledgeConfirmedEventTests extends AbstractIntegrationTest {
         // discovered by a consumer that refused the message.
         UUID pledgeId = draft(null);
 
-        pledges.confirm(pledgeId, backer.id(), null);
+        pledges.confirm(pledgeId, backer.id(), null, null);
 
         assertThat(parse(payloadOf(pledgeId))).doesNotContainKey("referrerCode");
         assertThat(json.readValue(payloadOf(pledgeId), ConsumerShape.class).referrerCode())
@@ -234,7 +234,7 @@ class PledgeConfirmedEventTests extends AbstractIntegrationTest {
     void theTotalCrossesAsAStringObjectAndNeverANumber() {
         UUID pledgeId = draft(null);
 
-        pledges.confirm(pledgeId, backer.id(), null);
+        pledges.confirm(pledgeId, backer.id(), null, null);
 
         // Asserted against the committed bytes rather than against a parsed object: a
         // JSON number is an IEEE 754 double in every mainstream parser, and a payload
@@ -277,9 +277,9 @@ class PledgeConfirmedEventTests extends AbstractIntegrationTest {
         // is concerned -- so what has to be true is that the recording sits after the
         // refusal, on the path that actually transitions.
         UUID pledgeId = draft(null);
-        pledges.confirm(pledgeId, backer.id(), null);
+        pledges.confirm(pledgeId, backer.id(), null, null);
 
-        assertThatThrownBy(() -> pledges.confirm(pledgeId, backer.id(), null))
+        assertThatThrownBy(() -> pledges.confirm(pledgeId, backer.id(), null, null))
                 .isInstanceOf(PledgeNotDraftException.class);
 
         assertThat(eventCountFor(pledgeId)).isEqualTo(1);
@@ -299,7 +299,7 @@ class PledgeConfirmedEventTests extends AbstractIntegrationTest {
         // sent, and a message sent only after the commit is lost when the process dies
         // in between. Recorded in the transaction, it is neither.
         assertThatThrownBy(() -> new TransactionTemplate(transactions).executeWithoutResult(status -> {
-                    pledges.confirm(pledgeId, backer.id(), null);
+                    pledges.confirm(pledgeId, backer.id(), null, null);
                     throw new IllegalStateException("Something after the transition failed");
                 }))
                 .isInstanceOf(IllegalStateException.class);

@@ -220,7 +220,19 @@ export const CONSOLE_MODULES: readonly ConsoleModule[] = Object.freeze([
      * creator's pocket, and those are two subjects of one authority rather than two
      * authorities. The rail lists both under Money.
      */
-    otherScreens: ['/admin/plans'],
+    /*
+     * `/admin/legal` is here for the same reason `/admin/plans` is, and the reason is
+     * stated once above: §4.11's table has sixteen rows and no row for §22.2's documents,
+     * because when it was written the platform had none. AD-11 is the authority over what
+     * the platform charges and what it obliges — a fee, a plan and the creator agreement
+     * are three subjects of one authority, and all three need `CONFIGURE_PLATFORM`.
+     *
+     * The rail files it under Platform rather than Money, which is the one place this
+     * module's screens are split across two groups. That is deliberate: a member of staff
+     * looking for the terms of use is not thinking about money, and the rail is a place to
+     * look things up rather than a diagram of §4.11.
+     */
+    otherScreens: ['/admin/plans', '/admin/legal'],
     issue: 311,
   },
   {
@@ -340,6 +352,7 @@ export const CONSOLE_GROUPS: readonly ConsoleGroup[] = Object.freeze([
       '/admin/email-templates',
       '/admin/flags',
       '/admin/health',
+      '/admin/legal',
     ],
   },
 ]);

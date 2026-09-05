@@ -428,6 +428,7 @@
       "/admin/email-templates": "E-posta şablonları",
       "/admin/flags": "Özellik bayrakları",
       "/admin/health": "Sistem sağlığı",
+      "/admin/legal": "Hukuki belgeler",
       "/admin/moderation/submissions": "İncelemedeki kampanyalar",
       "/admin/campaigns": "Tüm kampanyalar"
     },
@@ -743,6 +744,12 @@
         "metaDescription": "Bir kampanya, sayfasının okunduğu hâliyle, her durumda — kararı verecek moderatör için.",
         "title": "Kampanya önizlemesi",
         "intro": "Kampanya, herkese açık sayfasının göstereceği hâliyle, hangi durumda olursa olsun. İnceleme kuyruğu buraya bağlanır; çünkü karar bekleyen bir kampanyanın herkese açık sayfası yoktur — ve yalnızca başlığa ve hedef rakamına bakarak verilen karar bir tahmindir."
+      },
+      "legal": {
+        "metaTitle": "Hukuki belgeler",
+        "metaDescription": "§22.2 gerektirdiği sekiz belge, sürümleri ve yayımlanmaları.",
+        "title": "Hukuki belgeler",
+        "intro": "Yayımlanmış bir sürüm düzenlenmez. Düzeltme yeni bir sürümdür ve eskisi okunabilir kalır, çünkü bir kabul kaydı sürümü adlandırır."
       }
     },
     "screens": {
@@ -1711,8 +1718,8 @@
         "providerAndReason": "{provider} · {code}",
         "reason": {
           "fraudulent": "Kart sahibi değil",
-          "product_not_received": "Ürün ulaşmadı",
-          "product_unacceptable": "Ürün açıklandığı gibi değil",
+          "product_not_received": "Ödül ulaşmadı",
+          "product_unacceptable": "Ödül açıklandığı gibi değil",
           "duplicate": "İki kez çekildi",
           "subscription_canceled": "Abonelik iptal edilmişti",
           "credit_not_processed": "Söz verilen iade yapılmadı",
@@ -1967,11 +1974,64 @@
         "risksHeading": "Riskler ve zorluklar",
         "noRisks": "Henüz bir şey yazılmadı. Gönderim için iki yüz karakter gerekir.",
         "coverAlt": "{title} kapak görseli"
+      },
+      "legal": {
+        "subject": "hukuki belgeler",
+        "noticeTitle": "Yayımlama geri alınamaz",
+        "noticeBody": "Yayımlanmış bir sürüm asla düzenlenmez ve silinmez. Düzeltme yeni bir sürümdür; eskisi okunabilir kalır, çünkü onu kabul eden kişi neyi kabul ettiğini okumaya hak kazanır.",
+        "documentLabel": "Belge",
+        "languageLabel": "Dil",
+        "languageHint": "Geçerli metin Azericedir. Diğer üçü, kişinin neyi kabul ettiğini okuyabilmesi için vardır.",
+        "draftHeading": "Sonraki sürümün taslağı",
+        "draftIntro": "Dil başına bir taslak. Yeniden kaydetmek açık taslağı değiştirir, ikincisini oluşturmaz.",
+        "titleLabel": "Başlık",
+        "bodyLabel": "Metin",
+        "bodyHint": "Bağlantı değil, metnin kendisi saklanır. Kabul kaydı bu metni yıllar sonra da gösterebilmelidir.",
+        "save": "Taslağı kaydet",
+        "working": "Çalışıyor…",
+        "savedNotice": "{locale} dilinde {version} numaralı sürümün taslağı kaydedildi.",
+        "publishHeading": "Yayımla",
+        "publishIntro": "Açık taslakların tümü tek bir sürüm numarası ve tek bir yürürlük tarihiyle birlikte yayımlanır.",
+        "willPublish": "Yayımlanacak diller: {languages}.",
+        "governingMissingTitle": "Azerice metin eksik",
+        "governingMissingBody": "Geçerli olan Azerice sürümdür, bu yüzden onsuz hiçbir şey yayımlanmaz.",
+        "effectiveFromLabel": "Yürürlüğe girer",
+        "effectiveFromHint": "Boş bırakılırsa şimdi. İleri bir tarih kabul edilir; geçmiş bir tarih reddedilir.",
+        "publish": "Bu sürümü yayımla",
+        "publishedNotice": "{version} numaralı sürüm yayımlandı ({languages}).",
+        "nothingDraftedTitle": "Taslak yok",
+        "nothingDraftedBody": "Önce yukarıdaki metni yazın. İkinci kez yayımlamak bir şey yapmaz.",
+        "historyHeading": "Sürümler",
+        "historyIntro": "Her sürüm okunabilir kalır: birini kabul eden kişi neyi kabul ettiğini okuyabilmelidir.",
+        "noVersionsTitle": "Henüz bir şey yayımlanmadı",
+        "noVersionsBody": "Bu belgenin henüz metni yok, bu yüzden platformda hiçbir şey onu gerektirmiyor.",
+        "versionLabel": "Sürüm {version}",
+        "versionMeta": "{from} tarihinden · hash {hash}",
+        "doneTitle": "Tamam",
+        "failedTitle": "Bu işe yaramadı",
+        "loadingList": "Belge yükleniyor",
+        "tryAgain": "Yeniden deneyin",
+        "kind": {
+          "TERMS_OF_USE": "Kullanım koşulları",
+          "PRIVACY_POLICY": "Gizlilik politikası",
+          "COOKIE_POLICY": "Çerez politikası",
+          "PLATFORM_RULES": "Platform kuralları",
+          "CREATOR_AGREEMENT": "Kampanya sahibi sözleşmesi",
+          "BACKER_AGREEMENT": "Destekçi sözleşmesi",
+          "DELIVERY_AND_REFUND_POLICY": "Teslimat ve iade politikası",
+          "DISPUTE_RESOLUTION_POLICY": "Uyuşmazlık çözüm politikası"
+        },
+        "locale": {
+          "az": "Azerice (geçerli metin)",
+          "en": "İngilizce",
+          "ru": "Rusça",
+          "tr": "Türkçe"
+        }
       }
     },
     "moderation": {
       "reason": {
-        "PROHIBITED_ITEM": "Yasaklı ürün",
+        "PROHIBITED_ITEM": "Yasaklı eşya",
         "MISREPRESENTATION": "Yanıltıcı sunum",
         "NOT_ORIGINAL": "Özgün çalışma değil",
         "INTELLECTUAL_PROPERTY": "Fikri mülkiyet",
@@ -2655,8 +2715,8 @@
     }
   },
   "checkout": {
-    "title": "Ödeme",
-    "progress": "Ödeme adımları",
+    "title": "Bu kampanyaya destek ol",
+    "progress": "Destek adımları",
     "steps": {
       "choose": "Ödülünüzü seçin",
       "review": "Gözden geçirin ve onaylayın",
@@ -2737,6 +2797,12 @@
       "reserve": "Rezerve edin ve gözden geçirin",
       "confirm": "Desteği onaylayın",
       "confirming": "Onaylanıyor…"
+    },
+    "risk": {
+      "heading": "Destek olmak ne demek",
+      "body": "Destek satın almak değildir. Bir denemeyi finanse ediyorsunuz ve ödül garanti değildir — kampanya gecikebilir, değişebilir ya da hiç ulaşmayabilir. Ödülü size IdeaNest değil, kampanyayı açan kişi borçludur.",
+      "confirm": "Anladım — desteğimi onayla",
+      "stale": "Bu sayfa açıkken metin güncellendi. Yeniden okuyun, sonra onaylayın."
     },
     "done": {
       "announced": "Desteğiniz onaylandı",

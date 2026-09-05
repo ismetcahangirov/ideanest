@@ -299,7 +299,7 @@ class SubmissionQueueApiTests extends AbstractIntegrationTest {
 
         UUID id = users.findByEmailAndDeletedAtIsNull(email).orElseThrow().getId();
         // Submitting needs a plan since #368.
-        Campaigns.subscribe(dataSource, id);
+        Campaigns.mayPublish(dataSource, id);
         return new Account((String) signedIn.getBody().get("accessToken"), id);
     }
 
