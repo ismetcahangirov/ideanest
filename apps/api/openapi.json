@@ -43,6 +43,103 @@
         "tags" : [ "admin-legal-document-controller" ]
       }
     },
+    "/v1/admin/accounts/{accountId}/compliance-overrides" : {
+      "get" : {
+        "operationId" : "complianceOverrideHistory",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/History"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "compliance-override-controller" ]
+      },
+      "post" : {
+        "operationId" : "complianceOverrideGrant",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/GrantRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Override"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "compliance-override-controller" ]
+      }
+    },
+    "/v1/admin/accounts/{accountId}/compliance-overrides/{overrideId}" : {
+      "delete" : {
+        "operationId" : "complianceOverrideRevoke",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "path",
+          "name" : "overrideId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Override"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "compliance-override-controller" ]
+      }
+    },
     "/v1/admin/analytics" : {
       "get" : {
         "operationId" : "platformAnalyticsDashboard",
@@ -703,7 +800,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
+            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "UPDATE_DUE_SOON", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
           }
         } ],
         "responses" : {
@@ -721,7 +818,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
+            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "UPDATE_DUE_SOON", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
           }
         } ],
         "responses" : {
@@ -746,7 +843,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
+            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "UPDATE_DUE_SOON", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
           }
         } ],
         "requestBody" : {
@@ -783,7 +880,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
+            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "UPDATE_DUE_SOON", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
           }
         }, {
           "in" : "query",
@@ -823,7 +920,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
+            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "UPDATE_DUE_SOON", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
           }
         } ],
         "responses" : {
@@ -843,7 +940,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
+            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "UPDATE_DUE_SOON", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
           }
         } ],
         "responses" : {
@@ -2325,7 +2422,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "MODERATOR", "CURATOR", "FINANCE", "ADMINISTRATOR" ]
+            "enum" : [ "MODERATOR", "CURATOR", "FINANCE", "COMPLIANCE", "ADMINISTRATOR" ]
           }
         } ],
         "responses" : {
@@ -2358,7 +2455,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "MODERATOR", "CURATOR", "FINANCE", "ADMINISTRATOR" ]
+            "enum" : [ "MODERATOR", "CURATOR", "FINANCE", "COMPLIANCE", "ADMINISTRATOR" ]
           }
         } ],
         "requestBody" : {
@@ -2989,6 +3086,70 @@
           }
         },
         "tags" : [ "support-ticket-controller" ]
+      }
+    },
+    "/v1/admin/update-obligations" : {
+      "get" : {
+        "operationId" : "adminObligationQueue",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Queue"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-obligation-controller" ]
+      }
+    },
+    "/v1/admin/update-obligations/{projectId}/resolve" : {
+      "post" : {
+        "operationId" : "adminObligationResolve",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ResolveRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Escalation"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-obligation-controller" ]
       }
     },
     "/v1/admin/users" : {
@@ -3986,6 +4147,33 @@
         "tags" : [ "content-report-controller" ]
       }
     },
+    "/v1/creators/{creatorId}/update-obligations" : {
+      "get" : {
+        "operationId" : "obligationForCreator",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "creatorId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CreatorHistory"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "obligation-controller" ]
+      }
+    },
     "/v1/discover" : {
       "get" : {
         "operationId" : "discoveryDiscover",
@@ -4527,6 +4715,24 @@
           }
         },
         "tags" : [ "project-faq-controller" ]
+      }
+    },
+    "/v1/fees/disclosure" : {
+      "get" : {
+        "operationId" : "feeDisclosurePlatform",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Disclosure"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "fee-disclosure-controller" ]
       }
     },
     "/v1/items/{id}" : {
@@ -7037,6 +7243,33 @@
         "tags" : [ "project-faq-controller" ]
       }
     },
+    "/v1/projects/{projectId}/fee-disclosure" : {
+      "get" : {
+        "operationId" : "feeDisclosureForProject",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Disclosure"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "fee-disclosure-controller" ]
+      }
+    },
     "/v1/projects/{projectId}/finance" : {
       "get" : {
         "operationId" : "campaignFinanceFinance",
@@ -7709,6 +7942,33 @@
           }
         },
         "tags" : [ "survey-controller" ]
+      }
+    },
+    "/v1/projects/{projectId}/update-obligation" : {
+      "get" : {
+        "operationId" : "obligationForProject",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "projectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Obligation"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "obligation-controller" ]
       }
     },
     "/v1/projects/{projectId}/updates" : {
@@ -8592,6 +8852,32 @@
           }
         },
         "tags" : [ "profile-project-controller" ]
+      }
+    },
+    "/v1/users/{slug}/update-obligations" : {
+      "get" : {
+        "operationId" : "obligationForCreatorSlug",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CreatorHistory"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "obligation-controller" ]
       }
     },
     "/v1/webhooks/psp/{provider}" : {
@@ -10470,6 +10756,25 @@
           }
         }
       },
+      "CreatorHistory" : {
+        "type" : "object",
+        "properties" : {
+          "creatorId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "lapsedCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "obligations" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Obligation"
+            }
+          }
+        }
+      },
       "CurrencyRequest" : {
         "type" : "object",
         "properties" : {
@@ -10662,6 +10967,33 @@
         },
         "required" : [ "password" ]
       },
+      "Disclosure" : {
+        "type" : "object",
+        "properties" : {
+          "configured" : {
+            "type" : "boolean"
+          },
+          "creatorReceivesRate" : {
+            "type" : "string"
+          },
+          "currency" : {
+            "type" : "string"
+          },
+          "effectiveFrom" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "platformRate" : {
+            "type" : "string"
+          },
+          "processingFixed" : {
+            "type" : "string"
+          },
+          "processingRate" : {
+            "type" : "string"
+          }
+        }
+      },
       "Dispute" : {
         "type" : "object",
         "properties" : {
@@ -10798,7 +11130,7 @@
           },
           "type" : {
             "type" : "string",
-            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
+            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "UPDATE_DUE_SOON", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
           }
         }
       },
@@ -10915,6 +11247,41 @@
           "submittedAt" : {
             "type" : "string",
             "format" : "date-time"
+          }
+        }
+      },
+      "Escalation" : {
+        "type" : "object",
+        "properties" : {
+          "creatorId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "dueAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "lapsedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "lastUpdateAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "resolutionNote" : {
+            "type" : "string"
+          },
+          "resolvedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "state" : {
+            "type" : "string"
           }
         }
       },
@@ -11310,7 +11677,7 @@
           },
           "role" : {
             "type" : "string",
-            "enum" : [ "MODERATOR", "CURATOR", "FINANCE", "ADMINISTRATOR" ]
+            "enum" : [ "MODERATOR", "CURATOR", "FINANCE", "COMPLIANCE", "ADMINISTRATOR" ]
           }
         }
       },
@@ -11874,14 +12241,14 @@
             "type" : "array",
             "items" : {
               "type" : "string",
-              "enum" : [ "MODERATE_CONTENT", "ADMINISTER_ACCOUNTS", "CURATE", "VIEW_FINANCE", "ISSUE_REFUND", "MANAGE_DISPUTES", "APPROVE_PAYOUT", "HANDLE_SUPPORT", "CONFIGURE_PLATFORM", "VIEW_AUDIT", "VIEW_HEALTH", "ADMINISTER_STAFF" ]
+              "enum" : [ "MODERATE_CONTENT", "ADMINISTER_ACCOUNTS", "CURATE", "VIEW_FINANCE", "ISSUE_REFUND", "MANAGE_DISPUTES", "APPROVE_PAYOUT", "HANDLE_SUPPORT", "CONFIGURE_PLATFORM", "VIEW_AUDIT", "VIEW_HEALTH", "PUBLISH_LEGAL_DOCUMENT", "READ_ACCEPTANCE_RECORD", "READ_SIGNED_AGREEMENT", "REVIEW_IDENTITY_VERIFICATION", "OPEN_IDENTITY_DOCUMENT", "VERIFY_PAYOUT_DESTINATION", "GRANT_COMPLIANCE_OVERRIDE", "ADMINISTER_STAFF" ]
             }
           },
           "roles" : {
             "type" : "array",
             "items" : {
               "type" : "string",
-              "enum" : [ "MODERATOR", "CURATOR", "FINANCE", "ADMINISTRATOR" ]
+              "enum" : [ "MODERATOR", "CURATOR", "FINANCE", "COMPLIANCE", "ADMINISTRATOR" ]
             }
           },
           "staff" : {
@@ -12087,7 +12454,7 @@
           },
           "type" : {
             "type" : "string",
-            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
+            "enum" : [ "PLEDGE_CONFIRMED", "PLEDGE_EDITED", "GOAL_REACHED", "DEADLINE_48H", "DEADLINE_24H", "CAMPAIGN_SUCCEEDED", "CAMPAIGN_UNSUCCESSFUL", "UPDATE_DUE_SOON", "PROJECT_APPROVED", "PAYMENT_COLLECTED", "PAYMENT_FAILED", "FINAL_PAYMENT_WARNING", "PAYOUT_SENT", "NEW_UPDATE_PUBLISHED", "COMMENT_REPLY", "DIRECT_MESSAGE", "SURVEY_AVAILABLE", "SURVEY_OVERDUE", "REWARD_SHIPPED", "FOLLOWED_CREATOR_LAUNCHED", "LAUNCH_REMINDER", "SAVED_PROJECT_ENDING_SOON", "NEW_DEVICE_SIGN_IN" ]
           }
         }
       },
@@ -12123,6 +12490,38 @@
           }
         },
         "required" : [ "idToken" ]
+      },
+      "Obligation" : {
+        "type" : "object",
+        "properties" : {
+          "closedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "dueAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "lapsedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "lastUpdateAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "openedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "state" : {
+            "type" : "string"
+          }
+        }
       },
       "OpenLatePledgesRequest" : {
         "type" : "object",
@@ -12167,6 +12566,51 @@
           "successRate" : {
             "type" : "number",
             "format" : "double"
+          }
+        }
+      },
+      "Override" : {
+        "type" : "object",
+        "properties" : {
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "grantedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "grantedBy" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "live" : {
+            "type" : "boolean"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "requirement" : {
+            "type" : "string"
+          },
+          "revokedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "revokedBy" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "subjectUserId" : {
+            "type" : "string",
+            "format" : "uuid"
           }
         }
       },
@@ -13911,12 +14355,13 @@
       "ResolveRequest" : {
         "type" : "object",
         "properties" : {
-          "outcome" : {
+          "note" : {
             "type" : "string",
-            "enum" : [ "OPEN", "UNDER_REVIEW", "WON", "LOST", "CONCEDED" ]
+            "maxLength" : 2000,
+            "minLength" : 0
           }
         },
-        "required" : [ "outcome" ]
+        "required" : [ "note" ]
       },
       "RespondRequest" : {
         "type" : "object",

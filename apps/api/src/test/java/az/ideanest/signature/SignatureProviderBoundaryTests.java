@@ -4,10 +4,9 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import az.ideanest.signature.domain.SignatureProvider;
+import az.ideanest.support.ProductionClasses;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,9 +30,14 @@ import org.junit.jupiter.api.Test;
  */
 class SignatureProviderBoundaryTests {
 
-    private static final JavaClasses PRODUCTION_CLASSES = new ClassFileImporter()
-            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-            .importPackages("az.ideanest");
+    /**
+     * One import, shared with every other ArchUnit suite — see {@link ProductionClasses}.
+     *
+     * <p>Each suite used to build its own, and five identical object graphs alive at once in one
+     * test worker is what turned the {@code test} task into an {@code OutOfMemoryError} with no
+     * test failing.
+     */
+    private static final JavaClasses PRODUCTION_CLASSES = ProductionClasses.get();
 
     /** The one adapter #428 ships, named so that a second one appearing is a failing test. */
     private static final String SIMA = "az.ideanest.signature.infrastructure.SimaImzaSignatureProvider";

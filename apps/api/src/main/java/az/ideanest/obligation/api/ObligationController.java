@@ -1,6 +1,7 @@
 package az.ideanest.obligation.api;
 
 import az.ideanest.obligation.application.UpdateObligations;
+import az.ideanest.user.application.UserAccounts;
 import java.time.Duration;
 import java.util.UUID;
 import org.springframework.http.CacheControl;
@@ -37,9 +38,11 @@ public class ObligationController {
     private static final Duration CACHE_FOR = Duration.ofMinutes(5);
 
     private final UpdateObligations obligations;
+    private final UserAccounts accounts;
 
-    public ObligationController(UpdateObligations obligations) {
+    public ObligationController(UpdateObligations obligations, UserAccounts accounts) {
         this.obligations = obligations;
+        this.accounts = accounts;
     }
 
     /**
@@ -74,5 +77,40 @@ public class ObligationController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.maxAge(CACHE_FOR).cachePublic())
                 .body(ObligationResponses.CreatorHistory.of(creatorId, obligations.forCreator(creatorId)));
+    }
+
+    /**
+     * The same history, addressed the way the public profile is.
+     *
+     * <p><strong>Two addresses for one read, because the two callers know two different
+     * names.</strong> The profile at {@code /u/{slug}} is reached by slug and §4.2's projection
+     * deliberately carries no identifier — a public page that exposed one would be handing out
+     * the key every other endpoint is addressed by. So a page that has just rendered somebody's
+     * profile cannot call the route above, and inventing a lookup in the browser would be the
+     * client doing the resolution the service already does.
+     *
+     * <p>{@code UserAccounts.findBySlug} is the resolution, and it is the port #90 added for
+     * exactly this shape: following is done from a creator's page, and that page is reached by
+     * slug.
+     *
+     * <p><strong>An unknown slug answers an empty history rather than 404</strong>, and that is
+     * deliberate rather than lazy. {@code UserAccounts.findBySlug} treats a closed account as
+     * not found, and §4.2 goes to some trouble to make an unknown slug, a closed account and a
+     * private profile one indistinguishable answer — a 404 here would make this endpoint a way
+     * to tell them apart from the outside, which is the leak the profile's own 404 exists to
+     * prevent. A creator with no closed campaigns and a slug nobody holds both have nothing to
+     * disclose, and both say so.
+     */
+    @GetMapping(path = "/v1/users/{slug}/update-obligations", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ObligationResponses.CreatorHistory> forCreatorSlug(@PathVariable String slug) {
+        UUID creatorId = accounts.findBySlug(slug).map(account -> account.id()).orElse(null);
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(CACHE_FOR).cachePublic())
+                .body(
+                        creatorId == null
+                                ? ObligationResponses.CreatorHistory.empty()
+                                : ObligationResponses.CreatorHistory.of(
+                                        creatorId, obligations.forCreator(creatorId)));
     }
 }

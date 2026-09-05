@@ -29,6 +29,23 @@
 --   the same argument about `deadline_notices.threshold_hours`.
 -- ---------------------------------------------------------------------------
 --
+-- ---------------------------------------------------------------------------
+-- Contract: none, and the `DROP CONSTRAINT` below is not one -- V47's argument,
+-- unchanged.
+--
+-- The vocabulary on `notifications.type` is widened from twenty-two names to
+-- twenty-three. Nothing is removed, every existing row still satisfies the
+-- constraint, and a CHECK cannot be widened in place -- so the drop and the add
+-- are one transaction expressing "accept one more spelling", and no request sees
+-- the table unconstrained.
+--
+-- The ordering that DOES matter here is between releases rather than between
+-- statements, and it is the expand direction: this migration goes out before the
+-- code that writes UPDATE_DUE_SOON. A deployment still running the previous
+-- release writes none of them, which the wider constraint accepts. Reversing
+-- runs the same sequence backwards -- see the note above the DELETE.
+-- ---------------------------------------------------------------------------
+--
 -- §5.5 obliges a creator to publish an update at least monthly after a
 -- successful campaign, and #437 makes that a clock. A clock that only ever
 -- produced a lapse would be a platform that waits quietly for somebody to fail;

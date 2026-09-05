@@ -4,6 +4,8 @@ import { ProfileAbout } from '../../../../components/profile/ProfileAbout';
 import { ProfileCampaignGrid } from '../../../../components/profile/ProfileCampaignGrid';
 import { ProfileHeader } from '../../../../components/profile/ProfileHeader';
 import { ProfileTabs, type ProfileTab } from '../../../../components/profile/ProfileTabs';
+import { CreatorObligationSummary } from '../../../../components/profile/CreatorObligationSummary';
+import { fetchCreatorObligations } from '../../../../lib/obligations/server';
 import type { Page } from '../../../../lib/community/signals';
 import type { ProfileProjectCard, PublicProfile } from '../../../../lib/profiles/api';
 import {
@@ -151,9 +153,20 @@ export default async function ProfilePage({
    * put two requests on the service for every crawl of a slug nobody has — and would ask about
    * a person the first read is about to say nothing about.
    */
-  const [created, backed, copy] = await Promise.all([
+  /*
+   * §5.5's clock joins the two lists rather than being a fourth round trip: it is read for the
+   * same page, from the same origin, under the same profile tag, and a creator with a late
+   * campaign is exactly the profile a reader is about to make a decision on.
+   *
+   * `null` -- a refused read -- draws nothing, unlike the two lists. There is a real difference:
+   * "this list could not be loaded" is a statement about the page, and "this creator has two
+   * late campaigns" is a statement about a person. Guessing at the second one, or apologising
+   * for not being able to make it, are both worse than saying nothing.
+   */
+  const [created, backed, obligations, copy] = await Promise.all([
     fetchCreatedProjects(slug),
     fetchBackedProjects(slug),
+    fetchCreatorObligations(slug),
     profileCopy(),
   ]);
 
@@ -201,6 +214,15 @@ export default async function ProfilePage({
         profile={profile}
         avatarAlt={fillPlaceholders(copy.avatarAlt, { name: profile.name })}
       />
+
+      {/*
+        Above the tabs and therefore on every one of them, for the campaign page's reason: a
+        reader who found it only under "created" would be a reader who had to go looking for
+        it. It draws nothing at all for a creator with no late campaigns, which is most of them.
+      */}
+      {obligations !== null && (
+        <CreatorObligationSummary obligations={obligations} name={profile.name} />
+      )}
 
       <div className="mt-8">
         <ProfileTabs tabs={tabs} label={copy.tabsLabel} />

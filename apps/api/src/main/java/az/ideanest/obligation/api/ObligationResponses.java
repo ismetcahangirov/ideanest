@@ -59,6 +59,17 @@ public final class ObligationResponses {
      */
     public record CreatorHistory(UUID creatorId, List<Obligation> obligations, int lapsedCount) {
 
+        /**
+         * Nothing to disclose, and no identifier to name.
+         *
+         * <p>What a slug nobody holds answers. Deliberately the same shape a creator with no
+         * closed campaigns gets — see {@code ObligationController.forCreatorSlug} on why the two
+         * must not be distinguishable from outside.
+         */
+        public static CreatorHistory empty() {
+            return new CreatorHistory(null, List.of(), 0);
+        }
+
         public static CreatorHistory of(UUID creatorId, List<UpdateObligations.ObligationView> views) {
             List<Obligation> rendered = views.stream().map(Obligation::of).toList();
             int lapsed = (int) views.stream()

@@ -1623,9 +1623,15 @@ Preferences are per category and per channel, with a digest option.
 > look for. Epic #258 works from this table, and the first pull request under it
 > built WS-01 through WS-06 and WS-09. **WS-07 (#292) landed with the account
 > area**, so the footer carries About, How it works and Trust and safety and the
-> sitemap advertises all three. WS-08 (#293) is still to come and is blocked on a
-> legal deliverable §22 owns; the footer still has no Legal column, deliberately.
-> `apps/web/README.md`'s route table is the inventory of what actually exists.
+> sitemap advertises all three. **WS-08 landed with #439**: `/legal` lists §22.2's
+> eight, `/legal/{document}` renders the version in force, and
+> `/legal/{document}/v/{version}` is the archive. The footer now has a Legal
+> entry — one, pointing at the index rather than eight at the documents — and the
+> reason it had none until now was exact: `navigation.test.ts` refused a Terms
+> link "resolving to nothing", and `/legal` is the one address that is honest
+> whether or not the words exist yet, because it lists all eight and says which
+> have been published. `apps/web/README.md`'s route table is the inventory of what
+> actually exists.
 
 | # | Capability | Note |
 |---|---|---|
@@ -1636,7 +1642,7 @@ Preferences are per category and per channel, with a digest option.
 | WS-05 | Category browse | An indexable landing page per category and subcategory, distinct from §4.3's filter panel because a crawler cannot operate a filter |
 | WS-06 | Search results | A dedicated route behind WS-01's search field. §4.3's panel is a refinement surface; this is an entry point with its own URL. `noindex`: the URL space is written by whoever types in the box |
 | WS-07 | Static content | About, how it works, and trust and safety |
-| WS-08 | Legal | Terms, privacy, and cookie policy. The copy is a legal deliverable and §22 owns it |
+| WS-08 | Legal | §22.2's eight documents, not three. **Built (#439)** at `/legal`, `/legal/{document}` and `/legal/{document}/v/{version}`. The copy is still a legal deliverable §22 owns and none of it exists yet, which the index says out loud rather than hiding — a document with nothing published is listed with "not published yet" beside it, because a platform that has not published its creator agreement is a platform whose list should be short rather than one whose page looks finished. The archive is `noindex` so superseded terms cannot outrank the ones in force |
 | WS-09 | Failure states | Not found, error, and maintenance, all of them inside a shell rather than replacing it. Which shell is a performance decision — see the note below |
 
 > **WS-01 and WS-02 are the accessibility and performance surface of every other
@@ -5933,11 +5939,11 @@ These reduce legal exposure and are product requirements, not legal boilerplate:
 
 | Requirement | State |
 |---|---|
-| A fixed risk statement on every project page | Built — `CampaignTrustBlock`, pinned by `wording.test.ts` |
+| A fixed risk statement on every project page | Built — `CampaignTrustBlock`, pinned by `wording.test.ts`. **Confirmed rather than assumed by #439**: §4.4's three sentences carry the platform's role as intermediary, that rewards are not guaranteed, that creators must keep backers informed, and the all-or-nothing rule — which is what §22.3 asks for, in that order |
 | A **mandatory** risks and challenges section written by the creator | Built — a §5.3 submission requirement |
 | "Rewards are not guaranteed" stated within the pledge flow | Built — #427, below |
 | The creator's project history visible | **Built** — §5.5's clock (#437), surfaced on the campaign page and the creator's profile (#439) |
-| A reporting mechanism | Built — `ReportControl` |
+| A reporting mechanism | Built — `ReportControl`. **Its copy is still hard-coded English**: the component reaches no catalogue at all, so a Russian reader is offered the reasons in a language they may not read. #439 checked this rather than assuming it, and #324's remainder is where it is fixed |
 | Clear fee disclosure | **Built** — `GET /v1/fees/disclosure`, derived from `fee_schedules` (#439) |
 
 All six are built. This is the issue that gets to say so, and each was checked against

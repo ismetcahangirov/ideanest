@@ -260,6 +260,45 @@ class ObligationSweepTests extends AbstractIntegrationTest {
         assertThat((List<?>) history.getBody().get("obligations")).hasSize(1);
     }
 
+    @Test
+    @DisplayName("the same history is addressed by slug, because that is what the profile has")
+    void theCreatorHistoryIsAlsoAddressedBySlug() {
+        obligations.open(projectId, creatorId, clock.instant());
+        clock.advance(properties.interval());
+        sweep.sweep();
+
+        String slug = new JdbcTemplate(dataSource)
+                .queryForObject("SELECT slug FROM users WHERE id = ?", String.class, creatorId);
+
+        ResponseEntity<Map<String, Object>> history = rest.exchange(
+                "/v1/users/%s/update-obligations".formatted(slug),
+                HttpMethod.GET,
+                HttpEntity.EMPTY,
+                new ParameterizedTypeReference<Map<String, Object>>() {});
+
+        // §4.2's profile projection deliberately carries no identifier, so a page that has just
+        // rendered somebody's profile knows their address and nothing else.
+        assertThat(history.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(history.getBody().get("lapsedCount")).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("a slug nobody holds answers an empty history, not a 404")
+    void anUnknownSlugIsNotDistinguishable() {
+        ResponseEntity<Map<String, Object>> history = rest.exchange(
+                "/v1/users/nobody-holds-this-slug/update-obligations",
+                HttpMethod.GET,
+                HttpEntity.EMPTY,
+                new ParameterizedTypeReference<Map<String, Object>>() {});
+
+        // A 404 here would make this endpoint a way to tell an unknown slug from a closed account
+        // from outside — the leak the profile's own 404 goes to some trouble to prevent. A
+        // creator with no closed campaigns and a slug nobody holds both have nothing to disclose.
+        assertThat(history.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat((List<?>) history.getBody().get("obligations")).isEmpty();
+        assertThat(history.getBody().get("lapsedCount")).isEqualTo(0);
+    }
+
     private String state() {
         ResponseEntity<Map<String, Object>> answer = rest.exchange(
                 "/v1/projects/%s/update-obligation".formatted(projectId),

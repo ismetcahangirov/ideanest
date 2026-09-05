@@ -30,6 +30,9 @@ const PUBLIC = [
   '/about',
   '/how-it-works',
   '/trust-safety',
+  '/legal',
+  '/legal/terms-of-use',
+  '/legal/terms-of-use/v/3',
   '/u/ayan',
   '/projects/0193f2a1/a-folding-bicycle',
 ];

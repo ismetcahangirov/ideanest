@@ -72,7 +72,8 @@
         "settings": "Settings",
         "about": "About IdeaNest",
         "howItWorks": "How it works",
-        "trustSafety": "Trust and safety"
+        "trustSafety": "Trust and safety",
+        "legal": "Legal"
       }
     },
     "failure": {
@@ -1463,6 +1464,7 @@
           "MODERATOR": "Moderator",
           "CURATOR": "Curator",
           "FINANCE": "Finance",
+          "COMPLIANCE": "Compliance",
           "ADMINISTRATOR": "Administrator"
         },
         "capability": {
@@ -1477,6 +1479,13 @@
           "CONFIGURE_PLATFORM": "Change fees, feature flags and email copy",
           "VIEW_AUDIT": "Read the audit trail",
           "VIEW_HEALTH": "Read queue depth and provider status",
+          "PUBLISH_LEGAL_DOCUMENT": "Publish a version of a legal document",
+          "READ_ACCEPTANCE_RECORD": "Read what an account has agreed to, and when",
+          "READ_SIGNED_AGREEMENT": "Read an account's signed creator agreement, with the name and FİN on the certificate",
+          "REVIEW_IDENTITY_VERIFICATION": "Approve or reject an identity verification",
+          "OPEN_IDENTITY_DOCUMENT": "Open an identity document — the most sensitive read on the platform",
+          "VERIFY_PAYOUT_DESTINATION": "Confirm that a payout destination belongs to its creator",
+          "GRANT_COMPLIANCE_OVERRIDE": "Waive a compliance requirement for one account, for a bounded time",
           "ADMINISTER_STAFF": "Grant and withdraw roles"
         },
         "picker": {
@@ -2925,6 +2934,14 @@
       "heading": "How funding works here",
       "body": "The platform connects creators with backers. Rewards are not guaranteed, but creators must keep backers informed. You are only charged if the project reaches its goal by the deadline."
     },
+    "obligation": {
+      "lateHeading": "This creator owes an update",
+      "completeHeading": "Fulfilment is finished",
+      "neverUpdatedBody": "Nothing has been published here since the campaign closed. An update was due on {due}.",
+      "lateBody": "The last update was published on {lastUpdate}. The next one was due on {due}.",
+      "completeBody": "The creator has marked this campaign as fulfilled, so monthly updates are no longer expected.",
+      "rule": "Creators agree to publish an update at least once a month until their campaign is fulfilled. IdeaNest states what has happened and mediates between creators and backers; it does not deliver rewards and does not decide disputes."
+    },
     "outcome": {
       "funded": "This campaign was funded",
       "notFunded": "This campaign did not reach its goal",
@@ -2976,6 +2993,11 @@
       "created": "Created",
       "backed": "Backed",
       "about": "About"
+    },
+    "obligations": {
+      "heading": "{count, plural, one {One campaign is late on updates} other {# campaigns are late on updates}}",
+      "body": "{count, plural, one {One campaign by {name} has gone past the date its next backer update was due.} other {# campaigns by {name} have gone past the date their next backer update was due.}}",
+      "rule": "Creators agree to publish an update at least once a month until their campaign is fulfilled. This is stated so you can ask about it; IdeaNest mediates and does not decide disputes."
     },
     "about": {
       "heading": "About {name}",
@@ -3112,6 +3134,82 @@
         "first": "IdeaNest cannot make a campaign deliver. What it can do is keep the record honest: a campaign’s updates, its comments and the way to report it are all on the campaign’s own page, where somebody deciding whether to back it will see them.",
         "second": "A creator can moderate comments on their own campaign, and a removed one does not vanish — the row stays, marked as removed. A comment thread that has been cleaned out therefore still looks like one, which is the point: a page with nothing on it and a page with twelve removals are different things, and a reader is entitled to tell them apart."
       }
+    }
+  },
+  "legal": {
+    "backToIndex": "All legal documents",
+    "meta": {
+      "version": "Version {version}",
+      "archivedVersion": "Version {version} — no longer in force",
+      "effectiveFrom": "In force since {date}",
+      "governingLanguage": "This document has not been translated into your language yet. What follows is the Azerbaijani text, which is the one that governs.",
+      "contentHash": "SHA-256 of this text: {hash}"
+    },
+    "notPublished": {
+      "summary": "This document has not been published yet.",
+      "body": "IdeaNest is required to have this document and has not published a version of it. Nothing here is in force, and no version of it has been presented to anybody for acceptance."
+    },
+    "archive": {
+      "notice": "You are reading a version that is no longer in force. It is kept because somebody who accepted it is entitled to read what they accepted.",
+      "readCurrent": "Read the version in force",
+      "previousAvailable": "Earlier versions are kept and stay readable.",
+      "readVersion": "Read version {version}",
+      "metaTitle": "{document}, version {version}"
+    },
+    "index": {
+      "title": "Legal documents",
+      "summary": "The eight documents IdeaNest is required to publish, and which of them are in force.",
+      "metaTitle": "Legal documents",
+      "metaDescription": "The terms, policies and agreements IdeaNest publishes, with the version and effective date of each.",
+      "intro": "Every document below has a permanent address. Each shows its version number, the date it started to apply, and the digest of its text, so that a version somebody accepted can be identified and read years later.",
+      "inForce": "Version {version}, in force since {date}",
+      "notPublished": "Not published yet",
+      "archiveNote": "Previous versions are never deleted. From any document you can reach the version before it, which is how somebody who accepted an earlier one can read exactly what they accepted."
+    },
+    "documents": {
+      "terms-of-use": {
+        "title": "Terms of use",
+        "summary": "The contract between IdeaNest and everybody who uses it, including the platform’s role as an intermediary."
+      },
+      "privacy-policy": {
+        "title": "Privacy policy",
+        "summary": "What personal data is held, why, for how long, and how to have it erased."
+      },
+      "cookie-policy": {
+        "title": "Cookie policy",
+        "summary": "What is set in your browser, by whom, and what refusing costs you."
+      },
+      "platform-rules": {
+        "title": "Platform rules",
+        "summary": "What may be campaigned for on IdeaNest, and what is removed."
+      },
+      "creator-agreement": {
+        "title": "Creator agreement",
+        "summary": "What a creator undertakes: the obligations, the payout terms, the fee and the indemnity."
+      },
+      "backer-agreement": {
+        "title": "Backer agreement",
+        "summary": "That a pledge is not a purchase, and that a reward is not guaranteed."
+      },
+      "delivery-and-refund-policy": {
+        "title": "Delivery and refund policy",
+        "summary": "When money comes back, when it does not, and who decides."
+      },
+      "dispute-resolution-policy": {
+        "title": "Dispute resolution policy",
+        "summary": "How a disagreement is raised, mediated and ended."
+      }
+    }
+  },
+  "fees": {
+    "disclosure": {
+      "backerHeading": "What your pledge is subject to",
+      "creatorHeading": "What you receive",
+      "backerBody": "You are charged the amount you pledge, and nothing on top of it. Of that amount IdeaNest keeps {platform} and the payment provider keeps {processing}; the rest goes to the creator.",
+      "creatorBody": "IdeaNest keeps {platform} of every pledge collected and the payment provider keeps {processing}, so you receive {keeps} of what your backers pledge.",
+      "fixedFee": "The payment provider also charges {amount} per transaction.",
+      "twoFees": "These are two separate charges. IdeaNest’s fee is what the platform keeps; the processing fee goes to the company that moves the money, and IdeaNest never receives it. The rates in force are the ones above, and they are the rates a payout is calculated with.",
+      "unconfigured": "IdeaNest has not set a fee schedule, so nothing is being deducted from pledges today. This is not a permanent commitment: the rates are published here the moment any are set, and the creator agreement is where the terms are stated."
     }
   }
 }

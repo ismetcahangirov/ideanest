@@ -195,7 +195,11 @@ public class SecurityConfiguration {
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/v1/projects/*/update-obligation",
-                                "/v1/creators/*/update-obligations")
+                                "/v1/creators/*/update-obligations",
+                                // The same history addressed by slug, because the public
+                                // profile is reached by slug and §4.2's projection
+                                // deliberately carries no identifier.
+                                "/v1/users/*/update-obligations")
                         .permitAll()
                         // §22.3's sixth product requirement: clear fee
                         // disclosure -- issue #439.

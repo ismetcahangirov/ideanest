@@ -7,11 +7,10 @@ import az.ideanest.project.application.ProjectTransitionService;
 import az.ideanest.project.domain.Project;
 import az.ideanest.project.domain.ProjectState;
 import az.ideanest.project.domain.ProjectStateMachine;
+import az.ideanest.support.ProductionClasses;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethodCall;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -231,9 +230,9 @@ class ProjectStateMachineTests {
     @Test
     @DisplayName("only the transition service moves a project's state")
     void stateChangesGoThroughOneService() {
-        JavaClasses production = new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("az.ideanest");
+        // Shared with every other ArchUnit suite -- see ProductionClasses on why five identical
+        // imports in one test worker is a memory bound rather than a tidiness question.
+        JavaClasses production = ProductionClasses.get();
 
         List<String> callers = new ArrayList<>();
         for (JavaClass source : production) {

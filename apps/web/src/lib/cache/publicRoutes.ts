@@ -65,6 +65,9 @@ const PUBLIC_SECTIONS: ReadonlySet<string> = new Set([
   'about',
   'how-it-works',
   'trust-safety',
+  // §22.2's documents -- #439. Read by a stranger and a regulator, rendered from anonymous
+  // reads, identical for everybody in a language: the exact shape a shared cache is for.
+  'legal',
   'u',
 ]);
 

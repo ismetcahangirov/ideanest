@@ -46,6 +46,7 @@ const ROUTES_THAT_EXIST = new Set([
   '/about',
   '/how-it-works',
   '/trust-safety',
+  '/legal',
   '/account/saved',
   '/account/following',
   '/account/surveys',
@@ -92,10 +93,20 @@ describe('the navigation lists', () => {
     expect(PRIMARY_NAVIGATION.map((link) => link.href)).not.toContain('/collections');
   });
 
-  it('carry no legal column, because §22 has not written the pages yet', () => {
-    // A Terms link resolving to nothing is a promise about a document that does not exist.
-    const headings = FOOTER_GROUPS.map((group) => group.headingKey);
-    expect(headings).not.toContain('legal');
+  it('carry §22.2’s documents behind one address, and only one', () => {
+    /*
+     * This assertion used to be its inverse: no legal link at all, because "a Terms link
+     * resolving to nothing is a promise about a document that does not exist". #439 built the
+     * pages, so the promise is now keepable — and `/legal` in particular is the one link that
+     * is honest whether or not the words exist yet, because it lists all eight required
+     * documents and says which have been published.
+     *
+     * Still one entry. Eight legal links in a footer column is a column nobody reads, and the
+     * index is what a regulator actually wants.
+     */
+    const targets = FOOTER_GROUPS.flatMap((group) => group.links.map((link) => link.href));
+    expect(targets).toContain('/legal');
+    expect(targets.filter((href) => href.startsWith('/legal'))).toHaveLength(1);
   });
 
   it('key every entry, and hold no English in the route table at all', () => {

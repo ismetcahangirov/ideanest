@@ -32,6 +32,23 @@
 -- ---------------------------------------------------------------------------
 --
 -- ---------------------------------------------------------------------------
+-- Contract: none, and the `DROP CONSTRAINT` below is not one -- V47's argument,
+-- unchanged.
+--
+-- Nothing is removed. No table, no column, and no value any row currently holds:
+-- the constraint on `staff_role_grants.role` is widened from four names to five,
+-- and every row that satisfied the old one satisfies the new one. A CHECK
+-- constraint cannot be widened in place, which is why the statement is written
+-- as a drop and an add; the pair is the smallest way to express "accept one more
+-- spelling". Two statements in one migration are one transaction, so no request
+-- ever sees the table unconstrained.
+--
+-- No later release has to finish this change, and no earlier release breaks
+-- under it. A deployment still running the previous code writes only the four
+-- names it knows about, which the wider constraint accepts.
+-- ---------------------------------------------------------------------------
+--
+-- ---------------------------------------------------------------------------
 -- WHAT THIS IS FOR
 -- ---------------------------------------------------------------------------
 --
