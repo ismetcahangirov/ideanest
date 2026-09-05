@@ -93,6 +93,9 @@ public class NotificationFacts {
             case CAMPAIGN_SUCCEEDED, CAMPAIGN_UNSUCCESSFUL -> facts.withAmount(money(params, "pledged"))
                     .withDetail(text(params, "backersCount"));
             case PROJECT_APPROVED -> facts;
+            // #437's warning. `dueAt` is the date the copy leads with -- "soon" is what a
+            // reminder says when it does not know, and this one does.
+            case UPDATE_DUE_SOON -> facts.withDetail(text(params, "dueAt"));
             // Produced since #64 and #65 built the collection. The two lines below did not
             // change when the producer arrived, which was the point of writing them
             // against the params the future event was going to carry: `amount` and

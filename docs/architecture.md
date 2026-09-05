@@ -116,35 +116,89 @@ graph TD
     Mod[Moderator / Trust and safety]
     Support[Support agent]
     Finance[Finance operator]
+    Compliance[Compliance reviewer]
     Admin --- Mod
     Admin --- Support
     Admin --- Finance
+    Admin --- Compliance
 ```
 
 ### 3.1 Permission matrix
 
-| Action | Guest | User | Backer | Creator | Collaborator | Moderator | Admin | Finance |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| View projects | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Search and filter | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Save a project | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Pledge | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Comment | ❌ | ❌ | ✅¹ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Create a project | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
-| Edit a project | ❌ | ❌ | ❌ | ✅ | ✅² | ❌ | ✅ | ❌ |
-| Publish an update | ❌ | ❌ | ❌ | ✅ | ✅² | ❌ | ✅ | ❌ |
-| View the backer report | ❌ | ❌ | ❌ | ✅ | ✅² | ❌ | ✅ | ✅ |
-| Initiate a payout | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Suspend a project | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
-| Apply an editorial badge | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
-| Ban a user | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
-| Issue a refund | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Action | Guest | User | Backer | Creator | Collaborator | Moderator | Admin | Finance | Compliance |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| View projects | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Search and filter | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Save a project | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Pledge | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Comment | ❌ | ❌ | ✅¹ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Create a project | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Edit a project | ❌ | ❌ | ❌ | ✅ | ✅² | ❌ | ✅ | ❌ | ❌ |
+| Publish an update | ❌ | ❌ | ❌ | ✅ | ✅² | ❌ | ✅ | ❌ | ❌ |
+| View the backer report | ❌ | ❌ | ❌ | ✅ | ✅² | ❌ | ✅ | ✅ | ❌ |
+| Initiate a payout | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Suspend a project | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
+| Apply an editorial badge | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
+| Ban a user | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
+| Issue a refund | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| Resolve a lapsed-update escalation | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
+| Publish a version of a legal document | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Read an account's acceptance record | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
+| Read an account's signed creator agreement | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
+| Approve or reject an identity verification | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅³ | ❌ | ✅³ |
+| **Open an identity document** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
+| Verify a payout destination | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅³ | ❌ | ✅³ |
+| Override a compliance requirement | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅³ | ❌ | ❌ |
 
 ¹ Only backers of that project and its creator may comment. **As shipped in #84
 this is enforced by half**: a signed-in account and a campaign it may see, but
 not "has an active pledge here", which no module publishes an answer to. §4.9
 has the argument for why that fails open rather than closed, and what closes it.
 ² Subject to the granular grants the creator issued.
+³ **Never about their own account**, and that is a constraint rather than a service
+check — `identity_verifications_reviewer_is_not_the_subject` and
+`compliance_overrides_grantor_is_not_the_subject` (V66). A rule only the application
+knows is a rule that holds until somebody writes an `UPDATE` by hand during an
+incident, which is exactly when the only reviewer available is the person who needs
+the decision.
+
+**Compliance is the fifth role, and it exists because a capability had nowhere narrow
+enough to go** (#436). V58 encrypts identity documents in the application, keeps them
+for days rather than for the life of the account, and audits every opening — a design
+that assumes a small number of people. Folded into moderation, "open an identity
+document" would have been held by everybody who reviews a reported comment.
+
+So the role is deliberately narrow in both directions: it holds no
+`MODERATE_CONTENT` and no `VIEW_FINANCE`, and somebody who does both jobs holds both
+roles, which shows on the staff screen. Widening moderation instead would have hidden
+it. Roles are additive and nothing here takes a capability away.
+
+**Verifying a payout destination is Compliance's and not Finance's.** Finance already
+holds "initiate a payout"; the same role deciding both *where* money goes and *that
+the destination is correct* is one person holding both halves, which is the
+arrangement §4.11's dual approval exists to prevent. It is the argument `StaffRole`
+already makes about `APPROVE_PAYOUT`, applied one step earlier in the same sequence.
+
+**Overrides are Admin's alone, and not Compliance's**, for the third instance of that
+argument: a reviewer who could waive the requirement they enforce holds both halves of
+it, and the waiver stops being an exception anybody escalated for.
+
+**An override is time-boxed, reasoned, attributed and visible.** `compliance_overrides`
+(V66) has a NOT NULL `expires_at` — so there is no shape for a permanent one — a reason
+from a closed set plus the grantor's own words, and a row that is never deleted and is
+drawn on the account it was applied to. An override that is invisible after the fact is
+indistinguishable from a control that was never there. Expiry is a comparison rather
+than a swept state, so an override stops working because time passed rather than
+because a job ran.
+
+**Publishing a legal document is no longer the fee schedule's capability.** It shipped
+under `CONFIGURE_PLATFORM` and V65 predicted #436 would narrow it. The two are not the
+same decision: opening new fee terms prices the next payout and is undone by opening
+further terms, and publishing a version of the creator agreement changes what every
+creator submitting after it is bound by and cannot be undone at all, because V65's
+trigger makes a published version immutable.
+
+Every action in this table below the refund row writes an audit entry.
 
 ---
 
@@ -1319,11 +1373,13 @@ Preferences are per category and per channel, with a digest option.
 | AD-06 | Refunds | Full and partial with reason codes. **Built (#67, #307)** at `/admin/refunds`. The decision — reason code, author, state — is `refunds`; the money is a `REFUND` transaction and a ledger posting, and the two are deliberately separate tables |
 | AD-07 | Chargebacks | Notification, evidence, outcome. **Built (#68, #308)** at `/admin/disputes`. Intake is a provider webhook and no endpoint opens one; evidence is recorded here and still submitted through the provider's own console, because §9.3's interface has no upload |
 | AD-08 | Taxonomy | Category and tag management with translations. **Built (#309)** at `/admin/taxonomy`. Handles are permanent — they are in the public URL of every campaign filed under them — and nothing can be retired, because `projects.category_id` references these rows |
+| AD-01a | Lapsed update obligations | §5.5's escalation queue (#437), at `GET /v1/admin/update-obligations` and `POST /v1/admin/update-obligations/{projectId}/resolve` — `MODERATE_CONTENT`, audited. **Filed under AD-01 rather than as a seventeenth module** because it is the same authority over the same subject: a campaign the platform has a concern about, decided by a person. Lapses nobody has closed, oldest first, because the campaign that has been silent longest is the one a backer is most likely to be asking about. **Resolving closes the case and not the obligation** — the clock keeps running, and a creator who lapses again is escalated again — which is why the note is required: the next moderator has to be able to tell "spoke to them" from "they had already posted". Nothing here refunds, suspends or de-ranks anything; §9.7 says the platform mediates |
 | AD-09 | Content moderation | Comments, updates, profiles. **All three are built**: the profile queue with #298 and the comment and update queue with #297, which published `POST /v1/updates/{id}/report` and cost no migration because V23's constraint had named the value since #102 |
 | AD-10 | Support | Tickets with user context and action history. **Built (#310)** at `/admin/support`. Staff record a conversation against an account; there is no public form, which is a separate surface with its own rate limiting. The list narrows by state, priority and assignment (#404), and by **a named colleague since #414** — `?assigneeId=` had been accepted since #404 with no control to set it, so "what is on their plate" was reachable only by editing the URL. A named assignee and "nobody yet" are mutually exclusive on the screen, because the service answers the contradiction with nothing |
 | AD-11 | Fee configuration | Platform and processing rates, exceptions. **Built (#311)** at `/admin/fees`. There is no edit: a change closes the schedule in force and opens a new one, so a payout calculated last month still prices against last month's terms. **The creator subscription catalogue is here too**, at `/admin/plans` — §5.6's plans, and the payments waiting to be recorded against them. Filed under this module rather than a seventeenth row: a fee comes out of a backer's pledge and a plan comes out of a creator's pocket, which is one authority over two subjects. Unlike a fee schedule, a plan **is** edited in place, because what a subscriber was charged is written on their own subscription |
 | AD-12 | Feature flags | Gradual rollout, experiments. **Rollout is built (#312)** at `/admin/flags`; experiments are not, because a variant needs a metric to judge it by and nothing measures one |
 | AD-13 | Analytics | Volume, success rate, average pledge, cohorts, funnels. **The first three are built (#313)** at `/admin/analytics`, over V27's rollups summed across campaigns rather than within one. Cohorts and funnels are not, and the screen says what each waits on |
+| AD-04a | Compliance overrides | An exception to one compliance requirement for one account (#436), at `/v1/admin/accounts/{id}/compliance-overrides` — `GRANT_COMPLIANCE_OVERRIDE`, which only `ADMINISTRATOR` holds, and readable with `REVIEW_IDENTITY_VERIFICATION` so that the person deciding a verification can see an exception was made. **Under the account and not on a screen of its own**, because §3.1 asks that an override appear "on the account it was applied to where the next person to look at that account will see it" — a separate overrides screen would be a list nobody opens except when they are already looking for one. `DELETE` revokes and never deletes: an override withdrawn after somebody used it is a different fact from one that was never granted |
 | AD-14 | Audit log | Immutable record of privileged actions. The record is built (#107, §7.2) and **the screen that reads it is built (#314)** at `/admin/audit`. **Ordered by `occurred_at` since #404**, not by the primary key: the two columns are written by two different clocks — the identifier is minted in the application, `occurred_at` is `DEFAULT now()` — so the page headed "newest first" opened on last month while today's rows sat at position fifteen. The cursor carries the instant and the identifier that breaks its tie |
 | AD-15 | Email templates | Edit, preview, test send. **All three are built**: preview and test send with #86, editing with #315 at `/admin/email-templates`. An edit appends a version and overrides the shipped catalogue rather than replacing it |
 | AD-16 | System health | Queue depth, failed jobs, provider status. **Built (#316)** at `/admin/health`, over counts the service already takes. It does not alert — #138 is what will, and the page says so
@@ -1567,9 +1623,15 @@ Preferences are per category and per channel, with a digest option.
 > look for. Epic #258 works from this table, and the first pull request under it
 > built WS-01 through WS-06 and WS-09. **WS-07 (#292) landed with the account
 > area**, so the footer carries About, How it works and Trust and safety and the
-> sitemap advertises all three. WS-08 (#293) is still to come and is blocked on a
-> legal deliverable §22 owns; the footer still has no Legal column, deliberately.
-> `apps/web/README.md`'s route table is the inventory of what actually exists.
+> sitemap advertises all three. **WS-08 landed with #439**: `/legal` lists §22.2's
+> eight, `/legal/{document}` renders the version in force, and
+> `/legal/{document}/v/{version}` is the archive. The footer now has a Legal
+> entry — one, pointing at the index rather than eight at the documents — and the
+> reason it had none until now was exact: `navigation.test.ts` refused a Terms
+> link "resolving to nothing", and `/legal` is the one address that is honest
+> whether or not the words exist yet, because it lists all eight and says which
+> have been published. `apps/web/README.md`'s route table is the inventory of what
+> actually exists.
 
 | # | Capability | Note |
 |---|---|---|
@@ -1580,7 +1642,7 @@ Preferences are per category and per channel, with a digest option.
 | WS-05 | Category browse | An indexable landing page per category and subcategory, distinct from §4.3's filter panel because a crawler cannot operate a filter |
 | WS-06 | Search results | A dedicated route behind WS-01's search field. §4.3's panel is a refinement surface; this is an entry point with its own URL. `noindex`: the URL space is written by whoever types in the box |
 | WS-07 | Static content | About, how it works, and trust and safety |
-| WS-08 | Legal | Terms, privacy, and cookie policy. The copy is a legal deliverable and §22 owns it |
+| WS-08 | Legal | §22.2's eight documents, not three. **Built (#439)** at `/legal`, `/legal/{document}` and `/legal/{document}/v/{version}`. The copy is still a legal deliverable §22 owns and none of it exists yet, which the index says out loud rather than hiding — a document with nothing published is listed with "not published yet" beside it, because a platform that has not published its creator agreement is a platform whose list should be short rather than one whose page looks finished. The archive is `noindex` so superseded terms cannot outrank the ones in force |
 | WS-09 | Failure states | Not found, error, and maintenance, all of them inside a shell rather than replacing it. Which shell is a performance decision — see the note below |
 
 > **WS-01 and WS-02 are the accessibility and performance surface of every other
@@ -1805,17 +1867,73 @@ project or a collaborator, and no project may misrepresent facts.
 
 ### 5.5 Creator obligations
 
-- Publish an update at least monthly after a successful campaign
-- Inform backers of delays
-- Offer a refund where a reward cannot be delivered
-- Respond to questions and complaints
+**A list of expectations with a mechanism beside each** — #437. Before that, all four
+were sentences: the creator agreement stated them and nothing checked any of them, and
+stating an obligation and never checking it is a clause rather than a control.
 
-These are what the creator agreement states, and §5.6 is where the platform first
-asks anybody to agree to them: a campaign cannot be submitted until its creator has
-accepted the version of that document in force. **Stating an obligation and never
-checking it is a clause rather than a control**, and enforcing these four is #437 —
-a monthly update clock, a visible lapsed state on the creator's profile, and
-escalation to a moderator rather than anything automatic touching money.
+| Obligation | Mechanism |
+|---|---|
+| Publish an update at least monthly after a successful campaign | **Built** — `update_obligations` (V68), a clock per funded campaign |
+| Inform backers of delays | Partly: the clock's lapsed state is public, and the delay itself is what an update says. No separate mechanism |
+| Offer a refund where a reward cannot be delivered | §9.7's refund, initiated by a person. **Deliberately not automatic** — see below |
+| Respond to questions and complaints | Not built. §4.9's comments and AD-10's support tickets are where it would attach |
+
+§5.6 is where the platform first asks anybody to agree to these: a campaign cannot be
+submitted until its creator has accepted the version of the creator agreement in force.
+
+**The clock.** It opens when a campaign is finalised above goal — the obligation module
+listens for `project.succeeded` rather than being called, so neither the project nor the
+community module learns it exists — and it runs until fulfilment is complete. The
+interval is thirty days rather than a calendar month, because a calendar month makes the
+obligation shorter in February for no reason anybody could defend to a creator.
+
+**The state is a comparison and not a column.** There is no `LAPSED` value stored and no
+sweep that sets one: a campaign page asks whether the due date has passed, so an
+obligation lapses because time passed rather than because a job ran. A sweep that has
+been down for a week still shows the right thing on the page; what it delays is the
+warning and the escalation, which are the two things that have to happen exactly once.
+
+| State | Meaning |
+|---|---|
+| `CURRENT` | Nothing is due yet |
+| `DUE_SOON` | Inside the last week. What the reminder is sent on |
+| `NEVER_UPDATED` | The month is up and nothing has been published since the campaign closed |
+| `LAPSED` | The month is up, and there was an earlier update. The date of it is the fact |
+| `COMPLETE` | Fulfilment is done. Not the same as `CURRENT`, and a profile that drew them alike would hide the difference between a creator who delivered and one still going |
+
+**The consequence is visibility, and §22.3 already named it**: "the creator's project
+history visible". A creator whose last campaign went eight months without an update,
+shown on the page where they are asking for money again, costs them something and costs
+the platform nothing. Stated neutrally, with the date of the last update, never by
+colour alone (CLAUDE.md), and never in `--lime-500`, which says "act now" to a reader
+rather than "this is late".
+
+**The warning comes before the lapse, and the lapse notifies nobody.** The point is
+compliance rather than catching people, so `UPDATE_DUE_SOON` reaches the creator a week
+out and a lapse produces a public state and a case in a moderator's queue. Telling a
+creator they are late a week after warning them is the same sentence with a worse tone;
+telling their backers would be the platform publishing a verdict about a dispute §9.7
+says it only mediates.
+
+**Nothing automatic touches money or a campaign's state.** §9.7 says a creator who
+cannot deliver "offers a refund; the platform mediates", and suspension is a moderator
+decision under §4.11's AD-02. An automatic one would be the platform adjudicating a
+dispute it has told everybody it only mediates — which contradicts the intermediary
+position §22 exists to establish. Escalation to a human queue is the output, and
+resolving a case records that somebody looked rather than ending the obligation: the
+clock keeps running, and a creator who lapses again is escalated again.
+
+**The escalation happens once per cycle rather than every morning.** The claim is the
+due date the lapse was raised for, so a daily sweep over a campaign that stays silent
+finds the cycle already spent. An update clears the claim and leaves the case open —
+posting brings a campaign up to date and does not make a moderator's case unhappen,
+because a self-emptying queue would let a creator be late every month, post a sentence
+each time, and never be looked at.
+
+**Read at** `GET /v1/projects/{id}/update-obligation` and
+`GET /v1/creators/{id}/update-obligations`, both public and cacheable for five minutes.
+Public is the mechanism rather than a convenience: the person it is meant to inform is
+the one deciding whether to back this creator again, who has not signed in.
 
 ### 5.6 Creator subscriptions
 
@@ -2649,6 +2767,9 @@ by a database constraint and verified by a nightly reconciliation job.
 | `project_analytics_daily`, `project_analytics_daily_channels` | Pre-aggregated daily metrics (#95). **This row used to say `project_analytics_daily`, "pre-aggregated metrics", and did not say what a day is.** The grain is one row per campaign per **calendar day in one platform zone** — `ideanest.analytics.aggregation.zone`, `Asia/Baku` — and that is the correctness question in this feature rather than a detail. Baku is UTC+4, so a UTC day ends at four in the morning locally and every pledge taken between midnight and 04:00, the tail of the evening where a campaign's traffic actually peaks, would be reported against the previous day; the dashboard would disagree with the creator's own calendar and nothing on screen would explain why. The campaign's own zone is the honest answer and `projects` has no column for one (V6), so it would be a column nobody sets; the reader's zone is worse than either, because the same campaign would then report different numbers to a creator and to a collaborator abroad looking at the same screen. So: one zone, read by the writer and by the reader from one property, and **frozen onto every row** in `time_zone`, so that reconfiguring it is visible at the read side rather than retroactively re-labelling history that was never recomputed. Derived entirely from `referral_attributions` and therefore safe to rebuild: a day's row is a **pure function of the attributions in it**, nothing is accumulated onto what was there before, and the running totals are recomputed from the campaign's first pledge on every pass — so `(project_id, day)` as the conflict target of an upsert is the whole of the idempotency, and a re-run is a repair rather than a double count. **A day with no pledges gets no row**: absence means "nothing happened", the alternative grows the table by campaigns × days whether or not anything ever happens, and the cumulative columns are what make the gaps harmless. Late-arriving attributions — the outbox retries, and `pledged_at` is when the pledge was confirmed rather than when the event arrived — are answered by a **bounded re-rollup window**, `ideanest.analytics.aggregation.re-rollup-window`, three days, beyond which a day stops moving until somebody re-runs the range by hand. A campaign whose attributions are not all in one currency is **left out and named in the log** rather than reported as the addition of two different kinds of thing (§7.3, §21.2). The channel split is `ReferralChannel` **only**: `source`, `campaign` and `referrer_code` are free text that arrived in a URL, so at a daily grain they are an unbounded number of rows per campaign per day, and the full breakdown stays in `GET /referrers`, which folds it at read time. `computed_at` is returned by the read side because it is the only thing that distinguishes a quiet week from an aggregator that stopped on Tuesday |
 | `backer_segments` | §4.7's CD-10 (#97): a named filter over a campaign's backers. **It stores the question and never the answer.** One row per saved filter, holding four axes — `states`, `reward_tier_ids`, `countries`, `term` — and no backer identifier at all; membership is re-evaluated against `pledges` on every read. A stored membership list was the obvious alternative and is wrong twice over: it is out of date the moment somebody pledges, which nobody notices until a bulk message reaches the wrong set, and it is personal data with a second retention rule in a table §17.4 has no mechanism to reach. **Columns rather than one `jsonb` filter**, so the database can say what a filter *is*: `states` is checked against the five states that are a backing, `countries` is checked element-wise against ISO 3166-1 alpha-2, and a filter that will not parse cannot be stored. The cost is a migration when the report gains an axis, which is the right cost — a new axis is a change to the screen and to the API contract, so it was never free. **NULL means "any", not "none"**, and an empty array is refused so that one fact has one representation. Names are unique per campaign, folded and trimmed: "Germany" and "germany " are the same segment named twice, and the second is somebody who forgot they made the first. The segment belongs to the campaign rather than to the person who saved it — a private filter would mean a collaborator messaging a segment nobody else can see — and `created_by` is for the support conversation that starts "who set this up" |
 | `content_reports` | Trust and safety (#102). **This row used to say `moderation_cases`, `reports`, and #102 renamed the second and did not build the first.** "Reports" already means something else three times over in this specification — CD-10's and PM-17's backer report, and §3.1's "view the backer report" — none of which is a moderation object, so a table called `reports` beside a backer report yet to be built is a table the first support query gets wrong. One row per complaint: what was reported as a `target_type`/`target_id` pair with **no foreign key**, for V19's and V21's reason about `aggregate_id` and `entity_id` — it names `projects` and `users` today and `comments` and `project_updates` when §4.9 exists, no single reference can point at four tables, and the consequence is the right one here: a report outlives what it was about, so a campaign hard deleted during an investigation cannot take the complaint with it. The reporter is never null, which is what makes duplicate suppression expressible at all; that suppression is a **unique index partial on `state = 'OPEN'`** rather than a service check, because a read-then-write loses the race between two taps and the open-report count is the queue's only triage signal. Partial rather than absolute so that a reporter whose complaint was dismissed in March can report the same campaign again in June — dropping that while showing them a success is the worst failure a safety feature has. `OPEN → UPHELD` or `DISMISSED`, both terminal, both audited. `moderation_cases` — grouping many reports about one target into one case — is **not built**: the queue answers the same question with a count per target, and a case table that nothing opens or closes is a join nobody needs yet |
+| `update_obligations` | §5.5's monthly-update clock, one row per funded campaign (#437). **One row per campaign and not one per cycle**, which is where it departs from `deadline_notices`: that table is a set of claims because a deadline notice happens twice ever, and this one has to answer "is this creator up to date" on every render of the campaign page. So the row is the current state, and the two claims it makes idempotently -- the reminder and the escalation -- are columns holding **the due date they were made for** rather than booleans. That is what makes "escalate once rather than daily" expressible: `due_at` does not move until an update moves it, and a boolean would have needed clearing by a release that eventually forgets. `lapsed_for` is cleared by an update and `lapsed_at` is not, which is what makes the moderator's queue a queue rather than a snooze button. No column here is derived into money or campaign state, and that absence is the design |
+| `compliance_overrides` | One exception to one compliance requirement for one account (#436). Time-boxed by a NOT NULL `expires_at`, so there is no shape for a permanent one; reasoned from a closed set plus the grantor's own words; attributed through a `RESTRICT` foreign key rather than `SET NULL`, unlike `identity_verifications.reviewed_by`, because an override with no named grantor is an anonymous waiver. `granted_by <> subject_user_id` is total -- both columns are NOT NULL and the grantor cannot become null -- which is the gap `payout_approvals` warns a two-column CHECK leaves. Never deleted: expiry is a comparison rather than a swept state, so an override stops working because time passed |
+| `signatures` | One SİMA İmza signature: what was signed, by which certificate subject, and when (#428). **Never a copy of the certificate material**, which is V58's territory with V58's encryption and V58's sweep -- this must not become a second uncontrolled place where a person's identity sits. The name and FIN are §17.4 personal data and are kept because without them the row proves a certificate signed and not that *this creator* did; #423 governs for how long. `document_acceptances.signature_id` finally has its referent, `RESTRICT`, so a signed agreement cannot silently become a ticked one |
 | `audit_logs` | Privileged actions (#107). Append-only in PostgreSQL rather than by convention: a statement-level `BEFORE UPDATE OR DELETE OR TRUNCATE` trigger raises `restrict_violation`, chosen over a rewrite rule — which would succeed silently — and over a revoked grant, which names a role the migration does not know, does not bind the owner, and does not survive a restore. Carries the actor and, for an impersonated action, whom they acted for; the entity, the outcome, the source address and user agent, and the correlation identifiers. The write is `Propagation.MANDATORY`, so the row and the change it describes are one commit and a failed audit takes the action with it. Deliberately **not** partitioned yet: a statement trigger on a partitioned parent does not fire for a statement aimed at a partition directly, so partitioning today would weaken the guarantee the table exists for |
 | `fee_schedules` | Configurable rates. **Not built.** #64 collects without needing them: the collection posts escrow against the creator's account and §9.5's split happens at payout, so the first thing that has to know a rate is #69 — see §9.2's note on which of the two diagrams the platform implements |
 | `outbox_events` | Transactional outbox (#135). One row per recorded event, written by the same transaction as the business change it describes — which is the whole of the guarantee: the commit that creates the pledge is the commit that creates the event, so neither can exist without the other. Carries the stable `id` a consumer deduplicates on, an `aggregate_type`/`aggregate_id` that is the ordering key and deliberately not a foreign key (an event stays true after its aggregate is deleted, and no single reference can point at four tables), the serialised `payload` as `text` rather than `jsonb` so a consumer receives the bytes the transaction committed, a database-assigned `sequence_no` that decides dispatch order, and `PENDING → PUBLISHED` or `PENDING → DEAD` with `attempts`, `next_attempt_at`, and `last_error`. A relay claims one row at a time with `FOR UPDATE SKIP LOCKED`, so replicas divide the queue rather than double-publishing, and will not dispatch an event while an earlier `PENDING` one for the same aggregate exists. Published rows are not swept yet |
@@ -2823,6 +2944,7 @@ load profile).
 > | `pledge.confirmed` | `pledge`, keyed on the pledge | `PledgeService.confirm`, inside §6.2's `DRAFT → CONFIRMED` transaction | `pledgeId`, `projectId`, `backerId`, `total` as §10.3's `{"amount", "currency"}` object with a **string** amount, `referrerCode` when the pledge carries one, `confirmedAt` |
 > | `project.succeeded` | `project`, keyed on the campaign | `CampaignFinalizer.finalise` (#63), inside §5.1's `LIVE → SUCCESSFUL` transaction | `projectId`, `creatorId`, `goal` and `pledged` as money objects, `backersCount`, `finalisedAt` |
 > | `project.unsuccessful` | `project`, keyed on the campaign | the same, on §5.1's other branch | the same six fields |
+> | `obligation.update_due_soon` | `project`, keyed on the campaign | `ObligationSweeper.act` (#437), in the same transaction as the claim that authorises it | `projectId`, `creatorId`, `dueAt`, `lastUpdateAt` (null when nothing has been published since the campaign closed) |
 >
 > **The outcome is the event type rather than a field on one event.** One
 > `project.finalised` carrying an `outcome` would make every consumer switch on a
@@ -2880,6 +3002,7 @@ load profile).
 | `reminder-sender` | Every minute | Launch reminders (#39) |
 | `deadline-reminder` | Every 5 minutes | Deadline reminders: §4.10's 48- and 24-hour thresholds (#90) |
 | `survey-nudge` | Daily | Chase non-responders (#74). The `survey_nudges` row is the claim -- written in the same transaction as the outbox event, so a crash leaves somebody either unchased and unclaimed or chased and claimed. Without it the sweep's question is true for as long as they have not answered, and every pass is another email. Bounded per pass and by a configured number of attempts: one is a reminder and five is a campaign of its own |
+| `update-obligation-sweep` | Daily | §5.5's monthly clock (#437): warn the creators whose month is nearly up, and put the ones whose month is up in front of a moderator. **Two claims, each keyed to the due date it was made for**, so a reminder is sent once per cycle and an escalation happens once rather than every morning -- and a new due date re-arms both without anything having to clear a flag. Daily rather than by the minute because the obligation is monthly and the state a campaign page reads is a comparison rather than a column: a late pass shows the right thing on the page and only delays the warning. One obligation per transaction, never one pass per transaction |
 | `ledger-reconciliation` | Daily | Verify the balance invariant, compare to settlement |
 | `token-cleaner` | Daily | Purge tokens from unsuccessful campaigns |
 | `exchange-rate-refresh` | Hourly | §21.2's display currency (#327): fetch the central bank's publication and store what is new. **Hourly over a source that publishes daily is not a contradiction** — the hour is how quickly the platform notices a new publication, and eleven of the twelve passes write nothing because V59's unique index over `(source, base, quote, published_for)` already holds the day. An unreachable source is a `WARN` and not a thrown run: throwing would make `JobRunner` back the job off and eventually stop it, so a central bank's bad afternoon would permanently disable a feature whose failure mode is a missing figure. What makes that safe is the age check on the other side — a rate past `max-age` stops being offered, so a source that is genuinely gone takes the approximation off the screen within days |
@@ -3209,6 +3332,27 @@ public record ProviderCapabilities(
 Every request and result type carries an idempotency key. No provider SDK is
 called anywhere except behind this interface — changing provider must be a
 single-file change.
+
+> **The same shape is used for signatures (#428), and deliberately.** §22.2's creator
+> agreement is signed with SİMA İmza, and `SignatureProvider` is this interface's
+> argument applied to a different third party: one interface, one adapter per provider,
+> `SignatureProviderBoundaryTests` asserting that nothing outside `az.ideanest.signature`
+> names a `SignatureResult` or a `SignatureProviderName`. SİMA is one national provider
+> today and ASAN İmza is the obvious second, so the discipline starts now rather than
+> after the second one arrives.
+>
+> The failure boundary is copied too, because it is the part that is easiest to get
+> wrong: **a citizen who cancels or lets a session expire is a value, and a SİMA that
+> cannot be reached is a throw.** A creator who met the first is told "not signed yet"
+> and offered the button again; a creator who met the second is told the signing service
+> is unavailable and that their draft is untouched. Collapsing them produces a
+> submission that failed for an unexplained reason.
+>
+> Where it differs: an adapter **does** ship. §9.2 refuses a payment stub because one
+> returning an approval would make an unfinished path look finished;
+> `SimaImzaSignatureProvider` is not a stub — it speaks to SİMA's real sandbox — so it is
+> switched off by configuration rather than by absence, and `SignatureProviders` refuses
+> outright to start against production SİMA until #423 answers.
 
 > **Built (#61), and nothing implements it.** #60 has not chosen a provider, and §9.2
 > already says why no stub ships in the meantime: one that returned an approval "would
@@ -5738,7 +5882,7 @@ design.
 | `legal_documents` | One row per (kind, locale, version). The body is stored, not linked |
 | `document_acceptances` | One row per (account, version). Appended, never replaced |
 | Read at | `GET /v1/legal/documents`, `/{kind}`, `/{kind}/versions/{version}` — public |
-| Written at | `PUT`/`POST /v1/admin/legal/documents/{kind}` — `CONFIGURE_PLATFORM`, audited |
+| Written at | `PUT`/`POST /v1/admin/legal/documents/{kind}` — `PUBLISH_LEGAL_DOCUMENT` since #436, audited |
 
 **The body is stored rather than linked**, because a document at a URL is a document
 that changed: the acceptance record has to reproduce the text somebody agreed to,
@@ -5764,8 +5908,30 @@ within days, because its purpose ends the moment a reviewer has looked at it. An
 acceptance is a reference and a timestamp rather than a document about a person, and
 its purpose is precisely to be readable years later.
 
-**No text ships with the machinery.** The words are the adviser's (#423) and #439
-publishes them.
+**No text ships with the machinery.** The words are the adviser's (#423). #439 built the
+surfaces that publish them — a route per document per locale, rendered from the stored
+version, with the version and effective date on the page and every prior version
+reachable — and the eight documents are empty until #423 answers. A platform that has
+not published its creator agreement is a platform whose catalogue is short, which is
+what both gates read as "nothing is required" rather than as a refusal.
+
+**The archive matters more than it looks.** Somebody who accepted version 3 must be able
+to read version 3, not only whatever is current — otherwise the acceptance record names a
+text the person it is about cannot see. V65 stores every version precisely so that route
+can exist, and the trigger that makes a published version immutable is what makes it
+worth having.
+
+**A signature, where a tick is not proportionate.** #428 built `SignatureProvider` and
+`signatures` (V67) behind §9.4's shape: one interface, one adapter per provider,
+`SignatureProviderBoundaryTests` asserting that nothing outside the module names a
+provider type. #429 is the caller. What is stored is the signature, the certificate's
+subject, the signing time and the hash of what was signed; what is deliberately **not**
+stored is any copy of the citizen's certificate material, which would make this a second
+uncontrolled place where a person's identity sits beside V58's.
+
+The adapter runs against SİMA's sandbox and `SignatureProviders` **refuses to start**
+against production SİMA, because #423 has not answered which personal data from a
+certificate may be kept and for how long. A note would not have been a control.
 
 ### 22.3 Transparency in the product
 
@@ -5773,12 +5939,36 @@ These reduce legal exposure and are product requirements, not legal boilerplate:
 
 | Requirement | State |
 |---|---|
-| A fixed risk statement on every project page | Built — `CampaignTrustBlock`, pinned by `wording.test.ts` |
+| A fixed risk statement on every project page | Built — `CampaignTrustBlock`, pinned by `wording.test.ts`. **Confirmed rather than assumed by #439**: §4.4's three sentences carry the platform's role as intermediary, that rewards are not guaranteed, that creators must keep backers informed, and the all-or-nothing rule — which is what §22.3 asks for, in that order |
 | A **mandatory** risks and challenges section written by the creator | Built — a §5.3 submission requirement |
 | "Rewards are not guaranteed" stated within the pledge flow | Built — #427, below |
-| The creator's project history visible | #437 produces it, #439 surfaces it |
-| A reporting mechanism | Built — `ReportControl` |
-| Clear fee disclosure | #439, derived from `fee_schedules` rather than written down |
+| The creator's project history visible | **Built** — §5.5's clock (#437), surfaced on the campaign page and the creator's profile (#439) |
+| A reporting mechanism | Built — `ReportControl`. **Its copy is still hard-coded English**: the component reaches no catalogue at all, so a Russian reader is offered the reasons in a language they may not read. #439 checked this rather than assuming it, and #324's remainder is where it is fixed |
+| Clear fee disclosure | **Built** — `GET /v1/fees/disclosure`, derived from `fee_schedules` (#439) |
+
+All six are built. This is the issue that gets to say so, and each was checked against
+what is on screen rather than against what was intended.
+
+**Fee disclosure was the one still open, and the reason is worth keeping.** The platform's
+fee copy was a sentence in a message catalogue saying that every payment is priced at zero
+commission. That was *true*, because no schedule is seeded — and it would have become
+**false the day one was**, silently, because nothing checks a catalogue against a table.
+
+So the disclosure is derived: `GET /v1/fees/disclosure` reads the schedule in force, and
+`GET /v1/projects/{id}/fee-disclosure` reads the one that campaign is actually priced
+under, most-specific-wins exactly as a collection resolves. A number a creator can check
+against the payout they get is a disclosure; a sentence about the platform's intentions is
+not, and `FeeDisclosureApiTests` asserts that the answer changes when the schedule does.
+
+**§5.2's fee and the payment provider's fee stay distinguishable**, and are never summed
+for the reader: a creator reading "5%" and receiving 94.2% will ask, and the answer needs
+to already be on the page. `creatorReceivesRate` is computed on the server for the same
+reason `open` is on a fee schedule — three clients deriving it would round it three ways.
+
+**No schedule in force answers `configured: false`, not zeros.** The two are different
+statements: zeros are a commitment to charge nothing, and an empty table is the platform
+not having decided. `FeeSchedules.priceOf` treats the absence as zero fees because a
+payout run must not stop over it; a page has the opposite obligation.
 
 **The risk statement inside the pledge flow** — #427. §22.3 asks for it *within the
 flow*, not in the terms and not behind a link, because the requirement is about what a

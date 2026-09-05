@@ -92,6 +92,19 @@ ideanest:
     # assert a narrower capability grant a role explicitly.
     bootstrap-emails: moderator@ideanest.test
 
+  obligation:
+    # Disabled, exactly as every other schedule here is: `-` is Spring's own value for
+    # "do not schedule this". ObligationSweepTests drives the pass directly with the
+    # instant to judge against; a daily sweep firing in the background would escalate
+    # the very campaigns a test is about to assert are still current.
+    schedule: "-"
+    # The production values. The interval and the lead are what the tests are checking,
+    # so shortening them here would mean asserting a rule against a configuration
+    # nothing runs on -- and there is no need, because the suite moves AdjustableClock.
+    interval: P30D
+    reminder-lead: P7D
+    per-pass: 50
+
   project:
     story:
       # The production value. The window itself is what the tests are checking, so

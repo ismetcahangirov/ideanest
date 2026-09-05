@@ -3,6 +3,10 @@ import { CheckoutView } from '../../../../../components/checkout/CheckoutView';
 import { privatePageMetadata } from '../../../../../lib/seo/metadata';
 import { checkoutCopy } from '../../../../../lib/i18n/shell-copy.server';
 import { fetchLegalDocument } from '../../../../../lib/api/server';
+import { FeeDisclosure } from '../../../../../components/fees/FeeDisclosure';
+import { fetchFeeDisclosure } from '../../../../../lib/fees/server';
+import { localeOrDefault } from '../../../../../lib/i18n/locale';
+import { getLocale } from 'next-intl/server';
 
 /**
  * `/projects/{id}/back` — the pledge flow, docs/architecture.md §4.5.
@@ -131,6 +135,20 @@ export default async function BackProjectPage({
    */
   const backerAgreement = await fetchLegalDocument('BACKER_AGREEMENT');
 
+  /*
+   * §22.3's sixth requirement, on the screen it is actually about — #439.
+   *
+   * **This campaign's terms and not the platform's**, resolved most-specific-wins exactly as the
+   * collection will be: a campaign may carry its own schedule, and quoting the platform rate to
+   * somebody backing a campaign on different terms would be the disclosure §22.3 exists to
+   * prevent.
+   *
+   * Read on the server and rendered with the page, for the reason the backer agreement above is:
+   * a fee that appeared a moment after the confirm control did would be one somebody had already
+   * scrolled past.
+   */
+  const [fees, locale] = await Promise.all([fetchFeeDisclosure(id), getLocale()]);
+
   return (
     <main>
       <CheckoutView
@@ -140,6 +158,18 @@ export default async function BackProjectPage({
         copy={copy}
         backerAgreementVersion={backerAgreement?.version ?? null}
       />
+
+      {/*
+        A Server Component beneath the client island rather than a prop through it. Two reasons,
+        and the second is the one that decides it: the disclosure needs `Intl` and `decimal.js`
+        for its arithmetic, and passing it as rendered markup keeps both out of the checkout
+        bundle — docs/motion-system.md §5 and #119's budget argument apply to every kilobyte on
+        this route. The first is that `CheckoutView` owns the pledge, and the fee is a statement
+        about the platform rather than about this pledge's total.
+      */}
+      <div className="mx-auto w-full max-w-[720px] px-5 pb-12 sm:px-6">
+        <FeeDisclosure disclosure={fees} audience="backer" locale={localeOrDefault(locale)} />
+      </div>
     </main>
   );
 }

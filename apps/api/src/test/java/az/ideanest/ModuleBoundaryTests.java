@@ -4,10 +4,9 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import az.ideanest.support.ProductionClasses;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -69,9 +68,14 @@ class ModuleBoundaryTests {
      */
     private static final String PROJECT_SUMMARIES = "az.ideanest.shared.project.ProjectSummaries";
 
-    private static final JavaClasses PRODUCTION_CLASSES = new ClassFileImporter()
-            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-            .importPackages(ROOT);
+    /**
+     * One import, shared with every other ArchUnit suite — see {@link ProductionClasses}.
+     *
+     * <p>Each suite used to build its own, and five identical object graphs alive at once in one
+     * test worker is what turned the {@code test} task into an {@code OutOfMemoryError} with no
+     * test failing.
+     */
+    private static final JavaClasses PRODUCTION_CLASSES = ProductionClasses.get();
 
     @Test
     @DisplayName("there are classes to check")

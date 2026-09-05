@@ -43,7 +43,17 @@ import org.springframework.beans.factory.annotation.Autowired;
  */
 class EmailCopyTests extends AbstractIntegrationTest {
 
-    /** A rendering document carrying every fact any type reads. */
+    /**
+     * A rendering document carrying every fact any type reads.
+     *
+     * <p>Every fact, and the assertion below is what keeps that true: a type whose copy names an
+     * argument this document does not carry renders a gap where a date or an amount belongs, and
+     * {@code EmailFactsHole} catches it as a double space. {@code dueAt} joined with #437's
+     * {@code UPDATE_DUE_SOON}, and it is a date rather than an instant because
+     * {@code NotificationEventListener} formats it before it reaches a person — an ISO timestamp
+     * with a Z on the end in the middle of an Azerbaijani sentence is the platform showing its
+     * plumbing.
+     */
     private static final String PARAMS =
             """
             {
@@ -53,7 +63,8 @@ class EmailCopyTests extends AbstractIntegrationTest {
               "goal": {"amount": "5000.00", "currency": "AZN"},
               "pledged": {"amount": "6250.00", "currency": "AZN"},
               "backersCount": 184,
-              "attempt": 2
+              "attempt": 2,
+              "dueAt": "2026-10-05"
             }""";
 
     private static final String TITLE = "Xari Bulbul Ceramics";
@@ -76,7 +87,8 @@ class EmailCopyTests extends AbstractIntegrationTest {
               "goal": {"amount": "5000.00", "currency": "AZN"},
               "pledged": {"amount": "6250.00", "currency": "AZN"},
               "backersCount": 184,
-              "attempt": 2
+              "attempt": 2,
+              "dueAt": "2026-10-05"
             }""";
 
     /** The suffix on a key that names the campaign, as {@code EmailComposer} spells it. */

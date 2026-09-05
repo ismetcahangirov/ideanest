@@ -121,6 +121,21 @@ export const FOOTER_GROUPS: readonly FooterGroup[] = Object.freeze([
       { href: '/about', key: 'about' },
       { href: '/how-it-works', key: 'howItWorks' },
       { href: '/trust-safety', key: 'trustSafety' },
+      /*
+       * §22.2's eight, behind one address — #439.
+       *
+       * There was deliberately no legal link here until this issue, and the reason
+       * `navigation.test.ts` gave was exact: "a Terms link resolving to nothing is a promise
+       * about a document that does not exist". `/legal` is not that link. It lists all eight
+       * required documents and says which of them have been published, so the honest state
+       * — machinery built, words still #423's adviser's — is what a reader arrives at rather
+       * than a 404 or a blank page pretending to be terms.
+       *
+       * One entry and not eight. A footer column with eight legal documents in it is a column
+       * nobody reads, and the index is the page a regulator actually wants: one address that
+       * answers what the platform must have, what it has, and since when.
+       */
+      { href: '/legal', key: 'legal' },
     ],
   },
 ]);

@@ -10,6 +10,7 @@ import az.ideanest.notification.application.NotificationEvents.PledgeConfirmed;
 import az.ideanest.notification.application.NotificationEvents.PledgeEdited;
 import az.ideanest.notification.application.NotificationEvents.ProjectApproved;
 import az.ideanest.notification.application.NotificationEvents.ProjectLaunched;
+import az.ideanest.notification.application.NotificationEvents.UpdateDueSoon;
 import az.ideanest.notification.domain.NotificationType;
 import az.ideanest.shared.audience.AudienceProperties;
 import az.ideanest.shared.audience.ProjectAudience;
@@ -295,6 +296,22 @@ public class NotificationEventListener {
                         required(event.projectId(), "projectId", message),
                         about(event.projectId()),
                         at(event.approvedAt(), message)));
+            }
+            case UpdateDueSoon.EVENT_TYPE -> {
+                UpdateDueSoon event = read(message, UpdateDueSoon.class);
+                UUID projectId = required(event.projectId(), "projectId", message);
+                // The creator alone. See NotificationEvents.UpdateDueSoon on why the backers of
+                // a campaign are not told that their creator is nearly late.
+                yield List.of(NotificationRequest.about(
+                        required(event.creatorId(), "creatorId", message),
+                        NotificationType.UPDATE_DUE_SOON,
+                        PROJECT,
+                        projectId,
+                        // A date and not an instant: this reaches the copy as {3} and is read
+                        // by a person, and an ISO timestamp with a Z on the end in the middle of
+                        // an Azerbaijani sentence is the platform showing its plumbing.
+                        about(projectId, "dueAt", dueDate(event.dueAt())),
+                        at(event.dueAt(), message)));
             }
             case ProjectLaunched.EVENT_TYPE -> {
                 ProjectLaunched event = read(message, ProjectLaunched.class);
@@ -676,6 +693,18 @@ public class NotificationEventListener {
      *     so that every reader finds the campaign in one place rather than in two depending
      *     on the type
      */
+    /**
+     * The due date as a person reads it: {@code 2026-10-05}, in UTC.
+     *
+     * <p>UTC and not the recipient's zone, because the platform does not know it — §21 has four
+     * languages and no timezone preference — and a date that is a day out for somebody in Baku is
+     * better than a timestamp nobody can read at all. The obligation has a week of slack in it,
+     * so a day either way changes nothing a creator would act on.
+     */
+    private static String dueDate(Instant dueAt) {
+        return dueAt == null ? "" : dueAt.atZone(java.time.ZoneOffset.UTC).toLocalDate().toString();
+    }
+
     private Map<String, Object> about(UUID projectId, Object... facts) {
         Map<String, Object> params = new LinkedHashMap<>();
         if (projectId != null) {

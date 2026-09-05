@@ -114,6 +114,113 @@ public enum StaffCapability {
     VIEW_HEALTH,
 
     /**
+     * Publish a version of one of §22.2's legal documents. #425, narrowed by #436.
+     *
+     * <p><strong>Its own capability because of what publishing does, not because of what
+     * the screen looks like.</strong> It shipped under {@link #CONFIGURE_PLATFORM} — the
+     * authority that changes a fee schedule — and V65 said at the time that #436 would
+     * narrow it. The two are not the same authority: a fee change prices the next payout
+     * and is reversed by opening new terms, and publishing a version of the creator
+     * agreement changes what every creator submitting after it is bound by and cannot be
+     * reversed at all, because V65's trigger makes a published version immutable.
+     *
+     * <p>Held by {@code ADMINISTRATOR} alone today, which is where it already was. The
+     * point of separating it is that it can now be narrowed further, or granted to a
+     * fifth role, without also handing over the feature flags.
+     */
+    PUBLISH_LEGAL_DOCUMENT,
+
+    /**
+     * Read what an account has agreed to, and when. #425's record, #436's row.
+     *
+     * <p>Who agreed to which version of which document, from which address. Not a
+     * document about a person, which is why {@code document_acceptances} is never swept
+     * — and still somebody's own record rather than the platform's, which is why the read
+     * is audited under {@code ACCEPTANCE_RECORD_READ}.
+     *
+     * <p>Separate from {@link #ADMINISTER_ACCOUNTS} because a moderator triaging a report
+     * has no use for it, and one capability wide enough for both would put a consent
+     * history in front of everybody who clears the comment queue.
+     */
+    READ_ACCEPTANCE_RECORD,
+
+    /**
+     * Read another account's signed creator agreement. #429's signature, #436's row.
+     *
+     * <p><strong>Not the same read as {@link #READ_ACCEPTANCE_RECORD}, and the difference
+     * is a citizen's name and FİN.</strong> An acceptance is a reference and a timestamp.
+     * A signature carries the certificate subject the state issued, which is personal data
+     * under §17.4 and is the strongest identifying material the platform holds outside
+     * V58's documents.
+     *
+     * <p>So it is narrow on purpose: {@code COMPLIANCE} and {@code ADMINISTRATOR}. A
+     * support agent answering "did I sign this" does not need to read the certificate to
+     * answer it, and {@code READ_ACCEPTANCE_RECORD} is the question they are actually
+     * asking.
+     */
+    READ_SIGNED_AGREEMENT,
+
+    /**
+     * Approve or reject an identity verification. #105's queue, which has existed with no
+     * row in §3.1's matrix since it was built.
+     *
+     * <p>The decision, not the document — {@link #OPEN_IDENTITY_DOCUMENT} is that, and the
+     * split is the whole of #436's argument about V58. A reviewer holds both in practice;
+     * they are two capabilities so that the narrower one can be withdrawn without also
+     * closing the queue, and so that "who may open a passport photograph" is a question
+     * with an answer.
+     *
+     * <p>Whose decision it is not: the subject's. Enforced by
+     * {@code identity_verifications_reviewer_is_not_the_subject} rather than here, because
+     * a capability says what a role may do and says nothing about who it may do it to.
+     */
+    REVIEW_IDENTITY_VERIFICATION,
+
+    /**
+     * Open an identity document. <strong>The most sensitive read on the platform.</strong>
+     *
+     * <p>V58 encrypts these in the application, keeps them for days rather than for the
+     * life of the account, and audits every opening. That design assumes a small number of
+     * people, and the assumption is only true if there is a capability narrow enough to
+     * express it: folded into {@link #MODERATE_CONTENT} it would be held by everybody who
+     * reviews a reported comment, and the retention sweep would be protecting a photograph
+     * of somebody's passport from nobody.
+     *
+     * <p>Narrower than moderation and narrower than administration in intent; in the role
+     * table it is {@code COMPLIANCE} and {@code ADMINISTRATOR}, and the second is there
+     * because an administrator can grant themselves the first — see {@code StaffRole} on
+     * why a listed subset there would describe a restriction that does not exist.
+     */
+    OPEN_IDENTITY_DOCUMENT,
+
+    /**
+     * Confirm that a payout destination belongs to the creator it is filed under. #432.
+     *
+     * <p><strong>Deliberately not {@code FINANCE}'s.</strong> Finance holds "initiate a
+     * payout"; a role that also decided the destination was correct would be one person
+     * holding both halves of the arrangement §4.11's dual approval exists to prevent. It
+     * is the same argument {@code StaffRole.FINANCE} already makes about
+     * {@link #APPROVE_PAYOUT}, applied one step earlier in the same sequence, and V66's
+     * header records the decision so that a later reader does not re-open it by accident.
+     */
+    VERIFY_PAYOUT_DESTINATION,
+
+    /**
+     * Waive a compliance requirement for one account, for a bounded time. #436.
+     *
+     * <p><strong>The dangerous one.</strong> An override exists because rules meet cases
+     * nobody anticipated, and it is also the mechanism by which every control this epic
+     * adds can be bypassed by one person in one click.
+     *
+     * <p>What keeps it honest is not the capability — it is that
+     * {@code compliance_overrides} makes an override a row that expires, carries a reason
+     * from a closed set plus the grantor's own words, cannot be granted to oneself, and is
+     * drawn on the account it was applied to. The capability decides who may write that
+     * row; the table decides what the row has to say.
+     */
+    GRANT_COMPLIANCE_OVERRIDE,
+
+    /**
      * Grant and withdraw the roles above. #295 itself.
      *
      * <p>Held by {@code ADMINISTRATOR} alone. Anybody who can grant themselves a

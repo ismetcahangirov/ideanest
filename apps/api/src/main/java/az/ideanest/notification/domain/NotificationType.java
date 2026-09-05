@@ -66,6 +66,22 @@ public enum NotificationType {
     CAMPAIGN_UNSUCCESSFUL(NotificationCategory.CAMPAIGN, NotificationChannel.EMAIL, NotificationChannel.PUSH,
             NotificationChannel.IN_APP),
 
+    /**
+     * §5.5's monthly update is nearly due — issue #437.
+     *
+     * <p><strong>The only message the obligation clock sends, and it is a warning rather than a
+     * verdict.</strong> #437: "the point is compliance, not catching people". A lapse notifies
+     * nobody — it produces a state on the campaign page and a case in a moderator's queue —
+     * because telling a creator they are late immediately after warning them is the platform
+     * saying the same thing twice with a worse tone.
+     *
+     * <p>{@code CAMPAIGN} rather than a category of its own: §21 gives a reader one preference
+     * switch per category, and a switch whose only member is a reminder a creator is obliged to
+     * act on would be a switch for turning off an obligation.
+     */
+    UPDATE_DUE_SOON(NotificationCategory.CAMPAIGN, NotificationChannel.EMAIL, NotificationChannel.PUSH,
+            NotificationChannel.IN_APP),
+
     /** Moderation cleared the campaign for launch — §4.11's AD-01. */
     PROJECT_APPROVED(NotificationCategory.CAMPAIGN, NotificationChannel.EMAIL, NotificationChannel.PUSH,
             NotificationChannel.IN_APP),

@@ -9,8 +9,10 @@ import { CampaignSummary } from '../../../../../components/project/CampaignSumma
 import { CampaignTabs } from '../../../../../components/project/CampaignTabs';
 import { CampaignTrustBlock } from '../../../../../components/project/CampaignTrustBlock';
 import { CampaignUpdates } from '../../../../../components/project/CampaignUpdates';
+import { UpdateObligationNotice } from '../../../../../components/project/UpdateObligationNotice';
 import { CreatorPanel } from '../../../../../components/project/CreatorPanel';
 import { ReportControl } from '../../../../../components/moderation/ReportControl';
+import { fetchUpdateObligation } from '../../../../../lib/obligations/server';
 import { StructuredData } from '../../../../../components/seo/StructuredData';
 import { fetchCommentThreads } from '../../../../../lib/community/comments';
 import { fetchProjectFaqs } from '../../../../../lib/community/faqs';
@@ -241,7 +243,22 @@ export default async function CampaignPage({
    * one, and the tab is given the `null` so it can say the service failed rather than that
    * the creator has answered nothing.
    */
-  const faqs = await fetchProjectFaqs(campaign.id);
+  /*
+   * §5.5's clock joins the FAQ read rather than following it — #437. Both are keyed on the
+   * identifier the first read answered with, both are cached for a minute under this campaign's
+   * tag, and doing them in sequence would be a second serial round trip on the route whose
+   * largest contentful paint is the subject of #119.
+   *
+   * `null` from the obligation covers two situations and the page treats them alike,
+   * deliberately: a campaign with no clock answers 204, and a read that failed answers nothing.
+   * Both mean "there is nothing to say about this campaign's updates", and telling a reader an
+   * obligation could not be loaded would be inventing an obligation to apologise for.
+   * `lib/obligations/server.ts` has the argument.
+   */
+  const [faqs, obligation] = await Promise.all([
+    fetchProjectFaqs(campaign.id),
+    fetchUpdateObligation(campaign.id),
+  ]);
 
   return (
     /*
@@ -325,6 +342,18 @@ export default async function CampaignPage({
         on.
       */}
       <CampaignTrustBlock campaign={campaign} />
+
+      {/*
+        §5.5's monthly update, beside the trust block and above the tabs, for the trust block's
+        own reason: it belongs to the campaign rather than to one of its tabs, and a reader who
+        found it only under "updates" would be a reader who had to go looking for the fact that
+        there are none.
+
+        It draws nothing at all for a campaign with no clock, or one whose creator is up to
+        date — see `UpdateObligationNotice` on why a panel that appeared only when something was
+        wrong would be a badge by its presence.
+      */}
+      {obligation !== null && <UpdateObligationNotice obligation={obligation} />}
 
       <CampaignTabs active={tab} path={path} />
 

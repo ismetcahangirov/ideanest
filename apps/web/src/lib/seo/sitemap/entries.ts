@@ -56,6 +56,17 @@ export const PAGE_PATHS: readonly string[] = Object.freeze([
   '/about',
   '/how-it-works',
   '/trust-safety',
+  /*
+   * §22.2's index -- #439. The eight documents themselves are deliberately not listed
+   * individually: `/legal` links to every one of them and a crawler follows links, so eight
+   * more entries would be eight rows saying what one row already says. What the index adds
+   * over them is the state of each, which is the thing worth landing on.
+   *
+   * The archived versions at `/legal/{document}/v/{version}` are `noindex` by construction --
+   * superseded terms must not outrank the ones in force -- so advertising them here would be
+   * the contradiction this file's own header warns about.
+   */
+  '/legal',
 ]);
 
 /**

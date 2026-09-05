@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { PlanChooser } from '../../../../components/plans/PlanChooser';
+import { FeeDisclosure } from '../../../../components/fees/FeeDisclosure';
+import { fetchFeeDisclosure } from '../../../../lib/fees/server';
 import { fetchPlanCatalogue } from '../../../../lib/api/server';
 import { localeOrDefault } from '../../../../lib/i18n/locale';
 import { pricingCopy } from '../../../../lib/i18n/shell-copy.server';
@@ -59,12 +61,19 @@ export default async function PricingPage({
   params: Promise<{ locale: string }>;
   searchParams: Promise<{ from?: string; project?: string }>;
 }) {
-  const [{ locale }, query, t, copy, plans] = await Promise.all([
+  /*
+   * §22.3's fee disclosure joins the plan catalogue — #439. A creator deciding whether to bring
+   * a campaign here is reading this page to answer "what does it cost", and the subscription is
+   * only half of that: the other half comes out of what their backers pledge. Two pages for one
+   * question is how a creator ends up surprised by a payout.
+   */
+  const [{ locale }, query, t, copy, plans, fees] = await Promise.all([
     params,
     searchParams,
     getTranslations('pricing'),
     pricingCopy(),
     fetchPlanCatalogue(),
+    fetchFeeDisclosure(),
   ]);
 
   return (
@@ -89,6 +98,8 @@ export default async function PricingPage({
           />
         )}
       </div>
+
+      <FeeDisclosure disclosure={fees} audience="creator" locale={localeOrDefault(locale)} />
     </div>
   );
 }

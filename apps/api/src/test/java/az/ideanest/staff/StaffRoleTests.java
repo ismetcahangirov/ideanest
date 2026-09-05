@@ -120,6 +120,87 @@ class StaffRoleTests {
     }
 
     @Test
+    @DisplayName("opening an identity document is narrower than moderation")
+    void openingAnIdentityDocumentIsNarrowerThanModeration() {
+        // #436's central argument, checked. V58 encrypts identity documents in the
+        // application, keeps them for days rather than for the life of the account, and audits
+        // every opening -- and that design assumes a small number of people. Folded into
+        // MODERATE_CONTENT the capability would be held by everybody who reviews a reported
+        // comment, and the retention sweep would be protecting a photograph of somebody's
+        // passport from nobody.
+        assertThat(StaffRole.MODERATOR.capabilities())
+                .doesNotContain(
+                        StaffCapability.OPEN_IDENTITY_DOCUMENT,
+                        StaffCapability.REVIEW_IDENTITY_VERIFICATION,
+                        StaffCapability.READ_SIGNED_AGREEMENT);
+
+        assertThat(StaffRole.COMPLIANCE.capabilities())
+                .contains(StaffCapability.OPEN_IDENTITY_DOCUMENT, StaffCapability.REVIEW_IDENTITY_VERIFICATION);
+    }
+
+    @Test
+    @DisplayName("compliance verifies a payout destination and finance sends money to it")
+    void verifyingADestinationIsNotFinances() {
+        // §4.11's dual approval, one step earlier in the same sequence. The role that decides
+        // where money goes must not also be the role that certifies the destination is
+        // correct -- otherwise one person holds both halves, which is the arrangement the
+        // dual-approval rule exists to prevent. V66's header records the decision.
+        assertThat(StaffRole.FINANCE.capabilities()).doesNotContain(StaffCapability.VERIFY_PAYOUT_DESTINATION);
+        assertThat(StaffRole.COMPLIANCE.capabilities()).contains(StaffCapability.VERIFY_PAYOUT_DESTINATION);
+    }
+
+    @Test
+    @DisplayName("compliance cannot waive the rules it enforces")
+    void complianceCannotOverrideItself() {
+        // The same argument a third time, and the reason overrides are ADMINISTRATOR's alone:
+        // a reviewer who could waive the requirement they enforce holds both halves of it, and
+        // the waiver stops being an exception anybody escalated for.
+        assertThat(StaffRole.COMPLIANCE.capabilities()).doesNotContain(StaffCapability.GRANT_COMPLIANCE_OVERRIDE);
+        assertThat(StaffRole.ADMINISTRATOR.capabilities()).contains(StaffCapability.GRANT_COMPLIANCE_OVERRIDE);
+    }
+
+    @Test
+    @DisplayName("compliance reads identity and neither moderates nor reads the ledger")
+    void complianceIsNarrow() {
+        // Roles are additive, so somebody who does both jobs holds both roles -- which shows
+        // on the staff screen. Widening MODERATOR instead would have hidden it.
+        assertThat(StaffRole.COMPLIANCE.capabilities())
+                .doesNotContain(
+                        StaffCapability.MODERATE_CONTENT,
+                        StaffCapability.VIEW_FINANCE,
+                        StaffCapability.ADMINISTER_ACCOUNTS,
+                        StaffCapability.CURATE);
+    }
+
+    @Test
+    @DisplayName("publishing a legal document is no longer the fee schedule's capability")
+    void publishingALegalDocumentIsItsOwnAuthority() {
+        // It shipped under CONFIGURE_PLATFORM and V65 said #436 would narrow it. The two are
+        // not the same decision: opening new fee terms prices the next payout and is undone by
+        // opening further terms, and publishing a version of the creator agreement changes
+        // what every creator submitting after it is bound by and cannot be undone at all.
+        assertThat(StaffCapability.PUBLISH_LEGAL_DOCUMENT).isNotEqualTo(StaffCapability.CONFIGURE_PLATFORM);
+        for (StaffRole role : StaffRole.values()) {
+            if (role == StaffRole.ADMINISTRATOR) {
+                continue;
+            }
+            assertThat(role.capabilities())
+                    .withFailMessage("%s must not be able to publish a legal document", role)
+                    .doesNotContain(StaffCapability.PUBLISH_LEGAL_DOCUMENT);
+        }
+    }
+
+    @Test
+    @DisplayName("a consent history is not in front of everybody who clears the comment queue")
+    void readingAnAcceptanceRecordIsNarrowerThanAdministeringAccounts() {
+        // It was ADMINISTER_ACCOUNTS, which is also what a moderator holds in order to ban
+        // somebody behind a report. Right module, wrong width -- #436 gave it a row.
+        assertThat(StaffRole.MODERATOR.capabilities())
+                .contains(StaffCapability.ADMINISTER_ACCOUNTS)
+                .doesNotContain(StaffCapability.READ_ACCEPTANCE_RECORD);
+    }
+
+    @Test
     @DisplayName("every capability is conferred by at least one role")
     void noCapabilityIsUnreachable() {
         // A capability no role grants is an endpoint nobody can ever call, which is a

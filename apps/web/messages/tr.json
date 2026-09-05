@@ -72,7 +72,8 @@
         "settings": "Ayarlar",
         "about": "IdeaNest hakkında",
         "howItWorks": "Nasıl çalışır",
-        "trustSafety": "Güven ve güvenlik"
+        "trustSafety": "Güven ve güvenlik",
+        "legal": "Hukuki"
       }
     },
     "failure": {
@@ -1463,6 +1464,7 @@
           "MODERATOR": "Moderatör",
           "CURATOR": "Küratör",
           "FINANCE": "Finans",
+          "COMPLIANCE": "Uyum",
           "ADMINISTRATOR": "Yönetici"
         },
         "capability": {
@@ -1477,6 +1479,13 @@
           "CONFIGURE_PLATFORM": "Ücretleri, özellik bayraklarını ve e-posta metnini değiştirmek",
           "VIEW_AUDIT": "Denetim izini okumak",
           "VIEW_HEALTH": "Kuyruk derinliğini ve sağlayıcı durumunu okumak",
+          "PUBLISH_LEGAL_DOCUMENT": "Bir hukuki belgenin sürümünü yayımlamak",
+          "READ_ACCEPTANCE_RECORD": "Bir hesabın neyi ne zaman kabul ettiğini okumak",
+          "READ_SIGNED_AGREEMENT": "Bir hesabın imzaladığı yaratıcı sözleşmesini — sertifikadaki ad ve FİN ile — okumak",
+          "REVIEW_IDENTITY_VERIFICATION": "Kimlik doğrulamasını onaylamak veya reddetmek",
+          "OPEN_IDENTITY_DOCUMENT": "Kimlik belgesini açmak — platformdaki en hassas okuma",
+          "VERIFY_PAYOUT_DESTINATION": "Ödeme adresinin yaratıcıya ait olduğunu doğrulamak",
+          "GRANT_COMPLIANCE_OVERRIDE": "Bir hesap için uyum gereğini sınırlı bir süreyle kaldırmak",
           "ADMINISTER_STAFF": "Rol vermek ve geri almak"
         },
         "picker": {
@@ -2925,6 +2934,14 @@
       "heading": "Burada fonlama nasıl işler",
       "body": "Platform üreticilerle destekçileri bir araya getirir. Ödüller garanti değildir, ancak üreticiler destekçileri bilgilendirmek zorundadır. Sizden ücret yalnızca proje son tarihe kadar hedefine ulaşırsa tahsil edilir."
     },
+    "obligation": {
+      "lateHeading": "Bu yaratıcının bir güncelleme borcu var",
+      "completeHeading": "Teslimat tamamlandı",
+      "neverUpdatedBody": "Kampanya kapandıktan sonra burada hiçbir şey yayımlanmadı. Bir güncelleme {due} tarihine kadar bekleniyordu.",
+      "lateBody": "Son güncelleme {lastUpdate} tarihinde yayımlandı. Bir sonraki {due} tarihine kadar bekleniyordu.",
+      "completeBody": "Yaratıcı bu kampanyayı tamamlanmış olarak işaretledi, bu yüzden aylık güncellemeler artık beklenmiyor.",
+      "rule": "Yaratıcılar, kampanyaları tamamlanana kadar ayda en az bir güncelleme yayımlamayı kabul eder. IdeaNest olanları bildirir ve yaratıcılarla destekçiler arasında aracılık eder; ödülleri teslim etmez ve anlaşmazlıkları karara bağlamaz."
+    },
     "outcome": {
       "funded": "Bu kampanya fonlandı",
       "notFunded": "Bu kampanya hedefine ulaşamadı",
@@ -2976,6 +2993,11 @@
       "created": "Oluşturulan",
       "backed": "Desteklenen",
       "about": "Hakkında"
+    },
+    "obligations": {
+      "heading": "{count, plural, one {Bir kampanya güncellemede gecikiyor} other {# kampanya güncellemede gecikiyor}}",
+      "body": "{count, plural, one {{name} adlı yaratıcının bir kampanyası, sonraki destekçi güncellemesinin beklendiği tarihi geçti.} other {{name} adlı yaratıcının # kampanyası, sonraki destekçi güncellemesinin beklendiği tarihi geçti.}}",
+      "rule": "Yaratıcılar, kampanyaları tamamlanana kadar ayda en az bir güncelleme yayımlamayı kabul eder. Bu, sorabilmeniz için belirtilir; IdeaNest aracılık eder ve anlaşmazlıkları karara bağlamaz."
     },
     "about": {
       "heading": "{name} hakkında",
@@ -3112,6 +3134,82 @@
         "first": "IdeaNest bir kampanyayı teslim etmeye zorlayamaz. Yapabileceği şey kaydı dürüst tutmaktır: bir kampanyanın güncellemeleri, yorumları ve onu bildirme yolu — hepsi kampanyanın kendi sayfasında, onu destekleyip desteklemeyeceğine karar veren kişinin göreceği yerde.",
         "second": "Bir üretici kendi kampanyasındaki yorumları yönetebilir ve kaldırılan bir yorum yok olmaz — satır kalır, kaldırıldı olarak işaretlenir. Temizlenmiş bir yorum başlığı bu yüzden hâlâ temizlenmiş görünür; mesele de budur: üzerinde hiçbir şey olmayan bir sayfa ile on iki kaldırma bulunan bir sayfa farklı şeylerdir ve okuyucunun bunları ayırt etmeye hakkı vardır."
       }
+    }
+  },
+  "legal": {
+    "backToIndex": "Tüm hukuki belgeler",
+    "meta": {
+      "version": "Sürüm {version}",
+      "archivedVersion": "Sürüm {version} — artık yürürlükte değil",
+      "effectiveFrom": "{date} tarihinden beri yürürlükte",
+      "governingLanguage": "Bu belge henüz sizin dilinize çevrilmedi. Aşağıdaki metin Azerice’dir ve yürürlükte olan metin odur.",
+      "contentHash": "Bu metnin SHA-256 özeti: {hash}"
+    },
+    "notPublished": {
+      "summary": "Bu belge henüz yayımlanmadı.",
+      "body": "IdeaNest bu belgeye sahip olmak zorundadır ve henüz hiçbir sürümünü yayımlamadı. Burada yürürlükte olan hiçbir şey yok ve hiçbir sürümü kimseye kabul için sunulmadı."
+    },
+    "archive": {
+      "notice": "Artık yürürlükte olmayan bir sürümü okuyorsunuz. Kabul eden kişinin kabul ettiğini okuma hakkı olduğu için saklanıyor.",
+      "readCurrent": "Yürürlükteki sürümü okuyun",
+      "previousAvailable": "Önceki sürümler saklanır ve okunabilir kalır.",
+      "readVersion": "{version} sürümünü okuyun",
+      "metaTitle": "{document}, sürüm {version}"
+    },
+    "index": {
+      "title": "Hukuki belgeler",
+      "summary": "IdeaNest’in yayımlamak zorunda olduğu sekiz belge ve hangilerinin yürürlükte olduğu.",
+      "metaTitle": "Hukuki belgeler",
+      "metaDescription": "IdeaNest’in yayımladığı koşullar, politikalar ve sözleşmeler; her birinin sürümü ve yürürlük tarihiyle.",
+      "intro": "Aşağıdaki her belgenin kalıcı bir adresi var. Her biri sürüm numarasını, uygulanmaya başladığı tarihi ve metninin özetini gösterir; böylece birinin kabul ettiği sürüm yıllar sonra da bulunup okunabilir.",
+      "inForce": "Sürüm {version}, {date} tarihinden beri yürürlükte",
+      "notPublished": "Henüz yayımlanmadı",
+      "archiveNote": "Önceki sürümler asla silinmez. Herhangi bir belgeden bir önceki sürüme geçebilirsiniz; daha eski bir sürümü kabul eden biri tam olarak neyi kabul ettiğini böyle okuyabilir."
+    },
+    "documents": {
+      "terms-of-use": {
+        "title": "Kullanım koşulları",
+        "summary": "IdeaNest ile onu kullanan herkes arasındaki sözleşme; platformun aracı rolü dahil."
+      },
+      "privacy-policy": {
+        "title": "Gizlilik politikası",
+        "summary": "Hangi kişisel verilerin tutulduğu, neden, ne kadar süreyle ve nasıl sildirileceği."
+      },
+      "cookie-policy": {
+        "title": "Çerez politikası",
+        "summary": "Tarayıcınıza neyin, kim tarafından yazıldığı ve reddetmenin size neye mal olduğu."
+      },
+      "platform-rules": {
+        "title": "Platform kuralları",
+        "summary": "IdeaNest üzerinde ne için kampanya yapılabileceği ve neyin kaldırıldığı."
+      },
+      "creator-agreement": {
+        "title": "Yaratıcı sözleşmesi",
+        "summary": "Bir yaratıcının üstlendikleri: yükümlülükler, ödeme koşulları, ücret ve tazminat."
+      },
+      "backer-agreement": {
+        "title": "Destekçi sözleşmesi",
+        "summary": "Desteğin bir satın alma olmadığı ve ödülün garanti edilmediği."
+      },
+      "delivery-and-refund-policy": {
+        "title": "Teslimat ve iade politikası",
+        "summary": "Paranın ne zaman geri döndüğü, ne zaman dönmediği ve buna kimin karar verdiği."
+      },
+      "dispute-resolution-policy": {
+        "title": "Anlaşmazlık çözüm politikası",
+        "summary": "Bir anlaşmazlığın nasıl açıldığı, arabuluculuk edildiği ve sonlandırıldığı."
+      }
+    }
+  },
+  "fees": {
+    "disclosure": {
+      "backerHeading": "Desteğinizden ne kesiliyor",
+      "creatorHeading": "Size ne kalıyor",
+      "backerBody": "Sizden yalnızca destek tutarı tahsil edilir, üzerine hiçbir şey eklenmez. Bu tutarın {platform} kadarını IdeaNest, {processing} kadarını ödeme sağlayıcısı alır; kalanı yaratıcıya gider.",
+      "creatorBody": "IdeaNest toplanan her destekten {platform}, ödeme sağlayıcısı {processing} alır; böylece destekçilerinizin verdiğinin {keeps} kadarı size kalır.",
+      "fixedFee": "Ödeme sağlayıcısı ayrıca işlem başına {amount} alır.",
+      "twoFees": "Bunlar iki ayrı kesintidir. IdeaNest’in ücreti platformun aldığıdır; işlem ücreti parayı taşıyan şirkete gider ve IdeaNest onu hiçbir zaman almaz. Yürürlükteki oranlar yukarıdakilerdir ve ödeme tam olarak bunlarla hesaplanır.",
+      "unconfigured": "IdeaNest henüz bir ücret tarifesi belirlemedi, bu yüzden bugün desteklerden hiçbir şey kesilmiyor. Bu kalıcı bir taahhüt değildir: herhangi bir oran belirlendiği anda burada yayımlanır, koşullar ise yaratıcı sözleşmesinde belirtilir."
     }
   }
 }

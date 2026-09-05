@@ -31,17 +31,27 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>{@link #inForce} and {@link #published} are public: these are the pages a stranger and
  * a regulator read, and a terms of use behind authentication is a document nobody can
  * decide to be bound by. Everything that writes needs
- * {@link StaffCapability#CONFIGURE_PLATFORM}, which only {@code ADMINISTRATOR} holds — the
- * same authority that changes a fee schedule or a plan, because it is the same kind of
- * decision: one screen, changing what the running platform obliges everybody to.
+ * {@link StaffCapability#PUBLISH_LEGAL_DOCUMENT}, which only {@code ADMINISTRATOR} holds.
  *
  * <p>The capability is checked here rather than by an annotation on the controller,
  * following {@code SubscriptionPlans} and {@code FeeSchedules}: this is also where the
  * change is recorded, and an authorised action nobody recorded and a recorded action nobody
  * authorised are the same defect from opposite ends.
  *
- * <p>#436 gives publishing its own row in §3.1's matrix and its own capability. Narrowing
- * it is a change to one {@code requireCapability} call, which is why it is written as one.
+ * <p><strong>#436 narrowed it, and the prediction this comment carried held.</strong> It
+ * shipped under {@code CONFIGURE_PLATFORM} — the authority that also changes a fee schedule
+ * and a feature flag — and the narrowing was the change to {@code requireCapability} the
+ * comment said it would be. The two are not the same decision: opening new fee terms prices
+ * the next payout and is undone by opening further terms, and publishing a version of the
+ * creator agreement changes what every creator submitting after it is bound by and cannot be
+ * undone at all, because V65's trigger makes a published version immutable.
+ *
+ * <p><strong>One capability over all four staff methods, including the drafting ones.</strong>
+ * Reading a draft, writing one and publishing it are three steps of one act: a draft exists
+ * to be published, and an account that may write the text of the creator agreement but not
+ * press publish is an account whose text still ends up governing, one click later, with
+ * somebody else's name on the audit row. Splitting them would describe a separation that the
+ * workflow does not have.
  *
  * <h2>Publishing is per document, not per translation</h2>
  *
@@ -156,14 +166,14 @@ public class LegalDocuments {
     /** Every version of a document, newest first. The console's history. */
     @Transactional(readOnly = true)
     public List<LegalDocument> history(UUID staffId, DocumentKind kind) {
-        staff.requireCapability(staffId, StaffCapability.CONFIGURE_PLATFORM);
+        staff.requireCapability(staffId, StaffCapability.PUBLISH_LEGAL_DOCUMENT);
         return documents.historyOf(kind);
     }
 
     /** The open drafts of a document, in whatever languages somebody has started one. */
     @Transactional(readOnly = true)
     public List<LegalDocument> drafts(UUID staffId, DocumentKind kind) {
-        staff.requireCapability(staffId, StaffCapability.CONFIGURE_PLATFORM);
+        staff.requireCapability(staffId, StaffCapability.PUBLISH_LEGAL_DOCUMENT);
         return documents.draftsOf(kind);
     }
 
@@ -185,7 +195,7 @@ public class LegalDocuments {
      */
     @Transactional
     public LegalDocument draft(UUID staffId, DocumentKind kind, String locale, String title, String body) {
-        staff.requireCapability(staffId, StaffCapability.CONFIGURE_PLATFORM);
+        staff.requireCapability(staffId, StaffCapability.PUBLISH_LEGAL_DOCUMENT);
 
         Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         Optional<LegalDocument> open = documents.draftOf(kind, locale);
@@ -233,7 +243,7 @@ public class LegalDocuments {
      */
     @Transactional
     public List<LegalDocument> publish(UUID staffId, DocumentKind kind, Instant effectiveFrom) {
-        staff.requireCapability(staffId, StaffCapability.CONFIGURE_PLATFORM);
+        staff.requireCapability(staffId, StaffCapability.PUBLISH_LEGAL_DOCUMENT);
 
         Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         Instant effective = effectiveFrom == null ? now : effectiveFrom.truncatedTo(ChronoUnit.MICROS);

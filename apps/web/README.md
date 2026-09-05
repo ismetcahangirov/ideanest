@@ -73,6 +73,9 @@ the browser half of the auth flow work at all.
 | `/about` | Site | **Public.** WS-07: what the platform is, all-or-nothing, and what it costs (#292) |
 | `/how-it-works` | Site | **Public.** WS-07: backing a campaign, running one, and what happens between a pledge and a parcel (#292) |
 | `/trust-safety` | Site | **Public.** WS-07: what is reviewed, how to report, and what happens to money and data (#292) |
+| `/legal` | Site | **Public.** WS-08: §22.2's eight documents and which of them are in force. Lists all eight including the ones with nothing published, because a platform whose creator agreement is unwritten should have a short list rather than a finished-looking page (#439) |
+| `/legal/[document]` | Site | **Public.** WS-08: the version in force, with its number, effective date and content digest on the page — the digest is what a SİMA signature is taken over, so somebody who signed a version can check it (#439) |
+| `/legal/[document]/v/[version]` | Site | **Public**, `noindex`. WS-08's archive: somebody who accepted version 3 must be able to read version 3. `noindex` so superseded terms cannot outrank the ones in force (#439) |
 | `/settings` | Site | Redirects to `/settings/notifications` (#275) |
 | `/settings/sessions` | Site | Session management (#27), moved into the account area by #275 |
 | `/settings/notifications` | Site | §4.10's table as a grid — per category, per channel, with a digest option (#89), moved by #275 |
