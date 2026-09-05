@@ -11,6 +11,31 @@ spring:
   jackson:
     default-property-inclusion: non_null
 
+  http:
+    clients:
+      imperative:
+        # THE TRANSPORT IS A PLATFORM DECISION, NOT A CLASSPATH ACCIDENT -- issue #396.
+        #
+        # Left unset, Spring picks a `ClientHttpRequestFactory` by looking for one on
+        # the classpath, and it prefers Apache HttpClient to the JDK's. Nothing here
+        # asked for Apache HttpClient: it arrived transitively when the AWS SDK bom
+        # went to 2.54, because `awssdk:s3` now ships `apache5-client`. Every outbound
+        # call this service makes -- the Central Bank rates, Expo push, the cache
+        # invalidator -- silently changed connection pool, timeouts, and, worst,
+        # gained automatic retries on requests that are not all idempotent.
+        #
+        # `jdk` is what this service was written against and tested on, and it is the
+        # client that does exactly what it is asked: one request, one response, no
+        # retry and no `Retry-After` sleep. A caller that wants a retry states it
+        # (`RetryTemplate` in the jobs layer does).
+        #
+        # It is set here rather than in the test profile because the harness must run
+        # the transport the application runs -- see HttpClientTransportTests, which
+        # asserts this rather than trusting it, and RegistrationApiTests, whose
+        # assertion on a 429 an auto-retrying client turned into a fourteen-minute
+        # sleep on the rate-limit window.
+        factory: jdk
+
   messages:
     # NEVER THE SERVER'S OWN LANGUAGE -- issue #324.
     #

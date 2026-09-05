@@ -139,13 +139,20 @@ dependencies {
     //
     // Two artefacts and not the whole SDK. `s3` is the client; the presigner ships
     // inside it and is what issues the address a browser uploads to directly, so that
-    // twenty megabytes never occupies a request thread here. `apache-client` is named
+    // twenty megabytes never occupies a request thread here. `apache5-client` is named
     // explicitly because the SDK otherwise picks an HTTP implementation off the
     // classpath at run time -- a start-up failure in the built jar that no test sees,
     // which is exactly the way `spring-boot-restclient` was found to be missing above.
-    implementation(platform("software.amazon.awssdk:bom:2.31.0"))
+    //
+    // APACHE 5 AND NOT APACHE 4 SINCE 2.54 -- issue #396. `s3` now depends on
+    // `apache5-client` itself, so keeping the old `apache-client` beside it put two
+    // implementations on the classpath and the SDK refuses to guess between them:
+    // "Multiple HTTP implementations were found on the classpath". One is named here,
+    // and `S3ObjectStore` additionally passes it to the builder, so neither this file
+    // nor a future transitive dependency decides the transport by accident.
+    implementation(platform("software.amazon.awssdk:bom:2.54.6"))
     implementation("software.amazon.awssdk:s3")
-    implementation("software.amazon.awssdk:apache-client")
+    implementation("software.amazon.awssdk:apache5-client")
 
     // `bootRun` starts and stops the local compose stack. Development only, so
     // it never reaches the deployed jar.
