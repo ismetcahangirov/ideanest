@@ -14,6 +14,7 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.http.apache5.Apache5HttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
@@ -62,6 +63,16 @@ public class S3ObjectStore implements ObjectStore {
         var builder = S3Client.builder()
                 .region(Region.of(storage.region()))
                 .credentialsProvider(support.credentials())
+                /*
+                 * Named, not discovered -- issue #396. Left unset, the SDK scans the
+                 * classpath for an implementation and refuses to start if it finds two,
+                 * which is what taking the 2.54 bom did: `s3` began shipping
+                 * `apache5-client` beside the `apache-client` this build declared. A
+                 * transport that a dependency graph chooses is a transport that a
+                 * dependency graph can change, and it changes in the built jar rather
+                 * than in a test.
+                 */
+                .httpClientBuilder(Apache5HttpClient.builder())
                 .serviceConfiguration(support.serviceConfiguration());
         if (storage.endpoint() != null) {
             builder = builder.endpointOverride(URI.create(storage.endpoint()));
@@ -186,7 +197,11 @@ public class S3ObjectStore implements ObjectStore {
              * should prefer -- a credential nobody had to paste into a variable is a
              * credential nobody can leak from one.
              */
-            return DefaultCredentialsProvider.create();
+            /*
+             * `builder().build()` and not `create()`: 2.54 removed the static factory,
+             * and the builder is the form that survives it.
+             */
+            return DefaultCredentialsProvider.builder().build();
         }
 
         S3Configuration serviceConfiguration() {
