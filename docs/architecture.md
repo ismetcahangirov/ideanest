@@ -4992,6 +4992,7 @@ matter:
 | **Zod schemas are shared** | One schema is the API contract, the form validation, and the TypeScript type |
 | **`FlashList`, not `FlatList`** | Discovery renders hundreds of cards |
 | **`MMKV`, not `AsyncStorage`** | Asynchronous storage blocks the UI on cache reads |
+| **The Expo SDK decides React Native's version, not Dependabot** | `expo@57` is built and tested against `react-native` 0.86.3, and SDK 57's own packages assume it: `expo/types/react-native-web.d.ts` augments `ViewStyle`/`TextStyle`/`TextProps`/`PressableProps` as *interfaces*, which 0.87 ships as generated type aliases that no longer merge; `jest-expo@57` mocks `@react-native/assets-registry`, which 0.87 removed; `expo-modules-core@57` accepts `react-native-worklets` up to 0.10, and reanimated 4.6 requires 0.12. React Native, reanimated and worklets are therefore held at SDK 57's versions in `.github/dependabot.yml` and move together when the SDK does — #391. CI cannot catch this on its own: `pnpm -r typecheck` and `pnpm -r test` are all it runs for `apps/mobile`, and the native build happens on EAS |
 
 ---
 
