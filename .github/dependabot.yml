@@ -36,17 +36,56 @@ updates:
         update-types: ['version-update:semver-major']
       - dependency-name: '@types/jest'
         update-types: ['version-update:semver-major']
+      # React Native 0.87 is Expo SDK 58's, not SDK 57's -- issue #391.
+      #
+      # `expo@57` builds and tests against `react-native` 0.86.3, and three
+      # separate things break on 0.87 with SDK 57 pinned:
+      #
+      #   * `expo/types/react-native-web.d.ts` augments module 'react-native'
+      #     with `interface ViewStyle`, `TextStyle`, `TextProps` and
+      #     `PressableProps`. 0.87 ships those as generated type ALIASES rather
+      #     than interfaces, so the augmentation no longer merges: `TextStyle`
+      #     resolves to the web-only interface with none of React Native's own
+      #     properties, and every `<Text style={{...}}>` and `<Pressable
+      #     style={...}>` in the application stops typechecking. Two dozen
+      #     errors that are not about anything anybody wrote.
+      #   * `jest-expo@57.0.5` -- the newest 57 line -- mocks
+      #     `@react-native/assets-registry/registry` in its preset. 0.87
+      #     replaced that package with `@react-native/asset-utils`, so all ten
+      #     mobile suites fail to start before a single test runs.
+      #   * `react-native-reanimated` 4.6 requires `react-native-worklets`
+      #     0.12.x, and `expo-modules-core@57` accepts worklets up to 0.10.
+      #     That one blocks reanimated on SDK 57 whatever React Native does.
+      #
+      # None of it is reachable from CI's side either: `pnpm -r typecheck` and
+      # `pnpm -r test` are all this repository can run for `apps/mobile`, and
+      # the native build happens on EAS. A green pipeline on 0.87 would prove
+      # the JavaScript compiles, not that the application starts.
+      #
+      # Patches within 0.86 still come through, and so does the rest of the
+      # mobile group -- react-native-screens 4.27 and safe-area-context 5.9.1
+      # were verified green against 0.86.3 while writing this.
+      #
+      # Drop all three when apps/mobile moves to Expo SDK 58, not before.
+      - dependency-name: 'react-native'
+        update-types:
+          ['version-update:semver-minor', 'version-update:semver-major']
+      - dependency-name: 'react-native-reanimated'
+        update-types:
+          ['version-update:semver-minor', 'version-update:semver-major']
+      - dependency-name: 'react-native-worklets'
+        update-types:
+          ['version-update:semver-minor', 'version-update:semver-major']
     groups:
       # THE MOBILE GROUP EXISTS SO ONE BROKEN NATIVE BUMP CANNOT HOLD BACK THE
       # WEB.
       #
       # This ecosystem watches the whole workspace, so a single production
       # group put React Native, Expo and the native modules in the same pull
-      # request as Next.js and next-intl. React Native 0.87 changed the style
-      # prop types, which fails `apps/mobile typecheck` in a way that takes a
-      # migration to fix — and while that sat unmerged it was also holding two
-      # Next.js patch releases and a next-intl minor hostage. One group cannot
-      # be half-merged.
+      # request as Next.js and next-intl. React Native 0.87 cannot be taken on
+      # Expo SDK 57 at all — see the three entries for it under `ignore` — and
+      # while that sat unmerged it was also holding two Next.js patch releases
+      # and a next-intl minor hostage. One group cannot be half-merged.
       #
       # Listed first because a dependency belongs to the first group it
       # matches, and every name here would otherwise fall into one of the two
