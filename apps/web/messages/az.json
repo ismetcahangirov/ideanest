@@ -428,6 +428,7 @@
       "/admin/email-templates": "E-poçt şablonları",
       "/admin/flags": "Funksiya bayraqları",
       "/admin/health": "Sistemin vəziyyəti",
+      "/admin/legal": "Hüquqi sənədlər",
       "/admin/moderation/submissions": "Baxış gözləyən kampaniyalar",
       "/admin/campaigns": "Bütün kampaniyalar"
     },
@@ -743,6 +744,12 @@
         "metaDescription": "Bir kampaniya, səhifəsinin oxunduğu kimi, istənilən vəziyyətdə — qərar verən moderator üçün.",
         "title": "Kampaniya önbaxışı",
         "intro": "Kampaniya, ictimai səhifəsinin göstərəcəyi kimi, hansı vəziyyətdə olmasından asılı olmayaraq. Baxış növbəsi buraya keçid verir, çünki qərar gözləyən kampaniyanın ictimai səhifəsi yoxdur — və yalnız başlıq və hədəf rəqəmi ilə verilən qərar təxmindir."
+      },
+      "legal": {
+        "metaTitle": "Hüquqi sənədlər",
+        "metaDescription": "§22.2-nin tələb etdiyi səkkiz sənəd, onların versiyaları və dərci.",
+        "title": "Hüquqi sənədlər",
+        "intro": "Dərc edilmiş versiya dəyişdirilmir. Düzəliş yeni versiyadır, köhnəsi isə oxunaqlı qalır — çünki qəbul qeydi məhz versiyanı göstərir."
       }
     },
     "screens": {
@@ -1711,8 +1718,8 @@
         "providerAndReason": "{provider} · {code}",
         "reason": {
           "fraudulent": "Kart sahibi deyil",
-          "product_not_received": "Məhsul çatmayıb",
-          "product_unacceptable": "Məhsul təsvirə uyğun deyil",
+          "product_not_received": "Mükafat çatmayıb",
+          "product_unacceptable": "Mükafat təsvirə uyğun deyil",
           "duplicate": "İki dəfə tutulub",
           "subscription_canceled": "Abunəlik ləğv edilmişdi",
           "credit_not_processed": "Vəd edilən geri qaytarma edilməyib",
@@ -1967,11 +1974,64 @@
         "risksHeading": "Risklər və çətinliklər",
         "noRisks": "Hələ heç nə yazılmayıb. Təqdim etmək üçün iki yüz simvol tələb olunur.",
         "coverAlt": "{title} üçün üz şəkli"
+      },
+      "legal": {
+        "subject": "hüquqi sənədlər",
+        "noticeTitle": "Dərc geri qaytarıla bilməz",
+        "noticeBody": "Dərc edilmiş versiya dəyişdirilmir və silinmir. Düzəliş yeni versiya deməkdir; köhnəsi oxunaqlı qalır, çünki onu qəbul etmiş adamın razılaşdığı mətni görmək hüququ var.",
+        "documentLabel": "Sənəd",
+        "languageLabel": "Dil",
+        "languageHint": "Azərbaycan dilindəki mətn qüvvədə olan mətndir; qalan üçü onu oxumaq üçündür.",
+        "draftHeading": "Növbəti versiyanın layihəsi",
+        "draftIntro": "Bir dildə bir layihə. Yenidən saxlamaq mövcud layihəni əvəz edir, ikincisini yaratmır.",
+        "titleLabel": "Başlıq",
+        "bodyLabel": "Mətn",
+        "bodyHint": "Saxlanılan mətnin özüdür — keçid deyil. Qəbul qeydi illər sonra bu mətni göstərə bilməlidir.",
+        "save": "Layihəni saxla",
+        "working": "Gözləyin…",
+        "savedNotice": "{locale} dilində {version} nömrəli versiyanın layihəsi saxlanıldı.",
+        "publishHeading": "Dərc et",
+        "publishIntro": "Bütün açıq layihələr bir versiya nömrəsi və bir qüvvəyəminmə tarixi ilə birlikdə dərc olunur.",
+        "willPublish": "Dərc olunacaq dillər: {languages}.",
+        "governingMissingTitle": "Azərbaycanca mətn yoxdur",
+        "governingMissingBody": "Qüvvədə olan mətn Azərbaycan dilindəkidir, ona görə onsuz heç nə dərc olunmur.",
+        "effectiveFromLabel": "Qüvvəyə minir",
+        "effectiveFromHint": "Boş buraxılsa — indi. Gələcək tarix mümkündür; keçmiş tarix rədd edilir.",
+        "publish": "Bu versiyanı dərc et",
+        "publishedNotice": "{version} nömrəli versiya dərc olundu ({languages}).",
+        "nothingDraftedTitle": "Layihə yoxdur",
+        "nothingDraftedBody": "Əvvəlcə yuxarıda mətni yazın. İkinci dəfə dərc etmək heç nə etmir.",
+        "historyHeading": "Versiyalar",
+        "historyIntro": "Hər versiya oxunaqlı qalır: onu qəbul etmiş adam razılaşdığı mətni görməlidir.",
+        "noVersionsTitle": "Hələ heç nə dərc olunmayıb",
+        "noVersionsBody": "Bu sənədin mətni hələ yazılmayıb, ona görə heç bir yoxlama onu tələb etmir.",
+        "versionLabel": "Versiya {version}",
+        "versionMeta": "{from} tarixindən · hash {hash}",
+        "doneTitle": "Hazırdır",
+        "failedTitle": "Alınmadı",
+        "loadingList": "Sənəd yüklənir",
+        "tryAgain": "Yenidən cəhd edin",
+        "kind": {
+          "TERMS_OF_USE": "İstifadə şərtləri",
+          "PRIVACY_POLICY": "Məxfilik siyasəti",
+          "COOKIE_POLICY": "Kuki siyasəti",
+          "PLATFORM_RULES": "Platforma qaydaları",
+          "CREATOR_AGREEMENT": "Yaradıcı müqaviləsi",
+          "BACKER_AGREEMENT": "Dəstəkçi razılaşması",
+          "DELIVERY_AND_REFUND_POLICY": "Çatdırılma və geri qaytarma siyasəti",
+          "DISPUTE_RESOLUTION_POLICY": "Mübahisələrin həlli siyasəti"
+        },
+        "locale": {
+          "az": "Azərbaycanca (əsas mətn)",
+          "en": "İngiliscə",
+          "ru": "Rusca",
+          "tr": "Türkcə"
+        }
       }
     },
     "moderation": {
       "reason": {
-        "PROHIBITED_ITEM": "Qadağan olunmuş məhsul",
+        "PROHIBITED_ITEM": "Qadağan olunmuş əşya",
         "MISREPRESENTATION": "Yanlış təqdimat",
         "NOT_ORIGINAL": "Orijinal iş deyil",
         "INTELLECTUAL_PROPERTY": "Əqli mülkiyyət",
@@ -2655,8 +2715,8 @@
     }
   },
   "checkout": {
-    "title": "Ödəniş",
-    "progress": "Ödəniş mərhələləri",
+    "title": "Dəstək ol",
+    "progress": "Dəstək mərhələləri",
     "steps": {
       "choose": "Mükafatınızı seçin",
       "review": "Yoxlayın və təsdiqləyin",
@@ -2737,6 +2797,12 @@
       "reserve": "Rezerv edin və yoxlayın",
       "confirm": "Dəstəyi təsdiqləyin",
       "confirming": "Təsdiqlənir…"
+    },
+    "risk": {
+      "heading": "Dəstək olmaq nə deməkdir",
+      "body": "Dəstək satın almaq deyil. Siz bir cəhdi maliyyələşdirirsiniz və mükafata zəmanət yoxdur — kampaniya gecikə, dəyişə və ya heç çatmaya bilər. Mükafatı sizə IdeaNest deyil, kampaniyanın müəllifi borcludur.",
+      "confirm": "Başa düşdüm — dəstəyimi təsdiqləyin",
+      "stale": "Bu səhifə açıq ikən mətn yeniləndi. Yenidən oxuyun, sonra təsdiqləyin."
     },
     "done": {
       "announced": "Dəstəyiniz təsdiqləndi",

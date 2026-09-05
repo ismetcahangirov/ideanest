@@ -345,7 +345,7 @@ class DisplayCurrencyApiTests extends AbstractIntegrationTest {
                 null,
                 "fx-" + UUID.randomUUID()));
 
-        return pledges.confirm(draft.pledge().getId(), backerId, null).pledge().getId();
+        return pledges.confirm(draft.pledge().getId(), backerId, null, null).pledge().getId();
     }
 
     /** The pledge as its own screen reads it — `GET /v1/pledges/{id}`. */

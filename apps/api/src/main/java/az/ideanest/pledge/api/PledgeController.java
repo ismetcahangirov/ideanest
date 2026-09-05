@@ -160,7 +160,14 @@ public class PledgeController {
      * entry is written. The response says {@code cardVerified: false} because even the
      * verification of §9.2's phase 1 is not built — {@code PledgeCapability}.
      *
-     * <p>The body is optional: {@code paymentMethodId} is nullable until #55, so a
+     * <p><strong>§22.3's acknowledgement is part of the body</strong> — #427. The
+     * request carries the version of the backer agreement the checkout showed, and an
+     * acceptance is recorded against it in the same transaction as the confirmation. A
+     * request that acknowledges nothing, or acknowledges a version that is no longer in
+     * force, is refused with {@code AGREEMENT_REQUIRED}.
+     *
+     * <p>The body is optional: {@code paymentMethodId} is nullable until #55, and the
+     * acknowledgement is only required once a backer agreement has been published, so a
      * client with nothing to send may send nothing.
      */
     @PostMapping(path = "/v1/pledges/{id}/confirm", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -185,7 +192,8 @@ public class PledgeController {
                 key,
                 request,
                 HttpStatus.OK.value(),
-                () -> PledgeResponse.of(pledges.confirm(id, backerId, request.paymentMethodId()))));
+                () -> PledgeResponse.of(pledges.confirm(
+                        id, backerId, request.paymentMethodId(), request.acknowledgedAgreementVersion()))));
     }
 
     /**

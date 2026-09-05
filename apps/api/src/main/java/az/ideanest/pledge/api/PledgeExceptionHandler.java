@@ -4,6 +4,7 @@ import az.ideanest.pledge.application.CampaignStillTakingPledgesException;
 import az.ideanest.pledge.application.ContributionBelowRewardPriceException;
 import az.ideanest.pledge.application.PledgeAlreadyExistsException;
 import az.ideanest.pledge.application.PledgeNotDraftException;
+import az.ideanest.pledge.application.BackerAgreementRequiredException;
 import az.ideanest.pledge.application.PledgeNotEditableException;
 import az.ideanest.pledge.application.PledgeNotFoundException;
 import az.ideanest.pledge.application.PledgeNotSupplementableException;
@@ -326,6 +327,38 @@ public class PledgeExceptionHandler {
         problem.setTitle("That is not an upgrade");
         problem.setDetail("This costs no more than what the pledge already has. A refund is a separate request.");
         problem.setProperty("code", "SUPPLEMENT_NOT_AN_INCREASE");
+        return problem;
+    }
+
+    /**
+     * <strong>409 for a confirmation that did not acknowledge the backer agreement</strong>
+     * — #427, and §22.3's requirement that the risk is stated within the pledge flow.
+     *
+     * <p>409 rather than 403. The backer is permitted to confirm this pledge; what is wrong
+     * is the state of the page they are confirming from — either it showed no risk statement
+     * at all, or it showed one that has since been superseded. That is the same distinction
+     * {@code RESERVATION_EXPIRED} draws and the same recovery: reload, read, confirm.
+     *
+     * <p>{@code meta.version} is what the client must show and send back, and
+     * {@code meta.acknowledged} is what it sent — so a client meeting this can tell a stale
+     * page apart from a missing field, which are the two ways to arrive here and have
+     * different fixes.
+     */
+    @ExceptionHandler(BackerAgreementRequiredException.class)
+    public ProblemDetail handleAgreementRequired(BackerAgreementRequiredException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/agreement-required"));
+        problem.setTitle("Read what backing means first");
+        problem.setDetail("A pledge is not a purchase and a reward is not guaranteed. Confirming records that you"
+                + " were told so.");
+        problem.setProperty("code", "AGREEMENT_REQUIRED");
+
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("document", exception.agreement().kind().name());
+        meta.put("documentId", exception.agreement().documentId());
+        meta.put("version", exception.agreement().version());
+        meta.put("acknowledged", exception.offered());
+        problem.setProperty("meta", meta);
         return problem;
     }
 

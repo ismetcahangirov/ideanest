@@ -1,5 +1,6 @@
 package az.ideanest.project.api;
 
+import az.ideanest.project.application.AgreementRequiredException;
 import az.ideanest.project.application.CapabilityNotGrantedException;
 import az.ideanest.project.application.LatePledgesNotEnabledException;
 import az.ideanest.staff.api.StaffRefusals;
@@ -265,6 +266,44 @@ public class ProjectExceptionHandler {
         problem.setDetail("Building a campaign is free. Sending one for review needs an active plan.");
         problem.setProperty("code", "SUBSCRIPTION_REQUIRED");
         problem.setProperty("meta", Map.of("pricingPath", "/pricing"));
+        return problem;
+    }
+
+    /**
+     * <strong>403 for a creator who has not accepted the creator agreement</strong> — #426.
+     *
+     * <p><strong>A different code from {@code SUBSCRIPTION_REQUIRED}, and the client answers
+     * it differently.</strong> That one means "you have not paid" and is answered by a
+     * navigation to the pricing page. This means "you have not agreed to the terms you would
+     * be operating under", and money does not fix it: the answer is the creator agreement,
+     * at the version named here.
+     *
+     * <p>403 rather than 451 Unavailable For Legal Reasons, which is about a resource
+     * withheld from a reader by law and not about a permission this account does not yet
+     * hold. And rather than 428 Precondition Required, whose semantics are about request
+     * headers.
+     *
+     * <p><strong>{@code meta} names the version, not only the document.</strong> A creator
+     * who accepted version 3 and meets this because version 4 was published this morning
+     * must be sent to version 4 — a refusal saying only "accept the creator agreement" would
+     * send them to a page whose Accept button they have already pressed. {@code documentId}
+     * is there so the client can render the exact text without resolving "current" a second
+     * time and possibly getting a different answer.
+     */
+    @ExceptionHandler(AgreementRequiredException.class)
+    public ProblemDetail handleAgreementRequired(AgreementRequiredException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+        problem.setType(URI.create("https://ideanest.az/problems/agreement-required"));
+        problem.setTitle("The creator agreement has to be accepted first");
+        problem.setDetail("Sending a campaign for review means taking on the obligations in the creator agreement.");
+        problem.setProperty("code", "AGREEMENT_REQUIRED");
+
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("document", exception.agreement().kind().name());
+        meta.put("documentId", exception.agreement().documentId());
+        meta.put("version", exception.agreement().version());
+        meta.put("effectiveFrom", exception.agreement().effectiveFrom().toString());
+        problem.setProperty("meta", meta);
         return problem;
     }
 

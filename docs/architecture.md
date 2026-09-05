@@ -1689,6 +1689,7 @@ individual agreement can differ without a deployment.
 | Reward price after launch | **Immutable** |
 | Increase reward quantity | Permitted |
 | Decrease reward quantity | Only above the number already claimed |
+| Creator agreement | **Accepted, at the version in force** (§22.2, #426) |
 
 > **The first nine rules are the submission checklist.** They are evaluated by a
 > single class — `SubmissionChecklist`, a pure type in the project module's domain
@@ -1809,6 +1810,13 @@ project or a collaborator, and no project may misrepresent facts.
 - Offer a refund where a reward cannot be delivered
 - Respond to questions and complaints
 
+These are what the creator agreement states, and §5.6 is where the platform first
+asks anybody to agree to them: a campaign cannot be submitted until its creator has
+accepted the version of that document in force. **Stating an obligation and never
+checking it is a clause rather than a control**, and enforcing these four is #437 —
+a monthly update clock, a visible lapsed state on the creator's profile, and
+escalation to a moderator rather than anything automatic touching money.
+
 ### 5.6 Creator subscriptions
 
 **Building a campaign is free. Publishing one needs a plan.**
@@ -1825,6 +1833,40 @@ the first moment it stops being private.
 | Enforced in | `ProjectTransitionService.submit`, through `PublishingGate` |
 | Contract | `shared.access.PublishingEntitlement` → `PublishingAllowance` |
 | Refusals | `SUBSCRIPTION_REQUIRED` (403), `PLAN_LIMIT_EXCEEDED` (403) |
+
+**A second gate sits beside it, at the same edge and for a related reason.**
+Submission is also the first moment the creator takes on an obligation to anybody —
+before it there are no backers to be obliged to — so it is where §22.2's creator
+agreement is required.
+
+| | |
+|---|---|
+| Enforced in | `ProjectTransitionService.submit`, through `CreatorAgreementGate` |
+| Contract | `shared.legal.Agreements` → `AgreementInForce` |
+| Refusal | `AGREEMENT_REQUIRED` (403), naming the document **and the version** |
+| Accepted at | `POST /v1/me/agreements/CREATOR_AGREEMENT` |
+
+The agreement is asked for **before** the subscription. It states the payout terms
+and the fee, so sending somebody to a price list before telling them the terms they
+would be operating under would be selling before disclosing — and accepting it is
+free where the other refusal may cost money.
+
+**The creator's acceptance is consulted, not the caller's**, for the reason below and
+more strongly: a collaborator's acceptance would let a creator take on no obligations
+at all by asking somebody else to press the button, and would produce a campaign whose
+§5.5 obligations are owed by a person with no control over it.
+
+**A new version does not un-submit anything.** It is required at the creator's next
+submission, which is a property of where the check is rather than a rule written
+anywhere — nothing re-reads the gate for a campaign already submitted. A rule that
+reached backwards would change what somebody agreed to after they agreed to it.
+
+**An agreement that has not been published is not a requirement.** The gate lets
+everything through when nothing of that kind is in force, which is the reverse of the
+subscription gate beside it. `shared.legal.Agreements` carries the argument: a legal
+gate that failed closed would refuse every campaign on the platform with a message
+telling creators to accept a document nobody had written, and the day the text is
+published the gate bites for everybody without a deployment.
 
 **What a plan carries.** A price, a billing period, and two limits — how many
 campaigns the account may have in the platform's hands at once, and the largest
@@ -5684,16 +5726,81 @@ cookie policy with consent, platform rules, creator agreement (fees, payout
 terms, obligations), backer agreement (risk statement), delivery and refund
 policy, and a dispute resolution policy.
 
+**How they are held** — #425, V65. Two tables, and the split between them is the
+design.
+
+| | |
+|---|---|
+| `legal_documents` | One row per (kind, locale, version). The body is stored, not linked |
+| `document_acceptances` | One row per (account, version). Appended, never replaced |
+| Read at | `GET /v1/legal/documents`, `/{kind}`, `/{kind}/versions/{version}` — public |
+| Written at | `PUT`/`POST /v1/admin/legal/documents/{kind}` — `CONFIGURE_PLATFORM`, audited |
+
+**The body is stored rather than linked**, because a document at a URL is a document
+that changed: the acceptance record has to reproduce the text somebody agreed to,
+years later, without depending on a file nobody versioned. A SHA-256 of the body is
+stored beside it, which is what #429's signature is taken over.
+
+**A published version is immutable**, enforced by a trigger and not by a service
+check. An acceptance names a version, and an acceptance of a text that can be edited
+afterwards is evidence of nothing — so a correction is a new version, and the
+previous one stays readable because somebody who accepted it is entitled to read what
+they accepted.
+
+**A version is published in every language it has been translated into, under one
+number and one effective date, and never without the Azerbaijani text** — that is the
+text that governs, and the other three exist so a person can read what they are
+agreeing to. So version 4 of the creator agreement is version 4 in all four languages,
+and an acceptance naming a version identifies one document rather than one translation
+of an unknown one.
+
+**Acceptances are never swept**, which is the opposite of §17.4's treatment of an
+identity document and is deliberate. V58 deletes a photograph of somebody's passport
+within days, because its purpose ends the moment a reviewer has looked at it. An
+acceptance is a reference and a timestamp rather than a document about a person, and
+its purpose is precisely to be readable years later.
+
+**No text ships with the machinery.** The words are the adviser's (#423) and #439
+publishes them.
+
 ### 22.3 Transparency in the product
 
 These reduce legal exposure and are product requirements, not legal boilerplate:
 
-- A fixed risk statement on every project page
-- A **mandatory** risks and challenges section written by the creator
-- "Rewards are not guaranteed" stated within the pledge flow
-- The creator's project history visible
-- A reporting mechanism
-- Clear fee disclosure
+| Requirement | State |
+|---|---|
+| A fixed risk statement on every project page | Built — `CampaignTrustBlock`, pinned by `wording.test.ts` |
+| A **mandatory** risks and challenges section written by the creator | Built — a §5.3 submission requirement |
+| "Rewards are not guaranteed" stated within the pledge flow | Built — #427, below |
+| The creator's project history visible | #437 produces it, #439 surfaces it |
+| A reporting mechanism | Built — `ReportControl` |
+| Clear fee disclosure | #439, derived from `fee_schedules` rather than written down |
+
+**The risk statement inside the pledge flow** — #427. §22.3 asks for it *within the
+flow*, not in the terms and not behind a link, because the requirement is about what a
+person saw and a person did not see what was behind a link. So it is rendered above
+the confirm control on the review step, with no motion (CLAUDE.md: checkout must not
+animate), and the confirm control's own label carries the acceptance — one action
+rather than a tick beside a button, which is harder to click past and is not friction
+on the platform's most important conversion.
+
+`POST /v1/pledges/{id}/confirm` carries the **version** of the backer agreement the
+client showed, and the confirmation records an acceptance against it in the same
+transaction as the transition. A version rather than a boolean: a boolean would say
+the client ticked something, where what has to be recorded is which sentence the
+person read. A page left open across a publication sends the old number and is refused
+with `AGREEMENT_REQUIRED` (409), whose recovery is a reload.
+
+At confirmation and not at registration, because the risk is a risk about *this*
+campaign and *this* reward — a statement accepted at sign-up, months earlier, is a
+statement nobody read about a thing that did not exist yet.
+
+**The interface says pledge, not purchase** — #438, and it is not decoration. The
+terms can say the platform is an intermediary; if the interface says "buy", "order"
+and "product", then §22.1's consumer-protection question is decided on what the
+interface said. `wording.test.ts` holds the rule over the pledge and campaign
+namespaces in all four languages, scoped so that a reward tier's genuine *price* stays
+a price.
 
 ---
 

@@ -124,8 +124,8 @@ class PrelaunchApiTests extends AbstractIntegrationTest {
 
         UUID id = users.findByEmailAndDeletedAtIsNull(email).orElseThrow().getId();
         // Publishing needs a plan since V62. Written rather than bought, because this
-        // suite is not about subscriptions -- Campaigns.subscribe says why it is PRO.
-        Campaigns.subscribe(dataSource, id);
+        // suite is not about them -- Campaigns.mayPublish carries both preconditions.
+        Campaigns.mayPublish(dataSource, id);
         return new Creator((String) signedIn.getBody().get("accessToken"), id, email);
     }
 

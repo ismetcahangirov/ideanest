@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { CheckoutView } from '../../../../../components/checkout/CheckoutView';
 import { privatePageMetadata } from '../../../../../lib/seo/metadata';
 import { checkoutCopy } from '../../../../../lib/i18n/shell-copy.server';
+import { fetchLegalDocument } from '../../../../../lib/api/server';
 
 /**
  * `/projects/{id}/back` — the pledge flow, docs/architecture.md §4.5.
@@ -112,6 +113,24 @@ export default async function BackProjectPage({
    */
   const copy = await checkoutCopy();
 
+  /*
+   * §22.3's backer agreement, resolved here — #427.
+   *
+   * The VERSION only. The words are in the catalogue above, where `wording.test.ts` pins
+   * them in four languages; what the service needs back from the confirmation is which text
+   * this page showed, and that is a number.
+   *
+   * Read on the server rather than by `useCheckout`, and behind an hour of shared cache:
+   * this is the same document for every reader in a language, and §22.3 wants the statement
+   * rendered *with* the page — a risk sentence that appeared a moment after the confirm
+   * button did would be one somebody had already scrolled past.
+   *
+   * Null when nothing is published, which is where this platform stands until #439 seeds the
+   * words. The statement is then not drawn and the confirmation acknowledges nothing, which
+   * is exactly what the service asks for.
+   */
+  const backerAgreement = await fetchLegalDocument('BACKER_AGREEMENT');
+
   return (
     <main>
       <CheckoutView
@@ -119,6 +138,7 @@ export default async function BackProjectPage({
         secretTokens={secretTokens(query['token'])}
         initialRewardId={rewardId(query['reward'])}
         copy={copy}
+        backerAgreementVersion={backerAgreement?.version ?? null}
       />
     </main>
   );

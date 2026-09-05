@@ -110,6 +110,24 @@ export interface CheckoutCopy {
     readonly confirm: string;
     readonly confirming: string;
   };
+  /**
+   * §22.3's risk statement, stated inside the pledge flow — issue #427.
+   *
+   * <p>Not in the terms and not behind a link: §22.3's requirement is about what a person
+   * saw, and a person did not see what was behind a link. It is drawn above the confirm
+   * control on the review step, and `confirm` replaces `review.confirm` so that pressing
+   * one control is the acknowledgement — a tick is stronger evidence and is also friction
+   * on the platform's single most important conversion, and one action that says what it
+   * means beats two that can be clicked past.
+   */
+  readonly risk: {
+    readonly heading: string;
+    readonly body: string;
+    /** The confirm control's own label, which carries the acceptance. */
+    readonly confirm: string;
+    /** Shown when the version in force moved while this page was open. */
+    readonly stale: string;
+  };
   readonly done: {
     readonly announced: string;
     readonly heading: string;
@@ -264,6 +282,12 @@ export function checkoutCopyFrom(t: CheckoutTranslator): CheckoutCopy {
       reserve: t('review.reserve'),
       confirm: t('review.confirm'),
       confirming: t('review.confirming'),
+    },
+    risk: {
+      heading: t('risk.heading'),
+      body: t('risk.body'),
+      confirm: t('risk.confirm'),
+      stale: t('risk.stale'),
     },
     done: {
       announced: t('done.announced'),

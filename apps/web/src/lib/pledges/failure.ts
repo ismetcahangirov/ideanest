@@ -235,6 +235,22 @@ const WORDING: Record<string, Wording> = {
     recovery: 'redraft',
     retireKey: true,
   },
+  AGREEMENT_REQUIRED: {
+    /*
+     * §22.3's acknowledgement, refused — #427. Two ways to arrive and one recovery, which is
+     * why they share a descriptor: either this page showed no risk statement at all, which
+     * is a fault in this site, or it showed one that has since been replaced, which is a
+     * page left open across a publication. Both are answered by loading the page again, and
+     * the sentence says the true thing about both — nothing was confirmed.
+     *
+     * `clientBug` is deliberately NOT set. The common case is the honest one: a checkout tab
+     * open while an administrator published a new version, which is nobody's mistake.
+     */
+    title: 'What backing means has changed',
+    detail:
+      'This page was showing an older statement of what a pledge is and is not. Nothing was confirmed and no card was involved. Load the page again, read it, and confirm.',
+    recovery: 'none',
+  },
   PLEDGE_NOT_DRAFT: {
     title: 'This pledge has already been dealt with',
     detail: 'It is confirmed or cancelled, so there is nothing left to confirm.',

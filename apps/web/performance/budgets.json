@@ -27,6 +27,7 @@
     "/[locale]/admin/flags": 585,
     "/[locale]/admin/health": 584,
     "/[locale]/admin/ledger": 620,
+    "/[locale]/admin/legal": 588,
     "/[locale]/admin/moderation": 723,
     "/[locale]/admin/moderation/[reportId]": 723,
     "/[locale]/admin/moderation/content": 724,

@@ -1,5 +1,11 @@
 import { getLocale } from 'next-intl/server';
-import { ApiError, createApiClient, type ApiClient, type components } from '@ideanest/api-client';
+import {
+  ApiError,
+  createApiClient,
+  type ApiClient,
+  type components,
+  type paths,
+} from '@ideanest/api-client';
 import type { ExchangeRate } from '@ideanest/money';
 import type { Category } from '../categories/api';
 import {
@@ -16,6 +22,7 @@ import { DEFAULT_LOCALE } from '../i18n/locale';
 import {
   COLLECTIONS,
   DISCOVERY,
+  LEGAL,
   PLANS,
   TAXONOMY,
   campaignAddress,
@@ -554,5 +561,71 @@ export async function fetchExchangeRates(
      */
     if (cause instanceof ApiError) return null;
     throw cause;
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * §22.2's legal documents — GET /v1/legal/documents/{kind} (#425, #427, #439)
+ * ---------------------------------------------------------------------- */
+
+/**
+ * One of §22.2's documents, as the published contract describes it.
+ *
+ * <p>The body comes with it. These are pages, and a page whose text arrived in a second
+ * request would be a page that renders empty and then reflows.
+ */
+export type LegalDocumentResponse = components['schemas']['Document'];
+
+/**
+ * §22.2's eight, as the contract names them.
+ *
+ * <p>Taken from the generated path parameter rather than retyped, so a ninth document — or a
+ * renamed one — is a compile error here rather than a 404 a reader meets.
+ */
+export type DocumentKind = NonNullable<
+  paths['/v1/legal/documents/{kind}']['get']['parameters']['path']
+>['kind'];
+
+/**
+ * The version of a legal document that is in force, in the reader's language.
+ *
+ * <h2>Read on the server, because it is the same document for everybody</h2>
+ *
+ * A legal document is identical for every reader in a language, which is exactly what a
+ * shared cache wants, and the service says so itself: {@code LegalDocumentController} sets
+ * {@code Cache-Control: public, max-age=3600}. This takes the same hour rather than the
+ * shared minute, for {@link fetchPlanCatalogue}'s reason — it changes a few times a year and
+ * is written by one screen — and {@link LEGAL} is the tag that makes the hour survivable.
+ *
+ * <h2>Why the checkout reads it at all</h2>
+ *
+ * §22.3 requires that the risk statement be shown inside the pledge flow, and #427 requires
+ * the confirmation to say which version of the backer agreement it showed. The words on the
+ * screen come from the catalogue — they are pinned by {@code wording.test.ts} in four
+ * languages, which a database row could not be — and the <em>version</em> comes from here,
+ * because it is the thing the server checks the confirmation against.
+ *
+ * <p>`null` when nothing of this kind is published, which is a state rather than a failure:
+ * until #439 seeds the words, the platform has the machinery and none of the text, and both
+ * gates treat an unpublished agreement as no requirement.
+ */
+export async function fetchLegalDocument(
+  kind: DocumentKind,
+  options: ServerReadOptions = {},
+): Promise<LegalDocumentResponse | null> {
+  const withWindow: ServerReadOptions = { revalidateSeconds: TAXONOMY_REVALIDATE_SECONDS, ...options };
+
+  try {
+    return await client(withWindow).get('/v1/legal/documents/{kind}', {
+      path: { kind },
+      ...(await readOptions(withWindow, LEGAL)),
+    });
+  } catch (cause) {
+    /*
+     * A 404 here means "not published yet", which is the ordinary state of this platform
+     * today and not an outage. `refusalOrRethrow` draws the same line every read in this
+     * module draws: a refusal is an absence, and anything else is the site being down.
+     */
+    return refusalOrRethrow(cause);
   }
 }

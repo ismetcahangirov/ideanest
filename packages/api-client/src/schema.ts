@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/v1/admin/accounts/{accountId}/acceptances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminLegalDocumentAcceptances"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/analytics": {
         parameters: {
             query?: never;
@@ -413,6 +429,54 @@ export interface paths {
         };
         get: operations["ledgerLedger"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/legal/documents/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminLegalDocumentHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/legal/documents/{kind}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminLegalDocumentPublish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/legal/documents/{kind}/{locale}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["adminLegalDocumentDraft"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1844,6 +1908,54 @@ export interface paths {
         patch: operations["itemEdit"];
         trace?: never;
     };
+    "/v1/legal/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["legalDocumentCatalogue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/legal/documents/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["legalDocumentCurrent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/legal/documents/{kind}/versions/{version}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["legalDocumentArchived"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/locations": {
         parameters: {
             query?: never;
@@ -1870,6 +1982,38 @@ export interface paths {
         get: operations["meMe"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/agreements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["myAgreementMine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/agreements/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["myAgreementAccept"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3288,6 +3432,31 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AcceptRequest: {
+            /** Format: int32 */
+            version: number;
+        };
+        Acceptance: {
+            /** Format: date-time */
+            acceptedAt?: string;
+            contentHash?: string;
+            /** Format: uuid */
+            id?: string;
+            ipAddress?: string;
+            kind?: string;
+            locale?: string;
+            /** Format: uuid */
+            signatureId?: string;
+            title?: string;
+            userAgent?: string;
+            /** Format: int32 */
+            version?: number;
+        };
+        AcceptanceRecord: {
+            acceptances?: components["schemas"]["Acceptance"][];
+            /** Format: uuid */
+            accountId?: string;
+        };
         Account: {
             avatarUrl?: string;
             bio?: string;
@@ -3645,7 +3814,7 @@ export interface components {
             title?: string;
         };
         Catalogue: {
-            plans?: components["schemas"]["Plan"][];
+            documents?: components["schemas"]["Summary"][];
         };
         Category: {
             /** Format: uuid */
@@ -3809,6 +3978,8 @@ export interface components {
             token: string;
         };
         ConfirmPledgeRequest: {
+            /** Format: int32 */
+            acknowledgedAgreementVersion?: number;
             /** Format: uuid */
             paymentMethodId?: string;
         };
@@ -4023,14 +4194,17 @@ export interface components {
             page?: number;
         };
         Document: {
-            /** Format: int32 */
-            byteLength?: number;
-            contentType?: string;
-            /** Format: uuid */
-            id?: string;
-            kind?: string;
+            body?: string;
+            contentHash?: string;
             /** Format: date-time */
-            uploadedAt?: string;
+            effectiveFrom?: string;
+            kind?: string;
+            locale?: string;
+            /** Format: date-time */
+            publishedAt?: string;
+            title?: string;
+            /** Format: int32 */
+            version?: number;
         };
         Draft: {
             locale?: string;
@@ -4051,6 +4225,10 @@ export interface components {
             /** Format: uuid */
             rewardTierId?: string;
             shippingCountry?: string;
+        };
+        DraftRequest: {
+            body: string;
+            title: string;
         };
         EditRequest: {
             body: string;
@@ -4244,7 +4422,9 @@ export interface components {
             state?: "PENDING_PAYMENT" | "ACTIVE" | "CANCELED" | "EXPIRED";
         };
         History: {
-            schedules?: components["schemas"]["Schedule"][];
+            drafts?: components["schemas"]["Document"][];
+            kind?: string;
+            versions?: components["schemas"]["Summary"][];
         };
         Image: {
             /** Format: int32 */
@@ -4450,6 +4630,21 @@ export interface components {
             amount: string;
             /** @example AZN */
             currency: string;
+        };
+        MyAgreement: {
+            /** Format: date-time */
+            acceptedAt?: string;
+            document?: string;
+            /** Format: uuid */
+            documentId?: string;
+            /** Format: date-time */
+            effectiveFrom?: string;
+            inForce?: boolean;
+            /** Format: int32 */
+            version?: number;
+        };
+        MyAgreements: {
+            agreements?: components["schemas"]["MyAgreement"][];
         };
         NamedCount: {
             /** Format: int64 */
@@ -4924,6 +5119,10 @@ export interface components {
         };
         PublishCollection: {
             note: string;
+        };
+        PublishRequest: {
+            /** Format: date-time */
+            effectiveFrom?: string;
         };
         PublishUpdateRequest: {
             body?: string;
@@ -5477,6 +5676,18 @@ export interface components {
         Suggestions: {
             items?: components["schemas"]["SuggestionItem"][];
         };
+        Summary: {
+            contentHash?: string;
+            /** Format: date-time */
+            effectiveFrom?: string;
+            kind?: string;
+            locale?: string;
+            /** Format: date-time */
+            publishedAt?: string;
+            title?: string;
+            /** Format: int32 */
+            version?: number;
+        };
         SurveyListResponse: {
             surveys?: components["schemas"]["SurveyResponseBody"][];
         };
@@ -5797,6 +6008,9 @@ export interface components {
     headers: never;
     pathItems: never;
 }
+export type SchemaAcceptRequest = components['schemas']['AcceptRequest'];
+export type SchemaAcceptance = components['schemas']['Acceptance'];
+export type SchemaAcceptanceRecord = components['schemas']['AcceptanceRecord'];
 export type SchemaAccount = components['schemas']['Account'];
 export type SchemaAccountExport = components['schemas']['AccountExport'];
 export type SchemaActivateRequest = components['schemas']['ActivateRequest'];
@@ -5885,6 +6099,7 @@ export type SchemaDisputePage = components['schemas']['DisputePage'];
 export type SchemaDocument = components['schemas']['Document'];
 export type SchemaDraft = components['schemas']['Draft'];
 export type SchemaDraftPledgeRequest = components['schemas']['DraftPledgeRequest'];
+export type SchemaDraftRequest = components['schemas']['DraftRequest'];
 export type SchemaEditRequest = components['schemas']['EditRequest'];
 export type SchemaEmailTemplateListResponse = components['schemas']['EmailTemplateListResponse'];
 export type SchemaEnableTwoFactorRequest = components['schemas']['EnableTwoFactorRequest'];
@@ -5935,6 +6150,8 @@ export type SchemaMine = components['schemas']['Mine'];
 export type SchemaModerationDecisionRequest = components['schemas']['ModerationDecisionRequest'];
 export type SchemaModerationOutcomeBody = components['schemas']['ModerationOutcomeBody'];
 export type SchemaMoney = components['schemas']['Money'];
+export type SchemaMyAgreement = components['schemas']['MyAgreement'];
+export type SchemaMyAgreements = components['schemas']['MyAgreements'];
 export type SchemaNamedCount = components['schemas']['NamedCount'];
 export type SchemaNotificationInboxResponse = components['schemas']['NotificationInboxResponse'];
 export type SchemaNotificationPreferencesResponse = components['schemas']['NotificationPreferencesResponse'];
@@ -5979,6 +6196,7 @@ export type SchemaPublicProfileResponse = components['schemas']['PublicProfileRe
 export type SchemaPublicRewardListResponse = components['schemas']['PublicRewardListResponse'];
 export type SchemaPublicRewardResponse = components['schemas']['PublicRewardResponse'];
 export type SchemaPublishCollection = components['schemas']['PublishCollection'];
+export type SchemaPublishRequest = components['schemas']['PublishRequest'];
 export type SchemaPublishUpdateRequest = components['schemas']['PublishUpdateRequest'];
 export type SchemaQueue = components['schemas']['Queue'];
 export type SchemaQueuedReportResponse = components['schemas']['QueuedReportResponse'];
@@ -6050,6 +6268,7 @@ export type SchemaSubmissionQueueResponse = components['schemas']['SubmissionQue
 export type SchemaSubscribeRequest = components['schemas']['SubscribeRequest'];
 export type SchemaSuggestionItem = components['schemas']['SuggestionItem'];
 export type SchemaSuggestions = components['schemas']['Suggestions'];
+export type SchemaSummary = components['schemas']['Summary'];
 export type SchemaSurveyListResponse = components['schemas']['SurveyListResponse'];
 export type SchemaSurveyQuestionBody = components['schemas']['SurveyQuestionBody'];
 export type SchemaSurveyRequest = components['schemas']['SurveyRequest'];
@@ -6091,6 +6310,28 @@ export type SchemaWeightResponse = components['schemas']['WeightResponse'];
 export type SchemaWeightsResponse = components['schemas']['WeightsResponse'];
 export type $defs = Record<string, never>;
 export interface operations {
+    adminLegalDocumentAcceptances: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptanceRecord"];
+                };
+            };
+        };
+    };
     platformAnalyticsDashboard: {
         parameters: {
             query?: {
@@ -6815,6 +7056,81 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["View"];
+                };
+            };
+        };
+    };
+    adminLegalDocumentHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "TERMS_OF_USE" | "PRIVACY_POLICY" | "COOKIE_POLICY" | "PLATFORM_RULES" | "CREATOR_AGREEMENT" | "BACKER_AGREEMENT" | "DELIVERY_AND_REFUND_POLICY" | "DISPUTE_RESOLUTION_POLICY";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["History"];
+                };
+            };
+        };
+    };
+    adminLegalDocumentPublish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "TERMS_OF_USE" | "PRIVACY_POLICY" | "COOKIE_POLICY" | "PLATFORM_RULES" | "CREATOR_AGREEMENT" | "BACKER_AGREEMENT" | "DELIVERY_AND_REFUND_POLICY" | "DISPUTE_RESOLUTION_POLICY";
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PublishRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Catalogue"];
+                };
+            };
+        };
+    };
+    adminLegalDocumentDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "TERMS_OF_USE" | "PRIVACY_POLICY" | "COOKIE_POLICY" | "PLATFORM_RULES" | "CREATOR_AGREEMENT" | "BACKER_AGREEMENT" | "DELIVERY_AND_REFUND_POLICY" | "DISPUTE_RESOLUTION_POLICY";
+                locale: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Document"];
                 };
             };
         };
@@ -9224,6 +9540,77 @@ export interface operations {
             };
         };
     };
+    legalDocumentCatalogue: {
+        parameters: {
+            query?: {
+                locale?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Catalogue"];
+                };
+            };
+        };
+    };
+    legalDocumentCurrent: {
+        parameters: {
+            query?: {
+                locale?: string;
+            };
+            header?: never;
+            path: {
+                kind: "TERMS_OF_USE" | "PRIVACY_POLICY" | "COOKIE_POLICY" | "PLATFORM_RULES" | "CREATOR_AGREEMENT" | "BACKER_AGREEMENT" | "DELIVERY_AND_REFUND_POLICY" | "DISPUTE_RESOLUTION_POLICY";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Document"];
+                };
+            };
+        };
+    };
+    legalDocumentArchived: {
+        parameters: {
+            query?: {
+                locale?: string;
+            };
+            header?: never;
+            path: {
+                kind: "TERMS_OF_USE" | "PRIVACY_POLICY" | "COOKIE_POLICY" | "PLATFORM_RULES" | "CREATOR_AGREEMENT" | "BACKER_AGREEMENT" | "DELIVERY_AND_REFUND_POLICY" | "DISPUTE_RESOLUTION_POLICY";
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Document"];
+                };
+            };
+        };
+    };
     locationLocations: {
         parameters: {
             query?: never;
@@ -9262,6 +9649,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeResponse"];
+                };
+            };
+        };
+    };
+    myAgreementMine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyAgreements"];
+                };
+            };
+        };
+    };
+    myAgreementAccept: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "CREATOR_AGREEMENT" | "BACKER_AGREEMENT";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyAgreement"];
                 };
             };
         };

@@ -1,0 +1,183 @@
+package az.ideanest.legal.api;
+
+import az.ideanest.legal.application.AgreementNotPublishedException;
+import az.ideanest.legal.application.AgreementVersionStaleException;
+import az.ideanest.legal.application.DocumentNotPublishedException;
+import az.ideanest.legal.application.EffectiveDateInThePastException;
+import az.ideanest.legal.application.GoverningTextMissingException;
+import az.ideanest.legal.application.NothingToPublishException;
+import az.ideanest.legal.domain.PublishedDocumentIsImmutableException;
+import az.ideanest.staff.api.StaffRefusals;
+import az.ideanest.staff.application.InsufficientStaffCapabilityException;
+import az.ideanest.staff.application.NotAModeratorException;
+import java.net.URI;
+import java.util.Map;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+/**
+ * What the legal endpoints refuse with — RFC 9457, as everything here is.
+ *
+ * <p>Scoped to the two controllers rather than global, for the reason every advice in this
+ * service gives: an advice that catches a broad exception everywhere turns a bug three
+ * modules away into a 4xx that looks like the caller's fault.
+ *
+ * <p><strong>Every refusal carries a {@code code}.</strong> The console branches on it — a
+ * client parsing a human sentence to decide what to draw is a client that breaks when the
+ * sentence is translated, and §21.1 has four languages.
+ */
+@RestControllerAdvice(
+        assignableTypes = {
+            LegalDocumentController.class,
+            AdminLegalDocumentController.class,
+            MyAgreementController.class
+        })
+public class LegalExceptionHandler {
+
+    @ExceptionHandler(NotAModeratorException.class)
+    public ProblemDetail handleNotStaff(NotAModeratorException exception) {
+        return StaffRefusals.notStaff(exception);
+    }
+
+    @ExceptionHandler(InsufficientStaffCapabilityException.class)
+    public ProblemDetail handleInsufficient(InsufficientStaffCapabilityException exception) {
+        return StaffRefusals.insufficient(exception);
+    }
+
+    /**
+     * <strong>404: the document exists as a requirement and not yet as a text.</strong>
+     *
+     * <p>Honest rather than convenient. §22.2 says the platform must have eight documents;
+     * this repository has the machinery for them and, until #439, none of the words. An
+     * empty document would tell a reader they had read the terms.
+     */
+    @ExceptionHandler(DocumentNotPublishedException.class)
+    public ProblemDetail handleNotPublished(DocumentNotPublishedException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+        problem.setType(URI.create("https://ideanest.az/problems/document-not-published"));
+        problem.setTitle("That document has not been published");
+        problem.setDetail("No version of this document is in force yet.");
+        problem.setProperty("code", "DOCUMENT_NOT_PUBLISHED");
+        problem.setProperty("meta", Map.of("kind", exception.kind().name()));
+        return problem;
+    }
+
+    /**
+     * <strong>409: there is nothing of this kind to accept.</strong>
+     *
+     * <p>Deliberately not the same behaviour as the gates, which let an action through when
+     * no version is published. {@code AgreementNotPublishedException} argues the difference:
+     * a gate has something else to be about, and an acceptance of a document that does not
+     * exist would be an acceptance of nothing.
+     */
+    @ExceptionHandler(AgreementNotPublishedException.class)
+    public ProblemDetail handleAgreementNotPublished(AgreementNotPublishedException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/agreement-not-published"));
+        problem.setTitle("There is nothing to accept yet");
+        problem.setDetail("No version of this agreement is in force.");
+        problem.setProperty("code", "AGREEMENT_NOT_PUBLISHED");
+        problem.setProperty("meta", Map.of("document", exception.kind().name()));
+        return problem;
+    }
+
+    /**
+     * <strong>409: the version offered is not the one in force.</strong>
+     *
+     * <p>The recovery is always the same and the client can always perform it: reload, show
+     * the new text, accept again. {@code meta.version} is what to show.
+     */
+    @ExceptionHandler(AgreementVersionStaleException.class)
+    public ProblemDetail handleStaleVersion(AgreementVersionStaleException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/agreement-version-stale"));
+        problem.setTitle("This agreement has changed");
+        problem.setDetail("A newer version is in force. Read it, then accept again.");
+        problem.setProperty("code", "AGREEMENT_VERSION_STALE");
+        problem.setProperty(
+                "meta",
+                Map.of(
+                        "document", exception.kind().name(),
+                        "version", exception.inForce(),
+                        "offered", exception.offered()));
+        return problem;
+    }
+
+    /**
+     * <strong>409: the version is published and cannot be changed.</strong>
+     *
+     * <p>409 rather than 403. The caller is permitted to do this to a draft and the state is
+     * what refuses them, which is exactly the distinction between the two codes. The fix is a
+     * different request — publish a new version — rather than a corrected one, and
+     * {@code meta.version} is there so the console can say which.
+     */
+    @ExceptionHandler(PublishedDocumentIsImmutableException.class)
+    public ProblemDetail handleImmutable(PublishedDocumentIsImmutableException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/published-document-is-immutable"));
+        problem.setTitle("A published version cannot be edited");
+        problem.setDetail("Correct it by drafting and publishing a new version. The old one stays readable.");
+        problem.setProperty("code", "PUBLISHED_DOCUMENT_IS_IMMUTABLE");
+        problem.setProperty(
+                "meta",
+                Map.of(
+                        "kind", exception.kind().name(),
+                        "locale", exception.locale(),
+                        "version", exception.version()));
+        return problem;
+    }
+
+    /** <strong>409: publish was asked for and nothing is drafted.</strong> */
+    @ExceptionHandler(NothingToPublishException.class)
+    public ProblemDetail handleNothingToPublish(NothingToPublishException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/nothing-to-publish"));
+        problem.setTitle("There is no draft to publish");
+        problem.setDetail("Write the text first. Publishing twice does nothing the second time.");
+        problem.setProperty("code", "NOTHING_TO_PUBLISH");
+        problem.setProperty("meta", Map.of("kind", exception.kind().name()));
+        return problem;
+    }
+
+    /**
+     * <strong>409: the Azerbaijani text is missing.</strong>
+     *
+     * <p>The one language that is not optional, because it is the one that governs. Its own
+     * code rather than folding into {@code NOTHING_TO_PUBLISH}, because the console's answer
+     * is different: there <em>is</em> a draft, and what is wanted is the other one.
+     */
+    @ExceptionHandler(GoverningTextMissingException.class)
+    public ProblemDetail handleGoverningMissing(GoverningTextMissingException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/governing-text-missing"));
+        problem.setTitle("The Azerbaijani text is missing");
+        problem.setDetail("The Azerbaijani version is the one that governs, so nothing publishes without it.");
+        problem.setProperty("code", "GOVERNING_TEXT_MISSING");
+        problem.setProperty("meta", Map.of("kind", exception.kind().name(), "locale", "az"));
+        return problem;
+    }
+
+    /**
+     * <strong>400: a version cannot start governing in the past.</strong>
+     *
+     * <p>400 rather than 409, because this one is the request's fault: the date came from the
+     * body and a different date would be accepted.
+     */
+    @ExceptionHandler(EffectiveDateInThePastException.class)
+    public ProblemDetail handleBackdated(EffectiveDateInThePastException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("https://ideanest.az/problems/effective-date-in-the-past"));
+        problem.setTitle("A version cannot start governing in the past");
+        problem.setDetail("Publish it from now, or from a date still to come.");
+        problem.setProperty("code", "EFFECTIVE_DATE_IN_THE_PAST");
+        problem.setProperty(
+                "meta",
+                Map.of(
+                        "kind", exception.kind().name(),
+                        "effectiveFrom", exception.effectiveFrom().toString(),
+                        "now", exception.now().toString()));
+        return problem;
+    }
+}

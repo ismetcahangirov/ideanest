@@ -215,6 +215,17 @@ export function useCheckout(
   projectId: string,
   secretTokens: readonly string[] = [],
   initialRewardId: string | null = null,
+  /**
+   * The version of the backer agreement the page resolved on the server, or null when none
+   * is published — #427.
+   *
+   * <p>A parameter rather than a fetch of this hook's own. The version is the same for every
+   * reader, it is behind an hour of shared cache on the server, and §22.3 wants the
+   * statement rendered with the page rather than arriving after it: a risk sentence that
+   * appeared a moment after the confirm button did would be one somebody had already
+   * scrolled past.
+   */
+  backerAgreementVersion: number | null = null,
 ): CheckoutState {
   const [catalogue, setCatalogue] = useState<PublicRewardList | null>(null);
   const [catalogueStatus, setCatalogueStatus] = useState<CatalogueStatus>('loading');
@@ -488,19 +499,31 @@ export function useCheckout(
     const paymentMethodId = current.paymentMethodId ?? null;
 
     /*
+     * §22.3's acknowledgement — #427. The version this page showed, resolved on the server
+     * and sent back so the service can tell "the reader saw the sentence in force" from "the
+     * reader saw a sentence that has since been replaced". The second is refused with
+     * AGREEMENT_REQUIRED and the answer is a reload, which `describeFailure` words.
+     */
+    const acknowledgedAgreementVersion = backerAgreementVersion;
+
+    /*
      * The confirm intent is the pledge AND the body. Keying it on the body alone
      * would let two different pledges — the one that expired and the one made to
      * replace it — share a key, and the second confirmation would be answered
      * with the first one's result.
      */
-    const intent = { pledgeId: current.id, paymentMethodId };
+    const intent = { pledgeId: current.id, paymentMethodId, acknowledgedAgreementVersion };
 
     setPhase('confirming');
     setFailure(null);
 
     void (async () => {
       const outcome = await attemptWithRetry(() =>
-        confirmPledge(current.id, { paymentMethodId }, keyring.current.keyFor(intent)),
+        confirmPledge(
+          current.id,
+          { paymentMethodId, acknowledgedAgreementVersion },
+          keyring.current.keyFor(intent),
+        ),
       );
 
       if (outcome.ok) {
@@ -528,7 +551,7 @@ export function useCheckout(
 
       setFailure(described);
     })();
-  }, [pledge, draftBody]);
+  }, [pledge, draftBody, backerAgreementVersion]);
 
   /**
    * The failed request again — the one that failed, and not the other one.

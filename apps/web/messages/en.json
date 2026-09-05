@@ -428,6 +428,7 @@
       "/admin/email-templates": "Email templates",
       "/admin/flags": "Feature flags",
       "/admin/health": "System health",
+      "/admin/legal": "Legal documents",
       "/admin/moderation/submissions": "Campaigns for review",
       "/admin/campaigns": "All campaigns"
     },
@@ -743,6 +744,12 @@
         "metaDescription": "One campaign as its page reads, in any state, for the moderator deciding it.",
         "title": "Campaign preview",
         "intro": "The campaign as its public page would render it, whatever state it is in. The review queue links here because a campaign awaiting a decision has no public page — and a decision taken on a title and a goal figure is a guess."
+      },
+      "legal": {
+        "metaTitle": "Legal documents",
+        "metaDescription": "The eight documents §22.2 requires, their versions, and publishing them.",
+        "title": "Legal documents",
+        "intro": "A published version is never edited. A correction is a new version and the old one stays readable, because an acceptance names a version."
       }
     },
     "screens": {
@@ -1711,8 +1718,8 @@
         "providerAndReason": "{provider} · {code}",
         "reason": {
           "fraudulent": "Not the cardholder",
-          "product_not_received": "Product not received",
-          "product_unacceptable": "Product not as described",
+          "product_not_received": "Reward not received",
+          "product_unacceptable": "Reward not as described",
           "duplicate": "Charged twice",
           "subscription_canceled": "Subscription was cancelled",
           "credit_not_processed": "Promised refund never issued",
@@ -1967,6 +1974,59 @@
         "risksHeading": "Risks and challenges",
         "noRisks": "Nothing written yet. Submission requires two hundred characters of it.",
         "coverAlt": "Cover image for {title}"
+      },
+      "legal": {
+        "subject": "the legal documents",
+        "noticeTitle": "Publishing cannot be undone",
+        "noticeBody": "A published version is never edited and never deleted. A correction is a new version; the old one stays readable, because somebody who accepted it is entitled to read what they accepted.",
+        "documentLabel": "Document",
+        "languageLabel": "Language",
+        "languageHint": "The Azerbaijani text is the one that governs. The other three exist so a person can read what they are agreeing to.",
+        "draftHeading": "Draft of the next version",
+        "draftIntro": "One draft per language. Saving again replaces the open draft rather than starting a second one.",
+        "titleLabel": "Title",
+        "bodyLabel": "Text",
+        "bodyHint": "The text itself is stored, not a link to it. The acceptance record has to reproduce this text years from now.",
+        "save": "Save draft",
+        "working": "Working…",
+        "savedNotice": "Saved the draft of version {version} in {locale}.",
+        "publishHeading": "Publish",
+        "publishIntro": "Every open draft is published together, under one version number and one effective date.",
+        "willPublish": "This will publish: {languages}.",
+        "governingMissingTitle": "The Azerbaijani text is missing",
+        "governingMissingBody": "The Azerbaijani version is the one that governs, so nothing publishes without it.",
+        "effectiveFromLabel": "Starts governing",
+        "effectiveFromHint": "Leave empty for now. A future date is allowed; a past one is refused.",
+        "publish": "Publish this version",
+        "publishedNotice": "Published version {version} in {languages}.",
+        "nothingDraftedTitle": "Nothing is drafted",
+        "nothingDraftedBody": "Write the text above first. Publishing twice does nothing the second time.",
+        "historyHeading": "Versions",
+        "historyIntro": "Every version stays readable: somebody who accepted one is entitled to read what they accepted.",
+        "noVersionsTitle": "Nothing published yet",
+        "noVersionsBody": "This document has no text yet, so nothing on the platform requires it.",
+        "versionLabel": "Version {version}",
+        "versionMeta": "From {from} · hash {hash}",
+        "doneTitle": "Done",
+        "failedTitle": "That did not work",
+        "loadingList": "Loading the document",
+        "tryAgain": "Try again",
+        "kind": {
+          "TERMS_OF_USE": "Terms of use",
+          "PRIVACY_POLICY": "Privacy policy",
+          "COOKIE_POLICY": "Cookie policy",
+          "PLATFORM_RULES": "Platform rules",
+          "CREATOR_AGREEMENT": "Creator agreement",
+          "BACKER_AGREEMENT": "Backer agreement",
+          "DELIVERY_AND_REFUND_POLICY": "Delivery and refund policy",
+          "DISPUTE_RESOLUTION_POLICY": "Dispute resolution policy"
+        },
+        "locale": {
+          "az": "Azerbaijani (the governing text)",
+          "en": "English",
+          "ru": "Russian",
+          "tr": "Turkish"
+        }
       }
     },
     "moderation": {
@@ -2655,8 +2715,8 @@
     }
   },
   "checkout": {
-    "title": "Checkout",
-    "progress": "Checkout progress",
+    "title": "Back this campaign",
+    "progress": "Pledge progress",
     "steps": {
       "choose": "Choose your reward",
       "review": "Review and confirm",
@@ -2737,6 +2797,12 @@
       "reserve": "Reserve and review",
       "confirm": "Confirm pledge",
       "confirming": "Confirming…"
+    },
+    "risk": {
+      "heading": "What backing means",
+      "body": "A pledge is not a purchase. You are funding an attempt, and a reward is not guaranteed — the campaign may be delayed, may change, or may never arrive. The creator owes you the reward, not IdeaNest.",
+      "confirm": "I understand — confirm my pledge",
+      "stale": "This statement was updated while this page was open. Read it again, then confirm."
     },
     "done": {
       "announced": "Your pledge is confirmed",
