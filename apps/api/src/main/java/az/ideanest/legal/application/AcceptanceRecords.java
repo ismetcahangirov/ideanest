@@ -30,10 +30,16 @@ import org.springframework.transaction.annotation.Transactional;
  * Recording it is cheap and its absence is only noticed during the investigation that
  * needed it.
  *
- * <p>{@link StaffCapability#ADMINISTER_ACCOUNTS} rather than {@code CONFIGURE_PLATFORM}:
- * publishing a document changes the platform, and reading what one person agreed to is a
- * question about an account, which is what the account console is. #436 gives this its own
- * row in §3.1's matrix; narrowing it is a change to the one line below.
+ * <p><strong>{@link StaffCapability#READ_ACCEPTANCE_RECORD} since #436</strong>, where it
+ * was {@code ADMINISTER_ACCOUNTS}. That was the right module — reading what one person
+ * agreed to is a question about an account and not about the platform — and the wrong
+ * width: {@code ADMINISTER_ACCOUNTS} is also what a moderator holds in order to ban somebody
+ * behind a report, so a consent history sat in front of everybody who clears the comment
+ * queue. It is a narrower capability now, and #436's matrix has the row.
+ *
+ * <p>Narrower still is {@code READ_SIGNED_AGREEMENT}, which is not this: an acceptance is a
+ * reference and a timestamp, and a signature carries the name and FİN on a citizen's
+ * certificate. #429 owns that read, and it is a different question with a different answer.
  *
  * <h2>It joins, because two identifiers are not a record</h2>
  *
@@ -70,7 +76,7 @@ public class AcceptanceRecords {
      */
     @Transactional(readOnly = true)
     public List<AcceptedDocument> forAccount(UUID staffId, UUID accountId) {
-        staff.requireCapability(staffId, StaffCapability.ADMINISTER_ACCOUNTS);
+        staff.requireCapability(staffId, StaffCapability.READ_ACCEPTANCE_RECORD);
 
         List<DocumentAcceptance> rows = acceptances.forAccount(accountId);
 

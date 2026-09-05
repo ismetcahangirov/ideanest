@@ -694,6 +694,82 @@ ideanest:
       # an hour later.
       tolerance: PT5M
 
+  # SIMA Imza, and the two things that keep it switched off -- issue #428.
+  #
+  # A tick box is an acceptance; a SIMA Imza signature is a signature with the legal
+  # force of a handwritten one, made by a citizen whose identity the state has already
+  # verified. #429 is what spends that difference on the creator agreement. This block
+  # is the mechanism, and it is inert by default in two independent ways.
+  signature:
+    provider:
+      # Which adapter the platform signs through, and it is deliberately empty.
+      #
+      # Unlike `payment.provider`, an adapter DOES exist -- SimaImzaSignatureProvider,
+      # against SIMA's sandbox. It is switched off by configuration rather than by
+      # absence, because it is not a stub: it speaks to a real service that issues real
+      # signatures against test certificates, so §9.2's argument against a fake does not
+      # apply to it. What applies instead is that nothing calls it yet (#429 is the
+      # caller) and that the environment below is gated.
+      #
+      # A value naming a provider with no adapter on the classpath is a start-up failure
+      # rather than a warning, for `payment.provider.primary`'s reason.
+      primary: ${SIGNATURE_PROVIDER:}
+    sima:
+      # SANDBOX or PRODUCTION, and PRODUCTION IS REFUSED AT START-UP.
+      #
+      # #423 -- obtain the legal opinion the three-party structure rests on -- has not
+      # answered which personal data from a SIMA certificate may be kept and for how
+      # long, and a certificate carries a citizen's name and FIN. #428's definition of
+      # done asks for "no production credentials, and an explicit note that #423 gates
+      # that"; a note is not a control, so `SignatureProviders` refuses to start on this
+      # value instead. Lifting it is a one-line change made by whoever closes #423,
+      # having read the personal-data row they obtained.
+      environment: ${SIMA_ENVIRONMENT:SANDBOX}
+      # Where the sandbox lives. Empty by default: there is no sensible default for
+      # somebody else's service, and a guessed one is a deployment that appears
+      # configured. Naming a provider above without completing these three is a
+      # start-up failure.
+      base-url: ${SIMA_BASE_URL:}
+      client-id: ${SIMA_CLIENT_ID:}
+      client-secret: ${SIMA_CLIENT_SECRET:}
+      # How long a citizen has to answer the prompt on their phone. Long enough to find
+      # the phone, short enough that a prompt somebody forgot about is not still
+      # signable an hour later.
+      session-life: PT5M
+      # How long the platform waits on one call before treating SIMA as unreachable.
+      # Deliberately short: a request thread blocked on a third party is the failure
+      # mode that takes the whole service down with it.
+      request-timeout: PT10S
+
+  # §5.5's post-campaign obligations, as a clock -- issue #437.
+  #
+  # The platform enforced none of §5.5's four obligations, and an obligation that is
+  # stated and never checked is a clause rather than a control. This is the first of
+  # them -- "publish an update at least monthly after a successful campaign" -- and it
+  # produces a visible state and an escalation to a moderator, and nothing else. No
+  # automatic refund and no automatic suspension: §9.7 says the platform mediates.
+  obligation:
+    # §5.5 says "at least monthly". Thirty days rather than a calendar month, because a
+    # calendar month makes the obligation shorter in February for no reason anybody
+    # could defend to a creator.
+    interval: P30D
+    # How long before the due date the creator is warned, and the same value the page
+    # uses to say "due soon". Two numbers that must agree are one number. A lead at
+    # least as long as the interval is a start-up failure: it would make every campaign
+    # overdue-looking from the moment it closed.
+    reminder-lead: P7D
+    # §8.4: update-obligation-sweep, daily. A sweep every minute would be fourteen
+    # hundred passes a day finding the same nothing, and the state a campaign page reads
+    # is a comparison rather than a column -- so a late pass still shows the right thing
+    # and only sends the reminder a few hours later.
+    #
+    # Quarter past three, and deliberately not midnight, for the reconciliation's
+    # reason.
+    schedule: ${UPDATE_OBLIGATION_SCHEDULE:0 15 3 * * *}
+    # How many obligations one pass may act on. Bounded because campaigns cluster at the
+    # ends of months, so their obligations do too.
+    per-pass: 200
+
   pledge:
     reservation:
       # §4.5's sequence diagram: "Reserve stock (5 min TTL)". A DRAFT pledge holds

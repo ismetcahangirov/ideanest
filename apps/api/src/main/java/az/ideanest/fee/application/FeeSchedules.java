@@ -164,6 +164,36 @@ public class FeeSchedules {
         return schedules.platformInForceAt(at);
     }
 
+    /**
+     * What a campaign is priced under right now, for the disclosure §22.3 requires — #439.
+     *
+     * <p><strong>Public, and it has to be.</strong> §22.3 lists "clear fee disclosure" among six
+     * product requirements, and the audience is a backer deciding whether to pledge and a creator
+     * deciding whether to launch. A disclosure only staff can read is not one.
+     *
+     * <p><strong>Derived rather than written down, which is the whole point of #439's fee
+     * section.</strong> Until this existed the platform's fee copy was a sentence in a message
+     * catalogue saying that everything is free — true today, because no schedule is seeded, and
+     * <em>false the day one is</em>, silently, because nothing checks a catalogue against a table.
+     * A number a creator can check against the payout they get is a disclosure; a sentence about
+     * the platform's intentions is not.
+     *
+     * <p><strong>Empty means no schedule, and not "no fees".</strong> The caller decides what to
+     * say about that: {@link #priceOf} treats it as zero fees because a payout run must not stop,
+     * and a page has the opposite obligation — it must not claim a rate the platform has not
+     * committed to. Returning an empty optional rather than a zero breakdown is what keeps the
+     * two callers from having to share one answer.
+     *
+     * @param projectId the campaign whose terms to disclose, or null for the platform-wide ones.
+     *     Most-specific-wins, exactly as {@link #priceOf} resolves — so a campaign with its own
+     *     schedule discloses its own schedule, and a disclosure that quoted the platform rate to
+     *     a creator on different terms would be the disclosure §22.3 is trying to prevent
+     */
+    @Transactional(readOnly = true)
+    public Optional<FeeSchedule> inForceFor(UUID projectId) {
+        return resolve(clock.instant(), projectId);
+    }
+
     /** Every window ever written, for AD-11's screen. */
     @Transactional(readOnly = true)
     public List<FeeSchedule> history(UUID staffId) {
@@ -201,7 +231,21 @@ public class FeeSchedules {
         staff.requireCapability(staffId, StaffCapability.CONFIGURE_PLATFORM);
 
         Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
-        schedules.openFor(scope, scopeRef).ifPresent(open -> open.close(now));
+
+        // **Flushed before the insert, and that is not a detail.** V49's
+        // `fee_schedules_one_open_per_scope` is a partial unique index over the rows with no
+        // `effective_to`, and Hibernate's action queue orders every INSERT ahead of every UPDATE
+        // in a flush. So closing the open schedule and then saving its successor put two open
+        // rows in front of the index at once, and the second fee change a scope ever received
+        // came back as OverlappingFeeScheduleException — a 409 telling an administrator that
+        // somebody else had got there first, on a screen only they were using.
+        //
+        // Found by #439's disclosure test, which is the first thing in the build to change a
+        // schedule twice.
+        schedules.openFor(scope, scopeRef).ifPresent(open -> {
+            open.close(now);
+            schedules.saveAndFlush(open);
+        });
 
         FeeSchedule opened = new FeeSchedule(
                 Identifiers.newIdentifier(),

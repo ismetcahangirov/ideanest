@@ -170,6 +170,55 @@ public class SecurityConfiguration {
                         // which are somebody's.
                         .requestMatchers(HttpMethod.GET, "/v1/legal/documents", "/v1/legal/documents/**")
                         .permitAll()
+                        // §5.5's update obligation, as a campaign page and a
+                        // creator's profile draw it -- issue #437.
+                        //
+                        // Public, and that is the whole mechanism rather than a
+                        // convenience. §22.3 names "the creator's project
+                        // history visible" as the consequence that makes the
+                        // obligation real, and the person it is meant to inform
+                        // is the one deciding whether to back this creator
+                        // again -- who has not signed in. Behind
+                        // authentication, the fact would be visible to
+                        // everybody except the audience it exists for.
+                        //
+                        // It is a fact and not a sanction. The response carries
+                        // the dates the state is derived from, so a reader can
+                        // check it rather than take it, and nothing in either
+                        // answer belongs to a person -- which is what lets both
+                        // be Cache-Control: public for five minutes.
+                        //
+                        // GET and nothing else. Resolving an escalation is
+                        // /v1/admin/update-obligations and needs
+                        // MODERATE_CONTENT; opening and closing a clock have no
+                        // endpoint at all, because §8.3's outbox drives them.
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/v1/projects/*/update-obligation",
+                                "/v1/creators/*/update-obligations")
+                        .permitAll()
+                        // §22.3's sixth product requirement: clear fee
+                        // disclosure -- issue #439.
+                        //
+                        // Public for the reason the legal documents are. The
+                        // audience is a backer deciding whether to pledge and a
+                        // creator deciding whether to launch, and neither has
+                        // necessarily signed in; a disclosure only staff can
+                        // read is not one.
+                        //
+                        // Derived from `fee_schedules` rather than written into
+                        // a catalogue, which is the whole point of the endpoint:
+                        // the copy that said the platform charges nothing was
+                        // true only because no schedule was seeded, and would
+                        // have become false silently on the day one was.
+                        //
+                        // Nothing in the answer belongs to a person and a
+                        // schedule changes a handful of times a year, so both
+                        // are Cache-Control: public for an hour. Writing one is
+                        // /v1/admin/fees and needs CONFIGURE_PLATFORM.
+                        .requestMatchers(
+                                HttpMethod.GET, "/v1/fees/disclosure", "/v1/projects/*/fee-disclosure")
+                        .permitAll()
                         // Browsing, and the counts beside it. Public because
                         // discovery is the front door: a visitor who has not
                         // registered is exactly the audience it exists for, and

@@ -272,6 +272,36 @@ public final class NotificationEvents {
     }
 
     /**
+     * §5.5's monthly update is nearly due — issue #437.
+     *
+     * <p>Recipient: <strong>the creator, and nobody else.</strong> Backers are not told that
+     * their creator is nearly late, and that is not politeness — it is the difference between a
+     * platform that helps a creator keep an obligation and one that publishes a countdown to
+     * their failure. What backers get is the state on the campaign page once the month is
+     * actually up, which is a fact rather than a prediction.
+     *
+     * <p><strong>There is no matching lapse event, deliberately.</strong> #437: "the point is
+     * compliance, not catching people". A lapse produces a visible state and a moderator's
+     * queue entry, and a message saying "you are now late" to somebody warned a week ago is the
+     * same sentence with a worse tone.
+     *
+     * <p>This is a copy of the contract in the sense every record here is: the obligation module
+     * declares its own {@code UpdateDueSoonEvent}, neither imports the other, and the field names
+     * are therefore the contract.
+     *
+     * @param dueAt when the update is owed. Carried so the copy can say a date — "soon" is what
+     *     a reminder says when it does not know, and this one does
+     * @param lastUpdateAt when they last posted, or null when they never have since the campaign
+     *     closed. Not used by the copy today and carried anyway, because it is the one fact that
+     *     distinguishes a creator who is a week late from one who has said nothing at all
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record UpdateDueSoon(UUID projectId, UUID creatorId, Instant dueAt, Instant lastUpdateAt) {
+
+        public static final String EVENT_TYPE = "obligation.update_due_soon";
+    }
+
+    /**
      * A campaign opened — §4.9's C-11 and §4.10's "followed creator launched".
      *
      * <p>Recipient: <strong>everybody following the creator</strong>, and nobody else. Not the

@@ -562,7 +562,47 @@ public enum AuditAction {
      * <p>The entity is the account whose record was read, not the member of staff, so that
      * "who has looked at this person's file" is one query.
      */
-    ACCEPTANCE_RECORD_READ("legal.acceptance_record_read", "account");
+    ACCEPTANCE_RECORD_READ("legal.acceptance_record_read", "account"),
+
+    /**
+     * A compliance requirement was waived for one account, for a bounded time.
+     *
+     * <p><strong>The row that makes an override answerable.</strong> An override is the
+     * mechanism by which every control in epic #421 can be bypassed by one person in one
+     * click, and #436's argument is that one which is invisible after the fact is
+     * indistinguishable from a control that was never there. {@code compliance_overrides}
+     * is the record a gate reads; this is the record an auditor reads, and it survives the
+     * subject's erasure where the override itself cascades away.
+     *
+     * <p>The entity is the account the exception was granted to, not the override, so that
+     * "what has been waived for this person" is one query and stays one query after the
+     * overrides themselves are gone.
+     */
+    COMPLIANCE_OVERRIDE_GRANTED("compliance.override_granted", "account"),
+
+    /**
+     * A live override was withdrawn before it would have expired.
+     *
+     * <p>Its own action rather than a detail on the grant, because it is somebody else's
+     * decision at a different time and §22.1's question is "who authorised this" in both
+     * directions. An override that expired on its own writes nothing here: nothing
+     * happened, which is the point of an expiry that is a comparison rather than a job.
+     */
+    COMPLIANCE_OVERRIDE_REVOKED("compliance.override_revoked", "account"),
+
+    /**
+     * A moderator closed the escalation raised by a lapsed §5.5 update obligation.
+     *
+     * <p><strong>The resolution is audited and the lapse is not</strong>, and the asymmetry is
+     * deliberate. A lapse is something that happened to a campaign because time passed — the row
+     * carries it, and an audit entry for "nobody did anything" would be the platform recording
+     * the absence of an action under somebody's name. A resolution is a decision a person took,
+     * and §4.11's AD-02 is the neighbouring one it must be readable beside.
+     *
+     * <p>The entity is the campaign. The detail carries when it lapsed and what it was due,
+     * because the resolution note lives on the row and the row is cleared by the next lapse.
+     */
+    UPDATE_OBLIGATION_RESOLVED("obligation.update_resolved", "project");
 
 
 
