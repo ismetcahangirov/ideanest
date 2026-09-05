@@ -4921,8 +4921,10 @@ dependencies {
     // API documentation
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui")
 
-    // Storage and media
+    // Storage and media. The HTTP implementation is named rather than left to
+    // classpath discovery -- see the transport row in §15.2.
     implementation("software.amazon.awssdk:s3")
+    implementation("software.amazon.awssdk:apache5-client")
     implementation("software.amazon.awssdk:s3-transfer-manager")
     implementation("com.drewnoakes:metadata-extractor")   // EXIF inspection
     implementation("org.apache.tika:tika-core")           // magic-byte type check
@@ -4976,6 +4978,7 @@ dependencies {
 | **Resilience4j** | The payment provider *will* be unavailable during a campaign close |
 | **jOOQ alongside JPA** | JPA is right for aggregates and wrong for faceted discovery queries. Use both, deliberately |
 | **Never call a provider SDK directly** | Always behind `PaymentProvider`. A provider change must touch one file |
+| **The outbound HTTP transport is pinned, not discovered** | `spring.http.clients.imperative.factory` is `jdk`. Left unset, Spring picks a `ClientHttpRequestFactory` off the classpath and prefers Apache HttpClient, so the connection pool, the timeouts and — worst — automatic retries on requests that are not all idempotent become a property of the dependency graph. Taking the AWS SDK bom to 2.54 demonstrated it: `awssdk:s3` began depending on `apache5-client`, and every `RestTemplate` in the process changed transport with nothing failing to compile. `TestRestTemplate` changed with them, so a test asserting on a 429 slept through the `Retry-After` window instead of reading the refusal, and the Backend job hit CI's twenty-minute ceiling. `HttpClientTransportTests` asserts the pin; the SDK's own client is passed to `S3Client.builder()` for the same reason |
 | **RFC 6238 is written out rather than depended on** | `dev.samstevens.totp` was the plan and is not maintained: last commit November 2020, no release since 1.7.1, 28 open issues — sitting on the authentication path and pulling a QR-code generator in with it for a picture the client renders anyway. The specification is an HMAC, a counter, and a truncation; `az.ideanest.auth.domain.Totp` is that, over `javax.crypto`, checked against the RFC's own test vectors. The same argument would not justify writing our own Argon2, because that one is a primitive and this one is forty lines of arithmetic on top of one |
 
 ### 15.3 Frontend
