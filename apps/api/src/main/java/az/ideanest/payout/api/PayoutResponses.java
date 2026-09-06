@@ -4,6 +4,7 @@ import az.ideanest.payout.application.PayoutService;
 import az.ideanest.payout.domain.Payout;
 import az.ideanest.payout.domain.PayoutApproval;
 import az.ideanest.payout.domain.PayoutState;
+import az.ideanest.shared.compliance.DestinationStanding;
 import az.ideanest.shared.compliance.VerificationStanding;
 import az.ideanest.shared.money.Money;
 import java.time.Instant;
@@ -58,14 +59,22 @@ public final class PayoutResponses {
             Instant calculatedAt,
             Instant sentAt,
             VerificationStanding creatorStanding,
-            boolean heldForVerification) {
+            boolean heldForVerification,
+            DestinationStanding destinationStanding,
+            boolean heldForDestination) {
 
         /**
          * @param standing where the creator stands with identity verification (#431). Drawn on
          *     AD-05 rather than left for the operator to infer: a payout that will not approve
          *     and does not say why "makes the same campaign look as though nothing is owed"
+         * @param destination where the creator stands with a payout destination (#432). A
+         *     second value beside the first rather than one merged "held" flag, because the two
+         *     are chased differently: an identity standing waits on a document queue, and a
+         *     destination standing waits on a creator filing an account or a reviewer looking
+         *     at one. An operator shown a single flag would not know which screen to open
          */
-        public static PayoutSummary of(Payout payout, Instant now, VerificationStanding standing) {
+        public static PayoutSummary of(
+                Payout payout, Instant now, VerificationStanding standing, DestinationStanding destination) {
             return new PayoutSummary(
                     payout.id(),
                     payout.projectId(),
@@ -87,7 +96,9 @@ public final class PayoutResponses {
                     payout.calculatedAt(),
                     payout.sentAt(),
                     standing,
-                    !standing.releasesPayout() && payout.state().isInFlight());
+                    !standing.releasesPayout() && payout.state().isInFlight(),
+                    destination,
+                    !destination.releasesPayout() && payout.state().isInFlight());
         }
     }
 
@@ -108,9 +119,13 @@ public final class PayoutResponses {
      */
     public record PayoutFile(PayoutSummary payout, List<Approval> approvals, long stillNeeded) {
 
-        public static PayoutFile of(PayoutService.PayoutFile file, Instant now, VerificationStanding standing) {
+        public static PayoutFile of(
+                PayoutService.PayoutFile file,
+                Instant now,
+                VerificationStanding standing,
+                DestinationStanding destination) {
             return new PayoutFile(
-                    PayoutSummary.of(file.payout(), now, standing),
+                    PayoutSummary.of(file.payout(), now, standing, destination),
                     file.approvals().stream().map(Approval::of).toList(),
                     file.stillNeeded());
         }
@@ -122,19 +137,24 @@ public final class PayoutResponses {
         /**
          * @param standings one entry per distinct creator on the page (#431). A map rather than
          *     a lookup per row, because a page is fifty payouts and a handful of creators
+         * @param destinations the same, for #432's destination standing. Two maps rather than
+         *     one of pairs, because the two are read from different modules and a page where
+         *     one of them was cheap should not pay for the other
          */
         public static PayoutPage of(
                 List<Payout> payouts,
                 int page,
                 int size,
                 Instant now,
-                Map<UUID, VerificationStanding> standings) {
+                Map<UUID, VerificationStanding> standings,
+                Map<UUID, DestinationStanding> destinations) {
             return new PayoutPage(
                     payouts.stream()
                             .map(payout -> PayoutSummary.of(
                                     payout,
                                     now,
-                                    standings.getOrDefault(payout.creatorId(), VerificationStanding.NOT_REQUIRED)))
+                                    standings.getOrDefault(payout.creatorId(), VerificationStanding.NOT_REQUIRED),
+                                    destinations.getOrDefault(payout.creatorId(), DestinationStanding.NONE)))
                             .toList(),
                     page,
                     payouts.size() == size);

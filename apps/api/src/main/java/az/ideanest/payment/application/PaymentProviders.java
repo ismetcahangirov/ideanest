@@ -111,6 +111,43 @@ public class PaymentProviders {
         return Set.copyOf(adapters.keySet());
     }
 
+    /**
+     * §9.3's vocabulary, published as strings for the modules that may not name the enum —
+     * part of issue #432.
+     *
+     * <p>{@code ProviderName} is {@code payment.domain} and {@code ModuleBoundaryTests}
+     * forbids another module from reaching into it. The compliance module nonetheless has to
+     * store which provider issued a creator's payout token, and a column whose values nothing
+     * validates is a column that eventually holds "Epoint " with a trailing space.
+     *
+     * <p>So the vocabulary crosses as a string and the check stays here, which is the same
+     * answer #236 arrived at for the project module's capability enum: publish the question,
+     * not the type. A boolean would have been enough for validation and is not enough for
+     * storage — the caller needs the canonical spelling, because a token filed as "epoint" and
+     * a payout sent through "EPOINT" is a comparison that fails on nothing.
+     *
+     * <p><strong>Not the same question as {@link #registered()}.</strong> That one is which
+     * providers have an adapter, and the answer is currently none. This is which names are
+     * legitimate, which is a fact about §9.3's table rather than about this deployment: a
+     * creator may file an Epoint destination before the Epoint adapter exists, and the payout
+     * refuses at send because no provider is configured rather than because the name was
+     * wrong.
+     *
+     * @return the constant's own spelling, or empty when nothing matches
+     */
+    public static Optional<String> canonicalNameOf(String provider) {
+        if (provider == null) {
+            return Optional.empty();
+        }
+        String trimmed = provider.trim();
+        for (ProviderName candidate : ProviderName.values()) {
+            if (candidate.name().equalsIgnoreCase(trimmed)) {
+                return Optional.of(candidate.name());
+            }
+        }
+        return Optional.empty();
+    }
+
     private PaymentProvider resolvePrimary(PaymentProperties properties) {
         if (!properties.provider().isConfigured()) {
             return null;

@@ -7,6 +7,7 @@ import az.ideanest.audit.AuditOutcome;
 import az.ideanest.fee.application.FeeBreakdown;
 import az.ideanest.fee.application.FeeSchedules;
 import az.ideanest.payment.application.CampaignFunds;
+import az.ideanest.payment.application.NoPayoutProviderException;
 import az.ideanest.payment.application.PayoutGateway;
 import az.ideanest.payout.PayoutProperties;
 import az.ideanest.payout.domain.Payout;
@@ -17,6 +18,8 @@ import az.ideanest.payout.infrastructure.PayoutRepository;
 import az.ideanest.shared.access.PlatformStaff;
 import az.ideanest.shared.access.StaffCapability;
 import az.ideanest.shared.compliance.CreatorStandings;
+import az.ideanest.shared.compliance.DestinationStanding;
+import az.ideanest.shared.compliance.PayoutDestinations;
 import az.ideanest.shared.compliance.VerificationStanding;
 import az.ideanest.shared.money.Money;
 import az.ideanest.shared.project.ProjectSummaries;
@@ -86,6 +89,7 @@ public class PayoutService {
     private final ProjectSummaries projects;
     private final PlatformStaff staff;
     private final CreatorStandings creators;
+    private final PayoutDestinations destinations;
     private final AuditLog audit;
     private final PayoutProperties properties;
     private final Clock clock;
@@ -98,6 +102,7 @@ public class PayoutService {
             ProjectSummaries projects,
             PlatformStaff staff,
             CreatorStandings creators,
+            PayoutDestinations destinations,
             AuditLog audit,
             PayoutProperties properties,
             Clock clock) {
@@ -108,6 +113,7 @@ public class PayoutService {
         this.projects = projects;
         this.staff = staff;
         this.creators = creators;
+        this.destinations = destinations;
         this.audit = audit;
         this.properties = properties;
         this.clock = clock;
@@ -264,6 +270,76 @@ public class PayoutService {
     }
 
     /**
+     * Where this payout's creator stands with a payout destination — part of issue #432.
+     *
+     * <p>{@link #standingOf}'s sibling, read live for the same reason: a column would be stale
+     * the moment a reviewer confirmed an account.
+     *
+     * <p>Drawn on AD-05 beside the verification standing rather than folded into it. The two
+     * hold a payout for different reasons and are resolved by different people — an identity
+     * queue and a destination panel, both COMPLIANCE's but not the same work — and an operator
+     * shown one "held" flag cannot tell which of the two to chase.
+     */
+    @Transactional(readOnly = true)
+    public DestinationStanding destinationStandingOf(Payout payout) {
+        return destinations.standingOf(payout.creatorId());
+    }
+
+    /** The destination standing of every creator on a page. {@link #standingsOf}'s shape. */
+    @Transactional(readOnly = true)
+    public Map<UUID, DestinationStanding> destinationStandingsOf(List<Payout> page) {
+        return page.stream()
+                .map(Payout::creatorId)
+                .distinct()
+                .collect(Collectors.toMap(creatorId -> creatorId, destinations::standingOf));
+    }
+
+    /**
+     * The token to send to, or the reason there is not one.
+     *
+     * <p>Re-read at send even though {@link #approve} already checked, because the two happen
+     * at different times and the answer moves in between: a reviewer withdraws a verification,
+     * an override expires by the clock rather than by a job, or the creator files a different
+     * account — which resets the verification, which is the case this re-read exists for.
+     *
+     * <p>Both refusals are audited independently. This method throws, so the transaction rolls
+     * back, and a record written with {@code record} would roll back with it — while "somebody
+     * tried to send a payout to an unverified destination" is precisely the thing an
+     * investigation goes looking for.
+     */
+    private String destinationOf(UUID staffId, Payout payout) {
+        UUID payoutId = payout.id();
+
+        DestinationStanding standing = destinations.standingOf(payout.creatorId());
+        if (!standing.releasesPayout()) {
+            audit.recordIndependently(
+                    AuditAction.PAYOUT_SENT,
+                    payoutId,
+                    AuditActor.moderator(staffId),
+                    AuditOutcome.REFUSED,
+                    "destinationNotVerified; creator=%s; standing=%s".formatted(payout.creatorId(), standing));
+            throw new PayoutDestinationNotVerifiedException(payoutId, payout.creatorId(), standing);
+        }
+
+        // Empty means no adapter is configured, which is every environment until #433 lands.
+        // `gateway.send` answers that with the same exception a moment later; asking first
+        // costs a field read and keeps the refusal below from blaming a provider mismatch
+        // for a provider that is not there at all.
+        String provider = gateway.sendingProvider().orElseThrow(NoPayoutProviderException::new);
+
+        return destinations.referenceFor(payout.creatorId(), provider).orElseThrow(() -> {
+            audit.recordIndependently(
+                    AuditAction.PAYOUT_SENT,
+                    payoutId,
+                    AuditActor.moderator(staffId),
+                    AuditOutcome.REFUSED,
+                    "destinationProviderMismatch; creator=%s; sendingThrough=%s"
+                            .formatted(payout.creatorId(), provider));
+            return new PayoutDestinationProviderMismatchException(payoutId, payout.creatorId(), provider);
+        });
+    }
+
+    /**
      * Whether the creator's standing lets this payout move — and, when it does not, asking
      * the creator for what is missing.
      *
@@ -332,6 +408,23 @@ public class PayoutService {
                     AuditOutcome.REFUSED,
                     "creatorNotVerified; creator=%s; standing=%s".formatted(payout.creatorId(), standing));
             throw new CreatorNotVerifiedException(payoutId, payout.creatorId(), standing);
+        }
+
+        // #432: the second gate, and the one that decides *where* rather than *who*. It is
+        // here as well as in `send` for the reason the verification gate is: an approval is a
+        // signature on an instruction, and a signature given before anybody had established
+        // where the money would go is a signature on a blank line. §4.11 wanted two people to
+        // agree to a movement; agreeing to an amount and discovering the destination
+        // afterwards is what this whole issue exists to end.
+        DestinationStanding destination = destinations.standingOf(payout.creatorId());
+        if (!destination.releasesPayout()) {
+            audit.recordIndependently(
+                    AuditAction.PAYOUT_APPROVED,
+                    payoutId,
+                    AuditActor.moderator(staffId),
+                    AuditOutcome.REFUSED,
+                    "destinationNotVerified; creator=%s; standing=%s".formatted(payout.creatorId(), destination));
+            throw new PayoutDestinationNotVerifiedException(payoutId, payout.creatorId(), destination);
         }
 
         if (payout.state() == PayoutState.CALCULATED && payout.isPayableAt(clock.instant())) {
@@ -407,13 +500,25 @@ public class PayoutService {
      * {@code state} is a summary of rows in {@code payout_approvals}, and a summary can be
      * wrong. The instruction that moves money reads the rows.
      *
+     * <p><strong>And the destination is read, not accepted.</strong> Until #432 this method
+     * took a {@code String destinationReference} that a member of staff typed into the console
+     * at the moment of sending. Nothing verified it, no creator supplied it, and a typo was
+     * money sent to a stranger — after two people had approved a payout to somebody whose bank
+     * details neither of them had seen, because there were none to see. The parameter is gone
+     * and cannot come back: there is no argument on this method that decides where money goes.
+     *
      * @throws PayoutNotSendableException when it has not been approved, or the figures have
      *     moved underneath it
      * @throws PayoutSignaturesShortException when the row says approved and the signatures
      *     on file do not reach {@code approvalsRequired}
+     * @throws PayoutDestinationNotVerifiedException when the creator's destination stopped
+     *     releasing payouts between the approval and now — a reviewer withdrew it, an override
+     *     expired, or the creator replaced the account, which resets its verification
+     * @throws PayoutDestinationProviderMismatchException when the destination on file was
+     *     issued by a provider this deployment does not send through
      */
     @Transactional
-    public Payout send(UUID staffId, UUID payoutId, String destinationReference) {
+    public Payout send(UUID staffId, UUID payoutId) {
         staff.requireCapability(staffId, StaffCapability.APPROVE_PAYOUT);
 
         Payout payout = payouts.findAndLock(payoutId).orElseThrow(() -> new PayoutNotFoundException(payoutId));
@@ -457,6 +562,8 @@ public class PayoutService {
 
             throw new PayoutNotSendableException(payoutId, payout.state());
         }
+
+        String destinationReference = destinationOf(staffId, payout);
 
         PayoutGateway.Sent sent = gateway.send(
                 payoutId,

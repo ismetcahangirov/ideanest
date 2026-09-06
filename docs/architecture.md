@@ -145,6 +145,7 @@ graph TD
 | Publish a version of a legal document | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
 | Read an account's acceptance record | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
 | Read an account's legal subject | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
+| Read an account's payout destination | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
 | Read an account's signed creator agreement | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
 | Approve or reject an identity verification | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅³ | ❌ | ✅³ |
 | **Open an identity document** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
@@ -156,12 +157,20 @@ this is enforced by half**: a signed-in account and a campaign it may see, but
 not "has an active pledge here", which no module publishes an answer to. §4.9
 has the argument for why that fails open rather than closed, and what closes it.
 ² Subject to the granular grants the creator issued.
-³ **Never about their own account**, and that is a constraint rather than a service
-check — `identity_verifications_reviewer_is_not_the_subject` and
+³ **Never about their own account**, and for two of the three that is a constraint
+rather than a service check — `identity_verifications_reviewer_is_not_the_subject` and
 `compliance_overrides_grantor_is_not_the_subject` (V66). A rule only the application
 knows is a rule that holds until somebody writes an `UPDATE` by hand during an
 incident, which is exactly when the only reviewer available is the person who needs
 the decision.
+
+The third, verifying a payout destination (#432), is a service check and not a
+constraint, and the reason is worth stating rather than leaving as an inconsistency:
+`payout_destinations.verified_by` is nullable, and a partial constraint across two
+nullable columns would read as though it guaranteed more than it does. The refusal is
+in `CreatorPayoutDestinations.verify` and it is tested; when the column stops being
+nullable — which is what the automated mechanisms in #422 would allow — it should
+become a constraint like the other two.
 
 **Compliance is the fifth role, and it exists because a capability had nowhere narrow
 enough to go** (#436). V58 encrypts identity documents in the application, keeps them
@@ -2244,6 +2253,24 @@ change; #431 is the wiring, and the flag is the switch. #436's override is the
 bounded, audited exception — drawn as `WAIVED` and never as `VERIFIED`, because
 the two are answers a regulator would read very differently.
 
+**And a second gate beside it, on where rather than on who** — #432, V72. A payout
+is not approved and not sent unless the creator has filed a payout destination and
+somebody confirmed it belongs to them. The two gates are separate because they fail
+separately: a creator whose passport was approved in March can still file, in June,
+a bank account belonging to somebody else, and one standing covering both would let
+the second pass on the strength of the first. The console draws them as two values
+for the same reason — an identity hold ends when a creator sends a document, and a
+destination hold ends when a creator files an account or a reviewer looks at the
+one they filed, which are different screens and often different days.
+
+There is deliberately no `NOT_REQUIRED` in `DestinationStanding`. The identity gate
+has one because #424's threshold is undecided and inventing one here "would be the
+position a regulator reads back to us"; no equivalent question exists for this gate,
+because sending money to an account nobody confirmed belongs to the recipient is not
+a policy the platform could adopt at any threshold. The bounded exception is #436's
+override, which expires — and which cannot conjure an account: a waiver excuses the
+check, and a creator with no row at all still has nowhere for the money to go.
+
 ### 6.4 Subscription
 
 ```
@@ -3512,6 +3539,61 @@ graph LR
 **Why the hold exists:** it absorbs some chargeback risk, allows fraud detection
 time, lets the 7-day retry window close, and gives the creator time to publish a
 first update.
+
+**Where the last arrow points is the creator's to say** — #432, V72. Until then
+`PayoutController.SendRequest` carried one field, `destinationReference`, and a
+member of staff typed it at the moment of sending. The obvious cost was the typo:
+money sent to a stranger, after two people had approved a payout to somebody whose
+bank details neither of them had seen, because there were none to see. The deeper
+one was that it defeated §4.11 entirely — dual approval exists so that one person
+cannot move money alone, and a destination chosen after both signatures, by one of
+the signatories, unreviewed, means the approvals were of an amount and nothing else.
+
+The field is gone. `payout_destinations` holds one row per creator:
+
+| | |
+|---|---|
+| Filed by | the creator, at `PUT /v1/me/payout-destination` |
+| What is stored | the **provider's token**, never an IBAN — `stored_cards.token`'s argument, and `PayoutRequest` states it: bank details are the provider's to hold |
+| Also stored | the account holder's name, because that is the thing being checked, and a masked tail so a person can recognise the account |
+| Confirmed by | somebody holding `VERIFY_PAYOUT_DESTINATION`, which V66 gave to `COMPLIANCE` and withheld from `FINANCE` |
+| Read at | `GET /v1/admin/accounts/{id}/payout-destination` and the queue at `/v1/admin/payout-destinations`, both audited |
+
+**The person who confirms the destination is not the person who sends to it.** V66
+decided that one issue before there was anything to confirm, and it is the same
+argument `StaffRole.FINANCE` already makes about `APPROVE_PAYOUT`, applied one step
+earlier in the same sequence.
+
+**Replacing the account clears its verification.** Enforced by the entity and again
+by a constraint, because the bug it prevents is invisible: a destination verified in
+March, swapped in June, still reading `VERIFIED`, looks like a perfectly ordinary
+row and is the exact fraud the gate exists to stop. A re-filing of the identical
+token resets too — the reason somebody re-files is not knowable from the row.
+
+**Three names have to agree.** The account holder is matched against #430's
+`legal_name` on every save, using the same comparison #429's certificate subject
+goes through: forgiving about case and spacing, strict about everything else. A
+disagreement is stored as `NAME_MISMATCH` rather than refused at the point of
+writing — a rejected write leaves the creator staring at a form with no record that
+anything happened, and a stored mismatch is a row a reviewer can see and resolve —
+and a reviewer **cannot** confirm a mismatched row. The two honest ways past it are
+the creator correcting a name and an administrator granting #436's override, and
+both leave a trail.
+
+**Which mechanism confirmed it is recorded, and two of the three wait on #422.**
+`PROVIDER_ACCOUNT_HOLDER` is #432's mechanism A and needs Epoint to confirm in
+writing that sub-merchant onboarding validates a bank account (§9.3's R-10).
+`MICRO_TRANSFER` is mechanism B and needs a statement feed. `STAFF_ATTESTED` is the
+manual form of B — which is what #432 describes B being at launch volumes — and is
+the only one anything writes today. The column exists so that a row confirmed by a
+bank is never later mistaken for one a person attested to by eye.
+
+**What is still missing, and is not pretended otherwise.** No adapter can issue a
+destination token, because no adapter exists: #433 is the first, and it waits on
+#422. The gate, the verification, the audit trail and the refusals are real; the
+hosted flow that produces a token in front of them is the part that is not. That is
+the same inert-behind-the-interface state §9.2 chose deliberately for collection,
+for the reason §9.2 gives — a stub "would make this path look finished".
 
 ### 9.6 Failed collections
 

@@ -1,6 +1,10 @@
 package az.ideanest.compliance.api;
 
+import az.ideanest.compliance.application.DestinationNameMismatchException;
 import az.ideanest.compliance.application.InvalidOverrideWindowException;
+import az.ideanest.compliance.application.SelfVerifiedDestinationException;
+import az.ideanest.compliance.application.UnknownDestinationProviderException;
+import az.ideanest.compliance.application.UnknownPayoutDestinationException;
 import az.ideanest.compliance.application.UnknownOverrideException;
 import az.ideanest.compliance.domain.MalformedTaxIdentifierException;
 import az.ideanest.compliance.domain.SelfGrantedOverrideException;
@@ -29,7 +33,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
         assignableTypes = {
             ComplianceOverrideController.class,
             MyLegalSubjectController.class,
-            AdminLegalSubjectController.class
+            AdminLegalSubjectController.class,
+            MyPayoutDestinationController.class,
+            AdminPayoutDestinationController.class
         })
 public class ComplianceExceptionHandler {
 
@@ -120,6 +126,87 @@ public class ComplianceExceptionHandler {
         problem.setDetail("It may have been withdrawn by somebody else. Reload the account.");
         problem.setProperty("code", "UNKNOWN_OVERRIDE");
         problem.setProperty("meta", Map.of("override", exception.overrideId().toString()));
+        return problem;
+    }
+
+    /**
+     * <strong>404: the creator has filed no payout destination.</strong>
+     *
+     * <p>Reached when a reviewer acts on a row that is not there, which in practice means a
+     * screen left open while the creator replaced or the account was erased. The console's cue
+     * is to reload rather than to retry.
+     */
+    @ExceptionHandler(UnknownPayoutDestinationException.class)
+    public ProblemDetail handleUnknownDestination(UnknownPayoutDestinationException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+        problem.setType(URI.create("https://ideanest.az/problems/payout-destination-not-found"));
+        problem.setTitle("No payout destination on file");
+        problem.setDetail("This creator has not said where they are paid. Reload the account.");
+        problem.setProperty("code", "PAYOUT_DESTINATION_NOT_FOUND");
+        problem.setProperty("meta", Map.of("creator", exception.creatorId().toString()));
+        return problem;
+    }
+
+    /**
+     * <strong>403: nobody confirms their own bank account.</strong>
+     *
+     * <p>{@code SELF_GRANTED_OVERRIDE}'s status and its argument, on the control that decides
+     * where money goes: the request is well-formed and a colleague could make it, so what is
+     * refused is the caller.
+     */
+    @ExceptionHandler(SelfVerifiedDestinationException.class)
+    public ProblemDetail handleSelfVerified(SelfVerifiedDestinationException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+        problem.setType(URI.create("https://ideanest.az/problems/self-verified-destination"));
+        problem.setTitle("Nobody confirms their own payout destination");
+        problem.setDetail("Ask a colleague who holds the capability to look at this one.");
+        problem.setProperty("code", "SELF_VERIFIED_DESTINATION");
+        problem.setProperty("meta", Map.of("account", exception.creatorId().toString()));
+        return problem;
+    }
+
+    /**
+     * <strong>409: the account holder is not the creator.</strong>
+     *
+     * <p>409 rather than 403: the reviewer may do this, and the same request succeeds once the
+     * two names agree. What is wrong is the state of the row, which is what 409 means.
+     *
+     * <p>{@code meta.holderName} travels because the reviewer is deciding which of two names is
+     * wrong, and a refusal that withheld the one it refused on would send them to another
+     * screen to find it. Both ways past this are in the detail — the creator corrects a name,
+     * or an administrator grants #436's override — because a refusal with no route through it
+     * is one somebody works around outside the system.
+     */
+    @ExceptionHandler(DestinationNameMismatchException.class)
+    public ProblemDetail handleNameMismatch(DestinationNameMismatchException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/destination-name-mismatch"));
+        problem.setTitle("The account is held by a differently named party");
+        problem.setDetail("The creator corrects their legal name or their account, or an administrator "
+                + "grants a bounded override.");
+        problem.setProperty("code", "DESTINATION_NAME_MISMATCH");
+        problem.setProperty(
+                "meta",
+                Map.of(
+                        "creator", exception.creatorId().toString(),
+                        "holderName", exception.holderName()));
+        return problem;
+    }
+
+    /**
+     * <strong>400: no payment provider is called that.</strong>
+     *
+     * <p>The value is echoed for {@code MALFORMED_TAX_IDENTIFIER}'s reason: a client told only
+     * "invalid" has to reconstruct what it sent.
+     */
+    @ExceptionHandler(UnknownDestinationProviderException.class)
+    public ProblemDetail handleUnknownProvider(UnknownDestinationProviderException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("https://ideanest.az/problems/unknown-payment-provider"));
+        problem.setTitle("No payment provider is called that");
+        problem.setDetail("The destination names a provider that is not one of §9.3's.");
+        problem.setProperty("code", "UNKNOWN_PAYMENT_PROVIDER");
+        problem.setProperty("meta", Map.of("provider", exception.provider() == null ? "" : exception.provider()));
         return problem;
     }
 }

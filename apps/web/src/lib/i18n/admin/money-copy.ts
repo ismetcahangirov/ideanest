@@ -1,7 +1,7 @@
 import type { DisputeState, EvidenceKind } from '../../admin/disputes';
 import type { FeeScope } from '../../admin/fees';
 import type { TransactionStatus, TransactionType } from '../../admin/payments';
-import type { PayoutState, VerificationStanding } from '../../admin/payouts';
+import type { DestinationStanding, PayoutState, VerificationStanding } from '../../admin/payouts';
 import type { RefundReason, RefundState } from '../../admin/refunds';
 import type { FindingCode, FindingKind } from '../../admin/reconciliation';
 import type { AdminTranslator } from '../admin-copy';
@@ -345,19 +345,9 @@ export interface PayoutQueueCopy extends ConsoleChromeCopy {
   /** Why approving is not offered yet: §9's hold has not expired. Carries `{date}`. */
   readonly awaitingHold: string;
   readonly withdrawMine: string;
-  readonly destinationLabel: string;
-  readonly destinationHint: string;
   readonly send: string;
   /** Carries `{count}`. */
   readonly needsMore: string;
-  /**
-   * Why sending is disabled at a full set of signatures — #405.
-   *
-   * <p>The label changes from "one more signature needed" to "Send" and then the control
-   * does nothing, because §9's payout destination scheme is not built and there is nothing
-   * to send it to until somebody types one. That reason was on the screen nowhere.
-   */
-  readonly destinationNeeded: string;
   readonly state: Readonly<Record<PayoutState, string>>;
   /**
    * Why a payout is held on identity rather than on the clock — #431.
@@ -373,6 +363,24 @@ export interface PayoutQueueCopy extends ConsoleChromeCopy {
   /** The tag on the row, so the queue says which payouts are waiting on a person. */
   readonly verificationHeld: string;
   readonly standing: Readonly<Record<VerificationStanding, string>>;
+  /**
+   * Why a payout is held on where the money would go rather than on who the creator is — #432.
+   *
+   * <p>A third alert beside {@link PayoutQueueCopy.verificationHeldTitle} and for the same
+   * reason that one is separate from the hold: the three end differently. §9's ends when a
+   * date passes, the identity hold ends when a creator sends a document, and this one ends
+   * when a creator files a bank account or a compliance reviewer looks at the one they filed.
+   *
+   * <p>Until #432 this screen had a text field here instead, and an operator typed the
+   * destination at the moment of sending. There is deliberately nothing on this screen that
+   * decides where money goes.
+   */
+  readonly destinationHeldTitle: string;
+  /** Carries `{standing}`, filled from {@link PayoutQueueCopy.destinationStanding}. */
+  readonly destinationHeldBody: string;
+  /** The tag on the row, so the queue says which payouts are waiting on an account. */
+  readonly destinationHeld: string;
+  readonly destinationStanding: Readonly<Record<DestinationStanding, string>>;
 }
 
 export function payoutQueueCopyFrom(
@@ -421,16 +429,19 @@ export function payoutQueueCopyFrom(
     youHaveSigned: t('screens.payouts.youHaveSigned'),
     awaitingHold: String(t.raw('screens.payouts.awaitingHold')),
     withdrawMine: t('screens.payouts.withdrawMine'),
-    destinationLabel: t('screens.payouts.destinationLabel'),
-    destinationHint: t('screens.payouts.destinationHint'),
     send: t('screens.payouts.send'),
     needsMore: String(t.raw('screens.payouts.needsMore')),
-    destinationNeeded: t('screens.payouts.destinationNeeded'),
     state: t.raw('screens.payouts.state') as Readonly<Record<PayoutState, string>>,
     verificationHeldTitle: t('screens.payouts.verificationHeldTitle'),
     verificationHeldBody: String(t.raw('screens.payouts.verificationHeldBody')),
     verificationHeld: t('screens.payouts.verificationHeld'),
     standing: t.raw('screens.payouts.standing') as Readonly<Record<VerificationStanding, string>>,
+    destinationHeldTitle: t('screens.payouts.destinationHeldTitle'),
+    destinationHeldBody: String(t.raw('screens.payouts.destinationHeldBody')),
+    destinationHeld: t('screens.payouts.destinationHeld'),
+    destinationStanding: t.raw('screens.payouts.destinationStanding') as Readonly<
+      Record<DestinationStanding, string>
+    >,
   };
 }
 

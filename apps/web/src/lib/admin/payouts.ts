@@ -51,6 +51,26 @@ export type VerificationStanding =
   | 'REJECTED'
   | 'EXPIRED';
 
+/**
+ * Where the creator stands with a payout destination — #432.
+ *
+ * `VerificationStanding`'s companion, one question along: that one is whether the platform
+ * has established *who* the creator is, and this is whether it has established *where* their
+ * money goes. Two values rather than one merged flag, because the two are chased on different
+ * screens by different people.
+ *
+ * There is no `NOT_REQUIRED`. Sending money to an account nobody confirmed belongs to the
+ * recipient is not a policy the platform could adopt at any threshold, so the only exception
+ * is `WAIVED` — #436's override, which expires.
+ */
+export type DestinationStanding =
+  | 'WAIVED'
+  | 'VERIFIED'
+  | 'NONE'
+  | 'AWAITING_VERIFICATION'
+  | 'NAME_MISMATCH'
+  | 'REJECTED';
+
 export interface Payout {
   id: string;
   projectId: string;
@@ -84,6 +104,10 @@ export interface Payout {
    * that disagrees the day the rule changes.
    */
   heldForVerification: boolean;
+  /** Where the creator stands with a payout destination (#432). Read live by the service. */
+  destinationStanding: DestinationStanding;
+  /** Whether that standing is what is holding this payout. `heldForVerification`'s reason. */
+  heldForDestination: boolean;
   payoutTransactionId?: string | null;
   failureCode?: string | null;
   failureMessage?: string | null;
@@ -193,19 +217,15 @@ export async function withdrawApproval(
 /**
  * Instructs the provider.
  *
- * The destination is typed per send rather than stored on the creator's account, because
- * §9's payout-destination schema is not built. That is a real gap and this is the honest
- * shape of it — the value is not persisted anywhere, and never appears in a log.
+ * No body, since #432. It used to carry a destination that the operator typed at the moment
+ * of sending, which defeated §4.11's dual approval entirely: the two signatures were on an
+ * amount and the destination was chosen afterwards by one of the signatories. The service now
+ * reads the account the creator filed and a compliance reviewer confirmed, and refuses when
+ * there is not one.
  */
-export async function sendPayout(
-  payoutId: string,
-  destinationReference: string,
-  signal?: AbortSignal,
-): Promise<Payout> {
+export async function sendPayout(payoutId: string, signal?: AbortSignal): Promise<Payout> {
   const response = await authorizedFetch(`/v1/admin/payouts/${encodeURIComponent(payoutId)}/send`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ destinationReference }),
     signal,
   });
   if (!response.ok) throw await errorFrom(response);

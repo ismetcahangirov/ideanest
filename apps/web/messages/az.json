@@ -1650,8 +1650,6 @@
         "noteHint": "Səbəb, ikinci təsdiqləyən üçün.",
         "approve": "Təsdiqlə",
         "withdrawMine": "Mənimkini geri götür",
-        "destinationLabel": "Təyinat",
-        "destinationHint": "Hər göndərmədə yazılır — §9-un ödəniş təyinatı sxemi qurulmayıb.",
         "send": "Göndər",
         "needsMore": "{count} imza da lazımdır",
         "state": {
@@ -1666,8 +1664,18 @@
         "thisIsYou": "bu sizsiniz",
         "youHaveSigned": "Bu ödənişi artıq imzalamısınız. İkinci imza başqa şəxsə aiddir.",
         "awaitingHold": "{date} tarixində saxlama müddəti bitənə qədər imzalana bilməz.",
-        "destinationNeeded": "Bu ödənişin göndəriləcəyi ünvanı daxil edin. Hələ saxlanılmış ünvan yoxdur.",
         "verificationHeld": "Kimlik gözlənilir",
+        "destinationHeldTitle": "Yaradıcının ödəniş təyinatı təsdiqlənməyib",
+        "destinationHeldBody": "Bu ödəniş {standing}. Pul yalnız yaradıcının özünün göstərdiyi və uyğunluq baxıcısının təsdiqlədiyi hesaba gedir — burada yazılan bir hesaba heç vaxt.",
+        "destinationHeld": "Təyinat gözlənilir",
+        "destinationStanding": {
+          "WAIVED": "verilmiş istisna ilə buraxılıb",
+          "VERIFIED": "təsdiqlənmiş hesaba gedir",
+          "NONE": "gözləyir — yaradıcı hara ödəniş alacağını bildirməyib",
+          "AWAITING_VERIFICATION": "hesabın uyğunluq baxıcısı tərəfindən təsdiqlənməsini gözləyir",
+          "NAME_MISMATCH": "gözləyir — hesab başqa adlı şəxsə aiddir",
+          "REJECTED": "gözləyir — hesab rədd edilib, yaradıcı başqasını göstərməlidir"
+        },
         "verificationHeldTitle": "Yaradıcının kimliyi təsdiqlənməyib",
         "verificationHeldBody": "Bu ödəniş {standing}. Pul yalnız platformanın kim olduğunu təsdiqlədiyi şəxsə gedir; yaradıcıdan lazım olan sənəd artıq istənilib.",
         "standing": {

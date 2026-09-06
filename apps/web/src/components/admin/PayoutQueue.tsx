@@ -264,6 +264,12 @@ export function PayoutQueue({ copy }: PayoutQueueProps) {
                         same campaign look as though nothing is owed".
                       */}
                       {payout.heldForVerification && <Tag>{copy.verificationHeld}</Tag>}
+                      {/*
+                        #432, and its own tag rather than a shared "held" for the same
+                        reason: an identity hold sends an operator to a document queue and
+                        this one sends them to a creator who has not said where they bank.
+                      */}
+                      {payout.heldForDestination && <Tag>{copy.destinationHeld}</Tag>}
                       <Tag>{copy.state[payout.state]}</Tag>
                     </span>
                   </div>
@@ -357,7 +363,6 @@ function PayoutDetail({
   );
 
   const [note, setNote] = useState('');
-  const [destination, setDestination] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -397,7 +402,6 @@ function PayoutDetail({
   // the service decides all of this anyway; what these change is what the screen claims.
   const iHaveSigned = readerId !== null && approvals.some((one) => one.approverId === readerId);
   const canApprove = payout.payableNow && !iHaveSigned;
-  const destinationGiven = destination.trim() !== '';
 
   return (
     <div className="mt-2 rounded-lg border border-white/8 bg-surface-1 p-4">
@@ -464,6 +468,22 @@ function PayoutDetail({
         </InlineAlert>
       )}
 
+      {/*
+        #432. The third of three holds, and the one that used to be a text field: an operator
+        typed a destination here at the moment of sending, which defeated §4.11's dual approval
+        entirely — the two signatures were on an amount, and where the money went was decided
+        afterwards by one of the signatories. There is now deliberately nothing on this screen
+        that decides where money goes; the account is the creator's to supply and a compliance
+        reviewer's to confirm, and this alert says which of the two is outstanding.
+      */}
+      {payout.heldForDestination && (
+        <InlineAlert variant="warning" title={copy.destinationHeldTitle} className="mt-4">
+          {fillPlaceholders(copy.destinationHeldBody, {
+            standing: copy.destinationStanding[payout.destinationStanding],
+          })}
+        </InlineAlert>
+      )}
+
       <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-white/8 pt-4">
         <Field label={copy.noteLabel} hint={copy.noteHint} className="min-w-[240px] flex-1">
           <TextInput value={note} onChange={(event) => setNote(event.target.value)} />
@@ -516,39 +536,24 @@ function PayoutDetail({
       </div>
 
       <div className="mt-4 flex flex-wrap items-end gap-3">
-        <Field
-          label={copy.destinationLabel}
-          hint={copy.destinationHint}
-          className="min-w-[280px] flex-1"
-        >
-          <TextInput
-            value={destination}
-            onChange={(event) => setDestination(event.target.value)}
-            autoComplete="off"
-          />
-        </Field>
-
+        {/*
+          #405: every disabled control says what would enable it, and both reasons this can
+          be disabled are said above rather than beside it — the signature count is in the
+          label, and the destination hold is in its own alert. There is no longer a field
+          here for the reader to fill in, because there is no longer anything on this screen
+          that decides where money goes.
+        */}
         <Pill
           variant="outline"
           size="sm"
           className="mb-1"
-          disabled={busy || stillNeeded > 0 || !destinationGiven}
-          onClick={() => void act(() => sendPayout(payoutId, destination.trim()))}
+          disabled={busy || stillNeeded > 0 || payout.heldForDestination}
+          onClick={() => void act(() => sendPayout(payoutId))}
         >
           {stillNeeded > 0
             ? fillPlaceholders(copy.needsMore, { count: String(stillNeeded) })
             : copy.send}
         </Pill>
-
-        {/*
-          #405: at two signatures of two the label changed from "one more signature
-          needed" to "Send" and the control then simply did not work. The reason was real
-          and stated nowhere on the row — a disabled control with no reason reads as a bug,
-          and this is the row where somebody is trying to pay a creator.
-        */}
-        {stillNeeded === 0 && !destinationGiven && (
-          <p className="mb-2 text-xs text-white/48">{copy.destinationNeeded}</p>
-        )}
 
         <Pill
           variant="ghost"

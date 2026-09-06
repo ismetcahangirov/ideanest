@@ -1650,8 +1650,6 @@
         "noteHint": "Why, for the second approver.",
         "approve": "Approve",
         "withdrawMine": "Withdraw mine",
-        "destinationLabel": "Destination",
-        "destinationHint": "Typed per send — §9's payout-destination schema is not built.",
         "send": "Send",
         "needsMore": "Needs {count} more",
         "state": {
@@ -1666,8 +1664,18 @@
         "thisIsYou": "this is you",
         "youHaveSigned": "You have already signed this payout. A second signature has to be somebody else.",
         "awaitingHold": "Cannot be signed until the hold expires on {date}.",
-        "destinationNeeded": "Enter a destination to send this payout to. There is no stored one yet.",
         "verificationHeld": "Awaiting identity",
+        "destinationHeldTitle": "This creator's payout destination is not confirmed",
+        "destinationHeldBody": "This payout is {standing}. Money goes only to an account the creator supplied and a compliance reviewer confirmed — never to one typed here.",
+        "destinationHeld": "Awaiting destination",
+        "destinationStanding": {
+          "WAIVED": "released by a granted exception",
+          "VERIFIED": "going to a confirmed account",
+          "NONE": "waiting — the creator has not said where they are paid",
+          "AWAITING_VERIFICATION": "waiting on a compliance reviewer to confirm the account",
+          "NAME_MISMATCH": "waiting — the account is held by a differently named party",
+          "REJECTED": "waiting — the account was refused and the creator has to file another"
+        },
         "verificationHeldTitle": "The creator's identity has not been verified",
         "verificationHeldBody": "This payout is {standing}. Money leaves only to somebody the platform has identified; the creator has already been asked for what is missing.",
         "standing": {
