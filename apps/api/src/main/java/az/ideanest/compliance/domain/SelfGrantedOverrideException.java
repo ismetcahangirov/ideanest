@@ -1,5 +1,6 @@
 package az.ideanest.compliance.domain;
 
+import az.ideanest.shared.compliance.ComplianceRequirement;
 import java.util.UUID;
 
 /**

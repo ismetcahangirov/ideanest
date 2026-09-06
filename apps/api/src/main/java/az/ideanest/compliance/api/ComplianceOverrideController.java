@@ -1,7 +1,7 @@
 package az.ideanest.compliance.api;
 
 import az.ideanest.compliance.application.ComplianceOverrides;
-import az.ideanest.compliance.domain.ComplianceRequirement;
+import az.ideanest.shared.compliance.ComplianceRequirement;
 import az.ideanest.compliance.domain.OverrideReason;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;

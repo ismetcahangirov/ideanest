@@ -4,9 +4,11 @@ import az.ideanest.payout.application.PayoutService;
 import az.ideanest.payout.domain.Payout;
 import az.ideanest.payout.domain.PayoutApproval;
 import az.ideanest.payout.domain.PayoutState;
+import az.ideanest.shared.compliance.VerificationStanding;
 import az.ideanest.shared.money.Money;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -54,9 +56,16 @@ public final class PayoutResponses {
             String failureCode,
             String failureMessage,
             Instant calculatedAt,
-            Instant sentAt) {
+            Instant sentAt,
+            VerificationStanding creatorStanding,
+            boolean heldForVerification) {
 
-        public static PayoutSummary of(Payout payout, Instant now) {
+        /**
+         * @param standing where the creator stands with identity verification (#431). Drawn on
+         *     AD-05 rather than left for the operator to infer: a payout that will not approve
+         *     and does not say why "makes the same campaign look as though nothing is owed"
+         */
+        public static PayoutSummary of(Payout payout, Instant now, VerificationStanding standing) {
             return new PayoutSummary(
                     payout.id(),
                     payout.projectId(),
@@ -76,7 +85,9 @@ public final class PayoutResponses {
                     payout.failureCode(),
                     payout.failureMessage(),
                     payout.calculatedAt(),
-                    payout.sentAt());
+                    payout.sentAt(),
+                    standing,
+                    !standing.releasesPayout() && payout.state().isInFlight());
         }
     }
 
@@ -97,9 +108,9 @@ public final class PayoutResponses {
      */
     public record PayoutFile(PayoutSummary payout, List<Approval> approvals, long stillNeeded) {
 
-        public static PayoutFile of(PayoutService.PayoutFile file, Instant now) {
+        public static PayoutFile of(PayoutService.PayoutFile file, Instant now, VerificationStanding standing) {
             return new PayoutFile(
-                    PayoutSummary.of(file.payout(), now),
+                    PayoutSummary.of(file.payout(), now, standing),
                     file.approvals().stream().map(Approval::of).toList(),
                     file.stillNeeded());
         }
@@ -108,9 +119,23 @@ public final class PayoutResponses {
     /** A page of payouts. */
     public record PayoutPage(List<PayoutSummary> payouts, int page, boolean hasMore) {
 
-        public static PayoutPage of(List<Payout> payouts, int page, int size, Instant now) {
+        /**
+         * @param standings one entry per distinct creator on the page (#431). A map rather than
+         *     a lookup per row, because a page is fifty payouts and a handful of creators
+         */
+        public static PayoutPage of(
+                List<Payout> payouts,
+                int page,
+                int size,
+                Instant now,
+                Map<UUID, VerificationStanding> standings) {
             return new PayoutPage(
-                    payouts.stream().map(payout -> PayoutSummary.of(payout, now)).toList(),
+                    payouts.stream()
+                            .map(payout -> PayoutSummary.of(
+                                    payout,
+                                    now,
+                                    standings.getOrDefault(payout.creatorId(), VerificationStanding.NOT_REQUIRED)))
+                            .toList(),
                     page,
                     payouts.size() == size);
         }

@@ -83,6 +83,40 @@ ideanest:
       # shortened window here would assert a different one.
       re-rollup-window: PT72H
 
+  signature:
+    provider:
+      # The suite runs the real SİMA adapter against a WireMock stub, which is how the
+      # whole of #429 is exercised while #423 keeps production SİMA switched off. A
+      # deployed environment leaves this empty and signs nothing -- see application.yml.
+      #
+      # Deliberately not a test double implementing SignatureProvider:
+      # SignatureProviderBoundaryTests exists to keep that interface singular, and a
+      # second implementation in the test source tree would make the rule it checks
+      # weaker than it reads.
+      primary: SIMA_IMZA
+    sima:
+      # SANDBOX, which is what SignatureProviders refuses to start without. The base URL
+      # is registered by AbstractIntegrationTest because the stub takes whichever port is
+      # free; the credentials are present because the adapter refuses to start with a
+      # missing one, and they reach nothing but the stub.
+      environment: SANDBOX
+      client-id: ideanest-test
+      client-secret: not-a-secret
+      session-life: PT5M
+      request-timeout: PT5S
+
+  legal:
+    signature:
+      # ON, so #429's rule is exercised. A deployed environment runs with this false
+      # until #424 answers, and LegalProperties argues at length why the default is not
+      # "everybody signs".
+      enabled: true
+      # Above five thousand. A number chosen to be a number -- it is NOT #424's answer
+      # and nothing may read it as one. Its only job is to put campaigns on both sides of
+      # a line so that both sides are tested.
+      goal-ceiling: 5000.00
+      required-for-legal-entity: true
+
   staff:
     # One address, so the fail-closed default is exercised by every other
     # account in the suite: any account that is not this one is refused, which
@@ -186,6 +220,15 @@ ideanest:
         test: "dGVzdC1vbmx5LWFkZHJlc3Mta2V5LTMyLWJ5dGVzISE="
 
   verification:
+    # ON, and this profile is the only place it is. #431 gates a payout on an approved
+    # identity verification and #424 has not set the threshold that turns it on in a
+    # deployed environment -- so production runs with it false and the suite runs with
+    # it true, which is the only way the gate is exercised at all.
+    #
+    # #431 says what that costs and how to pay it: "Any suite that reaches payout now
+    # needs a verified creator -- extend the fixture helper rather than each suite."
+    # The helper is `support/Verifications`.
+    required: true
     documents:
       # A key that exists only here, so that #105's encryption is exercised by the
       # suite rather than skipped by it -- an unconfigured deployment refuses a

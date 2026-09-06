@@ -3,7 +3,7 @@ package az.ideanest.verification.api;
 import az.ideanest.verification.application.IdentityVerifications;
 import az.ideanest.verification.application.VerificationNotDecidableException;
 import az.ideanest.verification.domain.IdentityVerification;
-import az.ideanest.verification.domain.RejectionReason;
+import az.ideanest.shared.compliance.RejectionReason;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.CacheControl;

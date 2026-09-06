@@ -1,4 +1,4 @@
-package az.ideanest.compliance.domain;
+package az.ideanest.shared.compliance;
 
 /**
  * What an override may waive — V66's {@code requirement}, issue #436.

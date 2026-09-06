@@ -5,7 +5,13 @@ import az.ideanest.legal.application.AgreementVersionStaleException;
 import az.ideanest.legal.application.DocumentNotPublishedException;
 import az.ideanest.legal.application.EffectiveDateInThePastException;
 import az.ideanest.legal.application.GoverningTextMissingException;
+import az.ideanest.legal.application.LegalSubjectRequiredException;
 import az.ideanest.legal.application.NothingToPublishException;
+import az.ideanest.legal.application.SignatureOverAnotherVersionException;
+import az.ideanest.legal.application.SignerNameMismatchException;
+import az.ideanest.legal.application.SigningNotAvailableException;
+import az.ideanest.signature.application.SigningUnavailableException;
+import az.ideanest.signature.application.UnknownSigningSessionException;
 import az.ideanest.legal.domain.PublishedDocumentIsImmutableException;
 import az.ideanest.staff.api.StaffRefusals;
 import az.ideanest.staff.application.InsufficientStaffCapabilityException;
@@ -20,7 +26,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 /**
  * What the legal endpoints refuse with — RFC 9457, as everything here is.
  *
- * <p>Scoped to the two controllers rather than global, for the reason every advice in this
+ * <p>Scoped to the four controllers rather than global, for the reason every advice in this
  * service gives: an advice that catches a broad exception everywhere turns a bug three
  * modules away into a 4xx that looks like the caller's fault.
  *
@@ -32,7 +38,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
         assignableTypes = {
             LegalDocumentController.class,
             AdminLegalDocumentController.class,
-            MyAgreementController.class
+            MyAgreementController.class,
+            AgreementSignatureController.class
         })
 public class LegalExceptionHandler {
 
@@ -178,6 +185,101 @@ public class LegalExceptionHandler {
                         "kind", exception.kind().name(),
                         "effectiveFrom", exception.effectiveFrom().toString(),
                         "now", exception.now().toString()));
+        return problem;
+    }
+
+    /**
+     * <strong>503: signing is not available on this deployment yet.</strong>
+     *
+     * <p>503 and not 400 or 409, because nothing about the request is wrong and nothing the
+     * creator does will change it. The platform has no signature provider configured — #423 has
+     * not answered which personal data from a SİMA certificate may be kept, and until it has,
+     * {@code SignatureProviders} refuses to point at production. A screen meeting this says the
+     * platform is not ready, not that the creator did something wrong.
+     */
+    @ExceptionHandler({SigningNotAvailableException.class, SigningUnavailableException.class})
+    public ProblemDetail handleSigningUnavailable(RuntimeException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.SERVICE_UNAVAILABLE);
+        problem.setType(URI.create("https://ideanest.az/problems/signing-unavailable"));
+        problem.setTitle("Signing is not available yet");
+        problem.setDetail("This document can be accepted; signing it is not switched on here.");
+        problem.setProperty("code", "SIGNING_UNAVAILABLE");
+        return problem;
+    }
+
+    /**
+     * <strong>409: sign after saying who you are.</strong>
+     *
+     * <p>A signature the platform cannot tie to a named account proves that a certificate signed
+     * the text rather than that this creator did, so #430's legal subject is a precondition
+     * rather than a nicety. The creator's next step is a form, and {@code meta.next} names it so
+     * the client does not have to know the route by heart.
+     */
+    @ExceptionHandler(LegalSubjectRequiredException.class)
+    public ProblemDetail handleLegalSubjectRequired(LegalSubjectRequiredException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/legal-subject-required"));
+        problem.setTitle("Say who you legally are first");
+        problem.setDetail("A signature is matched against the name on your account, and there is none recorded.");
+        problem.setProperty("code", "LEGAL_SUBJECT_REQUIRED");
+        problem.setProperty(
+                "meta", Map.of("document", exception.kind().name(), "next", "/v1/me/legal-subject"));
+        return problem;
+    }
+
+    /**
+     * <strong>409: that signature covers a different version.</strong>
+     *
+     * <p>The case the hash binding exists to catch, and it is nobody's fault — a version was
+     * published while a phone was in a pocket. No acceptance is written: a signature over a
+     * superseded text binding somebody to the current one is the substitution a content hash
+     * exists to make impossible.
+     */
+    @ExceptionHandler(SignatureOverAnotherVersionException.class)
+    public ProblemDetail handleWrongVersion(SignatureOverAnotherVersionException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/signature-over-another-version"));
+        problem.setTitle("That signature is over a different version");
+        problem.setDetail("A new version was published. Read it and sign that one.");
+        problem.setProperty("code", "SIGNATURE_VERSION_STALE");
+        problem.setProperty(
+                "meta",
+                Map.of("document", exception.kind().name(), "version", exception.versionInForce()));
+        return problem;
+    }
+
+    /**
+     * <strong>409: the certificate names somebody else.</strong>
+     *
+     * <p>{@code meta.reason} is {@code MISMATCHED_NAME}, from the closed set V58 already uses for
+     * exactly this. #429 is explicit that a mismatch is a refusal with a reason and that the
+     * reason is not a new vocabulary — "two vocabularies for one idea is one too many".
+     *
+     * <p>The name on the certificate is not returned. It is a third party's personal data under
+     * §17.4 and it is in the audit entry, where reading it requires being authorised to.
+     */
+    @ExceptionHandler(SignerNameMismatchException.class)
+    public ProblemDetail handleNameMismatch(SignerNameMismatchException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/signer-name-mismatch"));
+        problem.setTitle("That certificate names somebody else");
+        problem.setDetail("The name on the certificate has to be the legal name on this account.");
+        problem.setProperty("code", "MISMATCHED_NAME");
+        problem.setProperty(
+                "meta",
+                Map.of("document", exception.kind().name(), "reason", exception.reason().name()));
+        return problem;
+    }
+
+    /** <strong>404: no such signing session, for this caller.</strong> Start a new one. */
+    @ExceptionHandler(UnknownSigningSessionException.class)
+    public ProblemDetail handleUnknownSession(UnknownSigningSessionException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+        problem.setType(URI.create("https://ideanest.az/problems/unknown-signing-session"));
+        problem.setTitle("There is no such signing session");
+        problem.setDetail("It may have been finished already. Start a new one.");
+        problem.setProperty("code", "UNKNOWN_SIGNING_SESSION");
+        problem.setProperty("meta", Map.of("session", exception.sessionId()));
         return problem;
     }
 }

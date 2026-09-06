@@ -14,6 +14,7 @@ import az.ideanest.project.domain.ProjectStateMachine;
 import az.ideanest.project.domain.ProjectStateTransition;
 import az.ideanest.project.infrastructure.ProjectRepository;
 import az.ideanest.project.infrastructure.ProjectStateTransitionRepository;
+import az.ideanest.shared.compliance.LegalSubjects;
 import az.ideanest.shared.outbox.Outbox;
 import java.time.Clock;
 import java.time.Instant;
@@ -79,6 +80,7 @@ public class ProjectTransitionService {
     private final ProjectChecklistService checklist;
     private final PublishingGate publishing;
     private final CreatorAgreementGate agreement;
+    private final LegalSubjects legalSubjects;
     private final ApplicationEventPublisher events;
     private final Outbox outbox;
     private final AuditLog audit;
@@ -92,6 +94,7 @@ public class ProjectTransitionService {
             ProjectChecklistService checklist,
             PublishingGate publishing,
             CreatorAgreementGate agreement,
+            LegalSubjects legalSubjects,
             ApplicationEventPublisher events,
             Outbox outbox,
             AuditLog audit,
@@ -103,6 +106,7 @@ public class ProjectTransitionService {
         this.checklist = checklist;
         this.publishing = publishing;
         this.agreement = agreement;
+        this.legalSubjects = legalSubjects;
         this.events = events;
         this.outbox = outbox;
         this.audit = audit;
@@ -173,6 +177,19 @@ public class ProjectTransitionService {
         agreement.requireAccepted(project);
         publishing.requireEntitled(project);
         checklist.requireSubmittable(project);
+
+        // #430: freeze who the creator legally is, onto the campaign, at the moment
+        // the submission is made. §5.6 snapshots a subscription's price for the same
+        // reason and V42 freezes a retry window for the same reason: everything
+        // downstream -- withholding, which party the agreement binds, #429's name
+        // match -- was decided about the person who submitted, and a live read would
+        // let an edit made afterwards change a decision that has already been taken.
+        //
+        // Records nothing when the creator has no subject, which is every submission
+        // until #424 sets a threshold. An unfrozen campaign is one the rule did not
+        // apply to, and #424's third point is that a campaign is decided under the
+        // rule in force when it was submitted.
+        legalSubjects.freezeFor(project.getId(), project.getCreatorId());
 
         return apply(project, ProjectState.SUBMITTED, access.roleOf(project, accountId), accountId, null);
     }

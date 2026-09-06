@@ -20,6 +20,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/accounts/{accountId}/agreements/{kind}/signature": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminLegalDocumentSignature"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/accounts/{accountId}/compliance-overrides": {
         parameters: {
             query?: never;
@@ -47,6 +63,22 @@ export interface paths {
         put?: never;
         post?: never;
         delete: operations["complianceOverrideRevoke"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/accounts/{accountId}/legal-subject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminLegalSubjectForAccount"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2116,6 +2148,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/agreements/{kind}/signature": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["agreementSignatureMine"];
+        put?: never;
+        post: operations["agreementSignatureBegin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/agreements/{kind}/signature/sessions/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["agreementSignatureResolve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/currency": {
         parameters: {
             query?: never;
@@ -2205,6 +2269,22 @@ export interface paths {
         };
         get: operations["fulfilmentMine"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/legal-subject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["myLegalSubjectMine"];
+        put: operations["myLegalSubjectRecord"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3846,6 +3926,12 @@ export interface components {
             account?: string;
             net?: components["schemas"]["Money"];
         };
+        BeginRequest: {
+            fin: string;
+            mobile: string;
+            /** Format: int32 */
+            version: number;
+        };
         BeginUploadBody: {
             /** Format: int64 */
             byteSize?: number;
@@ -4507,9 +4593,24 @@ export interface components {
             items?: components["schemas"]["Item"][];
             nextCursor?: string;
         };
+        ForStaff: {
+            /** Format: uuid */
+            accountId?: string;
+            campaigns?: components["schemas"]["FrozenCampaign"][];
+            recorded?: components["schemas"]["Mine"];
+        };
         ForgotPasswordRequest: {
             /** Format: email */
             email: string;
+        };
+        FrozenCampaign: {
+            /** Format: date-time */
+            frozenAt?: string;
+            legalName?: string;
+            /** Format: uuid */
+            projectId?: string;
+            subjectKind?: string;
+            taxId?: string;
         };
         FulfilmentImportResponse: {
             /** Format: int32 */
@@ -4578,25 +4679,6 @@ export interface components {
             providers?: components["schemas"]["Provider"][];
             queues?: components["schemas"]["Queue"][];
             status?: string;
-        };
-        Held: {
-            /** @enum {string} */
-            billingPeriod?: "MONTHLY" | "YEARLY";
-            cancelAtPeriodEnd?: boolean;
-            /** Format: date-time */
-            createdAt?: string;
-            currency?: string;
-            /** Format: date-time */
-            currentPeriodEnd?: string;
-            entitled?: boolean;
-            /** Format: uuid */
-            id?: string;
-            plan?: components["schemas"]["Plan"];
-            price?: string;
-            /** Format: date-time */
-            startedAt?: string;
-            /** @enum {string} */
-            state?: "PENDING_PAYMENT" | "ACTIVE" | "CANCELED" | "EXPIRED";
         };
         History: {
             drafts?: components["schemas"]["Document"][];
@@ -4710,6 +4792,14 @@ export interface components {
             account?: string;
             net?: components["schemas"]["Money"];
         };
+        LegalSubjectRequest: {
+            legalName: string;
+            registeredAddress?: string;
+            registrationNumber?: string;
+            /** @enum {string} */
+            subjectKind: "INDIVIDUAL" | "LEGAL_ENTITY";
+            taxId?: string;
+        };
         Line: {
             account?: string;
             amount?: components["schemas"]["Money"];
@@ -4789,7 +4879,15 @@ export interface components {
             internal?: boolean;
         };
         Mine: {
-            subscription?: components["schemas"]["Held"];
+            complete?: boolean;
+            legalName?: string;
+            recorded?: boolean;
+            registeredAddress?: string;
+            registrationNumber?: string;
+            subjectKind?: string;
+            taxId?: string;
+            /** Format: date-time */
+            updatedAt?: string;
         };
         ModerationDecisionRequest: {
             note?: string;
@@ -4822,6 +4920,23 @@ export interface components {
         };
         MyAgreements: {
             agreements?: components["schemas"]["MyAgreement"][];
+        };
+        MySignature: {
+            /** Format: date-time */
+            acceptedAt?: string;
+            document?: string;
+            documentHash?: string;
+            /** Format: uuid */
+            documentId?: string;
+            provider?: string;
+            /** Format: uuid */
+            signatureId?: string;
+            signed?: boolean;
+            /** Format: date-time */
+            signedAt?: string;
+            signerName?: string;
+            /** Format: int32 */
+            version?: number;
         };
         NamedCount: {
             /** Format: int64 */
@@ -4968,11 +5083,14 @@ export interface components {
             calculatedAt?: string;
             /** Format: uuid */
             creatorId?: string;
+            /** @enum {string} */
+            creatorStanding?: "NOT_REQUIRED" | "WAIVED" | "VERIFIED" | "NEVER_REQUESTED" | "AWAITING_DOCUMENTS" | "UNDER_REVIEW" | "REJECTED" | "EXPIRED";
             failureCode?: string;
             failureMessage?: string;
             /** Format: uuid */
             feeScheduleId?: string;
             gross?: components["schemas"]["Money"];
+            heldForVerification?: boolean;
             /** Format: uuid */
             id?: string;
             net?: components["schemas"]["Money"];
@@ -5706,6 +5824,27 @@ export interface components {
         SendRequest: {
             destinationReference: string;
         };
+        SessionOpened: {
+            document?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+            sessionId?: string;
+            verificationCode?: string;
+            /** Format: int32 */
+            version?: number;
+        };
+        SessionProgress: {
+            document?: string;
+            /** Format: uuid */
+            signatureId?: string;
+            signed?: boolean;
+            /** Format: date-time */
+            signedAt?: string;
+            signerName?: string;
+            state?: string;
+            /** Format: int32 */
+            version?: number;
+        };
         SessionRecord: {
             /** Format: date-time */
             createdAt?: string;
@@ -6249,6 +6388,7 @@ export type SchemaBackerSegmentResponse = components['schemas']['BackerSegmentRe
 export type SchemaBackerSurveyBody = components['schemas']['BackerSurveyBody'];
 export type SchemaBackerSurveyListResponse = components['schemas']['BackerSurveyListResponse'];
 export type SchemaBalance = components['schemas']['Balance'];
+export type SchemaBeginRequest = components['schemas']['BeginRequest'];
 export type SchemaBeginUploadBody = components['schemas']['BeginUploadBody'];
 export type SchemaBranch = components['schemas']['Branch'];
 export type SchemaBuyAddonsRequest = components['schemas']['BuyAddonsRequest'];
@@ -6329,7 +6469,9 @@ export type SchemaFlag = components['schemas']['Flag'];
 export type SchemaFlagList = components['schemas']['FlagList'];
 export type SchemaFollowStateResponse = components['schemas']['FollowStateResponse'];
 export type SchemaFollowingListResponse = components['schemas']['FollowingListResponse'];
+export type SchemaForStaff = components['schemas']['ForStaff'];
 export type SchemaForgotPasswordRequest = components['schemas']['ForgotPasswordRequest'];
+export type SchemaFrozenCampaign = components['schemas']['FrozenCampaign'];
 export type SchemaFulfilmentImportResponse = components['schemas']['FulfilmentImportResponse'];
 export type SchemaFulfilmentListResponse = components['schemas']['FulfilmentListResponse'];
 export type SchemaFulfilmentProgressResponse = components['schemas']['FulfilmentProgressResponse'];
@@ -6337,7 +6479,6 @@ export type SchemaFulfilmentResponse = components['schemas']['FulfilmentResponse
 export type SchemaGrant = components['schemas']['Grant'];
 export type SchemaGrantRequest = components['schemas']['GrantRequest'];
 export type SchemaHealth = components['schemas']['Health'];
-export type SchemaHeld = components['schemas']['Held'];
 export type SchemaHistory = components['schemas']['History'];
 export type SchemaImage = components['schemas']['Image'];
 export type SchemaInviteCollaboratorRequest = components['schemas']['InviteCollaboratorRequest'];
@@ -6349,6 +6490,7 @@ export type SchemaItemResponse = components['schemas']['ItemResponse'];
 export type SchemaJob = components['schemas']['Job'];
 export type SchemaJsonNode = components['schemas']['JsonNode'];
 export type SchemaLedgerBalanceRecord = components['schemas']['LedgerBalanceRecord'];
+export type SchemaLegalSubjectRequest = components['schemas']['LegalSubjectRequest'];
 export type SchemaLine = components['schemas']['Line'];
 export type SchemaLocaleRequest = components['schemas']['LocaleRequest'];
 export type SchemaLocation = components['schemas']['Location'];
@@ -6366,6 +6508,7 @@ export type SchemaModerationOutcomeBody = components['schemas']['ModerationOutco
 export type SchemaMoney = components['schemas']['Money'];
 export type SchemaMyAgreement = components['schemas']['MyAgreement'];
 export type SchemaMyAgreements = components['schemas']['MyAgreements'];
+export type SchemaMySignature = components['schemas']['MySignature'];
 export type SchemaNamedCount = components['schemas']['NamedCount'];
 export type SchemaNotificationInboxResponse = components['schemas']['NotificationInboxResponse'];
 export type SchemaNotificationPreferencesResponse = components['schemas']['NotificationPreferencesResponse'];
@@ -6461,6 +6604,8 @@ export type SchemaSavedListResponse = components['schemas']['SavedListResponse']
 export type SchemaSchedule = components['schemas']['Schedule'];
 export type SchemaSendMessageRequest = components['schemas']['SendMessageRequest'];
 export type SchemaSendRequest = components['schemas']['SendRequest'];
+export type SchemaSessionOpened = components['schemas']['SessionOpened'];
+export type SchemaSessionProgress = components['schemas']['SessionProgress'];
 export type SchemaSessionRecord = components['schemas']['SessionRecord'];
 export type SchemaSessionSummary = components['schemas']['SessionSummary'];
 export type SchemaSetWeight = components['schemas']['SetWeight'];
@@ -6548,6 +6693,29 @@ export interface operations {
             };
         };
     };
+    adminLegalDocumentSignature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: string;
+                kind: "CREATOR_AGREEMENT" | "BACKER_AGREEMENT";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MySignature"];
+                };
+            };
+        };
+    };
     complianceOverrideHistory: {
         parameters: {
             query?: never;
@@ -6615,6 +6783,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Override"];
+                };
+            };
+        };
+    };
+    adminLegalSubjectForAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForStaff"];
                 };
             };
         };
@@ -10076,6 +10266,77 @@ export interface operations {
             };
         };
     };
+    agreementSignatureMine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "CREATOR_AGREEMENT" | "BACKER_AGREEMENT";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MySignature"];
+                };
+            };
+        };
+    };
+    agreementSignatureBegin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "CREATOR_AGREEMENT" | "BACKER_AGREEMENT";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BeginRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOpened"];
+                };
+            };
+        };
+    };
+    agreementSignatureResolve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "CREATOR_AGREEMENT" | "BACKER_AGREEMENT";
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionProgress"];
+                };
+            };
+        };
+    };
     currencyPreferenceSetCurrency: {
         parameters: {
             query?: never;
@@ -10245,6 +10506,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BackerFulfilmentResponse"];
+                };
+            };
+        };
+    };
+    myLegalSubjectMine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mine"];
+                };
+            };
+        };
+    };
+    myLegalSubjectRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LegalSubjectRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mine"];
                 };
             };
         };

@@ -2,6 +2,7 @@ package az.ideanest.compliance.api;
 
 import az.ideanest.compliance.application.InvalidOverrideWindowException;
 import az.ideanest.compliance.application.UnknownOverrideException;
+import az.ideanest.compliance.domain.MalformedTaxIdentifierException;
 import az.ideanest.compliance.domain.SelfGrantedOverrideException;
 import az.ideanest.staff.api.StaffRefusals;
 import az.ideanest.staff.application.InsufficientStaffCapabilityException;
@@ -24,7 +25,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * client parsing a human sentence to decide what to draw is a client that breaks when the
  * sentence is translated, and §21.1 has four languages.
  */
-@RestControllerAdvice(assignableTypes = ComplianceOverrideController.class)
+@RestControllerAdvice(
+        assignableTypes = {
+            ComplianceOverrideController.class,
+            MyLegalSubjectController.class,
+            AdminLegalSubjectController.class
+        })
 public class ComplianceExceptionHandler {
 
     @ExceptionHandler(NotAModeratorException.class)
@@ -83,6 +89,25 @@ public class ComplianceExceptionHandler {
                         "expiresAt", exception.expiresAt().toString(),
                         "now", exception.now().toString(),
                         "longestSeconds", exception.longest().toSeconds()));
+        return problem;
+    }
+
+    /**
+     * <strong>400: that is not the shape of a VÖEN.</strong>
+     *
+     * <p>The refusal repeats what was typed, because a creator who is told only "invalid" has
+     * to retype the field to find out what they entered. It says nothing about whether the
+     * number names a real company — {@code TaxIdentifier} explains at length why the platform
+     * does not know and must not appear to.
+     */
+    @ExceptionHandler(MalformedTaxIdentifierException.class)
+    public ProblemDetail handleMalformedTaxIdentifier(MalformedTaxIdentifierException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setType(URI.create("https://ideanest.az/problems/malformed-tax-identifier"));
+        problem.setTitle("That is not the shape of a VÖEN");
+        problem.setDetail("A VÖEN is ten digits.");
+        problem.setProperty("code", "MALFORMED_TAX_IDENTIFIER");
+        problem.setProperty("meta", Map.of("typed", exception.typed() == null ? "" : exception.typed()));
         return problem;
     }
 

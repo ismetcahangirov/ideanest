@@ -47,6 +47,15 @@ import org.springframework.transaction.annotation.Transactional;
  * backwards would change what somebody agreed to after they agreed to it, which is the one
  * thing this epic exists to prevent.
  *
+ * <h2>A signature, above #424's line</h2>
+ *
+ * <p>#429 spends the difference between a tick and a signature on this one document, and the
+ * line it is spent at is configuration rather than a constant: {@code ideanest.legal.signature}
+ * carries the rule and #424 carries the number. <strong>The default is that no signature is
+ * required of anybody</strong>, which is not laziness — #429 forbids the alternative outright:
+ * "Do not hardcode 'everybody signs' as a placeholder — an individual raising 500 AZN sent to a
+ * state e-signature app is friction that will be blamed on the wrong thing."
+ *
  * <h2>It lets everything through when nothing is published</h2>
  *
  * <p>{@code Agreements} carries the argument in full. In short: a legal gate that failed
@@ -95,6 +104,18 @@ public class CreatorAgreementGate {
                     agreement.kind(),
                     agreement.version());
             throw new AgreementRequiredException(project.getId(), agreement);
+        }
+
+        if (agreements.signatureRequiredOf(project.getCreatorId(), project.getGoalAmount())
+                && !agreements.hasSigned(project.getCreatorId(), agreement)) {
+            log.info(
+                    "Campaign {} refused submission: creator {} accepted {} version {} without signing it",
+                    project.getId(),
+                    project.getCreatorId(),
+                    agreement.kind(),
+                    agreement.version());
+            throw new AgreementRequiredException(
+                    project.getId(), agreement, AgreementRequiredException.Requirement.SIGNATURE);
         }
     }
 }

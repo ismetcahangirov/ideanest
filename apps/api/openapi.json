@@ -43,6 +43,41 @@
         "tags" : [ "admin-legal-document-controller" ]
       }
     },
+    "/v1/admin/accounts/{accountId}/agreements/{kind}/signature" : {
+      "get" : {
+        "operationId" : "adminLegalDocumentSignature",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "path",
+          "name" : "kind",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "CREATOR_AGREEMENT", "BACKER_AGREEMENT" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MySignature"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-legal-document-controller" ]
+      }
+    },
     "/v1/admin/accounts/{accountId}/compliance-overrides" : {
       "get" : {
         "operationId" : "complianceOverrideHistory",
@@ -138,6 +173,33 @@
           }
         },
         "tags" : [ "compliance-override-controller" ]
+      }
+    },
+    "/v1/admin/accounts/{accountId}/legal-subject" : {
+      "get" : {
+        "operationId" : "adminLegalSubjectForAccount",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ForStaff"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-legal-subject-controller" ]
       }
     },
     "/v1/admin/analytics" : {
@@ -4991,6 +5053,102 @@
         "tags" : [ "my-agreement-controller" ]
       }
     },
+    "/v1/me/agreements/{kind}/signature" : {
+      "get" : {
+        "operationId" : "agreementSignatureMine",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "kind",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "CREATOR_AGREEMENT", "BACKER_AGREEMENT" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MySignature"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "agreement-signature-controller" ]
+      },
+      "post" : {
+        "operationId" : "agreementSignatureBegin",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "kind",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "CREATOR_AGREEMENT", "BACKER_AGREEMENT" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BeginRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionOpened"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "agreement-signature-controller" ]
+      }
+    },
+    "/v1/me/agreements/{kind}/signature/sessions/{sessionId}" : {
+      "get" : {
+        "operationId" : "agreementSignatureResolve",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "kind",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "CREATOR_AGREEMENT", "BACKER_AGREEMENT" ]
+          }
+        }, {
+          "in" : "path",
+          "name" : "sessionId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SessionProgress"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "agreement-signature-controller" ]
+      }
+    },
     "/v1/me/currency" : {
       "patch" : {
         "operationId" : "currencyPreferenceSetCurrency",
@@ -5164,6 +5322,50 @@
           }
         },
         "tags" : [ "fulfilment-controller" ]
+      }
+    },
+    "/v1/me/legal-subject" : {
+      "get" : {
+        "operationId" : "myLegalSubjectMine",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Mine"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "my-legal-subject-controller" ]
+      },
+      "put" : {
+        "operationId" : "myLegalSubjectRecord",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LegalSubjectRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Mine"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "my-legal-subject-controller" ]
       }
     },
     "/v1/me/locale" : {
@@ -9667,6 +9869,27 @@
           }
         }
       },
+      "BeginRequest" : {
+        "type" : "object",
+        "properties" : {
+          "fin" : {
+            "type" : "string",
+            "minLength" : 1,
+            "pattern" : "^[0-9A-Za-z]{7}$"
+          },
+          "mobile" : {
+            "type" : "string",
+            "maxLength" : 32,
+            "minLength" : 0
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          }
+        },
+        "required" : [ "fin", "mobile", "version" ]
+      },
       "BeginUploadBody" : {
         "type" : "object",
         "properties" : {
@@ -11538,6 +11761,24 @@
           }
         }
       },
+      "ForStaff" : {
+        "type" : "object",
+        "properties" : {
+          "accountId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "campaigns" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FrozenCampaign"
+            }
+          },
+          "recorded" : {
+            "$ref" : "#/components/schemas/Mine"
+          }
+        }
+      },
       "ForgotPasswordRequest" : {
         "type" : "object",
         "properties" : {
@@ -11549,6 +11790,28 @@
           }
         },
         "required" : [ "email" ]
+      },
+      "FrozenCampaign" : {
+        "type" : "object",
+        "properties" : {
+          "frozenAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "legalName" : {
+            "type" : "string"
+          },
+          "projectId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "subjectKind" : {
+            "type" : "string"
+          },
+          "taxId" : {
+            "type" : "string"
+          }
+        }
       },
       "FulfilmentImportResponse" : {
         "type" : "object",
@@ -11721,50 +11984,6 @@
           },
           "status" : {
             "type" : "string"
-          }
-        }
-      },
-      "Held" : {
-        "type" : "object",
-        "properties" : {
-          "billingPeriod" : {
-            "type" : "string",
-            "enum" : [ "MONTHLY", "YEARLY" ]
-          },
-          "cancelAtPeriodEnd" : {
-            "type" : "boolean"
-          },
-          "createdAt" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "currency" : {
-            "type" : "string"
-          },
-          "currentPeriodEnd" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "entitled" : {
-            "type" : "boolean"
-          },
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "plan" : {
-            "$ref" : "#/components/schemas/Plan"
-          },
-          "price" : {
-            "type" : "string"
-          },
-          "startedAt" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "state" : {
-            "type" : "string",
-            "enum" : [ "PENDING_PAYMENT", "ACTIVE", "CANCELED", "EXPIRED" ]
           }
         }
       },
@@ -12071,6 +12290,36 @@
           }
         }
       },
+      "LegalSubjectRequest" : {
+        "type" : "object",
+        "properties" : {
+          "legalName" : {
+            "type" : "string",
+            "maxLength" : 200,
+            "minLength" : 0
+          },
+          "registeredAddress" : {
+            "type" : "string",
+            "maxLength" : 500,
+            "minLength" : 0
+          },
+          "registrationNumber" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 0
+          },
+          "subjectKind" : {
+            "type" : "string",
+            "enum" : [ "INDIVIDUAL", "LEGAL_ENTITY" ]
+          },
+          "taxId" : {
+            "type" : "string",
+            "maxLength" : 20,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "legalName", "subjectKind" ]
+      },
       "Line" : {
         "type" : "object",
         "properties" : {
@@ -12286,8 +12535,30 @@
       "Mine" : {
         "type" : "object",
         "properties" : {
-          "subscription" : {
-            "$ref" : "#/components/schemas/Held"
+          "complete" : {
+            "type" : "boolean"
+          },
+          "legalName" : {
+            "type" : "string"
+          },
+          "recorded" : {
+            "type" : "boolean"
+          },
+          "registeredAddress" : {
+            "type" : "string"
+          },
+          "registrationNumber" : {
+            "type" : "string"
+          },
+          "subjectKind" : {
+            "type" : "string"
+          },
+          "taxId" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
           }
         }
       },
@@ -12371,6 +12642,46 @@
             "items" : {
               "$ref" : "#/components/schemas/MyAgreement"
             }
+          }
+        }
+      },
+      "MySignature" : {
+        "type" : "object",
+        "properties" : {
+          "acceptedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "document" : {
+            "type" : "string"
+          },
+          "documentHash" : {
+            "type" : "string"
+          },
+          "documentId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "provider" : {
+            "type" : "string"
+          },
+          "signatureId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "signed" : {
+            "type" : "boolean"
+          },
+          "signedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "signerName" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
           }
         }
       },
@@ -12745,6 +13056,10 @@
             "type" : "string",
             "format" : "uuid"
           },
+          "creatorStanding" : {
+            "type" : "string",
+            "enum" : [ "NOT_REQUIRED", "WAIVED", "VERIFIED", "NEVER_REQUESTED", "AWAITING_DOCUMENTS", "UNDER_REVIEW", "REJECTED", "EXPIRED" ]
+          },
           "failureCode" : {
             "type" : "string"
           },
@@ -12757,6 +13072,9 @@
           },
           "gross" : {
             "$ref" : "#/components/schemas/Money"
+          },
+          "heldForVerification" : {
+            "type" : "boolean"
           },
           "id" : {
             "type" : "string",
@@ -14757,6 +15075,57 @@
           }
         },
         "required" : [ "destinationReference" ]
+      },
+      "SessionOpened" : {
+        "type" : "object",
+        "properties" : {
+          "document" : {
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "sessionId" : {
+            "type" : "string"
+          },
+          "verificationCode" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "SessionProgress" : {
+        "type" : "object",
+        "properties" : {
+          "document" : {
+            "type" : "string"
+          },
+          "signatureId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "signed" : {
+            "type" : "boolean"
+          },
+          "signedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "signerName" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
       },
       "SessionRecord" : {
         "type" : "object",

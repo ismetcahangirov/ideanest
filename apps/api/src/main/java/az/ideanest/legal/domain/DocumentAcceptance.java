@@ -71,7 +71,7 @@ public class DocumentAcceptance {
     @Column(name = "user_agent", updatable = false)
     private String userAgent;
 
-    @Column(name = "signature_id", updatable = false)
+    @Column(name = "signature_id")
     private UUID signatureId;
 
     protected DocumentAcceptance() {
@@ -104,6 +104,47 @@ public class DocumentAcceptance {
      * the record itself, and an over-long one is a header a browser extension appended to —
      * not an attack and not a reason to refuse the acceptance the person just made.
      */
+    /**
+     * An acceptance that carries a signature from the moment it is written — issue #429.
+     *
+     * <p>Its own factory rather than a nullable parameter on {@link #of}, because the two are
+     * different acts and the call sites should read differently: one is a tick, and one is a
+     * citizen having signed a hash with a state-issued certificate. V67's header draws the same
+     * line for the same reason.
+     */
+    public static DocumentAcceptance signed(
+            UUID id,
+            UUID userId,
+            UUID documentId,
+            Instant acceptedAt,
+            String ipAddress,
+            String userAgent,
+            UUID signatureId) {
+        DocumentAcceptance acceptance = of(id, userId, documentId, acceptedAt, ipAddress, userAgent);
+        acceptance.signatureId = Objects.requireNonNull(signatureId, "A signed acceptance carries its signature");
+        return acceptance;
+    }
+
+    /**
+     * Attach a signature to an acceptance that was a tick.
+     *
+     * <p>A creator who ticked the box last week and signs the same version today has accepted
+     * one version once. V65's table is "one row per (account, version), appended, never
+     * replaced", so this upgrades the row rather than writing a second one — a second would be
+     * the platform recording two agreements where there was one.
+     *
+     * <p>An acceptance never loses a signature and never swaps one for another. A signature is
+     * evidence about a moment that has passed; replacing it would make the row say the creator
+     * signed something they signed under a different certificate.
+     */
+    public void signedWith(UUID signatureId) {
+        Objects.requireNonNull(signatureId, "A signature has an identifier");
+        if (this.signatureId != null && !this.signatureId.equals(signatureId)) {
+            throw new IllegalStateException("Acceptance " + id + " already carries a different signature");
+        }
+        this.signatureId = signatureId;
+    }
+
     private static String truncated(String userAgent) {
         if (userAgent == null) {
             return null;

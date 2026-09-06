@@ -28,6 +28,29 @@ export type PayoutState =
   | 'FAILED'
   | 'CANCELLED';
 
+/**
+ * Where a payout's creator stands with identity verification — issue #431.
+ *
+ * Eight values and not a boolean, because a finance operator looking at a payout that will
+ * not approve has to be able to tell a creator who has never been asked from one whose
+ * documents are already in the review queue: those are different things to do next. V55's
+ * argument, which #431 quotes — a payout that will not approve and does not say why "makes
+ * the same campaign look as though nothing is owed".
+ *
+ * `WAIVED` is deliberately not folded into `VERIFIED`. A waiver is #436's override, granted
+ * by a named person for a bounded time, and drawing it as though somebody had checked a
+ * document would be the screen telling an operator something that is not true.
+ */
+export type VerificationStanding =
+  | 'NOT_REQUIRED'
+  | 'WAIVED'
+  | 'VERIFIED'
+  | 'NEVER_REQUESTED'
+  | 'AWAITING_DOCUMENTS'
+  | 'UNDER_REVIEW'
+  | 'REJECTED'
+  | 'EXPIRED';
+
 export interface Payout {
   id: string;
   projectId: string;
@@ -51,6 +74,16 @@ export interface Payout {
    */
   payableNow: boolean;
   approvalsRequired: number;
+  /** Where the creator stands with identity verification (#431). Read live by the service. */
+  creatorStanding: VerificationStanding;
+  /**
+   * Whether that standing is what is holding this payout.
+   *
+   * Sent rather than derived from `creatorStanding`, for `payableNow`'s reason: which
+   * standings release a payout is a rule, and a second copy of it in the browser is the copy
+   * that disagrees the day the rule changes.
+   */
+  heldForVerification: boolean;
   payoutTransactionId?: string | null;
   failureCode?: string | null;
   failureMessage?: string | null;

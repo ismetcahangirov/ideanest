@@ -1,12 +1,14 @@
 package az.ideanest.payout.api;
 
 import az.ideanest.payout.application.PayoutService;
+import az.ideanest.payout.domain.Payout;
 import az.ideanest.payout.domain.PayoutState;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.Clock;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
@@ -68,10 +70,11 @@ public class PayoutController {
     public ResponseEntity<PayoutResponses.PayoutPage> queue(
             @AuthenticationPrincipal Jwt accessToken, @RequestParam(defaultValue = "0") int page) {
 
+        List<Payout> queued = payouts.queue(callerOf(accessToken), page);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(PayoutResponses.PayoutPage.of(
-                        payouts.queue(callerOf(accessToken), page), page, PAGE_SIZE, clock.instant()));
+                        queued, page, PAGE_SIZE, clock.instant(), payouts.standingsOf(queued)));
     }
 
     /** Everything, newest first, optionally narrowed to one state. */
@@ -81,10 +84,11 @@ public class PayoutController {
             @RequestParam(required = false) PayoutState state,
             @RequestParam(defaultValue = "0") int page) {
 
+        List<Payout> listed = payouts.list(callerOf(accessToken), state, page);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(PayoutResponses.PayoutPage.of(
-                        payouts.list(callerOf(accessToken), state, page), page, PAGE_SIZE, clock.instant()));
+                        listed, page, PAGE_SIZE, clock.instant(), payouts.standingsOf(listed)));
     }
 
     /** One payout with its signatures. */
@@ -94,8 +98,7 @@ public class PayoutController {
 
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
-                .body(PayoutResponses.PayoutFile.of(
-                        payouts.inspect(callerOf(accessToken), payoutId), clock.instant()));
+                .body(fileOf(payouts.inspect(callerOf(accessToken), payoutId)));
     }
 
     /** Works out what a campaign owes, and starts the hold. */
@@ -105,8 +108,7 @@ public class PayoutController {
 
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
-                .body(PayoutResponses.PayoutSummary.of(
-                        payouts.calculate(callerOf(accessToken), request.projectId()), clock.instant()));
+                .body(summaryOf(payouts.calculate(callerOf(accessToken), request.projectId())));
     }
 
     /** Signs off. */
@@ -120,8 +122,7 @@ public class PayoutController {
 
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
-                .body(PayoutResponses.PayoutFile.of(
-                        payouts.approve(callerOf(accessToken), payoutId, note), clock.instant()));
+                .body(fileOf(payouts.approve(callerOf(accessToken), payoutId, note)));
     }
 
     /**
@@ -137,8 +138,7 @@ public class PayoutController {
 
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
-                .body(PayoutResponses.PayoutFile.of(
-                        payouts.withdrawApproval(callerOf(accessToken), payoutId), clock.instant()));
+                .body(fileOf(payouts.withdrawApproval(callerOf(accessToken), payoutId)));
     }
 
     /** Instructs the provider. */
@@ -150,9 +150,7 @@ public class PayoutController {
 
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
-                .body(PayoutResponses.PayoutSummary.of(
-                        payouts.send(callerOf(accessToken), payoutId, request.destinationReference()),
-                        clock.instant()));
+                .body(summaryOf(payouts.send(callerOf(accessToken), payoutId, request.destinationReference())));
     }
 
     /** Withdraws a payout before it is sent. */
@@ -162,8 +160,7 @@ public class PayoutController {
 
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
-                .body(PayoutResponses.PayoutSummary.of(
-                        payouts.cancel(callerOf(accessToken), payoutId), clock.instant()));
+                .body(summaryOf(payouts.cancel(callerOf(accessToken), payoutId)));
     }
 
     /** Which campaign to work out a payout for. */
@@ -185,6 +182,15 @@ public class PayoutController {
      * typed. It never appears in a log — {@code PayoutRequest.toString} redacts it.
      */
     public record SendRequest(@NotBlank @Size(max = 200) String destinationReference) {
+    }
+
+    /** One payout, with the creator's standing beside it — #431's "show why". */
+    private PayoutResponses.PayoutSummary summaryOf(Payout payout) {
+        return PayoutResponses.PayoutSummary.of(payout, clock.instant(), payouts.standingOf(payout));
+    }
+
+    private PayoutResponses.PayoutFile fileOf(PayoutService.PayoutFile file) {
+        return PayoutResponses.PayoutFile.of(file, clock.instant(), payouts.standingOf(file.payout()));
     }
 
     private static UUID callerOf(Jwt accessToken) {

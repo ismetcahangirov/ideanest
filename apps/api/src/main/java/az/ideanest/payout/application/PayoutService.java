@@ -16,6 +16,8 @@ import az.ideanest.payout.infrastructure.PayoutApprovalRepository;
 import az.ideanest.payout.infrastructure.PayoutRepository;
 import az.ideanest.shared.access.PlatformStaff;
 import az.ideanest.shared.access.StaffCapability;
+import az.ideanest.shared.compliance.CreatorStandings;
+import az.ideanest.shared.compliance.VerificationStanding;
 import az.ideanest.shared.money.Money;
 import az.ideanest.shared.project.ProjectSummaries;
 import az.ideanest.shared.project.ProjectSummary;
@@ -23,8 +25,10 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
@@ -81,6 +85,7 @@ public class PayoutService {
     private final FeeSchedules fees;
     private final ProjectSummaries projects;
     private final PlatformStaff staff;
+    private final CreatorStandings creators;
     private final AuditLog audit;
     private final PayoutProperties properties;
     private final Clock clock;
@@ -92,6 +97,7 @@ public class PayoutService {
             FeeSchedules fees,
             ProjectSummaries projects,
             PlatformStaff staff,
+            CreatorStandings creators,
             AuditLog audit,
             PayoutProperties properties,
             Clock clock) {
@@ -101,6 +107,7 @@ public class PayoutService {
         this.fees = fees;
         this.projects = projects;
         this.staff = staff;
+        this.creators = creators;
         this.audit = audit;
         this.properties = properties;
         this.clock = clock;
@@ -213,9 +220,66 @@ public class PayoutService {
     @Transactional
     public List<Payout> queue(UUID staffId, int page) {
         staff.requireCapability(staffId, StaffCapability.VIEW_FINANCE);
-        payouts.nowPayable(clock.instant()).forEach(Payout::payable);
+
+        // #431: §6.3's fourteen-day hold is where a verification fits, so the sweep that
+        // ends the hold is the first of the two places the gate goes. A payout whose
+        // creator is not verified stays CALCULATED -- it does not fail and it does not
+        // cancel, it waits -- and the creator is asked for what is missing.
+        for (Payout held : payouts.nowPayable(clock.instant())) {
+            if (releasedByStanding(held)) {
+                held.payable();
+            }
+        }
 
         return payouts.queue(PageRequest.of(Math.max(page, 0), PAGE_SIZE));
+    }
+
+    /**
+     * Where this payout's creator stands with identity verification.
+     *
+     * <p>Read live rather than stored on the payout. A column would be stale the moment a
+     * reviewer approved a document, and a finance operator looking at a payout that said
+     * "unverified" about a creator verified an hour ago would either wait for nothing or
+     * override something that did not need overriding.
+     */
+    @Transactional(readOnly = true)
+    public VerificationStanding standingOf(Payout payout) {
+        return creators.of(payout.creatorId());
+    }
+
+    /**
+     * The standing of every creator on a page of payouts, one entry per creator.
+     *
+     * <p>Fifty payouts on a queue page are usually a handful of creators, and asking once per
+     * row would be the N+1 that makes an operator's screen slow on exactly the day it matters.
+     * With {@code ideanest.verification.required} off each answer is a constant and no query
+     * is made at all.
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, VerificationStanding> standingsOf(List<Payout> page) {
+        return page.stream()
+                .map(Payout::creatorId)
+                .distinct()
+                .collect(Collectors.toMap(creatorId -> creatorId, creators::of));
+    }
+
+    /**
+     * Whether the creator's standing lets this payout move — and, when it does not, asking
+     * the creator for what is missing.
+     *
+     * <p>The request is raised here, at the moment the hold bites, rather than at submission.
+     * #431's first reason: "A campaign that never reaches its goal collects nothing and pays
+     * out nothing. Gating submission would send every creator through document review to find
+     * out whether their idea funds -- most of them for nothing."
+     */
+    private boolean releasedByStanding(Payout payout) {
+        VerificationStanding standing = creators.of(payout.creatorId());
+        if (standing.releasesPayout()) {
+            return true;
+        }
+        log.info("Payout {} stays in hold: creator {} stands at {}", payout.id(), payout.creatorId(), standing);
+        creators.requestIfNeeded(payout.creatorId());
+        return false;
     }
 
     /** Everything, newest first, optionally narrowed to one state. */
@@ -254,6 +318,22 @@ public class PayoutService {
         staff.requireCapability(staffId, StaffCapability.APPROVE_PAYOUT);
 
         Payout payout = payouts.findAndLock(payoutId).orElseThrow(() -> new PayoutNotFoundException(payoutId));
+
+        // #431: the second of the two places the gate goes. An operator may approve a
+        // payout the sweep has not reached, and a gate that lived only in the sweep would
+        // depend on which of the two got there first.
+        VerificationStanding standing = creators.of(payout.creatorId());
+        if (!standing.releasesPayout()) {
+            creators.requestIfNeeded(payout.creatorId());
+            audit.recordIndependently(
+                    AuditAction.PAYOUT_APPROVED,
+                    payoutId,
+                    AuditActor.moderator(staffId),
+                    AuditOutcome.REFUSED,
+                    "creatorNotVerified; creator=%s; standing=%s".formatted(payout.creatorId(), standing));
+            throw new CreatorNotVerifiedException(payoutId, payout.creatorId(), standing);
+        }
+
         if (payout.state() == PayoutState.CALCULATED && payout.isPayableAt(clock.instant())) {
             payout.payable();
         }

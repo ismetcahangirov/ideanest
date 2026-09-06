@@ -1666,7 +1666,20 @@
         "thisIsYou": "bu sizsiniz",
         "youHaveSigned": "Bu ödemeyi zaten imzaladınız. İkinci imza başka birine ait olmalı.",
         "awaitingHold": "{date} tarihinde bekletme süresi dolana kadar imzalanamaz.",
-        "destinationNeeded": "Bu ödemenin gönderileceği adresi girin. Kayıtlı bir adres henüz yok."
+        "destinationNeeded": "Bu ödemenin gönderileceği adresi girin. Kayıtlı bir adres henüz yok.",
+        "verificationHeld": "Kimlik bekleniyor",
+        "verificationHeldTitle": "Kurucunun kimliği doğrulanmadı",
+        "verificationHeldBody": "Bu ödeme {standing}. Para yalnızca platformun kimliğini doğruladığı kişiye gider; kurucudan eksik olan zaten istendi.",
+        "standing": {
+          "NOT_REQUIRED": "kimlik doğrulamasına bağlı değil",
+          "WAIVED": "verilen bir istisnayla serbest bırakıldı",
+          "VERIFIED": "doğrulandı",
+          "NEVER_REQUESTED": "bekliyor — kurucudan hiçbir şey istenmemişti, şimdi istendi",
+          "AWAITING_DOCUMENTS": "kurucunun belge göndermesini bekliyor",
+          "UNDER_REVIEW": "inceleme sırasını bekliyor",
+          "REJECTED": "bekliyor — belgeler reddedildi, kurucunun başkalarını göndermesi gerekiyor",
+          "EXPIRED": "bekliyor — onayın süresi doldu, kurucunun yeniden doğrulaması gerekiyor"
+        }
       },
       "refunds": {
         "subject": "iade günlüğünü",

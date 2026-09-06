@@ -1,5 +1,7 @@
 package az.ideanest.verification.domain;
 
+import az.ideanest.shared.compliance.RejectionReason;
+import az.ideanest.shared.compliance.SubjectKind;
 import az.ideanest.shared.Identifiers;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

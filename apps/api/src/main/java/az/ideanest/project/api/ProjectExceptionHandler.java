@@ -294,11 +294,21 @@ public class ProjectExceptionHandler {
     public ProblemDetail handleAgreementRequired(AgreementRequiredException exception) {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
         problem.setType(URI.create("https://ideanest.az/problems/agreement-required"));
-        problem.setTitle("The creator agreement has to be accepted first");
-        problem.setDetail("Sending a campaign for review means taking on the obligations in the creator agreement.");
+        boolean signature = exception.requirement() == AgreementRequiredException.Requirement.SIGNATURE;
+        problem.setTitle(
+                signature
+                        ? "The creator agreement has to be signed first"
+                        : "The creator agreement has to be accepted first");
+        problem.setDetail(
+                signature
+                        ? "This campaign needs the creator agreement signed with SİMA İmza, not only accepted."
+                        : "Sending a campaign for review means taking on the obligations in the creator agreement.");
         problem.setProperty("code", "AGREEMENT_REQUIRED");
 
         Map<String, Object> meta = new LinkedHashMap<>();
+        // #429: one code, two next actions. A creator sent to tick a box they have already
+        // ticked concludes the platform is broken.
+        meta.put("requires", exception.requirement().name());
         meta.put("document", exception.agreement().kind().name());
         meta.put("documentId", exception.agreement().documentId());
         meta.put("version", exception.agreement().version());
