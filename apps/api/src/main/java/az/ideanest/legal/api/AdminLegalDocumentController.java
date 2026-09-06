@@ -1,9 +1,11 @@
 package az.ideanest.legal.api;
 
 import az.ideanest.legal.application.AcceptanceRecords;
+import az.ideanest.legal.application.AgreementSigning;
 import az.ideanest.legal.application.LegalDocuments;
 import az.ideanest.legal.domain.DocumentKind;
 import az.ideanest.legal.domain.LegalDocument;
+import az.ideanest.shared.legal.AgreementKind;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -59,10 +61,13 @@ public class AdminLegalDocumentController {
 
     private final LegalDocuments documents;
     private final AcceptanceRecords acceptances;
+    private final AgreementSigning signing;
 
-    public AdminLegalDocumentController(LegalDocuments documents, AcceptanceRecords acceptances) {
+    public AdminLegalDocumentController(
+            LegalDocuments documents, AcceptanceRecords acceptances, AgreementSigning signing) {
         this.documents = documents;
         this.acceptances = acceptances;
+        this.signing = signing;
     }
 
     /**
@@ -158,6 +163,31 @@ public class AdminLegalDocumentController {
                 .cacheControl(CacheControl.noStore())
                 .body(LegalResponses.AcceptanceRecord.of(
                         accountId, acceptances.forAccount(callerOf(accessToken), accountId)));
+    }
+
+    /**
+     * What one account signed, for an agreement — issue #429.
+     *
+     * <p>Beside the acceptance record rather than on a screen of its own, because it answers
+     * the same question one degree further: not "did they agree" but "who signed, with which
+     * certificate, over which text". A member of staff reading it needs #436's
+     * {@code READ_SIGNED_AGREEMENT}, and the read is audited — the row carries a citizen's name
+     * and FİN under §17.4, and a screen that discloses them is one whose use has to be
+     * answerable.
+     */
+    @GetMapping(
+            path = "/accounts/{accountId}/agreements/{kind}/signature",
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<SignatureResponses.MySignature> signature(
+            @AuthenticationPrincipal Jwt accessToken,
+            @PathVariable UUID accountId,
+            @PathVariable AgreementKind kind) {
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(signing.forStaff(callerOf(accessToken), accountId, kind)
+                        .map(SignatureResponses.MySignature::of)
+                        .orElseGet(() -> SignatureResponses.MySignature.unsigned(kind)));
     }
 
     /**

@@ -602,7 +602,64 @@ public enum AuditAction {
      * <p>The entity is the campaign. The detail carries when it lapsed and what it was due,
      * because the resolution note lives on the row and the row is cleared by the next lapse.
      */
-    UPDATE_OBLIGATION_RESOLVED("obligation.update_resolved", "project");
+    UPDATE_OBLIGATION_RESOLVED("obligation.update_resolved", "project"),
+
+    /**
+     * A creator recorded, or changed, who they legally are.
+     *
+     * <p><strong>The actor is the creator, not a member of staff</strong>, and this is one of
+     * the few actions in this enum where that is so. It is here anyway, because the value
+     * decides withholding on a payout, decides which party the creator agreement binds, and is
+     * the name #429's certificate subject and #432's account holder are matched against. A
+     * change to it days before a payout is the shape of a fraud that would otherwise leave no
+     * trace at all: the row carries only what it says now.
+     *
+     * <p>The entity is the account. The detail carries the subject kind, the legal name and
+     * whether the subject is complete -- enough to reconstruct the sequence of names an account
+     * has claimed, which is the question an investigation asks.
+     */
+    LEGAL_SUBJECT_RECORDED("compliance.legal_subject_recorded", "account"),
+
+    /**
+     * A member of staff read somebody's legal subject.
+     *
+     * <p>{@link #ACCEPTANCE_RECORD_READ}'s argument applied to the neighbouring screen: a read
+     * of a person's own record rather than of the platform's should be answerable, it costs
+     * nothing to record, and its absence is discovered only during the investigation that
+     * needed it.
+     *
+     * <p>The entity is the account that was read, so that "who has looked at this person's
+     * file" stays one query across both this and the acceptance record.
+     */
+    LEGAL_SUBJECT_READ("compliance.legal_subject_read", "account"),
+
+    /**
+     * A creator signed a legal document with a national e-signature.
+     *
+     * <p>Distinct from an acceptance, which is not audited at all -- a tick is recorded in
+     * {@code document_acceptances} with its address and user agent, and that row is the
+     * evidence. A signature is audited on top of the row because #429 says it is a privileged
+     * action, and because the interesting failures are the ones that produce no acceptance: a
+     * refused name match writes an audit entry and nothing else, and without it a creator
+     * repeatedly failing to match a certificate to their account would be invisible.
+     *
+     * <p>The entity is the account. The detail carries the document, its version, the hash that
+     * was signed and the certificate subject's name -- never the signature value, which is in
+     * {@code signatures} and is large.
+     */
+    AGREEMENT_SIGNED("legal.agreement_signed", "account"),
+
+    /**
+     * A stored signature was read back.
+     *
+     * <p>#429: signing, "and every later read of a stored signature", is audited. The read is
+     * the more sensitive of the two: the row carries a citizen's name and FIN under 17.4, and a
+     * screen that discloses them is one whose use has to be answerable. Recorded for a member
+     * of staff reading somebody else's and not for a creator reading their own, on
+     * {@code AUDIT_TRAIL_READ}'s line -- a person looking at their own record is not a
+     * disclosure.
+     */
+    SIGNED_AGREEMENT_READ("legal.signed_agreement_read", "account");
 
 
 

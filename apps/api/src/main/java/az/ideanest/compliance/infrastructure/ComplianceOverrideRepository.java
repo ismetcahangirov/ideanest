@@ -1,7 +1,7 @@
 package az.ideanest.compliance.infrastructure;
 
 import az.ideanest.compliance.domain.ComplianceOverride;
-import az.ideanest.compliance.domain.ComplianceRequirement;
+import az.ideanest.shared.compliance.ComplianceRequirement;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;

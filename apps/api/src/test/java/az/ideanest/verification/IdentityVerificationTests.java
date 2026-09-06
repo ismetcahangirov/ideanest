@@ -16,7 +16,7 @@ import az.ideanest.verification.application.VerificationNotDecidableException;
 import az.ideanest.verification.domain.DocumentKind;
 import az.ideanest.verification.domain.IdentityVerification;
 import az.ideanest.verification.domain.SealedDocument;
-import az.ideanest.verification.domain.SubjectKind;
+import az.ideanest.shared.compliance.SubjectKind;
 import az.ideanest.verification.domain.VerificationState;
 import az.ideanest.verification.infrastructure.IdentityDocumentRepository;
 import az.ideanest.verification.infrastructure.IdentityVerificationRepository;
@@ -379,17 +379,26 @@ class IdentityVerificationTests extends AbstractIntegrationTest {
     }
 
     // ------------------------------------------------------------------
-    // What is deliberately not gated
+    // What the flag gates, and what a deployment runs with
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("nothing on the platform is gated on a verification")
-    void verificationGatesNothing() {
-        // §22.1 makes the threshold a legal question (#71, needs-decision). This asserts
-        // the default rather than the absence of a gate -- a deployment that turned this on
-        // would be inventing a compliance position, and the flag existing is what makes the
-        // day somebody may decide it a configuration change.
-        assertThat(properties.required()).isFalse();
+    @DisplayName("the flag is what decides, and this profile turns it on so #431's gate is exercised")
+    void theFlagIsWhatDecides() {
+        // This test used to assert `required()` is false and called it "nothing on the
+        // platform is gated on a verification". Both halves have moved, and only one of them
+        // is a change of position.
+        //
+        // #431 gave the flag something to gate: a payout does not leave §6.3's hold unless
+        // the creator's verification stands at APPROVED. So "nothing is gated" is no longer
+        // true of the code, and `PayoutVerificationGateTests` is where the gate is checked.
+        //
+        // What has NOT moved is who may decide the threshold. §22.1's anti-money-laundering
+        // row is still a question, #424 is where the answer gets written down, and
+        // `application.yml` ships `false` -- a deployed environment gates nothing, exactly as
+        // V58 intended. This profile ships `true`, because a gate nothing ever runs is a gate
+        // nobody has tested.
+        assertThat(properties.required()).isTrue();
     }
 
     // ------------------------------------------------------------------

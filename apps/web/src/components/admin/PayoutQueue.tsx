@@ -257,6 +257,13 @@ export function PayoutQueue({ copy }: PayoutQueueProps) {
                     </p>
                     <span className="flex items-center gap-2">
                       {!payout.payableNow && <Tag>{copy.held}</Tag>}
+                      {/*
+                        #431: a payout held because the platform has not identified its
+                        creator looks exactly like one waiting on the clock unless the queue
+                        says so. V55's argument -- a row that explains nothing "makes the
+                        same campaign look as though nothing is owed".
+                      */}
+                      {payout.heldForVerification && <Tag>{copy.verificationHeld}</Tag>}
                       <Tag>{copy.state[payout.state]}</Tag>
                     </span>
                   </div>
@@ -439,6 +446,21 @@ function PayoutDetail({
       {!payout.payableNow && (
         <InlineAlert variant="info" title={copy.stillHeldTitle} className="mt-4">
           {fillPlaceholders(copy.stillHeldBody, { date: payout.payableAt.slice(0, 10) })}
+        </InlineAlert>
+      )}
+
+      {/*
+        Its own alert and not a second sentence in the one above, because the two holds end
+        differently: §9's ends when a date passes and nobody need do anything, and this one
+        ends when a creator sends a document. The standing is named rather than reduced to
+        "not verified" -- a creator who has never been asked and one whose documents are in
+        the review queue are different things for an operator to do next.
+      */}
+      {payout.heldForVerification && (
+        <InlineAlert variant="warning" title={copy.verificationHeldTitle} className="mt-4">
+          {fillPlaceholders(copy.verificationHeldBody, {
+            standing: copy.standing[payout.creatorStanding],
+          })}
         </InlineAlert>
       )}
 

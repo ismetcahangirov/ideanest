@@ -92,6 +92,10 @@ function payoutQueue(): PayoutPage {
         payableAt: '2026-08-01',
         payableNow: true,
         approvalsRequired: 2,
+        // #431. Verified, because this suite is about how the console names accounts and a
+        // payout held on identity would draw an alert it is not asserting on.
+        creatorStanding: 'VERIFIED',
+        heldForVerification: false,
         calculatedAt: '2026-08-01T00:00:00.000Z',
       },
     ],

@@ -144,6 +144,7 @@ graph TD
 | Resolve a lapsed-update escalation | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
 | Publish a version of a legal document | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
 | Read an account's acceptance record | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
+| Read an account's legal subject | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
 | Read an account's signed creator agreement | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
 | Approve or reject an identity verification | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅³ | ❌ | ✅³ |
 | **Open an identity document** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
@@ -313,7 +314,30 @@ Marked `[W]` web, `[M]` mobile, `[A]` admin.
 | P-08 | Blocked users | W |
 | P-09 | Notification preferences | W, M |
 | P-10 | Language and currency. **Both halves built** — the language with #280 and #324, the display currency with #327 | W, M |
+| P-11 | **Legal subject** — who the creator legally is: an individual or a registered entity, with the name every later check is matched against (#430) | W |
 
+> **P-11 is not a profile field and is deliberately not on the profile.** A legal
+> subject is what the platform is dealing with — the party an agreement binds, the
+> subject a payout withholds against, and the name #429's certificate and #432's
+> account holder are matched to — and none of that is public. It is written at
+> `PUT /v1/me/legal-subject`, read back at the same address, and read by a member of
+> staff at `GET /v1/admin/accounts/{id}/legal-subject` under #436's
+> `REVIEW_IDENTITY_VERIFICATION`, audited on both sides. **`PUT` and not `PATCH`**:
+> the fields are not independent, since moving from an individual to a legal entity
+> arrives with three new ones and moving back must clear them.
+>
+> **There is no staff write.** A member of staff correcting somebody's legal name
+> would be the platform asserting who a person is on their behalf, and the whole of
+> #429's name match assumes the name came from the person it names. A wrong subject
+> is corrected by the creator, or waived by an override that records who waived it.
+>
+> **A creator may edit it while a campaign of theirs is submitted**, and the
+> snapshot is what makes that safe rather than a lock being what makes it
+> impossible. The submitted campaign carries its own copy, so an edit cannot reach
+> it; and a lock would need the compliance module to ask the project module a
+> question, when the project module already asks the compliance module to freeze a
+> subject at submission — a cycle, and the wrong shape whatever a boundary test says.
+>
 > **The web client's account area is one navigation over two prefixes**, built by
 > #275: `/settings/*` for what somebody decides — notifications, devices,
 > two-factor, data and closure — and `/account/*` for what they have — saved
@@ -1369,7 +1393,7 @@ Preferences are per category and per channel, with a digest option.
 | AD-02 | Trust and safety | Report queue, fraud signals, suspension. Reporting and the queue are built (#102, §7.2's `content_reports`), **suspension is built (#103)**, and **fraud signals are built (#108)** — `risk_assessments`, a queue at `/v1/admin/risk/queue`, and the identity review at `/v1/admin/verifications/queue` (#105). The signals **advise and do not decide**: nothing refuses a pledge or suspends an account on a score. See §17.2 |
 | AD-03 | Curation | Editorial badges, collections, open calls, placement. The endpoints arrived with #48; **the four screens are built (#300 to #303)** at `/admin/curation` and its three siblings |
 | AD-04 | User management | Search, inspect, ban, verification status, audited impersonation. **Search, inspect and the ban are built (#104)**, and **`/admin/staff` is built (#295)** — the role model that replaced the configured list. **The search folds like every other search since #413**: it matched on `lower()`, which leaves ə, ı, ö, ü, ğ, ş and ç alone, so this box found "Köhnə" from `köhnə` and not from `kohne` while the campaign directory beside it found both — and, matching a different expression from the one V63's indexes are built on, it read every row. It now names §11.3's `ideanest_fold`, which V64 completes with the third index the address needed. Impersonation is not, and is the one thing in this table still waiting on a decision (#299) |
-| AD-05 | Finance | Payment log, ledger, payout queue, approvals, disputes, and whether the sum of them is right. **All of it is built**: the log and the ledger with #304 and #305, the payout queue and its dual approval with #69 and #306, and the reconciliation with #106 at `/admin/reconciliation`. That last screen is what kept "financial operations tooling" open with the other three built — #70's nightly pass answered "do the books balance" to a log line and a Prometheus gauge and to nobody who works in this console. It reports and never repairs, so there is no control on it that corrects anything. **The payment log is ordered by `created_at` since #412**, not by the primary key — AD-14's defect on the one console surface that is entirely money, and it cost more there: §9.6 permits four collection attempts, so "declined, declined, collected" read in the wrong order is a different story about the same pledge. The cursor carries the instant and the identifier that breaks its tie, and is therefore an opaque string rather than a `uuid` |
+| AD-05 | Finance | Payment log, ledger, payout queue, approvals, disputes, and whether the sum of them is right. **All of it is built**: the log and the ledger with #304 and #305, the payout queue and its dual approval with #69 and #306, and the reconciliation with #106 at `/admin/reconciliation`. That last screen is what kept "financial operations tooling" open with the other three built — #70's nightly pass answered "do the books balance" to a log line and a Prometheus gauge and to nobody who works in this console. It reports and never repairs, so there is no control on it that corrects anything. **Since #431 the queue also says why a payout is held on identity** — the standing is drawn as one of eight values rather than as "not verified", because a creator who has never been asked and one whose documents are already in the review queue are different things for an operator to do next, and a waiver (#436) is drawn as a waiver rather than as a verification. **The payment log is ordered by `created_at` since #412**, not by the primary key — AD-14's defect on the one console surface that is entirely money, and it cost more there: §9.6 permits four collection attempts, so "declined, declined, collected" read in the wrong order is a different story about the same pledge. The cursor carries the instant and the identifier that breaks its tie, and is therefore an opaque string rather than a `uuid` |
 | AD-06 | Refunds | Full and partial with reason codes. **Built (#67, #307)** at `/admin/refunds`. The decision — reason code, author, state — is `refunds`; the money is a `REFUND` transaction and a ledger posting, and the two are deliberately separate tables |
 | AD-07 | Chargebacks | Notification, evidence, outcome. **Built (#68, #308)** at `/admin/disputes`. Intake is a provider webhook and no endpoint opens one; evidence is recorded here and still submitted through the provider's own console, because §9.3's interface has no upload |
 | AD-08 | Taxonomy | Category and tag management with translations. **Built (#309)** at `/admin/taxonomy`. Handles are permanent — they are in the public URL of every campaign filed under them — and nothing can be retired, because `projects.category_id` references these rows |
@@ -1380,6 +1404,7 @@ Preferences are per category and per channel, with a digest option.
 | AD-12 | Feature flags | Gradual rollout, experiments. **Rollout is built (#312)** at `/admin/flags`; experiments are not, because a variant needs a metric to judge it by and nothing measures one |
 | AD-13 | Analytics | Volume, success rate, average pledge, cohorts, funnels. **The first three are built (#313)** at `/admin/analytics`, over V27's rollups summed across campaigns rather than within one. Cohorts and funnels are not, and the screen says what each waits on |
 | AD-04a | Compliance overrides | An exception to one compliance requirement for one account (#436), at `/v1/admin/accounts/{id}/compliance-overrides` — `GRANT_COMPLIANCE_OVERRIDE`, which only `ADMINISTRATOR` holds, and readable with `REVIEW_IDENTITY_VERIFICATION` so that the person deciding a verification can see an exception was made. **Under the account and not on a screen of its own**, because §3.1 asks that an override appear "on the account it was applied to where the next person to look at that account will see it" — a separate overrides screen would be a list nobody opens except when they are already looking for one. `DELETE` revokes and never deletes: an override withdrawn after somebody used it is a different fact from one that was never granted |
+| AD-04b | Legal subject | Who a creator legally is (#430), at `GET /v1/admin/accounts/{id}/legal-subject` — `REVIEW_IDENTITY_VERIFICATION`, audited, **read-only**. Under the account beside AD-04a for AD-04a's reason, and read-only for one of its own: a member of staff correcting somebody's legal name would be the platform asserting who a person is on their behalf, and #429's whole name match assumes the name came from the person it names. It draws the live subject **and every campaign frozen against it**, because the divergence is what the screen exists for — a funded campaign submitted by an individual whose account now says company is not an error, and it is what a finance operator has to see before approving a payout |
 | AD-14 | Audit log | Immutable record of privileged actions. The record is built (#107, §7.2) and **the screen that reads it is built (#314)** at `/admin/audit`. **Ordered by `occurred_at` since #404**, not by the primary key: the two columns are written by two different clocks — the identifier is minted in the application, `occurred_at` is `DEFAULT now()` — so the page headed "newest first" opened on last month while today's rows sat at position fifteen. The cursor carries the instant and the identifier that breaks its tie |
 | AD-15 | Email templates | Edit, preview, test send. **All three are built**: preview and test send with #86, editing with #315 at `/admin/email-templates`. An edit appends a version and overrides the shipped catalogue rather than replacing it |
 | AD-16 | System health | Queue depth, failed jobs, provider status. **Built (#316)** at `/admin/health`, over counts the service already takes. It does not alert — #138 is what will, and the page says so
@@ -1752,7 +1777,47 @@ individual agreement can differ without a deployment.
 | Increase reward quantity | Permitted |
 | Decrease reward quantity | Only above the number already claimed |
 | Creator agreement | **Accepted, at the version in force** (§22.2, #426) |
+| Creator agreement, above #424's line | **Signed with SİMA İmza**, over the governing text's content hash (#429) |
+| Legal subject | Frozen onto the campaign at submission (#430). Not yet a requirement — see below |
 
+> **A signature is required above a line this repository has not drawn** — #429,
+> #424. The rule's shape is here and its number is configuration:
+> `ideanest.legal.signature.{enabled, goal-ceiling, required-for-legal-entity}`.
+> Above the ceiling, or from a registered entity, an acceptance is not enough and
+> the submission is refused with `AGREEMENT_REQUIRED` carrying
+> `meta.requires = SIGNATURE` — one code, because it is one refusal, and a
+> different next action, because a creator sent to tick a box they have already
+> ticked concludes the platform is broken.
+>
+> **`enabled` is false, and that default is load-bearing rather than lazy.** #424
+> sets the threshold on #423's advice, and #429 forbids the placeholder outright:
+> hardcoding "everybody signs" would send an individual raising 500 AZN to a state
+> e-signature app, "friction that will be blamed on the wrong thing". What ships is
+> the mechanism — the signing flow works for anybody who chooses to use it — and
+> what waits is the demand.
+>
+> **What is signed is the governing text's `content_hash`**, never its title and
+> never a description. That is what V65 stores the body and hashes it for: the
+> record has to prove *which text*, a signature over a title proves nothing, and a
+> signature over a superseded version does not satisfy the current one. Three names
+> must then agree about one person — the certificate subject (#428), the account's
+> legal name (#430), and eventually #432's payout destination holder — and a
+> mismatch is a refusal carrying `MISMATCHED_NAME`, a value V58 already defines,
+> because two vocabularies for one idea is one too many.
+>
+> **For a registered entity the signature proves who signed and not that they may
+> bind the company.** SİMA signs as a citizen; it asserts no authority. #430's
+> registration extract, read by a human, is what says whether the signatory could,
+> and that gap is named here rather than assumed away — "the director signed it" is
+> the assumption that is wrong for exactly the companies where it matters. If #423's
+> opinion finds the pairing insufficient, the extra step goes into #429's flow.
+>
+> **The legal subject is frozen and not yet demanded.** #430 records who a creator
+> legally is on their account and snapshots it onto the campaign at submission;
+> nothing refuses a submission for its absence, because #424 has not said who must
+> have one. An unfrozen campaign is one the rule did not apply to, and #424's third
+> point is that a campaign is decided under the rule in force when it was submitted.
+>
 > **The first nine rules are the submission checklist.** They are evaluated by a
 > single class — `SubmissionChecklist`, a pure type in the project module's domain
 > package with no Spring and no database — and that class has exactly two callers:
@@ -1961,8 +2026,21 @@ agreement is required.
 |---|---|
 | Enforced in | `ProjectTransitionService.submit`, through `CreatorAgreementGate` |
 | Contract | `shared.legal.Agreements` → `AgreementInForce` |
-| Refusal | `AGREEMENT_REQUIRED` (403), naming the document **and the version** |
+| Refusal | `AGREEMENT_REQUIRED` (403), naming the document, **the version**, and since #429 **what is missing** — `meta.requires` is `ACCEPTANCE` or `SIGNATURE` |
 | Accepted at | `POST /v1/me/agreements/CREATOR_AGREEMENT` |
+| Signed at | `POST /v1/me/agreements/CREATOR_AGREEMENT/signature`, above #424's line (#429) |
+| Frozen at | The creator's legal subject, snapshotted onto the campaign (#430) |
+
+**One code and two next actions.** #429 lets the gate ask for a signature rather than a
+tick above #424's line, and it is the same refusal — the creator has not agreed to what
+they must agree to — so the code does not change and `meta.requires` says which. A creator
+sent to tick a box they have already ticked concludes the platform is broken. The rule is
+`ideanest.legal.signature`, off by default, and §5.3 sets out why the default is
+load-bearing rather than lazy.
+
+**Nothing is refused for a missing legal subject.** The submission freezes whatever the
+creator has recorded and records nothing when they have recorded nothing (#430), because
+#424 has not said who must have one. An unfrozen campaign is one the rule did not apply to.
 
 The agreement is asked for **before** the subscription. It states the payout terms
 and the fee, so sending somebody to a price list before telling them the terms they
@@ -2133,6 +2211,38 @@ PENDING → HOLD (14 days) → APPROVED → PROCESSING → PAID
                               ↓
                            BLOCKED (fraud or dispute)
 ```
+
+**The hold is also where identity verification fits** — #431. A payout does not
+leave `HOLD` unless the creator's verification stands at `APPROVED`, and the gate
+is here rather than at submission for two reasons. A campaign that never reaches
+its goal collects nothing and pays out nothing, so gating submission would send
+every creator through document review to find out whether their idea funds. And
+the fourteen days already exist: a verification in progress fits inside a window
+the design already has, rather than adding one.
+
+**A held payout is not a failed one.** It stays `CALCULATED`, the creator is asked
+for what is missing through #105's existing request flow, and the console draws
+*which* of eight standings it is waiting on — a screen that said only "not
+verified" would leave a finance operator unable to tell a creator who has never
+been asked from one whose documents are already in their own queue. V55's argument
+applies to the whole of it: a payout that will not approve and does not say why
+"makes the same campaign look as though nothing is owed".
+
+**An approval that has aged out holds rather than fails**, and the distinction is
+the point of `EXPIRED` existing separately. Failing it permanently would strand
+money that is owed over a document that was fine last year; the creator re-verifies
+and the payout resumes. The standing is read from a comparison against
+`expires_at` rather than from the row's state, so it is correct whether or not any
+sweep has run — a gate that waits for a job is open for as long as the job is
+broken.
+
+**The threshold that turns this on is not decided here.** #424 sets it, on #423's
+anti-money-laundering row, and until then `ideanest.verification.required` is
+false and every creator reads as `NOT_REQUIRED`. V58 built the mechanism and
+deliberately gated nothing so that the day the answer arrives is a configuration
+change; #431 is the wiring, and the flag is the switch. #436's override is the
+bounded, audited exception — drawn as `WAIVED` and never as `VERIFIED`, because
+the two are answers a regulator would read very differently.
 
 ### 6.4 Subscription
 
@@ -2770,6 +2880,9 @@ by a database constraint and verified by a nightly reconciliation job.
 | `update_obligations` | §5.5's monthly-update clock, one row per funded campaign (#437). **One row per campaign and not one per cycle**, which is where it departs from `deadline_notices`: that table is a set of claims because a deadline notice happens twice ever, and this one has to answer "is this creator up to date" on every render of the campaign page. So the row is the current state, and the two claims it makes idempotently -- the reminder and the escalation -- are columns holding **the due date they were made for** rather than booleans. That is what makes "escalate once rather than daily" expressible: `due_at` does not move until an update moves it, and a boolean would have needed clearing by a release that eventually forgets. `lapsed_for` is cleared by an update and `lapsed_at` is not, which is what makes the moderator's queue a queue rather than a snooze button. No column here is derived into money or campaign state, and that absence is the design |
 | `compliance_overrides` | One exception to one compliance requirement for one account (#436). Time-boxed by a NOT NULL `expires_at`, so there is no shape for a permanent one; reasoned from a closed set plus the grantor's own words; attributed through a `RESTRICT` foreign key rather than `SET NULL`, unlike `identity_verifications.reviewed_by`, because an override with no named grantor is an anonymous waiver. `granted_by <> subject_user_id` is total -- both columns are NOT NULL and the grantor cannot become null -- which is the gap `payout_approvals` warns a two-column CHECK leaves. Never deleted: expiry is a comparison rather than a swept state, so an override stops working because time passed |
 | `signatures` | One SİMA İmza signature: what was signed, by which certificate subject, and when (#428). **Never a copy of the certificate material**, which is V58's territory with V58's encryption and V58's sweep -- this must not become a second uncontrolled place where a person's identity sits. The name and FIN are §17.4 personal data and are kept because without them the row proves a certificate signed and not that *this creator* did; #423 governs for how long. `document_acceptances.signature_id` finally has its referent, `RESTRICT`, so a signed agreement cannot silently become a ticked one |
+| `signature_sessions` | A signing session in flight (#429): what was to be signed, by whom, and what became of it. **A row rather than a handle the client holds**, and V71 names the three quiet failures of the stateless alternative -- a session identifier becomes a bearer token for somebody else's signature, the hash a resolve compares against arrives from the party with the reason to change it, and a cancellation leaves nothing, so "the citizen declined" is indistinguishable from "nothing happened". The FIN and mobile number the citizen typed are passed to the provider and **not stored**: §17.4 asks for the data the purpose needs and this purpose needs neither; the FIN that is kept is the certificate's, in `signatures`. Terminal outcomes are recorded once and a resolved session is never re-resolved, which is what stops one act of signing producing two `signatures` rows |
+| `creator_legal_subjects` | Who a creator legally is (#430): the subject kind, the legal name, and -- for a registered entity -- the VÖEN, the registered address and the registration number. **A fact about the account and not a record of a check**, which is the whole of #430: `identity_verifications.subject_kind` says what a reviewer was looking at when they looked, and a creator who has never been asked to verify has no row there at all while a payout still needs to know whether to withhold as a person or as a company. The VÖEN is **shape-validated and nothing more** -- ten digits, in the schema -- because a validator that appeared to confirm existence "would produce a green tick that means nothing, in front of the exact field where a green tick is relied upon"; whether the number names a real company is a human reading a `COMPANY_REGISTRATION` document in V58's queue. There is deliberately **no constraint requiring a legal entity to carry all three of its fields**: completeness is a gate's question, asked of a row rather than enforced on one, so a creator part-way through a form does not lose their work. The foreign key cascades, for the reason every reference to `users` in this schema gives twice over |
+| `campaign_legal_subjects` | The creator's legal subject as it stood when a campaign was submitted (#430). **A copy, never a reference**, and there is no foreign key back to the live row precisely so it cannot follow it: §5.6 snapshots a subscription's price, V42 freezes a retry window, and `payouts.creator_id` is denormalised because "a campaign's creator is a mutable fact and the payout was calculated for the person who held it at the time". A creator who submits as an individual and registers a company three months later has not retroactively submitted as a company, and a payout reading the live row would withhold as though they had. Keyed by the campaign: a resubmission overwrites, because that submission is the one being decided |
 | `audit_logs` | Privileged actions (#107). Append-only in PostgreSQL rather than by convention: a statement-level `BEFORE UPDATE OR DELETE OR TRUNCATE` trigger raises `restrict_violation`, chosen over a rewrite rule — which would succeed silently — and over a revoked grant, which names a role the migration does not know, does not bind the owner, and does not survive a restore. Carries the actor and, for an impersonated action, whom they acted for; the entity, the outcome, the source address and user agent, and the correlation identifiers. The write is `Propagation.MANDATORY`, so the row and the change it describes are one commit and a failed audit takes the action with it. Deliberately **not** partitioned yet: a statement trigger on a partitioned parent does not fire for a statement aimed at a partition directly, so partitioning today would weaken the guarantee the table exists for |
 | `fee_schedules` | Configurable rates. **Not built.** #64 collects without needing them: the collection posts escrow against the creator's account and §9.5's split happens at payout, so the first thing that has to know a rate is #69 — see §9.2's note on which of the two diagrams the platform implements |
 | `outbox_events` | Transactional outbox (#135). One row per recorded event, written by the same transaction as the business change it describes — which is the whole of the guarantee: the commit that creates the pledge is the commit that creates the event, so neither can exist without the other. Carries the stable `id` a consumer deduplicates on, an `aggregate_type`/`aggregate_id` that is the ordering key and deliberately not a foreign key (an event stays true after its aggregate is deleted, and no single reference can point at four tables), the serialised `payload` as `text` rather than `jsonb` so a consumer receives the bytes the transaction committed, a database-assigned `sequence_no` that decides dispatch order, and `PENDING → PUBLISHED` or `PENDING → DEAD` with `attempts`, `next_attempt_at`, and `last_error`. A relay claims one row at a time with `FOR UPDATE SKIP LOCKED`, so replicas divide the queue rather than double-publishing, and will not dispatch an event while an earlier `PENDING` one for the same aggregate exists. Published rows are not swept yet |
@@ -5862,7 +5975,7 @@ statute's scope.
 | **Merchant of record** | If the platform is the seller of record, who bears the VAT obligation? | Critical |
 | **Value added tax** | Is a reward a supply of goods? Is the platform fee separately taxable? | Critical |
 | **Withholding** | Must tax be withheld on payouts to individuals as distinct from companies? | Critical |
-| **Anti-money laundering** | Identity verification thresholds for creators | High. **The mechanism is built (#105) and the threshold is not**: a creator can be asked for a document, the document is encrypted at rest, only platform staff can open one and every opening is audited, and a retention sweep destroys it. What nobody may decide here is *who has to* — `ideanest.verification.required` is off, nothing on the platform is gated on the outcome, and turning it on is the change this row unblocks |
+| **Anti-money laundering** | Identity verification thresholds for creators | High. **The mechanism is built (#105), the wiring is built (#431), and the threshold is still not decided.** A creator can be asked for a document, the document is encrypted at rest, only platform staff can open one and every opening is audited, and a retention sweep destroys it. Since #431 there is also something for the answer to gate: a payout does not leave §6.3’s hold unless the creator’s verification stands at `APPROVED`, the console draws which of eight standings a held payout is waiting on, an approval that has aged out holds rather than fails, and #436’s override is the bounded and audited exception. What nobody may decide here is still *who has to* — `ideanest.verification.required` is **off**, so every creator reads as `NOT_REQUIRED` and nothing is gated on anything. Turning it on is one line of configuration and no migration, which is what V58 built the flag for; **#424 is where the answer gets written down**, and it waits on the rows above |
 | **Consumer protection** | Platform liability where a reward is never delivered | High |
 | **Personal data** | Registration obligations under the data protection statute | High |
 | **Cross-border** | Who is the importer of record for international reward delivery? | Medium |
@@ -5924,7 +6037,40 @@ worth having.
 **A signature, where a tick is not proportionate.** #428 built `SignatureProvider` and
 `signatures` (V67) behind §9.4's shape: one interface, one adapter per provider,
 `SignatureProviderBoundaryTests` asserting that nothing outside the module names a
-provider type. #429 is the caller. What is stored is the signature, the certificate's
+provider type. **#429 is the caller, and it has landed.**
+
+A creator opens a session at `POST /v1/me/agreements/{kind}/signature`, compares the code
+it returns against the one on their phone, and the client polls
+`GET .../signature/sessions/{sessionId}` until SİMA answers. A session is a row
+(`signature_sessions`, V71) rather than a handle the browser holds, for three reasons the
+migration sets out at length: otherwise a session identifier is a bearer token for
+somebody else's signature, the hash a resolve compares against arrives from the party with
+the reason to change it, and a cancellation leaves nothing behind to distinguish "the
+citizen declined" from "nothing happened".
+
+**Three things can refuse a signature, and each of them refuses before anything is
+written.** Signing without a recorded legal subject (#430) is refused at the start, because
+a signature the platform cannot tie to a named account proves that *a* certificate signed
+the text. A signature over a version that is no longer in force is refused with
+`SIGNATURE_VERSION_STALE` — the hash binding, which is the whole reason V65 stores the body
+and hashes it. And a certificate naming somebody other than the account's legal name is
+refused with `MISMATCHED_NAME`, a value V58 already defines, because two vocabularies for
+one idea is one too many. A cancelled or expired session writes no acceptance at all.
+
+**A signature is filed onto the acceptance rather than beside it.** V65's table is one row
+per (account, version); a creator who ticked the box last week and signs the same version
+today has accepted one version once, so the row is upgraded and
+`document_acceptances.signature_id` stops being null. `GET /v1/me/agreements/{kind}/signature`
+is where the creator reads back what they signed — the version, the time, and the hash, so
+they can establish years later that the text in front of them is the text they signed —
+and a member of staff reads the same at
+`GET /v1/admin/accounts/{id}/agreements/{kind}/signature` under #436's
+`READ_SIGNED_AGREEMENT`, audited, because the row carries a citizen's name and FİN.
+
+**What #429 deliberately does not claim** is that a signatory may bind a company. SİMA
+signs as a citizen and asserts no authority; #430's registration extract, read by a human,
+is what says whether they could. The gap is named here rather than assumed away, and if
+#423's opinion finds the pairing insufficient the extra step goes into this flow. What is stored is the signature, the certificate's
 subject, the signing time and the hash of what was signed; what is deliberately **not**
 stored is any copy of the citizen's certificate material, which would make this a second
 uncontrolled place where a person's identity sits beside V58's.

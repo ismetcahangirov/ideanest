@@ -1666,7 +1666,20 @@
         "thisIsYou": "this is you",
         "youHaveSigned": "You have already signed this payout. A second signature has to be somebody else.",
         "awaitingHold": "Cannot be signed until the hold expires on {date}.",
-        "destinationNeeded": "Enter a destination to send this payout to. There is no stored one yet."
+        "destinationNeeded": "Enter a destination to send this payout to. There is no stored one yet.",
+        "verificationHeld": "Awaiting identity",
+        "verificationHeldTitle": "The creator's identity has not been verified",
+        "verificationHeldBody": "This payout is {standing}. Money leaves only to somebody the platform has identified; the creator has already been asked for what is missing.",
+        "standing": {
+          "NOT_REQUIRED": "not gated on identity",
+          "WAIVED": "released by a granted exception",
+          "VERIFIED": "verified",
+          "NEVER_REQUESTED": "waiting — nothing had been asked of the creator, and it has been asked now",
+          "AWAITING_DOCUMENTS": "waiting for the creator to send documents",
+          "UNDER_REVIEW": "waiting on the review queue",
+          "REJECTED": "waiting — the documents were refused and the creator has to send others",
+          "EXPIRED": "waiting — the approval has aged out and the creator has to verify again"
+        }
       },
       "refunds": {
         "subject": "the refund log",

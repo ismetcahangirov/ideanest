@@ -741,6 +741,61 @@ ideanest:
       # mode that takes the whole service down with it.
       request-timeout: PT10S
 
+  # Identity verification, and what it gates -- issues #105 and #431.
+  #
+  # V58 built the whole mechanism and gated nothing, on purpose: "what nobody may
+  # decide here is who has to". #431 is the wiring change -- a payout will not leave
+  # §6.3's hold unless the creator's verification is APPROVED -- and this flag is the
+  # switch #424's answer flips.
+  verification:
+    # OFF. §22.1's anti-money-laundering row is a question, not an answer, and a
+    # threshold invented here would be the compliance position this repository made
+    # up. With this false every creator reads as NOT_REQUIRED, every payout releases,
+    # and the gate is exercised by its tests rather than by production.
+    #
+    # Turning it on is this line. Nothing else changes: no migration, no release.
+    required: ${VERIFICATION_REQUIRED:false}
+    # How long an approval counts for. Two years, and expiry is not failure -- an
+    # approval that has aged out holds the payout and asks the creator to re-verify
+    # rather than failing it, because stranding money over a document that was fine
+    # last year is the worse error.
+    approval-life: P730D
+
+  # When a creator agreement must be SIGNED rather than ticked -- issue #429.
+  #
+  # #424 decides the threshold and #424 waits on #423's anti-money-laundering row.
+  # §22.1 says what happens if this repository decides instead: a threshold invented
+  # here "would be the position a regulator reads back to us". So the shape of the
+  # rule is in code and the number is here, and the day the answer arrives is a
+  # configuration change.
+  legal:
+    signature:
+      # OFF, and the default is load-bearing rather than lazy. #429:
+      #
+      #   Do NOT hardcode "everybody signs" as a placeholder -- an individual raising
+      #   500 AZN sent to a state e-signature app is friction that will be blamed on
+      #   the wrong thing.
+      #
+      # With this off, an acceptance is an acceptance and #426's gate is exactly what
+      # it was. The signing flow still works for anybody who chooses to use it; what
+      # is off is the demand.
+      enabled: ${LEGAL_SIGNATURE_REQUIRED:false}
+      # The funding goal above which a signature is required.
+      #
+      # ABSENT, not zero and not a guess. It is #424's number and nobody here may
+      # choose it; a key with a value would be this repository having chosen one. Set
+      # `ideanest.legal.signature.goal-ceiling` when #424 answers.
+      #
+      # The goal and not the amount collected -- #424's first point, on §9.6's
+      # reasoning: a requirement that could fail a campaign after backers were told it
+      # succeeded would be worse than no requirement at all.
+      # Whether a registered entity signs regardless of amount. #424's fifth question,
+      # and the answer here is the one that costs least if it is wrong: a company is
+      # the case where the signature carries the most and the friction lands on
+      # somebody who already has a stamp and a registration number. Inert while
+      # `enabled` is false.
+      required-for-legal-entity: true
+
   # §5.5's post-campaign obligations, as a clock -- issue #437.
   #
   # The platform enforced none of §5.5's four obligations, and an obligation that is

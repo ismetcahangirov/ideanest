@@ -5,7 +5,7 @@ import az.ideanest.audit.AuditActor;
 import az.ideanest.audit.AuditLog;
 import az.ideanest.audit.AuditOutcome;
 import az.ideanest.compliance.domain.ComplianceOverride;
-import az.ideanest.compliance.domain.ComplianceRequirement;
+import az.ideanest.shared.compliance.ComplianceRequirement;
 import az.ideanest.compliance.domain.OverrideReason;
 import az.ideanest.compliance.infrastructure.ComplianceOverrideRepository;
 import az.ideanest.shared.Identifiers;

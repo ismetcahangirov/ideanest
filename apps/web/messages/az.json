@@ -1666,7 +1666,20 @@
         "thisIsYou": "bu sizsiniz",
         "youHaveSigned": "Bu ödənişi artıq imzalamısınız. İkinci imza başqa şəxsə aiddir.",
         "awaitingHold": "{date} tarixində saxlama müddəti bitənə qədər imzalana bilməz.",
-        "destinationNeeded": "Bu ödənişin göndəriləcəyi ünvanı daxil edin. Hələ saxlanılmış ünvan yoxdur."
+        "destinationNeeded": "Bu ödənişin göndəriləcəyi ünvanı daxil edin. Hələ saxlanılmış ünvan yoxdur.",
+        "verificationHeld": "Kimlik gözlənilir",
+        "verificationHeldTitle": "Yaradıcının kimliyi təsdiqlənməyib",
+        "verificationHeldBody": "Bu ödəniş {standing}. Pul yalnız platformanın kim olduğunu təsdiqlədiyi şəxsə gedir; yaradıcıdan lazım olan sənəd artıq istənilib.",
+        "standing": {
+          "NOT_REQUIRED": "kimlik təsdiqi tələb olunmur",
+          "WAIVED": "əl ilə verilmiş istisna ilə buraxılıb",
+          "VERIFIED": "təsdiqlənib",
+          "NEVER_REQUESTED": "yaradıcıdan hələ heç nə istənilməyib — indi istənildi",
+          "AWAITING_DOCUMENTS": "yaradıcının sənəd göndərməsini gözləyir",
+          "UNDER_REVIEW": "sənədlər baxış növbəsindədir",
+          "REJECTED": "sənədlər rədd edilib — yaradıcı yenidən göndərməlidir",
+          "EXPIRED": "təsdiq müddəti bitib — yaradıcı yenidən təsdiqləməlidir"
+        }
       },
       "refunds": {
         "subject": "geri qaytarma jurnalını",

@@ -3,6 +3,7 @@ package az.ideanest.payout.api;
 import az.ideanest.payment.application.NoPayoutProviderException;
 import az.ideanest.payout.application.NothingToPayException;
 import az.ideanest.payout.application.PayoutAlreadyInFlightException;
+import az.ideanest.payout.application.CreatorNotVerifiedException;
 import az.ideanest.payout.application.PayoutNotApprovableException;
 import az.ideanest.payout.application.PayoutNotFoundException;
 import az.ideanest.payout.application.PayoutNotSendableException;
@@ -21,7 +22,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 /**
  * AD-05's payout refusals — issues #69, #306 and #398.
  *
- * <p>Eight handlers rather than one over a shared supertype, and that is deliberate: each
+ * <p>Nine handlers rather than one over a shared supertype, and that is deliberate: each
  * carries a different {@code code} and leads the reader to a different next action. A base
  * class would invite an advice that caught it and flattened all eight into "the payout
  * could not be processed", which is the sentence support tickets are made of.
@@ -95,6 +96,33 @@ public class PayoutExceptionHandler {
      * <p>The state travels, because the two causes lead somewhere different: still inside
      * its hold is a payout to come back to, and already sent is one somebody else handled.
      */
+    /**
+     * <strong>409: the platform has not verified who this creator is.</strong>
+     *
+     * <p>409 rather than 403, and the distinction is worth having. 403 would say the operator
+     * may not do this; they may, and on a different day the same request from the same person
+     * succeeds. What is wrong is the state of something else, which is what 409 means.
+     *
+     * <p>{@code meta.standing} carries which of #431's eight standings, because a screen that
+     * said only "not verified" would leave a finance operator unable to tell a creator who has
+     * never been asked from one whose documents are sitting in their own queue. The creator has
+     * already been asked for whatever is missing by the time this is thrown.
+     */
+    @ExceptionHandler(CreatorNotVerifiedException.class)
+    public ProblemDetail handleCreatorNotVerified(CreatorNotVerifiedException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/creator-not-verified"));
+        problem.setTitle("This creator's identity has not been verified");
+        problem.setDetail("The payout waits until it is. The creator has been asked for what is missing.");
+        problem.setProperty("code", "CREATOR_NOT_VERIFIED");
+        problem.setProperty(
+                "meta",
+                Map.of(
+                        "standing", exception.standing().name(),
+                        "creator", exception.creatorId().toString()));
+        return problem;
+    }
+
     @ExceptionHandler(PayoutNotApprovableException.class)
     public ProblemDetail handleNotApprovable(PayoutNotApprovableException exception) {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);

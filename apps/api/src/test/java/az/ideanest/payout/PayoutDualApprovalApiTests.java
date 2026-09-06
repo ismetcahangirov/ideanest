@@ -15,6 +15,7 @@ import az.ideanest.shared.money.Money;
 import az.ideanest.staff.domain.StaffRole;
 import az.ideanest.support.AbstractIntegrationTest;
 import az.ideanest.support.Campaigns;
+import az.ideanest.support.Verifications;
 import az.ideanest.user.infrastructure.UserRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -223,6 +224,13 @@ class PayoutDualApprovalApiTests extends AbstractIntegrationTest {
                 (short) 2,
                 "payout-key-" + UUID.randomUUID());
         payout.payable();
+
+        // #431: this profile runs with `ideanest.verification.required` on, so a payout whose
+        // creator has no approved verification will not move out of §6.3's hold. The
+        // verification is a precondition of this suite rather than its subject -- what it is
+        // checking is the dual-approval rule -- so the fixture supplies it, which is what #431
+        // asks for: "extend the fixture helper rather than each suite".
+        Verifications.approve(dataSource, creatorId, administrator());
 
         return payoutRows.save(payout).id();
     }

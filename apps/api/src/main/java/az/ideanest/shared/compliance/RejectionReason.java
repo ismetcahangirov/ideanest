@@ -1,4 +1,4 @@
-package az.ideanest.verification.domain;
+package az.ideanest.shared.compliance;
 
 import java.util.Locale;
 import java.util.Optional;

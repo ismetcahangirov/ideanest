@@ -27,14 +27,51 @@ import java.util.UUID;
  */
 public class AgreementRequiredException extends RuntimeException {
 
+    /**
+     * What is missing — issue #429.
+     *
+     * <p>The refusal keeps one {@code code}, {@code AGREEMENT_REQUIRED}, because it is one
+     * refusal: the creator has not agreed to what they must agree to. What differs is the next
+     * action, and a creator sent to tick a box they have already ticked would conclude the
+     * platform is broken. #429 asks for exactly this — "a reason that says 'signature', not
+     * 'acceptance'".
+     */
+    public enum Requirement {
+
+        /** Nothing has been accepted. The creator reads the document and ticks. */
+        ACCEPTANCE,
+
+        /**
+         * It has been accepted, and this campaign needs it signed.
+         *
+         * <p>Reached only when {@code ideanest.legal.signature.enabled} is on and the rule
+         * catches this campaign — #424's threshold, which is configuration and not a constant.
+         */
+        SIGNATURE
+    }
+
     private final UUID projectId;
-    private final AgreementInForce agreement;
+    private final transient AgreementInForce agreement;
+    private final transient Requirement requirement;
 
     public AgreementRequiredException(UUID projectId, AgreementInForce agreement) {
-        super("Campaign %s cannot be submitted until its creator accepts %s version %d"
-                .formatted(projectId, agreement.kind(), agreement.version()));
+        this(projectId, agreement, Requirement.ACCEPTANCE);
+    }
+
+    public AgreementRequiredException(UUID projectId, AgreementInForce agreement, Requirement requirement) {
+        super("Campaign %s cannot be submitted until its creator %s %s version %d"
+                .formatted(
+                        projectId,
+                        requirement == Requirement.SIGNATURE ? "signs" : "accepts",
+                        agreement.kind(),
+                        agreement.version()));
         this.projectId = projectId;
         this.agreement = agreement;
+        this.requirement = requirement;
+    }
+
+    public Requirement requirement() {
+        return requirement;
     }
 
     public UUID projectId() {

@@ -50,5 +50,9 @@ public abstract class AbstractIntegrationTest {
         // configuration in application-test.yml.
         registry.add("spring.mail.host", MailServerStub::smtpHost);
         registry.add("spring.mail.port", MailServerStub::smtpPort);
+        // #429's provider, here for the same reason again. Everything else about SİMA is
+        // ordinary configuration in application-test.yml -- the environment stays SANDBOX,
+        // which is what SignatureProviders refuses to start without.
+        registry.add("ideanest.signature.sima.base-url", SimaImzaStub::baseUrl);
     }
 }

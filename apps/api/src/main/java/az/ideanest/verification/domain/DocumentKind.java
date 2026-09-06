@@ -1,5 +1,6 @@
 package az.ideanest.verification.domain;
 
+import az.ideanest.shared.compliance.SubjectKind;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;

@@ -1,5 +1,6 @@
 package az.ideanest.shared.legal;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -82,4 +83,39 @@ public interface Agreements {
      * address would be writing the alibi as well as the record.
      */
     void accept(UUID accountId, AgreementInForce agreement);
+
+    /**
+     * Whether that acceptance carries a national e-signature rather than a tick — issue #429.
+     *
+     * <p>A separate question from {@link #hasAccepted}, and it has to be, because the answer
+     * differs for the same row: an acceptance is an acceptance whether or not a signature is
+     * filed against it, and only the submission gate cares which. Folding the two into one
+     * boolean would make every caller that merely wants to know whether somebody agreed start
+     * failing on the day #424 turns the requirement on.
+     *
+     * <p>False when nothing has been accepted at all, so a caller may ask this alone when a
+     * signature is what it requires.
+     */
+    boolean hasSigned(UUID accountId, AgreementInForce agreement);
+
+    /**
+     * Whether a campaign with this goal, submitted by this creator, must be signed rather than
+     * ticked — issue #429's rule, and #424's number.
+     *
+     * <p>Asked here rather than assembled by the caller. The rule has two inputs — the goal and
+     * the creator's legal subject — and the second is a compliance fact the project module has
+     * no business reading. The gate asks a question; the legal module, which holds the
+     * configuration #424 will one day fill in, answers it.
+     *
+     * <p><strong>The goal and not the amount collected.</strong> #424's first point, on §9.6's
+     * reasoning: success "is decided at the deadline from confirmed pledges, and never
+     * revisited", and a requirement that could fail a campaign after backers were told it
+     * succeeded would be worse than no requirement.
+     *
+     * <p>False for everybody until {@code ideanest.legal.signature.enabled} is turned on, which
+     * is the honest state of the platform until #424 answers.
+     *
+     * @param goalAmount the campaign's funding goal, or null if it has none yet
+     */
+    boolean signatureRequiredOf(UUID accountId, BigDecimal goalAmount);
 }

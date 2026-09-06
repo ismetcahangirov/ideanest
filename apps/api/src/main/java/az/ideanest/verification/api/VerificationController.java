@@ -4,7 +4,7 @@ import az.ideanest.verification.application.DocumentRefusedException;
 import az.ideanest.verification.application.IdentityVerifications;
 import az.ideanest.verification.domain.DocumentKind;
 import az.ideanest.verification.domain.IdentityVerification;
-import az.ideanest.verification.domain.SubjectKind;
+import az.ideanest.shared.compliance.SubjectKind;
 import java.io.IOException;
 import java.util.UUID;
 import org.springframework.http.CacheControl;

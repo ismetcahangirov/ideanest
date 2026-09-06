@@ -1,7 +1,7 @@
 import type { DisputeState, EvidenceKind } from '../../admin/disputes';
 import type { FeeScope } from '../../admin/fees';
 import type { TransactionStatus, TransactionType } from '../../admin/payments';
-import type { PayoutState } from '../../admin/payouts';
+import type { PayoutState, VerificationStanding } from '../../admin/payouts';
 import type { RefundReason, RefundState } from '../../admin/refunds';
 import type { FindingCode, FindingKind } from '../../admin/reconciliation';
 import type { AdminTranslator } from '../admin-copy';
@@ -359,6 +359,20 @@ export interface PayoutQueueCopy extends ConsoleChromeCopy {
    */
   readonly destinationNeeded: string;
   readonly state: Readonly<Record<PayoutState, string>>;
+  /**
+   * Why a payout is held on identity rather than on the clock — #431.
+   *
+   * <p>Its own alert beside {@link PayoutQueueCopy.stillHeldTitle} rather than a second
+   * sentence inside it, because the two holds end differently: §9's ends when a date passes
+   * and nobody need do anything, and this one ends when a creator sends a document. An
+   * operator reading one message for both would wait for the wrong thing.
+   */
+  readonly verificationHeldTitle: string;
+  /** Carries `{standing}`, filled from {@link PayoutQueueCopy.standing}. */
+  readonly verificationHeldBody: string;
+  /** The tag on the row, so the queue says which payouts are waiting on a person. */
+  readonly verificationHeld: string;
+  readonly standing: Readonly<Record<VerificationStanding, string>>;
 }
 
 export function payoutQueueCopyFrom(
@@ -413,6 +427,10 @@ export function payoutQueueCopyFrom(
     needsMore: String(t.raw('screens.payouts.needsMore')),
     destinationNeeded: t('screens.payouts.destinationNeeded'),
     state: t.raw('screens.payouts.state') as Readonly<Record<PayoutState, string>>,
+    verificationHeldTitle: t('screens.payouts.verificationHeldTitle'),
+    verificationHeldBody: String(t.raw('screens.payouts.verificationHeldBody')),
+    verificationHeld: t('screens.payouts.verificationHeld'),
+    standing: t.raw('screens.payouts.standing') as Readonly<Record<VerificationStanding, string>>,
   };
 }
 

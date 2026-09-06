@@ -1,15 +1,20 @@
 package az.ideanest.legal.application;
 
 import az.ideanest.audit.AuditEnvironment;
+import az.ideanest.legal.LegalProperties;
 import az.ideanest.legal.domain.DocumentAcceptance;
 import az.ideanest.legal.domain.DocumentKind;
 import az.ideanest.legal.domain.LegalDocument;
 import az.ideanest.legal.infrastructure.DocumentAcceptanceRepository;
 import az.ideanest.shared.Identifiers;
 import az.ideanest.shared.ReaderLocale;
+import az.ideanest.shared.compliance.LegalSubject;
+import az.ideanest.shared.compliance.LegalSubjects;
+import az.ideanest.shared.compliance.SubjectKind;
 import az.ideanest.shared.legal.AgreementInForce;
 import az.ideanest.shared.legal.AgreementKind;
 import az.ideanest.shared.legal.Agreements;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -53,12 +58,20 @@ public class LegalAgreements implements Agreements {
 
     private final LegalDocuments documents;
     private final DocumentAcceptanceRepository acceptances;
+    private final LegalSubjects subjects;
+    private final LegalProperties properties;
     private final Clock clock;
 
     public LegalAgreements(
-            LegalDocuments documents, DocumentAcceptanceRepository acceptances, Clock clock) {
+            LegalDocuments documents,
+            DocumentAcceptanceRepository acceptances,
+            LegalSubjects subjects,
+            LegalProperties properties,
+            Clock clock) {
         this.documents = documents;
         this.acceptances = acceptances;
+        this.subjects = subjects;
+        this.properties = properties;
         this.clock = clock;
     }
 
@@ -101,6 +114,27 @@ public class LegalAgreements implements Agreements {
      * cannot, because both of them see nothing. V65's unique index is what makes one of them
      * lose.
      */
+    @Override
+    @Transactional(readOnly = true)
+    public boolean hasSigned(UUID accountId, AgreementInForce agreement) {
+        return accountId != null
+                && acceptances
+                        .find(accountId, agreement.documentId())
+                        .map(DocumentAcceptance::getSignatureId)
+                        .isPresent();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean signatureRequiredOf(UUID accountId, BigDecimal goalAmount) {
+        boolean legalEntity = subjects
+                        .of(accountId)
+                        .map(LegalSubject::subjectKind)
+                        .orElse(SubjectKind.INDIVIDUAL)
+                == SubjectKind.LEGAL_ENTITY;
+        return properties.signature().isRequiredFor(goalAmount, legalEntity);
+    }
+
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public void accept(UUID accountId, AgreementInForce agreement) {
