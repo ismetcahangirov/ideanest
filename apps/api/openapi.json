@@ -202,6 +202,107 @@
         "tags" : [ "admin-legal-subject-controller" ]
       }
     },
+    "/v1/admin/accounts/{creatorId}/payout-destination" : {
+      "get" : {
+        "operationId" : "adminPayoutDestinationForAccount",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "creatorId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ForStaff"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-payout-destination-controller" ]
+      }
+    },
+    "/v1/admin/accounts/{creatorId}/payout-destination/reject" : {
+      "post" : {
+        "operationId" : "adminPayoutDestinationReject",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "creatorId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RejectRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ForStaff"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-payout-destination-controller" ]
+      }
+    },
+    "/v1/admin/accounts/{creatorId}/payout-destination/verify" : {
+      "post" : {
+        "operationId" : "adminPayoutDestinationVerify",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "creatorId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/VerifyRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ForStaff"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-payout-destination-controller" ]
+      }
+    },
     "/v1/admin/analytics" : {
       "get" : {
         "operationId" : "platformAnalyticsDashboard",
@@ -1701,6 +1802,24 @@
         "tags" : [ "payment-log-controller" ]
       }
     },
+    "/v1/admin/payout-destinations" : {
+      "get" : {
+        "operationId" : "adminPayoutDestinationQueue",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Queue"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-payout-destination-controller" ]
+      }
+    },
     "/v1/admin/payouts" : {
       "get" : {
         "operationId" : "payoutList",
@@ -1918,16 +2037,6 @@
             "format" : "uuid"
           }
         } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/SendRequest"
-              }
-            }
-          },
-          "required" : true
-        },
         "responses" : {
           "200" : {
             "content" : {
@@ -5501,6 +5610,50 @@
           }
         },
         "tags" : [ "notification-inbox-controller" ]
+      }
+    },
+    "/v1/me/payout-destination" : {
+      "get" : {
+        "operationId" : "myPayoutDestinationMine",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Mine"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "my-payout-destination-controller" ]
+      },
+      "put" : {
+        "operationId" : "myPayoutDestinationRecord",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DestinationRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Mine"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "my-payout-destination-controller" ]
       }
     },
     "/v1/me/pledges" : {
@@ -11132,6 +11285,32 @@
           }
         }
       },
+      "DestinationRequest" : {
+        "type" : "object",
+        "properties" : {
+          "displayHint" : {
+            "type" : "string",
+            "maxLength" : 12,
+            "minLength" : 0
+          },
+          "holderName" : {
+            "type" : "string",
+            "maxLength" : 200,
+            "minLength" : 0
+          },
+          "provider" : {
+            "type" : "string",
+            "maxLength" : 20,
+            "minLength" : 0
+          },
+          "reference" : {
+            "type" : "string",
+            "maxLength" : 200,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "holderName", "provider", "reference" ]
+      },
       "DeviceResponse" : {
         "type" : "object",
         "properties" : {
@@ -11764,18 +11943,45 @@
       "ForStaff" : {
         "type" : "object",
         "properties" : {
-          "accountId" : {
+          "creatorId" : {
             "type" : "string",
             "format" : "uuid"
           },
-          "campaigns" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/FrozenCampaign"
-            }
+          "displayHint" : {
+            "type" : "string"
+          },
+          "holderName" : {
+            "type" : "string"
+          },
+          "provider" : {
+            "type" : "string"
           },
           "recorded" : {
-            "$ref" : "#/components/schemas/Mine"
+            "type" : "boolean"
+          },
+          "rejectionReason" : {
+            "type" : "string",
+            "enum" : [ "UNREADABLE", "EXPIRED_DOCUMENT", "MISMATCHED_NAME", "INCOMPLETE", "SUSPECTED_FORGERY" ]
+          },
+          "standing" : {
+            "type" : "string",
+            "enum" : [ "WAIVED", "VERIFIED", "NONE", "AWAITING_VERIFICATION", "NAME_MISMATCH", "REJECTED" ]
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "verificationMethod" : {
+            "type" : "string",
+            "enum" : [ "PROVIDER_ACCOUNT_HOLDER", "MICRO_TRANSFER", "STAFF_ATTESTED" ]
+          },
+          "verifiedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "verifiedBy" : {
+            "type" : "string",
+            "format" : "uuid"
           }
         }
       },
@@ -11790,28 +11996,6 @@
           }
         },
         "required" : [ "email" ]
-      },
-      "FrozenCampaign" : {
-        "type" : "object",
-        "properties" : {
-          "frozenAt" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "legalName" : {
-            "type" : "string"
-          },
-          "projectId" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "subjectKind" : {
-            "type" : "string"
-          },
-          "taxId" : {
-            "type" : "string"
-          }
-        }
       },
       "FulfilmentImportResponse" : {
         "type" : "object",
@@ -12535,28 +12719,31 @@
       "Mine" : {
         "type" : "object",
         "properties" : {
-          "complete" : {
-            "type" : "boolean"
+          "displayHint" : {
+            "type" : "string"
           },
-          "legalName" : {
+          "holderName" : {
+            "type" : "string"
+          },
+          "provider" : {
             "type" : "string"
           },
           "recorded" : {
             "type" : "boolean"
           },
-          "registeredAddress" : {
-            "type" : "string"
+          "rejectionReason" : {
+            "type" : "string",
+            "enum" : [ "UNREADABLE", "EXPIRED_DOCUMENT", "MISMATCHED_NAME", "INCOMPLETE", "SUSPECTED_FORGERY" ]
           },
-          "registrationNumber" : {
-            "type" : "string"
-          },
-          "subjectKind" : {
-            "type" : "string"
-          },
-          "taxId" : {
-            "type" : "string"
+          "standing" : {
+            "type" : "string",
+            "enum" : [ "WAIVED", "VERIFIED", "NONE", "AWAITING_VERIFICATION", "NAME_MISMATCH", "REJECTED" ]
           },
           "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "verifiedAt" : {
             "type" : "string",
             "format" : "date-time"
           }
@@ -13060,6 +13247,10 @@
             "type" : "string",
             "enum" : [ "NOT_REQUIRED", "WAIVED", "VERIFIED", "NEVER_REQUESTED", "AWAITING_DOCUMENTS", "UNDER_REVIEW", "REJECTED", "EXPIRED" ]
           },
+          "destinationStanding" : {
+            "type" : "string",
+            "enum" : [ "WAIVED", "VERIFIED", "NONE", "AWAITING_VERIFICATION", "NAME_MISMATCH", "REJECTED" ]
+          },
           "failureCode" : {
             "type" : "string"
           },
@@ -13072,6 +13263,9 @@
           },
           "gross" : {
             "$ref" : "#/components/schemas/Money"
+          },
+          "heldForDestination" : {
+            "type" : "boolean"
           },
           "heldForVerification" : {
             "type" : "boolean"
@@ -14356,6 +14550,16 @@
         },
         "required" : [ "email", "name", "password" ]
       },
+      "RejectRequest" : {
+        "type" : "object",
+        "properties" : {
+          "reason" : {
+            "type" : "string",
+            "enum" : [ "UNREADABLE", "EXPIRED_DOCUMENT", "MISMATCHED_NAME", "INCOMPLETE", "SUSPECTED_FORGERY" ]
+          }
+        },
+        "required" : [ "reason" ]
+      },
       "Remainder" : {
         "type" : "object",
         "properties" : {
@@ -15064,17 +15268,6 @@
           }
         },
         "required" : [ "body", "subject" ]
-      },
-      "SendRequest" : {
-        "type" : "object",
-        "properties" : {
-          "destinationReference" : {
-            "type" : "string",
-            "maxLength" : 200,
-            "minLength" : 0
-          }
-        },
-        "required" : [ "destinationReference" ]
       },
       "SessionOpened" : {
         "type" : "object",
@@ -16340,6 +16533,16 @@
           }
         },
         "required" : [ "token" ]
+      },
+      "VerifyRequest" : {
+        "type" : "object",
+        "properties" : {
+          "method" : {
+            "type" : "string",
+            "enum" : [ "PROVIDER_ACCOUNT_HOLDER", "MICRO_TRANSFER", "STAFF_ATTESTED" ]
+          }
+        },
+        "required" : [ "method" ]
       },
       "VerifyTwoFactorRequest" : {
         "type" : "object",

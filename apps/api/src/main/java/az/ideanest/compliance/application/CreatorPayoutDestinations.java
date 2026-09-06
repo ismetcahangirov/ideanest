@@ -1,0 +1,305 @@
+package az.ideanest.compliance.application;
+
+import az.ideanest.audit.AuditAction;
+import az.ideanest.audit.AuditActor;
+import az.ideanest.audit.AuditLog;
+import az.ideanest.audit.AuditOutcome;
+import az.ideanest.compliance.domain.DestinationState;
+import az.ideanest.compliance.domain.DestinationVerificationMethod;
+import az.ideanest.compliance.domain.PayoutDestination;
+import az.ideanest.compliance.infrastructure.PayoutDestinationRepository;
+import az.ideanest.payment.application.PaymentProviders;
+import az.ideanest.shared.access.PlatformStaff;
+import az.ideanest.shared.access.StaffCapability;
+import az.ideanest.shared.compliance.ComplianceRequirement;
+import az.ideanest.shared.compliance.DestinationStanding;
+import az.ideanest.shared.compliance.LegalSubject;
+import az.ideanest.shared.compliance.LegalSubjects;
+import az.ideanest.shared.compliance.PayoutDestinations;
+import az.ideanest.shared.compliance.RejectionReason;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Where a creator is paid: filed by them, confirmed by somebody else — part of issue #432.
+ *
+ * <p>The answerer behind {@link PayoutDestinations}, which is what the payout module names.
+ *
+ * <h2>The thing this replaces</h2>
+ *
+ * <p>Until now the destination was a field on {@code PayoutController.SendRequest}, typed by
+ * the member of staff pressing send. The controller's own comment called that the honest
+ * shape of a real gap, and it was — but the gap was wider than a typo. §4.11 requires two
+ * signatures above a threshold so that one person cannot move money alone, and a destination
+ * chosen after those signatures, by one of the signatories, unreviewed, defeats the rule
+ * entirely: the approvals were of an amount.
+ *
+ * <h2>Three names have to agree, and one comparison is automatic</h2>
+ *
+ * <p>#432 asks that the account holder be matched against #430's {@code legal_name} and
+ * #429's certificate subject. The first is a string comparison and happens here, on every
+ * save, using {@link LegalSubject#nameMatches} — the same forgiving-about-presentation,
+ * strict-about-everything-else comparison #429's signature already uses, because two
+ * vocabularies for one idea is one too many. The second is already enforced where the
+ * signature is taken: a certificate naming somebody other than the legal name is refused with
+ * {@code MISMATCHED_NAME} before an acceptance is written, so a destination matching the legal
+ * name has by construction matched the certificate too.
+ *
+ * <p>A creator with no legal subject recorded cannot mismatch. There is nothing to compare
+ * against, so the row waits for a reviewer, and asking for the subject is #430's gate at
+ * submission rather than this one's.
+ *
+ * <h2>What cannot happen here yet, and is not pretended</h2>
+ *
+ * <p>Neither of #432's two ownership mechanisms can run. Mechanism A needs Epoint to confirm
+ * in writing that sub-merchant onboarding validates a bank account (§9.3's R-10, which is
+ * #422); mechanism B needs a statement feed. What exists is
+ * {@link DestinationVerificationMethod#STAFF_ATTESTED} — the manual form of B, which is what
+ * #432 describes B being at launch volumes — and the column records which of the three was
+ * used, so a row verified by a person is never mistaken later for one a bank verified.
+ *
+ * <p>The tokenisation itself is the other half that waits. A creator supplies a provider
+ * token; no adapter exists to issue one, exactly as none exists to issue a
+ * {@code StoredCard#token()}. This is the same inert-behind-the-interface shape §9.2 chose
+ * deliberately, and the gate below is real whether or not anything can yet get through it.
+ */
+@Service
+public class CreatorPayoutDestinations implements PayoutDestinations {
+
+    private static final Logger log = LoggerFactory.getLogger(CreatorPayoutDestinations.class);
+
+    /** How many of COMPLIANCE's queue one page holds. {@code PayoutService.PAGE_SIZE}'s number. */
+    private static final int PAGE_SIZE = 50;
+
+    private final PayoutDestinationRepository destinations;
+    private final LegalSubjects legalSubjects;
+    private final ComplianceOverrides overrides;
+    private final PlatformStaff staff;
+    private final AuditLog audit;
+    private final Clock clock;
+
+    public CreatorPayoutDestinations(
+            PayoutDestinationRepository destinations,
+            LegalSubjects legalSubjects,
+            ComplianceOverrides overrides,
+            PlatformStaff staff,
+            AuditLog audit,
+            Clock clock) {
+        this.destinations = destinations;
+        this.legalSubjects = legalSubjects;
+        this.overrides = overrides;
+        this.staff = staff;
+        this.audit = audit;
+        this.clock = clock;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DestinationStanding standingOf(UUID creatorId) {
+        Optional<PayoutDestination> row = destinations.findById(creatorId);
+        if (overrides.isWaived(creatorId, ComplianceRequirement.PAYOUT_DESTINATION)) {
+            // The override is checked before the row is read, and the row is still required.
+            // A waiver excuses the check; it cannot conjure an account number, which is why
+            // `referenceFor` refuses independently and why an absent row wins here.
+            return row.isPresent() ? DestinationStanding.WAIVED : DestinationStanding.NONE;
+        }
+        return row.map(found -> found.getState().asStanding()).orElse(DestinationStanding.NONE);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<String> referenceFor(UUID creatorId, String provider) {
+        if (!standingOf(creatorId).releasesPayout()) {
+            return Optional.empty();
+        }
+        return destinations
+                .findById(creatorId)
+                .filter(row -> row.issuedBy(provider))
+                .map(PayoutDestination::getReference);
+    }
+
+    /** What the creator has filed, for their own settings screen. */
+    @Transactional(readOnly = true)
+    public Optional<PayoutDestination> mine(UUID accountId) {
+        return destinations.findById(accountId);
+    }
+
+    /**
+     * File an account, or replace the one on file.
+     *
+     * <p>Always a replacement and never a patch, for {@code CreatorLegalSubject.apply}'s
+     * reason one table along: the fields describe one account, and a request that changed the
+     * holder's name without the token would be describing an account nobody has.
+     *
+     * <p><strong>Replacing re-verifies, and does not silently inherit.</strong> The entity
+     * enforces it and V72 enforces it again as a constraint. This is the requirement #432
+     * states outright, and the reason it is worth stating is that the bug is invisible: a
+     * destination verified in March, swapped in June, still reading VERIFIED, looks like a
+     * perfectly ordinary row.
+     *
+     * <p>Audited on the creator's own account. "When did this change and to what" is the first
+     * question a misdirected payout produces, and the answer has to survive the row being
+     * replaced again afterwards.
+     */
+    @Transactional
+    public PayoutDestination record(
+            UUID accountId, String provider, String reference, String holderName, String displayHint) {
+
+        String canonical = PaymentProviders.canonicalNameOf(provider)
+                .orElseThrow(() -> new UnknownDestinationProviderException(provider));
+
+        Instant now = clock.instant();
+        Optional<PayoutDestination> existing = destinations.findById(accountId);
+        PayoutDestination row = existing.map(found -> {
+                    found.replaceWith(canonical, reference, holderName, displayHint, now);
+                    return found;
+                })
+                .orElseGet(() -> PayoutDestination.of(accountId, canonical, reference, holderName, displayHint, now));
+
+        Optional<LegalSubject> subject = legalSubjects.of(accountId);
+        boolean matched = subject.map(known -> known.nameMatches(holderName)).orElse(true);
+        if (!matched) {
+            row.nameDidNotMatch(now);
+        }
+
+        PayoutDestination saved = destinations.save(row);
+        audit.record(
+                AuditAction.PAYOUT_DESTINATION_RECORDED,
+                accountId,
+                AuditActor.user(accountId),
+                matched ? AuditOutcome.SUCCEEDED : AuditOutcome.REFUSED,
+                "provider=%s; holder=%s; first=%s; state=%s; hadSubject=%s"
+                        .formatted(canonical, holderName, existing.isEmpty(), saved.getState(), subject.isPresent()));
+
+        log.info("Account {} filed a {} payout destination; state {}", accountId, canonical, saved.getState());
+        return saved;
+    }
+
+    /**
+     * A reviewer confirms the account belongs to the creator.
+     *
+     * <p>{@link StaffCapability#VERIFY_PAYOUT_DESTINATION}, which V66 gave to COMPLIANCE and
+     * deliberately withheld from FINANCE: the person who confirms that an account belongs to
+     * the creator it is filed under is not the person who sends money to it.
+     *
+     * <p>Refused on a name mismatch rather than allowed with a warning — see
+     * {@link DestinationNameMismatchException} — and refused on one's own account, on V66's
+     * rule that nobody decides anything about their own.
+     *
+     * <p>Verifying an already-verified row is a no-op that still writes an audit entry, which
+     * is deliberate: the second reviewer learned nothing new, and the fact that somebody looked
+     * again is the part worth keeping.
+     */
+    @Transactional
+    public PayoutDestination verify(UUID staffId, UUID creatorId, DestinationVerificationMethod method) {
+        staff.requireCapability(staffId, StaffCapability.VERIFY_PAYOUT_DESTINATION);
+        if (staffId.equals(creatorId)) {
+            throw new SelfVerifiedDestinationException(creatorId);
+        }
+
+        PayoutDestination row =
+                destinations.findById(creatorId).orElseThrow(() -> new UnknownPayoutDestinationException(creatorId));
+
+        if (row.getState() == DestinationState.NAME_MISMATCH) {
+            audit.recordIndependently(
+                    AuditAction.PAYOUT_DESTINATION_VERIFIED,
+                    creatorId,
+                    AuditActor.moderator(staffId),
+                    AuditOutcome.REFUSED,
+                    "nameMismatch; holder=%s".formatted(row.getHolderName()));
+            throw new DestinationNameMismatchException(creatorId, row.getHolderName());
+        }
+
+        Instant now = clock.instant();
+        row.verified(staffId, method, now);
+        PayoutDestination saved = destinations.save(row);
+
+        audit.record(
+                AuditAction.PAYOUT_DESTINATION_VERIFIED,
+                creatorId,
+                AuditActor.moderator(staffId),
+                AuditOutcome.SUCCEEDED,
+                "method=%s; provider=%s; holder=%s".formatted(method, saved.getProvider(), saved.getHolderName()));
+
+        log.info("Payout destination of {} verified by {} via {}", creatorId, staffId, method);
+        return saved;
+    }
+
+    /**
+     * A reviewer refuses the account, with a reason the creator is shown.
+     *
+     * <p>V58's closed set, for V58's reason: the reason is shown to the creator, so it has to
+     * be one the product has words for in each of §21.1's four languages.
+     */
+    @Transactional
+    public PayoutDestination reject(UUID staffId, UUID creatorId, RejectionReason reason) {
+        staff.requireCapability(staffId, StaffCapability.VERIFY_PAYOUT_DESTINATION);
+        if (staffId.equals(creatorId)) {
+            throw new SelfVerifiedDestinationException(creatorId);
+        }
+
+        PayoutDestination row =
+                destinations.findById(creatorId).orElseThrow(() -> new UnknownPayoutDestinationException(creatorId));
+
+        Instant now = clock.instant();
+        row.reject(reason, now);
+        PayoutDestination saved = destinations.save(row);
+
+        audit.record(
+                AuditAction.PAYOUT_DESTINATION_VERIFIED,
+                creatorId,
+                AuditActor.moderator(staffId),
+                AuditOutcome.REFUSED,
+                "reason=%s; provider=%s".formatted(reason, saved.getProvider()));
+
+        log.info("Payout destination of {} refused by {}: {}", creatorId, staffId, reason);
+        return saved;
+    }
+
+    /**
+     * One creator's destination, read by a member of staff.
+     *
+     * <p>Audited, on {@code LEGAL_SUBJECT_READ}'s argument: a read of somebody's own record
+     * rather than of the platform's should be answerable, it costs nothing to record, and its
+     * absence is discovered only during the investigation that needed it.
+     *
+     * <p><strong>Not {@code readOnly}</strong>, for {@code CreatorLegalSubjects.forStaff}'s
+     * reason: the audit insert is {@code MANDATORY} into this transaction and PostgreSQL
+     * refuses an insert in a read-only one, so a read that records the read is a write.
+     */
+    @Transactional
+    public Optional<PayoutDestination> forStaff(UUID staffId, UUID creatorId) {
+        staff.requireCapability(staffId, StaffCapability.VERIFY_PAYOUT_DESTINATION);
+        Optional<PayoutDestination> row = destinations.findById(creatorId);
+        audit.record(
+                AuditAction.PAYOUT_DESTINATION_READ,
+                creatorId,
+                AuditActor.moderator(staffId),
+                AuditOutcome.SUCCEEDED,
+                "recorded=%s".formatted(row.isPresent()));
+        return row;
+    }
+
+    /**
+     * COMPLIANCE's queue: destinations waiting on somebody.
+     *
+     * <p>Not audited, and the asymmetry with {@link #forStaff} is deliberate. The queue shows
+     * that a destination exists and what state it is in; opening one is what discloses the
+     * holder's name, and that is the read worth a row. Auditing the list as well would write
+     * fifty entries every time somebody refreshed a screen, which is how a trail stops being
+     * readable.
+     */
+    @Transactional(readOnly = true)
+    public List<PayoutDestination> queue(UUID staffId) {
+        staff.requireCapability(staffId, StaffCapability.VERIFY_PAYOUT_DESTINATION);
+        return destinations.awaiting(DestinationState.VERIFIED, PageRequest.of(0, PAGE_SIZE));
+    }
+}

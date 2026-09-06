@@ -76,6 +76,25 @@ public class PayoutGateway {
     }
 
     /**
+     * Which provider a payout would be sent through, by name — part of issue #432.
+     *
+     * <p>The payout module needs it to ask the compliance module for a destination token,
+     * because a token is only readable by the provider that issued one. It cannot ask for the
+     * {@code ProviderName} itself — that type is this module's domain and
+     * {@code ModuleBoundaryTests} forbids the reach — so the answer crosses as the constant's
+     * own spelling, the same way {@code PaymentProviders.canonicalNameOf} publishes the
+     * vocabulary to the module that stores it.
+     *
+     * <p>Empty when no adapter is configured, which is every environment until #433 lands. A
+     * caller that treats empty as "send anyway" would be sending to nothing;
+     * {@link #send} already answers that case with {@code NoPayoutProviderException} and this
+     * is the earlier, cheaper form of the same refusal.
+     */
+    public Optional<String> sendingProvider() {
+        return providers.primary().map(provider -> provider.name().name());
+    }
+
+    /**
      * Sends the money, and records that it went.
      *
      * <p><strong>The provider call is outside a transaction and the writes are inside

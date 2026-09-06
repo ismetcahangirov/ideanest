@@ -15,6 +15,7 @@ import az.ideanest.shared.money.Money;
 import az.ideanest.staff.domain.StaffRole;
 import az.ideanest.support.AbstractIntegrationTest;
 import az.ideanest.support.Campaigns;
+import az.ideanest.support.Destinations;
 import az.ideanest.support.Verifications;
 import az.ideanest.user.infrastructure.UserRepository;
 import java.math.BigDecimal;
@@ -101,6 +102,7 @@ class PayoutDualApprovalApiTests extends AbstractIntegrationTest {
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         jdbc.update("DELETE FROM payout_approvals");
         jdbc.update("DELETE FROM payouts");
+        Destinations.clear(dataSource);
         Campaigns.clear(dataSource);
     }
 
@@ -137,7 +139,7 @@ class PayoutDualApprovalApiTests extends AbstractIntegrationTest {
         payouts.withdrawApproval(second, payoutId);
 
         // The whole rule, in one assertion. Before #398 this call reached the provider.
-        assertThatThrownBy(() -> payouts.send(first, payoutId, "IBAN"))
+        assertThatThrownBy(() -> payouts.send(first, payoutId))
                 .isInstanceOf(PayoutNotSendableException.class);
     }
 
@@ -155,7 +157,7 @@ class PayoutDualApprovalApiTests extends AbstractIntegrationTest {
         // of producing it from being a way of sending an unapproved payout.
         new JdbcTemplate(dataSource).update("UPDATE payouts SET state = 'APPROVED' WHERE id = ?", payoutId);
 
-        assertThatThrownBy(() -> payouts.send(first, payoutId, "IBAN"))
+        assertThatThrownBy(() -> payouts.send(first, payoutId))
                 .isInstanceOf(PayoutSignaturesShortException.class)
                 .satisfies(cause -> {
                     PayoutSignaturesShortException refusal = (PayoutSignaturesShortException) cause;
@@ -191,8 +193,11 @@ class PayoutDualApprovalApiTests extends AbstractIntegrationTest {
          * A send that actually moved money would need `ScriptedPaymentProvider` to answer
          * payouts, and it does not: it throws "Payouts are #69; no test drives them yet".
          * Building that double is a fixture for a different issue than this one.
+         *
+         * Note that `send` no longer takes a destination — #432 removed the parameter, and
+         * there is deliberately no argument on this call that decides where money goes.
          */
-        assertThatThrownBy(() -> payouts.send(first, payoutId, "IBAN"))
+        assertThatThrownBy(() -> payouts.send(first, payoutId))
                 .isInstanceOf(PayoutNotSendableException.class)
                 .satisfies(cause -> assertThat(((PayoutNotSendableException) cause).state())
                         .isEqualTo(PayoutState.CANCELLED));
@@ -231,6 +236,12 @@ class PayoutDualApprovalApiTests extends AbstractIntegrationTest {
         // checking is the dual-approval rule -- so the fixture supplies it, which is what #431
         // asks for: "extend the fixture helper rather than each suite".
         Verifications.approve(dataSource, creatorId, administrator());
+
+        // #432: and a second precondition of the same kind. Approval now also refuses a payout
+        // whose creator has no confirmed destination, because a signature given before anybody
+        // established where the money would go is a signature on a blank line. Same argument as
+        // above: the destination is this suite's precondition and not its subject.
+        Destinations.verified(dataSource, creatorId, administrator(), "Test Creator");
 
         return payoutRows.save(payout).id();
     }

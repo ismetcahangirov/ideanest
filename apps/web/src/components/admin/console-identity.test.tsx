@@ -96,6 +96,11 @@ function payoutQueue(): PayoutPage {
         // payout held on identity would draw an alert it is not asserting on.
         creatorStanding: 'VERIFIED',
         heldForVerification: false,
+        // #432, and verified for #431's reason: this suite is about how the console names
+        // accounts, and a payout held on its destination would draw an alert it is not
+        // asserting on. `heldDestinationFile` is where that case is exercised.
+        destinationStanding: 'VERIFIED',
+        heldForDestination: false,
         calculatedAt: '2026-08-01T00:00:00.000Z',
       },
     ],
@@ -113,6 +118,19 @@ function payoutFile(approvers: readonly string[]): PayoutFile {
       note: null,
     })),
     stillNeeded: Math.max(0, 2 - approvers.length),
+  };
+}
+
+/** Fully signed, and waiting on a destination nobody has confirmed — #432. */
+function heldDestinationFile(): PayoutFile {
+  const file = payoutFile([ME, COLLEAGUE]);
+  return {
+    ...file,
+    payout: {
+      ...file.payout,
+      destinationStanding: 'AWAITING_VERIFICATION',
+      heldForDestination: true,
+    },
   };
 }
 
@@ -348,7 +366,7 @@ describe('the payout file', () => {
     expect(screen.queryByRole('button', { name: PAYOUTS.withdrawMine })).not.toBeInTheDocument();
   });
 
-  it('says why sending is disabled at a full set of signatures', async () => {
+  it('offers the send at a full set of signatures once the destination is confirmed', async () => {
     const user = userEvent.setup();
     readPayoutMock.mockResolvedValue(payoutFile([ME, COLLEAGUE]));
 
@@ -356,12 +374,26 @@ describe('the payout file', () => {
     await user.click(await screen.findByRole('button', { expanded: false }));
 
     /*
-     * The label changed from "one more signature needed" to "Send" and the control then
-     * simply did nothing. The reason was real — §9's destination scheme is not built — and
-     * was stated nowhere on the row.
+     * #405: the label changed from "one more signature needed" to "Send" and the control
+     * then simply did nothing, because there was a destination field beside it that nobody
+     * had filled in. #432 removed the field — the destination is the creator's to supply and
+     * a reviewer's to confirm — so at two signatures of two the control now does what it says.
      */
+    expect(await screen.findByRole('button', { name: PAYOUTS.send })).toBeEnabled();
+  });
+
+  it('says why sending is disabled when the destination is not confirmed', async () => {
+    const user = userEvent.setup();
+    readPayoutMock.mockResolvedValue(heldDestinationFile());
+
+    render(<PayoutQueue copy={PAYOUTS} />);
+    await user.click(await screen.findByRole('button', { expanded: false }));
+
+    // #405's rule, kept: every disabled control says what would enable it. The standing is
+    // named rather than reduced to "not confirmed", because a creator who has filed nothing
+    // and one whose account is in a reviewer's queue are different things to do next.
     expect(await screen.findByRole('button', { name: PAYOUTS.send })).toBeDisabled();
-    expect(screen.getByText(PAYOUTS.destinationNeeded)).toBeInTheDocument();
+    expect(screen.getByText(PAYOUTS.destinationHeldTitle)).toBeInTheDocument();
   });
 });
 

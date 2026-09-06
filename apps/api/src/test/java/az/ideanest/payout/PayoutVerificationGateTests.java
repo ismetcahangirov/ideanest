@@ -16,6 +16,7 @@ import az.ideanest.shared.money.Money;
 import az.ideanest.shared.EmailAddress;
 import az.ideanest.support.AbstractIntegrationTest;
 import az.ideanest.support.Campaigns;
+import az.ideanest.support.Destinations;
 import az.ideanest.support.Verifications;
 import az.ideanest.verification.domain.VerificationState;
 import az.ideanest.user.infrastructure.UserRepository;
@@ -85,6 +86,7 @@ class PayoutVerificationGateTests extends AbstractIntegrationTest {
         jdbc.update("DELETE FROM payouts");
         jdbc.update("DELETE FROM compliance_overrides");
         jdbc.update("DELETE FROM identity_verifications");
+        Destinations.clear(dataSource);
         Campaigns.clear(dataSource);
     }
 
@@ -102,6 +104,11 @@ class PayoutVerificationGateTests extends AbstractIntegrationTest {
 
         payouts.queue(administrator(), 0);
         assertThat(state(held.payoutId())).isEqualTo(PayoutState.PENDING_APPROVAL);
+
+        // #432's gate is the other one in front of `approve`, and it is this suite's
+        // precondition rather than its subject: PayoutDestinationGateTests is where it is
+        // checked. Without this the assertion below would pass or fail for the wrong reason.
+        Destinations.verified(dataSource, held.creatorId(), administrator(), "Test Creator");
 
         payouts.approve(administrator(), held.payoutId(), "checked");
         assertThat(state(held.payoutId())).isEqualTo(PayoutState.APPROVED);

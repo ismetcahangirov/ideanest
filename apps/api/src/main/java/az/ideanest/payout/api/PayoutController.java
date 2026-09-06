@@ -74,7 +74,12 @@ public class PayoutController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(PayoutResponses.PayoutPage.of(
-                        queued, page, PAGE_SIZE, clock.instant(), payouts.standingsOf(queued)));
+                        queued,
+                        page,
+                        PAGE_SIZE,
+                        clock.instant(),
+                        payouts.standingsOf(queued),
+                        payouts.destinationStandingsOf(queued)));
     }
 
     /** Everything, newest first, optionally narrowed to one state. */
@@ -88,7 +93,12 @@ public class PayoutController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(PayoutResponses.PayoutPage.of(
-                        listed, page, PAGE_SIZE, clock.instant(), payouts.standingsOf(listed)));
+                        listed,
+                        page,
+                        PAGE_SIZE,
+                        clock.instant(),
+                        payouts.standingsOf(listed),
+                        payouts.destinationStandingsOf(listed)));
     }
 
     /** One payout with its signatures. */
@@ -141,16 +151,21 @@ public class PayoutController {
                 .body(fileOf(payouts.withdrawApproval(callerOf(accessToken), payoutId)));
     }
 
-    /** Instructs the provider. */
+    /**
+     * Instructs the provider.
+     *
+     * <p><strong>No body, since #432.</strong> It used to carry the destination, and the
+     * absence is the point: there is nothing on this request that decides where money goes.
+     * The service reads the account the creator filed and a compliance reviewer confirmed, and
+     * refuses when there is not one.
+     */
     @PostMapping("/{payoutId}/send")
     public ResponseEntity<PayoutResponses.PayoutSummary> send(
-            @AuthenticationPrincipal Jwt accessToken,
-            @PathVariable UUID payoutId,
-            @Valid @RequestBody SendRequest request) {
+            @AuthenticationPrincipal Jwt accessToken, @PathVariable UUID payoutId) {
 
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
-                .body(summaryOf(payouts.send(callerOf(accessToken), payoutId, request.destinationReference())));
+                .body(summaryOf(payouts.send(callerOf(accessToken), payoutId)));
     }
 
     /** Withdraws a payout before it is sent. */
@@ -171,26 +186,18 @@ public class PayoutController {
     public record ApproveRequest(@Size(max = 2000) String note) {
     }
 
-    /**
-     * Where the money goes.
-     *
-     * <p><strong>Supplied per send rather than stored on the creator's account</strong>,
-     * because there is no payout-destination schema yet — §9 describes one and nothing
-     * implements it. That is a real gap and this is the honest shape of it: the person
-     * sending the money types where it goes, and the value is not persisted anywhere,
-     * because a bank reference stored in a table nobody designed is worse than one that is
-     * typed. It never appears in a log — {@code PayoutRequest.toString} redacts it.
-     */
-    public record SendRequest(@NotBlank @Size(max = 200) String destinationReference) {
-    }
-
-    /** One payout, with the creator's standing beside it — #431's "show why". */
+    /** One payout, with both standings beside it — #431's and #432's "show why". */
     private PayoutResponses.PayoutSummary summaryOf(Payout payout) {
-        return PayoutResponses.PayoutSummary.of(payout, clock.instant(), payouts.standingOf(payout));
+        return PayoutResponses.PayoutSummary.of(
+                payout, clock.instant(), payouts.standingOf(payout), payouts.destinationStandingOf(payout));
     }
 
     private PayoutResponses.PayoutFile fileOf(PayoutService.PayoutFile file) {
-        return PayoutResponses.PayoutFile.of(file, clock.instant(), payouts.standingOf(file.payout()));
+        return PayoutResponses.PayoutFile.of(
+                file,
+                clock.instant(),
+                payouts.standingOf(file.payout()),
+                payouts.destinationStandingOf(file.payout()));
     }
 
     private static UUID callerOf(Jwt accessToken) {

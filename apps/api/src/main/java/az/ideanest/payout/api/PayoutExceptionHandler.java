@@ -4,6 +4,8 @@ import az.ideanest.payment.application.NoPayoutProviderException;
 import az.ideanest.payout.application.NothingToPayException;
 import az.ideanest.payout.application.PayoutAlreadyInFlightException;
 import az.ideanest.payout.application.CreatorNotVerifiedException;
+import az.ideanest.payout.application.PayoutDestinationNotVerifiedException;
+import az.ideanest.payout.application.PayoutDestinationProviderMismatchException;
 import az.ideanest.payout.application.PayoutNotApprovableException;
 import az.ideanest.payout.application.PayoutNotFoundException;
 import az.ideanest.payout.application.PayoutNotSendableException;
@@ -22,9 +24,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 /**
  * AD-05's payout refusals — issues #69, #306 and #398.
  *
- * <p>Nine handlers rather than one over a shared supertype, and that is deliberate: each
+ * <p>Eleven handlers rather than one over a shared supertype, and that is deliberate: each
  * carries a different {@code code} and leads the reader to a different next action. A base
- * class would invite an advice that caught it and flattened all eight into "the payout
+ * class would invite an advice that caught it and flattened all of them into "the payout
  * could not be processed", which is the sentence support tickets are made of.
  */
 @RestControllerAdvice(assignableTypes = PayoutController.class)
@@ -119,6 +121,56 @@ public class PayoutExceptionHandler {
                 "meta",
                 Map.of(
                         "standing", exception.standing().name(),
+                        "creator", exception.creatorId().toString()));
+        return problem;
+    }
+
+    /**
+     * <strong>409: nobody has confirmed where this creator is paid</strong> — part of #432.
+     *
+     * <p>{@code CREATOR_NOT_VERIFIED}'s status and its argument, one question along: the
+     * operator may do this, and the same request from the same person succeeds once the
+     * destination is confirmed. What is wrong is the state of something else.
+     *
+     * <p>Its own code rather than a second {@code CREATOR_NOT_VERIFIED}, because the two send
+     * the reader to different screens. Identity is a document queue; this is a creator who has
+     * not said where they bank, or an account waiting on a reviewer, and
+     * {@code meta.standing} says which.
+     */
+    @ExceptionHandler(PayoutDestinationNotVerifiedException.class)
+    public ProblemDetail handleDestinationNotVerified(PayoutDestinationNotVerifiedException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/payout-destination-not-verified"));
+        problem.setTitle("This creator's payout destination is not confirmed");
+        problem.setDetail("Money goes only to an account the creator supplied and somebody confirmed.");
+        problem.setProperty("code", "PAYOUT_DESTINATION_NOT_VERIFIED");
+        problem.setProperty(
+                "meta",
+                Map.of(
+                        "standing", exception.standing().name(),
+                        "creator", exception.creatorId().toString()));
+        return problem;
+    }
+
+    /**
+     * <strong>409: the destination on file belongs to a different provider</strong> — #432.
+     *
+     * <p>Separate from the refusal above because nobody has done anything wrong and there is
+     * nothing for a reviewer to look at. A token is readable only by the provider that issued
+     * it, so a deployment that changed provider needs the creator to file the account again —
+     * and {@code meta.sendingThrough} names the one it has to be filed with.
+     */
+    @ExceptionHandler(PayoutDestinationProviderMismatchException.class)
+    public ProblemDetail handleDestinationProvider(PayoutDestinationProviderMismatchException exception) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        problem.setType(URI.create("https://ideanest.az/problems/payout-destination-provider-mismatch"));
+        problem.setTitle("The destination was issued by a different provider");
+        problem.setDetail("This creator has to file their account again with the provider now in use.");
+        problem.setProperty("code", "PAYOUT_DESTINATION_PROVIDER_MISMATCH");
+        problem.setProperty(
+                "meta",
+                Map.of(
+                        "sendingThrough", exception.sendingThrough(),
                         "creator", exception.creatorId().toString()));
         return problem;
     }

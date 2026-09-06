@@ -1650,8 +1650,6 @@
         "noteHint": "Gerekçe, ikinci onaylayan için.",
         "approve": "Onayla",
         "withdrawMine": "Benimkini geri çek",
-        "destinationLabel": "Hedef",
-        "destinationHint": "Her gönderimde yazılır — §9'un ödeme hedefi şeması yapılmadı.",
         "send": "Gönder",
         "needsMore": "{count} imza daha gerekiyor",
         "state": {
@@ -1666,8 +1664,18 @@
         "thisIsYou": "bu sizsiniz",
         "youHaveSigned": "Bu ödemeyi zaten imzaladınız. İkinci imza başka birine ait olmalı.",
         "awaitingHold": "{date} tarihinde bekletme süresi dolana kadar imzalanamaz.",
-        "destinationNeeded": "Bu ödemenin gönderileceği adresi girin. Kayıtlı bir adres henüz yok.",
         "verificationHeld": "Kimlik bekleniyor",
+        "destinationHeldTitle": "Kurucunun ödeme hedefi doğrulanmadı",
+        "destinationHeldBody": "Bu ödeme {standing}. Para yalnızca kurucunun kendi bildirdiği ve uyum incelemecisinin doğruladığı hesaba gider — burada yazılan bir hesaba asla.",
+        "destinationHeld": "Hedef bekleniyor",
+        "destinationStanding": {
+          "WAIVED": "verilen bir istisnayla serbest bırakıldı",
+          "VERIFIED": "doğrulanmış bir hesaba gidiyor",
+          "NONE": "bekliyor — kurucu nereye ödendiğini bildirmedi",
+          "AWAITING_VERIFICATION": "hesabın uyum incelemecisince doğrulanmasını bekliyor",
+          "NAME_MISMATCH": "bekliyor — hesap başka adlı bir tarafa ait",
+          "REJECTED": "bekliyor — hesap reddedildi, kurucunun başka bir hesap bildirmesi gerekiyor"
+        },
         "verificationHeldTitle": "Kurucunun kimliği doğrulanmadı",
         "verificationHeldBody": "Bu ödeme {standing}. Para yalnızca platformun kimliğini doğruladığı kişiye gider; kurucudan eksik olan zaten istendi.",
         "standing": {

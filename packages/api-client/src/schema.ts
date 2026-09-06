@@ -84,6 +84,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/accounts/{creatorId}/payout-destination": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminPayoutDestinationForAccount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/accounts/{creatorId}/payout-destination/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminPayoutDestinationReject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/accounts/{creatorId}/payout-destination/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminPayoutDestinationVerify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/analytics": {
         parameters: {
             query?: never;
@@ -716,6 +764,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["paymentLogLog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/payout-destinations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminPayoutDestinationQueue"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2350,6 +2414,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["notificationInboxRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/payout-destination": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["myPayoutDestinationMine"];
+        put: operations["myPayoutDestinationRecord"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4380,6 +4460,12 @@ export interface components {
             /** Format: date-time */
             scheduledFor?: string;
         };
+        DestinationRequest: {
+            displayHint?: string;
+            holderName: string;
+            provider: string;
+            reference: string;
+        };
         DeviceResponse: {
             /** Format: uuid */
             id?: string;
@@ -4595,22 +4681,27 @@ export interface components {
         };
         ForStaff: {
             /** Format: uuid */
-            accountId?: string;
-            campaigns?: components["schemas"]["FrozenCampaign"][];
-            recorded?: components["schemas"]["Mine"];
+            creatorId?: string;
+            displayHint?: string;
+            holderName?: string;
+            provider?: string;
+            recorded?: boolean;
+            /** @enum {string} */
+            rejectionReason?: "UNREADABLE" | "EXPIRED_DOCUMENT" | "MISMATCHED_NAME" | "INCOMPLETE" | "SUSPECTED_FORGERY";
+            /** @enum {string} */
+            standing?: "WAIVED" | "VERIFIED" | "NONE" | "AWAITING_VERIFICATION" | "NAME_MISMATCH" | "REJECTED";
+            /** Format: date-time */
+            updatedAt?: string;
+            /** @enum {string} */
+            verificationMethod?: "PROVIDER_ACCOUNT_HOLDER" | "MICRO_TRANSFER" | "STAFF_ATTESTED";
+            /** Format: date-time */
+            verifiedAt?: string;
+            /** Format: uuid */
+            verifiedBy?: string;
         };
         ForgotPasswordRequest: {
             /** Format: email */
             email: string;
-        };
-        FrozenCampaign: {
-            /** Format: date-time */
-            frozenAt?: string;
-            legalName?: string;
-            /** Format: uuid */
-            projectId?: string;
-            subjectKind?: string;
-            taxId?: string;
         };
         FulfilmentImportResponse: {
             /** Format: int32 */
@@ -4879,15 +4970,18 @@ export interface components {
             internal?: boolean;
         };
         Mine: {
-            complete?: boolean;
-            legalName?: string;
+            displayHint?: string;
+            holderName?: string;
+            provider?: string;
             recorded?: boolean;
-            registeredAddress?: string;
-            registrationNumber?: string;
-            subjectKind?: string;
-            taxId?: string;
+            /** @enum {string} */
+            rejectionReason?: "UNREADABLE" | "EXPIRED_DOCUMENT" | "MISMATCHED_NAME" | "INCOMPLETE" | "SUSPECTED_FORGERY";
+            /** @enum {string} */
+            standing?: "WAIVED" | "VERIFIED" | "NONE" | "AWAITING_VERIFICATION" | "NAME_MISMATCH" | "REJECTED";
             /** Format: date-time */
             updatedAt?: string;
+            /** Format: date-time */
+            verifiedAt?: string;
         };
         ModerationDecisionRequest: {
             note?: string;
@@ -5085,11 +5179,14 @@ export interface components {
             creatorId?: string;
             /** @enum {string} */
             creatorStanding?: "NOT_REQUIRED" | "WAIVED" | "VERIFIED" | "NEVER_REQUESTED" | "AWAITING_DOCUMENTS" | "UNDER_REVIEW" | "REJECTED" | "EXPIRED";
+            /** @enum {string} */
+            destinationStanding?: "WAIVED" | "VERIFIED" | "NONE" | "AWAITING_VERIFICATION" | "NAME_MISMATCH" | "REJECTED";
             failureCode?: string;
             failureMessage?: string;
             /** Format: uuid */
             feeScheduleId?: string;
             gross?: components["schemas"]["Money"];
+            heldForDestination?: boolean;
             heldForVerification?: boolean;
             /** Format: uuid */
             id?: string;
@@ -5569,6 +5666,10 @@ export interface components {
             name: string;
             password: string;
         };
+        RejectRequest: {
+            /** @enum {string} */
+            reason: "UNREADABLE" | "EXPIRED_DOCUMENT" | "MISMATCHED_NAME" | "INCOMPLETE" | "SUSPECTED_FORGERY";
+        };
         Remainder: {
             /** Format: int64 */
             pledgeCount?: number;
@@ -5820,9 +5921,6 @@ export interface components {
             /** Format: uuid */
             segmentId?: string;
             subject: string;
-        };
-        SendRequest: {
-            destinationReference: string;
         };
         SessionOpened: {
             document?: string;
@@ -6306,6 +6404,10 @@ export interface components {
         VerifyEmailRequest: {
             token: string;
         };
+        VerifyRequest: {
+            /** @enum {string} */
+            method: "PROVIDER_ACCOUNT_HOLDER" | "MICRO_TRANSFER" | "STAFF_ATTESTED";
+        };
         VerifyTwoFactorRequest: {
             challenge: string;
             code?: string;
@@ -6443,6 +6545,7 @@ export type SchemaDashboardResponse = components['schemas']['DashboardResponse']
 export type SchemaDay = components['schemas']['Day'];
 export type SchemaDeleteAccountRequest = components['schemas']['DeleteAccountRequest'];
 export type SchemaDeletionScheduledResponse = components['schemas']['DeletionScheduledResponse'];
+export type SchemaDestinationRequest = components['schemas']['DestinationRequest'];
 export type SchemaDeviceResponse = components['schemas']['DeviceResponse'];
 export type SchemaDirectory = components['schemas']['Directory'];
 export type SchemaDisableTwoFactorRequest = components['schemas']['DisableTwoFactorRequest'];
@@ -6471,7 +6574,6 @@ export type SchemaFollowStateResponse = components['schemas']['FollowStateRespon
 export type SchemaFollowingListResponse = components['schemas']['FollowingListResponse'];
 export type SchemaForStaff = components['schemas']['ForStaff'];
 export type SchemaForgotPasswordRequest = components['schemas']['ForgotPasswordRequest'];
-export type SchemaFrozenCampaign = components['schemas']['FrozenCampaign'];
 export type SchemaFulfilmentImportResponse = components['schemas']['FulfilmentImportResponse'];
 export type SchemaFulfilmentListResponse = components['schemas']['FulfilmentListResponse'];
 export type SchemaFulfilmentProgressResponse = components['schemas']['FulfilmentProgressResponse'];
@@ -6570,6 +6672,7 @@ export type SchemaRefund = components['schemas']['Refund'];
 export type SchemaRefundPage = components['schemas']['RefundPage'];
 export type SchemaRegisterDeviceRequest = components['schemas']['RegisterDeviceRequest'];
 export type SchemaRegistrationRequest = components['schemas']['RegistrationRequest'];
+export type SchemaRejectRequest = components['schemas']['RejectRequest'];
 export type SchemaRemainder = components['schemas']['Remainder'];
 export type SchemaRemindRequest = components['schemas']['RemindRequest'];
 export type SchemaRemindResponse = components['schemas']['RemindResponse'];
@@ -6603,7 +6706,6 @@ export type SchemaSaveStateResponse = components['schemas']['SaveStateResponse']
 export type SchemaSavedListResponse = components['schemas']['SavedListResponse'];
 export type SchemaSchedule = components['schemas']['Schedule'];
 export type SchemaSendMessageRequest = components['schemas']['SendMessageRequest'];
-export type SchemaSendRequest = components['schemas']['SendRequest'];
 export type SchemaSessionOpened = components['schemas']['SessionOpened'];
 export type SchemaSessionProgress = components['schemas']['SessionProgress'];
 export type SchemaSessionRecord = components['schemas']['SessionRecord'];
@@ -6664,6 +6766,7 @@ export type SchemaValueCount = components['schemas']['ValueCount'];
 export type SchemaVerification = components['schemas']['Verification'];
 export type SchemaVerificationRecord = components['schemas']['VerificationRecord'];
 export type SchemaVerifyEmailRequest = components['schemas']['VerifyEmailRequest'];
+export type SchemaVerifyRequest = components['schemas']['VerifyRequest'];
 export type SchemaVerifyTwoFactorRequest = components['schemas']['VerifyTwoFactorRequest'];
 export type SchemaVersion = components['schemas']['Version'];
 export type SchemaView = components['schemas']['View'];
@@ -6797,6 +6900,80 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForStaff"];
+                };
+            };
+        };
+    };
+    adminPayoutDestinationForAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                creatorId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForStaff"];
+                };
+            };
+        };
+    };
+    adminPayoutDestinationReject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                creatorId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForStaff"];
+                };
+            };
+        };
+    };
+    adminPayoutDestinationVerify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                creatorId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyRequest"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {
@@ -7881,6 +8058,26 @@ export interface operations {
             };
         };
     };
+    adminPayoutDestinationQueue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Queue"];
+                };
+            };
+        };
+    };
     payoutList: {
         parameters: {
             query?: {
@@ -8051,11 +8248,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SendRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {
@@ -10662,6 +10855,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotificationResponse"];
+                };
+            };
+        };
+    };
+    myPayoutDestinationMine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mine"];
+                };
+            };
+        };
+    };
+    myPayoutDestinationRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DestinationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mine"];
                 };
             };
         };

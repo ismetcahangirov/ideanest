@@ -659,7 +659,55 @@ public enum AuditAction {
      * {@code AUDIT_TRAIL_READ}'s line -- a person looking at their own record is not a
      * disclosure.
      */
-    SIGNED_AGREEMENT_READ("legal.signed_agreement_read", "account");
+    SIGNED_AGREEMENT_READ("legal.signed_agreement_read", "account"),
+
+    /**
+     * A creator filed the account their money is to be sent to — #432.
+     *
+     * <p>{@link #LEGAL_SUBJECT_RECORDED}'s argument with money directly behind it. The row is
+     * replaceable and carries only what it says now, so "when did this change and to what" is
+     * unanswerable without this entry — and it is the first question a misdirected payout
+     * produces.
+     *
+     * <p>Recorded on the refusal as well as the success: a destination whose holder does not
+     * match the creator's legal name is stored in {@code NAME_MISMATCH} rather than rejected,
+     * and a creator filing several differently-named accounts in an afternoon is a pattern that
+     * exists only in this trail.
+     *
+     * <p>The detail carries the provider, the holder's name and the resulting state. It does
+     * <strong>not</strong> carry the token — that is the value {@code PayoutRequest.toString}
+     * and {@code PayoutDestination.toString} both redact, and an audit row is no more allowed
+     * to hold it than a log line is.
+     */
+    PAYOUT_DESTINATION_RECORDED("compliance.payout_destination_recorded", "account"),
+
+    /**
+     * <strong>Somebody decided where a creator's money may go</strong> — #432.
+     *
+     * <p>One action for the confirmation and the refusal, distinguished by the outcome, on
+     * {@link #PAYOUT_APPROVED}'s line: both are the same decision taken by the same capability
+     * about the same row, and splitting them would make "who has ever ruled on this account's
+     * destination" two queries.
+     *
+     * <p>V66 put {@code VERIFY_PAYOUT_DESTINATION} with COMPLIANCE and withheld it from
+     * FINANCE precisely so that this entry and {@link #PAYOUT_SENT} name different people. An
+     * audit trail where they are the same person is the arrangement §4.11 exists to prevent,
+     * visible after the fact.
+     */
+    PAYOUT_DESTINATION_VERIFIED("compliance.payout_destination_verified", "account"),
+
+    /**
+     * A member of staff opened somebody's payout destination.
+     *
+     * <p>{@link #LEGAL_SUBJECT_READ}'s argument on the neighbouring panel. The row discloses
+     * the name of the person a bank account belongs to, which is a fact about somebody rather
+     * than about the platform, so the disclosure is answerable.
+     *
+     * <p>Recorded for opening one and deliberately not for listing the queue: the list says
+     * that destinations are waiting, and opening one is what discloses a name. Auditing the
+     * list would write fifty rows per refresh, which is how a trail stops being readable.
+     */
+    PAYOUT_DESTINATION_READ("compliance.payout_destination_read", "account");
 
 
 
