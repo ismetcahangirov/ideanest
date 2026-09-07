@@ -14,9 +14,9 @@ import java.util.Locale;
  *
  * <p><strong>Being on this list is not being integrated.</strong> §9.3 requires
  * fourteen capabilities confirmed in writing before a provider can be signed, and
- * #60 — which is the issue that does the confirming — is unanswered, so no adapter
- * for any of these ships. What the enum gives the platform before then is a closed
- * vocabulary: {@code PaymentProviders} resolves a configured name against it at
+ * only {@link #EPOINT} has had that conversation (#422, {@code docs/providers/epoint.md}).
+ * The other two are candidates and nothing more. What the enum gives the platform is a
+ * closed vocabulary: {@code PaymentProviders} resolves a configured name against it at
  * start-up, so a typo in a deployment's configuration is a start-up failure rather
  * than a webhook endpoint that quietly matches nothing.
  *
@@ -30,7 +30,14 @@ public enum ProviderName {
     /** Pre-authorisation and completion, refunds, AZN/USD/EUR. §9.3's first candidate. */
     PAYRIFF,
 
-    /** API integration with split payments across parties, which suits §9.5's distribution. */
+    /**
+     * §9.3's chosen provider (#422) and the only one with an adapter (#433).
+     *
+     * <p>Card registration and stored-card charging, full and partial reversal, transfers
+     * out, split endpoints, Apple Pay and Google Pay, and <strong>AZN only</strong>. Six of
+     * §9.3's fourteen rows are outstanding and two of them stop the service — see
+     * {@code docs/providers/epoint.md} rather than assuming from this line.
+     */
     EPOINT,
 
     /** The national processing centre. Direct integration is typically bank-intermediated. */

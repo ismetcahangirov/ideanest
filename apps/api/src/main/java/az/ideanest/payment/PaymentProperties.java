@@ -11,6 +11,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param collection §8.4's two collection jobs and §9.6's timings
  * @param circuitBreaker what happens when the provider stops answering
  * @param webhooks §17.2's replay tolerance
+ * @param epoint credentials and confirmed capabilities for §9.3's chosen provider. See {@link Epoint}
  */
 @ConfigurationProperties(prefix = "ideanest.payment")
 public record PaymentProperties(
@@ -18,7 +19,8 @@ public record PaymentProperties(
         Collection collection,
         CircuitBreaker circuitBreaker,
         Webhooks webhooks,
-        Reconciliation reconciliation) {
+        Reconciliation reconciliation,
+        Epoint epoint) {
 
     public PaymentProperties {
         // A deployment that configures none of these still starts, for ProjectProperties'
@@ -30,6 +32,130 @@ public record PaymentProperties(
         circuitBreaker = circuitBreaker == null ? CircuitBreaker.defaults() : circuitBreaker;
         webhooks = webhooks == null ? Webhooks.defaults() : webhooks;
         reconciliation = reconciliation == null ? Reconciliation.defaults() : reconciliation;
+        epoint = epoint == null ? Epoint.defaults() : epoint;
+    }
+
+    /**
+     * Epoint — §9.3's chosen provider (#422), and what this deployment has confirmed it can do.
+     *
+     * <p><strong>The capabilities are configuration and not constants, deliberately.</strong>
+     * §9.3's instruction is "confirm each of these in writing before signing", and
+     * {@code docs/providers/epoint.md} records that Epoint's published specification answers
+     * eight of the fourteen rows and is silent on six. An adapter that hard-coded a {@code true}
+     * for one of the six would be asserting a capability nobody verified, in the one place §9.4
+     * says the platform trusts an assertion absolutely.
+     *
+     * <p>So the two rows the design cannot work without and the document does not address —
+     * R-03 and R-08 — default to <strong>false</strong>, and a deployment that names Epoint
+     * without turning them on does not start. Turning one on is a deliberate act by whoever
+     * holds the written answer, and the property name says which answer it is.
+     *
+     * @param baseUrl where Epoint lives. Blank by default: there is no sensible default for
+     *     somebody else's service, and a guessed one is a deployment that appears configured
+     * @param publicKey Epoint's merchant identifier, e.g. {@code i000000001}. Not a secret in
+     *     the cryptographic sense — it travels inside every signed payload — but it identifies
+     *     the merchant and is treated as a credential
+     * @param privateKey the API key. <strong>The whole of the platform's authentication in both
+     *     directions</strong>: it signs outgoing requests and it is what verifies an incoming
+     *     callback, so anybody holding it can mint a delivery. On {@code Redaction}'s list
+     * @param resultUrl the {@code result_url} Epoint POSTs outcomes to, registered in Epoint's
+     *     merchant console rather than sent per request. Held here so that a deployment can
+     *     assert the one it registered, and so the runbook has it in one place
+     * @param language which of {@code az}, {@code en}, {@code ru} Epoint's hosted pages are
+     *     shown in. Every Epoint endpoint requires it
+     * @param requestTimeout how long the platform waits on one call before treating Epoint as
+     *     unreachable. Deliberately short, for {@code SimaImzaSignatureProvider}'s reason: a
+     *     request thread blocked on a third party is the failure that takes the service with it
+     * @param capabilities what Epoint has been confirmed to do. See {@link Capabilities}
+     */
+    public record Epoint(
+            String baseUrl,
+            String publicKey,
+            String privateKey,
+            String resultUrl,
+            String language,
+            Duration requestTimeout,
+            Capabilities capabilities) {
+
+        private static final Duration DEFAULT_REQUEST_TIMEOUT = Duration.ofSeconds(20);
+
+        public static Epoint defaults() {
+            return new Epoint("", "", "", "", "az", DEFAULT_REQUEST_TIMEOUT, Capabilities.defaults());
+        }
+
+        public Epoint {
+            baseUrl = baseUrl == null ? "" : baseUrl.trim();
+            publicKey = publicKey == null ? "" : publicKey.trim();
+            privateKey = privateKey == null ? "" : privateKey.trim();
+            resultUrl = resultUrl == null ? "" : resultUrl.trim();
+            language = language == null || language.isBlank() ? "az" : language.trim();
+            requestTimeout = requestTimeout == null ? DEFAULT_REQUEST_TIMEOUT : requestTimeout;
+            capabilities = capabilities == null ? Capabilities.defaults() : capabilities;
+        }
+
+        /** Whether there is enough here to talk to Epoint at all. */
+        public boolean isComplete() {
+            return !baseUrl.isBlank() && !publicKey.isBlank() && !privateKey.isBlank();
+        }
+
+        /**
+         * §9.3's fourteen rows, as this deployment has confirmed them.
+         *
+         * <p>Defaults are from {@code docs/providers/epoint.md}, which reads them off Epoint's
+         * own specification version 1.0.3. <strong>A row that specification does not address
+         * defaults to false</strong>, whatever the adapter could plausibly do — see the class
+         * comment.
+         *
+         * @param cardOnFile R-01. Documented: {@code /api/1/card-registration} mints a
+         *     {@code card_id} and {@code /api/1/execute-pay} charges it
+         * @param merchantInitiated R-02. Documented by construction: {@code execute-pay} is
+         *     server-to-server with no cardholder step
+         * @param schemeChaining R-03, and <strong>the row that stops the service</strong>.
+         *     Epoint's specification carries no scheme transaction identifier in either
+         *     direction; the adapter uses the registration's {@code rrn}, on the inference that
+         *     Epoint is the merchant of record and chains internally. An inference is not a
+         *     confirmation, so this is false until somebody has the answer
+         * @param idempotentOrderId R-08, and the row that stops every charge. Epoint's
+         *     specification says nothing about what a repeated {@code order_id} does. The
+         *     adapter sends its idempotency key as the {@code order_id}, which is at-most-once
+         *     only if Epoint refuses the duplicate. <strong>Not on
+         *     {@code ProviderCapabilities}</strong> — R-08 has no field there — so the adapter
+         *     reads it directly
+         * @param splitPayment R-10. The {@code /api/1/split-*} endpoints exist; the four
+         *     questions #422 asks about onboarding, timing, merchant of record and chargeback
+         *     liability do not have answers, and those decide #71
+         * @param partialRefund R-06. Documented: {@code /api/1/reverse} takes an optional amount
+         * @param preAuthHoldDays §9.1's rejected approach. Epoint has pre-auth endpoints and
+         *     documents no hold length, so this is null rather than a guess
+         * @param currencies R-11. Every Epoint endpoint documents exactly one value
+         * @param wallets R-12. Apple Pay for web and mobile, Google Pay for web
+         */
+        public record Capabilities(
+                boolean cardOnFile,
+                boolean merchantInitiated,
+                boolean schemeChaining,
+                boolean idempotentOrderId,
+                boolean splitPayment,
+                boolean partialRefund,
+                Integer preAuthHoldDays,
+                List<String> currencies,
+                List<String> wallets) {
+
+            private static final List<String> DEFAULT_CURRENCIES = List.of("AZN");
+            private static final List<String> DEFAULT_WALLETS = List.of("APPLE_PAY", "GOOGLE_PAY");
+
+            public static Capabilities defaults() {
+                return new Capabilities(
+                        true, true, false, false, false, true, null, DEFAULT_CURRENCIES, DEFAULT_WALLETS);
+            }
+
+            public Capabilities {
+                currencies = currencies == null || currencies.isEmpty()
+                        ? DEFAULT_CURRENCIES
+                        : List.copyOf(currencies);
+                wallets = wallets == null ? DEFAULT_WALLETS : List.copyOf(wallets);
+            }
+        }
     }
 
     /**

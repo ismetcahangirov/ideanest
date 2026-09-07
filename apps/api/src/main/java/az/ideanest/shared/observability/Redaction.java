@@ -158,7 +158,20 @@ public final class Redaction {
             "accountNumber",
             "bankAccount",
             "routingNumber",
-            "sortCode");
+            "sortCode",
+            // Epoint's names for the same things (#433). `card_id` is the token a
+            // collection is charged against and, with `refund=1`, the token a payout
+            // is sent to; `card_mask` is the first six digits and the last four,
+            // which is more than §17.2 permits to be stored. `private_key` signs
+            // every request and verifies every callback, so it is the whole of that
+            // endpoint's authentication.
+            "card_id",
+            "cardId",
+            "card_mask",
+            "cardMask",
+            "card_name",
+            "private_key",
+            "privateKey");
 
     private static final String FIELD_NAMES = String.join("|", SENSITIVE_FIELDS);
 

@@ -46,21 +46,29 @@ class PaymentProviderBoundaryTests {
     }
 
     /**
-     * <strong>No adapter ships, and that is the state #60 leaves the platform in.</strong>
+     * <strong>Exactly the adapters somebody decided on, and no others.</strong>
      *
-     * <p>§9.2 says why no stub is written in the meantime: one that returned an approval
-     * "would make this path look finished and would have told clients that cards were
-     * verified when no card was ever seen". This is that decision, asserted — so the day
-     * somebody adds a convenient fake to get a demo working, the build says so.
+     * <p>This assertion changed shape in #433 and the change is deliberate rather than a
+     * deletion. It used to read "no adapter is on the production classpath", which was
+     * correct while #60 had chosen no provider: §9.2 refuses a stub, because one that
+     * returned an approval "would make this path look finished and would have told clients
+     * that cards were verified when no card was ever seen".
      *
-     * <p>The real first adapter will fail this test, and the person writing it should
-     * delete the assertion in the same change that adds the adapter, having read §9.3's
-     * fourteen requirements and confirmed them in writing. That is the friction it exists
-     * to create.
+     * <p>#422 chose Epoint and recorded what it can do in {@code docs/providers/epoint.md},
+     * so the honest form of the same rule is a list. It still catches what it was written
+     * to catch — a convenient fake added to get a demo working, or a second provider
+     * arriving without the fourteen-row conversation — while allowing the one adapter that
+     * had it.
+     *
+     * <p>Adding a name here is not a formality. It asserts that §9.3's requirements were
+     * confirmed in writing for that provider and written down where the next person can
+     * read them, the way {@code docs/providers/epoint.md} does.
      */
     @Test
-    @DisplayName("no payment provider adapter is shipped, because #60 has not chosen one")
-    void noAdapterShips() {
+    @DisplayName("only the adapters §9.3's conversation was had for are shipped")
+    void onlyDecidedAdaptersShip() {
+        List<String> allowed = List.of("az.ideanest.payment.infrastructure.EpointPaymentProvider");
+
         List<String> implementations = PRODUCTION_CLASSES.stream()
                 .filter(candidate -> candidate.isAssignableTo(PaymentProvider.class))
                 .filter(candidate -> !candidate.isInterface())
@@ -69,12 +77,12 @@ class PaymentProviderBoundaryTests {
 
         assertThat(implementations)
                 .withFailMessage(
-                        "A PaymentProvider adapter is on the production classpath: %s.%n"
-                                + "§9.2 refuses a stub, and #60 has not chosen a provider. If this is a real"
-                                + " adapter, delete this test in the same change — having confirmed §9.3's"
-                                + " fourteen requirements in writing.",
+                        "A PaymentProvider adapter nobody decided on is on the production classpath: %s.%n"
+                                + "§9.2 refuses a stub. If this is a real adapter, add it to this list in the"
+                                + " same change — having confirmed §9.3's fourteen requirements in writing and"
+                                + " recorded them under docs/providers/.",
                         String.join(", ", implementations))
-                .isEmpty();
+                .containsExactlyInAnyOrderElementsOf(allowed);
     }
 
     /**

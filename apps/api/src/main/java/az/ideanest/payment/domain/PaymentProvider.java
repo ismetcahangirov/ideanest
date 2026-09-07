@@ -18,21 +18,23 @@ import java.util.Map;
  * <p>{@code PaymentProviderBoundaryTests} checks the rule rather than restating it,
  * the same way {@code ModuleBoundaryTests} checks §16.1's.
  *
- * <h2>Nothing implements this yet, and that is the honest state</h2>
+ * <h2>One adapter implements this, and it is off unless a deployment says otherwise</h2>
  *
- * <p>#60 — choose the payment provider and confirm §9.3's fourteen capabilities in
- * writing — is unanswered, and §9.2 says plainly why no stub ships in the meantime:
- * an adapter that returned an approval "would be worse than nothing: it would make
- * this path look finished and would have told clients that cards were verified when
- * no card was ever seen". The same argument applies with more force to
- * {@link #chargeStoredCard}, which moves real money.
+ * <p>{@code EpointPaymentProvider} is the first (#433). #422 chose Epoint and recorded
+ * what it can do in {@code docs/providers/epoint.md} — eight of §9.3's fourteen rows
+ * answered by Epoint's own specification, six outstanding, two of them refusing to let
+ * the service start.
  *
- * <p>So {@code PaymentProviders} finds no adapters in a deployed environment, and
- * {@code CollectionRun} refuses to start when it finds none. That refusal is the
- * single gate that keeps every piece of machinery built on top of this interface —
- * the batching, the circuit breaker, §9.6's schedule, the ledger posting — inert
- * until there is a real provider behind it, rather than half-working against a
- * pretend one.
+ * <p>Its existence changes nothing about §9.2's refusal of a stub: an adapter that
+ * returned an approval "would be worse than nothing: it would make this path look
+ * finished and would have told clients that cards were verified when no card was ever
+ * seen", and that applies with more force to {@link #chargeStoredCard}, which moves
+ * real money. So the adapter registers only when
+ * {@code ideanest.payment.provider.primary} names it, {@code PaymentProviders} finds
+ * none anywhere else, and {@code CollectionRun} refuses to start when it finds none.
+ * That refusal is still the single gate that keeps every piece of machinery built on
+ * top of this interface — the batching, the circuit breaker, §9.6's schedule, the
+ * ledger posting — inert in every environment that has not decided.
  *
  * <h2>What an implementation must guarantee</h2>
  *
