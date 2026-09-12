@@ -3864,6 +3864,88 @@
           "other": "{count} blok · {characters} simvol"
         }
       }
+    },
+    "faq": {
+      "loading": "Bu kampaniyanın sualları yüklənir",
+      "listFailed": "Suallar yüklənə bilmədi",
+      "actionFailed": "Bu alınmadı",
+      "heading": "Suallar",
+      "count": "({count})",
+      "intro": "Bunlar kampaniyanın suallar bölməsində bu sıra ilə görünür. Dəstəkçinin əks halda şərhlərdə verəcəyi suala cavab vermək bu siyahının məqsədidir.",
+      "add": "Sual əlavə edin",
+      "fullTitle": "Bu kampaniya limitə çatıb",
+      "fullBody": "Kampaniya {max} sual dərc edə bilər. Yenisini əlavə etmək üçün birini silin.",
+      "empty": {
+        "title": "Hələ sual yoxdur",
+        "body": "Kampaniya səhifəsi bu siyahını ayrıca bölmədə göstərir. Siyahı boş olduqca bölmə dəstəkçiyə kampaniyanın hələ heç nəyə cavab vermədiyini deyir — bu doğrudur və başlamazdan əvvəl dəyişməyə dəyər.",
+        "action": "İlk sualı əlavə edin"
+      },
+      "listLabel": "Suallar, dəstəkçilərin gördüyü sıra ilə",
+      "announce": {
+        "moved": "{question} {total} mövqedən {position}-ci mövqeyə keçdi.",
+        "deleted": "{question} silindi."
+      },
+      "row": {
+        "moveUp": "{question} yuxarı qaldırın, hazırda {total} mövqedən {position}-cidir",
+        "moveDown": "{question} aşağı salın, hazırda {total} mövqedən {position}-cidir",
+        "edit": "Redaktə",
+        "editLabel": "{question} sualını redaktə edin",
+        "delete": "Sil",
+        "deleteLabel": "{question} sualını silin"
+      },
+      "delete": {
+        "title": "Sualı silin",
+        "named": "“{question}” silinsin?",
+        "note": "Bunu geri qaytarmaq olmaz.",
+        "keep": "Saxla",
+        "confirm": "Sil",
+        "body": "Sual üzrə heç bir öhdəlik yoxdur, ona görə birdəfəlik silinir — kimsə seçəndən sonra yalnız gizlədilə bilən mükafat səviyyəsindən fərqli olaraq."
+      },
+      "orderRefusal": {
+        "missing": "Sıra rədd edildi, çünki bu səhifə {missing} görməmişdi.",
+        "unexpected": "Sıra rədd edildi, çünki {unexpected} artıq mövcud deyil.",
+        "both": "Sıra rədd edildi, çünki bu səhifə {missing} görməmişdi və {unexpected} artıq mövcud deyil.",
+        "unknown": "Sıra rədd edildi, çünki iki siyahı üst-üstə düşmədi.",
+        "reread": "Siyahı yenidən oxundu və indi kampaniya ilə üst-üstə düşür — istədiyiniz sıraya yenidən salın.",
+        "conjunction": "və",
+        "others": {
+          "one": "daha {count} sual",
+          "few": "daha {count} sual",
+          "many": "daha {count} sual",
+          "other": "daha {count} sual"
+        }
+      },
+      "editor": {
+        "titleNew": "Sual əlavə edin",
+        "titleEdit": "Sualı redaktə edin",
+        "intro": "Suallar və cavablar kampaniya səhifəsində sizin verdiyiniz sıra ilə görünür.",
+        "failed": "Bu sual yadda saxlanılmadı",
+        "kept": "Yazdığınız heç nə itməyib — hamısı aşağıdakı sahələrdədir.",
+        "question": {
+          "label": "Sual",
+          "hint": "Dəstəkçinin soruşacağı kimi. {max} simvol və ya daha az."
+        },
+        "answer": {
+          "label": "Cavab",
+          "hint": "Sadə mətn. Boş sətirlər kampaniya səhifəsində abzas ayırıcısına çevrilir; başqa heç nə formatlaşdırma deyil. {max} simvol və ya daha az."
+        }
+      },
+      "errors": {
+        "questionMissing": "Sual lazımdır. Dəstəkçi siyahını məhz onun üçün nəzərdən keçirir.",
+        "answerMissing": "Cavab lazımdır. Cavabsız sual cavab verməkdən imtina kimi oxunur.",
+        "questionTooLong": {
+          "one": "Bu, {count} simvol artıqdır. Sual ən çox {max} simvol olur.",
+          "few": "Bu, {count} simvol artıqdır. Sual ən çox {max} simvol olur.",
+          "many": "Bu, {count} simvol artıqdır. Sual ən çox {max} simvol olur.",
+          "other": "Bu, {count} simvol artıqdır. Sual ən çox {max} simvol olur."
+        },
+        "answerTooLong": {
+          "one": "Bu, {count} simvol artıqdır. Cavab ən çox {max} simvol olur.",
+          "few": "Bu, {count} simvol artıqdır. Cavab ən çox {max} simvol olur.",
+          "many": "Bu, {count} simvol artıqdır. Cavab ən çox {max} simvol olur.",
+          "other": "Bu, {count} simvol artıqdır. Cavab ən çox {max} simvol olur."
+        }
+      }
     }
   }
 }

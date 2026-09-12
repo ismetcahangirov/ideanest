@@ -765,6 +765,41 @@ const BLOCK_TYPES: readonly StoryBlockType[] = [
   'embed',
 ];
 
+/** What is wrong with a question or its answer — `validateFaq`. */
+export interface FaqErrorsCopy {
+  readonly questionMissing: string;
+  readonly answerMissing: string;
+  /** Both carry `{count}` — how many characters over — and `{max}`. */
+  readonly questionTooLong: PluralForms;
+  readonly answerTooLong: PluralForms;
+}
+
+/**
+ * `FAQ_ORDER_INCOMPLETE`, as a sentence about questions rather than identifiers.
+ *
+ * <p>FOUR WHOLE SENTENCES RATHER THAN CLAUSES JOINED WITH "and". The refusal has two
+ * independent halves — entries the service holds that the order left out, and identifiers the
+ * order carried that the service does not have — and the English version composed them by
+ * gluing fragments together. That is English syntax written into a builder: the conjunction,
+ * the comma and the order of the two clauses are all things another language does differently.
+ * So each combination is its own message, and the component picks one.
+ */
+export interface FaqOrderRefusalCopy {
+  /** Carries `{missing}`. */
+  readonly missing: string;
+  /** Carries `{unexpected}`. */
+  readonly unexpected: string;
+  /** Carries both. */
+  readonly both: string;
+  readonly unknown: string;
+  /** Always appended, whichever of the four was chosen. */
+  readonly reread: string;
+  /** Joins the last two names in a list: "a, b and c". */
+  readonly conjunction: string;
+  /** Carries `{count}` — identifiers this page has never seen and therefore cannot name. */
+  readonly others: PluralForms;
+}
+
 export interface FaqCopy {
   readonly frame: EditorFrameCopy;
   /**
@@ -775,6 +810,51 @@ export interface FaqCopy {
    * control depending on which drawer it was in.
    */
   readonly drawer: RewardsCopy['drawer'];
+  readonly loading: string;
+  readonly listFailed: string;
+  readonly actionFailed: string;
+  readonly heading: string;
+  /** Carries `{count}`. */
+  readonly count: string;
+  readonly intro: string;
+  readonly add: string;
+  readonly fullTitle: string;
+  /** Carries `{max}`. */
+  readonly fullBody: string;
+  readonly empty: { readonly title: string; readonly body: string; readonly action: string };
+  readonly listLabel: string;
+  /** Both carry `{question}`; the first also `{position}` and `{total}`. */
+  readonly announce: { readonly moved: string; readonly deleted: string };
+  readonly row: {
+    /** Every one of these carries `{question}`. */
+    readonly moveUp: string;
+    readonly moveDown: string;
+    readonly edit: string;
+    readonly editLabel: string;
+    readonly delete: string;
+    readonly deleteLabel: string;
+  };
+  readonly delete: {
+    readonly title: string;
+    /** Carries `{question}`. */
+    readonly named: string;
+    readonly note: string;
+    readonly keep: string;
+    readonly confirm: string;
+    readonly body: string;
+  };
+  readonly orderRefusal: FaqOrderRefusalCopy;
+  readonly editor: {
+    readonly titleNew: string;
+    readonly titleEdit: string;
+    readonly intro: string;
+    readonly failed: string;
+    readonly kept: string;
+    /** Both hints carry `{max}`. */
+    readonly question: { readonly label: string; readonly hint: string };
+    readonly answer: { readonly label: string; readonly hint: string };
+  };
+  readonly errors: FaqErrorsCopy;
 }
 
 export interface PrelaunchCopy {
@@ -1265,12 +1345,76 @@ export function storyCopyFrom(t: EditorTranslator): StoryCopy {
 }
 
 export function faqCopyFrom(t: EditorTranslator): FaqCopy {
+  const template = (key: string): string => String(t.raw(`faq.${key}`));
+
   return {
     frame: editorFrameCopyFrom(t),
     drawer: {
       cancel: t('rewards.drawer.cancel'),
       save: t('rewards.drawer.save'),
       saving: t('rewards.drawer.saving'),
+    },
+    loading: t('faq.loading'),
+    listFailed: t('faq.listFailed'),
+    actionFailed: t('faq.actionFailed'),
+    heading: t('faq.heading'),
+    count: template('count'),
+    intro: t('faq.intro'),
+    add: t('faq.add'),
+    fullTitle: t('faq.fullTitle'),
+    fullBody: template('fullBody'),
+    empty: {
+      title: t('faq.empty.title'),
+      body: t('faq.empty.body'),
+      action: t('faq.empty.action'),
+    },
+    listLabel: t('faq.listLabel'),
+    announce: { moved: template('announce.moved'), deleted: template('announce.deleted') },
+    row: {
+      moveUp: template('row.moveUp'),
+      moveDown: template('row.moveDown'),
+      edit: t('faq.row.edit'),
+      editLabel: template('row.editLabel'),
+      delete: t('faq.row.delete'),
+      deleteLabel: template('row.deleteLabel'),
+    },
+    delete: {
+      title: t('faq.delete.title'),
+      named: template('delete.named'),
+      note: t('faq.delete.note'),
+      keep: t('faq.delete.keep'),
+      confirm: t('faq.delete.confirm'),
+      body: t('faq.delete.body'),
+    },
+    orderRefusal: {
+      missing: template('orderRefusal.missing'),
+      unexpected: template('orderRefusal.unexpected'),
+      both: template('orderRefusal.both'),
+      unknown: t('faq.orderRefusal.unknown'),
+      reread: t('faq.orderRefusal.reread'),
+      conjunction: t('faq.orderRefusal.conjunction'),
+      others: t.raw('faq.orderRefusal.others') as PluralForms,
+    },
+    editor: {
+      titleNew: t('faq.editor.titleNew'),
+      titleEdit: t('faq.editor.titleEdit'),
+      intro: t('faq.editor.intro'),
+      failed: t('faq.editor.failed'),
+      kept: t('faq.editor.kept'),
+      question: {
+        label: t('faq.editor.question.label'),
+        hint: template('editor.question.hint'),
+      },
+      answer: {
+        label: t('faq.editor.answer.label'),
+        hint: template('editor.answer.hint'),
+      },
+    },
+    errors: {
+      questionMissing: t('faq.errors.questionMissing'),
+      answerMissing: t('faq.errors.answerMissing'),
+      questionTooLong: t.raw('faq.errors.questionTooLong') as PluralForms,
+      answerTooLong: t.raw('faq.errors.answerTooLong') as PluralForms,
     },
   };
 }

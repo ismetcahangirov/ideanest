@@ -3864,6 +3864,88 @@
           "other": "{count} blok · {characters} karakter"
         }
       }
+    },
+    "faq": {
+      "loading": "Bu kampanyanın soruları yükleniyor",
+      "listFailed": "Sorular yüklenemedi",
+      "actionFailed": "Bu işe yaramadı",
+      "heading": "Sorular",
+      "count": "({count})",
+      "intro": "Bunlar kampanyanın sorular sekmesinde bu sırayla görünür. Listenin amacı, destekçinin aksi hâlde yorumlarda soracağı soruyu yanıtlamaktır.",
+      "add": "Soru ekleyin",
+      "fullTitle": "Bu kampanya sınıra ulaştı",
+      "fullBody": "Bir kampanya {max} soru yayımlayabilir. Yenisini eklemek için birini silin.",
+      "empty": {
+        "title": "Henüz soru yok",
+        "body": "Kampanya sayfası bu listeyi kendi sekmesinde gösterir. Liste boş kaldıkça sekme, destekçiye kampanyanın henüz hiçbir şeyi yanıtlamadığını söyler — bu doğrudur ve lansmandan önce değiştirmeye değer.",
+        "action": "İlk soruyu ekleyin"
+      },
+      "listLabel": "Sorular, destekçilerin gördüğü sırayla",
+      "announce": {
+        "moved": "{question} {total} konumdan {position}. konuma taşındı.",
+        "deleted": "{question} silindi."
+      },
+      "row": {
+        "moveUp": "{question} yukarı taşı, şu anda {total} konumdan {position}.",
+        "moveDown": "{question} aşağı taşı, şu anda {total} konumdan {position}.",
+        "edit": "Düzenle",
+        "editLabel": "{question} sorusunu düzenle",
+        "delete": "Sil",
+        "deleteLabel": "{question} sorusunu sil"
+      },
+      "delete": {
+        "title": "Soruyu sil",
+        "named": "“{question}” silinsin mi?",
+        "note": "Bu geri alınamaz.",
+        "keep": "Kalsın",
+        "confirm": "Sil",
+        "body": "Bir soru karşılığında kimseye bir şey borçlu değilsiniz, bu yüzden tamamen silinir — biri seçtikten sonra yalnızca gizlenebilen bir ödül kademesinin aksine."
+      },
+      "orderRefusal": {
+        "missing": "Sıralama reddedildi, çünkü bu sayfa {missing} görmemişti.",
+        "unexpected": "Sıralama reddedildi, çünkü {unexpected} artık mevcut değil.",
+        "both": "Sıralama reddedildi, çünkü bu sayfa {missing} görmemişti ve {unexpected} artık mevcut değil.",
+        "unknown": "Sıralama reddedildi, çünkü iki liste birbirini tutmadı.",
+        "reread": "Liste yeniden okundu ve artık kampanyayla örtüşüyor — istediğiniz sıraya yeniden getirin.",
+        "conjunction": "ve",
+        "others": {
+          "one": "{count} soru daha",
+          "few": "{count} soru daha",
+          "many": "{count} soru daha",
+          "other": "{count} soru daha"
+        }
+      },
+      "editor": {
+        "titleNew": "Soru ekleyin",
+        "titleEdit": "Soruyu düzenle",
+        "intro": "Sorular ve yanıtlar kampanya sayfasında sizin koyduğunuz sırayla görünür.",
+        "failed": "Bu soru kaydedilmedi",
+        "kept": "Yazdığınız hiçbir şey kaybolmadı — hepsi aşağıdaki alanlarda duruyor.",
+        "question": {
+          "label": "Soru",
+          "hint": "Bir destekçinin soracağı gibi. En çok {max} karakter."
+        },
+        "answer": {
+          "label": "Yanıt",
+          "hint": "Düz metin. Boş satırlar kampanya sayfasında paragraf sonu olur; başka hiçbir şey biçimlendirme değildir. En çok {max} karakter."
+        }
+      },
+      "errors": {
+        "questionMissing": "Bir soru gerekir. Bir destekçi listeyi tam da bunun için tarar.",
+        "answerMissing": "Bir yanıt gerekir. Yanıtsız bir soru, yanıt vermeyi reddetmek gibi okunur.",
+        "questionTooLong": {
+          "one": "Bu, {count} karakter fazla. Bir soru en çok {max} karakterdir.",
+          "few": "Bu, {count} karakter fazla. Bir soru en çok {max} karakterdir.",
+          "many": "Bu, {count} karakter fazla. Bir soru en çok {max} karakterdir.",
+          "other": "Bu, {count} karakter fazla. Bir soru en çok {max} karakterdir."
+        },
+        "answerTooLong": {
+          "one": "Bu, {count} karakter fazla. Bir yanıt en çok {max} karakterdir.",
+          "few": "Bu, {count} karakter fazla. Bir yanıt en çok {max} karakterdir.",
+          "many": "Bu, {count} karakter fazla. Bir yanıt en çok {max} karakterdir.",
+          "other": "Bu, {count} karakter fazla. Bir yanıt en çok {max} karakterdir."
+        }
+      }
     }
   }
 }

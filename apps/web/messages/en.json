@@ -3864,6 +3864,88 @@
           "other": "{count} blocks · {characters} characters"
         }
       }
+    },
+    "faq": {
+      "loading": "Loading this campaign’s questions",
+      "listFailed": "The questions could not be loaded",
+      "actionFailed": "That did not work",
+      "heading": "Questions",
+      "count": "({count})",
+      "intro": "These appear on the campaign’s FAQ tab, in this order. Answering the question a backer would otherwise ask in the comments is the point of the list.",
+      "add": "Add a question",
+      "fullTitle": "This campaign is at the limit",
+      "fullBody": "A campaign may publish {max} questions. Delete one to add another.",
+      "empty": {
+        "title": "No questions yet",
+        "body": "The campaign page shows this list on its own tab. Until there is something in it, the tab tells a backer the campaign has not answered anything yet — which is true, and is worth changing before you launch.",
+        "action": "Add the first question"
+      },
+      "listLabel": "Questions, in the order backers see them",
+      "announce": {
+        "moved": "{question} moved to position {position} of {total}.",
+        "deleted": "{question} was deleted."
+      },
+      "row": {
+        "moveUp": "Move {question} up, currently {position} of {total}",
+        "moveDown": "Move {question} down, currently {position} of {total}",
+        "edit": "Edit",
+        "editLabel": "Edit {question}",
+        "delete": "Delete",
+        "deleteLabel": "Delete {question}"
+      },
+      "delete": {
+        "title": "Delete question",
+        "named": "Delete “{question}”?",
+        "note": "This cannot be undone.",
+        "keep": "Keep it",
+        "confirm": "Delete",
+        "body": "Nothing is owed against a question, so it goes for good — unlike a reward tier, which can only be hidden once somebody has chosen it."
+      },
+      "orderRefusal": {
+        "missing": "The order was refused because this page had not seen {missing}.",
+        "unexpected": "The order was refused because {unexpected} no longer exists.",
+        "both": "The order was refused because this page had not seen {missing}, and {unexpected} no longer exists.",
+        "unknown": "The order was refused because the two lists disagreed.",
+        "reread": "The list has been read again, so it now matches the campaign — put it back in the order you wanted.",
+        "conjunction": "and",
+        "others": {
+          "one": "{count} other question",
+          "few": "{count} other questions",
+          "many": "{count} other questions",
+          "other": "{count} other questions"
+        }
+      },
+      "editor": {
+        "titleNew": "Add a question",
+        "titleEdit": "Edit question",
+        "intro": "Questions and answers appear on the campaign page, in the order you put them in.",
+        "failed": "This question was not saved",
+        "kept": "Nothing you typed has been lost — it is still in the fields below.",
+        "question": {
+          "label": "Question",
+          "hint": "As a backer would ask it. {max} characters or fewer."
+        },
+        "answer": {
+          "label": "Answer",
+          "hint": "Plain text. Blank lines become paragraph breaks on the campaign page; nothing else is formatting. {max} characters or fewer."
+        }
+      },
+      "errors": {
+        "questionMissing": "A question is needed. It is what a backer scans the list for.",
+        "answerMissing": "An answer is needed. A question with no answer reads as a refusal to give one.",
+        "questionTooLong": {
+          "one": "That is {count} character too long. A question is at most {max}.",
+          "few": "That is {count} characters too long. A question is at most {max}.",
+          "many": "That is {count} characters too long. A question is at most {max}.",
+          "other": "That is {count} characters too long. A question is at most {max}."
+        },
+        "answerTooLong": {
+          "one": "That is {count} character too long. An answer is at most {max}.",
+          "few": "That is {count} characters too long. An answer is at most {max}.",
+          "many": "That is {count} characters too long. An answer is at most {max}.",
+          "other": "That is {count} characters too long. An answer is at most {max}."
+        }
+      }
     }
   }
 }
