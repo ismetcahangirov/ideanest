@@ -3278,7 +3278,24 @@
         "body": "This browser no longer has a session. Sign in again to keep editing this campaign."
       },
       "loadFailed": "This project could not be loaded",
-      "tryAgain": "Try again"
+      "tryAgain": "Try again",
+      "failures": {
+        "save": {
+          "signedOut": "You have been signed out. Sign in again — nothing you typed has been lost.",
+          "notAllowed": "You are not allowed to edit this project.",
+          "gone": "This project no longer exists.",
+          "stale": "The project has changed since this page was opened. Reload it to see the current version.",
+          "invalid": "The service rejected the change. Check the fields marked below.",
+          "unsaved": "The change could not be saved. Try again.",
+          "unreachable": "The service could not be reached, so nothing was saved. Try again."
+        },
+        "load": {
+          "forbidden": "You do not have access to this project.",
+          "notFound": "That project could not be found.",
+          "refused": "The service refused the request. Try again.",
+          "unreachable": "The service could not be reached. Check your connection and try again."
+        }
+      }
     },
     "basics": {
       "loading": "Loading this campaign",
@@ -4069,6 +4086,26 @@
         "forbidden": "You do not have access to this campaign.",
         "refused": "The service refused the request.",
         "unreachable": "The service could not be reached. Check your connection and try again."
+      }
+    },
+    "pages": {
+      "basics": {
+        "metaDescription": "The title, summary, category, goal, duration, and cover image of your campaign."
+      },
+      "rewards": {
+        "metaDescription": "The items your campaign produces, and the reward tiers backers choose from — prices, quantities, delivery, and order."
+      },
+      "story": {
+        "metaDescription": "The long-form story of your campaign, its risks and challenges, and its earlier versions."
+      },
+      "faq": {
+        "metaDescription": "The questions your campaign answers on its own page, and the order backers read them in."
+      },
+      "prelaunch": {
+        "metaDescription": "Open a pre-launch page, share the link, and collect the people who want to be told when your campaign opens."
+      },
+      "review": {
+        "metaDescription": "How complete your campaign is, what moderation has said about it, and submitting it for review."
       }
     }
   }

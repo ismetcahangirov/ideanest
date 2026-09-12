@@ -131,7 +131,7 @@ export function ReviewPanel({ projectId, copy }: ReviewPanelProps) {
    * checklist into `ProjectEdit` would put a query on `project_state_transitions`
    * behind every autosave in every other tab.
    */
-  const { project, status, error, reload, apply } = useProjectEdit(projectId);
+  const { project, status, error, reload, apply } = useProjectEdit(projectId, copy.frame.failures.load);
   const router = useRouter();
 
   /*

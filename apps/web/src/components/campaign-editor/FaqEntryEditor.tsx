@@ -59,7 +59,7 @@ import { describeFailure, type SaveFailure } from './useAutosave';
  */
 export interface FaqEntryEditorProps {
   /** Every word this drawer draws, and the refusal vocabulary below it — issue #459. */
-  copy: Pick<FaqCopy, 'drawer' | 'editor' | 'errors'>;
+  copy: Pick<FaqCopy, 'frame' | 'drawer' | 'editor' | 'errors'>;
   projectId: string;
   open: boolean;
   /** The entry being edited, or null to add one. */
@@ -127,7 +127,7 @@ export function FaqEntryEditor({
       }
       onOpenChange(false);
     } catch (cause) {
-      setFailure(describeFailure(cause));
+      setFailure(describeFailure(cause, copy.frame.failures.save));
     } finally {
       setSaving(false);
     }

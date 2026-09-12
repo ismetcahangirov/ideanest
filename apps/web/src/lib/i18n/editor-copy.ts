@@ -98,6 +98,32 @@ export interface EditorFrameCopy {
     readonly saved: string;
     readonly failed: string;
   };
+  /**
+   * What the client says when the service said nothing — `useProjectEdit` and `useAutosave`.
+   *
+   * <p>On the frame rather than on a tab because both hooks are used by all six, and six
+   * spellings of "You have been signed out" would be six chances for one of them to say
+   * something else. The service's own `detail` is still preferred wherever it wrote one
+   * (§10.4): a problem detail written by the endpoint knows which of its rules was broken, and
+   * these functions cannot.
+   */
+  readonly failures: {
+    readonly save: {
+      readonly signedOut: string;
+      readonly notAllowed: string;
+      readonly gone: string;
+      readonly stale: string;
+      readonly invalid: string;
+      readonly unsaved: string;
+      readonly unreachable: string;
+    };
+    readonly load: {
+      readonly forbidden: string;
+      readonly notFound: string;
+      readonly refused: string;
+      readonly unreachable: string;
+    };
+  };
 }
 
 /** The tab keys, in the order `EDITOR_TABS` declares them. */
@@ -159,6 +185,23 @@ export function editorFrameCopyFrom(t: EditorTranslator): EditorFrameCopy {
       saving: t('frame.save.saving'),
       saved: t('frame.save.saved'),
       failed: t('frame.save.failed'),
+    },
+    failures: {
+      save: {
+        signedOut: t('frame.failures.save.signedOut'),
+        notAllowed: t('frame.failures.save.notAllowed'),
+        gone: t('frame.failures.save.gone'),
+        stale: t('frame.failures.save.stale'),
+        invalid: t('frame.failures.save.invalid'),
+        unsaved: t('frame.failures.save.unsaved'),
+        unreachable: t('frame.failures.save.unreachable'),
+      },
+      load: {
+        forbidden: t('frame.failures.load.forbidden'),
+        notFound: t('frame.failures.load.notFound'),
+        refused: t('frame.failures.load.refused'),
+        unreachable: t('frame.failures.load.unreachable'),
+      },
     },
   };
 }

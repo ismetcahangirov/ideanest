@@ -121,7 +121,7 @@ export interface StoryPanelProps {
 }
 
 export function StoryPanel({ projectId, copy }: StoryPanelProps) {
-  const { project, status, error, reload, apply } = useProjectEdit(projectId);
+  const { project, status, error, reload, apply } = useProjectEdit(projectId, copy.frame.failures.load);
 
   /*
    * The language, for the two things on this tab that are not a fixed sentence: how many
@@ -147,6 +147,7 @@ export function StoryPanel({ projectId, copy }: StoryPanelProps) {
   const autosave = useAutosave<ProjectPatch, ProjectEdit>({
     send: (patch) => patchProject(projectId, patch),
     onSaved: apply,
+    failures: copy.frame.failures.save,
   });
 
   useEffect(() => {

@@ -3278,7 +3278,24 @@
         "body": "Bu brauzerdə artıq sessiya yoxdur. Kampaniyanı redaktə etməyə davam etmək üçün yenidən daxil olun."
       },
       "loadFailed": "Bu layihə yüklənə bilmədi",
-      "tryAgain": "Yenidən cəhd edin"
+      "tryAgain": "Yenidən cəhd edin",
+      "failures": {
+        "save": {
+          "signedOut": "Hesabdan çıxmısınız. Yenidən daxil olun — yazdığınız heç nə itməyib.",
+          "notAllowed": "Bu layihəni redaktə etməyə icazəniz yoxdur.",
+          "gone": "Bu layihə artıq mövcud deyil.",
+          "stale": "Bu səhifə açılandan bəri layihə dəyişib. Cari versiyanı görmək üçün səhifəni yeniləyin.",
+          "invalid": "Xidmət dəyişikliyi rədd etdi. Aşağıda işarələnmiş sahələri yoxlayın.",
+          "unsaved": "Dəyişikliyi yadda saxlamaq mümkün olmadı. Yenidən cəhd edin.",
+          "unreachable": "Xidmətə çıxmaq mümkün olmadı, ona görə heç nə yadda saxlanılmadı. Yenidən cəhd edin."
+        },
+        "load": {
+          "forbidden": "Bu layihəyə girişiniz yoxdur.",
+          "notFound": "Bu layihə tapılmadı.",
+          "refused": "Xidmət sorğunu rədd etdi. Yenidən cəhd edin.",
+          "unreachable": "Xidmətə çıxmaq mümkün olmadı. Bağlantını yoxlayıb yenidən cəhd edin."
+        }
+      }
     },
     "basics": {
       "loading": "Kampaniya yüklənir",
@@ -4069,6 +4086,26 @@
         "forbidden": "Bu kampaniyaya girişiniz yoxdur.",
         "refused": "Xidmət sorğunu rədd etdi.",
         "unreachable": "Xidmətə çıxmaq mümkün olmadı. Bağlantını yoxlayıb yenidən cəhd edin."
+      }
+    },
+    "pages": {
+      "basics": {
+        "metaDescription": "Kampaniyanızın başlığı, xülasəsi, kateqoriyası, hədəfi, müddəti və örtük şəkli."
+      },
+      "rewards": {
+        "metaDescription": "Kampaniyanızın istehsal etdiyi məhsullar və dəstəkçilərin seçdiyi mükafat səviyyələri — qiymətlər, saylar, çatdırılma və sıra."
+      },
+      "story": {
+        "metaDescription": "Kampaniyanızın geniş hekayəsi, riskləri və çətinlikləri, həmçinin əvvəlki versiyaları."
+      },
+      "faq": {
+        "metaDescription": "Kampaniyanızın öz səhifəsində cavablandırdığı suallar və dəstəkçilərin onları oxuduğu sıra."
+      },
+      "prelaunch": {
+        "metaDescription": "Başlanğıcdan əvvəlki səhifəni açın, linki paylaşın və kampaniyanız açılanda xəbərdar edilmək istəyənləri toplayın."
+      },
+      "review": {
+        "metaDescription": "Kampaniyanızın nə qədər tam olduğu, moderasiyanın onun haqqında nə dediyi və onu baxışa göndərmək."
       }
     }
   }

@@ -96,7 +96,7 @@ export interface FaqPanelProps {
 }
 
 export function FaqPanel({ projectId, copy }: FaqPanelProps) {
-  const { project, status, error, reload } = useProjectEdit(projectId);
+  const { project, status, error, reload } = useProjectEdit(projectId, copy.frame.failures.load);
 
   /* The language, for the one count on this tab that declines: questions this page cannot name. */
   const locale = useRouteLocale();
@@ -136,7 +136,7 @@ export function FaqPanel({ projectId, copy }: FaqPanelProps) {
         setListStatus('ready');
       } catch (cause) {
         if (controller.signal.aborted) return;
-        setListError(describeFailure(cause).message);
+        setListError(describeFailure(cause, copy.frame.failures.save).message);
         setListStatus('failed');
       }
     })();
@@ -201,7 +201,7 @@ export function FaqPanel({ projectId, copy }: FaqPanelProps) {
           setFaqs(await reorderFaqs(projectId, order));
           setFailure(null);
         } catch (cause) {
-          setFailure(describeFailure(cause));
+          setFailure(describeFailure(cause, copy.frame.failures.save));
           /*
            * The optimistic order on screen is now a lie. Re-reading is the only
            * honest recovery: the service refuses a partial order outright, so a
@@ -272,7 +272,7 @@ export function FaqPanel({ projectId, copy }: FaqPanelProps) {
       setAnnouncement(fillPlaceholders(copy.announce.deleted, { question: faq.question }));
       setDeleting(null);
     } catch (cause) {
-      setFailure(describeFailure(cause));
+      setFailure(describeFailure(cause, copy.frame.failures.save));
     } finally {
       setBusyId(null);
     }

@@ -3278,7 +3278,24 @@
         "body": "Bu tarayıcıda artık oturum yok. Kampanyayı düzenlemeye devam etmek için yeniden giriş yapın."
       },
       "loadFailed": "Bu proje yüklenemedi",
-      "tryAgain": "Yeniden deneyin"
+      "tryAgain": "Yeniden deneyin",
+      "failures": {
+        "save": {
+          "signedOut": "Oturumunuz kapandı. Yeniden giriş yapın — yazdığınız hiçbir şey kaybolmadı.",
+          "notAllowed": "Bu projeyi düzenleme izniniz yok.",
+          "gone": "Bu proje artık mevcut değil.",
+          "stale": "Bu sayfa açıldığından beri proje değişti. Güncel sürümü görmek için sayfayı yeniden yükleyin.",
+          "invalid": "Servis değişikliği reddetti. Aşağıda işaretlenen alanları kontrol edin.",
+          "unsaved": "Değişiklik kaydedilemedi. Yeniden deneyin.",
+          "unreachable": "Servise ulaşılamadı, bu yüzden hiçbir şey kaydedilmedi. Yeniden deneyin."
+        },
+        "load": {
+          "forbidden": "Bu projeye erişiminiz yok.",
+          "notFound": "Bu proje bulunamadı.",
+          "refused": "Servis isteği reddetti. Yeniden deneyin.",
+          "unreachable": "Servise ulaşılamadı. Bağlantınızı kontrol edip yeniden deneyin."
+        }
+      }
     },
     "basics": {
       "loading": "Kampanya yükleniyor",
@@ -4069,6 +4086,26 @@
         "forbidden": "Bu kampanyaya erişiminiz yok.",
         "refused": "Servis isteği reddetti.",
         "unreachable": "Servise ulaşılamadı. Bağlantınızı kontrol edip yeniden deneyin."
+      }
+    },
+    "pages": {
+      "basics": {
+        "metaDescription": "Kampanyanızın başlığı, özeti, kategorisi, hedefi, süresi ve kapak görseli."
+      },
+      "rewards": {
+        "metaDescription": "Kampanyanızın ürettiği öğeler ve destekçilerin seçtiği ödül kademeleri — fiyatlar, adetler, teslimat ve sıra."
+      },
+      "story": {
+        "metaDescription": "Kampanyanızın uzun hikâyesi, riskleri ve zorlukları ile önceki sürümleri."
+      },
+      "faq": {
+        "metaDescription": "Kampanyanızın kendi sayfasında yanıtladığı sorular ve destekçilerin onları okuduğu sıra."
+      },
+      "prelaunch": {
+        "metaDescription": "Bir lansman öncesi sayfa açın, bağlantıyı paylaşın ve kampanyanız açıldığında haber verilmesini isteyenleri toplayın."
+      },
+      "review": {
+        "metaDescription": "Kampanyanızın ne kadar eksiksiz olduğu, moderasyonun onun hakkında ne dediği ve incelemeye gönderilmesi."
       }
     }
   }

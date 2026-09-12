@@ -296,14 +296,14 @@ export function RewardTierEditor({
           onSaved(repriced);
         } catch (cause) {
           setRatesUnsaved(true);
-          setFailure(describeFailure(cause));
+          setFailure(describeFailure(cause, copy.frame.failures.save));
           return;
         }
       }
 
       onOpenChange(false);
     } catch (cause) {
-      setFailure(describeFailure(cause));
+      setFailure(describeFailure(cause, copy.frame.failures.save));
     } finally {
       setSaving(false);
     }

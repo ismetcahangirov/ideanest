@@ -41,7 +41,7 @@ import { describeFailure, type SaveFailure } from './useAutosave';
  */
 export interface ItemEditorProps {
   /** This drawer's words, and the two vocabularies below it — issue #459. */
-  copy: Pick<RewardsCopy, 'drawer' | 'itemEditor' | 'itemErrors' | 'kept'>;
+  copy: Pick<RewardsCopy, 'frame' | 'drawer' | 'itemEditor' | 'itemErrors' | 'kept'>;
   projectId: string;
   open: boolean;
   /** The item being edited, or null to create one. */
@@ -110,7 +110,7 @@ export function ItemEditor({
       }
       onOpenChange(false);
     } catch (cause) {
-      setFailure(describeFailure(cause));
+      setFailure(describeFailure(cause, copy.frame.failures.save));
     } finally {
       setSaving(false);
     }

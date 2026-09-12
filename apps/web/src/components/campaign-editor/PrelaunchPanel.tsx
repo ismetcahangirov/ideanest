@@ -115,7 +115,7 @@ export interface PrelaunchPanelProps {
 }
 
 export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
-  const { project, status, error, reload, apply } = useProjectEdit(projectId);
+  const { project, status, error, reload, apply } = useProjectEdit(projectId, copy.frame.failures.load);
 
   /* The language, for the one sentence here that declines: how many people are waiting. */
   const locale = useRouteLocale();
@@ -132,6 +132,7 @@ export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
   const autosave = useAutosave<ProjectPatch, ProjectEdit>({
     send: (patch) => patchProject(projectId, patch),
     onSaved: apply,
+    failures: copy.frame.failures.save,
   });
 
   useEffect(() => {
@@ -180,7 +181,7 @@ export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
       apply(await openPrelaunch(projectId));
       setConfirming(false);
     } catch (cause) {
-      setOpenFailure(describeFailure(cause));
+      setOpenFailure(describeFailure(cause, copy.frame.failures.save));
     } finally {
       setOpening(false);
     }

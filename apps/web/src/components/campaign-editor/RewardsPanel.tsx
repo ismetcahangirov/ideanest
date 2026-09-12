@@ -115,7 +115,7 @@ export interface RewardsPanelProps {
 }
 
 export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
-  const { project, status, error, reload } = useProjectEdit(projectId);
+  const { project, status, error, reload } = useProjectEdit(projectId, copy.frame.failures.load);
 
   /*
    * The language, for the two sentences on this tab that decline with a number: how many
@@ -180,7 +180,7 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
         setListStatus('ready');
       } catch (cause) {
         if (controller.signal.aborted) return;
-        setListError(describeFailure(cause).message);
+        setListError(describeFailure(cause, copy.frame.failures.save).message);
         setListStatus('failed');
       }
     })();
@@ -260,7 +260,7 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
           setRewards(await reorderRewards(projectId, order));
           setFailure(null);
         } catch (cause) {
-          setFailure(describeFailure(cause));
+          setFailure(describeFailure(cause, copy.frame.failures.save));
           /*
            * The optimistic order on screen is now a lie. Re-reading is the only
            * honest recovery: the service refuses a partial order outright, so a
@@ -318,7 +318,7 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
     try {
       await action();
     } catch (cause) {
-      setFailure(describeFailure(cause));
+      setFailure(describeFailure(cause, copy.frame.failures.save));
     } finally {
       setBusyId(null);
     }
