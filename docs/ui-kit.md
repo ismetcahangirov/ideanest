@@ -659,6 +659,19 @@ takes effect now. `role="switch"` is what makes a screen reader say "on" rather
 than "checked", and a live setting that announces itself as "checked" is a small
 lie. The thumb moves with `transform`, never `left`.
 
+**A password can be read back.** The mask protects against somebody standing
+behind you; it is not a property of the form, and the ability to proofread is
+what it costs. `TextInput`'s trailing slot takes the toggle, which is a real
+`<button>` in the tab order — the people most likely to need to check what they
+typed are the least likely to be holding a mouse. It carries `aria-pressed`,
+and its accessible name says which action it offers next rather than staying
+fixed, because the icon swap may not be the only carrier of the state (§9.2).
+The slot itself is `--text-tertiary`, which is right for decoration and below
+§9.1's threshold for a control: a button in it sets `--text-secondary` on
+itself. The state is never persisted — a revealed password that survived a
+navigation is a password left legible on a screen its owner has walked away
+from.
+
 **The drop zone's button is not optional.** Drag-and-drop is unreachable by
 keyboard, by switch control, and on every touch device. Dragging is the
 shortcut; the button is the control. Drag-over changes the instruction text as
@@ -1104,7 +1117,7 @@ exist — twenty routes shipped with no shared header and no footer.
 ├─────────────────────────────────────────────────┤
 │  Explore     Creators     Company     Legal     │  ← footer, --surface-1
 │  ───────────────────────────────────  --divider │
-│  © IdeaNest        Language ▾   Currency ▾      │
+│  © IdeaNest    Language: az en ru tr  Currency  │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -1127,6 +1140,15 @@ it says "this matters" and "this is happening now" in the same 40 pixels.
 `--divider` rule above it. A `--surface-2` footer reads as a panel with content
 in it and pulls the eye down at the end of every page; the footer is a place to
 stop, not a destination.
+
+**The language is a row of links; the currency is a sentence.** The sketch above
+drew both as menus and neither was built, because choosing a language meant
+reading a cookie and a cookie makes a cached page a render per visitor. A
+locale-prefixed URL removed that premise, so the language is four anchors to the
+same page under another prefix — each named in its own language, each carrying
+its own `lang`, the current one marked `aria-current` so the state is not colour.
+The currency stays a statement: it is a per-reader preference with nothing in
+the URL to carry it, and a control for it would have to know who is reading.
 
 | Element | Surface | Text |
 |---|---|---|
