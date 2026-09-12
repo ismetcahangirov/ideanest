@@ -18,7 +18,17 @@ import {
   type ProjectEdit,
   type Reward,
 } from '../../lib/projects/api';
+import { rewardsCopyFrom } from '../../lib/i18n/editor-copy';
+import { translatorFor } from '../../test-copy';
 import { RewardsPanel } from './RewardsPanel';
+
+/*
+ * The copy the page would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #459. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for; `test-copy.ts` carries the
+ * argument in full.
+ */
+const COPY = rewardsCopyFrom(translatorFor('editor'));
 
 /**
  * Appearance is reviewed in Storybook. These cover what fails silently: the
@@ -145,7 +155,7 @@ async function openRewards({ project, items, rewards }: Fixture = {}): Promise<U
   listRewardsMock.mockResolvedValue(rewards ?? [FIRST, SECOND]);
 
   const user = userEvent.setup({ advanceTimers: (ms) => void vi.advanceTimersByTime(ms) });
-  render(<RewardsPanel projectId="project-1" />);
+  render(<RewardsPanel projectId="project-1" copy={COPY} />);
 
   // The project, and the two lists that resolve together.
   await tick();
@@ -177,7 +187,7 @@ describe('RewardsPanel', () => {
     listItemsMock.mockReturnValue(new Promise<readonly Item[]>(() => {}));
     listRewardsMock.mockReturnValue(new Promise<readonly Reward[]>(() => {}));
 
-    render(<RewardsPanel projectId="project-1" />);
+    render(<RewardsPanel projectId="project-1" copy={COPY} />);
     await tick();
 
     const label = screen.getByText('Loading this campaign’s items');
@@ -657,7 +667,7 @@ describe('RewardsPanel', () => {
       listItemsMock.mockResolvedValue([]);
       listRewardsMock.mockResolvedValue([]);
 
-      render(<RewardsPanel projectId="project-1" />);
+      render(<RewardsPanel projectId="project-1" copy={COPY} />);
       await tick();
 
       expect(screen.getByText('You are signed out')).toBeInTheDocument();
@@ -669,7 +679,7 @@ describe('RewardsPanel', () => {
       listRewardsMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
 
       const user = userEvent.setup({ advanceTimers: (ms) => void vi.advanceTimersByTime(ms) });
-      render(<RewardsPanel projectId="project-1" />);
+      render(<RewardsPanel projectId="project-1" copy={COPY} />);
       await tick();
       await tick();
 

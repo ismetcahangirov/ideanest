@@ -39,6 +39,7 @@ import {
   type BasicsField,
 } from '../../lib/projects/basics';
 import { CoverImageField } from './CoverImageField';
+import type { BasicsCopy } from '../../lib/i18n/editor-copy';
 import { EditorShell } from './EditorShell';
 import { SaveStatus } from './SaveStatus';
 import { useAutosave, type SaveFailure } from './useAutosave';
@@ -88,9 +89,19 @@ function serverErrors(failure: SaveFailure | null): BasicsErrors {
 
 export interface BasicsPanelProps {
   projectId: string;
+  /**
+   * Every word this tab draws, resolved on the server — issue #459.
+   *
+   * This panel is a client component and has to be: the form autosaves as it is typed. A
+   * `useTranslations` here would need a `NextIntlClientProvider` above it, which this
+   * repository measured at up to 27.4 KiB on every route in a group; the page reads the
+   * catalogue instead and hands the words down. `lib/i18n/editor-copy.ts` carries the
+   * argument.
+   */
+  copy: BasicsCopy;
 }
 
-export function BasicsPanel({ projectId }: BasicsPanelProps) {
+export function BasicsPanel({ projectId, copy }: BasicsPanelProps) {
   const { project, status, error, reload, apply } = useProjectEdit(projectId);
 
   /**
@@ -158,7 +169,7 @@ export function BasicsPanel({ projectId }: BasicsPanelProps) {
 
   if (status === 'signed-out') {
     return (
-      <EditorShell projectId={projectId} active="basics">
+      <EditorShell projectId={projectId} copy={copy.frame} active="basics">
         <InlineAlert variant="info" title="You are signed out">
           This browser no longer has a session. Sign in again to keep editing this campaign.
         </InlineAlert>
@@ -168,7 +179,7 @@ export function BasicsPanel({ projectId }: BasicsPanelProps) {
 
   if (status === 'failed' || draft === null || project === null) {
     return (
-      <EditorShell projectId={projectId} active="basics">
+      <EditorShell projectId={projectId} copy={copy.frame} active="basics">
         {status === 'failed' ? (
           <>
             <InlineAlert variant="danger" title="This project could not be loaded">
@@ -204,10 +215,11 @@ export function BasicsPanel({ projectId }: BasicsPanelProps) {
   return (
     <EditorShell
       projectId={projectId}
+      copy={copy.frame}
       active="basics"
       title={project.title}
       state={project.state}
-      status={<SaveStatus state={autosave.state} />}
+      status={<SaveStatus state={autosave.state} copy={copy.frame.save} />}
     >
       {/*
         There is no submit. The element is a `form` so that Enter inside a field

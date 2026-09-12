@@ -23,7 +23,8 @@ import {
   unmetOf,
   type UnmetRequirement,
 } from '../../lib/projects/checklist';
-import { EditorShell, PROJECT_STATE_LABEL } from './EditorShell';
+import type { ReviewCopy } from '../../lib/i18n/editor-copy';
+import { EditorShell } from './EditorShell';
 import { useProjectEdit } from './useProjectEdit';
 
 /**
@@ -112,9 +113,19 @@ interface Refusal {
 
 export interface ReviewPanelProps {
   projectId: string;
+  /**
+   * Every word this tab draws, resolved on the server — issue #459.
+   *
+   * This panel is a client component and has to be: the form autosaves as it is typed. A
+   * `useTranslations` here would need a `NextIntlClientProvider` above it, which this
+   * repository measured at up to 27.4 KiB on every route in a group; the page reads the
+   * catalogue instead and hands the words down. `lib/i18n/editor-copy.ts` carries the
+   * argument.
+   */
+  copy: ReviewCopy;
 }
 
-export function ReviewPanel({ projectId }: ReviewPanelProps) {
+export function ReviewPanel({ projectId, copy }: ReviewPanelProps) {
   /*
    * Two reads on open, deliberately. The shell needs the campaign's title and the
    * review needs the checklist, and they are different resources — folding the
@@ -227,7 +238,7 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
 
   if (status === 'signed-out') {
     return (
-      <EditorShell projectId={projectId} active="review">
+      <EditorShell projectId={projectId} copy={copy.frame} active="review">
         <InlineAlert variant="info" title="You are signed out">
           This browser no longer has a session. Sign in again to keep editing this campaign.
         </InlineAlert>
@@ -237,7 +248,7 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
 
   if (status === 'failed' || checklistError !== null) {
     return (
-      <EditorShell projectId={projectId} active="review">
+      <EditorShell projectId={projectId} copy={copy.frame} active="review">
         <InlineAlert variant="danger" title="This campaign could not be loaded">
           {error ?? checklistError}
         </InlineAlert>
@@ -250,7 +261,7 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
 
   if (project === null || checklist === null) {
     return (
-      <EditorShell projectId={projectId} active="review">
+      <EditorShell projectId={projectId} copy={copy.frame} active="review">
         <SkeletonGroup label="Checking how complete this campaign is">
           <div className="flex flex-col gap-4">
             {LOADING_ROWS.map((row) => (
@@ -273,6 +284,7 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
   return (
     <EditorShell
       projectId={projectId}
+      copy={copy.frame}
       active="review"
       title={project.title}
       state={checklist.state}
@@ -309,7 +321,7 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
           that says there is nothing to do.
         */}
         {STATE_NOTE[checklist.state] !== undefined && (
-          <InlineAlert variant="info" title={PROJECT_STATE_LABEL[checklist.state]}>
+          <InlineAlert variant="info" title={copy.frame.states[checklist.state]}>
             {STATE_NOTE[checklist.state]}
           </InlineAlert>
         )}

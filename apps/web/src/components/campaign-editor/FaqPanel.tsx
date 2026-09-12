@@ -19,6 +19,7 @@ import {
   type ProjectFaq,
 } from '../../lib/projects/api';
 import { movedTo } from '../../lib/projects/rewards';
+import type { FaqCopy } from '../../lib/i18n/editor-copy';
 import { EditorShell } from './EditorShell';
 import { FaqEntryEditor } from './FaqEntryEditor';
 import { describeFailure, type SaveFailure } from './useAutosave';
@@ -78,9 +79,19 @@ type ListStatus = 'loading' | 'ready' | 'failed';
 
 export interface FaqPanelProps {
   projectId: string;
+  /**
+   * Every word this tab draws, resolved on the server — issue #459.
+   *
+   * This panel is a client component and has to be: the form autosaves as it is typed. A
+   * `useTranslations` here would need a `NextIntlClientProvider` above it, which this
+   * repository measured at up to 27.4 KiB on every route in a group; the page reads the
+   * catalogue instead and hands the words down. `lib/i18n/editor-copy.ts` carries the
+   * argument.
+   */
+  copy: FaqCopy;
 }
 
-export function FaqPanel({ projectId }: FaqPanelProps) {
+export function FaqPanel({ projectId, copy }: FaqPanelProps) {
   const { project, status, error, reload } = useProjectEdit(projectId);
 
   const [faqs, setFaqs] = useState<readonly ProjectFaq[]>([]);
@@ -260,7 +271,7 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
 
   if (status === 'signed-out') {
     return (
-      <EditorShell projectId={projectId} active="faq">
+      <EditorShell projectId={projectId} copy={copy.frame} active="faq">
         <InlineAlert variant="info" title="You are signed out">
           This browser no longer has a session. Sign in again to keep editing this campaign.
         </InlineAlert>
@@ -270,7 +281,7 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
 
   if (status === 'failed' || project === null) {
     return (
-      <EditorShell projectId={projectId} active="faq">
+      <EditorShell projectId={projectId} copy={copy.frame} active="faq">
         {status === 'failed' ? (
           <>
             <InlineAlert variant="danger" title="This project could not be loaded">
@@ -296,7 +307,7 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
   const full = faqs.length >= MAX_PROJECT_FAQS;
 
   return (
-    <EditorShell projectId={projectId} active="faq" title={project.title} state={project.state}>
+    <EditorShell projectId={projectId} copy={copy.frame} active="faq" title={project.title} state={project.state}>
       <div className="flex flex-col gap-6">
         {/*
           Present from the first render, so the region is registered before

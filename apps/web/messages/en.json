@@ -3234,5 +3234,45 @@
       "twoFees": "These are two separate charges. IdeaNest’s fee is what the platform keeps; the processing fee goes to the company that moves the money, and IdeaNest never receives it. The rates in force are the ones above, and they are the rates a payout is calculated with.",
       "unconfigured": "IdeaNest has not set a fee schedule, so nothing is being deducted from pledges today. This is not a permanent commitment: the rates are published here the moment any are set, and the creator agreement is where the terms are stated."
     }
+  },
+  "editor": {
+    "frame": {
+      "eyebrow": "Campaign editor",
+      "loading": "Loading",
+      "sections": "Campaign sections",
+      "soon": "soon",
+      "unavailable": ", not available yet",
+      "tabs": {
+        "basics": "Basics",
+        "rewards": "Rewards",
+        "story": "Story",
+        "faq": "FAQ",
+        "prelaunch": "Pre-launch",
+        "review": "Review"
+      },
+      "states": {
+        "DRAFT": "Draft",
+        "PRELAUNCH": "Pre-launch",
+        "SUBMITTED": "In review",
+        "CHANGES_REQUESTED": "Changes requested",
+        "REJECTED": "Rejected",
+        "APPROVED": "Approved",
+        "SCHEDULED": "Scheduled",
+        "LIVE": "Live",
+        "SUSPENDED": "Suspended",
+        "CANCELED": "Canceled",
+        "SUCCESSFUL": "Funded",
+        "UNSUCCESSFUL": "Not funded",
+        "COLLECTING": "Collecting",
+        "LATE_PLEDGE": "Late pledges",
+        "FULFILLING": "Fulfilling",
+        "COMPLETED": "Completed"
+      },
+      "save": {
+        "saving": "Saving",
+        "saved": "Saved",
+        "failed": "Not saved"
+      }
+    }
   }
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { PrelaunchPanel } from '../../../../../../components/campaign-editor/PrelaunchPanel';
 import { privatePageMetadata } from '../../../../../../lib/seo/metadata';
+import { editorPrelaunchCopy } from '../../../../../../lib/i18n/shell-copy.server';
 
 export const metadata: Metadata = privatePageMetadata({
   title: 'Pre-launch',
@@ -26,5 +27,11 @@ export default async function PrelaunchEditorPage({ params }: { params: Promise<
    * `EditorShell` draws this page's own column and heading, so the element that was here
    * carried a landmark and nothing else.
    */
-  return <PrelaunchPanel projectId={id} />;
+  /*
+   * The copy is resolved here, on the server, and handed down — issue #459. The panel
+   * is a client component because the form autosaves as it is typed, so it cannot read
+   * the catalogue itself; `lib/i18n/editor-copy.ts` carries why that is a prop rather
+   * than a provider.
+   */
+  return <PrelaunchPanel projectId={id} copy={await editorPrelaunchCopy()} />;
 }

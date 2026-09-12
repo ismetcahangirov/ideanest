@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { StoryPanel } from '../../../../../../components/campaign-editor/StoryPanel';
 import { privatePageMetadata } from '../../../../../../lib/seo/metadata';
+import { editorStoryCopy } from '../../../../../../lib/i18n/shell-copy.server';
 
 export const metadata: Metadata = privatePageMetadata({
   title: 'Story',
@@ -22,5 +23,11 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
    * `EditorShell` draws this page's own column and heading, so the element that was here
    * carried a landmark and nothing else.
    */
-  return <StoryPanel projectId={id} />;
+  /*
+   * The copy is resolved here, on the server, and handed down — issue #459. The panel
+   * is a client component because the form autosaves as it is typed, so it cannot read
+   * the catalogue itself; `lib/i18n/editor-copy.ts` carries why that is a prop rather
+   * than a provider.
+   */
+  return <StoryPanel projectId={id} copy={await editorStoryCopy()} />;
 }

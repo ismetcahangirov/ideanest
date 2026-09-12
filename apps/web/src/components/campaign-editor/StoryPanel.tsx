@@ -23,6 +23,7 @@ import {
   storyProblems,
   type StoryDocument,
 } from '../../lib/projects/story';
+import type { StoryCopy } from '../../lib/i18n/editor-copy';
 import { EditorShell } from './EditorShell';
 import { SaveStatus } from './SaveStatus';
 import { StoryBlockEditor } from './StoryBlockEditor';
@@ -103,9 +104,19 @@ function blockIndexFrom(failure: SaveFailure | null): number | null {
 
 export interface StoryPanelProps {
   projectId: string;
+  /**
+   * Every word this tab draws, resolved on the server — issue #459.
+   *
+   * This panel is a client component and has to be: the form autosaves as it is typed. A
+   * `useTranslations` here would need a `NextIntlClientProvider` above it, which this
+   * repository measured at up to 27.4 KiB on every route in a group; the page reads the
+   * catalogue instead and hands the words down. `lib/i18n/editor-copy.ts` carries the
+   * argument.
+   */
+  copy: StoryCopy;
 }
 
-export function StoryPanel({ projectId }: StoryPanelProps) {
+export function StoryPanel({ projectId, copy }: StoryPanelProps) {
   const { project, status, error, reload, apply } = useProjectEdit(projectId);
 
   /**
@@ -195,7 +206,7 @@ export function StoryPanel({ projectId }: StoryPanelProps) {
 
   if (status === 'signed-out') {
     return (
-      <EditorShell projectId={projectId} active="story">
+      <EditorShell projectId={projectId} copy={copy.frame} active="story">
         <InlineAlert variant="info" title="You are signed out">
           This browser no longer has a session. Sign in again to keep editing this campaign.
         </InlineAlert>
@@ -207,6 +218,7 @@ export function StoryPanel({ projectId }: StoryPanelProps) {
     return (
       <EditorShell
         projectId={projectId}
+        copy={copy.frame}
         active="story"
         title={project.title}
         state={project.state}
@@ -224,7 +236,7 @@ export function StoryPanel({ projectId }: StoryPanelProps) {
 
   if (status === 'failed' || document === null || project === null) {
     return (
-      <EditorShell projectId={projectId} active="story">
+      <EditorShell projectId={projectId} copy={copy.frame} active="story">
         {status === 'failed' ? (
           <>
             <InlineAlert variant="danger" title="This project could not be loaded">
@@ -257,10 +269,11 @@ export function StoryPanel({ projectId }: StoryPanelProps) {
   return (
     <EditorShell
       projectId={projectId}
+      copy={copy.frame}
       active="story"
       title={project.title}
       state={project.state}
-      status={<SaveStatus state={autosave.state} />}
+      status={<SaveStatus state={autosave.state} copy={copy.frame.save} />}
     >
       <div className="flex flex-col gap-8">
         {failure !== null && (

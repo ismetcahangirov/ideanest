@@ -35,6 +35,7 @@ import {
   showBlockedReason,
   showPatch,
 } from '../../lib/projects/rewards';
+import type { RewardsCopy } from '../../lib/i18n/editor-copy';
 import { EditorShell } from './EditorShell';
 import { ItemEditor } from './ItemEditor';
 import { ItemsSection } from './ItemsSection';
@@ -97,9 +98,19 @@ type ListStatus = 'loading' | 'ready' | 'failed';
 
 export interface RewardsPanelProps {
   projectId: string;
+  /**
+   * Every word this tab draws, resolved on the server — issue #459.
+   *
+   * This panel is a client component and has to be: the form autosaves as it is typed. A
+   * `useTranslations` here would need a `NextIntlClientProvider` above it, which this
+   * repository measured at up to 27.4 KiB on every route in a group; the page reads the
+   * catalogue instead and hands the words down. `lib/i18n/editor-copy.ts` carries the
+   * argument.
+   */
+  copy: RewardsCopy;
 }
 
-export function RewardsPanel({ projectId }: RewardsPanelProps) {
+export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
   const { project, status, error, reload } = useProjectEdit(projectId);
 
   const [items, setItems] = useState<readonly Item[]>([]);
@@ -340,7 +351,7 @@ export function RewardsPanel({ projectId }: RewardsPanelProps) {
 
   if (status === 'signed-out') {
     return (
-      <EditorShell projectId={projectId} active="rewards">
+      <EditorShell projectId={projectId} copy={copy.frame} active="rewards">
         <InlineAlert variant="info" title="You are signed out">
           This browser no longer has a session. Sign in again to keep editing this campaign.
         </InlineAlert>
@@ -350,7 +361,7 @@ export function RewardsPanel({ projectId }: RewardsPanelProps) {
 
   if (status === 'failed' || project === null) {
     return (
-      <EditorShell projectId={projectId} active="rewards">
+      <EditorShell projectId={projectId} copy={copy.frame} active="rewards">
         {status === 'failed' ? (
           <>
             <InlineAlert variant="danger" title="This project could not be loaded">
@@ -378,6 +389,7 @@ export function RewardsPanel({ projectId }: RewardsPanelProps) {
   return (
     <EditorShell
       projectId={projectId}
+      copy={copy.frame}
       active="rewards"
       title={project.title}
       state={project.state}

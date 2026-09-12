@@ -35,6 +35,7 @@ import {
   type BasicsField,
 } from '../../lib/projects/basics';
 import { CoverImageField } from './CoverImageField';
+import type { PrelaunchCopy } from '../../lib/i18n/editor-copy';
 import { EditorShell } from './EditorShell';
 import { SaveStatus } from './SaveStatus';
 import { useAutosave, describeFailure, type SaveFailure } from './useAutosave';
@@ -98,9 +99,19 @@ function prelaunchLink(projectId: string): string {
 
 export interface PrelaunchPanelProps {
   projectId: string;
+  /**
+   * Every word this tab draws, resolved on the server — issue #459.
+   *
+   * This panel is a client component and has to be: the form autosaves as it is typed. A
+   * `useTranslations` here would need a `NextIntlClientProvider` above it, which this
+   * repository measured at up to 27.4 KiB on every route in a group; the page reads the
+   * catalogue instead and hands the words down. `lib/i18n/editor-copy.ts` carries the
+   * argument.
+   */
+  copy: PrelaunchCopy;
 }
 
-export function PrelaunchPanel({ projectId }: PrelaunchPanelProps) {
+export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
   const { project, status, error, reload, apply } = useProjectEdit(projectId);
 
   /** Seeded once, for the reason `BasicsPanel` gives: re-seeding eats keystrokes. */
@@ -184,7 +195,7 @@ export function PrelaunchPanel({ projectId }: PrelaunchPanelProps) {
 
   if (status === 'signed-out') {
     return (
-      <EditorShell projectId={projectId} active="prelaunch">
+      <EditorShell projectId={projectId} copy={copy.frame} active="prelaunch">
         <InlineAlert variant="info" title="You are signed out">
           This browser no longer has a session. Sign in again to keep editing this campaign.
         </InlineAlert>
@@ -194,7 +205,7 @@ export function PrelaunchPanel({ projectId }: PrelaunchPanelProps) {
 
   if (status === 'failed' || draft === null || project === null) {
     return (
-      <EditorShell projectId={projectId} active="prelaunch">
+      <EditorShell projectId={projectId} copy={copy.frame} active="prelaunch">
         {status === 'failed' ? (
           <>
             <InlineAlert variant="danger" title="This project could not be loaded">
@@ -227,10 +238,11 @@ export function PrelaunchPanel({ projectId }: PrelaunchPanelProps) {
   return (
     <EditorShell
       projectId={projectId}
+      copy={copy.frame}
       active="prelaunch"
       title={project.title}
       state={project.state}
-      status={<SaveStatus state={autosave.state} />}
+      status={<SaveStatus state={autosave.state} copy={copy.frame.save} />}
     >
       <div className="flex flex-col gap-7">
         {autosave.failure !== null && (

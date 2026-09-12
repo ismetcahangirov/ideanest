@@ -12,7 +12,17 @@ import {
 } from '../../lib/projects/api';
 import { measureImage } from '../../lib/projects/coverImage';
 import { IMAGE_ALT_REQUIRED, type StoryDocument } from '../../lib/projects/story';
+import { storyCopyFrom } from '../../lib/i18n/editor-copy';
+import { translatorFor } from '../../test-copy';
 import { StoryPanel } from './StoryPanel';
+
+/*
+ * The copy the page would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #459. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for; `test-copy.ts` carries the
+ * argument in full.
+ */
+const COPY = storyCopyFrom(translatorFor('editor'));
 
 /**
  * Appearance is reviewed in Storybook. The document model's own rules are pinned
@@ -77,7 +87,7 @@ const PROJECT: ProjectEdit = {
 };
 
 function renderPanel() {
-  return render(<StoryPanel projectId="project-1" />);
+  return render(<StoryPanel projectId="project-1" copy={COPY} />);
 }
 
 /** Every patch the panel has sent, oldest first. */

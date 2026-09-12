@@ -18,6 +18,20 @@ import {
 } from './auth-copy';
 import { type CheckoutCopy, checkoutCopyFrom } from './checkout-copy';
 import {
+  type BasicsCopy,
+  type FaqCopy,
+  type PrelaunchCopy,
+  type ReviewCopy,
+  type RewardsCopy,
+  type StoryCopy,
+  basicsCopyFrom,
+  faqCopyFrom,
+  prelaunchCopyFrom,
+  reviewCopyFrom,
+  rewardsCopyFrom,
+  storyCopyFrom,
+} from './editor-copy';
+import {
   type CampaignActionsCopy,
   type CommentCopy,
   campaignActionsCopyFrom,
@@ -258,4 +272,37 @@ export async function graphContext(): Promise<{
   readonly trailCopy: TrailCopy;
 }> {
   return { locale: localeOrDefault(await getLocale()), trailCopy: await trailCopy() };
+}
+
+/* -------------------------------------------------------------------------
+ * The campaign editor — issue #459
+ *
+ * One accessor per tab, for the reason the authentication block above gives: each of the six
+ * pages under `app/[locale]/projects/[id]/edit` renders one panel, and handing it the whole
+ * editor's vocabulary would put the reward drawer's sixty-seven strings into the flight
+ * payload of the screen where somebody is typing a title.
+ * ---------------------------------------------------------------------- */
+
+export async function editorBasicsCopy(): Promise<BasicsCopy> {
+  return basicsCopyFrom(await getTranslations('editor'));
+}
+
+export async function editorRewardsCopy(): Promise<RewardsCopy> {
+  return rewardsCopyFrom(await getTranslations('editor'));
+}
+
+export async function editorStoryCopy(): Promise<StoryCopy> {
+  return storyCopyFrom(await getTranslations('editor'));
+}
+
+export async function editorFaqCopy(): Promise<FaqCopy> {
+  return faqCopyFrom(await getTranslations('editor'));
+}
+
+export async function editorPrelaunchCopy(): Promise<PrelaunchCopy> {
+  return prelaunchCopyFrom(await getTranslations('editor'));
+}
+
+export async function editorReviewCopy(): Promise<ReviewCopy> {
+  return reviewCopyFrom(await getTranslations('editor'));
 }

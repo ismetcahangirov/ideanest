@@ -3234,5 +3234,45 @@
       "twoFees": "Bunlar iki ayrı kesintidir. IdeaNest’in ücreti platformun aldığıdır; işlem ücreti parayı taşıyan şirkete gider ve IdeaNest onu hiçbir zaman almaz. Yürürlükteki oranlar yukarıdakilerdir ve ödeme tam olarak bunlarla hesaplanır.",
       "unconfigured": "IdeaNest henüz bir ücret tarifesi belirlemedi, bu yüzden bugün desteklerden hiçbir şey kesilmiyor. Bu kalıcı bir taahhüt değildir: herhangi bir oran belirlendiği anda burada yayımlanır, koşullar ise yaratıcı sözleşmesinde belirtilir."
     }
+  },
+  "editor": {
+    "frame": {
+      "eyebrow": "Kampanya düzenleyici",
+      "loading": "Yükleniyor",
+      "sections": "Kampanya bölümleri",
+      "soon": "yakında",
+      "unavailable": ", henüz kullanılamıyor",
+      "tabs": {
+        "basics": "Temel bilgiler",
+        "rewards": "Ödüller",
+        "story": "Hikâye",
+        "faq": "Sorular",
+        "prelaunch": "Lansman öncesi",
+        "review": "İnceleme"
+      },
+      "states": {
+        "DRAFT": "Taslak",
+        "PRELAUNCH": "Lansman öncesi",
+        "SUBMITTED": "İncelemede",
+        "CHANGES_REQUESTED": "Değişiklik istendi",
+        "REJECTED": "Reddedildi",
+        "APPROVED": "Onaylandı",
+        "SCHEDULED": "Planlandı",
+        "LIVE": "Etkin",
+        "SUSPENDED": "Askıya alındı",
+        "CANCELED": "İptal edildi",
+        "SUCCESSFUL": "Fonlandı",
+        "UNSUCCESSFUL": "Fonlanmadı",
+        "COLLECTING": "Tahsilat",
+        "LATE_PLEDGE": "Geç destekler",
+        "FULFILLING": "Gönderim",
+        "COMPLETED": "Tamamlandı"
+      },
+      "save": {
+        "saving": "Kaydediliyor",
+        "saved": "Kaydedildi",
+        "failed": "Kaydedilmedi"
+      }
+    }
   }
 }

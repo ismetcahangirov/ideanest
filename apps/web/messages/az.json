@@ -3234,5 +3234,45 @@
       "twoFees": "Bunlar iki ayrı tutulmadır. IdeaNest-in komissiyası platformanın saxladığıdır; emal komissiyası isə pulu hərəkət etdirən şirkətə gedir və IdeaNest onu heç vaxt almır. Qüvvədə olan dərəcələr yuxarıdakılardır və ödəniş məhz onlarla hesablanır.",
       "unconfigured": "IdeaNest hələ komissiya cədvəli təyin etməyib, ona görə də bu gün dəstəklərdən heç nə tutulmur. Bu daimi öhdəlik deyil: hər hansı dərəcə təyin olunan kimi burada dərc olunacaq, şərtlər isə yaradıcı müqaviləsində göstərilir."
     }
+  },
+  "editor": {
+    "frame": {
+      "eyebrow": "Kampaniya redaktoru",
+      "loading": "Yüklənir",
+      "sections": "Kampaniya bölmələri",
+      "soon": "tezliklə",
+      "unavailable": ", hələ əlçatan deyil",
+      "tabs": {
+        "basics": "Əsaslar",
+        "rewards": "Mükafatlar",
+        "story": "Hekayə",
+        "faq": "Suallar",
+        "prelaunch": "Başlanğıcdan əvvəl",
+        "review": "Baxış"
+      },
+      "states": {
+        "DRAFT": "Qaralama",
+        "PRELAUNCH": "Başlanğıcdan əvvəl",
+        "SUBMITTED": "Baxışdadır",
+        "CHANGES_REQUESTED": "Dəyişiklik tələb olunub",
+        "REJECTED": "Rədd edilib",
+        "APPROVED": "Təsdiqlənib",
+        "SCHEDULED": "Planlaşdırılıb",
+        "LIVE": "Aktiv",
+        "SUSPENDED": "Dayandırılıb",
+        "CANCELED": "Ləğv edildi",
+        "SUCCESSFUL": "Maliyyələşdi",
+        "UNSUCCESSFUL": "Maliyyələşmədi",
+        "COLLECTING": "Yığılır",
+        "LATE_PLEDGE": "Gecikmiş dəstəklər",
+        "FULFILLING": "İcra olunur",
+        "COMPLETED": "Tamamlandı"
+      },
+      "save": {
+        "saving": "Yadda saxlanılır",
+        "saved": "Yadda saxlanıldı",
+        "failed": "Yadda saxlanılmadı"
+      }
+    }
   }
 }
