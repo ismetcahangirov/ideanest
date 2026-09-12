@@ -3946,6 +3946,130 @@
           "other": "Bu, {count} karakter fazla. Bir yanıt en çok {max} karakterdir."
         }
       }
+    },
+    "prelaunch": {
+      "loading": "Kampanya yükleniyor",
+      "saveFailed": {
+        "title": "Bu değişiklik kaydedilmedi",
+        "kept": "Yazdığınız hiçbir şey kaybolmadı — hepsi aşağıdaki alanlarda duruyor ve yeniden gönderilecek."
+      },
+      "notOpen": {
+        "heading": "Lansman öncesi sayfa henüz açık değil",
+        "body": "Açmak, aşağıdaki başlığı, özeti ve kapak görselini paylaşabileceğiniz bir bağlantıda yayımlar ve insanların kampanya açılır açılmaz haber verilmesini istemesine olanak tanır. Kampanyayla ilgili başka hiçbir şey herkese açık olmaz ve para söz konusu değildir.",
+        "permanent": "Yeniden kapatılamaz — kampanya buradan ileri gider: önce incelemeye, sonra lansmana.",
+        "failed": "Sayfa açılmadı",
+        "action": "Lansman öncesi sayfayı aç"
+      },
+      "live": {
+        "heading": "Lansman öncesi sayfa açık",
+        "countUnavailable": "Bekleyen kişi sayısı yüklenemedi.",
+        "waiting": {
+          "one": "Bu kampanyayı {count} kişi bekliyor.",
+          "few": "Bu kampanyayı {count} kişi bekliyor.",
+          "many": "Bu kampanyayı {count} kişi bekliyor.",
+          "other": "Bu kampanyayı {count} kişi bekliyor."
+        },
+        "linkLabel": "Lansman öncesi bağlantı",
+        "linkHint": "Bunu istediğiniz yerde paylaşın. Bağlantıyı açan herkes kampanya başladığında haber verilmesini isteyebilir.",
+        "copy": "Kopyala",
+        "copied": "Kopyalandı",
+        "copiedAnnounced": "Bağlantı kopyalandı"
+      },
+      "closed": {
+        "title": "Lansman öncesi sayfa kapandı",
+        "body": "Bu kampanya lansman öncesi sayfasını geçti. Hatırlatılmasını isteyen herkese, kampanya başladığında bir kez haber verilir."
+      },
+      "form": {
+        "heading": "Sayfa ne diyor",
+        "intro": "Bunlar kampanyanın başlığı, özeti ve kapak görselidir — Temel bilgiler sekmesindekilerin aynısı. Kampanyadan farklı bir şey vaat eden bir lansman öncesi sayfa, bunu fark etmesi en olası kişilere vaatte bulunurdu.",
+        "titleHint": "Lansman öncesi sayfada ve keşfet ızgarasında görünen ad. En çok {max} karakter.",
+        "blurbHint": "Bir veya iki cümle. Takip etmeye karar vermeden önce okunan şey budur. En çok {max} karakter."
+      },
+      "confirm": {
+        "title": "Lansman öncesi sayfa açılsın mı?",
+        "intro": "Başlık, özet ve kapak görseli, herkesin açabileceği bir bağlantıda herkese açık olur. Bu geri alınamaz.",
+        "body": "Ödülleriniz, hikâyeniz veya fonlama hedefinizle ilgili hiçbir şey yayımlanmaz ve kampanya, incelenip başlatılana kadar para almaz.",
+        "cancel": "Vazgeç",
+        "action": "Sayfayı aç",
+        "opening": "Açılıyor"
+      }
+    },
+    "review": {
+      "loading": "Bu kampanyanın ne kadar eksiksiz olduğu denetleniyor",
+      "loadFailed": "Bu kampanya yüklenemedi",
+      "moderation": {
+        "rejected": "Bu kampanya reddedildi",
+        "changes": "Moderatörlerimiz değişiklik istedi",
+        "noReason": "Bir gerekçe kaydedilmemiş."
+      },
+      "stateNote": {
+        "SUBMITTED": "Bu kampanya moderatörlerimizde. İnceleme sürerken yapmanız gereken bir şey yok, sonuç size bildirilecek. Bu arada düzenlemeye devam edebilirsiniz.",
+        "APPROVED": "Moderasyon bu kampanyayı onayladı. Siz başlattığınızda ya da belirlediğiniz lansman saatinde yayına girer.",
+        "SCHEDULED": "Onaylandı ve lansman saatini bekliyor.",
+        "REJECTED": "Bu kampanya reddedildi ve yeniden gönderilemez.",
+        "LIVE": "Bu kampanya etkin ve destek alıyor."
+      },
+      "refusal": {
+        "title": "Bu kampanya gönderilmedi",
+        "item": "{label}: {detail}",
+        "plans": "Diğer planların neye izin verdiğine bakın",
+        "checkAgain": "Yeniden denetleyin"
+      },
+      "progress": {
+        "heading": "Eksiksizlik",
+        "summary": "%{score} tamamlandı. Zorunlu {blockingTotal} maddeden {blockingDone}, önerilen {advisoryTotal} maddeden {advisoryDone} hazır.",
+        "barLabel": "Kampanyanın eksiksizliği: yüzde {score}"
+      },
+      "blocking": {
+        "heading": "Göndermeden önce zorunlu",
+        "description": "Bunların her biri platformun gönderim kurallarından gelir. Hepsi tamamlanmadan kampanya moderasyona gidemez."
+      },
+      "advisory": {
+        "heading": "Önerilir ama zorunlu değil",
+        "description": "Bunların hiçbiri göndermenizi engellemez. Her biri, iyi giden kampanyalarda genelde bulunan bir şeydir."
+      },
+      "row": {
+        "done": "Hazır",
+        "requiredNotDone": "Zorunlu, hazır değil",
+        "recommendedNotDone": "Önerilir, hazır değil",
+        "status": ", {status}",
+        "fix": "{section} bölümünde düzeltin",
+        "fixDetail": ": {label}"
+      },
+      "submit": {
+        "heading": "İncelemeye gönder",
+        "submitting": "Gönderiliyor",
+        "ready": "Bir moderatör kampanyayı okur ve ya onaylar, ya değişiklik ister, ya da reddeder. İnceleme sürerken düzenlemeye devam edebilirsiniz.",
+        "held": {
+          "one": "Zorunlu {count} madde henüz hazır değil. Onu tamamlayın, bu düğme kullanılabilir olsun.",
+          "few": "Zorunlu {count} madde henüz hazır değil. Onları tamamlayın, bu düğme kullanılabilir olsun.",
+          "many": "Zorunlu {count} madde henüz hazır değil. Onları tamamlayın, bu düğme kullanılabilir olsun.",
+          "other": "Zorunlu {count} madde henüz hazır değil. Onları tamamlayın, bu düğme kullanılabilir olsun."
+        },
+        "heldWithSuggestions": {
+          "one": "Zorunlu {count} madde henüz hazır değil. Önerilen maddelerin bununla ilgisi yok.",
+          "few": "Zorunlu {count} madde henüz hazır değil. Önerilen maddelerin bununla ilgisi yok.",
+          "many": "Zorunlu {count} madde henüz hazır değil. Önerilen maddelerin bununla ilgisi yok.",
+          "other": "Zorunlu {count} madde henüz hazır değil. Önerilen maddelerin bununla ilgisi yok."
+        }
+      },
+      "launch": {
+        "heading": "Bu kampanyayı başlat",
+        "failed": "Bu kampanya başlatılmadı",
+        "confirmHeading": "Bu kampanya şimdi başlatılsın mı?",
+        "confirmBody": "Hemen herkese açık olur ve destek almaya başlar. Fonlama hedefi ve son tarih lansmanda sabitlenir ve sonradan düzenlenemez; etkin bir kampanya taslağa geri alınamaz.",
+        "now": "Şimdi başlat",
+        "launching": "Başlatılıyor",
+        "cancel": "Vazgeç",
+        "explanation": "Kampanya başladığı anda platformun her yerinde görünür ve destek almaya başlar. Hedefi ve son tarihi o andan itibaren dondurulur; etkin bir kampanya taslağa geri alınamaz."
+      },
+      "failures": {
+        "notFound": "Bu kampanya bulunamadı.",
+        "planLimit": "Planınız bu kampanyayı kapsamıyor.",
+        "forbidden": "Bu kampanyaya erişiminiz yok.",
+        "refused": "Servis isteği reddetti.",
+        "unreachable": "Servise ulaşılamadı. Bağlantınızı kontrol edip yeniden deneyin."
+      }
     }
   }
 }

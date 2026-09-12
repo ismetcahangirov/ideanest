@@ -875,10 +875,129 @@ export interface PrelaunchCopy {
    * draws `CoverImageField` to set it.
    */
   readonly cover: CoverImageCopy;
+  readonly loading: string;
+  readonly saveFailed: { readonly title: string; readonly kept: string };
+  readonly notOpen: {
+    readonly heading: string;
+    readonly body: string;
+    readonly permanent: string;
+    readonly failed: string;
+    readonly action: string;
+  };
+  readonly live: {
+    readonly heading: string;
+    readonly countUnavailable: string;
+    /** Carries `{count}`. */
+    readonly waiting: PluralForms;
+    readonly linkLabel: string;
+    readonly linkHint: string;
+    readonly copy: string;
+    readonly copied: string;
+    readonly copiedAnnounced: string;
+  };
+  readonly closed: { readonly title: string; readonly body: string };
+  /** Both hints carry `{max}`. The two labels are the basics tab's own. */
+  readonly form: {
+    readonly heading: string;
+    readonly intro: string;
+    readonly titleLabel: string;
+    readonly titleHint: string;
+    readonly blurbLabel: string;
+    readonly blurbHint: string;
+  };
+  readonly confirm: {
+    readonly title: string;
+    readonly intro: string;
+    readonly body: string;
+    readonly cancel: string;
+    readonly action: string;
+    readonly opening: string;
+  };
 }
 
 export interface ReviewCopy {
   readonly frame: EditorFrameCopy;
+  readonly loading: string;
+  readonly loadFailed: string;
+  readonly moderation: {
+    readonly rejected: string;
+    readonly changes: string;
+    readonly noReason: string;
+  };
+  /**
+   * What a campaign in this state is waiting for, said plainly.
+   *
+   * Five of the sixteen, because the other eleven have nothing to tell a creator on this tab.
+   * Partial on purpose: a note for every state would mean writing one for `COLLECTING`, where
+   * the honest answer is that this tab has nothing to say.
+   */
+  readonly stateNote: Partial<Readonly<Record<ProjectState, string>>>;
+  readonly refusal: {
+    readonly title: string;
+    /** Carries `{label}` and `{detail}` — both the server's own words. */
+    readonly item: string;
+    readonly plans: string;
+    readonly checkAgain: string;
+  };
+  readonly progress: {
+    readonly heading: string;
+    /** Carries `{score}` and the four counts. */
+    readonly summary: string;
+    /** Carries `{score}`. */
+    readonly barLabel: string;
+  };
+  readonly blocking: { readonly heading: string; readonly description: string };
+  readonly advisory: { readonly heading: string; readonly description: string };
+  readonly row: {
+    readonly done: string;
+    readonly requiredNotDone: string;
+    readonly recommendedNotDone: string;
+    /** Carries `{status}`; the leading comma is load-bearing in an accessible name. */
+    readonly status: string;
+    /** Carries `{section}`. */
+    readonly fix: string;
+    /** Carries `{label}`. */
+    readonly fixDetail: string;
+  };
+  readonly submit: {
+    readonly heading: string;
+    readonly submitting: string;
+    readonly ready: string;
+    /** Both carry `{count}` — how many required items are still not done. */
+    readonly held: PluralForms;
+    readonly heldWithSuggestions: PluralForms;
+  };
+  readonly launch: {
+    readonly heading: string;
+    readonly failed: string;
+    readonly confirmHeading: string;
+    readonly confirmBody: string;
+    readonly now: string;
+    readonly launching: string;
+    readonly cancel: string;
+    readonly explanation: string;
+  };
+  /**
+   * What the client says when the service said nothing.
+   *
+   * The service's own sentence is preferred wherever it wrote one (§10.4) — it knows which of
+   * its rules was broken. These are the statuses that arrive without one.
+   */
+  readonly failures: {
+    readonly notFound: string;
+    readonly planLimit: string;
+    readonly forbidden: string;
+    readonly refused: string;
+    readonly unreachable: string;
+  };
+  /**
+   * The three sections a checklist row can point at, which are three of the editor's own tabs.
+   *
+   * Read from `frame.tabs` rather than given keys of their own: "Fix in Basics" names the tab
+   * the creator is about to open, and a second spelling would be the same tab called two things
+   * on two screens.
+   */
+  readonly sections: Readonly<Record<'basics' | 'rewards' | 'story', string>>;
 }
 
 export function basicsCopyFrom(t: EditorTranslator): BasicsCopy {
@@ -1421,9 +1540,133 @@ export function faqCopyFrom(t: EditorTranslator): FaqCopy {
 
 export function prelaunchCopyFrom(t: EditorTranslator): PrelaunchCopy {
   const basics = basicsCopyFrom(t);
-  return { frame: basics.frame, errors: basics.errors, cover: basics.cover };
+
+  return {
+    frame: basics.frame,
+    errors: basics.errors,
+    cover: basics.cover,
+    loading: t('prelaunch.loading'),
+    saveFailed: {
+      title: t('prelaunch.saveFailed.title'),
+      kept: t('prelaunch.saveFailed.kept'),
+    },
+    notOpen: {
+      heading: t('prelaunch.notOpen.heading'),
+      body: t('prelaunch.notOpen.body'),
+      permanent: t('prelaunch.notOpen.permanent'),
+      failed: t('prelaunch.notOpen.failed'),
+      action: t('prelaunch.notOpen.action'),
+    },
+    live: {
+      heading: t('prelaunch.live.heading'),
+      countUnavailable: t('prelaunch.live.countUnavailable'),
+      waiting: t.raw('prelaunch.live.waiting') as PluralForms,
+      linkLabel: t('prelaunch.live.linkLabel'),
+      linkHint: t('prelaunch.live.linkHint'),
+      copy: t('prelaunch.live.copy'),
+      copied: t('prelaunch.live.copied'),
+      copiedAnnounced: t('prelaunch.live.copiedAnnounced'),
+    },
+    closed: { title: t('prelaunch.closed.title'), body: t('prelaunch.closed.body') },
+    form: {
+      heading: t('prelaunch.form.heading'),
+      intro: t('prelaunch.form.intro'),
+      /*
+       * The two labels are the basics tab's own keys. The field is the same field — a
+       * pre-launch page shows the campaign's title, not a second one — and two keys would be
+       * two chances for the same control to be called different things on two tabs.
+       */
+      titleLabel: basics.title.label,
+      titleHint: String(t.raw('prelaunch.form.titleHint')),
+      blurbLabel: basics.blurb.label,
+      blurbHint: String(t.raw('prelaunch.form.blurbHint')),
+    },
+    confirm: {
+      title: t('prelaunch.confirm.title'),
+      intro: t('prelaunch.confirm.intro'),
+      body: t('prelaunch.confirm.body'),
+      cancel: t('prelaunch.confirm.cancel'),
+      action: t('prelaunch.confirm.action'),
+      opening: t('prelaunch.confirm.opening'),
+    },
+  };
 }
 
 export function reviewCopyFrom(t: EditorTranslator): ReviewCopy {
-  return { frame: editorFrameCopyFrom(t) };
+  const frame = editorFrameCopyFrom(t);
+  const template = (key: string): string => String(t.raw(`review.${key}`));
+
+  return {
+    frame,
+    loading: t('review.loading'),
+    loadFailed: t('review.loadFailed'),
+    moderation: {
+      rejected: t('review.moderation.rejected'),
+      changes: t('review.moderation.changes'),
+      noReason: t('review.moderation.noReason'),
+    },
+    stateNote: {
+      SUBMITTED: t('review.stateNote.SUBMITTED'),
+      APPROVED: t('review.stateNote.APPROVED'),
+      SCHEDULED: t('review.stateNote.SCHEDULED'),
+      REJECTED: t('review.stateNote.REJECTED'),
+      LIVE: t('review.stateNote.LIVE'),
+    },
+    refusal: {
+      title: t('review.refusal.title'),
+      item: template('refusal.item'),
+      plans: t('review.refusal.plans'),
+      checkAgain: t('review.refusal.checkAgain'),
+    },
+    progress: {
+      heading: t('review.progress.heading'),
+      summary: template('progress.summary'),
+      barLabel: template('progress.barLabel'),
+    },
+    blocking: {
+      heading: t('review.blocking.heading'),
+      description: t('review.blocking.description'),
+    },
+    advisory: {
+      heading: t('review.advisory.heading'),
+      description: t('review.advisory.description'),
+    },
+    row: {
+      done: t('review.row.done'),
+      requiredNotDone: t('review.row.requiredNotDone'),
+      recommendedNotDone: t('review.row.recommendedNotDone'),
+      status: template('row.status'),
+      fix: template('row.fix'),
+      fixDetail: template('row.fixDetail'),
+    },
+    submit: {
+      heading: t('review.submit.heading'),
+      submitting: t('review.submit.submitting'),
+      ready: t('review.submit.ready'),
+      held: t.raw('review.submit.held') as PluralForms,
+      heldWithSuggestions: t.raw('review.submit.heldWithSuggestions') as PluralForms,
+    },
+    launch: {
+      heading: t('review.launch.heading'),
+      failed: t('review.launch.failed'),
+      confirmHeading: t('review.launch.confirmHeading'),
+      confirmBody: t('review.launch.confirmBody'),
+      now: t('review.launch.now'),
+      launching: t('review.launch.launching'),
+      cancel: t('review.launch.cancel'),
+      explanation: t('review.launch.explanation'),
+    },
+    failures: {
+      notFound: t('review.failures.notFound'),
+      planLimit: t('review.failures.planLimit'),
+      forbidden: t('review.failures.forbidden'),
+      refused: t('review.failures.refused'),
+      unreachable: t('review.failures.unreachable'),
+    },
+    sections: {
+      basics: frame.tabs.basics,
+      rewards: frame.tabs.rewards,
+      story: frame.tabs.story,
+    },
+  };
 }

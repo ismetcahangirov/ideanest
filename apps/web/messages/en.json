@@ -3946,6 +3946,130 @@
           "other": "That is {count} characters too long. An answer is at most {max}."
         }
       }
+    },
+    "prelaunch": {
+      "loading": "Loading this campaign",
+      "saveFailed": {
+        "title": "This change was not saved",
+        "kept": "Nothing you typed has been lost — it is still in the fields below and will be sent again."
+      },
+      "notOpen": {
+        "heading": "The pre-launch page is not open yet",
+        "body": "Opening it publishes the title, summary, and cover image below at a link you can share, and lets people ask to be told the moment the campaign opens. Nothing else about the campaign becomes public, and no money is involved.",
+        "permanent": "It cannot be closed again — the campaign moves forward from here, to review and then to launch.",
+        "failed": "The page was not opened",
+        "action": "Open the pre-launch page"
+      },
+      "live": {
+        "heading": "The pre-launch page is open",
+        "countUnavailable": "The number of people waiting could not be loaded.",
+        "waiting": {
+          "one": "{count} person is waiting for this campaign.",
+          "few": "{count} people are waiting for this campaign.",
+          "many": "{count} people are waiting for this campaign.",
+          "other": "{count} people are waiting for this campaign."
+        },
+        "linkLabel": "Pre-launch link",
+        "linkHint": "Share this anywhere. Anybody who opens it can ask to be told when the campaign goes live.",
+        "copy": "Copy",
+        "copied": "Copied",
+        "copiedAnnounced": "Link copied"
+      },
+      "closed": {
+        "title": "The pre-launch page has closed",
+        "body": "This campaign has moved past its pre-launch page. Everybody who asked to be reminded is told once, when it goes live."
+      },
+      "form": {
+        "heading": "What the page says",
+        "intro": "These are the campaign’s title, summary, and cover image — the same ones the Basics tab holds. A pre-launch page that promised something different from the campaign would be promising it to the people most likely to notice.",
+        "titleHint": "The name on the pre-launch page and on the discovery grid. {max} characters or fewer.",
+        "blurbHint": "One or two sentences. This is what somebody reads before deciding to follow. {max} characters or fewer."
+      },
+      "confirm": {
+        "title": "Open the pre-launch page?",
+        "intro": "The title, summary, and cover image become public at a link anyone can open. This cannot be undone.",
+        "body": "Nothing about your rewards, story, or funding goal is published, and the campaign does not take money until it is reviewed and launched.",
+        "cancel": "Cancel",
+        "action": "Open the page",
+        "opening": "Opening"
+      }
+    },
+    "review": {
+      "loading": "Checking how complete this campaign is",
+      "loadFailed": "This campaign could not be loaded",
+      "moderation": {
+        "rejected": "This campaign was refused",
+        "changes": "Our moderators have asked for changes",
+        "noReason": "No reason was recorded."
+      },
+      "stateNote": {
+        "SUBMITTED": "This campaign is with our moderators. There is nothing for you to do while it is in review, and you will be told the outcome. You can keep editing in the meantime.",
+        "APPROVED": "Moderation has cleared this campaign. It goes live when you launch it, or at the launch time you set.",
+        "SCHEDULED": "Cleared and waiting for its launch time.",
+        "REJECTED": "This campaign was refused and cannot be submitted again.",
+        "LIVE": "This campaign is live and taking pledges."
+      },
+      "refusal": {
+        "title": "This campaign was not submitted",
+        "item": "{label}: {detail}",
+        "plans": "See what the other plans allow",
+        "checkAgain": "Check again"
+      },
+      "progress": {
+        "heading": "Completeness",
+        "summary": "{score}% complete. {blockingDone} of {blockingTotal} required items done, {advisoryDone} of {advisoryTotal} recommended.",
+        "barLabel": "Campaign completeness: {score} percent"
+      },
+      "blocking": {
+        "heading": "Required before you can submit",
+        "description": "Every one of these comes from the platform’s submission rules. A campaign cannot go to moderation until they are all done."
+      },
+      "advisory": {
+        "heading": "Recommended, but not required",
+        "description": "None of these stops you submitting. Each one is something campaigns that do well tend to have."
+      },
+      "row": {
+        "done": "Done",
+        "requiredNotDone": "Required, not done",
+        "recommendedNotDone": "Recommended, not done",
+        "status": ", {status}",
+        "fix": "Fix in {section}",
+        "fixDetail": ": {label}"
+      },
+      "submit": {
+        "heading": "Submit for review",
+        "submitting": "Submitting",
+        "ready": "A moderator reads the campaign and either clears it, asks for changes, or refuses it. You can keep editing while it is in review.",
+        "held": {
+          "one": "{count} required item is not done yet. Finish it and this becomes available.",
+          "few": "{count} required items are not done yet. Finish them and this becomes available.",
+          "many": "{count} required items are not done yet. Finish them and this becomes available.",
+          "other": "{count} required items are not done yet. Finish them and this becomes available."
+        },
+        "heldWithSuggestions": {
+          "one": "{count} required item is not done yet. The recommended items are not part of this.",
+          "few": "{count} required items are not done yet. The recommended items are not part of this.",
+          "many": "{count} required items are not done yet. The recommended items are not part of this.",
+          "other": "{count} required items are not done yet. The recommended items are not part of this."
+        }
+      },
+      "launch": {
+        "heading": "Launch this campaign",
+        "failed": "This campaign was not launched",
+        "confirmHeading": "Launch this campaign now?",
+        "confirmBody": "It becomes public immediately and starts taking pledges. The funding goal and the deadline are fixed on launch and cannot be edited afterwards, and a live campaign cannot be taken back to a draft.",
+        "now": "Launch now",
+        "launching": "Launching",
+        "cancel": "Cancel",
+        "explanation": "The campaign appears everywhere on the platform and starts taking pledges the moment it launches. Its goal and its deadline freeze from that point, and a live campaign cannot be taken back to a draft."
+      },
+      "failures": {
+        "notFound": "That campaign could not be found.",
+        "planLimit": "Your plan does not cover this campaign.",
+        "forbidden": "You do not have access to this campaign.",
+        "refused": "The service refused the request.",
+        "unreachable": "The service could not be reached. Check your connection and try again."
+      }
     }
   }
 }

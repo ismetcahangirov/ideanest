@@ -3946,6 +3946,130 @@
           "other": "Bu, {count} simvol artıqdır. Cavab ən çox {max} simvol olur."
         }
       }
+    },
+    "prelaunch": {
+      "loading": "Kampaniya yüklənir",
+      "saveFailed": {
+        "title": "Bu dəyişiklik yadda saxlanılmadı",
+        "kept": "Yazdığınız heç nə itməyib — hamısı aşağıdakı sahələrdədir və yenidən göndəriləcək."
+      },
+      "notOpen": {
+        "heading": "Başlanğıcdan əvvəlki səhifə hələ açıq deyil",
+        "body": "Onu açmaq aşağıdakı başlığı, xülasəni və örtük şəklini paylaşa biləcəyiniz bir linkdə dərc edir və adamlara kampaniya açılan kimi xəbərdar edilməyi istəmək imkanı verir. Kampaniya haqqında başqa heç nə açıq olmur və pul söhbəti yoxdur.",
+        "permanent": "Onu yenidən bağlamaq olmaz — kampaniya buradan irəli gedir: əvvəlcə baxışa, sonra başlanğıca.",
+        "failed": "Səhifə açılmadı",
+        "action": "Başlanğıcdan əvvəlki səhifəni açın"
+      },
+      "live": {
+        "heading": "Başlanğıcdan əvvəlki səhifə açıqdır",
+        "countUnavailable": "Gözləyən adamların sayı yüklənə bilmədi.",
+        "waiting": {
+          "one": "Bu kampaniyanı {count} nəfər gözləyir.",
+          "few": "Bu kampaniyanı {count} nəfər gözləyir.",
+          "many": "Bu kampaniyanı {count} nəfər gözləyir.",
+          "other": "Bu kampaniyanı {count} nəfər gözləyir."
+        },
+        "linkLabel": "Başlanğıcdan əvvəlki link",
+        "linkHint": "Bunu istədiyiniz yerdə paylaşın. Onu açan hər kəs kampaniya başlayanda xəbərdar edilməyi istəyə bilər.",
+        "copy": "Kopyala",
+        "copied": "Kopyalandı",
+        "copiedAnnounced": "Link kopyalandı"
+      },
+      "closed": {
+        "title": "Başlanğıcdan əvvəlki səhifə bağlanıb",
+        "body": "Bu kampaniya artıq başlanğıcdan əvvəlki səhifəsini keçib. Xatırladılmağı istəmiş hər kəsə kampaniya başlayanda bir dəfə xəbər verilir."
+      },
+      "form": {
+        "heading": "Səhifə nə deyir",
+        "intro": "Bunlar kampaniyanın başlığı, xülasəsi və örtük şəklidir — Əsaslar bölməsindəkilərin eynisi. Kampaniyadan fərqli bir şey vəd edən başlanğıcdan əvvəlki səhifə həmin vədi məhz bunu ən çox nəzərə çarpdıracaq adamlara verərdi.",
+        "titleHint": "Başlanğıcdan əvvəlki səhifədə və kəşf səhifəsində görünən ad. {max} simvol və ya daha az.",
+        "blurbHint": "Bir və ya iki cümlə. İzləmək qərarını verməzdən əvvəl adam məhz bunu oxuyur. {max} simvol və ya daha az."
+      },
+      "confirm": {
+        "title": "Başlanğıcdan əvvəlki səhifə açılsın?",
+        "intro": "Başlıq, xülasə və örtük şəkli hər kəsin aça biləcəyi bir linkdə açıq olur. Bunu geri qaytarmaq olmaz.",
+        "body": "Mükafatlarınız, hekayəniz və ya maliyyə hədəfiniz haqqında heç nə dərc olunmur; kampaniya baxışdan keçib başlamayana qədər pul götürmür.",
+        "cancel": "Ləğv et",
+        "action": "Səhifəni aç",
+        "opening": "Açılır"
+      }
+    },
+    "review": {
+      "loading": "Bu kampaniyanın nə qədər tam olduğu yoxlanılır",
+      "loadFailed": "Bu kampaniya yüklənə bilmədi",
+      "moderation": {
+        "rejected": "Bu kampaniya rədd edildi",
+        "changes": "Moderatorlarımız dəyişiklik istəyib",
+        "noReason": "Səbəb qeyd edilməyib."
+      },
+      "stateNote": {
+        "SUBMITTED": "Bu kampaniya moderatorlarımızdadır. Baxış davam edərkən sizin görəcəyiniz iş yoxdur, nəticə sizə bildiriləcək. Bu arada redaktəyə davam edə bilərsiniz.",
+        "APPROVED": "Moderasiya bu kampaniyanı təsdiqləyib. Siz başlatdıqda və ya təyin etdiyiniz başlanğıc vaxtında aktiv olur.",
+        "SCHEDULED": "Təsdiqlənib və başlanğıc vaxtını gözləyir.",
+        "REJECTED": "Bu kampaniya rədd edilib və yenidən göndərilə bilməz.",
+        "LIVE": "Bu kampaniya aktivdir və dəstək qəbul edir."
+      },
+      "refusal": {
+        "title": "Bu kampaniya göndərilmədi",
+        "item": "{label}: {detail}",
+        "plans": "Digər planların nəyə icazə verdiyinə baxın",
+        "checkAgain": "Yenidən yoxlayın"
+      },
+      "progress": {
+        "heading": "Tamlıq",
+        "summary": "{score}% tamdır. Tələb olunan {blockingTotal} bənddən {blockingDone}, tövsiyə olunan {advisoryTotal} bənddən {advisoryDone} hazırdır.",
+        "barLabel": "Kampaniyanın tamlığı: {score} faiz"
+      },
+      "blocking": {
+        "heading": "Göndərməzdən əvvəl tələb olunur",
+        "description": "Bunların hər biri platformanın göndərmə qaydalarından gəlir. Hamısı tamamlanmayana qədər kampaniya moderasiyaya gedə bilməz."
+      },
+      "advisory": {
+        "heading": "Tövsiyə olunur, amma tələb olunmur",
+        "description": "Bunların heç biri göndərməyə mane olmur. Hər biri uğurlu kampaniyalarda adətən olan bir şeydir."
+      },
+      "row": {
+        "done": "Hazırdır",
+        "requiredNotDone": "Tələb olunur, hazır deyil",
+        "recommendedNotDone": "Tövsiyə olunur, hazır deyil",
+        "status": ", {status}",
+        "fix": "{section} bölməsində düzəldin",
+        "fixDetail": ": {label}"
+      },
+      "submit": {
+        "heading": "Baxışa göndərin",
+        "submitting": "Göndərilir",
+        "ready": "Moderator kampaniyanı oxuyur və ya təsdiqləyir, ya dəyişiklik istəyir, ya da rədd edir. Baxış gedərkən redaktəyə davam edə bilərsiniz.",
+        "held": {
+          "one": "Tələb olunan {count} bənd hələ hazır deyil. Onu tamamlayın və bu düymə işə düşsün.",
+          "few": "Tələb olunan {count} bənd hələ hazır deyil. Onları tamamlayın və bu düymə işə düşsün.",
+          "many": "Tələb olunan {count} bənd hələ hazır deyil. Onları tamamlayın və bu düymə işə düşsün.",
+          "other": "Tələb olunan {count} bənd hələ hazır deyil. Onları tamamlayın və bu düymə işə düşsün."
+        },
+        "heldWithSuggestions": {
+          "one": "Tələb olunan {count} bənd hələ hazır deyil. Tövsiyə olunan bəndlərin buna aidiyyəti yoxdur.",
+          "few": "Tələb olunan {count} bənd hələ hazır deyil. Tövsiyə olunan bəndlərin buna aidiyyəti yoxdur.",
+          "many": "Tələb olunan {count} bənd hələ hazır deyil. Tövsiyə olunan bəndlərin buna aidiyyəti yoxdur.",
+          "other": "Tələb olunan {count} bənd hələ hazır deyil. Tövsiyə olunan bəndlərin buna aidiyyəti yoxdur."
+        }
+      },
+      "launch": {
+        "heading": "Bu kampaniyanı başladın",
+        "failed": "Bu kampaniya başladılmadı",
+        "confirmHeading": "Bu kampaniya indi başladılsın?",
+        "confirmBody": "O, dərhal açıq olur və dəstək qəbul etməyə başlayır. Maliyyə hədəfi və son tarix başlanğıcda sabitlənir və sonra dəyişdirilə bilmir; aktiv kampaniyanı yenidən qaralamaya qaytarmaq olmur.",
+        "now": "İndi başlat",
+        "launching": "Başladılır",
+        "cancel": "Ləğv et",
+        "explanation": "Kampaniya başladığı an platformanın hər yerində görünür və dəstək qəbul etməyə başlayır. Hədəfi və son tarixi həmin andan dondurulur, aktiv kampaniyanı isə yenidən qaralamaya qaytarmaq olmur."
+      },
+      "failures": {
+        "notFound": "Bu kampaniya tapılmadı.",
+        "planLimit": "Planınız bu kampaniyanı əhatə etmir.",
+        "forbidden": "Bu kampaniyaya girişiniz yoxdur.",
+        "refused": "Xidmət sorğunu rədd etdi.",
+        "unreachable": "Xidmətə çıxmaq mümkün olmadı. Bağlantını yoxlayıb yenidən cəhd edin."
+      }
     }
   }
 }

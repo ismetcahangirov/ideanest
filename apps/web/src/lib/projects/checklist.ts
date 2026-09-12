@@ -1,3 +1,4 @@
+import { fillPlaceholders } from '../i18n/placeholders';
 import type { ChecklistItem, ProjectChecklist } from './api';
 
 /**
@@ -48,11 +49,11 @@ export function sectionHref(projectId: string, section: string): string | null {
 }
 
 /** How a section is named in a sentence — "Fix in Basics". */
-export const SECTION_LABEL: Record<ChecklistSectionKey, string> = {
-  basics: 'Basics',
-  rewards: 'Rewards',
-  story: 'Story',
-};
+/*
+ * SECTION_LABEL LEFT THIS FILE WITH #459. The three words were the editor's own tab names
+ * spelled a second time, and they are `ReviewCopy.sections` now — read straight from
+ * `editor.frame.tabs`, so "Fix in Basics" cannot name the tab differently from the tab.
+ */
 
 /* -------------------------------------------------------------------------
  * Progress
@@ -86,12 +87,19 @@ export function progressOf(checklist: ProjectChecklist): ChecklistProgress {
  * required" answers the question the bar cannot — whether the remainder is
  * optional.
  */
-export function describeProgress(progress: ChecklistProgress): string {
-  return (
-    `${progress.score}% complete. ` +
-    `${progress.blockingDone} of ${progress.blockingTotal} required items done, ` +
-    `${progress.advisoryDone} of ${progress.advisoryTotal} recommended.`
-  );
+export function describeProgress(progress: ChecklistProgress, sentence: string): string {
+  /*
+   * One sentence with five holes in it, rather than three fragments concatenated. The English
+   * version built this with `+`, which fixes the order of the three clauses and the position of
+   * the per-cent sign — both of which another language puts elsewhere (#459).
+   */
+  return fillPlaceholders(sentence, {
+    score: String(progress.score),
+    blockingDone: String(progress.blockingDone),
+    blockingTotal: String(progress.blockingTotal),
+    advisoryDone: String(progress.advisoryDone),
+    advisoryTotal: String(progress.advisoryTotal),
+  });
 }
 
 export function unmetOf(items: readonly ChecklistItem[]): readonly ChecklistItem[] {

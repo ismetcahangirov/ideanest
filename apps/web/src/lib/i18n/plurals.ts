@@ -40,13 +40,19 @@ import { fillPlaceholders } from './placeholders';
 export type PluralForms = Readonly<Record<'one' | 'few' | 'many' | 'other', string>>;
 
 /**
- * The form for `count`, with `{count}` filled in.
+ * The form for `count`, with `{count}` still in it.
+ *
+ * <p>Separate from {@link pluralise} because a count is sometimes a NODE rather than a string —
+ * issue #459. The pre-launch tab prints how many people are waiting with the number in
+ * `font-semibold`, and the count decides the form of the verb around it (and in Russian the
+ * form of the noun as well). Filling `{count}` with a string first would leave `fillNodes`
+ * nothing to put the styled number into.
  *
  * The rules object is constructed per call rather than cached. It is built from a four-value
  * table, `Intl` implementations memoise their own, and a module-level cache keyed by locale
  * would be state in a module that is imported by both a server render and a client bundle.
  */
-export function pluralise(locale: Locale, forms: PluralForms, count: number): string {
+export function pluralForm(locale: Locale, forms: PluralForms, count: number): string {
   const category = new Intl.PluralRules(INTL_LOCALE[locale]).select(count);
 
   /*
@@ -54,7 +60,10 @@ export function pluralise(locale: Locale, forms: PluralForms, count: number): st
    * to reach it is a category a future language adds — and a slightly ungrammatical count is a
    * better answer than a component that does not render.
    */
-  const form = (forms as Readonly<Record<string, string | undefined>>)[category] ?? forms.other;
+  return (forms as Readonly<Record<string, string | undefined>>)[category] ?? forms.other;
+}
 
-  return fillPlaceholders(form, { count: String(count) });
+/** The form for `count`, with `{count}` filled in. */
+export function pluralise(locale: Locale, forms: PluralForms, count: number): string {
+  return fillPlaceholders(pluralForm(locale, forms, count), { count: String(count) });
 }
