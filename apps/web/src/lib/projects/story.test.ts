@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  IMAGE_ALT_REQUIRED,
   blockProblem,
   describeBlock,
   headingAnchors,
@@ -20,6 +19,8 @@ import {
   type StoryBlock,
   type StoryDocument,
 } from './story';
+import { storyCopyFrom } from '../i18n/editor-copy';
+import { translatorFor } from '../../test-copy';
 
 /**
  * The document model, at its edges.
@@ -34,6 +35,15 @@ import {
 function document(blocks: readonly StoryBlock[]): StoryDocument {
   return { version: 1, blocks };
 }
+
+/*
+ * The rules' own words, from `messages/en.json` through the builder the tab calls — issue #459.
+ * The assertions below are about which rule fires and where the boundary is, so they read the
+ * sentence out of this object rather than repeating it.
+ */
+const STORY_COPY = storyCopyFrom(translatorFor('editor'));
+const PROBLEMS = STORY_COPY.problems;
+const DESCRIBE = STORY_COPY.describe;
 
 describe('slugifyHeading', () => {
   it('folds Azerbaijani the way the server does', () => {
@@ -349,13 +359,13 @@ describe('editing the block list', () => {
 describe('blockProblem', () => {
   it('refuses an image with no description', () => {
     expect(
-      blockProblem({ type: 'image', url: 'https://a.example/b.jpg', width: 4, height: 3, alt: '  ' }),
-    ).toBe(IMAGE_ALT_REQUIRED);
+      blockProblem({ type: 'image', url: 'https://a.example/b.jpg', width: 4, height: 3, alt: '  ' }, PROBLEMS),
+    ).toBe(PROBLEMS.imageAlt);
   });
 
   it('refuses an unmeasured image', () => {
     expect(
-      blockProblem({ type: 'image', url: 'https://a.example/b.jpg', width: 0, height: 0, alt: 'A' }),
+      blockProblem({ type: 'image', url: 'https://a.example/b.jpg', width: 0, height: 0, alt: 'A' }, PROBLEMS),
     ).toContain('measured');
   });
 
@@ -364,23 +374,23 @@ describe('blockProblem', () => {
     // executed by whichever renderer interpolates it. The server refuses it too;
     // this is so the creator is told at the field rather than by a 400.
     expect(
-      blockProblem({ type: 'image', url: 'javascript:alert(1)', width: 4, height: 3, alt: 'A' }),
+      blockProblem({ type: 'image', url: 'javascript:alert(1)', width: 4, height: 3, alt: 'A' }, PROBLEMS),
     ).toContain('http://');
   });
 
   it('refuses an embed with no title', () => {
     expect(
-      blockProblem({ type: 'embed', provider: 'vimeo', url: 'https://v.example/1', title: '' }),
+      blockProblem({ type: 'embed', provider: 'vimeo', url: 'https://v.example/1', title: '' }, PROBLEMS),
     ).toContain('screen reader');
   });
 
   it('accepts an empty paragraph', () => {
     // Only what is WRONG, not what is missing. A creator has just added it.
-    expect(blockProblem({ type: 'paragraph', spans: [] })).toBeNull();
+    expect(blockProblem({ type: 'paragraph', spans: [] }, PROBLEMS)).toBeNull();
   });
 
   it('refuses a heading with no text', () => {
-    expect(blockProblem({ type: 'heading', level: 2, id: 'a', text: ' ' })).toContain('text');
+    expect(blockProblem({ type: 'heading', level: 2, id: 'a', text: ' ' }, PROBLEMS)).toContain('text');
   });
 });
 
@@ -390,7 +400,7 @@ describe('storyProblems', () => {
       document([
         { type: 'heading', level: 2, id: 'the-plan', text: 'The plan' },
         { type: 'heading', level: 3, id: 'the-plan', text: 'Again' },
-      ]),
+      ]), PROBLEMS,
     );
 
     expect(problems.get(0)).toBeUndefined();
@@ -400,7 +410,7 @@ describe('storyProblems', () => {
   it('finds an empty document saveable', () => {
     // The state the editor is in when a creator opens the tab. Refusing it would
     // make the first autosave fail.
-    expect(isSaveable(document([]))).toBe(true);
+    expect(isSaveable(document([]), PROBLEMS)).toBe(true);
   });
 });
 
@@ -450,19 +460,19 @@ describe('describeBlock', () => {
   it('names the kind, the position, and enough contents to tell blocks apart', () => {
     // "Move up" eleven times in a row is a screen reader reading out eleven
     // identical buttons. The position is what makes them distinguishable.
-    expect(describeBlock({ type: 'heading', level: 2, id: 'a', text: 'The plan' }, 0, 3)).toBe(
+    expect(describeBlock({ type: 'heading', level: 2, id: 'a', text: 'The plan' }, 0, 3, DESCRIBE, 'en')).toBe(
       'Heading 1 of 3: The plan',
     );
-    expect(describeBlock({ type: 'rule' }, 2, 3)).toBe('Divider 3 of 3');
+    expect(describeBlock({ type: 'rule' }, 2, 3, DESCRIBE, 'en')).toBe('Divider 3 of 3');
     expect(
-      describeBlock({ type: 'list', ordered: true, items: [[], []] }, 1, 3),
+      describeBlock({ type: 'list', ordered: true, items: [[], []] }, 1, 3, DESCRIBE, 'en'),
     ).toBe('Numbered list 2 of 3, 2 items');
     expect(
-      describeBlock({ type: 'image', url: 'https://a/b', width: 4, height: 3, alt: '' }, 0, 1),
+      describeBlock({ type: 'image', url: 'https://a/b', width: 4, height: 3, alt: '' }, 0, 1, DESCRIBE, 'en'),
     ).toContain('no description yet');
   });
 
   it('says "empty" rather than nothing for a block with no contents', () => {
-    expect(describeBlock({ type: 'paragraph', spans: [] }, 0, 1)).toBe('Paragraph 1 of 1: empty');
+    expect(describeBlock({ type: 'paragraph', spans: [] }, 0, 1, DESCRIBE, 'en')).toBe('Paragraph 1 of 1: empty');
   });
 });

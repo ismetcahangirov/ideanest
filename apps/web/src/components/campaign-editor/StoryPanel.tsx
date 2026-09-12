@@ -24,6 +24,10 @@ import {
   type StoryDocument,
 } from '../../lib/projects/story';
 import type { StoryCopy } from '../../lib/i18n/editor-copy';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import { pluralise } from '../../lib/i18n/plurals';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
+import { numberFormat } from '../../lib/i18n/formats';
 import { EditorShell } from './EditorShell';
 import { SaveStatus } from './SaveStatus';
 import { StoryBlockEditor } from './StoryBlockEditor';
@@ -119,6 +123,14 @@ export interface StoryPanelProps {
 export function StoryPanel({ projectId, copy }: StoryPanelProps) {
   const { project, status, error, reload, apply } = useProjectEdit(projectId);
 
+  /*
+   * The language, for the two things on this tab that are not a fixed sentence: how many
+   * blocks are incomplete, which declines, and the character counts, which used to be
+   * `toLocaleString('en')` — a group separator from one language printed on all four.
+   */
+  const locale = useRouteLocale();
+  const counts = numberFormat(locale, {}, 'story-characters');
+
   /**
    * The document being edited, seeded once from the project.
    *
@@ -159,8 +171,8 @@ export function StoryPanel({ projectId, copy }: StoryPanelProps) {
   }, [project, document, unreadable]);
 
   const problems = useMemo(
-    () => (document === null ? new Map<number, string>() : storyProblems(document)),
-    [document],
+    () => (document === null ? new Map<number, string>() : storyProblems(document, copy.problems)),
+    [document, copy.problems],
   );
 
   const failure = autosave.failure;
@@ -184,7 +196,7 @@ export function StoryPanel({ projectId, copy }: StoryPanelProps) {
   function changeDocument(next: StoryDocument): void {
     setDocument(next);
 
-    if (storyProblems(next).size > 0) {
+    if (storyProblems(next, copy.problems).size > 0) {
       /*
        * Held rather than sent. See the note on the component: an invalid document is
        * refused, and autosave retries the same body — so one unfinished image
@@ -207,8 +219,8 @@ export function StoryPanel({ projectId, copy }: StoryPanelProps) {
   if (status === 'signed-out') {
     return (
       <EditorShell projectId={projectId} copy={copy.frame} active="story">
-        <InlineAlert variant="info" title="You are signed out">
-          This browser no longer has a session. Sign in again to keep editing this campaign.
+        <InlineAlert variant="info" title={copy.frame.signedOut.title}>
+          {copy.frame.signedOut.body}
         </InlineAlert>
       </EditorShell>
     );
@@ -223,12 +235,11 @@ export function StoryPanel({ projectId, copy }: StoryPanelProps) {
         title={project.title}
         state={project.state}
       >
-        <InlineAlert variant="warning" title="This story cannot be edited by this page">
-          It was written in a newer format than this editor understands. Reload the page to get the
-          current editor. Nothing has been changed, and the story is still on your project page.
+        <InlineAlert variant="warning" title={copy.unreadable.title}>
+          {copy.unreadable.body}
         </InlineAlert>
         <Pill variant="ghost" size="sm" className="mt-4" onClick={reload}>
-          Reload
+          {copy.unreadable.reload}
         </Pill>
       </EditorShell>
     );
@@ -239,15 +250,15 @@ export function StoryPanel({ projectId, copy }: StoryPanelProps) {
       <EditorShell projectId={projectId} copy={copy.frame} active="story">
         {status === 'failed' ? (
           <>
-            <InlineAlert variant="danger" title="This project could not be loaded">
+            <InlineAlert variant="danger" title={copy.frame.loadFailed}>
               {error}
             </InlineAlert>
             <Pill variant="ghost" size="sm" className="mt-4" onClick={reload}>
-              Try again
+              {copy.frame.tryAgain}
             </Pill>
           </>
         ) : (
-          <SkeletonGroup label="Loading this campaign’s story">
+          <SkeletonGroup label={copy.loading}>
             <div className="flex flex-col gap-6">
               {LOADING_ROWS.map((row) => (
                 <div key={row} className="flex flex-col gap-2">
@@ -277,14 +288,11 @@ export function StoryPanel({ projectId, copy }: StoryPanelProps) {
     >
       <div className="flex flex-col gap-8">
         {failure !== null && (
-          <InlineAlert variant="danger" title="This change was not saved">
+          <InlineAlert variant="danger" title={copy.saveFailed.title}>
             <p>{failure.message}</p>
-            <p className="mt-2 text-white/64">
-              Nothing you have written has been lost — it is still on this page and will be sent
-              again.
-            </p>
+            <p className="mt-2 text-white/64">{copy.saveFailed.kept}</p>
             <Pill variant="ghost" size="sm" className="mt-3" onClick={autosave.retry}>
-              Try again
+              {copy.frame.tryAgain}
             </Pill>
           </InlineAlert>
         )}
@@ -295,18 +303,18 @@ export function StoryPanel({ projectId, copy }: StoryPanelProps) {
             scrolled past the problem needs to know why the header says the story is
             not saved, and the header has no room to explain.
           */
-          <InlineAlert variant="warning" title="The story is not being saved yet">
-            {blockProblems.size === 1
-              ? 'One block is incomplete. The message beside it says what is missing, and saving resumes as soon as it is filled in.'
-              : `${blockProblems.size} blocks are incomplete. The messages beside them say what is missing, and saving resumes as soon as they are filled in.`}
+          <InlineAlert variant="warning" title={copy.blocked.title}>
+            {pluralise(locale, copy.blocked.body, blockProblems.size)}
           </InlineAlert>
         )}
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-[13px] text-white/64">
-              {storyCharacters.toLocaleString('en')} of {STORY_MIN_CHARACTERS.toLocaleString('en')}{' '}
-              characters needed to submit
+              {fillPlaceholders(copy.counter, {
+                count: counts.format(storyCharacters),
+                minimum: counts.format(STORY_MIN_CHARACTERS),
+              })}
             </p>
             {/*
               A sentence rather than a bar, and announced when it starts to matter.
@@ -330,7 +338,7 @@ export function StoryPanel({ projectId, copy }: StoryPanelProps) {
             aria-haspopup="dialog"
             onClick={() => setHistoryOpen(true)}
           >
-            Earlier versions
+            {copy.earlierVersions}
           </Pill>
         </div>
 
@@ -351,7 +359,7 @@ export function StoryPanel({ projectId, copy }: StoryPanelProps) {
               id="story-anchors-heading"
               className="text-[13px] font-medium tracking-[0.06em] text-white/40 uppercase"
             >
-              Anchor menu on your project page
+              {copy.anchors.heading}
             </h2>
             <ol className="mt-3 flex flex-col gap-1.5">
               {anchors.map((anchor) => (
@@ -359,7 +367,7 @@ export function StoryPanel({ projectId, copy }: StoryPanelProps) {
                   key={anchor.id}
                   className={anchor.level === 3 ? 'pl-4 text-[13px]' : 'text-[15px]'}
                 >
-                  <span className="text-white">{anchor.text || 'Untitled section'}</span>
+                  <span className="text-white">{anchor.text || copy.anchors.untitled}</span>
                   <span className="ml-2 text-[13px] text-white/40">#{anchor.id}</span>
                 </li>
               ))}
@@ -368,6 +376,8 @@ export function StoryPanel({ projectId, copy }: StoryPanelProps) {
         )}
 
         <StoryBlockEditor
+          copy={copy}
+          locale={locale}
           document={document}
           serverProblems={blockProblems}
           onChange={changeDocument}
@@ -375,9 +385,9 @@ export function StoryPanel({ projectId, copy }: StoryPanelProps) {
         />
 
         <Field
-          label="Risks and challenges"
+          label={copy.risks.label}
           required
-          hint={`What could go wrong, and what you will do about it. At least ${RISKS_MIN_CHARACTERS} characters, and required before you can submit.`}
+          hint={fillPlaceholders(copy.risks.hint, { minimum: String(RISKS_MIN_CHARACTERS) })}
           error={fieldErrors.risks}
         >
           {/*
@@ -389,7 +399,7 @@ export function StoryPanel({ projectId, copy }: StoryPanelProps) {
           <Textarea
             rows={6}
             value={risks}
-            placeholder="Manufacturing, shipping, and timing are the usual three. Say what is already settled and what is not."
+            placeholder={copy.risks.placeholder}
             onChange={(event) => changeRisks(event.target.value)}
             onBlur={autosave.flush}
           />
@@ -402,6 +412,8 @@ export function StoryPanel({ projectId, copy }: StoryPanelProps) {
       </div>
 
       <StoryVersionHistory
+        copy={copy.history}
+        locale={locale}
         projectId={projectId}
         open={historyOpen}
         onOpenChange={setHistoryOpen}

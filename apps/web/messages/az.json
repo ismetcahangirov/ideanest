@@ -3680,6 +3680,190 @@
         }
       },
       "showBlocked": "Bu, erkən quş mükafatıdır və belə mükafata ya bağlanma tarixi, ya da məhdud yer sayı lazımdır. Yenidən göstərməzdən əvvəl limit təyin edin və ya erkən quşu söndürün."
+    },
+    "story": {
+      "loading": "Bu kampaniyanın hekayəsi yüklənir",
+      "unreadable": {
+        "title": "Bu hekayə həmin səhifədə redaktə edilə bilməz",
+        "body": "O, bu redaktorun başa düşdüyündən daha yeni formatda yazılıb. Cari redaktoru almaq üçün səhifəni yeniləyin. Heç nə dəyişdirilməyib və hekayə hələ də layihə səhifənizdədir.",
+        "reload": "Yenilə"
+      },
+      "saveFailed": {
+        "title": "Bu dəyişiklik yadda saxlanılmadı",
+        "kept": "Yazdığınız heç nə itməyib — hamısı bu səhifədədir və yenidən göndəriləcək."
+      },
+      "blocked": {
+        "title": "Hekayə hələ yadda saxlanılmır",
+        "body": {
+          "one": "Bir blok tamamlanmayıb. Yanındakı mesaj nəyin çatışmadığını deyir; doldurulan kimi yadda saxlama bərpa olunur.",
+          "few": "{count} blok tamamlanmayıb. Yanlarındakı mesajlar nəyin çatışmadığını deyir; doldurulan kimi yadda saxlama bərpa olunur.",
+          "many": "{count} blok tamamlanmayıb. Yanlarındakı mesajlar nəyin çatışmadığını deyir; doldurulan kimi yadda saxlama bərpa olunur.",
+          "other": "{count} blok tamamlanmayıb. Yanlarındakı mesajlar nəyin çatışmadığını deyir; doldurulan kimi yadda saxlama bərpa olunur."
+        }
+      },
+      "counter": "Göndərmək üçün lazım olan {minimum} simvoldan {count}",
+      "earlierVersions": "Əvvəlki versiyalar",
+      "anchors": {
+        "heading": "Layihə səhifənizdəki bölmə menyusu",
+        "untitled": "Başlıqsız bölmə"
+      },
+      "risks": {
+        "label": "Risklər və çətinliklər",
+        "hint": "Nə səhv gedə bilər və bununla bağlı nə edəcəksiniz. Ən azı {minimum} simvol; göndərməzdən əvvəl tələb olunur.",
+        "placeholder": "Adətən üç şey olur: istehsal, göndərmə və vaxt. Nəyin artıq həll olunduğunu və nəyin olunmadığını yazın."
+      },
+      "blocks": {
+        "heading": "Hekayə",
+        "empty": "Hələ heç nə yoxdur. Başlamaq üçün abzas əlavə edin — kampaniyaların çoxu məhsulun nə olduğu və kimin üçün olduğu ilə açılır.",
+        "addHeading": "Blok əlavə edin",
+        "position": " · {total} blokdan {position}",
+        "moveUp": "{name} yuxarı qaldırın",
+        "moveDown": "{name} aşağı salın",
+        "remove": "{name} silin"
+      },
+      "blockLabel": {
+        "heading": "Başlıq",
+        "paragraph": "Abzas",
+        "list": "Siyahı",
+        "quote": "Sitat",
+        "rule": "Ayırıcı",
+        "image": "Şəkil",
+        "embed": "Yerləşdirmə"
+      },
+      "addLabel": {
+        "paragraph": "Abzas əlavə edin. Qalın və maili yazı ilə mətn hissəsi.",
+        "heading": "Başlıq əlavə edin. Bölmə adı. Başlıqlar bölmə menyusunu təşkil edir.",
+        "list": "Siyahı əlavə edin. Nişanlı və ya nömrəli.",
+        "quote": "Sitat əlavə edin. Ayrıca göstərilən sitat.",
+        "image": "Şəkil əlavə edin. Artıq harasa dərc olunmuş şəkil.",
+        "embed": "Yerləşdirmə əlavə edin. YouTube və ya Vimeo videosu.",
+        "rule": "Ayırıcı əlavə edin. Üfüqi ayırıcı xətt."
+      },
+      "announce": {
+        "added": "{block} {total} blokdan {position}-ci blok kimi əlavə edildi.",
+        "moved": "{block} {total} blokdan {position}-ci mövqeyə keçdi.",
+        "removed": {
+          "one": "{block} silindi. {count} blok qaldı.",
+          "few": "{block} silindi. {count} blok qaldı.",
+          "many": "{block} silindi. {count} blok qaldı.",
+          "other": "{block} silindi. {count} blok qaldı."
+        }
+      },
+      "describe": {
+        "empty": "boş",
+        "heading": "Başlıq, {total} blokdan {position}: {text}",
+        "paragraph": "Abzas, {total} blokdan {position}: {preview}",
+        "quote": "Sitat, {total} blokdan {position}: {preview}",
+        "rule": "Ayırıcı, {total} blokdan {position}",
+        "image": "Şəkil, {total} blokdan {position}: {alt}",
+        "imageNoAlt": "hələ təsvir yoxdur",
+        "embed": "{provider} yerləşdirməsi, {total} blokdan {position}: {title}",
+        "embedNoTitle": "hələ başlıq yoxdur",
+        "listBulleted": {
+          "one": "Nişanlı siyahı, {total} blokdan {position}, {count} bənd",
+          "few": "Nişanlı siyahı, {total} blokdan {position}, {count} bənd",
+          "many": "Nişanlı siyahı, {total} blokdan {position}, {count} bənd",
+          "other": "Nişanlı siyahı, {total} blokdan {position}, {count} bənd"
+        },
+        "listOrdered": {
+          "one": "Nömrəli siyahı, {total} blokdan {position}, {count} bənd",
+          "few": "Nömrəli siyahı, {total} blokdan {position}, {count} bənd",
+          "many": "Nömrəli siyahı, {total} blokdan {position}, {count} bənd",
+          "other": "Nömrəli siyahı, {total} blokdan {position}, {count} bənd"
+        }
+      },
+      "problems": {
+        "headingText": "Başlığın mətni olmalıdır.",
+        "anchorUnusable": "Bu bölmə ünvanı linkdə istifadə edilə bilməz. Yenidən yaratmaq üçün başlığın adını dəyişin.",
+        "anchorDuplicate": "Bu bölmə ünvanını başqa başlıq artıq işlədir. Birinin adını dəyişin.",
+        "imageAddress": "Şəklin ünvanı olmalıdır.",
+        "addressScheme": "Ünvan http:// və ya https:// ilə başlamalıdır.",
+        "imageUnmeasured": "Bu şəkil hələ ölçülməyib. Ölçüsünün qeyd olunması üçün “Ölç və əlavə et” düyməsini basın.",
+        "imageAlt": "Təsvir tələb olunur. Ekran oxuyucusundan istifadə edən dəstəkçi şəkil əvəzinə bunu alır.",
+        "embedAddress": "Yerləşdirmənin ünvanı olmalıdır.",
+        "embedTitle": "Yerləşdirmənin başlığı olmalıdır. Ekran oxuyucusu “çərçivə” əvəzinə bunu elan edir."
+      },
+      "fields": {
+        "headingLevel": "{name} səviyyəsi",
+        "headingSection": "Bölmə",
+        "headingSubsection": "Alt bölmə",
+        "headingText": "{name} mətni",
+        "headingPlaceholder": "Necə işləyir",
+        "paragraphPlaceholder": "Abzas yazın. Mətni seçib Qalın və ya Maili düyməsini basın, ya da **qalın** və *maili* yazın.",
+        "quotePlaceholder": "Kiminsə bu layihə haqqında dediyi bir söz",
+        "ruleNote": "Ayırıcı. Bölmələri ayırır və mətn daşımır.",
+        "listStyle": "{name} üslubu",
+        "listBulleted": "Nişanlı",
+        "listOrdered": "Nömrəli",
+        "listItem": "{name} daxilində {total} bənddən {position}",
+        "listRemoveItem": "{name} daxilində {total} bənddən {position}-cini silin",
+        "listAddItem": "Bənd əlavə edin",
+        "listAddItemLabel": "{name} siyahısına bənd əlavə edin",
+        "embedProvider": "{name} təchizatçısı",
+        "embedAddress": "{name} ünvanı",
+        "embedAddressPlaceholder": "https://www.youtube.com/watch?v=…",
+        "embedTitle": "{name} başlığı",
+        "embedTitlePlaceholder": "Bu videoda nə göstərilir",
+        "embedNote": "Başlıq ekran oxuyucusunun “çərçivə” əvəzinə elan etdiyi şeydir. Yalnız YouTube və Vimeo yerləşdirilə bilər."
+      },
+      "image": {
+        "noUploadTitle": "Burada heç nə yüklənmir",
+        "noUploadBody": "Artıq dərc olunmuş şəklin ünvanını verin. Ölçüsü brauzerinizdə oxunur və hekayə ilə birlikdə saxlanılır ki, səhifə yüklənmədən əvvəl ona yer ayıra bilsin.",
+        "address": "{name} ünvanı",
+        "addressPlaceholder": "https://images.example.com/prototype.jpg",
+        "measure": "Ölç və əlavə et",
+        "measuring": "Ölçülür",
+        "addressMissing": "Əvvəlcə şəklin ünvanını yazın.",
+        "added": "{size} piksellik şəkil əlavə edildi.",
+        "unreadable": "Bu ünvan şəkil kimi yüklənə bilmədi.",
+        "pixels": "{size} piksel",
+        "alt": "{name} təsviri",
+        "altPlaceholder": "Şəkildə nə göstərilir",
+        "altNote": "Tələb olunur. Ekran oxuyucusundan istifadə edən dəstəkçi şəkil əvəzinə bunu alır, ona görə faylın adını yox, nəyin göstərildiyini yazın."
+      },
+      "marks": {
+        "group": "{label} üçün formatlaşdırma",
+        "bold": "Qalın",
+        "italic": "Maili",
+        "named": "{name}, {shortcut}"
+      },
+      "history": {
+        "title": "Əvvəlki versiyalar",
+        "intro": "Hekayə hər dəyişdikdə bir versiya saxlanılır, hər bir neçə dəqiqədə ən çox bir dəfə. Ən son əlli versiya buradadır.",
+        "loading": "Əvvəlki versiyalar yüklənir",
+        "failed": "Tarixçə yüklənə bilmədi",
+        "emptyTitle": "Hələ əvvəlki versiya yoxdur",
+        "emptyBody": "Hekayə ilk dəfə dəyişdikdə bir versiya saxlanılır, sonra siz yazdıqca hər bir neçə dəqiqədə ən çox bir dəfə.",
+        "version": "{number}-ci versiya",
+        "mostRecent": "ən son",
+        "characters": "{count} simvol",
+        "preview": "Bax",
+        "previewLabel": "{number}-ci versiyaya baxın",
+        "hide": "Gizlət",
+        "restore": "Bərpa et",
+        "restoreLabel": "{number}-ci versiyanı bərpa edin",
+        "loadingVersion": "Bu versiya yüklənir…",
+        "previewNewer": "Bu versiya redaktorun başa düşdüyündən daha yeni formatda yazılıb. Cari redaktoru almaq üçün səhifəni yeniləyin.",
+        "historyFailed": "Versiya tarixçəsi yüklənə bilmədi.",
+        "versionFailed": "Bu versiya yüklənə bilmədi.",
+        "restoreFailed": "Bu versiya bərpa edilə bilmədi. Heç nə dəyişməyib.",
+        "unreachable": "Xidmətə çıxmaq mümkün olmadı. Bağlantını yoxlayıb yenidən cəhd edin.",
+        "confirmTitle": "Versiyanı bərpa edin",
+        "confirmNamed": "{number}-ci versiya bərpa edilsin?",
+        "confirmIntro": "İndi sizdə olan hekayə əvəz olunur.",
+        "keep": "Olanı saxla",
+        "confirm": "Bu versiyanı bərpa et",
+        "restoring": "Bərpa olunur",
+        "savedAt": "{number}-ci versiya {when} tarixində saxlanılıb və {characters} simvoldan ibarətdir.",
+        "currentHolds": "İndi sizdə olan hekayə {characters} simvoldan ibarətdir. Əvəz olunmazdan əvvəl versiya kimi saxlanılır, ona görə bunu elə bu siyahıdan geri qaytarmaq olar.",
+        "previewEmpty": "Bu versiyada blok yoxdur.",
+        "previewSummary": {
+          "one": "{count} blok · {characters} simvol",
+          "few": "{count} blok · {characters} simvol",
+          "many": "{count} blok · {characters} simvol",
+          "other": "{count} blok · {characters} simvol"
+        }
+      }
     }
   }
 }

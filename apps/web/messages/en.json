@@ -3680,6 +3680,190 @@
         }
       },
       "showBlocked": "This is an early-bird reward, and one needs either a closing date or a limited number of places. Set a limit, or turn off early bird, before showing it again."
+    },
+    "story": {
+      "loading": "Loading this campaign’s story",
+      "unreadable": {
+        "title": "This story cannot be edited by this page",
+        "body": "It was written in a newer format than this editor understands. Reload the page to get the current editor. Nothing has been changed, and the story is still on your project page.",
+        "reload": "Reload"
+      },
+      "saveFailed": {
+        "title": "This change was not saved",
+        "kept": "Nothing you have written has been lost — it is still on this page and will be sent again."
+      },
+      "blocked": {
+        "title": "The story is not being saved yet",
+        "body": {
+          "one": "One block is incomplete. The message beside it says what is missing, and saving resumes as soon as it is filled in.",
+          "few": "{count} blocks are incomplete. The messages beside them say what is missing, and saving resumes as soon as they are filled in.",
+          "many": "{count} blocks are incomplete. The messages beside them say what is missing, and saving resumes as soon as they are filled in.",
+          "other": "{count} blocks are incomplete. The messages beside them say what is missing, and saving resumes as soon as they are filled in."
+        }
+      },
+      "counter": "{count} of {minimum} characters needed to submit",
+      "earlierVersions": "Earlier versions",
+      "anchors": {
+        "heading": "Anchor menu on your project page",
+        "untitled": "Untitled section"
+      },
+      "risks": {
+        "label": "Risks and challenges",
+        "hint": "What could go wrong, and what you will do about it. At least {minimum} characters, and required before you can submit.",
+        "placeholder": "Manufacturing, shipping, and timing are the usual three. Say what is already settled and what is not."
+      },
+      "blocks": {
+        "heading": "Story",
+        "empty": "Nothing here yet. Add a paragraph to begin — most campaigns open with what the product is and who it is for.",
+        "addHeading": "Add a block",
+        "position": " · {position} of {total}",
+        "moveUp": "Move {name} up",
+        "moveDown": "Move {name} down",
+        "remove": "Remove {name}"
+      },
+      "blockLabel": {
+        "heading": "Heading",
+        "paragraph": "Paragraph",
+        "list": "List",
+        "quote": "Quote",
+        "rule": "Divider",
+        "image": "Image",
+        "embed": "Embed"
+      },
+      "addLabel": {
+        "paragraph": "Add a paragraph. A run of text, with bold and italics.",
+        "heading": "Add a heading. A section title. Headings become the anchor menu.",
+        "list": "Add a list. Bulleted or numbered.",
+        "quote": "Add a quote. A pulled-out quotation.",
+        "image": "Add an image. An image that is already published somewhere.",
+        "embed": "Add an embed. A YouTube or Vimeo video.",
+        "rule": "Add a divider. A horizontal divider."
+      },
+      "announce": {
+        "added": "{block} added as block {position} of {total}.",
+        "moved": "{block} moved to {position} of {total}.",
+        "removed": {
+          "one": "{block} removed. {count} block left.",
+          "few": "{block} removed. {count} blocks left.",
+          "many": "{block} removed. {count} blocks left.",
+          "other": "{block} removed. {count} blocks left."
+        }
+      },
+      "describe": {
+        "empty": "empty",
+        "heading": "Heading {position} of {total}: {text}",
+        "paragraph": "Paragraph {position} of {total}: {preview}",
+        "quote": "Quote {position} of {total}: {preview}",
+        "rule": "Divider {position} of {total}",
+        "image": "Image {position} of {total}: {alt}",
+        "imageNoAlt": "no description yet",
+        "embed": "{provider} embed {position} of {total}: {title}",
+        "embedNoTitle": "no title yet",
+        "listBulleted": {
+          "one": "Bulleted list {position} of {total}, {count} item",
+          "few": "Bulleted list {position} of {total}, {count} items",
+          "many": "Bulleted list {position} of {total}, {count} items",
+          "other": "Bulleted list {position} of {total}, {count} items"
+        },
+        "listOrdered": {
+          "one": "Numbered list {position} of {total}, {count} item",
+          "few": "Numbered list {position} of {total}, {count} items",
+          "many": "Numbered list {position} of {total}, {count} items",
+          "other": "Numbered list {position} of {total}, {count} items"
+        }
+      },
+      "problems": {
+        "headingText": "A heading needs its text.",
+        "anchorUnusable": "This anchor is not usable in a link. Rename the heading to regenerate it.",
+        "anchorDuplicate": "Another heading already uses this anchor. Rename one of them.",
+        "imageAddress": "An image needs an address.",
+        "addressScheme": "An address has to begin with http:// or https://.",
+        "imageUnmeasured": "This image has not been measured yet. Use “Measure and add” so its size is recorded.",
+        "imageAlt": "A description is required. It is what a backer using a screen reader receives instead of the picture.",
+        "embedAddress": "An embed needs an address.",
+        "embedTitle": "An embed needs a title. It is what a screen reader announces instead of “frame”."
+      },
+      "fields": {
+        "headingLevel": "Level of {name}",
+        "headingSection": "Section",
+        "headingSubsection": "Subsection",
+        "headingText": "Text of {name}",
+        "headingPlaceholder": "How it works",
+        "paragraphPlaceholder": "Write a paragraph. Select text and use Bold or Italic, or type **bold** and *italic*.",
+        "quotePlaceholder": "Something somebody said about this project",
+        "ruleNote": "A divider. It separates sections and carries no text.",
+        "listStyle": "Style of {name}",
+        "listBulleted": "Bulleted",
+        "listOrdered": "Numbered",
+        "listItem": "Item {position} of {total} in {name}",
+        "listRemoveItem": "Remove item {position} of {total} in {name}",
+        "listAddItem": "Add item",
+        "listAddItemLabel": "Add an item to {name}",
+        "embedProvider": "Provider of {name}",
+        "embedAddress": "Address of {name}",
+        "embedAddressPlaceholder": "https://www.youtube.com/watch?v=…",
+        "embedTitle": "Title of {name}",
+        "embedTitlePlaceholder": "What this video shows",
+        "embedNote": "The title is what a screen reader announces instead of “frame”. Only YouTube and Vimeo can be embedded."
+      },
+      "image": {
+        "noUploadTitle": "Nothing is uploaded here",
+        "noUploadBody": "Give the address of an image that is already published. Its size is read in your browser and stored with the story, so the page can reserve its space before it loads.",
+        "address": "Address of {name}",
+        "addressPlaceholder": "https://images.example.com/prototype.jpg",
+        "measure": "Measure and add",
+        "measuring": "Measuring",
+        "addressMissing": "Enter the address of an image first.",
+        "added": "Added a {size} pixel image.",
+        "unreadable": "That address could not be loaded as an image.",
+        "pixels": "{size} pixels",
+        "alt": "Description of {name}",
+        "altPlaceholder": "What the picture shows",
+        "altNote": "Required. It is what a backer using a screen reader receives instead of the picture, so describe what it shows rather than naming the file."
+      },
+      "marks": {
+        "group": "Formatting for {label}",
+        "bold": "Bold",
+        "italic": "Italic",
+        "named": "{name}, {shortcut}"
+      },
+      "history": {
+        "title": "Earlier versions",
+        "intro": "A version is kept each time the story changes, at most one every few minutes. The most recent fifty are here.",
+        "loading": "Loading earlier versions",
+        "failed": "The history could not be loaded",
+        "emptyTitle": "No earlier versions yet",
+        "emptyBody": "One is kept the first time the story changes, and then at most one every few minutes while you write.",
+        "version": "Version {number}",
+        "mostRecent": "most recent",
+        "characters": "{count} characters",
+        "preview": "Preview",
+        "previewLabel": "Preview version {number}",
+        "hide": "Hide",
+        "restore": "Restore",
+        "restoreLabel": "Restore version {number}",
+        "loadingVersion": "Loading this version…",
+        "previewNewer": "This version was written in a newer format than this editor understands. Reload the page to get the current editor.",
+        "historyFailed": "The version history could not be loaded.",
+        "versionFailed": "That version could not be loaded.",
+        "restoreFailed": "That version could not be restored. Nothing has changed.",
+        "unreachable": "The service could not be reached. Check your connection and try again.",
+        "confirmTitle": "Restore a version",
+        "confirmNamed": "Restore version {number}?",
+        "confirmIntro": "The story you have now is replaced.",
+        "keep": "Keep what I have",
+        "confirm": "Restore this version",
+        "restoring": "Restoring",
+        "savedAt": "Version {number} was saved {when} and holds {characters} characters.",
+        "currentHolds": "The story you have now holds {characters} characters. It is kept as a version before being replaced, so this can be undone from this same list.",
+        "previewEmpty": "This version has no blocks.",
+        "previewSummary": {
+          "one": "{count} block · {characters} characters",
+          "few": "{count} blocks · {characters} characters",
+          "many": "{count} blocks · {characters} characters",
+          "other": "{count} blocks · {characters} characters"
+        }
+      }
     }
   }
 }

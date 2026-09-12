@@ -2,6 +2,8 @@
 
 import { Bold, Italic } from 'lucide-react';
 import { cn } from '@ideanest/ui';
+import type { StoryCopy } from '../../lib/i18n/editor-copy';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import { isMarkActive, toggleMark, type StoryMark } from '../../lib/projects/story';
 
 /**
@@ -33,15 +35,21 @@ import { isMarkActive, toggleMark, type StoryMark } from '../../lib/projects/sto
 
 interface MarkControl {
   mark: StoryMark;
-  label: string;
-  /** Announced as part of the name, so the shortcut is discoverable by ear. */
+  /** Which of the two names in the catalogue this control carries. */
+  name: 'bold' | 'italic';
+  /**
+   * Announced as part of the name, so the shortcut is discoverable by ear.
+   *
+   * NOT TRANSLATED, and that is deliberate: `Control B` is the name of a key on the keyboard
+   * in front of the reader, and the key does not change with the language of the page (#459).
+   */
   shortcut: string;
   icon: typeof Bold;
 }
 
 const CONTROLS: readonly MarkControl[] = [
-  { mark: 'strong', label: 'Bold', shortcut: 'Control B', icon: Bold },
-  { mark: 'em', label: 'Italic', shortcut: 'Control I', icon: Italic },
+  { mark: 'strong', name: 'bold', shortcut: 'Control B', icon: Bold },
+  { mark: 'em', name: 'italic', shortcut: 'Control I', icon: Italic },
 ];
 
 /** The keyboard shortcuts, so a control and its shortcut cannot disagree. */
@@ -53,6 +61,8 @@ export function markForShortcut(key: string): StoryMark | null {
 }
 
 export interface StoryMarkToolbarProps {
+  /** The four words this toolbar draws — issue #459. */
+  copy: StoryCopy['marks'];
   /** The control's current value, in the inline mark syntax. */
   value: string;
   selectionStart: number;
@@ -64,6 +74,7 @@ export interface StoryMarkToolbarProps {
 }
 
 export function StoryMarkToolbar({
+  copy,
   value,
   selectionStart,
   selectionEnd,
@@ -79,8 +90,12 @@ export function StoryMarkToolbar({
       formatting expects. Promising the arrow keys and not implementing them is
       worse than not promising them.
     */
-    <div role="group" aria-label={`Formatting for ${label}`} className="flex items-center gap-1">
-      {CONTROLS.map(({ mark, label: name, shortcut, icon: Icon }) => {
+    <div
+      role="group"
+      aria-label={fillPlaceholders(copy.group, { label })}
+      className="flex items-center gap-1"
+    >
+      {CONTROLS.map(({ mark, name, shortcut, icon: Icon }) => {
         const active = isMarkActive(value, selectionStart, selectionEnd, mark);
 
         return (
@@ -88,7 +103,7 @@ export function StoryMarkToolbar({
             key={mark}
             type="button"
             aria-pressed={active}
-            aria-label={`${name}, ${shortcut}`}
+            aria-label={fillPlaceholders(copy.named, { name: copy[name], shortcut })}
             disabled={disabled}
             /*
               `onMouseDown` with `preventDefault` rather than `onClick`: pressing a

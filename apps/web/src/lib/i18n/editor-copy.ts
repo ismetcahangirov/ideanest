@@ -3,6 +3,7 @@ import type { UploadStage } from '../media/upload';
 import type { PluralForms } from './plurals';
 import type { ProjectState } from '../projects/api';
 import type { ShippingType } from '../projects/api';
+import type { StoryBlockType } from '../projects/story';
 import type { EditorTabKey } from '../../components/campaign-editor/tabs';
 
 /**
@@ -568,9 +569,201 @@ const SHIPPING_TYPES: readonly ShippingType[] = [
   'INTERNATIONAL',
 ];
 
+/**
+ * What is wrong with one story block — `blockProblem` and `storyProblems`.
+ *
+ * <p>The client's copy of the server's rules, so a creator learns about a missing image
+ * description while they are looking at the image rather than from a failed autosave a second
+ * later. Not the authority: `StoryDocuments` is. The sentences arrive as an argument for the
+ * reason {@link BasicsErrorsCopy} gives.
+ */
+export interface StoryProblemsCopy {
+  readonly headingText: string;
+  readonly anchorUnusable: string;
+  readonly anchorDuplicate: string;
+  readonly imageAddress: string;
+  readonly addressScheme: string;
+  readonly imageUnmeasured: string;
+  readonly imageAlt: string;
+  readonly embedAddress: string;
+  readonly embedTitle: string;
+}
+
+/**
+ * How a block is announced: what kind it is, where it is, and enough of its contents to tell
+ * it from its neighbours.
+ *
+ * <p>Every add, move and remove control in the editor carries one of these. "Move up" repeated
+ * eleven times in a row is a screen reader reading out eleven identical buttons, and the
+ * position is the only thing that distinguishes them — so the position is in the name.
+ *
+ * <p>The two list forms are plural, because a list names how many items it holds.
+ */
+export interface StoryDescribeCopy {
+  readonly empty: string;
+  /** Each carries `{position}` and `{total}`. */
+  readonly heading: string;
+  readonly paragraph: string;
+  readonly quote: string;
+  readonly rule: string;
+  readonly image: string;
+  readonly imageNoAlt: string;
+  /** Also carries `{provider}`. */
+  readonly embed: string;
+  readonly embedNoTitle: string;
+  /** Also carry `{count}`. */
+  readonly listBulleted: PluralForms;
+  readonly listOrdered: PluralForms;
+}
+
 export interface StoryCopy {
   readonly frame: EditorFrameCopy;
+  readonly loading: string;
+  readonly unreadable: { readonly title: string; readonly body: string; readonly reload: string };
+  readonly saveFailed: { readonly title: string; readonly kept: string };
+  /** The body carries `{count}`. */
+  readonly blocked: { readonly title: string; readonly body: PluralForms };
+  /** Carries `{count}` and `{minimum}`. */
+  readonly counter: string;
+  readonly earlierVersions: string;
+  readonly anchors: { readonly heading: string; readonly untitled: string };
+  /** The hint carries `{minimum}`. */
+  readonly risks: {
+    readonly label: string;
+    readonly hint: string;
+    readonly placeholder: string;
+  };
+  readonly blocks: {
+    readonly heading: string;
+    readonly empty: string;
+    readonly addHeading: string;
+    /** Carries `{position}` and `{total}`. */
+    readonly position: string;
+    /** Each carries `{name}`. */
+    readonly moveUp: string;
+    readonly moveDown: string;
+    readonly remove: string;
+  };
+  readonly blockLabel: Readonly<Record<StoryBlockType, string>>;
+  /** The whole accessible name of each add control: the verb and what the block is for. */
+  readonly addLabel: Readonly<Record<StoryBlockType, string>>;
+  readonly announce: {
+    /** Both carry `{block}`, `{position}` and `{total}`. */
+    readonly added: string;
+    readonly moved: string;
+    /** Carries `{block}` and `{count}`. */
+    readonly removed: PluralForms;
+  };
+  readonly describe: StoryDescribeCopy;
+  readonly problems: StoryProblemsCopy;
+  readonly fields: {
+    /** Every one of these carries `{name}` — the block it belongs to. */
+    readonly headingLevel: string;
+    readonly headingSection: string;
+    readonly headingSubsection: string;
+    readonly headingText: string;
+    readonly headingPlaceholder: string;
+    readonly paragraphPlaceholder: string;
+    readonly quotePlaceholder: string;
+    readonly ruleNote: string;
+    readonly listStyle: string;
+    readonly listBulleted: string;
+    readonly listOrdered: string;
+    /** Also carry `{position}` and `{total}`. */
+    readonly listItem: string;
+    readonly listRemoveItem: string;
+    readonly listAddItem: string;
+    readonly listAddItemLabel: string;
+    readonly embedProvider: string;
+    readonly embedAddress: string;
+    readonly embedAddressPlaceholder: string;
+    readonly embedTitle: string;
+    readonly embedTitlePlaceholder: string;
+    readonly embedNote: string;
+  };
+  readonly image: {
+    readonly noUploadTitle: string;
+    readonly noUploadBody: string;
+    /** Carries `{name}`. */
+    readonly address: string;
+    readonly addressPlaceholder: string;
+    readonly measure: string;
+    readonly measuring: string;
+    readonly addressMissing: string;
+    /** Both carry `{size}`. */
+    readonly added: string;
+    readonly pixels: string;
+    readonly unreadable: string;
+    /** Carries `{name}`. */
+    readonly alt: string;
+    readonly altPlaceholder: string;
+    readonly altNote: string;
+  };
+  readonly marks: {
+    /** Carries `{label}`. */
+    readonly group: string;
+    readonly bold: string;
+    readonly italic: string;
+    /** Carries `{name}` and `{shortcut}` — the shortcut is a key name, not a word. */
+    readonly named: string;
+  };
+  readonly history: {
+    readonly title: string;
+    readonly intro: string;
+    readonly loading: string;
+    readonly failed: string;
+    readonly emptyTitle: string;
+    readonly emptyBody: string;
+    /** Each carries `{number}`. */
+    readonly version: string;
+    readonly mostRecent: string;
+    /** Carries `{count}`. */
+    readonly characters: string;
+    readonly preview: string;
+    readonly previewLabel: string;
+    readonly hide: string;
+    readonly restore: string;
+    readonly restoreLabel: string;
+    readonly loadingVersion: string;
+    readonly previewNewer: string;
+    readonly historyFailed: string;
+    readonly versionFailed: string;
+    readonly restoreFailed: string;
+    readonly unreachable: string;
+    readonly confirmTitle: string;
+    readonly confirmNamed: string;
+    readonly confirmIntro: string;
+    readonly keep: string;
+    readonly confirm: string;
+    readonly restoring: string;
+    /** Carries `{number}`, `{when}` and `{characters}`. */
+    readonly savedAt: string;
+    /** Carries `{characters}`. */
+    readonly currentHolds: string;
+    readonly previewEmpty: string;
+    /** Carries `{count}` and `{characters}`. */
+    readonly previewSummary: PluralForms;
+    /**
+     * Two vocabularies this drawer borrows rather than repeats.
+     *
+     * The preview lists a version's blocks by kind, which is the same seven words the editor
+     * behind it uses; and a failed load offers the same "Try again" every other surface in the
+     * editor offers. Both are read from their own keys, so there is one spelling of each.
+     */
+    readonly blockLabel: Readonly<Record<StoryBlockType, string>>;
+    readonly tryAgain: string;
+  };
 }
+
+const BLOCK_TYPES: readonly StoryBlockType[] = [
+  'heading',
+  'paragraph',
+  'list',
+  'quote',
+  'rule',
+  'image',
+  'embed',
+];
 
 export interface FaqCopy {
   readonly frame: EditorFrameCopy;
@@ -927,7 +1120,148 @@ export function rewardsCopyFrom(t: EditorTranslator): RewardsCopy {
 }
 
 export function storyCopyFrom(t: EditorTranslator): StoryCopy {
-  return { frame: editorFrameCopyFrom(t) };
+  const template = (key: string): string => String(t.raw(`story.${key}`));
+
+  return {
+    frame: editorFrameCopyFrom(t),
+    loading: t('story.loading'),
+    unreadable: {
+      title: t('story.unreadable.title'),
+      body: t('story.unreadable.body'),
+      reload: t('story.unreadable.reload'),
+    },
+    saveFailed: { title: t('story.saveFailed.title'), kept: t('story.saveFailed.kept') },
+    blocked: {
+      title: t('story.blocked.title'),
+      body: t.raw('story.blocked.body') as PluralForms,
+    },
+    counter: template('counter'),
+    earlierVersions: t('story.earlierVersions'),
+    anchors: { heading: t('story.anchors.heading'), untitled: t('story.anchors.untitled') },
+    risks: {
+      label: t('story.risks.label'),
+      hint: template('risks.hint'),
+      placeholder: t('story.risks.placeholder'),
+    },
+    blocks: {
+      heading: t('story.blocks.heading'),
+      empty: t('story.blocks.empty'),
+      addHeading: t('story.blocks.addHeading'),
+      position: template('blocks.position'),
+      moveUp: template('blocks.moveUp'),
+      moveDown: template('blocks.moveDown'),
+      remove: template('blocks.remove'),
+    },
+    blockLabel: record(BLOCK_TYPES, (type) => t(`story.blockLabel.${type}`)),
+    addLabel: record(BLOCK_TYPES, (type) => t(`story.addLabel.${type}`)),
+    announce: {
+      added: template('announce.added'),
+      moved: template('announce.moved'),
+      removed: t.raw('story.announce.removed') as PluralForms,
+    },
+    describe: {
+      empty: t('story.describe.empty'),
+      heading: template('describe.heading'),
+      paragraph: template('describe.paragraph'),
+      quote: template('describe.quote'),
+      rule: template('describe.rule'),
+      image: template('describe.image'),
+      imageNoAlt: t('story.describe.imageNoAlt'),
+      embed: template('describe.embed'),
+      embedNoTitle: t('story.describe.embedNoTitle'),
+      listBulleted: t.raw('story.describe.listBulleted') as PluralForms,
+      listOrdered: t.raw('story.describe.listOrdered') as PluralForms,
+    },
+    problems: {
+      headingText: t('story.problems.headingText'),
+      anchorUnusable: t('story.problems.anchorUnusable'),
+      anchorDuplicate: t('story.problems.anchorDuplicate'),
+      imageAddress: t('story.problems.imageAddress'),
+      addressScheme: t('story.problems.addressScheme'),
+      imageUnmeasured: t('story.problems.imageUnmeasured'),
+      imageAlt: t('story.problems.imageAlt'),
+      embedAddress: t('story.problems.embedAddress'),
+      embedTitle: t('story.problems.embedTitle'),
+    },
+    fields: {
+      headingLevel: template('fields.headingLevel'),
+      headingSection: t('story.fields.headingSection'),
+      headingSubsection: t('story.fields.headingSubsection'),
+      headingText: template('fields.headingText'),
+      headingPlaceholder: t('story.fields.headingPlaceholder'),
+      paragraphPlaceholder: t('story.fields.paragraphPlaceholder'),
+      quotePlaceholder: t('story.fields.quotePlaceholder'),
+      ruleNote: t('story.fields.ruleNote'),
+      listStyle: template('fields.listStyle'),
+      listBulleted: t('story.fields.listBulleted'),
+      listOrdered: t('story.fields.listOrdered'),
+      listItem: template('fields.listItem'),
+      listRemoveItem: template('fields.listRemoveItem'),
+      listAddItem: t('story.fields.listAddItem'),
+      listAddItemLabel: template('fields.listAddItemLabel'),
+      embedProvider: template('fields.embedProvider'),
+      embedAddress: template('fields.embedAddress'),
+      embedAddressPlaceholder: t('story.fields.embedAddressPlaceholder'),
+      embedTitle: template('fields.embedTitle'),
+      embedTitlePlaceholder: t('story.fields.embedTitlePlaceholder'),
+      embedNote: t('story.fields.embedNote'),
+    },
+    image: {
+      noUploadTitle: t('story.image.noUploadTitle'),
+      noUploadBody: t('story.image.noUploadBody'),
+      address: template('image.address'),
+      addressPlaceholder: t('story.image.addressPlaceholder'),
+      measure: t('story.image.measure'),
+      measuring: t('story.image.measuring'),
+      addressMissing: t('story.image.addressMissing'),
+      added: template('image.added'),
+      pixels: template('image.pixels'),
+      unreadable: t('story.image.unreadable'),
+      alt: template('image.alt'),
+      altPlaceholder: t('story.image.altPlaceholder'),
+      altNote: t('story.image.altNote'),
+    },
+    marks: {
+      group: template('marks.group'),
+      bold: t('story.marks.bold'),
+      italic: t('story.marks.italic'),
+      named: template('marks.named'),
+    },
+    history: {
+      title: t('story.history.title'),
+      intro: t('story.history.intro'),
+      loading: t('story.history.loading'),
+      failed: t('story.history.failed'),
+      emptyTitle: t('story.history.emptyTitle'),
+      emptyBody: t('story.history.emptyBody'),
+      version: template('history.version'),
+      mostRecent: t('story.history.mostRecent'),
+      characters: template('history.characters'),
+      preview: t('story.history.preview'),
+      previewLabel: template('history.previewLabel'),
+      hide: t('story.history.hide'),
+      restore: t('story.history.restore'),
+      restoreLabel: template('history.restoreLabel'),
+      loadingVersion: t('story.history.loadingVersion'),
+      previewNewer: t('story.history.previewNewer'),
+      historyFailed: t('story.history.historyFailed'),
+      versionFailed: t('story.history.versionFailed'),
+      restoreFailed: t('story.history.restoreFailed'),
+      unreachable: t('story.history.unreachable'),
+      confirmTitle: t('story.history.confirmTitle'),
+      confirmNamed: template('history.confirmNamed'),
+      confirmIntro: t('story.history.confirmIntro'),
+      keep: t('story.history.keep'),
+      confirm: t('story.history.confirm'),
+      restoring: t('story.history.restoring'),
+      savedAt: template('history.savedAt'),
+      currentHolds: template('history.currentHolds'),
+      previewEmpty: t('story.history.previewEmpty'),
+      previewSummary: t.raw('story.history.previewSummary') as PluralForms,
+      blockLabel: record(BLOCK_TYPES, (type) => t(`story.blockLabel.${type}`)),
+      tryAgain: t('frame.tryAgain'),
+    },
+  };
 }
 
 export function faqCopyFrom(t: EditorTranslator): FaqCopy {

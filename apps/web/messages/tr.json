@@ -3680,6 +3680,190 @@
         }
       },
       "showBlocked": "Bu bir erken kuş ödülü ve böyle bir ödül için ya bir kapanış tarihi ya da sınırlı bir kontenjan gerekir. Yeniden göstermeden önce bir sınır koyun ya da erken kuşu kapatın."
+    },
+    "story": {
+      "loading": "Bu kampanyanın hikâyesi yükleniyor",
+      "unreadable": {
+        "title": "Bu hikâye bu sayfada düzenlenemez",
+        "body": "Bu düzenleyicinin anladığından daha yeni bir biçimde yazılmış. Güncel düzenleyiciyi almak için sayfayı yeniden yükleyin. Hiçbir şey değişmedi ve hikâye hâlâ proje sayfanızda.",
+        "reload": "Yeniden yükle"
+      },
+      "saveFailed": {
+        "title": "Bu değişiklik kaydedilmedi",
+        "kept": "Yazdığınız hiçbir şey kaybolmadı — hepsi bu sayfada duruyor ve yeniden gönderilecek."
+      },
+      "blocked": {
+        "title": "Hikâye henüz kaydedilmiyor",
+        "body": {
+          "one": "Bir blok eksik. Yanındaki ileti neyin eksik olduğunu söylüyor; doldurulur doldurulmaz kaydetme sürüyor.",
+          "few": "{count} blok eksik. Yanlarındaki iletiler neyin eksik olduğunu söylüyor; doldurulur doldurulmaz kaydetme sürüyor.",
+          "many": "{count} blok eksik. Yanlarındaki iletiler neyin eksik olduğunu söylüyor; doldurulur doldurulmaz kaydetme sürüyor.",
+          "other": "{count} blok eksik. Yanlarındaki iletiler neyin eksik olduğunu söylüyor; doldurulur doldurulmaz kaydetme sürüyor."
+        }
+      },
+      "counter": "Göndermek için gereken {minimum} karakterden {count}",
+      "earlierVersions": "Önceki sürümler",
+      "anchors": {
+        "heading": "Proje sayfanızdaki bölüm menüsü",
+        "untitled": "Başlıksız bölüm"
+      },
+      "risks": {
+        "label": "Riskler ve zorluklar",
+        "hint": "Neler ters gidebilir ve bu konuda ne yapacaksınız. En az {minimum} karakter; göndermeden önce zorunlu.",
+        "placeholder": "Genelde üçü olur: üretim, kargo ve zamanlama. Neyin çözüldüğünü ve neyin çözülmediğini yazın."
+      },
+      "blocks": {
+        "heading": "Hikâye",
+        "empty": "Henüz bir şey yok. Başlamak için bir paragraf ekleyin — kampanyaların çoğu ürünün ne olduğu ve kime yönelik olduğuyla açılır.",
+        "addHeading": "Blok ekleyin",
+        "position": " · {total} bloktan {position}",
+        "moveUp": "{name} yukarı taşı",
+        "moveDown": "{name} aşağı taşı",
+        "remove": "{name} kaldır"
+      },
+      "blockLabel": {
+        "heading": "Başlık",
+        "paragraph": "Paragraf",
+        "list": "Liste",
+        "quote": "Alıntı",
+        "rule": "Ayırıcı",
+        "image": "Görsel",
+        "embed": "Gömülü"
+      },
+      "addLabel": {
+        "paragraph": "Bir paragraf ekleyin. Kalın ve italik içerebilen bir metin bloğu.",
+        "heading": "Bir başlık ekleyin. Bölüm adı. Başlıklar bölüm menüsünü oluşturur.",
+        "list": "Bir liste ekleyin. Madde işaretli ya da numaralı.",
+        "quote": "Bir alıntı ekleyin. Öne çıkarılmış bir alıntı.",
+        "image": "Bir görsel ekleyin. Bir yerde zaten yayımlanmış bir görsel.",
+        "embed": "Bir gömülü içerik ekleyin. Bir YouTube ya da Vimeo videosu.",
+        "rule": "Bir ayırıcı ekleyin. Yatay bir ayırıcı çizgi."
+      },
+      "announce": {
+        "added": "{block} {total} bloktan {position}. blok olarak eklendi.",
+        "moved": "{block} {total} bloktan {position}. konuma taşındı.",
+        "removed": {
+          "one": "{block} kaldırıldı. {count} blok kaldı.",
+          "few": "{block} kaldırıldı. {count} blok kaldı.",
+          "many": "{block} kaldırıldı. {count} blok kaldı.",
+          "other": "{block} kaldırıldı. {count} blok kaldı."
+        }
+      },
+      "describe": {
+        "empty": "boş",
+        "heading": "Başlık, {total} bloktan {position}: {text}",
+        "paragraph": "Paragraf, {total} bloktan {position}: {preview}",
+        "quote": "Alıntı, {total} bloktan {position}: {preview}",
+        "rule": "Ayırıcı, {total} bloktan {position}",
+        "image": "Görsel, {total} bloktan {position}: {alt}",
+        "imageNoAlt": "henüz açıklama yok",
+        "embed": "{provider} gömülü içeriği, {total} bloktan {position}: {title}",
+        "embedNoTitle": "henüz başlık yok",
+        "listBulleted": {
+          "one": "Madde işaretli liste, {total} bloktan {position}, {count} öğe",
+          "few": "Madde işaretli liste, {total} bloktan {position}, {count} öğe",
+          "many": "Madde işaretli liste, {total} bloktan {position}, {count} öğe",
+          "other": "Madde işaretli liste, {total} bloktan {position}, {count} öğe"
+        },
+        "listOrdered": {
+          "one": "Numaralı liste, {total} bloktan {position}, {count} öğe",
+          "few": "Numaralı liste, {total} bloktan {position}, {count} öğe",
+          "many": "Numaralı liste, {total} bloktan {position}, {count} öğe",
+          "other": "Numaralı liste, {total} bloktan {position}, {count} öğe"
+        }
+      },
+      "problems": {
+        "headingText": "Bir başlığın metni olmalıdır.",
+        "anchorUnusable": "Bu çapa bir bağlantıda kullanılamaz. Yeniden oluşturmak için başlığı yeniden adlandırın.",
+        "anchorDuplicate": "Bu çapayı başka bir başlık zaten kullanıyor. Birini yeniden adlandırın.",
+        "imageAddress": "Bir görselin adresi olmalıdır.",
+        "addressScheme": "Bir adres http:// ya da https:// ile başlamalıdır.",
+        "imageUnmeasured": "Bu görsel henüz ölçülmedi. Boyutunun kaydedilmesi için “Ölç ve ekle” düğmesini kullanın.",
+        "imageAlt": "Açıklama zorunludur. Ekran okuyucu kullanan bir destekçi resmin yerine bunu alır.",
+        "embedAddress": "Gömülü içeriğin adresi olmalıdır.",
+        "embedTitle": "Gömülü içeriğin bir başlığı olmalıdır. Ekran okuyucu “çerçeve” yerine bunu söyler."
+      },
+      "fields": {
+        "headingLevel": "{name} düzeyi",
+        "headingSection": "Bölüm",
+        "headingSubsection": "Alt bölüm",
+        "headingText": "{name} metni",
+        "headingPlaceholder": "Nasıl çalışır",
+        "paragraphPlaceholder": "Bir paragraf yazın. Metni seçip Kalın ya da İtalik düğmesini kullanın veya **kalın** ve *italik* yazın.",
+        "quotePlaceholder": "Birinin bu proje hakkında söylediği bir şey",
+        "ruleNote": "Bir ayırıcı. Bölümleri ayırır ve metin taşımaz.",
+        "listStyle": "{name} biçimi",
+        "listBulleted": "Madde işaretli",
+        "listOrdered": "Numaralı",
+        "listItem": "{name} içinde {total} öğeden {position}.",
+        "listRemoveItem": "{name} içinde {total} öğeden {position}. öğeyi kaldır",
+        "listAddItem": "Öğe ekleyin",
+        "listAddItemLabel": "{name} listesine bir öğe ekleyin",
+        "embedProvider": "{name} sağlayıcısı",
+        "embedAddress": "{name} adresi",
+        "embedAddressPlaceholder": "https://www.youtube.com/watch?v=…",
+        "embedTitle": "{name} başlığı",
+        "embedTitlePlaceholder": "Bu videoda ne gösteriliyor",
+        "embedNote": "Başlık, ekran okuyucunun “çerçeve” yerine söylediği şeydir. Yalnızca YouTube ve Vimeo gömülebilir."
+      },
+      "image": {
+        "noUploadTitle": "Burada hiçbir şey yüklenmez",
+        "noUploadBody": "Zaten yayımlanmış bir görselin adresini verin. Boyutu tarayıcınızda okunur ve hikâyeyle birlikte saklanır, böylece sayfa yüklenmeden önce yerini ayırabilir.",
+        "address": "{name} adresi",
+        "addressPlaceholder": "https://images.example.com/prototype.jpg",
+        "measure": "Ölç ve ekle",
+        "measuring": "Ölçülüyor",
+        "addressMissing": "Önce bir görselin adresini girin.",
+        "added": "{size} piksellik bir görsel eklendi.",
+        "unreadable": "Bu adres bir görsel olarak yüklenemedi.",
+        "pixels": "{size} piksel",
+        "alt": "{name} açıklaması",
+        "altPlaceholder": "Resimde ne gösteriliyor",
+        "altNote": "Zorunlu. Ekran okuyucu kullanan bir destekçi resmin yerine bunu alır, bu yüzden dosya adını değil ne gösterildiğini yazın."
+      },
+      "marks": {
+        "group": "{label} için biçimlendirme",
+        "bold": "Kalın",
+        "italic": "İtalik",
+        "named": "{name}, {shortcut}"
+      },
+      "history": {
+        "title": "Önceki sürümler",
+        "intro": "Hikâye her değiştiğinde bir sürüm saklanır, birkaç dakikada en fazla bir tane. En son elli tanesi burada.",
+        "loading": "Önceki sürümler yükleniyor",
+        "failed": "Geçmiş yüklenemedi",
+        "emptyTitle": "Henüz önceki sürüm yok",
+        "emptyBody": "İlki, hikâye ilk değiştiğinde saklanır; sonra siz yazdıkça birkaç dakikada en fazla bir tane.",
+        "version": "{number}. sürüm",
+        "mostRecent": "en yeni",
+        "characters": "{count} karakter",
+        "preview": "Önizle",
+        "previewLabel": "{number}. sürümü önizle",
+        "hide": "Gizle",
+        "restore": "Geri yükle",
+        "restoreLabel": "{number}. sürümü geri yükle",
+        "loadingVersion": "Bu sürüm yükleniyor…",
+        "previewNewer": "Bu sürüm, düzenleyicinin anladığından daha yeni bir biçimde yazılmış. Güncel düzenleyiciyi almak için sayfayı yeniden yükleyin.",
+        "historyFailed": "Sürüm geçmişi yüklenemedi.",
+        "versionFailed": "Bu sürüm yüklenemedi.",
+        "restoreFailed": "Bu sürüm geri yüklenemedi. Hiçbir şey değişmedi.",
+        "unreachable": "Servise ulaşılamadı. Bağlantınızı kontrol edip yeniden deneyin.",
+        "confirmTitle": "Bir sürümü geri yükle",
+        "confirmNamed": "{number}. sürüm geri yüklensin mi?",
+        "confirmIntro": "Şu anki hikâyeniz değiştirilir.",
+        "keep": "Bendekini koru",
+        "confirm": "Bu sürümü geri yükle",
+        "restoring": "Geri yükleniyor",
+        "savedAt": "{number}. sürüm {when} tarihinde kaydedildi ve {characters} karakter içeriyor.",
+        "currentHolds": "Şu anki hikâyeniz {characters} karakter içeriyor. Değiştirilmeden önce bir sürüm olarak saklanır, bu yüzden bu işlem aynı listeden geri alınabilir.",
+        "previewEmpty": "Bu sürümde blok yok.",
+        "previewSummary": {
+          "one": "{count} blok · {characters} karakter",
+          "few": "{count} blok · {characters} karakter",
+          "many": "{count} blok · {characters} karakter",
+          "other": "{count} blok · {characters} karakter"
+        }
+      }
     }
   }
 }
