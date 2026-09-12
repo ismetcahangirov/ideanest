@@ -1,3 +1,5 @@
+import type { AmountRejection } from '../money';
+import type { UploadStage } from '../media/upload';
 import type { ProjectState } from '../projects/api';
 import type { EditorTabKey } from '../../components/campaign-editor/tabs';
 
@@ -153,9 +155,142 @@ export function editorFrameCopyFrom(t: EditorTranslator): EditorFrameCopy {
  * sixty-seven strings into the flight payload of the screen where somebody is typing a title.
  * ---------------------------------------------------------------------- */
 
+/**
+ * What is wrong with what a creator typed — `lib/projects/basics.ts`.
+ *
+ * <p>IT IS AN ARGUMENT TO `validateBasics` RATHER THAN SOMETHING THAT MODULE LOOKS UP, the way
+ * `lib/auth/failures.ts` takes `AuthFailuresCopy`. The rules are §5.3's and belong in a pure
+ * function that can be tested at its boundaries — sixty characters, one day, sixty days — and a
+ * pure function cannot read a catalogue. Making the argument required rather than optional is
+ * deliberate: an optional one would leave the goal field quietly answering in English, on the
+ * figure the whole campaign is measured against.
+ */
+export interface BasicsErrorsCopy {
+  readonly titleMissing: string;
+  /** Carries `{max}` and `{over}`. */
+  readonly titleTooLong: string;
+  /** Carries `{max}` and `{over}`. */
+  readonly blurbTooLong: string;
+  readonly subcategoryWithoutCategory: string;
+  readonly currencyUnsupported: string;
+  readonly durationNotWhole: string;
+  /** Carries `{min}` and `{max}`. */
+  readonly durationOutOfRange: string;
+  readonly scheduleUnreadable: string;
+  readonly schedulePast: string;
+  /** One sentence per way `parseAmount` can refuse a figure. */
+  readonly amount: Readonly<Record<AmountRejection, string>>;
+}
+
+/** `CoverImageField`, which is most of this tab's vocabulary on its own. */
+export interface CoverImageCopy {
+  readonly label: string;
+  /** Carries `{minimum}`. */
+  readonly hint: string;
+  /** Carries `{size}`. */
+  readonly set: string;
+  /** Appended to {@link set} when the file came from an upload rather than an address. */
+  readonly uploaded: string;
+  readonly remove: string;
+  readonly drop: string;
+  readonly release: string;
+  readonly choose: string;
+  /** Carries `{minimum}`. */
+  readonly dropHint: string;
+  readonly addressLabel: string;
+  readonly addressPlaceholder: string;
+  readonly checking: string;
+  readonly useAddress: string;
+  readonly addressMissing: string;
+  /** Carries `{size}`. */
+  readonly accepted: string;
+  readonly softTitle: string;
+  /** Carries `{size}` and `{minimum}`. */
+  readonly soft: string;
+  readonly rejectedTitle: string;
+  readonly unusable: string;
+  readonly stages: Readonly<Record<UploadStage, string>>;
+  /**
+   * What each refusal means, keyed on the service's own code.
+   *
+   * <p>The code rather than the sentence, because the sentence the service writes is English
+   * for a log and these are read by somebody deciding what to do next. An unknown code falls
+   * back to whatever the service said, which is the honest failure: a wrong sentence in the
+   * right language would be worse.
+   *
+   * <p>`TOO_SMALL` carries `{minimum}`.
+   */
+  readonly refusals: Readonly<Record<string, string>>;
+}
+
 export interface BasicsCopy {
   readonly frame: EditorFrameCopy;
+  readonly signedOut: { readonly title: string; readonly body: string };
+  readonly loadFailed: { readonly title: string };
+  readonly tryAgain: string;
+  readonly loading: string;
+  readonly saveFailed: { readonly title: string; readonly kept: string };
+  /** Carries `{max}` on the hint. */
+  readonly title: { readonly label: string; readonly hint: string };
+  /** Carries `{max}` on the hint. */
+  readonly blurb: { readonly label: string; readonly hint: string };
+  readonly categoriesUnavailable: { readonly title: string; readonly body: string };
+  readonly category: {
+    readonly label: string;
+    readonly hint: string;
+    readonly placeholder: string;
+  };
+  readonly subcategory: {
+    readonly label: string;
+    readonly placeholder: string;
+    readonly chooseCategory: string;
+    readonly none: string;
+    readonly optional: string;
+  };
+  readonly goal: { readonly label: string; readonly hint: string; readonly locked: string };
+  readonly currency: { readonly label: string; readonly hint: string };
+  /** Carries `{min}`, `{max}` and `{recommended}` on the hint. */
+  readonly duration: { readonly label: string; readonly hint: string; readonly locked: string };
+  readonly schedule: { readonly label: string; readonly hint: string };
+  readonly latePledge: { readonly label: string; readonly hint: string };
+  readonly errors: BasicsErrorsCopy;
+  readonly cover: CoverImageCopy;
 }
+
+/**
+ * The six ways `parseAmount` refuses a figure, paired with the key that explains each.
+ *
+ * The rejection reasons are hyphenated — they are the module's own vocabulary — and message
+ * keys are not, so the two are joined here rather than by building a key out of a string.
+ */
+const AMOUNT_KEYS: ReadonlyArray<readonly [AmountRejection, string]> = [
+  ['empty', 'empty'],
+  ['not-a-number', 'notANumber'],
+  ['comma', 'comma'],
+  ['too-many-decimals', 'tooManyDecimals'],
+  ['too-large', 'tooLarge'],
+  ['not-positive', 'notPositive'],
+];
+
+const UPLOAD_STAGES: readonly UploadStage[] = ['preparing', 'uploading', 'processing'];
+
+/**
+ * The refusal codes `POST /v1/media` can answer with.
+ *
+ * Listed rather than read off the catalogue so that a code with no message is a missing key at
+ * build time instead of a blank alert in front of somebody whose photograph was rejected.
+ */
+const REFUSAL_CODES: readonly string[] = [
+  'UNSUPPORTED_FORMAT',
+  'TOO_LARGE',
+  'TOO_SMALL',
+  'EMPTY',
+  'UNREADABLE',
+  'UPLOADS_UNAVAILABLE',
+  'MEDIA_STORAGE_UNREACHABLE',
+  'UPLOAD_STILL_PROCESSING',
+  'UPLOAD_TRANSFER_FAILED',
+];
 
 export interface RewardsCopy {
   readonly frame: EditorFrameCopy;
@@ -171,6 +306,22 @@ export interface FaqCopy {
 
 export interface PrelaunchCopy {
   readonly frame: EditorFrameCopy;
+  /**
+   * The same refusal vocabulary the basics tab uses.
+   *
+   * The pre-launch tab edits a subset of the same fields — the title and the summary a
+   * pre-launch page shows — through `validateBasics`, so it needs the same sentences. One
+   * vocabulary rather than two, because a title refused on one tab and accepted on the other
+   * would be the same rule stated twice and eventually differently.
+   */
+  readonly errors: BasicsErrorsCopy;
+  /**
+   * And the same cover-image vocabulary, for the same reason.
+   *
+   * A pre-launch page is the campaign before it opens, and it shows the same cover; the tab
+   * draws `CoverImageField` to set it.
+   */
+  readonly cover: CoverImageCopy;
 }
 
 export interface ReviewCopy {
@@ -178,7 +329,85 @@ export interface ReviewCopy {
 }
 
 export function basicsCopyFrom(t: EditorTranslator): BasicsCopy {
-  return { frame: editorFrameCopyFrom(t) };
+  return {
+    frame: editorFrameCopyFrom(t),
+    signedOut: { title: t('basics.signedOut.title'), body: t('basics.signedOut.body') },
+    loadFailed: { title: t('basics.loadFailed.title') },
+    tryAgain: t('basics.tryAgain'),
+    loading: t('basics.loading'),
+    saveFailed: { title: t('basics.saveFailed.title'), kept: t('basics.saveFailed.kept') },
+    title: { label: t('basics.title.label'), hint: String(t.raw('basics.title.hint')) },
+    blurb: { label: t('basics.blurb.label'), hint: String(t.raw('basics.blurb.hint')) },
+    categoriesUnavailable: {
+      title: t('basics.categoriesUnavailable.title'),
+      body: t('basics.categoriesUnavailable.body'),
+    },
+    category: {
+      label: t('basics.category.label'),
+      hint: t('basics.category.hint'),
+      placeholder: t('basics.category.placeholder'),
+    },
+    subcategory: {
+      label: t('basics.subcategory.label'),
+      placeholder: t('basics.subcategory.placeholder'),
+      chooseCategory: t('basics.subcategory.chooseCategory'),
+      none: t('basics.subcategory.none'),
+      optional: t('basics.subcategory.optional'),
+    },
+    goal: {
+      label: t('basics.goal.label'),
+      hint: t('basics.goal.hint'),
+      locked: t('basics.goal.locked'),
+    },
+    currency: { label: t('basics.currency.label'), hint: t('basics.currency.hint') },
+    duration: {
+      label: t('basics.duration.label'),
+      hint: String(t.raw('basics.duration.hint')),
+      locked: t('basics.duration.locked'),
+    },
+    schedule: { label: t('basics.schedule.label'), hint: t('basics.schedule.hint') },
+    latePledge: { label: t('basics.latePledge.label'), hint: t('basics.latePledge.hint') },
+    errors: {
+      titleMissing: t('basics.errors.titleMissing'),
+      titleTooLong: String(t.raw('basics.errors.titleTooLong')),
+      blurbTooLong: String(t.raw('basics.errors.blurbTooLong')),
+      subcategoryWithoutCategory: t('basics.errors.subcategoryWithoutCategory'),
+      currencyUnsupported: t('basics.errors.currencyUnsupported'),
+      durationNotWhole: t('basics.errors.durationNotWhole'),
+      durationOutOfRange: String(t.raw('basics.errors.durationOutOfRange')),
+      scheduleUnreadable: t('basics.errors.scheduleUnreadable'),
+      schedulePast: t('basics.errors.schedulePast'),
+      amount: Object.fromEntries(
+        AMOUNT_KEYS.map(([reason, key]) => [reason, t(`basics.errors.amount.${key}`)]),
+      ) as Record<AmountRejection, string>,
+    },
+    cover: {
+      label: t('basics.cover.label'),
+      hint: String(t.raw('basics.cover.hint')),
+      set: String(t.raw('basics.cover.set')),
+      uploaded: t('basics.cover.uploaded'),
+      remove: t('basics.cover.remove'),
+      drop: t('basics.cover.drop'),
+      release: t('basics.cover.release'),
+      choose: t('basics.cover.choose'),
+      dropHint: String(t.raw('basics.cover.dropHint')),
+      addressLabel: t('basics.cover.addressLabel'),
+      addressPlaceholder: t('basics.cover.addressPlaceholder'),
+      checking: t('basics.cover.checking'),
+      useAddress: t('basics.cover.useAddress'),
+      addressMissing: t('basics.cover.addressMissing'),
+      accepted: String(t.raw('basics.cover.accepted')),
+      softTitle: t('basics.cover.softTitle'),
+      soft: String(t.raw('basics.cover.soft')),
+      rejectedTitle: t('basics.cover.rejectedTitle'),
+      unusable: t('basics.cover.unusable'),
+      stages: record(UPLOAD_STAGES, (stage) => t(`basics.cover.stages.${stage}`)),
+      /* Read raw, because `TOO_SMALL` carries `{minimum}` and next-intl refuses a template. */
+      refusals: Object.fromEntries(
+        REFUSAL_CODES.map((code) => [code, String(t.raw(`basics.cover.refusals.${code}`))]),
+      ),
+    },
+  };
 }
 
 export function rewardsCopyFrom(t: EditorTranslator): RewardsCopy {
@@ -194,7 +423,8 @@ export function faqCopyFrom(t: EditorTranslator): FaqCopy {
 }
 
 export function prelaunchCopyFrom(t: EditorTranslator): PrelaunchCopy {
-  return { frame: editorFrameCopyFrom(t) };
+  const basics = basicsCopyFrom(t);
+  return { frame: basics.frame, errors: basics.errors, cover: basics.cover };
 }
 
 export function reviewCopyFrom(t: EditorTranslator): ReviewCopy {

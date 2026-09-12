@@ -3273,6 +3273,123 @@
         "saved": "Kaydedildi",
         "failed": "Kaydedilmedi"
       }
+    },
+    "basics": {
+      "signedOut": {
+        "title": "Oturumunuz kapalı",
+        "body": "Bu tarayıcıda artık oturum yok. Kampanyayı düzenlemeye devam etmek için yeniden giriş yapın."
+      },
+      "loadFailed": {
+        "title": "Bu proje yüklenemedi"
+      },
+      "tryAgain": "Yeniden deneyin",
+      "loading": "Kampanya yükleniyor",
+      "saveFailed": {
+        "title": "Bu değişiklik kaydedilmedi",
+        "kept": "Yazdığınız hiçbir şey kaybolmadı — hepsi aşağıdaki alanlarda duruyor ve yeniden gönderilecek."
+      },
+      "title": {
+        "label": "Başlık",
+        "hint": "Keşfet ızgarasında görünen ad. En çok {max} karakter."
+      },
+      "blurb": {
+        "label": "Özet",
+        "hint": "Bir veya iki cümle; aramada ve ızgarada başlığın altında görünür. En çok {max} karakter."
+      },
+      "categoriesUnavailable": {
+        "title": "Kategori listesi kullanılamıyor",
+        "body": "Kategoriler yüklenemedi, bu yüzden kampanyanın kategorisi şimdilik burada değiştirilemiyor. Sayfadaki diğer her şey yine de kaydediliyor."
+      },
+      "category": {
+        "label": "Kategori",
+        "hint": "Destekçiler bu projeyi burada bulacak.",
+        "placeholder": "Bir kategori seçin"
+      },
+      "subcategory": {
+        "label": "Alt kategori",
+        "placeholder": "Alt kategori yok",
+        "chooseCategory": "Önce bir kategori seçin.",
+        "none": "Bu kategorinin alt kategorisi yok.",
+        "optional": "İsteğe bağlı ve daha belirgin."
+      },
+      "goal": {
+        "label": "Fonlama hedefi",
+        "hint": "Ya hep ya hiç: bu rakama ulaşılmazsa hiçbir şey tahsil edilmez.",
+        "locked": "Kampanya başladıktan sonra hedef değiştirilemez."
+      },
+      "currency": {
+        "label": "Para birimi",
+        "hint": "Kampanya başlayınca sabitlenir."
+      },
+      "duration": {
+        "label": "Süre, gün",
+        "hint": "{min} ile {max} gün arası. {recommended} gün öneriyoruz.",
+        "locked": "Kampanya başladıktan sonra son tarih değiştirilemez."
+      },
+      "schedule": {
+        "label": "Planlanan lansman",
+        "hint": "İsteğe bağlı. İnceleme bittikten sonra elle başlatmak için boş bırakın."
+      },
+      "latePledge": {
+        "label": "Geç destekleri kabul et",
+        "hint": "Proje fonlandıysa son tarihten sonra da desteklere açık kalır. İstediğiniz zaman yeniden kapatabilirsiniz."
+      },
+      "errors": {
+        "titleMissing": "Bir projenin başlığı olmalıdır.",
+        "titleTooLong": "Başlık en çok {max} karakter olmalıdır. {over} karakter çıkarın.",
+        "blurbTooLong": "Özet en çok {max} karakter olmalıdır. {over} karakter çıkarın.",
+        "subcategoryWithoutCategory": "Önce bir kategori seçin.",
+        "currencyUnsupported": "Platformun tahsilat yapabildiği bir para birimi seçin.",
+        "durationNotWhole": "Süreyi tam gün sayısı olarak girin.",
+        "durationOutOfRange": "Bir kampanya {min} ile {max} gün arası sürer.",
+        "scheduleUnreadable": "Bir tarih ve saat girin.",
+        "schedulePast": "Gelecekte bir tarih ve saat seçin.",
+        "amount": {
+          "empty": "Toplamanız gereken tutarı girin.",
+          "notANumber": "Hedefi rakamla girin, örneğin 5000.00.",
+          "comma": "Ondalık ayırıcı olarak nokta kullanın, örneğin 5000.00.",
+          "tooManyDecimals": "Hedefte en çok iki ondalık basamak olabilir.",
+          "tooLarge": "Bu hedef platformun tutabileceğinden büyük.",
+          "notPositive": "Hedef sıfırdan büyük olmalıdır."
+        }
+      },
+      "cover": {
+        "label": "Kapak görseli",
+        "hint": "Keşfet ızgarasında ve proje sayfasının üstünde görünür. {minimum} piksel ve üzeri en iyi görünür.",
+        "set": "Kapak {size} piksel",
+        "uploaded": " · yüklendi",
+        "remove": "Kapağı kaldır",
+        "drop": "Kapak olarak kullanmak için bir görseli buraya bırakın",
+        "release": "Bu görseli yüklemek için bırakın",
+        "choose": "Bir görsel seçin",
+        "dropHint": "20 MB’a kadar. Görsel burada dönüştürülüp yeniden boyutlandırılır, orijinali saklanmaz. {minimum} ve üzeri en iyi görünür.",
+        "addressLabel": "Kapak görselinin adresi",
+        "addressPlaceholder": "Ya da bir adres yapıştırın: https://images.example.com/cover.jpg",
+        "checking": "Denetleniyor",
+        "useAddress": "Bu adresi kullan",
+        "addressMissing": "Önce bir görselin adresini girin.",
+        "accepted": "Kapak {size} piksellik bir görselden ayarlandı.",
+        "softTitle": "Tam genişlikte bulanık görünecek",
+        "soft": "Kapak {size} piksellik bir görselden ayarlandı. Bu, önerilen {minimum} ölçüsünün altında; başlığı doldurmak için büyütülecek ve bulanık görünecek. Oranları korunur — çerçeve germez, kırpar. Kampanya yine de gönderilebilir.",
+        "rejectedTitle": "Bu dosya kullanılmadı",
+        "unusable": "Bu görsel kullanılamadı.",
+        "stages": {
+          "preparing": "Görsel hazırlanıyor…",
+          "uploading": "Görsel yükleniyor…",
+          "processing": "Görsel işleniyor…"
+        },
+        "refusals": {
+          "UNSUPPORTED_FORMAT": "Bu dosya platformun okuyabildiği bir görsel değil. JPEG, PNG, WebP, AVIF ve HEIC çalışır.",
+          "TOO_LARGE": "Bu dosya çok büyük. Sınır 20 MB.",
+          "TOO_SMALL": "Bu görsel göstermek için çok küçük. {minimum} ve üzeri iyi görünür.",
+          "EMPTY": "Bu dosya boş.",
+          "UNREADABLE": "Bu görsel dönüştürülemedi. Farklı bir dosya çalışacaktır.",
+          "UPLOADS_UNAVAILABLE": "Bu ortamda yükleme açık değil. Bunun yerine bir adres yapıştırın.",
+          "MEDIA_STORAGE_UNREACHABLE": "Görsel deposu yanıt vermiyor. Lütfen birazdan yeniden deneyin.",
+          "UPLOAD_STILL_PROCESSING": "Bu görsel her zamankinden uzun sürüyor. Bu sekmeye geri döndüğünüzde görünebilir.",
+          "UPLOAD_TRANSFER_FAILED": "Görsel depoya ulaşmadı. Bağlantıyı kontrol edip yeniden deneyin."
+        }
+      }
     }
   }
 }

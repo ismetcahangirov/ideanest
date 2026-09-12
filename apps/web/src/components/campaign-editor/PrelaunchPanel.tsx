@@ -231,7 +231,10 @@ export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
     );
   }
 
-  const errors: BasicsErrors = { ...validateBasics(draft), ...serverErrors(autosave.failure) };
+  const errors: BasicsErrors = {
+    ...validateBasics(draft, copy.errors),
+    ...serverErrors(autosave.failure),
+  };
   const canOpen = project.state === 'DRAFT';
   const closed = !canOpen && !collecting;
 
@@ -403,6 +406,7 @@ export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
           </Field>
 
           <CoverImageField
+            copy={copy.cover}
             url={draft.coverImageUrl}
             cover={draft.coverImage}
             error={errors.coverImage}

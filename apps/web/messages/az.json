@@ -3273,6 +3273,123 @@
         "saved": "Yadda saxlanıldı",
         "failed": "Yadda saxlanılmadı"
       }
+    },
+    "basics": {
+      "signedOut": {
+        "title": "Hesabdan çıxmısınız",
+        "body": "Bu brauzerdə artıq sessiya yoxdur. Kampaniyanı redaktə etməyə davam etmək üçün yenidən daxil olun."
+      },
+      "loadFailed": {
+        "title": "Bu layihə yüklənə bilmədi"
+      },
+      "tryAgain": "Yenidən cəhd edin",
+      "loading": "Kampaniya yüklənir",
+      "saveFailed": {
+        "title": "Bu dəyişiklik yadda saxlanılmadı",
+        "kept": "Yazdığınız heç nə itməyib — hamısı aşağıdakı sahələrdədir və yenidən göndəriləcək."
+      },
+      "title": {
+        "label": "Başlıq",
+        "hint": "Kəşf səhifəsində görünən ad. {max} simvol və ya daha az."
+      },
+      "blurb": {
+        "label": "Xülasə",
+        "hint": "Bir və ya iki cümlə; axtarışda və kəşf səhifəsində başlığın altında görünür. {max} simvol və ya daha az."
+      },
+      "categoriesUnavailable": {
+        "title": "Kateqoriya siyahısı əlçatan deyil",
+        "body": "Kateqoriyalar yüklənə bilmədi, ona görə bu kampaniyanın kateqoriyası hələlik burada dəyişdirilə bilməz. Səhifədəki qalan hər şey yenə də yadda saxlanılır."
+      },
+      "category": {
+        "label": "Kateqoriya",
+        "hint": "Dəstəkçilər bu layihəni burada tapacaq.",
+        "placeholder": "Kateqoriya seçin"
+      },
+      "subcategory": {
+        "label": "Alt kateqoriya",
+        "placeholder": "Alt kateqoriya yoxdur",
+        "chooseCategory": "Əvvəlcə kateqoriya seçin.",
+        "none": "Bu kateqoriyanın alt kateqoriyası yoxdur.",
+        "optional": "İstəyə bağlıdır və daha dəqiqdir."
+      },
+      "goal": {
+        "label": "Maliyyə hədəfi",
+        "hint": "Ya hamısı, ya heç nə: bu rəqəmə çatılmasa, heç nə yığılmır.",
+        "locked": "Kampaniya başladıqdan sonra hədəf dəyişdirilə bilməz."
+      },
+      "currency": {
+        "label": "Valyuta",
+        "hint": "Kampaniya başlayan kimi sabitlənir."
+      },
+      "duration": {
+        "label": "Müddət, gün",
+        "hint": "{min}–{max} gün. {recommended} gün tövsiyə olunur.",
+        "locked": "Kampaniya başladıqdan sonra son tarix dəyişdirilə bilməz."
+      },
+      "schedule": {
+        "label": "Planlaşdırılmış başlanğıc",
+        "hint": "İstəyə bağlıdır. Baxış bitəndən sonra əl ilə başlatmaq üçün boş saxlayın."
+      },
+      "latePledge": {
+        "label": "Gecikmiş dəstəkləri qəbul et",
+        "hint": "Layihə maliyyələşdikdən sonra son tarixdən sonra da dəstəklərə açıq qalır. İstənilən vaxt yenidən söndürmək olar."
+      },
+      "errors": {
+        "titleMissing": "Layihənin başlığı olmalıdır.",
+        "titleTooLong": "Başlıq {max} simvol və ya daha az olmalıdır. {over} simvol çıxarın.",
+        "blurbTooLong": "Xülasə {max} simvol və ya daha az olmalıdır. {over} simvol çıxarın.",
+        "subcategoryWithoutCategory": "Əvvəlcə kateqoriya seçin.",
+        "currencyUnsupported": "Platformanın yığa biləcəyi valyuta seçin.",
+        "durationNotWhole": "Müddəti tam gün sayı kimi yazın.",
+        "durationOutOfRange": "Kampaniya {min}–{max} gün davam edir.",
+        "scheduleUnreadable": "Tarix və saat yazın.",
+        "schedulePast": "Gələcəkdə olan tarix və saat seçin.",
+        "amount": {
+          "empty": "Yığmaq istədiyiniz məbləği yazın.",
+          "notANumber": "Hədəfi rəqəmlə yazın, məsələn 5000.00.",
+          "comma": "Onluq ayırıcı kimi nöqtə istifadə edin, məsələn 5000.00.",
+          "tooManyDecimals": "Hədəfdə ən çox iki onluq rəqəm ola bilər.",
+          "tooLarge": "Bu hədəf platformanın saxlaya biləcəyindən böyükdür.",
+          "notPositive": "Hədəf sıfırdan böyük olmalıdır."
+        }
+      },
+      "cover": {
+        "label": "Örtük şəkli",
+        "hint": "Kəşf səhifəsində və layihə səhifəsinin yuxarısında görünür. {minimum} piksel və ya daha böyük ən yaxşı görünür.",
+        "set": "Örtük {size} pikseldir",
+        "uploaded": " · yüklənib",
+        "remove": "Örtüyü sil",
+        "drop": "Örtük kimi istifadə etmək üçün şəkli bura atın",
+        "release": "Bu şəkli yükləmək üçün buraxın",
+        "choose": "Şəkil seçin",
+        "dropHint": "20 MB-a qədər. Şəkil burada çevrilir və ölçüsü dəyişdirilir, orijinal saxlanılmır. {minimum} və ya daha böyük ən yaxşı görünür.",
+        "addressLabel": "Örtük şəklinin ünvanı",
+        "addressPlaceholder": "Və ya ünvan yapışdırın: https://images.example.com/cover.jpg",
+        "checking": "Yoxlanılır",
+        "useAddress": "Bu ünvanı işlət",
+        "addressMissing": "Əvvəlcə şəklin ünvanını yazın.",
+        "accepted": "Örtük {size} piksellik şəkildən təyin edildi.",
+        "softTitle": "Tam enində bulanıq görünəcək",
+        "soft": "Örtük {size} piksellik şəkildən təyin edildi. Bu, tövsiyə olunan {minimum} ölçüsündən kiçikdir, ona görə başlığı doldurmaq üçün böyüdüləcək və bulanıq görünəcək. Nisbətləri qorunur — çərçivə uzatmır, kəsir. Kampaniyanı yenə də göndərmək olar.",
+        "rejectedTitle": "Bu fayl istifadə olunmadı",
+        "unusable": "Bu şəkil istifadə edilə bilmədi.",
+        "stages": {
+          "preparing": "Şəkil hazırlanır…",
+          "uploading": "Şəkil yüklənir…",
+          "processing": "Şəkil emal olunur…"
+        },
+        "refusals": {
+          "UNSUPPORTED_FORMAT": "Bu fayl platformanın oxuya bildiyi şəkil deyil. JPEG, PNG, WebP, AVIF və HEIC işləyir.",
+          "TOO_LARGE": "Bu fayl çox böyükdür. Limit 20 MB-dır.",
+          "TOO_SMALL": "Bu şəkil göstərmək üçün çox kiçikdir. {minimum} və ondan böyük ölçülər yaxşı görünür.",
+          "EMPTY": "Bu fayl boşdur.",
+          "UNREADABLE": "Bu şəkli çevirmək mümkün olmadı. Başqa fayl işləməlidir.",
+          "UPLOADS_UNAVAILABLE": "Bu mühitdə yükləmə aktiv deyil. Əvəzində ünvan yapışdırın.",
+          "MEDIA_STORAGE_UNREACHABLE": "Şəkil anbarı cavab vermir. Bir azdan yenidən cəhd edin.",
+          "UPLOAD_STILL_PROCESSING": "Bu şəkil adətkindən uzun çəkir. Bu bölməyə qayıtsanız, görünə bilər.",
+          "UPLOAD_TRANSFER_FAILED": "Şəkil anbara çatmadı. Bağlantını yoxlayıb yenidən cəhd edin."
+        }
+      }
     }
   }
 }
