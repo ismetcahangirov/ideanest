@@ -280,3 +280,76 @@ describe('the notice after a password change', () => {
     expect(screen.queryByText(/evil\.test/u)).toBeNull();
   });
 });
+
+/**
+ * The reveal control — issue #457.
+ *
+ * <p>WHAT THESE COVER. The toggle changes the input's `type`, so the value can actually be
+ * read; its name changes with the state, so the icon swap is not the only thing that says
+ * which way round it is (§9.2); it carries `aria-pressed`, so the state is announced without a
+ * live region; it does not submit the form, which on this screen would spend an attempt
+ * against §17.3's rate limit every time somebody checked what they had typed; and the password
+ * is still masked when the form is first drawn.
+ */
+describe('reading the password back', () => {
+  it('masks the field until somebody asks', () => {
+    renderForm();
+
+    expect(screen.getByLabelText(/^Password/u)).toHaveAttribute('type', 'password');
+    expect(screen.getByRole('button', { name: 'Show password' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  });
+
+  it('shows what was typed, and says so in the control name', async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    await user.type(screen.getByLabelText(/^Password/u), 'a-long-enough-password');
+    await user.click(screen.getByRole('button', { name: 'Show password' }));
+
+    const field = screen.getByLabelText(/^Password/u);
+    expect(field).toHaveAttribute('type', 'text');
+    expect(field).toHaveValue('a-long-enough-password');
+
+    const toggle = screen.getByRole('button', { name: 'Hide password' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(toggle);
+    expect(screen.getByLabelText(/^Password/u)).toHaveAttribute('type', 'password');
+  });
+
+  it('is a control a keyboard reaches, because that is who most needs it', async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    screen.getByLabelText(/^Password/u).focus();
+    await user.tab();
+
+    expect(screen.getByRole('button', { name: 'Show password' })).toHaveFocus();
+  });
+
+  it('does not submit the form it sits in', async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    await user.click(screen.getByRole('button', { name: 'Show password' }));
+
+    expect(signInMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps the autofill hint whichever way it is turned', async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    await user.click(screen.getByRole('button', { name: 'Show password' }));
+
+    /*
+     * `autoComplete` says what the field is for, not what it looks like. A manager that
+     * stopped offering to fill or generate a password because somebody pressed reveal would
+     * have made the safer path the slower one.
+     */
+    expect(screen.getByLabelText(/^Password/u)).toHaveAttribute('autocomplete', 'current-password');
+  });
+});

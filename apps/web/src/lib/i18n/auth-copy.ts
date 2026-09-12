@@ -87,6 +87,15 @@ export interface AuthFieldsCopy {
   readonly emailPlaceholder: string;
   readonly password: string;
   readonly passwordHint: string;
+  /**
+   * The reveal control's two names — issue #457.
+   *
+   * Two keys rather than one, because the name has to change with the state: docs/ui-kit.md
+   * §9.2 forbids the icon swap from being the only thing that says whether the password is
+   * legible, and a single "Password visibility" would announce the same word in both.
+   */
+  readonly revealPassword: string;
+  readonly hidePassword: string;
 }
 
 /** §4.1's A-04 and A-05 — the Google and Apple controls. */
@@ -285,6 +294,8 @@ function fieldsCopyFrom(t: AuthTranslator): AuthFieldsCopy {
     emailPlaceholder: t('fields.emailPlaceholder'),
     password: t('fields.password'),
     passwordHint: t('fields.passwordHint'),
+    revealPassword: t('fields.revealPassword'),
+    hidePassword: t('fields.hidePassword'),
   };
 }
 

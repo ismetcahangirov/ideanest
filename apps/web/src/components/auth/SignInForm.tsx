@@ -9,6 +9,7 @@ import { PASSWORD_CHANGED_NOTICE, SIGN_IN_NOTICE_PARAM } from '../../lib/auth/cr
 import { describeAuthFailure, fieldErrorsOf, type AuthFailure } from '../../lib/auth/failures';
 import type { SignInCopy } from '../../lib/i18n/auth-copy';
 import { DEFAULT_SIGNED_IN_PATH, RETURN_TO_PARAM, safeReturnPath } from '../../lib/auth/redirect';
+import { PasswordReveal } from './PasswordReveal';
 import { ProviderSignIn } from './ProviderSignIn';
 import { TwoFactorChallenge } from './TwoFactorChallenge';
 import { useSignInOutcome } from './useSignInOutcome';
@@ -89,6 +90,12 @@ export function SignInForm({ copy }: SignInFormProps) {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  /*
+   * Never persisted, and deliberately not lifted out of this component — issue #457. A
+   * revealed password that survived a navigation would be a password left on a screen its
+   * owner has walked away from, which is the one thing masking is for.
+   */
+  const [revealed, setRevealed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<AuthFailure | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Readonly<Record<string, string>>>({});
@@ -135,6 +142,7 @@ export function SignInForm({ copy }: SignInFormProps) {
            */
           clearChallenge();
           setPassword('');
+          setRevealed(false);
           setFailure(null);
         }}
       />
@@ -190,13 +198,30 @@ export function SignInForm({ copy }: SignInFormProps) {
         />
       </Field>
 
+      {/*
+        THE PASSWORD CAN BE READ BACK — issue #457. Every proofreading attempt on this form is
+        otherwise an attempt against §17.3's five per fifteen minutes, on the one screen whose
+        failure branch deliberately will not say which half was wrong.
+
+        `autoComplete` stays `current-password` whichever type the input carries: it describes
+        what the field is for, and a manager that stopped offering to fill it because somebody
+        pressed the reveal control would have made the safer path the slower one.
+      */}
       <Field label={copy.fields.password} required error={fieldErrors['password']}>
         <TextInput
-          type="password"
+          type={revealed ? 'text' : 'password'}
           name="password"
           autoComplete="current-password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
+          trailing={
+            <PasswordReveal
+              revealed={revealed}
+              onToggle={() => setRevealed((shown) => !shown)}
+              showLabel={copy.fields.revealPassword}
+              hideLabel={copy.fields.hidePassword}
+            />
+          }
         />
       </Field>
 
