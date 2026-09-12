@@ -1,6 +1,8 @@
 import type { AmountRejection } from '../money';
 import type { UploadStage } from '../media/upload';
+import type { PluralForms } from './plurals';
 import type { ProjectState } from '../projects/api';
+import type { ShippingType } from '../projects/api';
 import type { EditorTabKey } from '../../components/campaign-editor/tabs';
 
 /**
@@ -78,6 +80,16 @@ export interface EditorFrameCopy {
    * name reads "Rewardsnot available yet".
    */
   readonly unavailable: string;
+  /**
+   * The three states every tab can be in before it can draw anything.
+   *
+   * They moved here from `editor.basics.*` when the second tab needed them — issue #459. Six
+   * copies of "You are signed out" is six chances for one of them to be translated differently
+   * from the other five, on a sentence that is identical whichever tab the session expired on.
+   */
+  readonly signedOut: { readonly title: string; readonly body: string };
+  readonly loadFailed: string;
+  readonly tryAgain: string;
   readonly tabs: Readonly<Record<EditorTabKey, string>>;
   readonly states: Readonly<Record<ProjectState, string>>;
   readonly save: {
@@ -137,6 +149,9 @@ export function editorFrameCopyFrom(t: EditorTranslator): EditorFrameCopy {
     sections: t('frame.sections'),
     soon: t('frame.soon'),
     unavailable: t('frame.unavailable'),
+    signedOut: { title: t('frame.signedOut.title'), body: t('frame.signedOut.body') },
+    loadFailed: t('frame.loadFailed'),
+    tryAgain: t('frame.tryAgain'),
     tabs: record(TAB_KEYS, (key) => t(`frame.tabs.${key}`)),
     states: record(STATE_KEYS, (key) => t(`frame.states.${key}`)),
     save: {
@@ -225,9 +240,6 @@ export interface CoverImageCopy {
 
 export interface BasicsCopy {
   readonly frame: EditorFrameCopy;
-  readonly signedOut: { readonly title: string; readonly body: string };
-  readonly loadFailed: { readonly title: string };
-  readonly tryAgain: string;
   readonly loading: string;
   readonly saveFailed: { readonly title: string; readonly kept: string };
   /** Carries `{max}` on the hint. */
@@ -292,9 +304,269 @@ const REFUSAL_CODES: readonly string[] = [
   'UPLOAD_TRANSFER_FAILED',
 ];
 
+/**
+ * What is wrong with an item a creator typed — `validateItem`.
+ *
+ * Same arrangement as {@link BasicsErrorsCopy} and for the same reason: the rules are the
+ * module's and the sentences are the catalogue's, so the sentences arrive as an argument.
+ */
+export interface ItemErrorsCopy {
+  readonly nameMissing: string;
+  /** Carries `{max}` and `{over}`. */
+  readonly nameTooLong: string;
+  /** Carries `{max}`. */
+  readonly skuTooLong: string;
+  readonly weightOnDigital: string;
+  readonly weightNotWhole: string;
+  readonly weightNotPositive: string;
+}
+
+/** What is wrong with a reward tier — `validateReward`. */
+export interface RewardErrorsCopy {
+  readonly titleMissing: string;
+  /** Carries `{max}` and `{over}`. */
+  readonly titleTooLong: string;
+  /**
+   * Worded for a price rather than for a funding goal.
+   *
+   * `parseAmount` returns a reason and not a sentence exactly so that the two can differ:
+   * "Enter the goal in digits" is wrong on a field labelled Price, and a creator reading it
+   * wonders which field the message is about.
+   */
+  readonly price: Readonly<Record<AmountRejection, string>>;
+  /** And again for a shipping rate, where zero is a real offer rather than a refusal. */
+  readonly rate: Readonly<Record<AmountRejection, string>>;
+  readonly limitNotWhole: string;
+  readonly limitTooSmall: string;
+  /** Carries `{committed}`. */
+  readonly limitBelowCommitted: string;
+  readonly secretFeatured: string;
+  readonly earlyBirdNeedsLimit: string;
+  readonly dateUnreadable: string;
+  readonly closesBeforeOpens: string;
+  readonly itemsDuplicate: string;
+  readonly itemsQuantity: string;
+  readonly rulesNotShipped: string;
+  readonly rulesCountryCode: string;
+  /** Carries `{code}`. */
+  readonly rulesDuplicate: string;
+  /** Carries `{code}` and `{reason}` — a rate's own refusal, named by its destination. */
+  readonly rulesRow: string;
+}
+
+/** The five delivery scopes, each a word and the sentence that separates it from the next. */
+export interface ShippingScopeCopy {
+  readonly label: string;
+  readonly hint: string;
+}
+
 export interface RewardsCopy {
   readonly frame: EditorFrameCopy;
+  readonly loading: string;
+  readonly listFailed: string;
+  readonly actionFailed: string;
+  readonly kept: string;
+  /** Carries `{tiers}`; the count is how many tiers an `ITEM_IN_USE` refusal named. */
+  readonly itemInUse: PluralForms;
+  readonly rewardHasBackers: string;
+  readonly heading: string;
+  /** Carries `{count}` and `{max}`. */
+  readonly count: string;
+  readonly add: string;
+  readonly fullTitle: string;
+  /** Carries `{max}`. */
+  readonly fullBody: string;
+  readonly empty: { readonly title: string; readonly body: string; readonly action: string };
+  readonly listLabel: string;
+  /**
+   * The live region's sentences — every action on this page whose only other evidence is the
+   * list visibly rearranging itself. Each carries `{title}`, and the first two a position.
+   */
+  readonly announce: {
+    readonly moved: string;
+    readonly duplicated: string;
+    readonly hidden: string;
+    readonly shown: string;
+    readonly deleted: string;
+  };
+  readonly card: {
+    readonly hidden: string;
+    readonly opensLater: string;
+    readonly featured: string;
+    readonly secret: string;
+    readonly earlyBird: string;
+    readonly addon: string;
+    /** Carries `{month}`. */
+    readonly delivers: string;
+    /** Each carries `{title}`, `{position}` and `{total}`. */
+    readonly moveUp: string;
+    readonly moveDown: string;
+    readonly edit: string;
+    readonly editLabel: string;
+    readonly duplicate: string;
+    readonly duplicateLabel: string;
+    readonly show: string;
+    readonly showLabel: string;
+    readonly hide: string;
+    readonly hideLabel: string;
+    readonly delete: string;
+    readonly deleteLabel: string;
+    readonly backed: PluralForms;
+  };
+  readonly contents: {
+    readonly none: string;
+    /** Carries `{items}`. */
+    readonly some: string;
+    /** Carries `{name}` and `{quantity}`. */
+    readonly quantity: string;
+    readonly missing: string;
+  };
+  readonly namedTiers: { readonly unknown: string; readonly one: string };
+  readonly deleteItem: {
+    readonly title: string;
+    /** Carries `{name}`. */
+    readonly named: string;
+    readonly body: string;
+  };
+  readonly deleteReward: {
+    readonly title: string;
+    /** Carries `{title}`. */
+    readonly named: string;
+    readonly body: string;
+  };
+  readonly deleteNote: string;
+  readonly keepIt: string;
+  readonly confirmDelete: string;
+  readonly items: {
+    readonly heading: string;
+    /** Carries `{count}`. */
+    readonly count: string;
+    readonly add: string;
+    readonly loading: string;
+    readonly empty: { readonly title: string; readonly body: string; readonly action: string };
+    readonly digital: string;
+    readonly physical: string;
+    /** Carries `{weight}`. */
+    readonly grams: string;
+    /**
+     * The two control words, which are the card's own keys read a second time.
+     *
+     * "Edit" on the control that edits an item and "Edit" on the control that edits a reward
+     * are the same word for the same gesture, and a second key would be a second chance for a
+     * translator to pick a different verb for one of them.
+     */
+    readonly edit: string;
+    readonly delete: string;
+    /** Each carries `{name}`. */
+    readonly editLabel: string;
+    readonly deleteLabel: string;
+  };
+  /** `EditorDrawer`'s footer, shared by both editors in this tab. */
+  readonly drawer: {
+    readonly cancel: string;
+    readonly save: string;
+    readonly saving: string;
+  };
+  readonly itemEditor: {
+    readonly titleNew: string;
+    readonly titleEdit: string;
+    readonly intro: string;
+    readonly failed: string;
+    /** The name's hint carries `{max}`. */
+    readonly name: { readonly label: string; readonly hint: string };
+    readonly description: { readonly label: string; readonly hint: string };
+    readonly image: { readonly label: string; readonly hint: string };
+    readonly digital: { readonly label: string; readonly hint: string };
+    readonly weight: {
+      readonly label: string;
+      readonly hint: string;
+      readonly digital: string;
+    };
+    readonly sku: { readonly label: string; readonly hint: string };
+  };
+  readonly itemErrors: ItemErrorsCopy;
+  readonly tierEditor: {
+    readonly titleNew: string;
+    readonly titleEdit: string;
+    readonly intro: string;
+    readonly failed: string;
+    readonly ratesFailed: string;
+    /**
+     * Two sentences rather than one with a tag in the middle.
+     *
+     * The first is emphasised, because a creator who has just been told a save failed has to
+     * read that the reward itself is safe before they retype it. A rich-text tag would put the
+     * emphasis at a fixed point in an English sentence; two sentences let a translator put the
+     * words where their own language puts them.
+     */
+    readonly ratesKeptLead: string;
+    readonly ratesKeptRest: string;
+    /** The title's hint carries `{max}`. */
+    readonly title: { readonly label: string; readonly hint: string };
+    readonly description: { readonly label: string; readonly hint: string };
+    /** Both price hints carry `{currency}`. */
+    readonly price: { readonly label: string; readonly hint: string; readonly locked: string };
+    readonly delivery: { readonly label: string; readonly hint: string };
+    /** `committed` carries `{committed}`. */
+    readonly places: {
+      readonly label: string;
+      readonly hint: string;
+      readonly committed: string;
+    };
+    readonly shipping: { readonly label: string };
+  };
+  readonly scopes: Readonly<Record<ShippingType, ShippingScopeCopy>>;
+  readonly rates: {
+    readonly label: string;
+    /** Carries `{currency}`. */
+    readonly hint: string;
+    readonly empty: string;
+    readonly add: string;
+    /** Carries `{position}` — what a row with no destination yet is called. */
+    readonly unnamed: string;
+    /** Each carries `{destination}`. */
+    readonly countryLabel: string;
+    readonly ratePlaceholder: string;
+    readonly rateLabel: string;
+    readonly extraPlaceholder: string;
+    readonly extraLabel: string;
+    readonly removeLabel: string;
+  };
+  readonly composition: {
+    readonly label: string;
+    readonly hint: string;
+    readonly missing: string;
+    /** Each carries `{name}`. */
+    readonly quantityLabel: string;
+    readonly removeLabel: string;
+    readonly addPlaceholder: string;
+    readonly addLabel: string;
+    readonly noItems: string;
+    readonly allChosen: string;
+  };
+  readonly opens: { readonly label: string; readonly hint: string };
+  readonly closes: { readonly label: string; readonly hint: string };
+  readonly offering: { readonly legend: string };
+  readonly earlyBird: { readonly label: string; readonly hint: string };
+  readonly featured: { readonly label: string; readonly hint: string };
+  readonly secret: { readonly label: string; readonly hint: string; readonly token: string };
+  readonly addon: { readonly label: string; readonly hint: string };
+  readonly errors: RewardErrorsCopy;
+  readonly stock: {
+    readonly unlimited: string;
+    /** Carries `{count}` and `{limit}`. */
+    readonly remaining: PluralForms;
+  };
+  readonly showBlocked: string;
 }
+
+const SHIPPING_TYPES: readonly ShippingType[] = [
+  'NONE',
+  'DIGITAL',
+  'LOCAL_PICKUP',
+  'DOMESTIC',
+  'INTERNATIONAL',
+];
 
 export interface StoryCopy {
   readonly frame: EditorFrameCopy;
@@ -302,6 +574,14 @@ export interface StoryCopy {
 
 export interface FaqCopy {
   readonly frame: EditorFrameCopy;
+  /**
+   * The drawer footer's three words, which the FAQ tab shares with the rewards tab.
+   *
+   * `EditorDrawer` is one component with one save model, so it has one vocabulary. Two copies
+   * of "Save" would be two chances for a translator to pick a different verb for the same
+   * control depending on which drawer it was in.
+   */
+  readonly drawer: RewardsCopy['drawer'];
 }
 
 export interface PrelaunchCopy {
@@ -331,9 +611,6 @@ export interface ReviewCopy {
 export function basicsCopyFrom(t: EditorTranslator): BasicsCopy {
   return {
     frame: editorFrameCopyFrom(t),
-    signedOut: { title: t('basics.signedOut.title'), body: t('basics.signedOut.body') },
-    loadFailed: { title: t('basics.loadFailed.title') },
-    tryAgain: t('basics.tryAgain'),
     loading: t('basics.loading'),
     saveFailed: { title: t('basics.saveFailed.title'), kept: t('basics.saveFailed.kept') },
     title: { label: t('basics.title.label'), hint: String(t.raw('basics.title.hint')) },
@@ -411,7 +688,242 @@ export function basicsCopyFrom(t: EditorTranslator): BasicsCopy {
 }
 
 export function rewardsCopyFrom(t: EditorTranslator): RewardsCopy {
-  return { frame: editorFrameCopyFrom(t) };
+  const amounts = (group: string): Readonly<Record<AmountRejection, string>> =>
+    Object.fromEntries(
+      AMOUNT_KEYS.map(([reason, key]) => [reason, t(`rewards.errors.${group}.${key}`)]),
+    ) as Record<AmountRejection, string>;
+
+  return {
+    frame: editorFrameCopyFrom(t),
+    loading: t('rewards.loading'),
+    listFailed: t('rewards.listFailed'),
+    actionFailed: t('rewards.actionFailed'),
+    kept: t('rewards.kept'),
+    itemInUse: t.raw('rewards.itemInUse') as PluralForms,
+    rewardHasBackers: t('rewards.rewardHasBackers'),
+    heading: t('rewards.heading'),
+    count: String(t.raw('rewards.count')),
+    add: t('rewards.add'),
+    fullTitle: t('rewards.fullTitle'),
+    fullBody: String(t.raw('rewards.fullBody')),
+    empty: {
+      title: t('rewards.empty.title'),
+      body: t('rewards.empty.body'),
+      action: t('rewards.empty.action'),
+    },
+    listLabel: t('rewards.listLabel'),
+    announce: {
+      moved: String(t.raw('rewards.announce.moved')),
+      duplicated: String(t.raw('rewards.announce.duplicated')),
+      hidden: String(t.raw('rewards.announce.hidden')),
+      shown: String(t.raw('rewards.announce.shown')),
+      deleted: String(t.raw('rewards.announce.deleted')),
+    },
+    card: {
+      hidden: t('rewards.card.hidden'),
+      opensLater: t('rewards.card.opensLater'),
+      featured: t('rewards.card.featured'),
+      secret: t('rewards.card.secret'),
+      earlyBird: t('rewards.card.earlyBird'),
+      addon: t('rewards.card.addon'),
+      delivers: String(t.raw('rewards.card.delivers')),
+      moveUp: String(t.raw('rewards.card.moveUp')),
+      moveDown: String(t.raw('rewards.card.moveDown')),
+      edit: t('rewards.card.edit'),
+      editLabel: String(t.raw('rewards.card.editLabel')),
+      duplicate: t('rewards.card.duplicate'),
+      duplicateLabel: String(t.raw('rewards.card.duplicateLabel')),
+      show: t('rewards.card.show'),
+      showLabel: String(t.raw('rewards.card.showLabel')),
+      hide: t('rewards.card.hide'),
+      hideLabel: String(t.raw('rewards.card.hideLabel')),
+      delete: t('rewards.card.delete'),
+      deleteLabel: String(t.raw('rewards.card.deleteLabel')),
+      backed: t.raw('rewards.card.backed') as PluralForms,
+    },
+    contents: {
+      none: t('rewards.contents.none'),
+      some: String(t.raw('rewards.contents.some')),
+      quantity: String(t.raw('rewards.contents.quantity')),
+      missing: t('rewards.contents.missing'),
+    },
+    namedTiers: {
+      unknown: t('rewards.namedTiers.unknown'),
+      one: t('rewards.namedTiers.one'),
+    },
+    deleteItem: {
+      title: t('rewards.deleteItem.title'),
+      named: String(t.raw('rewards.deleteItem.named')),
+      body: t('rewards.deleteItem.body'),
+    },
+    deleteReward: {
+      title: t('rewards.deleteReward.title'),
+      named: String(t.raw('rewards.deleteReward.named')),
+      body: t('rewards.deleteReward.body'),
+    },
+    deleteNote: t('rewards.deleteNote'),
+    keepIt: t('rewards.keepIt'),
+    confirmDelete: t('rewards.confirmDelete'),
+    items: {
+      heading: t('rewards.items.heading'),
+      count: String(t.raw('rewards.items.count')),
+      add: t('rewards.items.add'),
+      loading: t('rewards.items.loading'),
+      empty: {
+        title: t('rewards.items.empty.title'),
+        body: t('rewards.items.empty.body'),
+        action: t('rewards.items.empty.action'),
+      },
+      digital: t('rewards.items.digital'),
+      physical: t('rewards.items.physical'),
+      grams: String(t.raw('rewards.items.grams')),
+      edit: t('rewards.card.edit'),
+      delete: t('rewards.card.delete'),
+      editLabel: String(t.raw('rewards.items.editLabel')),
+      deleteLabel: String(t.raw('rewards.items.deleteLabel')),
+    },
+    drawer: {
+      cancel: t('rewards.drawer.cancel'),
+      save: t('rewards.drawer.save'),
+      saving: t('rewards.drawer.saving'),
+    },
+    itemEditor: {
+      titleNew: t('rewards.itemEditor.titleNew'),
+      titleEdit: t('rewards.itemEditor.titleEdit'),
+      intro: t('rewards.itemEditor.intro'),
+      failed: t('rewards.itemEditor.failed'),
+      name: {
+        label: t('rewards.itemEditor.name.label'),
+        hint: String(t.raw('rewards.itemEditor.name.hint')),
+      },
+      description: {
+        label: t('rewards.itemEditor.description.label'),
+        hint: t('rewards.itemEditor.description.hint'),
+      },
+      image: {
+        label: t('rewards.itemEditor.image.label'),
+        hint: t('rewards.itemEditor.image.hint'),
+      },
+      digital: {
+        label: t('rewards.itemEditor.digital.label'),
+        hint: t('rewards.itemEditor.digital.hint'),
+      },
+      weight: {
+        label: t('rewards.itemEditor.weight.label'),
+        hint: t('rewards.itemEditor.weight.hint'),
+        digital: t('rewards.itemEditor.weight.digital'),
+      },
+      sku: {
+        label: t('rewards.itemEditor.sku.label'),
+        hint: t('rewards.itemEditor.sku.hint'),
+      },
+    },
+    itemErrors: {
+      nameMissing: t('rewards.itemErrors.nameMissing'),
+      nameTooLong: String(t.raw('rewards.itemErrors.nameTooLong')),
+      skuTooLong: String(t.raw('rewards.itemErrors.skuTooLong')),
+      weightOnDigital: t('rewards.itemErrors.weightOnDigital'),
+      weightNotWhole: t('rewards.itemErrors.weightNotWhole'),
+      weightNotPositive: t('rewards.itemErrors.weightNotPositive'),
+    },
+    tierEditor: {
+      titleNew: t('rewards.tierEditor.titleNew'),
+      titleEdit: t('rewards.tierEditor.titleEdit'),
+      intro: t('rewards.tierEditor.intro'),
+      failed: t('rewards.tierEditor.failed'),
+      ratesFailed: t('rewards.tierEditor.ratesFailed'),
+      ratesKeptLead: t('rewards.tierEditor.ratesKeptLead'),
+      ratesKeptRest: t('rewards.tierEditor.ratesKeptRest'),
+      title: {
+        label: t('rewards.tierEditor.title.label'),
+        hint: String(t.raw('rewards.tierEditor.title.hint')),
+      },
+      description: {
+        label: t('rewards.tierEditor.description.label'),
+        hint: t('rewards.tierEditor.description.hint'),
+      },
+      price: {
+        label: t('rewards.tierEditor.price.label'),
+        hint: String(t.raw('rewards.tierEditor.price.hint')),
+        locked: String(t.raw('rewards.tierEditor.price.locked')),
+      },
+      delivery: {
+        label: t('rewards.tierEditor.delivery.label'),
+        hint: t('rewards.tierEditor.delivery.hint'),
+      },
+      places: {
+        label: t('rewards.tierEditor.places.label'),
+        hint: t('rewards.tierEditor.places.hint'),
+        committed: String(t.raw('rewards.tierEditor.places.committed')),
+      },
+      shipping: { label: t('rewards.tierEditor.shipping.label') },
+    },
+    scopes: Object.fromEntries(
+      SHIPPING_TYPES.map((scope) => [
+        scope,
+        { label: t(`rewards.scopes.${scope}.label`), hint: t(`rewards.scopes.${scope}.hint`) },
+      ]),
+    ) as Record<ShippingType, ShippingScopeCopy>,
+    rates: {
+      label: t('rewards.rates.label'),
+      hint: String(t.raw('rewards.rates.hint')),
+      empty: t('rewards.rates.empty'),
+      add: t('rewards.rates.add'),
+      unnamed: String(t.raw('rewards.rates.unnamed')),
+      countryLabel: String(t.raw('rewards.rates.countryLabel')),
+      ratePlaceholder: t('rewards.rates.ratePlaceholder'),
+      rateLabel: String(t.raw('rewards.rates.rateLabel')),
+      extraPlaceholder: t('rewards.rates.extraPlaceholder'),
+      extraLabel: String(t.raw('rewards.rates.extraLabel')),
+      removeLabel: String(t.raw('rewards.rates.removeLabel')),
+    },
+    composition: {
+      label: t('rewards.composition.label'),
+      hint: t('rewards.composition.hint'),
+      missing: t('rewards.composition.missing'),
+      quantityLabel: String(t.raw('rewards.composition.quantityLabel')),
+      removeLabel: String(t.raw('rewards.composition.removeLabel')),
+      addPlaceholder: t('rewards.composition.addPlaceholder'),
+      addLabel: t('rewards.composition.addLabel'),
+      noItems: t('rewards.composition.noItems'),
+      allChosen: t('rewards.composition.allChosen'),
+    },
+    opens: { label: t('rewards.opens.label'), hint: t('rewards.opens.hint') },
+    closes: { label: t('rewards.closes.label'), hint: t('rewards.closes.hint') },
+    offering: { legend: t('rewards.offering.legend') },
+    earlyBird: { label: t('rewards.earlyBird.label'), hint: t('rewards.earlyBird.hint') },
+    featured: { label: t('rewards.featured.label'), hint: t('rewards.featured.hint') },
+    secret: {
+      label: t('rewards.secret.label'),
+      hint: t('rewards.secret.hint'),
+      token: t('rewards.secret.token'),
+    },
+    addon: { label: t('rewards.addon.label'), hint: t('rewards.addon.hint') },
+    errors: {
+      titleMissing: t('rewards.errors.titleMissing'),
+      titleTooLong: String(t.raw('rewards.errors.titleTooLong')),
+      price: amounts('price'),
+      rate: amounts('rate'),
+      limitNotWhole: t('rewards.errors.limitNotWhole'),
+      limitTooSmall: t('rewards.errors.limitTooSmall'),
+      limitBelowCommitted: String(t.raw('rewards.errors.limitBelowCommitted')),
+      secretFeatured: t('rewards.errors.secretFeatured'),
+      earlyBirdNeedsLimit: t('rewards.errors.earlyBirdNeedsLimit'),
+      dateUnreadable: t('rewards.errors.dateUnreadable'),
+      closesBeforeOpens: t('rewards.errors.closesBeforeOpens'),
+      itemsDuplicate: t('rewards.errors.itemsDuplicate'),
+      itemsQuantity: t('rewards.errors.itemsQuantity'),
+      rulesNotShipped: t('rewards.errors.rulesNotShipped'),
+      rulesCountryCode: t('rewards.errors.rulesCountryCode'),
+      rulesDuplicate: String(t.raw('rewards.errors.rulesDuplicate')),
+      rulesRow: String(t.raw('rewards.errors.rulesRow')),
+    },
+    stock: {
+      unlimited: t('rewards.stock.unlimited'),
+      remaining: t.raw('rewards.stock.remaining') as PluralForms,
+    },
+    showBlocked: t('rewards.showBlocked'),
+  };
 }
 
 export function storyCopyFrom(t: EditorTranslator): StoryCopy {
@@ -419,7 +931,14 @@ export function storyCopyFrom(t: EditorTranslator): StoryCopy {
 }
 
 export function faqCopyFrom(t: EditorTranslator): FaqCopy {
-  return { frame: editorFrameCopyFrom(t) };
+  return {
+    frame: editorFrameCopyFrom(t),
+    drawer: {
+      cancel: t('rewards.drawer.cancel'),
+      save: t('rewards.drawer.save'),
+      saving: t('rewards.drawer.saving'),
+    },
+  };
 }
 
 export function prelaunchCopyFrom(t: EditorTranslator): PrelaunchCopy {

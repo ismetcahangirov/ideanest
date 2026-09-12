@@ -3272,17 +3272,15 @@
         "saving": "Yadda saxlanılır",
         "saved": "Yadda saxlanıldı",
         "failed": "Yadda saxlanılmadı"
-      }
-    },
-    "basics": {
+      },
       "signedOut": {
         "title": "Hesabdan çıxmısınız",
         "body": "Bu brauzerdə artıq sessiya yoxdur. Kampaniyanı redaktə etməyə davam etmək üçün yenidən daxil olun."
       },
-      "loadFailed": {
-        "title": "Bu layihə yüklənə bilmədi"
-      },
-      "tryAgain": "Yenidən cəhd edin",
+      "loadFailed": "Bu layihə yüklənə bilmədi",
+      "tryAgain": "Yenidən cəhd edin"
+    },
+    "basics": {
       "loading": "Kampaniya yüklənir",
       "saveFailed": {
         "title": "Bu dəyişiklik yadda saxlanılmadı",
@@ -3390,6 +3388,298 @@
           "UPLOAD_TRANSFER_FAILED": "Şəkil anbara çatmadı. Bağlantını yoxlayıb yenidən cəhd edin."
         }
       }
+    },
+    "rewards": {
+      "loading": "Bu kampaniyanın mükafatları yüklənir",
+      "listFailed": "Mükafatlar yüklənə bilmədi",
+      "actionFailed": "Bu alınmadı",
+      "kept": "Yazdığınız heç nə itməyib — hamısı aşağıdakı sahələrdədir.",
+      "itemInUse": {
+        "one": "{tiers} tərkibindədir. Əvvəlcə həmin mükafatdan çıxarın, sonra silin.",
+        "few": "{tiers} tərkibindədir. Əvvəlcə həmin mükafatlardan çıxarın, sonra silin.",
+        "many": "{tiers} tərkibindədir. Əvvəlcə həmin mükafatlardan çıxarın, sonra silin.",
+        "other": "{tiers} tərkibindədir. Əvvəlcə həmin mükafatlardan çıxarın, sonra silin."
+      },
+      "rewardHasBackers": "Əvəzində gizlədin — onu seçmiş adamlarda nəyi almalı olduqlarının təsviri qalır və mükafat başqa heç kimə təklif edilmir.",
+      "heading": "Mükafatlar",
+      "count": "({max} mükafatdan {count})",
+      "add": "Mükafat əlavə edin",
+      "fullTitle": "Bu kampaniyada ola biləcək ən çox mükafat var",
+      "fullBody": "§5.3 {max} mükafata icazə verir. Yenisini əlavə etməzdən əvvəl birini silin və ya birləşdirin.",
+      "empty": {
+        "title": "Hələ mükafat yoxdur",
+        "body": "Mükafat dəstəkçinin seçdiyi və ödədiyi şeydir: başlıq, qiymət və aldıqları məhsullar. Kampaniya mükafatsız da işləyə bilər, amma demək olar heç biri belə etmir.",
+        "action": "İlk mükafatı əlavə edin"
+      },
+      "listLabel": "Mükafat səviyyələri, dəstəkçilərin gördüyü sıra ilə",
+      "announce": {
+        "moved": "{title} {total} mövqedən {position}-ci mövqeyə keçdi.",
+        "duplicated": "{title} {position}-ci mövqeyə köçürüldü.",
+        "hidden": "{title} kampaniya səhifəsində gizlədilib.",
+        "shown": "{title} yenidən kampaniya səhifəsindədir.",
+        "deleted": "{title} silindi."
+      },
+      "card": {
+        "hidden": "Gizli",
+        "opensLater": "Sonra açılır",
+        "featured": "Öne çıxarılıb",
+        "secret": "Gizlin",
+        "earlyBird": "Erkən quş",
+        "addon": "Əlavə",
+        "delivers": "{month} tarixində çatdırılır",
+        "moveUp": "{title} yuxarı qaldırın, hazırda {total} mövqedən {position}-cidir",
+        "moveDown": "{title} aşağı salın, hazırda {total} mövqedən {position}-cidir",
+        "edit": "Redaktə",
+        "editLabel": "{title} mükafatını redaktə edin",
+        "duplicate": "Nüsxələ",
+        "duplicateLabel": "{title} mükafatını nüsxələyin",
+        "show": "Göstər",
+        "showLabel": "{title} mükafatını kampaniya səhifəsində göstərin",
+        "hide": "Gizlət",
+        "hideLabel": "{title} mükafatını kampaniya səhifəsində gizlədin",
+        "delete": "Sil",
+        "deleteLabel": "{title} mükafatını silin",
+        "backed": {
+          "one": "Bu mükafatı {count} dəstəkçi seçib, ona görə gizlədilə bilər, amma silinə bilməz.",
+          "few": "Bu mükafatı {count} dəstəkçi seçib, ona görə gizlədilə bilər, amma silinə bilməz.",
+          "many": "Bu mükafatı {count} dəstəkçi seçib, ona görə gizlədilə bilər, amma silinə bilməz.",
+          "other": "Bu mükafatı {count} dəstəkçi seçib, ona görə gizlədilə bilər, amma silinə bilməz."
+        }
+      },
+      "contents": {
+        "none": "Heç bir məhsul yoxdur",
+        "some": "Tərkibi: {items}",
+        "quantity": "{name} ×{quantity}",
+        "missing": "artıq bu kampaniyada olmayan məhsul"
+      },
+      "namedTiers": {
+        "unknown": "bu kampaniyadakı bir mükafat",
+        "one": "bir mükafat"
+      },
+      "deleteItem": {
+        "title": "Məhsulu silin",
+        "named": "{name} silinsin?",
+        "body": "Mükafatın tərkibində olan məhsul silinə bilməz — əvvəlcə mükafatdan çıxarın. Bu səhifənin bildiyi qədəri ilə bu məhsul heç bir mükafatda deyil, xidmət isə bunu yenidən yoxlayır."
+      },
+      "deleteReward": {
+        "title": "Mükafatı silin",
+        "named": "{title} silinsin?",
+        "body": "Kimsə mükafatı dəstəklədikdən sonra o, artıq silinə bilməz, yalnız gizlədilə bilər — ona görə silmək heç kim dəstəkləməyibsə təklif olunur."
+      },
+      "deleteNote": "Bunu geri qaytarmaq olmaz.",
+      "keepIt": "Saxla",
+      "confirmDelete": "Sil",
+      "items": {
+        "heading": "Məhsullar",
+        "count": "({count})",
+        "add": "Məhsul əlavə edin",
+        "loading": "Bu kampaniyanın məhsulları yüklənir",
+        "empty": {
+          "title": "Hələ məhsul yoxdur",
+          "body": "Məhsul bir fiziki və ya rəqəmsal şeydir — fincan, plakat, yüklənən fayl. Mükafatlar onlardan qurulur, ona görə kampaniya buradan başlayır.",
+          "action": "İlk məhsulu əlavə edin"
+        },
+        "digital": "Rəqəmsal",
+        "physical": "Fiziki",
+        "grams": "{weight} q",
+        "editLabel": "{name} məhsulunu redaktə edin",
+        "deleteLabel": "{name} məhsulunu silin"
+      },
+      "drawer": {
+        "cancel": "Ləğv et",
+        "save": "Yadda saxla",
+        "saving": "Yadda saxlanılır"
+      },
+      "itemEditor": {
+        "titleNew": "Məhsul əlavə edin",
+        "titleEdit": "Məhsulu redaktə edin",
+        "intro": "Məhsullar kampaniyanızın istehsal etdiyi şeylərdir. Mükafat isə onların say ilə seçilmiş dəstidir.",
+        "failed": "Bu məhsul yadda saxlanılmadı",
+        "name": {
+          "label": "Ad",
+          "hint": "Dəstəkçinin tanıyacağı şəkildə nə olduğu. {max} simvol və ya daha az."
+        },
+        "description": {
+          "label": "Təsvir",
+          "hint": "İstəyə bağlıdır. Ölçü, rəng, buraxılış — bunu digər məhsuldan nə fərqləndirirsə."
+        },
+        "image": {
+          "label": "Şəklin ünvanı",
+          "hint": "Dərc olunmuş ünvan. Hələ yükləyici yoxdur, ona görə artıq onlayn olan şəklin linkini yapışdırın."
+        },
+        "digital": {
+          "label": "Fayl kimi çatdırılır",
+          "hint": "Yüklənən fayl və ya lisenziya. Heç nə göndərilmir, ona görə çəki və ünvan yoxdur."
+        },
+        "weight": {
+          "label": "Çəki, qram",
+          "hint": "İstəyə bağlıdır; göndərmə haqqı sonradan bundan hesablanır.",
+          "digital": "Faylın göndərmə çəkisi yoxdur."
+        },
+        "sku": {
+          "label": "Anbar kodu",
+          "hint": "İstəyə bağlıdır. Bu kampaniya daxilində unikal olan öz istinadınız."
+        }
+      },
+      "itemErrors": {
+        "nameMissing": "Məhsulun adı olmalıdır.",
+        "nameTooLong": "Ad {max} simvol və ya daha az olmalıdır. {over} simvol çıxarın.",
+        "skuTooLong": "Anbar kodu {max} simvol və ya daha az olmalıdır.",
+        "weightOnDigital": "Rəqəmsal məhsulun göndərmə çəkisi yoxdur. Çəkini silin və ya məhsulu fiziki edin.",
+        "weightNotWhole": "Çəkini tam qram sayı kimi yazın.",
+        "weightNotPositive": "Çəki sıfır qramdan böyük olmalıdır."
+      },
+      "tierEditor": {
+        "titleNew": "Mükafat əlavə edin",
+        "titleEdit": "Mükafatı redaktə edin",
+        "intro": "Dəstəkçinin seçdiyi və ödədiyi şey. Yuxarıdakı məhsullardan, sizin seçdiyiniz saylarla qurulur.",
+        "failed": "Bu mükafat yadda saxlanılmadı",
+        "ratesFailed": "Göndərmə tarifləri yadda saxlanılmadı",
+        "ratesKeptLead": "Mükafatın özü yadda saxlanıldı.",
+        "ratesKeptRest": "Yalnız ölkə üzrə tariflər rədd edildi; onları düzəldib yenidən yadda saxlayın — qalanı ikinci dəfə göndərilməyəcək.",
+        "title": {
+          "label": "Başlıq",
+          "hint": "Dəstəkçinin mükafat siyahısında gördüyü ad. {max} simvol və ya daha az."
+        },
+        "description": {
+          "label": "Təsvir",
+          "hint": "Nə aldıqları, bir-iki cümlə ilə."
+        },
+        "price": {
+          "label": "Qiymət",
+          "hint": "Dəstəkçinin ödədiyi məbləğ. Kampaniyanın valyutası olan {currency} ilə.",
+          "locked": "Kampaniya başladıqdan sonra qiymət dəyişdirilə bilməz. {currency} ilə."
+        },
+        "delivery": {
+          "label": "Təxmini çatdırılma",
+          "hint": "Çatdırmağı gözlədiyiniz ay. Dəstəkçilər bunu vəd kimi oxuyur."
+        },
+        "places": {
+          "label": "Yer sayı",
+          "hint": "Limitsiz üçün boş saxlayın. Sayı sonradan həmişə artırmaq olar; azaltmaq isə yalnız artıq tutulmuş saydan yuxarı mümkündür.",
+          "committed": "Limitsiz üçün boş saxlayın. Artıq tutulmuş yerlər: {committed}, ona görə limit bundan aşağı düşə bilməz."
+        },
+        "shipping": {
+          "label": "Çatdırılma"
+        }
+      },
+      "scopes": {
+        "NONE": {
+          "label": "Heç nə çatdırılmır",
+          "hint": "Təşəkkür, adın divarda yazılması, təşəkkür siyahısında yer."
+        },
+        "DIGITAL": {
+          "label": "Rəqəmsal çatdırılma",
+          "hint": "Fayl və ya lisenziya. Ünvan soruşulmur."
+        },
+        "LOCAL_PICKUP": {
+          "label": "Şəxsən təhvil alınır",
+          "hint": "Daşıyıcı və tarif yoxdur, amma dəstəkçinin ölkəsi yenə soruşulur."
+        },
+        "DOMESTIC": {
+          "label": "Ölkədaxili göndərilir",
+          "hint": "Yalnız öz ölkənizin daxilində. Hər istiqamət üçün tarif lazımdır."
+        },
+        "INTERNATIONAL": {
+          "label": "Beynəlxalq göndərilir",
+          "hint": "Tarif təyin etdiyiniz hər yerə. Tarifi olmayan istiqamət seçilə bilməz."
+        }
+      },
+      "rates": {
+        "label": "Göndərmə tarifləri",
+        "hint": "Hər istiqamət üçün bir tarif, {currency} ilə. Tarifi olmayan ölkə ödəniş zamanı seçilə bilməz, 0 isə pulsuz göndərmədir.",
+        "empty": "Hələ heç bir istiqamətin tarifi yoxdur, ona görə bu mükafat heç yerə göndərilə bilməz.",
+        "add": "İstiqamət əlavə edin",
+        "unnamed": "{position}-ci istiqamət",
+        "countryLabel": "{destination} üçün ölkə kodu",
+        "ratePlaceholder": "Tarif",
+        "rateLabel": "{destination} üçün göndərmə tarifi",
+        "extraPlaceholder": "Hər əlavə",
+        "extraLabel": "{destination} üçün hər əlavə məhsulun tarifi",
+        "removeLabel": "{destination} silin"
+      },
+      "composition": {
+        "label": "Tərkibi",
+        "hint": "Dəstəkçinin aldığı məhsullar. Tərkibi boş olan mükafat da qanunidir — təşəkkür, adın çəkilməsi — və boş siyahı elə bunu bildirir.",
+        "missing": "Artıq bu kampaniyada olmayan məhsul",
+        "quantityLabel": "{name} sayı",
+        "removeLabel": "{name} məhsulunu bu mükafatdan çıxarın",
+        "addPlaceholder": "Məhsul əlavə edin…",
+        "addLabel": "Bu mükafata məhsul əlavə edin",
+        "noItems": "Bu kampaniyada hələ məhsul yoxdur. Bu panelin arxasındakı siyahıya bir məhsul əlavə edin, o burada görünəcək.",
+        "allChosen": "Bu kampaniyadakı bütün məhsullar artıq bu mükafatın tərkibindədir."
+      },
+      "opens": {
+        "label": "Açılır",
+        "hint": "İstəyə bağlıdır. Kampaniya ilə eyni anda əlçatan olan mükafat üçün boş saxlayın."
+      },
+      "closes": {
+        "label": "Bağlanır",
+        "hint": "İstəyə bağlıdır. Keçmişdə olan an mükafatı gizlədir — siyahıdakı Gizlət düyməsi məhz bunu təyin edir."
+      },
+      "offering": {
+        "legend": "Necə təklif olunur"
+      },
+      "earlyBird": {
+        "label": "Erkən quş",
+        "hint": "Tükənən daha sərfəli təklif. Ya bağlanma tarixi, ya da məhdud yer sayı lazımdır — onsuz bu, adamları nahaq tələsdirən etiketi olan adi mükafatdır."
+      },
+      "featured": {
+        "label": "Öne çıxarılıb",
+        "hint": "Kampaniya səhifəsində birinci göstərilir."
+      },
+      "secret": {
+        "label": "Gizlin",
+        "hint": "Açıq siyahıya salınmır, onun əvəzinə özəl token ilə açılır. Yenidən açıq etmək həmin tokeni məhv edir, ona görə artıq göndərilmiş linklər işləməyi dayandırır.",
+        "token": "Token"
+      },
+      "addon": {
+        "label": "Əlavə kimi satılır",
+        "hint": "Mükafatın əvəzinə deyil, onunla yanaşı təklif olunur."
+      },
+      "errors": {
+        "titleMissing": "Mükafatın başlığı olmalıdır.",
+        "titleTooLong": "Başlıq {max} simvol və ya daha az olmalıdır. {over} simvol çıxarın.",
+        "price": {
+          "empty": "Mükafatın qiyməti olmalıdır.",
+          "notANumber": "Qiyməti rəqəmlə yazın, məsələn 19.99.",
+          "comma": "Onluq ayırıcı kimi nöqtə istifadə edin, məsələn 19.99.",
+          "tooManyDecimals": "Qiymətdə ən çox iki onluq rəqəm ola bilər.",
+          "tooLarge": "Bu qiymət platformanın saxlaya biləcəyindən böyükdür.",
+          "notPositive": "Mükafatın qiyməti sıfırdan böyük olmalıdır."
+        },
+        "rate": {
+          "empty": "Bu istiqamətə göndərmənin nə qədər olduğunu yazın.",
+          "notANumber": "Tarifi rəqəmlə yazın, məsələn 12.50.",
+          "comma": "Onluq ayırıcı kimi nöqtə istifadə edin, məsələn 12.50.",
+          "tooManyDecimals": "Tarifdə ən çox iki onluq rəqəm ola bilər.",
+          "tooLarge": "Bu tarif platformanın saxlaya biləcəyindən böyükdür.",
+          "notPositive": "Tarif mənfi ola bilməz. Pulsuz göndərmə üçün 0 yazın."
+        },
+        "limitNotWhole": "Yer sayını tam ədəd kimi yazın və ya limitsiz üçün boş saxlayın.",
+        "limitTooSmall": "Məhdud mükafat ən azı bir yer təklif edir. Limitsiz etmək üçün limiti silin.",
+        "limitBelowCommitted": "Bu, artıq tutulmuş saydan aşağıdır: {committed}. Sayı həmişə artırmaq olar, azaltmaq isə yalnız tutulmuş saydan yuxarı mümkündür.",
+        "secretFeatured": "Gizlin mükafat səhifədə göstərilmir, ona görə eyni zamanda önə çıxarıla bilməz.",
+        "earlyBirdNeedsLimit": "Erkən quş mükafatına ya bağlanma tarixi, ya da məhdud yer sayı lazımdır.",
+        "dateUnreadable": "Tarix və saat yazın və ya boş saxlayın.",
+        "closesBeforeOpens": "Mükafat açıldıqdan sonra bağlanır, əvvəl yox.",
+        "itemsDuplicate": "Hər məhsul bir dəfə görünür, sayı isə miqdarla göstərilir.",
+        "itemsQuantity": "Mükafat sadaladığı hər məhsuldan ən azı bir dənə saxlayır.",
+        "rulesNotShipped": "Yalnız ölkədaxili və ya beynəlxalq göndərilən mükafatın ölkə üzrə tarifi olur. Çatdırılma üsulunu dəyişin və ya tarifləri silin.",
+        "rulesCountryCode": "İstiqamət iki hərfli ölkə kodudur, məsələn AZ və ya TR.",
+        "rulesDuplicate": "Hər istiqamət bir dəfə görünür: {code} iki dəfə sadalanıb.",
+        "rulesRow": "{code}: {reason}"
+      },
+      "stock": {
+        "unlimited": "Limitsiz yer",
+        "remaining": {
+          "one": "{limit} yerdən {count} qalıb",
+          "few": "{limit} yerdən {count} qalıb",
+          "many": "{limit} yerdən {count} qalıb",
+          "other": "{limit} yerdən {count} qalıb"
+        }
+      },
+      "showBlocked": "Bu, erkən quş mükafatıdır və belə mükafata ya bağlanma tarixi, ya da məhdud yer sayı lazımdır. Yenidən göstərməzdən əvvəl limit təyin edin və ya erkən quşu söndürün."
     }
   }
 }

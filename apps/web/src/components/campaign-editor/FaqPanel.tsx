@@ -440,6 +440,7 @@ export function FaqPanel({ projectId, copy }: FaqPanelProps) {
       </div>
 
       <FaqEntryEditor
+        copy={copy.drawer}
         projectId={projectId}
         open={editor.open}
         faq={editor.faq}

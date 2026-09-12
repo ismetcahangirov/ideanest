@@ -21,6 +21,7 @@ import {
   type FaqDraft,
   type FaqErrors,
 } from '../../lib/projects/faqs';
+import type { FaqCopy } from '../../lib/i18n/editor-copy';
 import { EditorDrawer } from './EditorDrawer';
 import { fieldErrorsFrom } from './rewardFailure';
 import { describeFailure, type SaveFailure } from './useAutosave';
@@ -55,6 +56,8 @@ import { describeFailure, type SaveFailure } from './useAutosave';
  * gives the campaign editor "none — autosave indicator only".
  */
 export interface FaqEntryEditorProps {
+  /** The drawer footer's words. The rest of this component follows with the FAQ tab (#459). */
+  copy: FaqCopy['drawer'];
   projectId: string;
   open: boolean;
   /** The entry being edited, or null to add one. */
@@ -65,6 +68,7 @@ export interface FaqEntryEditorProps {
 }
 
 export function FaqEntryEditor({
+  copy,
   projectId,
   open,
   faq,
@@ -127,6 +131,7 @@ export function FaqEntryEditor({
 
   return (
     <EditorDrawer
+      copy={copy}
       open={open}
       onOpenChange={onOpenChange}
       title={faq === null ? 'Add a question' : 'Edit question'}

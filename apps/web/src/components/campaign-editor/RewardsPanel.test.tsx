@@ -377,9 +377,12 @@ describe('RewardsPanel', () => {
       await user.click(screen.getByRole('button', { name: 'Save' }));
       await tick();
 
-      // A reservation is somebody entering their card details, so it counts as
-      // taken exactly as a confirmed pledge does.
-      expect(screen.getByText(/below the 40 places already taken/)).toBeInTheDocument();
+      /*
+       * A reservation is somebody entering their card details, so it counts as taken exactly as
+       * a confirmed pledge does. The sentence names the number rather than declining it — a
+       * plural is ICU's and `validateReward` is a pure function with no formatter (#459).
+       */
+      expect(screen.getByText(/^That is below what is already taken: 40\./u)).toBeInTheDocument();
       expect(patchRewardMock).not.toHaveBeenCalled();
     });
 

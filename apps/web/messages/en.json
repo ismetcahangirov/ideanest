@@ -3272,17 +3272,15 @@
         "saving": "Saving",
         "saved": "Saved",
         "failed": "Not saved"
-      }
-    },
-    "basics": {
+      },
       "signedOut": {
         "title": "You are signed out",
         "body": "This browser no longer has a session. Sign in again to keep editing this campaign."
       },
-      "loadFailed": {
-        "title": "This project could not be loaded"
-      },
-      "tryAgain": "Try again",
+      "loadFailed": "This project could not be loaded",
+      "tryAgain": "Try again"
+    },
+    "basics": {
       "loading": "Loading this campaign",
       "saveFailed": {
         "title": "This change was not saved",
@@ -3390,6 +3388,298 @@
           "UPLOAD_TRANSFER_FAILED": "The image did not reach storage. Check the connection and try again."
         }
       }
+    },
+    "rewards": {
+      "loading": "Loading this campaign’s rewards",
+      "listFailed": "The rewards could not be loaded",
+      "actionFailed": "That did not work",
+      "kept": "Nothing you typed has been lost — it is still in the fields below.",
+      "itemInUse": {
+        "one": "It is part of {tiers}. Take it out of that reward first, then delete it.",
+        "few": "It is part of {tiers}. Take it out of those rewards first, then delete it.",
+        "many": "It is part of {tiers}. Take it out of those rewards first, then delete it.",
+        "other": "It is part of {tiers}. Take it out of those rewards first, then delete it."
+      },
+      "rewardHasBackers": "Hide it instead — the people who chose it keep the description of what they are owed, and it stops being offered to anybody else.",
+      "heading": "Rewards",
+      "count": "({count} of {max})",
+      "add": "Add a reward",
+      "fullTitle": "This campaign has the most rewards it can have",
+      "fullBody": "§5.3 allows {max}. Delete or combine one before adding another.",
+      "empty": {
+        "title": "No rewards yet",
+        "body": "A reward is what a backer selects and pays for: a title, a price, and the items they receive. A campaign can run without any, but almost none do.",
+        "action": "Add the first reward"
+      },
+      "listLabel": "Reward tiers, in the order backers see them",
+      "announce": {
+        "moved": "{title} moved to position {position} of {total}.",
+        "duplicated": "{title} was copied to position {position}.",
+        "hidden": "{title} is hidden from the campaign page.",
+        "shown": "{title} is back on the campaign page.",
+        "deleted": "{title} was deleted."
+      },
+      "card": {
+        "hidden": "Hidden",
+        "opensLater": "Opens later",
+        "featured": "Featured",
+        "secret": "Secret",
+        "earlyBird": "Early bird",
+        "addon": "Add-on",
+        "delivers": "Delivers {month}",
+        "moveUp": "Move {title} up, currently {position} of {total}",
+        "moveDown": "Move {title} down, currently {position} of {total}",
+        "edit": "Edit",
+        "editLabel": "Edit {title}",
+        "duplicate": "Duplicate",
+        "duplicateLabel": "Duplicate {title}",
+        "show": "Show",
+        "showLabel": "Show {title} on the campaign page",
+        "hide": "Hide",
+        "hideLabel": "Hide {title} from the campaign page",
+        "delete": "Delete",
+        "deleteLabel": "Delete {title}",
+        "backed": {
+          "one": "{count} backer has chosen this reward, so it can be hidden but not deleted.",
+          "few": "{count} backers have chosen this reward, so it can be hidden but not deleted.",
+          "many": "{count} backers have chosen this reward, so it can be hidden but not deleted.",
+          "other": "{count} backers have chosen this reward, so it can be hidden but not deleted."
+        }
+      },
+      "contents": {
+        "none": "Contains no items",
+        "some": "Contains {items}",
+        "quantity": "{name} ×{quantity}",
+        "missing": "an item no longer in this campaign"
+      },
+      "namedTiers": {
+        "unknown": "a reward in this campaign",
+        "one": "a reward"
+      },
+      "deleteItem": {
+        "title": "Delete item",
+        "named": "Delete {name}?",
+        "body": "An item that a reward contains cannot be deleted — take it out of the reward first. This one is not in any reward as far as this page knows, and the service checks again."
+      },
+      "deleteReward": {
+        "title": "Delete reward",
+        "named": "Delete {title}?",
+        "body": "Once somebody has backed a reward it can no longer be deleted, only hidden — so deleting is offered while nobody has."
+      },
+      "deleteNote": "This cannot be undone.",
+      "keepIt": "Keep it",
+      "confirmDelete": "Delete",
+      "items": {
+        "heading": "Items",
+        "count": "({count})",
+        "add": "Add an item",
+        "loading": "Loading this campaign’s items",
+        "empty": {
+          "title": "No items yet",
+          "body": "An item is one physical or digital thing — a mug, a poster, a download. Rewards are built out of them, so this is where a campaign starts.",
+          "action": "Add the first item"
+        },
+        "digital": "Digital",
+        "physical": "Physical",
+        "grams": "{weight} g",
+        "editLabel": "Edit {name}",
+        "deleteLabel": "Delete {name}"
+      },
+      "drawer": {
+        "cancel": "Cancel",
+        "save": "Save",
+        "saving": "Saving"
+      },
+      "itemEditor": {
+        "titleNew": "Add an item",
+        "titleEdit": "Edit item",
+        "intro": "Items are the things your campaign produces. A reward is a selection of them with quantities.",
+        "failed": "This item was not saved",
+        "name": {
+          "label": "Name",
+          "hint": "What it is, as a backer would recognise it. {max} characters or fewer."
+        },
+        "description": {
+          "label": "Description",
+          "hint": "Optional. Size, colour, edition — whatever distinguishes this from the next item."
+        },
+        "image": {
+          "label": "Image address",
+          "hint": "A published address. There is no uploader yet, so paste a link to an image that is already online."
+        },
+        "digital": {
+          "label": "Delivered as a file",
+          "hint": "A download or a licence. Nothing is shipped, so no weight and no address."
+        },
+        "weight": {
+          "label": "Weight in grams",
+          "hint": "Optional, and what shipping is worked out from later.",
+          "digital": "A file has no shipping weight."
+        },
+        "sku": {
+          "label": "Stock code",
+          "hint": "Optional. Your own reference, unique within this campaign."
+        }
+      },
+      "itemErrors": {
+        "nameMissing": "An item needs a name.",
+        "nameTooLong": "A name is {max} characters or fewer. Remove {over}.",
+        "skuTooLong": "A stock code is {max} characters or fewer.",
+        "weightOnDigital": "A digital item has no shipping weight. Clear the weight, or make it a physical item.",
+        "weightNotWhole": "Enter the weight as a whole number of grams.",
+        "weightNotPositive": "A weight is more than zero grams."
+      },
+      "tierEditor": {
+        "titleNew": "Add a reward",
+        "titleEdit": "Edit reward",
+        "intro": "What a backer selects and pays for. It is made of the items above, in the quantities you choose.",
+        "failed": "This reward was not saved",
+        "ratesFailed": "The shipping rates were not saved",
+        "ratesKeptLead": "The reward itself was saved.",
+        "ratesKeptRest": "Only the per-country rates were refused, so fix them and save again — the rest will not be sent twice.",
+        "title": {
+          "label": "Title",
+          "hint": "What a backer sees in the reward list. {max} characters or fewer."
+        },
+        "description": {
+          "label": "Description",
+          "hint": "What they get, in a sentence or two."
+        },
+        "price": {
+          "label": "Price",
+          "hint": "The amount a backer pays. Priced in {currency}, the campaign’s currency.",
+          "locked": "The price cannot change once the campaign has launched. Priced in {currency}."
+        },
+        "delivery": {
+          "label": "Estimated delivery",
+          "hint": "The month you expect to deliver in. Backers read this as a promise."
+        },
+        "places": {
+          "label": "Number of places",
+          "hint": "Leave empty for unlimited. A quantity may always be raised later; it may only be lowered above what is already taken.",
+          "committed": "Leave empty for unlimited. Places already taken: {committed}, so the limit cannot go below that."
+        },
+        "shipping": {
+          "label": "Delivery"
+        }
+      },
+      "scopes": {
+        "NONE": {
+          "label": "Nothing is delivered",
+          "hint": "A credit, a thank-you, a name on a wall."
+        },
+        "DIGITAL": {
+          "label": "Digital delivery",
+          "hint": "A file or a licence. No address is asked for."
+        },
+        "LOCAL_PICKUP": {
+          "label": "Collected in person",
+          "hint": "No carrier and no rate, but the backer’s country is still asked for."
+        },
+        "DOMESTIC": {
+          "label": "Shipped domestically",
+          "hint": "Inside your own country only. Needs a rate per destination."
+        },
+        "INTERNATIONAL": {
+          "label": "Shipped internationally",
+          "hint": "Anywhere you have priced. A destination with no rate cannot be chosen."
+        }
+      },
+      "rates": {
+        "label": "Shipping rates",
+        "hint": "One rate per destination, in {currency}. A country with no rate cannot be chosen at checkout, and 0 is free shipping.",
+        "empty": "No destinations priced yet, so this reward cannot be shipped anywhere.",
+        "add": "Add a destination",
+        "unnamed": "destination {position}",
+        "countryLabel": "Country code for {destination}",
+        "ratePlaceholder": "Rate",
+        "rateLabel": "Shipping rate to {destination}",
+        "extraPlaceholder": "Each extra",
+        "extraLabel": "Rate for each additional item to {destination}",
+        "removeLabel": "Remove {destination}"
+      },
+      "composition": {
+        "label": "What is in it",
+        "hint": "The items a backer receives. A reward with nothing in it is legitimate — a thank-you, a credit — and it is what an empty list means.",
+        "missing": "An item that is no longer in this campaign",
+        "quantityLabel": "Quantity of {name}",
+        "removeLabel": "Remove {name} from this reward",
+        "addPlaceholder": "Add an item…",
+        "addLabel": "Add an item to this reward",
+        "noItems": "This campaign has no items yet. Add one in the list behind this panel, and it will appear here.",
+        "allChosen": "Every item in this campaign is already in this reward."
+      },
+      "opens": {
+        "label": "Opens",
+        "hint": "Optional. Leave it empty for a reward that is available as soon as the campaign is."
+      },
+      "closes": {
+        "label": "Closes",
+        "hint": "Optional. A moment in the past hides the reward — which is what the Hide control in the list sets."
+      },
+      "offering": {
+        "legend": "How it is offered"
+      },
+      "earlyBird": {
+        "label": "Early bird",
+        "hint": "A better deal that runs out. It needs either a closing date or a limited number of places — without one it is an ordinary reward with a label that hurries people for nothing."
+      },
+      "featured": {
+        "label": "Featured",
+        "hint": "Shown first on the campaign page."
+      },
+      "secret": {
+        "label": "Secret",
+        "hint": "Left out of the public list and reached by a private token instead. Making it public again destroys that token, so any link already sent stops working.",
+        "token": "Token"
+      },
+      "addon": {
+        "label": "Sold as an add-on",
+        "hint": "Offered alongside a reward rather than instead of one."
+      },
+      "errors": {
+        "titleMissing": "A reward needs a title.",
+        "titleTooLong": "A title is {max} characters or fewer. Remove {over}.",
+        "price": {
+          "empty": "A reward needs a price.",
+          "notANumber": "Enter the price in digits, for example 19.99.",
+          "comma": "Use a full stop for the decimal point, for example 19.99.",
+          "tooManyDecimals": "A price has at most two decimal places.",
+          "tooLarge": "That price is larger than the platform can hold.",
+          "notPositive": "A reward price is more than zero."
+        },
+        "rate": {
+          "empty": "Enter what shipping to this destination costs.",
+          "notANumber": "Enter the rate in digits, for example 12.50.",
+          "comma": "Use a full stop for the decimal point, for example 12.50.",
+          "tooManyDecimals": "A rate has at most two decimal places.",
+          "tooLarge": "That rate is larger than the platform can hold.",
+          "notPositive": "A rate cannot be negative. Enter 0 for free shipping."
+        },
+        "limitNotWhole": "Enter the number of places as a whole number, or leave it empty for unlimited.",
+        "limitTooSmall": "A limited reward offers at least one place. Clear the limit to make it unlimited.",
+        "limitBelowCommitted": "That is below what is already taken: {committed}. A quantity may always be raised, and lowered only above what is claimed.",
+        "secretFeatured": "A secret reward is not shown on the page, so it cannot also be featured.",
+        "earlyBirdNeedsLimit": "An early-bird reward needs either a closing date or a limited number of places.",
+        "dateUnreadable": "Enter a date and time, or leave it empty.",
+        "closesBeforeOpens": "A reward closes after it opens, not before.",
+        "itemsDuplicate": "Each item appears once, with the quantity as its count.",
+        "itemsQuantity": "A reward contains at least one of every item it lists.",
+        "rulesNotShipped": "Only a reward shipped domestically or internationally has per-country rates. Change the delivery method, or remove the rates.",
+        "rulesCountryCode": "A destination is a two-letter country code, for example AZ or TR.",
+        "rulesDuplicate": "Each destination appears once: {code} is listed twice.",
+        "rulesRow": "{code}: {reason}"
+      },
+      "stock": {
+        "unlimited": "Unlimited places",
+        "remaining": {
+          "one": "{count} of {limit} place left",
+          "few": "{count} of {limit} places left",
+          "many": "{count} of {limit} places left",
+          "other": "{count} of {limit} places left"
+        }
+      },
+      "showBlocked": "This is an early-bird reward, and one needs either a closing date or a limited number of places. Set a limit, or turn off early bird, before showing it again."
     }
   }
 }

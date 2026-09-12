@@ -2,6 +2,8 @@
 
 import { useEffect, useId, useState } from 'react';
 import { CharacterCount, Field, InlineAlert, Switch, Textarea, TextInput } from '@ideanest/ui';
+import type { RewardsCopy } from '../../lib/i18n/editor-copy';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import { createItem, patchItem, type Item } from '../../lib/projects/api';
 import { characterCount } from '../../lib/projects/basics';
 import {
@@ -38,6 +40,8 @@ import { describeFailure, type SaveFailure } from './useAutosave';
  * refusal reads the same wherever in the editor it happened.
  */
 export interface ItemEditorProps {
+  /** This drawer's words, and the two vocabularies below it — issue #459. */
+  copy: Pick<RewardsCopy, 'drawer' | 'itemEditor' | 'itemErrors' | 'kept'>;
   projectId: string;
   open: boolean;
   /** The item being edited, or null to create one. */
@@ -47,7 +51,14 @@ export interface ItemEditorProps {
   onSaved: (item: Item) => void;
 }
 
-export function ItemEditor({ projectId, open, item, onOpenChange, onSaved }: ItemEditorProps) {
+export function ItemEditor({
+  copy,
+  projectId,
+  open,
+  item,
+  onOpenChange,
+  onSaved,
+}: ItemEditorProps) {
   const [draft, setDraft] = useState<ItemDraft>(EMPTY_ITEM);
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<SaveFailure | null>(null);
@@ -68,7 +79,7 @@ export function ItemEditor({ projectId, open, item, onOpenChange, onSaved }: Ite
     setAttempted(false);
   }, [open, item]);
 
-  const errors = validateItem(draft);
+  const errors = validateItem(draft, copy.itemErrors);
   const serverErrors = fieldErrorsFrom(failure, isItemField);
 
   /*
@@ -107,27 +118,28 @@ export function ItemEditor({ projectId, open, item, onOpenChange, onSaved }: Ite
 
   return (
     <EditorDrawer
+      copy={copy.drawer}
       open={open}
       onOpenChange={onOpenChange}
-      title={item === null ? 'Add an item' : 'Edit item'}
-      description="Items are the things your campaign produces. A reward is a selection of them with quantities."
+      title={item === null ? copy.itemEditor.titleNew : copy.itemEditor.titleEdit}
+      description={copy.itemEditor.intro}
       saving={saving}
       onSave={() => void save()}
     >
       <div className="flex flex-col gap-6">
         {failure !== null && (
-          <InlineAlert variant="danger" title="This item was not saved">
+          <InlineAlert variant="danger" title={copy.itemEditor.failed}>
             <p>{failure.message}</p>
-            <p className="mt-2 text-white/64">
-              Nothing you typed has been lost — it is still in the fields below.
-            </p>
+            <p className="mt-2 text-white/64">{copy.kept}</p>
           </InlineAlert>
         )}
 
         <Field
-          label="Name"
+          label={copy.itemEditor.name.label}
           required
-          hint={`What it is, as a backer would recognise it. ${ITEM_NAME_MAX_CHARACTERS} characters or fewer.`}
+          hint={fillPlaceholders(copy.itemEditor.name.hint, {
+            max: String(ITEM_NAME_MAX_CHARACTERS),
+          })}
           error={visible.name}
         >
           {/*
@@ -144,8 +156,8 @@ export function ItemEditor({ projectId, open, item, onOpenChange, onSaved }: Ite
         </Field>
 
         <Field
-          label="Description"
-          hint="Optional. Size, colour, edition — whatever distinguishes this from the next item."
+          label={copy.itemEditor.description.label}
+          hint={copy.itemEditor.description.hint}
           error={visible.description}
         >
           <Textarea
@@ -156,8 +168,8 @@ export function ItemEditor({ projectId, open, item, onOpenChange, onSaved }: Ite
         </Field>
 
         <Field
-          label="Image address"
-          hint="A published address. There is no uploader yet, so paste a link to an image that is already online."
+          label={copy.itemEditor.image.label}
+          hint={copy.itemEditor.image.hint}
           error={visible.imageUrl}
         >
           {/*
@@ -185,7 +197,7 @@ export function ItemEditor({ projectId, open, item, onOpenChange, onSaved }: Ite
           */}
           <Switch
             checked={draft.isDigital}
-            label="Delivered as a file"
+            label={copy.itemEditor.digital.label}
             aria-describedby={digitalHintId}
             onCheckedChange={(checked) =>
               setDraft({
@@ -201,18 +213,14 @@ export function ItemEditor({ projectId, open, item, onOpenChange, onSaved }: Ite
             }
           />
           <p id={digitalHintId} className="mt-2 text-[13px] text-white/64">
-            A download or a licence. Nothing is shipped, so no weight and no address.
+            {copy.itemEditor.digital.hint}
           </p>
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2">
           <Field
-            label="Weight in grams"
-            hint={
-              draft.isDigital
-                ? 'A file has no shipping weight.'
-                : 'Optional, and what shipping is worked out from later.'
-            }
+            label={copy.itemEditor.weight.label}
+            hint={draft.isDigital ? copy.itemEditor.weight.digital : copy.itemEditor.weight.hint}
             error={visible.weightGrams}
           >
             <TextInput
@@ -225,8 +233,8 @@ export function ItemEditor({ projectId, open, item, onOpenChange, onSaved }: Ite
           </Field>
 
           <Field
-            label="Stock code"
-            hint="Optional. Your own reference, unique within this campaign."
+            label={copy.itemEditor.sku.label}
+            hint={copy.itemEditor.sku.hint}
             error={visible.sku}
           >
             <TextInput
