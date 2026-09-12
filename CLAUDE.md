@@ -204,6 +204,7 @@ platform that is somebody's pledge. Use `decimal.js` on the frontend and
 | `docs/architecture.md` | Full platform specification |
 | `docs/ui-kit.md` | Colour, surface, typography, components |
 | `docs/motion-system.md` | Motion tokens, patterns, budgets |
+| `docs/providers/*.md` | What a third party was confirmed to be able to do, by whom, and when — §9.3's fourteen rows for a payment provider. **What an adapter's `capabilities()` is written from.** A row nobody obtained an answer to is recorded as outstanding rather than rounded up |
 | `packages/*/README.md` | Package-level usage |
 
 Update the documentation in the same pull request as the change. Documentation

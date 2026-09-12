@@ -618,16 +618,21 @@ ideanest:
     provider:
       # Which adapter the platform charges through, and it is deliberately empty.
       #
-      # #60 -- choose the payment provider and confirm §9.3's fourteen capabilities
-      # in writing -- has not been answered, so no adapter exists. §9.2 says why no
-      # stub ships in the meantime: one that returned an approval "would be worse
-      # than nothing", because it would make the collection path look finished.
+      # ONE ADAPTER NOW EXISTS -- `epoint`, from #422 and #433 -- and this staying
+      # empty is still the default. §9.2's argument against a stub is unchanged by a
+      # real adapter existing: a suite whose timer charges the pledges it is about to
+      # charge itself is a flaky suite, and a demo environment that quietly moves
+      # money is worse than one that refuses to.
       #
       # Empty is what makes `CollectionRun` refuse to collect at all rather than
       # fail once per pledge, and a value naming a provider with no adapter on the
       # classpath is a start-up failure rather than a warning -- a deployment that
       # thinks it can collect and cannot is discovered on the one day it must not
       # be.
+      #
+      # Setting it to `epoint` also requires the credentials and the two confirmed
+      # capabilities below. Without them the service does not start, which is the
+      # point.
       primary: ${PAYMENT_PROVIDER:}
     collection:
       # §8.4: charge-processor, every minute. The pass that opens the collection of
@@ -693,6 +698,81 @@ ideanest:
       # queueing, short enough that a captured request is not a usable instruction
       # an hour later.
       tolerance: PT5M
+    # Epoint -- §9.3's chosen provider, and what this deployment has confirmed it can
+    # do (issues #422 and #433). The whole record is in docs/providers/epoint.md.
+    #
+    # The adapter registers only when `provider.primary` above is `epoint`, so the
+    # default everywhere -- including every test -- is still no adapter at all. §9.2's
+    # argument against a stub is unchanged by a real adapter existing: a suite whose
+    # timer charges the pledges it is about to charge itself is a flaky suite.
+    epoint:
+      # Where Epoint lives. Empty by default: there is no sensible default for somebody
+      # else's service, and a guessed one is a deployment that appears configured.
+      # Naming epoint above without completing these three is a start-up failure.
+      base-url: ${EPOINT_BASE_URL:}
+      # The merchant identifier, e.g. i000000001. It travels inside every signed
+      # payload, so it is not a secret in the cryptographic sense -- but it identifies
+      # the merchant and is held as a credential.
+      public-key: ${EPOINT_PUBLIC_KEY:}
+      # THE WHOLE OF THE PLATFORM'S AUTHENTICATION, IN BOTH DIRECTIONS. It signs every
+      # outgoing request and it is what verifies an incoming callback, so anybody
+      # holding it can mint a delivery to an endpoint that has no other authentication.
+      # On Redaction's list.
+      private-key: ${EPOINT_PRIVATE_KEY:}
+      # The result_url registered in Epoint's merchant console. Held here so that a
+      # deployment can assert the one it registered and so the runbook has it in one
+      # place; Epoint does not accept it per request.
+      result-url: ${EPOINT_RESULT_URL:}
+      # Which language Epoint's hosted card page is shown in. Every endpoint requires
+      # one of az, en, ru.
+      language: ${EPOINT_LANGUAGE:az}
+      # How long the platform waits on one call before treating Epoint as unreachable.
+      # Longer than SIMA's ten seconds because a card page is a bank round trip, and
+      # still short enough that a request thread is not held by a third party.
+      request-timeout: PT20S
+      # §9.3's fourteen rows, AS CONFIRMED IN WRITING AND NOT AS HOPED.
+      #
+      # Defaults are read off Epoint's own specification version 1.0.3 in
+      # docs/providers/epoint.md, which answers eight rows and is silent on six. A row
+      # that specification does not address defaults to FALSE, whatever the adapter
+      # could plausibly do -- and two of the six stop the service:
+      #
+      #   scheme-chaining      R-03. PaymentProviders refuses an adapter without it,
+      #                        so the service does not start.
+      #   idempotent-order-id  R-08. The adapter refuses to construct without it,
+      #                        because R-08 is not on ProviderCapabilities and nothing
+      #                        else would check it.
+      #
+      # Turning one on is a deliberate act by whoever holds the written answer. The
+      # property name says which answer it is.
+      capabilities:
+        # R-01. Documented: /api/1/card-registration mints a card_id and
+        # /api/1/execute-pay charges it. What is NOT documented is how long a card_id
+        # stays chargeable, and §9.1's design is a charge sixty days after the pledge.
+        card-on-file: ${EPOINT_CARD_ON_FILE:true}
+        # R-02. Documented by construction: execute-pay is server-to-server with no
+        # cardholder step.
+        merchant-initiated: ${EPOINT_MERCHANT_INITIATED:true}
+        # R-03. NOT ADDRESSED by Epoint's specification -- no scheme transaction
+        # identifier travels in either direction. The adapter carries the registration's
+        # rrn, on the inference that Epoint is the merchant of record and chains
+        # internally. An inference is not a confirmation.
+        scheme-chaining: ${EPOINT_SCHEME_CHAINING:false}
+        # R-08. NOT ADDRESSED. The adapter sends its idempotency key as Epoint's
+        # order_id, which is at-most-once only if Epoint refuses the duplicate.
+        idempotent-order-id: ${EPOINT_IDEMPOTENT_ORDER_ID:false}
+        # R-10. The /api/1/split-* endpoints exist. The four questions #422 asks about
+        # them -- onboarding, when the split executes, merchant of record, and who a
+        # chargeback debits -- have no answers, and the last decides #71.
+        split-payment: ${EPOINT_SPLIT_PAYMENT:false}
+        # R-06. Documented: /api/1/reverse takes an optional amount.
+        partial-refund: ${EPOINT_PARTIAL_REFUND:true}
+        # R-11. Every Epoint endpoint documents exactly one value, so §21.2's display
+        # rate is the entire currency story and an international backer pays in AZN.
+        currencies: AZN
+        # R-12. Apple Pay for web and mobile; Google Pay for web, and for mobile only
+        # after Epoint reviews screenshots and issues a Merchant ID.
+        wallets: APPLE_PAY,GOOGLE_PAY
 
   # SIMA Imza, and the two things that keep it switched off -- issue #428.
   #

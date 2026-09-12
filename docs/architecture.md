@@ -3426,12 +3426,30 @@ does not work.
 | Provider | Observed capability | Status |
 |---|---|---|
 | **Payriff** | Pre-authorisation operation and completion, refunds, AZN/USD/EUR | Card-on-file and merchant-initiated require written confirmation |
-| **Epoint** | API integration, split payments across parties | Split suits a marketplace model; merchant-initiated needs confirmation |
+| **Epoint** | **Chosen (#422).** Card registration and stored-card charging, full and partial reversal, transfers out, split endpoints, Apple Pay and Google Pay, AZN only | Eight rows answered by Epoint's own specification v1.0.3; **six outstanding** — see `docs/providers/epoint.md`. The adapter is #433 |
 | **Azericard** | National processing centre, major card schemes certified | Direct integration is typically bank-intermediated |
 | **Bank acquiring** | Terms are negotiated individually | — |
 
 > **Integrate at least two providers.** If the primary is unavailable on the day
 > a large campaign closes, the entire business stops.
+
+**Epoint's row is a record and not a summary.** `docs/providers/epoint.md` answers
+all fourteen against the source, names the six that are outstanding, and says which
+of them stop the service. Two do:
+
+| Row | State | What happens |
+|---|---|---|
+| R-03 scheme chaining | Epoint's specification carries no scheme transaction identifier in either direction | `capabilities.scheme-chaining` is false, `PaymentProviders` refuses the adapter, **the service does not start** |
+| R-08 idempotency | No idempotency header, and nothing states what a repeated `order_id` does | `EpointPaymentProvider` refuses to construct. R-08 is not on `ProviderCapabilities`, so nothing else would check it |
+| R-13 chargebacks | No dispute event exists | §9.8 cannot start. #68's machinery stays unreachable |
+| R-14 sandbox | Not offered in the specification | The adapter's suites run against a recorded contract, not against Epoint |
+| R-09 rate limits | Not documented | `chargesPerPass` stays the figure to put in front of Epoint |
+| R-10's four questions | The split endpoints exist; onboarding, timing, merchant of record and chargeback liability do not have answers | §9.5 stands as drawn, and #71 stays open |
+
+**Every capability the adapter reports is configuration**, under
+`ideanest.payment.epoint.capabilities`, defaulted from that file. A deployment that
+obtains a different answer in writing changes a property rather than an adapter, and
+a row nobody answered defaults to the value that refuses.
 
 ### 9.4 Provider abstraction
 
@@ -3494,15 +3512,18 @@ single-file change.
 > switched off by configuration rather than by absence, and `SignatureProviders` refuses
 > outright to start against production SİMA until #423 answers.
 
-> **Built (#61), and nothing implements it.** #60 has not chosen a provider, and §9.2
-> already says why no stub ships in the meantime: one that returned an approval "would
-> make this path look finished". So `PaymentProviders` finds no adapters in a deployed
-> environment, `CollectionRun` refuses to collect when it finds none, and that single
-> refusal is what keeps the batching, the circuit breaker, §9.6's schedule and the
-> ledger posting inert until there is something real behind them.
-> `PaymentProviderBoundaryTests` asserts both halves — that no adapter is on the
-> production classpath, and that no module outside `payment` names a request or result
-> type, which is the checkable form of "changing provider is a single-file change".
+> **Built (#61), and one adapter implements it (#433).** `EpointPaymentProvider` is the
+> first, and it registers only when `ideanest.payment.provider.primary` is `epoint` —
+> so the default everywhere, including every test, is still no adapter at all. §9.2's
+> argument against a stub is unchanged by a real one existing: `PaymentProviders` finds
+> no adapters in an unconfigured environment, `CollectionRun` refuses to collect when it
+> finds none, and that single refusal is what keeps the batching, the circuit breaker,
+> §9.6's schedule and the ledger posting inert until a deployment has decided.
+> `PaymentProviderBoundaryTests` asserts both halves — that the only adapters on the
+> production classpath are ones §9.3's fourteen-row conversation was had for and written
+> down under `docs/providers/`, and that no module outside `payment` names a request or
+> result type, which is the checkable form of "changing provider is a single-file
+> change".
 >
 > Two departures from the sketch above, both small. `ProviderCapabilities` gains
 > `schemeChaining`, because R-03 is one of the three the design cannot work without and
@@ -3588,12 +3609,23 @@ manual form of B — which is what #432 describes B being at launch volumes — 
 the only one anything writes today. The column exists so that a row confirmed by a
 bank is never later mistaken for one a person attested to by eye.
 
-**What is still missing, and is not pretended otherwise.** No adapter can issue a
-destination token, because no adapter exists: #433 is the first, and it waits on
-#422. The gate, the verification, the audit trail and the refusals are real; the
-hosted flow that produces a token in front of them is the part that is not. That is
-the same inert-behind-the-interface state §9.2 chose deliberately for collection,
-for the reason §9.2 gives — a stub "would make this path look finished".
+**What is still missing, and is not pretended otherwise.** #433 shipped the Epoint
+adapter, so the last arrow can now be drawn: `payout` posts to Epoint's
+`/api/1/refund-request`, which despite its name is the transfer-out endpoint, and
+sends to a `card_id` the creator registered with `refund=1`. What is still absent is
+the **creator-facing flow that produces that token** — a hosted Epoint registration
+in front of `PUT /v1/me/payout-destination` — and mechanism A, which needs R-10's
+answer. The gate, the verification, the audit trail and the refusals are real; the
+page that mints the token is the part that is not.
+
+**A transfer at payout, and not a split at collection.** Epoint's `/api/1/split-*`
+endpoints exist and #435 deliberately did not use them, because R-10's four
+questions — how a creator is onboarded as an Epoint user, whether the split executes
+at authorisation, capture or settlement, who is the merchant of record for each leg,
+and who a chargeback debits — have no answers. The last of those is #71's question.
+Moving to a split would change this diagram, the ledger posting, the purpose of the
+hold and possibly the platform's regulatory position, so it gets its own epic rather
+than arriving inside an adapter.
 
 ### 9.6 Failed collections
 
@@ -3660,6 +3692,21 @@ expired cards, limits, and issuer declines.
 4. Evidence is submitted to the provider
 5. The outcome is recorded as a reversal either way
 6. If lost, the amount and any fee are deducted from the payout
+
+> **Step 1 has nothing to trigger it, and #434 did not fix that.** Epoint's
+> specification documents five payment statuses — `new`, `success`, `returned`,
+> `error`, `server_error` — and none of them is a dispute. §9.3's R-13 is therefore
+> outstanding (`docs/providers/epoint.md`), and #68's `Dispute`, `DisputeState`,
+> `DisputeEvidence` and `DisputeService` remain machinery nothing can reach.
+>
+> The adapter does not paper over it. An Epoint delivery it does not recognise
+> becomes `UNRECOGNISED`, which `ProviderWebhooks` stores and ignores — a provider
+> adding an event type must not start failing deliveries — and no status is mapped
+> to `CHARGEBACK_OPENED` on a guess. A guessed mapping would be worse than the gap,
+> because the path would look wired.
+>
+> Steps 2 to 6 are built and tested through `DisputeService`. What is missing is the
+> first arrow, and it is Epoint's to supply.
 
 ---
 
