@@ -244,7 +244,9 @@ percentage is a formatter's job and never a template's.
 **Which routes are key-based, and which are still English literals (#324).** The
 message catalogue lives in `messages/{az,en,ru,tr}.json` and covers, in full:
 
-- the site shell — header, mobile drawer, account menu, footer, skip link, failure links;
+- the site shell — header, mobile drawer, account menu, footer, skip link, failure links, and
+  since #458 the footer's own language control, which is four links to the page being read
+  under another prefix;
 - every public route: the home page, the feed and its filter rail, the search box and its
   suggestions, the category and subcategory landings, the collection index and the
   collection pages, the three editorial pages, the public profile, and the campaign card
@@ -252,6 +254,11 @@ message catalogue lives in `messages/{az,en,ru,tr}.json` and covers, in full:
 - the six authentication screens under `app/[locale]/(auth)`, and the two credential
   panels under `/settings` that share their refusal vocabulary;
 - the checkout, and the public campaign page;
+- the campaign editor, **in full** (#459) — the frame and its six section names, the sixteen
+  §6.1 states in the creator's own vocabulary, and all six tabs: the basics, the rewards with
+  both of their drawers, the story with its block editor and version history, the FAQ, the
+  pre-launch page and the review checklist. `lib/i18n/editor-copy.ts` holds one shape per tab,
+  and each page under `app/[locale]/projects/[id]/edit` resolves its own;
 - the account area: the frame, all thirteen screens' headings, the notifications inbox and
   its settings, and the two fulfilment screens;
 - the administration console, **in full** — the bar, the rail, the index that lists §4.11's
@@ -263,7 +270,6 @@ What is still English:
 
 | Surface | Where |
 |---|---|
-| The campaign editor | `components/campaign-editor` |
 | The creator dashboard | `components/dashboard` |
 | The panels below eleven account headings | `components/settings`, `components/sessions`, `components/surveys`, `components/pledges`, `components/profile`'s editor |
 | The public report dialog | `components/moderation/ReportControl` |
@@ -292,7 +298,22 @@ in `messages.properties` so that a key no translation has still resolves to a fi
 sentence rather than throwing. `EmailChannelSender` reads `users.locale` off the account it
 already loaded for the address.
 
-**Two suites hold the catalogue honest, and they cover different halves.**
+**A sentence that declines is a plural form, not a ternary.** `count === 1 ? 'item' : 'items'`
+is the whole of English and none of Russian, which picks between three forms by the last digit.
+Where the count is known on the server the message is ICU and next-intl formats it; where it is
+only known in the browser — a tier's remaining stock, how many blocks are incomplete, how many
+characters a question is over its cap — `lib/i18n/plurals.ts` picks the form from
+`Intl.PluralRules`. `pluralForm` is the same choice with `{count}` left in it, for the one
+sentence whose number is a styled node rather than a string.
+
+**A sentence assembled from clauses is a sentence in English word order.** #459 found four:
+a refusal built by joining fragments with `", and "`, a progress figure built with `+`, a
+plural stem with a conditional ending glued on, and an emphasised clause fixed in place by a
+`<strong>` in the middle of it. Each is a set of whole messages now, chosen rather than
+composed — the conjunction, the comma, the position of the per-cent sign and where the emphasis
+falls are all things another language does differently.
+
+**Three suites hold the catalogue honest, and they cover different halves.**
 `lib/i18n/catalogue.test.ts` asserts properties of the messages: that the four languages hold
 the same keys, that none is empty, that every rich-text tag is balanced and matches English,
 and that no Latin-script language contains a Cyrillic homoglyph — а, е, о, р, с, х and у are
@@ -301,7 +322,12 @@ as correct to every reviewer while breaking search and switching a screen reader
 mid-word. One was found in `account.pages.surveys.intro` this way.
 `app/[locale]/account-area.pages.test.ts` asserts the other half — that each page actually
 *asks* for its keys, since a screen rewritten with a literal back in it passes every catalogue
-check while showing English to everybody.
+check while showing English to everybody. `app/[locale]/projects/[id]/edit/editor.pages.test.ts`
+does the same for the six editor tabs and adds one the other two do not: it scans
+`components/campaign-editor` for a `label`, `hint`, `title`, `description` or `placeholder`
+whose value is a quoted literal. The regression it exists for is a sentence typed back in by
+the next person to add a field, which nothing else here would notice. Two literals are pinned
+as exceptions and both are tokens the service parses rather than words — `https://` and `AZ`.
 
 **How a word reaches a component, and the measurement behind it.** Server components call
 `getTranslations`. Client components are handed a resolved object as a prop by their server

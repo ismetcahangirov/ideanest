@@ -5992,10 +5992,13 @@ it was written in.
 > is asking. `apps/web/README.md` records exactly which routes are key-based and which
 > are not.
 >
-> **What is still English, stated rather than left to be found.** The campaign editor,
-> the creator dashboard, the eleven panels under the account headings, and
+> **What is still English, stated rather than left to be found.** The creator dashboard,
+> the eleven panels under the account headings, and
 > `components/moderation/ReportControl` — the dialog a member of the public opens to
-> report a campaign. **The administration console is finished**: its frame, its
+> report a campaign. **The campaign editor is finished** (#459): the frame, the sixteen
+> §6.1 states in the creator's own vocabulary rather than the console's, and all six tabs
+> — it was the largest untranslated surface left, at 190 strings across sixteen components.
+> **The administration console is finished**: its frame, its
 > twenty-eight routes and all twenty-six screens inside them, including the moderation
 > queue, the ledger, the payouts and the fee schedules. `lib/i18n/admin/` carries the
 > reversal of the earlier decision to leave staff-facing surfaces English, and the
