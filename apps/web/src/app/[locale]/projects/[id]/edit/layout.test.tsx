@@ -59,6 +59,29 @@ vi.mock('../../../../../lib/api/access-token', () => ({
   signOut: vi.fn().mockResolvedValue(undefined),
 }));
 
+/*
+ * The shell reads the catalogue on the server, so the frame under test is an async component.
+ * These two mocks are what let it resolve here: the real `messages/en.json`, reached the way
+ * `i18n/request.ts` reaches it, and `resolveServerTree` to await the component itself.
+ *
+ * At the top level, with the others, and not inside the test that needs it. `vi.mock` is
+ * hoisted to the top of the module whatever it is written next to, so a call nested in an
+ * `it` has never applied only to that test -- it read as scoped and was not. Vitest 5 refuses
+ * the arrangement outright rather than hoisting it silently, which is how it was found.
+ */
+vi.mock('next-intl/server', () => ({
+  getLocale: async () => 'en',
+  getTranslations: async (namespace: string) => (key: string) => {
+    let node: unknown = MESSAGES;
+    for (const segment of `${namespace}.${key}`.split('.')) {
+      if (typeof node !== 'object' || node === null) throw new Error(`no message at ${key}`);
+      node = (node as Record<string, unknown>)[segment];
+    }
+    if (typeof node !== 'string') throw new Error(`no message at ${namespace}.${key}`);
+    return node;
+  },
+}));
+
 const sessionMock = vi.mocked(fetchSession);
 
 beforeEach(() => {
@@ -110,23 +133,6 @@ describe('the campaign editor', () => {
     expect(mains[0]).not.toContainElement(banners[0] ?? null);
     expect(mains[0]).toContainElement(screen.getByRole('heading', { level: 1 }));
 
-/*
- * The shell reads the catalogue on the server, so the frame under test is an async component.
- * These two mocks are what let it resolve here: the real `messages/en.json`, reached the way
- * `i18n/request.ts` reaches it, and `resolveServerTree` to await the component itself.
- */
-vi.mock('next-intl/server', () => ({
-  getLocale: async () => 'en',
-  getTranslations: async (namespace: string) => (key: string) => {
-    let node: unknown = MESSAGES;
-    for (const segment of `${namespace}.${key}`.split('.')) {
-      if (typeof node !== 'object' || node === null) throw new Error(`no message at ${key}`);
-      node = (node as Record<string, unknown>)[segment];
-    }
-    if (typeof node !== 'string') throw new Error(`no message at ${namespace}.${key}`);
-    return node;
-  },
-}));
 
   });
 });
