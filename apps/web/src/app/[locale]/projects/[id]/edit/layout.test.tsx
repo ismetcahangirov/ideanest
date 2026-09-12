@@ -4,6 +4,8 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { fetchSession } from '../../../../../lib/session/session';
 import { SessionProvider } from '../../../../../components/session/SessionProvider';
 import { EditorShell } from '../../../../../components/campaign-editor/EditorShell';
+import { editorFrameCopyFrom } from '../../../../../lib/i18n/editor-copy';
+import { translatorFor } from '../../../../../test-copy';
 import { MAIN_CONTENT_ID } from '../../../../../components/shell/SkipLink';
 import CampaignEditorLayout from './layout';
 import NewProjectLayout from '../../new/layout';
@@ -101,7 +103,13 @@ async function renderInLayout(
 
 describe('the campaign editor', () => {
   const editor = (
-    <EditorShell projectId="p1" active="basics" title="A solar lamp" state="DRAFT">
+    <EditorShell
+      projectId="p1"
+      copy={editorFrameCopyFrom(translatorFor('editor'))}
+      active="basics"
+      title="A solar lamp"
+      state="DRAFT"
+    >
       <p>The basics form</p>
     </EditorShell>
   );

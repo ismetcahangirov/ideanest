@@ -11,7 +11,17 @@ import {
   type ProjectChecklist,
   type ProjectEdit,
 } from '../../lib/projects/api';
+import { reviewCopyFrom } from '../../lib/i18n/editor-copy';
+import { translatorFor } from '../../test-copy';
 import { ReviewPanel } from './ReviewPanel';
+
+/*
+ * The copy the page would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #459. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for; `test-copy.ts` carries the
+ * argument in full.
+ */
+const COPY = reviewCopyFrom(translatorFor('editor'));
 
 /**
  * Appearance is reviewed in Storybook. These cover what the review tab has to get
@@ -130,7 +140,7 @@ function completeChecklist(overrides: Partial<ProjectChecklist> = {}): ProjectCh
 }
 
 async function renderPanel(): Promise<void> {
-  render(<ReviewPanel projectId="project-1" />);
+  render(<ReviewPanel projectId="project-1" copy={COPY} />);
   await screen.findByRole('heading', { name: 'Required before you can submit' });
 }
 
@@ -555,7 +565,7 @@ describe('ReviewPanel', () => {
   it('reports a checklist that could not be loaded, and offers to try again', async () => {
     getProjectChecklistMock.mockRejectedValue(new ApiError(500, null));
 
-    render(<ReviewPanel projectId="project-1" />);
+    render(<ReviewPanel projectId="project-1" copy={COPY} />);
 
     await waitFor(() =>
       expect(screen.getByText('This campaign could not be loaded')).toBeInTheDocument(),

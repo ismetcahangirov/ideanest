@@ -2,6 +2,7 @@
 
 import { CircleAlert, CircleCheck, LoaderCircle } from 'lucide-react';
 import { cn } from '@ideanest/ui';
+import type { EditorFrameCopy } from '../../lib/i18n/editor-copy';
 import type { SaveState } from './useAutosave';
 
 /**
@@ -27,32 +28,40 @@ import type { SaveState } from './useAutosave';
  */
 export interface SaveStatusProps {
   state: SaveState;
+  /**
+   * The three words, resolved on the server — issue #459.
+   *
+   * They are the frame's rather than this component's own, because the indicator is drawn on
+   * all six tabs and "Saved" spelled two ways would be the same indicator disagreeing with
+   * itself between the story tab and the rewards one.
+   */
+  copy: EditorFrameCopy['save'];
   className?: string;
 }
 
-export function SaveStatus({ state, className }: SaveStatusProps) {
-  const announced = state === 'saved' ? 'Saved' : state === 'failed' ? 'Not saved' : '';
+export function SaveStatus({ state, copy, className }: SaveStatusProps) {
+  const announced = state === 'saved' ? copy.saved : state === 'failed' ? copy.failed : '';
 
   return (
     <p className={cn('flex items-center gap-1.5 text-[13px]', className)}>
       {state === 'saving' && (
         <span aria-hidden="true" className="flex items-center gap-1.5 text-white/40">
           <LoaderCircle className="size-3.5 motion-safe:animate-spin" />
-          Saving
+          {copy.saving}
         </span>
       )}
 
       {state === 'saved' && (
         <span aria-hidden="true" className="flex items-center gap-1.5 text-success">
           <CircleCheck className="size-3.5" />
-          Saved
+          {copy.saved}
         </span>
       )}
 
       {state === 'failed' && (
         <span aria-hidden="true" className="flex items-center gap-1.5 text-danger">
           <CircleAlert className="size-3.5" />
-          Not saved
+          {copy.failed}
         </span>
       )}
 

@@ -19,6 +19,11 @@ import {
   type ProjectFaq,
 } from '../../lib/projects/api';
 import { movedTo } from '../../lib/projects/rewards';
+import type { FaqCopy } from '../../lib/i18n/editor-copy';
+import type { Locale } from '../../lib/i18n/locale';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import { pluralise } from '../../lib/i18n/plurals';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 import { EditorShell } from './EditorShell';
 import { FaqEntryEditor } from './FaqEntryEditor';
 import { describeFailure, type SaveFailure } from './useAutosave';
@@ -78,10 +83,23 @@ type ListStatus = 'loading' | 'ready' | 'failed';
 
 export interface FaqPanelProps {
   projectId: string;
+  /**
+   * Every word this tab draws, resolved on the server — issue #459.
+   *
+   * This panel is a client component and has to be: the form autosaves as it is typed. A
+   * `useTranslations` here would need a `NextIntlClientProvider` above it, which this
+   * repository measured at up to 27.4 KiB on every route in a group; the page reads the
+   * catalogue instead and hands the words down. `lib/i18n/editor-copy.ts` carries the
+   * argument.
+   */
+  copy: FaqCopy;
 }
 
-export function FaqPanel({ projectId }: FaqPanelProps) {
-  const { project, status, error, reload } = useProjectEdit(projectId);
+export function FaqPanel({ projectId, copy }: FaqPanelProps) {
+  const { project, status, error, reload } = useProjectEdit(projectId, copy.frame.failures.load);
+
+  /* The language, for the one count on this tab that declines: questions this page cannot name. */
+  const locale = useRouteLocale();
 
   const [faqs, setFaqs] = useState<readonly ProjectFaq[]>([]);
   const [listStatus, setListStatus] = useState<ListStatus>('loading');
@@ -118,7 +136,7 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
         setListStatus('ready');
       } catch (cause) {
         if (controller.signal.aborted) return;
-        setListError(describeFailure(cause).message);
+        setListError(describeFailure(cause, copy.frame.failures.save).message);
         setListStatus('failed');
       }
     })();
@@ -183,7 +201,7 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
           setFaqs(await reorderFaqs(projectId, order));
           setFailure(null);
         } catch (cause) {
-          setFailure(describeFailure(cause));
+          setFailure(describeFailure(cause, copy.frame.failures.save));
           /*
            * The optimistic order on screen is now a lie. Re-reading is the only
            * honest recovery: the service refuses a partial order outright, so a
@@ -208,7 +226,13 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
 
     const next = movedTo(faqs, index, target);
     setFaqs(next);
-    setAnnouncement(`${moving.question} moved to position ${target + 1} of ${faqs.length}.`);
+    setAnnouncement(
+      fillPlaceholders(copy.announce.moved, {
+        question: moving.question,
+        position: String(target + 1),
+        total: String(faqs.length),
+      }),
+    );
 
     /*
      * Where focus should land once the list has re-rendered. An entry at either
@@ -245,10 +269,10 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
     try {
       await deleteFaq(faq.id);
       setFaqs((current) => current.filter((entry) => entry.id !== faq.id));
-      setAnnouncement(`${faq.question} was deleted.`);
+      setAnnouncement(fillPlaceholders(copy.announce.deleted, { question: faq.question }));
       setDeleting(null);
     } catch (cause) {
-      setFailure(describeFailure(cause));
+      setFailure(describeFailure(cause, copy.frame.failures.save));
     } finally {
       setBusyId(null);
     }
@@ -260,9 +284,9 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
 
   if (status === 'signed-out') {
     return (
-      <EditorShell projectId={projectId} active="faq">
-        <InlineAlert variant="info" title="You are signed out">
-          This browser no longer has a session. Sign in again to keep editing this campaign.
+      <EditorShell projectId={projectId} copy={copy.frame} active="faq">
+        <InlineAlert variant="info" title={copy.frame.signedOut.title}>
+          {copy.frame.signedOut.body}
         </InlineAlert>
       </EditorShell>
     );
@@ -270,18 +294,18 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
 
   if (status === 'failed' || project === null) {
     return (
-      <EditorShell projectId={projectId} active="faq">
+      <EditorShell projectId={projectId} copy={copy.frame} active="faq">
         {status === 'failed' ? (
           <>
-            <InlineAlert variant="danger" title="This project could not be loaded">
+            <InlineAlert variant="danger" title={copy.frame.loadFailed}>
               {error}
             </InlineAlert>
             <Pill variant="ghost" size="sm" className="mt-4" onClick={reload}>
-              Try again
+              {copy.frame.tryAgain}
             </Pill>
           </>
         ) : (
-          <SkeletonGroup label="Loading this campaign’s questions">
+          <SkeletonGroup label={copy.loading}>
             <div className="flex flex-col gap-3">
               {LOADING_ROWS.map((row) => (
                 <Skeleton key={row} height="5rem" />
@@ -296,7 +320,7 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
   const full = faqs.length >= MAX_PROJECT_FAQS;
 
   return (
-    <EditorShell projectId={projectId} active="faq" title={project.title} state={project.state}>
+    <EditorShell projectId={projectId} copy={copy.frame} active="faq" title={project.title} state={project.state}>
       <div className="flex flex-col gap-6">
         {/*
           Present from the first render, so the region is registered before
@@ -312,15 +336,14 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-lg font-medium tracking-[-0.02em] text-white">
-              Questions{' '}
+              {copy.heading}{' '}
               {/* Tertiary at 12px: present, never competing with the title
                   (docs/ui-kit.md §7.12). */}
-              <span className="text-xs font-normal text-white/40">({faqs.length})</span>
+              <span className="text-xs font-normal text-white/40">
+                {fillPlaceholders(copy.count, { count: String(faqs.length) })}
+              </span>
             </h2>
-            <p className="mt-1 max-w-[60ch] text-[13px] text-white/64">
-              These appear on the campaign’s FAQ tab, in this order. Answering the question a
-              backer would otherwise ask in the comments is the point of the list.
-            </p>
+            <p className="mt-1 max-w-[60ch] text-[13px] text-white/64">{copy.intro}</p>
           </div>
 
           <Pill
@@ -330,7 +353,7 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
             iconLeft={<Plus aria-hidden="true" className="size-4" />}
             onClick={() => setEditor({ open: true, faq: null })}
           >
-            Add a question
+            {copy.add}
           </Pill>
         </div>
 
@@ -341,13 +364,13 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
             a bigger cap; either way a creator who cannot press "Add" is owed the
             reason.
           */
-          <InlineAlert variant="info" title="This campaign is at the limit">
-            A campaign may publish {MAX_PROJECT_FAQS} questions. Delete one to add another.
+          <InlineAlert variant="info" title={copy.fullTitle}>
+            {fillPlaceholders(copy.fullBody, { max: String(MAX_PROJECT_FAQS) })}
           </InlineAlert>
         )}
 
         {failure !== null && (
-          <InlineAlert variant="danger" title="That did not work">
+          <InlineAlert variant="danger" title={copy.actionFailed}>
             <p>{failure.message}</p>
             {failure.code === 'FAQ_ORDER_INCOMPLETE' && (
               /*
@@ -358,14 +381,16 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
                 already triggered, and what the creator needs is to be told which
                 questions the two lists disagreed about.
               */
-              <p className="mt-2 text-white/64">{describeOrderRefusal(failure, faqs)}</p>
+              <p className="mt-2 text-white/64">
+                {describeOrderRefusal(failure, faqs, copy.orderRefusal, locale)}
+              </p>
             )}
           </InlineAlert>
         )}
 
         {listStatus === 'failed' && (
           <>
-            <InlineAlert variant="danger" title="The questions could not be loaded">
+            <InlineAlert variant="danger" title={copy.listFailed}>
               {listError}
             </InlineAlert>
             <Pill
@@ -374,13 +399,13 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
               className="self-start"
               onClick={() => setAttempt((n) => n + 1)}
             >
-              Try again
+              {copy.frame.tryAgain}
             </Pill>
           </>
         )}
 
         {listStatus === 'loading' ? (
-          <SkeletonGroup label="Loading this campaign’s questions">
+          <SkeletonGroup label={copy.loading}>
             <div className="flex flex-col gap-2">
               {LOADING_ROWS.map((row) => (
                 <Skeleton key={row} height="5rem" />
@@ -390,11 +415,11 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
         ) : faqs.length === 0 ? (
           <EmptyState
             headingLevel={3}
-            title="No questions yet"
-            description="The campaign page shows this list on its own tab. Until there is something in it, the tab tells a backer the campaign has not answered anything yet — which is true, and is worth changing before you launch."
+            title={copy.empty.title}
+            description={copy.empty.body}
             action={
               <Pill variant="ghost" size="sm" onClick={() => setEditor({ open: true, faq: null })}>
-                Add the first question
+                {copy.empty.action}
               </Pill>
             }
           />
@@ -407,12 +432,13 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
           */
           <ol
             ref={listRef}
-            aria-label="Questions, in the order backers see them"
+            aria-label={copy.listLabel}
             className="flex flex-col gap-2"
           >
             {faqs.map((faq, index) => (
               <li key={faq.id}>
                 <FaqRow
+                  copy={copy.row}
                   faq={faq}
                   position={index + 1}
                   total={faqs.length}
@@ -429,6 +455,7 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
       </div>
 
       <FaqEntryEditor
+        copy={copy}
         projectId={projectId}
         open={editor.open}
         faq={editor.faq}
@@ -441,8 +468,12 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
         onOpenChange={(next) => {
           if (!next) setDeleting(null);
         }}
-        title={deleting === null ? 'Delete question' : `Delete “${deleting.question}”?`}
-        description="This cannot be undone."
+        title={
+          deleting === null
+            ? copy.delete.title
+            : fillPlaceholders(copy.delete.named, { question: deleting.question })
+        }
+        description={copy.delete.note}
         // The creator has to choose. Dismissing a dialog about deletion by
         // clicking beside it is too easy a way to press the wrong thing.
         closeOnBackdropClick={false}
@@ -450,7 +481,7 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
         footer={
           <div className="flex flex-wrap justify-end gap-2">
             <Pill variant="ghost" disabled={busyId !== null} onClick={() => setDeleting(null)}>
-              Keep it
+              {copy.delete.keep}
             </Pill>
             <Pill
               variant="danger"
@@ -459,15 +490,12 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
                 if (deleting !== null) void remove(deleting);
               }}
             >
-              Delete
+              {copy.delete.confirm}
             </Pill>
           </div>
         }
       >
-        <p>
-          Nothing is owed against a question, so it goes for good — unlike a reward tier, which
-          can only be hidden once somebody has chosen it.
-        </p>
+        <p>{copy.delete.body}</p>
       </Modal>
     </EditorShell>
   );
@@ -478,6 +506,7 @@ export function FaqPanel({ projectId }: FaqPanelProps) {
  * ---------------------------------------------------------------------- */
 
 interface FaqRowProps {
+  copy: FaqCopy['row'];
   faq: ProjectFaq;
   position: number;
   total: number;
@@ -489,6 +518,7 @@ interface FaqRowProps {
 }
 
 function FaqRow({
+  copy,
   faq,
   position,
   total,
@@ -524,7 +554,11 @@ function FaqRow({
           */}
           <IconButton
             icon={<ChevronUp />}
-            label={`Move ${faq.question} up, currently ${position} of ${total}`}
+            label={fillPlaceholders(copy.moveUp, {
+              question: faq.question,
+              position: String(position),
+              total: String(total),
+            })}
             variant="ghost"
             size="sm"
             disabled={position === 1}
@@ -534,7 +568,11 @@ function FaqRow({
           />
           <IconButton
             icon={<ChevronDown />}
-            label={`Move ${faq.question} down, currently ${position} of ${total}`}
+            label={fillPlaceholders(copy.moveDown, {
+              question: faq.question,
+              position: String(position),
+              total: String(total),
+            })}
             variant="ghost"
             size="sm"
             disabled={position === total}
@@ -548,19 +586,19 @@ function FaqRow({
           variant="ghost"
           size="sm"
           disabled={busy}
-          aria-label={`Edit ${faq.question}`}
+          aria-label={fillPlaceholders(copy.editLabel, { question: faq.question })}
           onClick={onEdit}
         >
-          Edit
+          {copy.edit}
         </Pill>
         <Pill
           variant="ghost"
           size="sm"
           disabled={busy}
-          aria-label={`Delete ${faq.question}`}
+          aria-label={fillPlaceholders(copy.deleteLabel, { question: faq.question })}
           onClick={onDelete}
         >
-          Delete
+          {copy.delete}
         </Pill>
       </div>
     </div>
@@ -584,19 +622,41 @@ function FaqRow({
 export function describeOrderRefusal(
   failure: SaveFailure,
   faqs: readonly ProjectFaq[],
+  copy: FaqCopy['orderRefusal'],
+  locale: Locale,
 ): string {
-  const missing = namesOf(failure.meta?.['missing'], faqs);
-  const unexpected = namesOf(failure.meta?.['unexpected'], faqs);
+  const missing = namesOf(failure.meta?.['missing'], faqs, copy, locale);
+  const unexpected = namesOf(failure.meta?.['unexpected'], faqs, copy, locale);
 
-  const parts: string[] = [];
-  if (missing.length > 0) parts.push(`this page had not seen ${list(missing)}`);
-  if (unexpected.length > 0) parts.push(`${list(unexpected)} no longer exists`);
+  /*
+   * ONE WHOLE SENTENCE PER CASE, chosen here rather than composed from clauses. The English
+   * version built this by pushing fragments into an array and joining them with ", and ",
+   * which is English syntax written into a builder: the conjunction, the comma and the order
+   * of the two halves are all things another language does differently (#459).
+   */
+  const lead =
+    missing.length > 0 && unexpected.length > 0
+      ? fillPlaceholders(copy.both, {
+          missing: list(missing, copy.conjunction),
+          unexpected: list(unexpected, copy.conjunction),
+        })
+      : missing.length > 0
+        ? fillPlaceholders(copy.missing, { missing: list(missing, copy.conjunction) })
+        : unexpected.length > 0
+          ? fillPlaceholders(copy.unexpected, {
+              unexpected: list(unexpected, copy.conjunction),
+            })
+          : copy.unknown;
 
-  const detail = parts.length === 0 ? 'the two lists disagreed' : parts.join(', and ');
-  return `The order was refused because ${detail}. The list has been read again, so it now matches the campaign — put it back in the order you wanted.`;
+  return `${lead} ${copy.reread}`;
 }
 
-function namesOf(value: unknown, faqs: readonly ProjectFaq[]): readonly string[] {
+function namesOf(
+  value: unknown,
+  faqs: readonly ProjectFaq[],
+  copy: FaqCopy['orderRefusal'],
+  locale: Locale,
+): readonly string[] {
   if (!Array.isArray(value)) return [];
 
   const named: string[] = [];
@@ -607,12 +667,12 @@ function namesOf(value: unknown, faqs: readonly ProjectFaq[]): readonly string[]
     else named.push(`“${known.question}”`);
   }
 
-  if (unnamed > 0) named.push(`${unnamed} other question${unnamed === 1 ? '' : 's'}`);
+  if (unnamed > 0) named.push(pluralise(locale, copy.others, unnamed));
   return named;
 }
 
-/** "a", "a and b", "a, b and c". */
-function list(items: readonly string[]): string {
+/** "a", "a and b", "a, b and c" — with the conjunction the reader's language uses. */
+function list(items: readonly string[], conjunction: string): string {
   if (items.length <= 1) return items[0] ?? '';
-  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1] ?? ''}`;
+  return `${items.slice(0, -1).join(', ')} ${conjunction} ${items[items.length - 1] ?? ''}`;
 }

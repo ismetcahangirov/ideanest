@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError } from '../../lib/api/problem';
+import type { EditorFrameCopy } from '../../lib/i18n/editor-copy';
 import { getProjectEdit, type ProjectEdit } from '../../lib/projects/api';
 
 /**
@@ -29,22 +30,28 @@ function wasAborted(cause: unknown): boolean {
   return cause instanceof DOMException && cause.name === 'AbortError';
 }
 
-function messageFor(cause: unknown): string {
+function messageFor(cause: unknown, copy: EditorFrameCopy['failures']['load']): string {
   if (cause instanceof ApiError) {
-    if (cause.status === 403) return 'You do not have access to this project.';
+    if (cause.status === 403) return copy.forbidden;
     if (cause.status === 404) {
       // 404 covers "no such project" and "not yours", deliberately
       // indistinguishable so the endpoint cannot be used to enumerate ids.
-      return 'That project could not be found.';
+      return copy.notFound;
     }
-    return (
-      cause.problem?.detail ?? cause.problem?.title ?? 'The service refused the request. Try again.'
-    );
+    return cause.problem?.detail ?? cause.problem?.title ?? copy.refused;
   }
-  return 'The service could not be reached. Check your connection and try again.';
+  return copy.unreachable;
 }
 
-export function useProjectEdit(projectId: string): ProjectEditHandle {
+/**
+ * @param copy the sentences this hook falls back to — issue #459. It is on `EditorFrameCopy`
+ * because all six tabs call this hook, and the load failure is the same fact whichever tab was
+ * open when it happened.
+ */
+export function useProjectEdit(
+  projectId: string,
+  copy: EditorFrameCopy['failures']['load'],
+): ProjectEditHandle {
   const [project, setProject] = useState<ProjectEdit | null>(null);
   const [status, setStatus] = useState<ProjectLoadStatus>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -69,13 +76,13 @@ export function useProjectEdit(projectId: string): ProjectEditHandle {
           setStatus('signed-out');
           return;
         }
-        setError(messageFor(cause));
+        setError(messageFor(cause, copy));
         setStatus('failed');
       }
     })();
 
     return () => controller.abort();
-  }, [projectId, attempt]);
+  }, [projectId, attempt, copy]);
 
   const reload = useCallback(() => setAttempt((n) => n + 1), []);
   const apply = useCallback((saved: ProjectEdit) => setProject(saved), []);

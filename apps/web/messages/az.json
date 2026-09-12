@@ -2306,7 +2306,9 @@
       "email": "E-poçt ünvanı",
       "emailPlaceholder": "you@example.com",
       "password": "Şifrə",
-      "passwordHint": "Uzun şifrə mürəkkəb şifrədən güclüdür. Dəqiq tələb, bu şifrə rədd edilərsə, xidmətin özündən gəlir."
+      "passwordHint": "Uzun şifrə mürəkkəb şifrədən güclüdür. Dəqiq tələb, bu şifrə rədd edilərsə, xidmətin özündən gəlir.",
+      "revealPassword": "Şifrəni göstər",
+      "hidePassword": "Şifrəni gizlət"
     },
     "failures": {
       "unexpectedTitle": "Nəsə səhv getdi",
@@ -3231,6 +3233,880 @@
       "fixedFee": "Ödəniş provayderi hər əməliyyat üçün əlavə olaraq {amount} tutur.",
       "twoFees": "Bunlar iki ayrı tutulmadır. IdeaNest-in komissiyası platformanın saxladığıdır; emal komissiyası isə pulu hərəkət etdirən şirkətə gedir və IdeaNest onu heç vaxt almır. Qüvvədə olan dərəcələr yuxarıdakılardır və ödəniş məhz onlarla hesablanır.",
       "unconfigured": "IdeaNest hələ komissiya cədvəli təyin etməyib, ona görə də bu gün dəstəklərdən heç nə tutulmur. Bu daimi öhdəlik deyil: hər hansı dərəcə təyin olunan kimi burada dərc olunacaq, şərtlər isə yaradıcı müqaviləsində göstərilir."
+    }
+  },
+  "editor": {
+    "frame": {
+      "eyebrow": "Kampaniya redaktoru",
+      "loading": "Yüklənir",
+      "sections": "Kampaniya bölmələri",
+      "soon": "tezliklə",
+      "unavailable": ", hələ əlçatan deyil",
+      "tabs": {
+        "basics": "Əsaslar",
+        "rewards": "Mükafatlar",
+        "story": "Hekayə",
+        "faq": "Suallar",
+        "prelaunch": "Başlanğıcdan əvvəl",
+        "review": "Baxış"
+      },
+      "states": {
+        "DRAFT": "Qaralama",
+        "PRELAUNCH": "Başlanğıcdan əvvəl",
+        "SUBMITTED": "Baxışdadır",
+        "CHANGES_REQUESTED": "Dəyişiklik tələb olunub",
+        "REJECTED": "Rədd edilib",
+        "APPROVED": "Təsdiqlənib",
+        "SCHEDULED": "Planlaşdırılıb",
+        "LIVE": "Aktiv",
+        "SUSPENDED": "Dayandırılıb",
+        "CANCELED": "Ləğv edildi",
+        "SUCCESSFUL": "Maliyyələşdi",
+        "UNSUCCESSFUL": "Maliyyələşmədi",
+        "COLLECTING": "Yığılır",
+        "LATE_PLEDGE": "Gecikmiş dəstəklər",
+        "FULFILLING": "İcra olunur",
+        "COMPLETED": "Tamamlandı"
+      },
+      "save": {
+        "saving": "Yadda saxlanılır",
+        "saved": "Yadda saxlanıldı",
+        "failed": "Yadda saxlanılmadı"
+      },
+      "signedOut": {
+        "title": "Hesabdan çıxmısınız",
+        "body": "Bu brauzerdə artıq sessiya yoxdur. Kampaniyanı redaktə etməyə davam etmək üçün yenidən daxil olun."
+      },
+      "loadFailed": "Bu layihə yüklənə bilmədi",
+      "tryAgain": "Yenidən cəhd edin",
+      "failures": {
+        "save": {
+          "signedOut": "Hesabdan çıxmısınız. Yenidən daxil olun — yazdığınız heç nə itməyib.",
+          "notAllowed": "Bu layihəni redaktə etməyə icazəniz yoxdur.",
+          "gone": "Bu layihə artıq mövcud deyil.",
+          "stale": "Bu səhifə açılandan bəri layihə dəyişib. Cari versiyanı görmək üçün səhifəni yeniləyin.",
+          "invalid": "Xidmət dəyişikliyi rədd etdi. Aşağıda işarələnmiş sahələri yoxlayın.",
+          "unsaved": "Dəyişikliyi yadda saxlamaq mümkün olmadı. Yenidən cəhd edin.",
+          "unreachable": "Xidmətə çıxmaq mümkün olmadı, ona görə heç nə yadda saxlanılmadı. Yenidən cəhd edin."
+        },
+        "load": {
+          "forbidden": "Bu layihəyə girişiniz yoxdur.",
+          "notFound": "Bu layihə tapılmadı.",
+          "refused": "Xidmət sorğunu rədd etdi. Yenidən cəhd edin.",
+          "unreachable": "Xidmətə çıxmaq mümkün olmadı. Bağlantını yoxlayıb yenidən cəhd edin."
+        }
+      }
+    },
+    "basics": {
+      "loading": "Kampaniya yüklənir",
+      "saveFailed": {
+        "title": "Bu dəyişiklik yadda saxlanılmadı",
+        "kept": "Yazdığınız heç nə itməyib — hamısı aşağıdakı sahələrdədir və yenidən göndəriləcək."
+      },
+      "title": {
+        "label": "Başlıq",
+        "hint": "Kəşf səhifəsində görünən ad. {max} simvol və ya daha az."
+      },
+      "blurb": {
+        "label": "Xülasə",
+        "hint": "Bir və ya iki cümlə; axtarışda və kəşf səhifəsində başlığın altında görünür. {max} simvol və ya daha az."
+      },
+      "categoriesUnavailable": {
+        "title": "Kateqoriya siyahısı əlçatan deyil",
+        "body": "Kateqoriyalar yüklənə bilmədi, ona görə bu kampaniyanın kateqoriyası hələlik burada dəyişdirilə bilməz. Səhifədəki qalan hər şey yenə də yadda saxlanılır."
+      },
+      "category": {
+        "label": "Kateqoriya",
+        "hint": "Dəstəkçilər bu layihəni burada tapacaq.",
+        "placeholder": "Kateqoriya seçin"
+      },
+      "subcategory": {
+        "label": "Alt kateqoriya",
+        "placeholder": "Alt kateqoriya yoxdur",
+        "chooseCategory": "Əvvəlcə kateqoriya seçin.",
+        "none": "Bu kateqoriyanın alt kateqoriyası yoxdur.",
+        "optional": "İstəyə bağlıdır və daha dəqiqdir."
+      },
+      "goal": {
+        "label": "Maliyyə hədəfi",
+        "hint": "Ya hamısı, ya heç nə: bu rəqəmə çatılmasa, heç nə yığılmır.",
+        "locked": "Kampaniya başladıqdan sonra hədəf dəyişdirilə bilməz."
+      },
+      "currency": {
+        "label": "Valyuta",
+        "hint": "Kampaniya başlayan kimi sabitlənir."
+      },
+      "duration": {
+        "label": "Müddət, gün",
+        "hint": "{min}–{max} gün. {recommended} gün tövsiyə olunur.",
+        "locked": "Kampaniya başladıqdan sonra son tarix dəyişdirilə bilməz."
+      },
+      "schedule": {
+        "label": "Planlaşdırılmış başlanğıc",
+        "hint": "İstəyə bağlıdır. Baxış bitəndən sonra əl ilə başlatmaq üçün boş saxlayın."
+      },
+      "latePledge": {
+        "label": "Gecikmiş dəstəkləri qəbul et",
+        "hint": "Layihə maliyyələşdikdən sonra son tarixdən sonra da dəstəklərə açıq qalır. İstənilən vaxt yenidən söndürmək olar."
+      },
+      "errors": {
+        "titleMissing": "Layihənin başlığı olmalıdır.",
+        "titleTooLong": "Başlıq {max} simvol və ya daha az olmalıdır. {over} simvol çıxarın.",
+        "blurbTooLong": "Xülasə {max} simvol və ya daha az olmalıdır. {over} simvol çıxarın.",
+        "subcategoryWithoutCategory": "Əvvəlcə kateqoriya seçin.",
+        "currencyUnsupported": "Platformanın yığa biləcəyi valyuta seçin.",
+        "durationNotWhole": "Müddəti tam gün sayı kimi yazın.",
+        "durationOutOfRange": "Kampaniya {min}–{max} gün davam edir.",
+        "scheduleUnreadable": "Tarix və saat yazın.",
+        "schedulePast": "Gələcəkdə olan tarix və saat seçin.",
+        "amount": {
+          "empty": "Yığmaq istədiyiniz məbləği yazın.",
+          "notANumber": "Hədəfi rəqəmlə yazın, məsələn 5000.00.",
+          "comma": "Onluq ayırıcı kimi nöqtə istifadə edin, məsələn 5000.00.",
+          "tooManyDecimals": "Hədəfdə ən çox iki onluq rəqəm ola bilər.",
+          "tooLarge": "Bu hədəf platformanın saxlaya biləcəyindən böyükdür.",
+          "notPositive": "Hədəf sıfırdan böyük olmalıdır."
+        }
+      },
+      "cover": {
+        "label": "Örtük şəkli",
+        "hint": "Kəşf səhifəsində və layihə səhifəsinin yuxarısında görünür. {minimum} piksel və ya daha böyük ən yaxşı görünür.",
+        "set": "Örtük {size} pikseldir",
+        "uploaded": " · yüklənib",
+        "remove": "Örtüyü sil",
+        "drop": "Örtük kimi istifadə etmək üçün şəkli bura atın",
+        "release": "Bu şəkli yükləmək üçün buraxın",
+        "choose": "Şəkil seçin",
+        "dropHint": "20 MB-a qədər. Şəkil burada çevrilir və ölçüsü dəyişdirilir, orijinal saxlanılmır. {minimum} və ya daha böyük ən yaxşı görünür.",
+        "addressLabel": "Örtük şəklinin ünvanı",
+        "addressPlaceholder": "Və ya ünvan yapışdırın: https://images.example.com/cover.jpg",
+        "checking": "Yoxlanılır",
+        "useAddress": "Bu ünvanı işlət",
+        "addressMissing": "Əvvəlcə şəklin ünvanını yazın.",
+        "accepted": "Örtük {size} piksellik şəkildən təyin edildi.",
+        "softTitle": "Tam enində bulanıq görünəcək",
+        "soft": "Örtük {size} piksellik şəkildən təyin edildi. Bu, tövsiyə olunan {minimum} ölçüsündən kiçikdir, ona görə başlığı doldurmaq üçün böyüdüləcək və bulanıq görünəcək. Nisbətləri qorunur — çərçivə uzatmır, kəsir. Kampaniyanı yenə də göndərmək olar.",
+        "rejectedTitle": "Bu fayl istifadə olunmadı",
+        "unusable": "Bu şəkil istifadə edilə bilmədi.",
+        "stages": {
+          "preparing": "Şəkil hazırlanır…",
+          "uploading": "Şəkil yüklənir…",
+          "processing": "Şəkil emal olunur…"
+        },
+        "refusals": {
+          "UNSUPPORTED_FORMAT": "Bu fayl platformanın oxuya bildiyi şəkil deyil. JPEG, PNG, WebP, AVIF və HEIC işləyir.",
+          "TOO_LARGE": "Bu fayl çox böyükdür. Limit 20 MB-dır.",
+          "TOO_SMALL": "Bu şəkil göstərmək üçün çox kiçikdir. {minimum} və ondan böyük ölçülər yaxşı görünür.",
+          "EMPTY": "Bu fayl boşdur.",
+          "UNREADABLE": "Bu şəkli çevirmək mümkün olmadı. Başqa fayl işləməlidir.",
+          "UPLOADS_UNAVAILABLE": "Bu mühitdə yükləmə aktiv deyil. Əvəzində ünvan yapışdırın.",
+          "MEDIA_STORAGE_UNREACHABLE": "Şəkil anbarı cavab vermir. Bir azdan yenidən cəhd edin.",
+          "UPLOAD_STILL_PROCESSING": "Bu şəkil adətkindən uzun çəkir. Bu bölməyə qayıtsanız, görünə bilər.",
+          "UPLOAD_TRANSFER_FAILED": "Şəkil anbara çatmadı. Bağlantını yoxlayıb yenidən cəhd edin."
+        }
+      }
+    },
+    "rewards": {
+      "loading": "Bu kampaniyanın mükafatları yüklənir",
+      "listFailed": "Mükafatlar yüklənə bilmədi",
+      "actionFailed": "Bu alınmadı",
+      "kept": "Yazdığınız heç nə itməyib — hamısı aşağıdakı sahələrdədir.",
+      "itemInUse": {
+        "one": "{tiers} tərkibindədir. Əvvəlcə həmin mükafatdan çıxarın, sonra silin.",
+        "few": "{tiers} tərkibindədir. Əvvəlcə həmin mükafatlardan çıxarın, sonra silin.",
+        "many": "{tiers} tərkibindədir. Əvvəlcə həmin mükafatlardan çıxarın, sonra silin.",
+        "other": "{tiers} tərkibindədir. Əvvəlcə həmin mükafatlardan çıxarın, sonra silin."
+      },
+      "rewardHasBackers": "Əvəzində gizlədin — onu seçmiş adamlarda nəyi almalı olduqlarının təsviri qalır və mükafat başqa heç kimə təklif edilmir.",
+      "heading": "Mükafatlar",
+      "count": "({max} mükafatdan {count})",
+      "add": "Mükafat əlavə edin",
+      "fullTitle": "Bu kampaniyada ola biləcək ən çox mükafat var",
+      "fullBody": "§5.3 {max} mükafata icazə verir. Yenisini əlavə etməzdən əvvəl birini silin və ya birləşdirin.",
+      "empty": {
+        "title": "Hələ mükafat yoxdur",
+        "body": "Mükafat dəstəkçinin seçdiyi və ödədiyi şeydir: başlıq, qiymət və aldıqları məhsullar. Kampaniya mükafatsız da işləyə bilər, amma demək olar heç biri belə etmir.",
+        "action": "İlk mükafatı əlavə edin"
+      },
+      "listLabel": "Mükafat səviyyələri, dəstəkçilərin gördüyü sıra ilə",
+      "announce": {
+        "moved": "{title} {total} mövqedən {position}-ci mövqeyə keçdi.",
+        "duplicated": "{title} {position}-ci mövqeyə köçürüldü.",
+        "hidden": "{title} kampaniya səhifəsində gizlədilib.",
+        "shown": "{title} yenidən kampaniya səhifəsindədir.",
+        "deleted": "{title} silindi."
+      },
+      "card": {
+        "hidden": "Gizli",
+        "opensLater": "Sonra açılır",
+        "featured": "Öne çıxarılıb",
+        "secret": "Gizlin",
+        "earlyBird": "Erkən quş",
+        "addon": "Əlavə",
+        "delivers": "{month} tarixində çatdırılır",
+        "moveUp": "{title} yuxarı qaldırın, hazırda {total} mövqedən {position}-cidir",
+        "moveDown": "{title} aşağı salın, hazırda {total} mövqedən {position}-cidir",
+        "edit": "Redaktə",
+        "editLabel": "{title} mükafatını redaktə edin",
+        "duplicate": "Nüsxələ",
+        "duplicateLabel": "{title} mükafatını nüsxələyin",
+        "show": "Göstər",
+        "showLabel": "{title} mükafatını kampaniya səhifəsində göstərin",
+        "hide": "Gizlət",
+        "hideLabel": "{title} mükafatını kampaniya səhifəsində gizlədin",
+        "delete": "Sil",
+        "deleteLabel": "{title} mükafatını silin",
+        "backed": {
+          "one": "Bu mükafatı {count} dəstəkçi seçib, ona görə gizlədilə bilər, amma silinə bilməz.",
+          "few": "Bu mükafatı {count} dəstəkçi seçib, ona görə gizlədilə bilər, amma silinə bilməz.",
+          "many": "Bu mükafatı {count} dəstəkçi seçib, ona görə gizlədilə bilər, amma silinə bilməz.",
+          "other": "Bu mükafatı {count} dəstəkçi seçib, ona görə gizlədilə bilər, amma silinə bilməz."
+        }
+      },
+      "contents": {
+        "none": "Heç bir məhsul yoxdur",
+        "some": "Tərkibi: {items}",
+        "quantity": "{name} ×{quantity}",
+        "missing": "artıq bu kampaniyada olmayan məhsul"
+      },
+      "namedTiers": {
+        "unknown": "bu kampaniyadakı bir mükafat",
+        "one": "bir mükafat"
+      },
+      "deleteItem": {
+        "title": "Məhsulu silin",
+        "named": "{name} silinsin?",
+        "body": "Mükafatın tərkibində olan məhsul silinə bilməz — əvvəlcə mükafatdan çıxarın. Bu səhifənin bildiyi qədəri ilə bu məhsul heç bir mükafatda deyil, xidmət isə bunu yenidən yoxlayır."
+      },
+      "deleteReward": {
+        "title": "Mükafatı silin",
+        "named": "{title} silinsin?",
+        "body": "Kimsə mükafatı dəstəklədikdən sonra o, artıq silinə bilməz, yalnız gizlədilə bilər — ona görə silmək heç kim dəstəkləməyibsə təklif olunur."
+      },
+      "deleteNote": "Bunu geri qaytarmaq olmaz.",
+      "keepIt": "Saxla",
+      "confirmDelete": "Sil",
+      "items": {
+        "heading": "Məhsullar",
+        "count": "({count})",
+        "add": "Məhsul əlavə edin",
+        "loading": "Bu kampaniyanın məhsulları yüklənir",
+        "empty": {
+          "title": "Hələ məhsul yoxdur",
+          "body": "Məhsul bir fiziki və ya rəqəmsal şeydir — fincan, plakat, yüklənən fayl. Mükafatlar onlardan qurulur, ona görə kampaniya buradan başlayır.",
+          "action": "İlk məhsulu əlavə edin"
+        },
+        "digital": "Rəqəmsal",
+        "physical": "Fiziki",
+        "grams": "{weight} q",
+        "editLabel": "{name} məhsulunu redaktə edin",
+        "deleteLabel": "{name} məhsulunu silin"
+      },
+      "drawer": {
+        "cancel": "Ləğv et",
+        "save": "Yadda saxla",
+        "saving": "Yadda saxlanılır"
+      },
+      "itemEditor": {
+        "titleNew": "Məhsul əlavə edin",
+        "titleEdit": "Məhsulu redaktə edin",
+        "intro": "Məhsullar kampaniyanızın istehsal etdiyi şeylərdir. Mükafat isə onların say ilə seçilmiş dəstidir.",
+        "failed": "Bu məhsul yadda saxlanılmadı",
+        "name": {
+          "label": "Ad",
+          "hint": "Dəstəkçinin tanıyacağı şəkildə nə olduğu. {max} simvol və ya daha az."
+        },
+        "description": {
+          "label": "Təsvir",
+          "hint": "İstəyə bağlıdır. Ölçü, rəng, buraxılış — bunu digər məhsuldan nə fərqləndirirsə."
+        },
+        "image": {
+          "label": "Şəklin ünvanı",
+          "hint": "Dərc olunmuş ünvan. Hələ yükləyici yoxdur, ona görə artıq onlayn olan şəklin linkini yapışdırın."
+        },
+        "digital": {
+          "label": "Fayl kimi çatdırılır",
+          "hint": "Yüklənən fayl və ya lisenziya. Heç nə göndərilmir, ona görə çəki və ünvan yoxdur."
+        },
+        "weight": {
+          "label": "Çəki, qram",
+          "hint": "İstəyə bağlıdır; göndərmə haqqı sonradan bundan hesablanır.",
+          "digital": "Faylın göndərmə çəkisi yoxdur."
+        },
+        "sku": {
+          "label": "Anbar kodu",
+          "hint": "İstəyə bağlıdır. Bu kampaniya daxilində unikal olan öz istinadınız."
+        }
+      },
+      "itemErrors": {
+        "nameMissing": "Məhsulun adı olmalıdır.",
+        "nameTooLong": "Ad {max} simvol və ya daha az olmalıdır. {over} simvol çıxarın.",
+        "skuTooLong": "Anbar kodu {max} simvol və ya daha az olmalıdır.",
+        "weightOnDigital": "Rəqəmsal məhsulun göndərmə çəkisi yoxdur. Çəkini silin və ya məhsulu fiziki edin.",
+        "weightNotWhole": "Çəkini tam qram sayı kimi yazın.",
+        "weightNotPositive": "Çəki sıfır qramdan böyük olmalıdır."
+      },
+      "tierEditor": {
+        "titleNew": "Mükafat əlavə edin",
+        "titleEdit": "Mükafatı redaktə edin",
+        "intro": "Dəstəkçinin seçdiyi və ödədiyi şey. Yuxarıdakı məhsullardan, sizin seçdiyiniz saylarla qurulur.",
+        "failed": "Bu mükafat yadda saxlanılmadı",
+        "ratesFailed": "Göndərmə tarifləri yadda saxlanılmadı",
+        "ratesKeptLead": "Mükafatın özü yadda saxlanıldı.",
+        "ratesKeptRest": "Yalnız ölkə üzrə tariflər rədd edildi; onları düzəldib yenidən yadda saxlayın — qalanı ikinci dəfə göndərilməyəcək.",
+        "title": {
+          "label": "Başlıq",
+          "hint": "Dəstəkçinin mükafat siyahısında gördüyü ad. {max} simvol və ya daha az."
+        },
+        "description": {
+          "label": "Təsvir",
+          "hint": "Nə aldıqları, bir-iki cümlə ilə."
+        },
+        "price": {
+          "label": "Qiymət",
+          "hint": "Dəstəkçinin ödədiyi məbləğ. Kampaniyanın valyutası olan {currency} ilə.",
+          "locked": "Kampaniya başladıqdan sonra qiymət dəyişdirilə bilməz. {currency} ilə."
+        },
+        "delivery": {
+          "label": "Təxmini çatdırılma",
+          "hint": "Çatdırmağı gözlədiyiniz ay. Dəstəkçilər bunu vəd kimi oxuyur."
+        },
+        "places": {
+          "label": "Yer sayı",
+          "hint": "Limitsiz üçün boş saxlayın. Sayı sonradan həmişə artırmaq olar; azaltmaq isə yalnız artıq tutulmuş saydan yuxarı mümkündür.",
+          "committed": "Limitsiz üçün boş saxlayın. Artıq tutulmuş yerlər: {committed}, ona görə limit bundan aşağı düşə bilməz."
+        },
+        "shipping": {
+          "label": "Çatdırılma"
+        }
+      },
+      "scopes": {
+        "NONE": {
+          "label": "Heç nə çatdırılmır",
+          "hint": "Təşəkkür, adın divarda yazılması, təşəkkür siyahısında yer."
+        },
+        "DIGITAL": {
+          "label": "Rəqəmsal çatdırılma",
+          "hint": "Fayl və ya lisenziya. Ünvan soruşulmur."
+        },
+        "LOCAL_PICKUP": {
+          "label": "Şəxsən təhvil alınır",
+          "hint": "Daşıyıcı və tarif yoxdur, amma dəstəkçinin ölkəsi yenə soruşulur."
+        },
+        "DOMESTIC": {
+          "label": "Ölkədaxili göndərilir",
+          "hint": "Yalnız öz ölkənizin daxilində. Hər istiqamət üçün tarif lazımdır."
+        },
+        "INTERNATIONAL": {
+          "label": "Beynəlxalq göndərilir",
+          "hint": "Tarif təyin etdiyiniz hər yerə. Tarifi olmayan istiqamət seçilə bilməz."
+        }
+      },
+      "rates": {
+        "label": "Göndərmə tarifləri",
+        "hint": "Hər istiqamət üçün bir tarif, {currency} ilə. Tarifi olmayan ölkə ödəniş zamanı seçilə bilməz, 0 isə pulsuz göndərmədir.",
+        "empty": "Hələ heç bir istiqamətin tarifi yoxdur, ona görə bu mükafat heç yerə göndərilə bilməz.",
+        "add": "İstiqamət əlavə edin",
+        "unnamed": "{position}-ci istiqamət",
+        "countryLabel": "{destination} üçün ölkə kodu",
+        "ratePlaceholder": "Tarif",
+        "rateLabel": "{destination} üçün göndərmə tarifi",
+        "extraPlaceholder": "Hər əlavə",
+        "extraLabel": "{destination} üçün hər əlavə məhsulun tarifi",
+        "removeLabel": "{destination} silin"
+      },
+      "composition": {
+        "label": "Tərkibi",
+        "hint": "Dəstəkçinin aldığı məhsullar. Tərkibi boş olan mükafat da qanunidir — təşəkkür, adın çəkilməsi — və boş siyahı elə bunu bildirir.",
+        "missing": "Artıq bu kampaniyada olmayan məhsul",
+        "quantityLabel": "{name} sayı",
+        "removeLabel": "{name} məhsulunu bu mükafatdan çıxarın",
+        "addPlaceholder": "Məhsul əlavə edin…",
+        "addLabel": "Bu mükafata məhsul əlavə edin",
+        "noItems": "Bu kampaniyada hələ məhsul yoxdur. Bu panelin arxasındakı siyahıya bir məhsul əlavə edin, o burada görünəcək.",
+        "allChosen": "Bu kampaniyadakı bütün məhsullar artıq bu mükafatın tərkibindədir."
+      },
+      "opens": {
+        "label": "Açılır",
+        "hint": "İstəyə bağlıdır. Kampaniya ilə eyni anda əlçatan olan mükafat üçün boş saxlayın."
+      },
+      "closes": {
+        "label": "Bağlanır",
+        "hint": "İstəyə bağlıdır. Keçmişdə olan an mükafatı gizlədir — siyahıdakı Gizlət düyməsi məhz bunu təyin edir."
+      },
+      "offering": {
+        "legend": "Necə təklif olunur"
+      },
+      "earlyBird": {
+        "label": "Erkən quş",
+        "hint": "Tükənən daha sərfəli təklif. Ya bağlanma tarixi, ya da məhdud yer sayı lazımdır — onsuz bu, adamları nahaq tələsdirən etiketi olan adi mükafatdır."
+      },
+      "featured": {
+        "label": "Öne çıxarılıb",
+        "hint": "Kampaniya səhifəsində birinci göstərilir."
+      },
+      "secret": {
+        "label": "Gizlin",
+        "hint": "Açıq siyahıya salınmır, onun əvəzinə özəl token ilə açılır. Yenidən açıq etmək həmin tokeni məhv edir, ona görə artıq göndərilmiş linklər işləməyi dayandırır.",
+        "token": "Token"
+      },
+      "addon": {
+        "label": "Əlavə kimi satılır",
+        "hint": "Mükafatın əvəzinə deyil, onunla yanaşı təklif olunur."
+      },
+      "errors": {
+        "titleMissing": "Mükafatın başlığı olmalıdır.",
+        "titleTooLong": "Başlıq {max} simvol və ya daha az olmalıdır. {over} simvol çıxarın.",
+        "price": {
+          "empty": "Mükafatın qiyməti olmalıdır.",
+          "notANumber": "Qiyməti rəqəmlə yazın, məsələn 19.99.",
+          "comma": "Onluq ayırıcı kimi nöqtə istifadə edin, məsələn 19.99.",
+          "tooManyDecimals": "Qiymətdə ən çox iki onluq rəqəm ola bilər.",
+          "tooLarge": "Bu qiymət platformanın saxlaya biləcəyindən böyükdür.",
+          "notPositive": "Mükafatın qiyməti sıfırdan böyük olmalıdır."
+        },
+        "rate": {
+          "empty": "Bu istiqamətə göndərmənin nə qədər olduğunu yazın.",
+          "notANumber": "Tarifi rəqəmlə yazın, məsələn 12.50.",
+          "comma": "Onluq ayırıcı kimi nöqtə istifadə edin, məsələn 12.50.",
+          "tooManyDecimals": "Tarifdə ən çox iki onluq rəqəm ola bilər.",
+          "tooLarge": "Bu tarif platformanın saxlaya biləcəyindən böyükdür.",
+          "notPositive": "Tarif mənfi ola bilməz. Pulsuz göndərmə üçün 0 yazın."
+        },
+        "limitNotWhole": "Yer sayını tam ədəd kimi yazın və ya limitsiz üçün boş saxlayın.",
+        "limitTooSmall": "Məhdud mükafat ən azı bir yer təklif edir. Limitsiz etmək üçün limiti silin.",
+        "limitBelowCommitted": "Bu, artıq tutulmuş saydan aşağıdır: {committed}. Sayı həmişə artırmaq olar, azaltmaq isə yalnız tutulmuş saydan yuxarı mümkündür.",
+        "secretFeatured": "Gizlin mükafat səhifədə göstərilmir, ona görə eyni zamanda önə çıxarıla bilməz.",
+        "earlyBirdNeedsLimit": "Erkən quş mükafatına ya bağlanma tarixi, ya da məhdud yer sayı lazımdır.",
+        "dateUnreadable": "Tarix və saat yazın və ya boş saxlayın.",
+        "closesBeforeOpens": "Mükafat açıldıqdan sonra bağlanır, əvvəl yox.",
+        "itemsDuplicate": "Hər məhsul bir dəfə görünür, sayı isə miqdarla göstərilir.",
+        "itemsQuantity": "Mükafat sadaladığı hər məhsuldan ən azı bir dənə saxlayır.",
+        "rulesNotShipped": "Yalnız ölkədaxili və ya beynəlxalq göndərilən mükafatın ölkə üzrə tarifi olur. Çatdırılma üsulunu dəyişin və ya tarifləri silin.",
+        "rulesCountryCode": "İstiqamət iki hərfli ölkə kodudur, məsələn AZ və ya TR.",
+        "rulesDuplicate": "Hər istiqamət bir dəfə görünür: {code} iki dəfə sadalanıb.",
+        "rulesRow": "{code}: {reason}"
+      },
+      "stock": {
+        "unlimited": "Limitsiz yer",
+        "remaining": {
+          "one": "{limit} yerdən {count} qalıb",
+          "few": "{limit} yerdən {count} qalıb",
+          "many": "{limit} yerdən {count} qalıb",
+          "other": "{limit} yerdən {count} qalıb"
+        }
+      },
+      "showBlocked": "Bu, erkən quş mükafatıdır və belə mükafata ya bağlanma tarixi, ya da məhdud yer sayı lazımdır. Yenidən göstərməzdən əvvəl limit təyin edin və ya erkən quşu söndürün."
+    },
+    "story": {
+      "loading": "Bu kampaniyanın hekayəsi yüklənir",
+      "unreadable": {
+        "title": "Bu hekayə həmin səhifədə redaktə edilə bilməz",
+        "body": "O, bu redaktorun başa düşdüyündən daha yeni formatda yazılıb. Cari redaktoru almaq üçün səhifəni yeniləyin. Heç nə dəyişdirilməyib və hekayə hələ də layihə səhifənizdədir.",
+        "reload": "Yenilə"
+      },
+      "saveFailed": {
+        "title": "Bu dəyişiklik yadda saxlanılmadı",
+        "kept": "Yazdığınız heç nə itməyib — hamısı bu səhifədədir və yenidən göndəriləcək."
+      },
+      "blocked": {
+        "title": "Hekayə hələ yadda saxlanılmır",
+        "body": {
+          "one": "Bir blok tamamlanmayıb. Yanındakı mesaj nəyin çatışmadığını deyir; doldurulan kimi yadda saxlama bərpa olunur.",
+          "few": "{count} blok tamamlanmayıb. Yanlarındakı mesajlar nəyin çatışmadığını deyir; doldurulan kimi yadda saxlama bərpa olunur.",
+          "many": "{count} blok tamamlanmayıb. Yanlarındakı mesajlar nəyin çatışmadığını deyir; doldurulan kimi yadda saxlama bərpa olunur.",
+          "other": "{count} blok tamamlanmayıb. Yanlarındakı mesajlar nəyin çatışmadığını deyir; doldurulan kimi yadda saxlama bərpa olunur."
+        }
+      },
+      "counter": "Göndərmək üçün lazım olan {minimum} simvoldan {count}",
+      "earlierVersions": "Əvvəlki versiyalar",
+      "anchors": {
+        "heading": "Layihə səhifənizdəki bölmə menyusu",
+        "untitled": "Başlıqsız bölmə"
+      },
+      "risks": {
+        "label": "Risklər və çətinliklər",
+        "hint": "Nə səhv gedə bilər və bununla bağlı nə edəcəksiniz. Ən azı {minimum} simvol; göndərməzdən əvvəl tələb olunur.",
+        "placeholder": "Adətən üç şey olur: istehsal, göndərmə və vaxt. Nəyin artıq həll olunduğunu və nəyin olunmadığını yazın."
+      },
+      "blocks": {
+        "heading": "Hekayə",
+        "empty": "Hələ heç nə yoxdur. Başlamaq üçün abzas əlavə edin — kampaniyaların çoxu məhsulun nə olduğu və kimin üçün olduğu ilə açılır.",
+        "addHeading": "Blok əlavə edin",
+        "position": " · {total} blokdan {position}",
+        "moveUp": "{name} yuxarı qaldırın",
+        "moveDown": "{name} aşağı salın",
+        "remove": "{name} silin"
+      },
+      "blockLabel": {
+        "heading": "Başlıq",
+        "paragraph": "Abzas",
+        "list": "Siyahı",
+        "quote": "Sitat",
+        "rule": "Ayırıcı",
+        "image": "Şəkil",
+        "embed": "Yerləşdirmə"
+      },
+      "addLabel": {
+        "paragraph": "Abzas əlavə edin. Qalın və maili yazı ilə mətn hissəsi.",
+        "heading": "Başlıq əlavə edin. Bölmə adı. Başlıqlar bölmə menyusunu təşkil edir.",
+        "list": "Siyahı əlavə edin. Nişanlı və ya nömrəli.",
+        "quote": "Sitat əlavə edin. Ayrıca göstərilən sitat.",
+        "image": "Şəkil əlavə edin. Artıq harasa dərc olunmuş şəkil.",
+        "embed": "Yerləşdirmə əlavə edin. YouTube və ya Vimeo videosu.",
+        "rule": "Ayırıcı əlavə edin. Üfüqi ayırıcı xətt."
+      },
+      "announce": {
+        "added": "{block} {total} blokdan {position}-ci blok kimi əlavə edildi.",
+        "moved": "{block} {total} blokdan {position}-ci mövqeyə keçdi.",
+        "removed": {
+          "one": "{block} silindi. {count} blok qaldı.",
+          "few": "{block} silindi. {count} blok qaldı.",
+          "many": "{block} silindi. {count} blok qaldı.",
+          "other": "{block} silindi. {count} blok qaldı."
+        }
+      },
+      "describe": {
+        "empty": "boş",
+        "heading": "Başlıq, {total} blokdan {position}: {text}",
+        "paragraph": "Abzas, {total} blokdan {position}: {preview}",
+        "quote": "Sitat, {total} blokdan {position}: {preview}",
+        "rule": "Ayırıcı, {total} blokdan {position}",
+        "image": "Şəkil, {total} blokdan {position}: {alt}",
+        "imageNoAlt": "hələ təsvir yoxdur",
+        "embed": "{provider} yerləşdirməsi, {total} blokdan {position}: {title}",
+        "embedNoTitle": "hələ başlıq yoxdur",
+        "listBulleted": {
+          "one": "Nişanlı siyahı, {total} blokdan {position}, {count} bənd",
+          "few": "Nişanlı siyahı, {total} blokdan {position}, {count} bənd",
+          "many": "Nişanlı siyahı, {total} blokdan {position}, {count} bənd",
+          "other": "Nişanlı siyahı, {total} blokdan {position}, {count} bənd"
+        },
+        "listOrdered": {
+          "one": "Nömrəli siyahı, {total} blokdan {position}, {count} bənd",
+          "few": "Nömrəli siyahı, {total} blokdan {position}, {count} bənd",
+          "many": "Nömrəli siyahı, {total} blokdan {position}, {count} bənd",
+          "other": "Nömrəli siyahı, {total} blokdan {position}, {count} bənd"
+        }
+      },
+      "problems": {
+        "headingText": "Başlığın mətni olmalıdır.",
+        "anchorUnusable": "Bu bölmə ünvanı linkdə istifadə edilə bilməz. Yenidən yaratmaq üçün başlığın adını dəyişin.",
+        "anchorDuplicate": "Bu bölmə ünvanını başqa başlıq artıq işlədir. Birinin adını dəyişin.",
+        "imageAddress": "Şəklin ünvanı olmalıdır.",
+        "addressScheme": "Ünvan http:// və ya https:// ilə başlamalıdır.",
+        "imageUnmeasured": "Bu şəkil hələ ölçülməyib. Ölçüsünün qeyd olunması üçün “Ölç və əlavə et” düyməsini basın.",
+        "imageAlt": "Təsvir tələb olunur. Ekran oxuyucusundan istifadə edən dəstəkçi şəkil əvəzinə bunu alır.",
+        "embedAddress": "Yerləşdirmənin ünvanı olmalıdır.",
+        "embedTitle": "Yerləşdirmənin başlığı olmalıdır. Ekran oxuyucusu “çərçivə” əvəzinə bunu elan edir."
+      },
+      "fields": {
+        "headingLevel": "{name} səviyyəsi",
+        "headingSection": "Bölmə",
+        "headingSubsection": "Alt bölmə",
+        "headingText": "{name} mətni",
+        "headingPlaceholder": "Necə işləyir",
+        "paragraphPlaceholder": "Abzas yazın. Mətni seçib Qalın və ya Maili düyməsini basın, ya da **qalın** və *maili* yazın.",
+        "quotePlaceholder": "Kiminsə bu layihə haqqında dediyi bir söz",
+        "ruleNote": "Ayırıcı. Bölmələri ayırır və mətn daşımır.",
+        "listStyle": "{name} üslubu",
+        "listBulleted": "Nişanlı",
+        "listOrdered": "Nömrəli",
+        "listItem": "{name} daxilində {total} bənddən {position}",
+        "listRemoveItem": "{name} daxilində {total} bənddən {position}-cini silin",
+        "listAddItem": "Bənd əlavə edin",
+        "listAddItemLabel": "{name} siyahısına bənd əlavə edin",
+        "embedProvider": "{name} təchizatçısı",
+        "embedAddress": "{name} ünvanı",
+        "embedAddressPlaceholder": "https://www.youtube.com/watch?v=…",
+        "embedTitle": "{name} başlığı",
+        "embedTitlePlaceholder": "Bu videoda nə göstərilir",
+        "embedNote": "Başlıq ekran oxuyucusunun “çərçivə” əvəzinə elan etdiyi şeydir. Yalnız YouTube və Vimeo yerləşdirilə bilər."
+      },
+      "image": {
+        "noUploadTitle": "Burada heç nə yüklənmir",
+        "noUploadBody": "Artıq dərc olunmuş şəklin ünvanını verin. Ölçüsü brauzerinizdə oxunur və hekayə ilə birlikdə saxlanılır ki, səhifə yüklənmədən əvvəl ona yer ayıra bilsin.",
+        "address": "{name} ünvanı",
+        "addressPlaceholder": "https://images.example.com/prototype.jpg",
+        "measure": "Ölç və əlavə et",
+        "measuring": "Ölçülür",
+        "addressMissing": "Əvvəlcə şəklin ünvanını yazın.",
+        "added": "{size} piksellik şəkil əlavə edildi.",
+        "unreadable": "Bu ünvan şəkil kimi yüklənə bilmədi.",
+        "pixels": "{size} piksel",
+        "alt": "{name} təsviri",
+        "altPlaceholder": "Şəkildə nə göstərilir",
+        "altNote": "Tələb olunur. Ekran oxuyucusundan istifadə edən dəstəkçi şəkil əvəzinə bunu alır, ona görə faylın adını yox, nəyin göstərildiyini yazın."
+      },
+      "marks": {
+        "group": "{label} üçün formatlaşdırma",
+        "bold": "Qalın",
+        "italic": "Maili",
+        "named": "{name}, {shortcut}"
+      },
+      "history": {
+        "title": "Əvvəlki versiyalar",
+        "intro": "Hekayə hər dəyişdikdə bir versiya saxlanılır, hər bir neçə dəqiqədə ən çox bir dəfə. Ən son əlli versiya buradadır.",
+        "loading": "Əvvəlki versiyalar yüklənir",
+        "failed": "Tarixçə yüklənə bilmədi",
+        "emptyTitle": "Hələ əvvəlki versiya yoxdur",
+        "emptyBody": "Hekayə ilk dəfə dəyişdikdə bir versiya saxlanılır, sonra siz yazdıqca hər bir neçə dəqiqədə ən çox bir dəfə.",
+        "version": "{number}-ci versiya",
+        "mostRecent": "ən son",
+        "characters": "{count} simvol",
+        "preview": "Bax",
+        "previewLabel": "{number}-ci versiyaya baxın",
+        "hide": "Gizlət",
+        "restore": "Bərpa et",
+        "restoreLabel": "{number}-ci versiyanı bərpa edin",
+        "loadingVersion": "Bu versiya yüklənir…",
+        "previewNewer": "Bu versiya redaktorun başa düşdüyündən daha yeni formatda yazılıb. Cari redaktoru almaq üçün səhifəni yeniləyin.",
+        "historyFailed": "Versiya tarixçəsi yüklənə bilmədi.",
+        "versionFailed": "Bu versiya yüklənə bilmədi.",
+        "restoreFailed": "Bu versiya bərpa edilə bilmədi. Heç nə dəyişməyib.",
+        "unreachable": "Xidmətə çıxmaq mümkün olmadı. Bağlantını yoxlayıb yenidən cəhd edin.",
+        "confirmTitle": "Versiyanı bərpa edin",
+        "confirmNamed": "{number}-ci versiya bərpa edilsin?",
+        "confirmIntro": "İndi sizdə olan hekayə əvəz olunur.",
+        "keep": "Olanı saxla",
+        "confirm": "Bu versiyanı bərpa et",
+        "restoring": "Bərpa olunur",
+        "savedAt": "{number}-ci versiya {when} tarixində saxlanılıb və {characters} simvoldan ibarətdir.",
+        "currentHolds": "İndi sizdə olan hekayə {characters} simvoldan ibarətdir. Əvəz olunmazdan əvvəl versiya kimi saxlanılır, ona görə bunu elə bu siyahıdan geri qaytarmaq olar.",
+        "previewEmpty": "Bu versiyada blok yoxdur.",
+        "previewSummary": {
+          "one": "{count} blok · {characters} simvol",
+          "few": "{count} blok · {characters} simvol",
+          "many": "{count} blok · {characters} simvol",
+          "other": "{count} blok · {characters} simvol"
+        }
+      }
+    },
+    "faq": {
+      "loading": "Bu kampaniyanın sualları yüklənir",
+      "listFailed": "Suallar yüklənə bilmədi",
+      "actionFailed": "Bu alınmadı",
+      "heading": "Suallar",
+      "count": "({count})",
+      "intro": "Bunlar kampaniyanın suallar bölməsində bu sıra ilə görünür. Dəstəkçinin əks halda şərhlərdə verəcəyi suala cavab vermək bu siyahının məqsədidir.",
+      "add": "Sual əlavə edin",
+      "fullTitle": "Bu kampaniya limitə çatıb",
+      "fullBody": "Kampaniya {max} sual dərc edə bilər. Yenisini əlavə etmək üçün birini silin.",
+      "empty": {
+        "title": "Hələ sual yoxdur",
+        "body": "Kampaniya səhifəsi bu siyahını ayrıca bölmədə göstərir. Siyahı boş olduqca bölmə dəstəkçiyə kampaniyanın hələ heç nəyə cavab vermədiyini deyir — bu doğrudur və başlamazdan əvvəl dəyişməyə dəyər.",
+        "action": "İlk sualı əlavə edin"
+      },
+      "listLabel": "Suallar, dəstəkçilərin gördüyü sıra ilə",
+      "announce": {
+        "moved": "{question} {total} mövqedən {position}-ci mövqeyə keçdi.",
+        "deleted": "{question} silindi."
+      },
+      "row": {
+        "moveUp": "{question} yuxarı qaldırın, hazırda {total} mövqedən {position}-cidir",
+        "moveDown": "{question} aşağı salın, hazırda {total} mövqedən {position}-cidir",
+        "edit": "Redaktə",
+        "editLabel": "{question} sualını redaktə edin",
+        "delete": "Sil",
+        "deleteLabel": "{question} sualını silin"
+      },
+      "delete": {
+        "title": "Sualı silin",
+        "named": "“{question}” silinsin?",
+        "note": "Bunu geri qaytarmaq olmaz.",
+        "keep": "Saxla",
+        "confirm": "Sil",
+        "body": "Sual üzrə heç bir öhdəlik yoxdur, ona görə birdəfəlik silinir — kimsə seçəndən sonra yalnız gizlədilə bilən mükafat səviyyəsindən fərqli olaraq."
+      },
+      "orderRefusal": {
+        "missing": "Sıra rədd edildi, çünki bu səhifə {missing} görməmişdi.",
+        "unexpected": "Sıra rədd edildi, çünki {unexpected} artıq mövcud deyil.",
+        "both": "Sıra rədd edildi, çünki bu səhifə {missing} görməmişdi və {unexpected} artıq mövcud deyil.",
+        "unknown": "Sıra rədd edildi, çünki iki siyahı üst-üstə düşmədi.",
+        "reread": "Siyahı yenidən oxundu və indi kampaniya ilə üst-üstə düşür — istədiyiniz sıraya yenidən salın.",
+        "conjunction": "və",
+        "others": {
+          "one": "daha {count} sual",
+          "few": "daha {count} sual",
+          "many": "daha {count} sual",
+          "other": "daha {count} sual"
+        }
+      },
+      "editor": {
+        "titleNew": "Sual əlavə edin",
+        "titleEdit": "Sualı redaktə edin",
+        "intro": "Suallar və cavablar kampaniya səhifəsində sizin verdiyiniz sıra ilə görünür.",
+        "failed": "Bu sual yadda saxlanılmadı",
+        "kept": "Yazdığınız heç nə itməyib — hamısı aşağıdakı sahələrdədir.",
+        "question": {
+          "label": "Sual",
+          "hint": "Dəstəkçinin soruşacağı kimi. {max} simvol və ya daha az."
+        },
+        "answer": {
+          "label": "Cavab",
+          "hint": "Sadə mətn. Boş sətirlər kampaniya səhifəsində abzas ayırıcısına çevrilir; başqa heç nə formatlaşdırma deyil. {max} simvol və ya daha az."
+        }
+      },
+      "errors": {
+        "questionMissing": "Sual lazımdır. Dəstəkçi siyahını məhz onun üçün nəzərdən keçirir.",
+        "answerMissing": "Cavab lazımdır. Cavabsız sual cavab verməkdən imtina kimi oxunur.",
+        "questionTooLong": {
+          "one": "Bu, {count} simvol artıqdır. Sual ən çox {max} simvol olur.",
+          "few": "Bu, {count} simvol artıqdır. Sual ən çox {max} simvol olur.",
+          "many": "Bu, {count} simvol artıqdır. Sual ən çox {max} simvol olur.",
+          "other": "Bu, {count} simvol artıqdır. Sual ən çox {max} simvol olur."
+        },
+        "answerTooLong": {
+          "one": "Bu, {count} simvol artıqdır. Cavab ən çox {max} simvol olur.",
+          "few": "Bu, {count} simvol artıqdır. Cavab ən çox {max} simvol olur.",
+          "many": "Bu, {count} simvol artıqdır. Cavab ən çox {max} simvol olur.",
+          "other": "Bu, {count} simvol artıqdır. Cavab ən çox {max} simvol olur."
+        }
+      }
+    },
+    "prelaunch": {
+      "loading": "Kampaniya yüklənir",
+      "saveFailed": {
+        "title": "Bu dəyişiklik yadda saxlanılmadı",
+        "kept": "Yazdığınız heç nə itməyib — hamısı aşağıdakı sahələrdədir və yenidən göndəriləcək."
+      },
+      "notOpen": {
+        "heading": "Başlanğıcdan əvvəlki səhifə hələ açıq deyil",
+        "body": "Onu açmaq aşağıdakı başlığı, xülasəni və örtük şəklini paylaşa biləcəyiniz bir linkdə dərc edir və adamlara kampaniya açılan kimi xəbərdar edilməyi istəmək imkanı verir. Kampaniya haqqında başqa heç nə açıq olmur və pul söhbəti yoxdur.",
+        "permanent": "Onu yenidən bağlamaq olmaz — kampaniya buradan irəli gedir: əvvəlcə baxışa, sonra başlanğıca.",
+        "failed": "Səhifə açılmadı",
+        "action": "Başlanğıcdan əvvəlki səhifəni açın"
+      },
+      "live": {
+        "heading": "Başlanğıcdan əvvəlki səhifə açıqdır",
+        "countUnavailable": "Gözləyən adamların sayı yüklənə bilmədi.",
+        "waiting": {
+          "one": "Bu kampaniyanı {count} nəfər gözləyir.",
+          "few": "Bu kampaniyanı {count} nəfər gözləyir.",
+          "many": "Bu kampaniyanı {count} nəfər gözləyir.",
+          "other": "Bu kampaniyanı {count} nəfər gözləyir."
+        },
+        "linkLabel": "Başlanğıcdan əvvəlki link",
+        "linkHint": "Bunu istədiyiniz yerdə paylaşın. Onu açan hər kəs kampaniya başlayanda xəbərdar edilməyi istəyə bilər.",
+        "copy": "Kopyala",
+        "copied": "Kopyalandı",
+        "copiedAnnounced": "Link kopyalandı"
+      },
+      "closed": {
+        "title": "Başlanğıcdan əvvəlki səhifə bağlanıb",
+        "body": "Bu kampaniya artıq başlanğıcdan əvvəlki səhifəsini keçib. Xatırladılmağı istəmiş hər kəsə kampaniya başlayanda bir dəfə xəbər verilir."
+      },
+      "form": {
+        "heading": "Səhifə nə deyir",
+        "intro": "Bunlar kampaniyanın başlığı, xülasəsi və örtük şəklidir — Əsaslar bölməsindəkilərin eynisi. Kampaniyadan fərqli bir şey vəd edən başlanğıcdan əvvəlki səhifə həmin vədi məhz bunu ən çox nəzərə çarpdıracaq adamlara verərdi.",
+        "titleHint": "Başlanğıcdan əvvəlki səhifədə və kəşf səhifəsində görünən ad. {max} simvol və ya daha az.",
+        "blurbHint": "Bir və ya iki cümlə. İzləmək qərarını verməzdən əvvəl adam məhz bunu oxuyur. {max} simvol və ya daha az."
+      },
+      "confirm": {
+        "title": "Başlanğıcdan əvvəlki səhifə açılsın?",
+        "intro": "Başlıq, xülasə və örtük şəkli hər kəsin aça biləcəyi bir linkdə açıq olur. Bunu geri qaytarmaq olmaz.",
+        "body": "Mükafatlarınız, hekayəniz və ya maliyyə hədəfiniz haqqında heç nə dərc olunmur; kampaniya baxışdan keçib başlamayana qədər pul götürmür.",
+        "cancel": "Ləğv et",
+        "action": "Səhifəni aç",
+        "opening": "Açılır"
+      }
+    },
+    "review": {
+      "loading": "Bu kampaniyanın nə qədər tam olduğu yoxlanılır",
+      "loadFailed": "Bu kampaniya yüklənə bilmədi",
+      "moderation": {
+        "rejected": "Bu kampaniya rədd edildi",
+        "changes": "Moderatorlarımız dəyişiklik istəyib",
+        "noReason": "Səbəb qeyd edilməyib."
+      },
+      "stateNote": {
+        "SUBMITTED": "Bu kampaniya moderatorlarımızdadır. Baxış davam edərkən sizin görəcəyiniz iş yoxdur, nəticə sizə bildiriləcək. Bu arada redaktəyə davam edə bilərsiniz.",
+        "APPROVED": "Moderasiya bu kampaniyanı təsdiqləyib. Siz başlatdıqda və ya təyin etdiyiniz başlanğıc vaxtında aktiv olur.",
+        "SCHEDULED": "Təsdiqlənib və başlanğıc vaxtını gözləyir.",
+        "REJECTED": "Bu kampaniya rədd edilib və yenidən göndərilə bilməz.",
+        "LIVE": "Bu kampaniya aktivdir və dəstək qəbul edir."
+      },
+      "refusal": {
+        "title": "Bu kampaniya göndərilmədi",
+        "item": "{label}: {detail}",
+        "plans": "Digər planların nəyə icazə verdiyinə baxın",
+        "checkAgain": "Yenidən yoxlayın"
+      },
+      "progress": {
+        "heading": "Tamlıq",
+        "summary": "{score}% tamdır. Tələb olunan {blockingTotal} bənddən {blockingDone}, tövsiyə olunan {advisoryTotal} bənddən {advisoryDone} hazırdır.",
+        "barLabel": "Kampaniyanın tamlığı: {score} faiz"
+      },
+      "blocking": {
+        "heading": "Göndərməzdən əvvəl tələb olunur",
+        "description": "Bunların hər biri platformanın göndərmə qaydalarından gəlir. Hamısı tamamlanmayana qədər kampaniya moderasiyaya gedə bilməz."
+      },
+      "advisory": {
+        "heading": "Tövsiyə olunur, amma tələb olunmur",
+        "description": "Bunların heç biri göndərməyə mane olmur. Hər biri uğurlu kampaniyalarda adətən olan bir şeydir."
+      },
+      "row": {
+        "done": "Hazırdır",
+        "requiredNotDone": "Tələb olunur, hazır deyil",
+        "recommendedNotDone": "Tövsiyə olunur, hazır deyil",
+        "status": ", {status}",
+        "fix": "{section} bölməsində düzəldin",
+        "fixDetail": ": {label}"
+      },
+      "submit": {
+        "heading": "Baxışa göndərin",
+        "submitting": "Göndərilir",
+        "ready": "Moderator kampaniyanı oxuyur və ya təsdiqləyir, ya dəyişiklik istəyir, ya da rədd edir. Baxış gedərkən redaktəyə davam edə bilərsiniz.",
+        "held": {
+          "one": "Tələb olunan {count} bənd hələ hazır deyil. Onu tamamlayın və bu düymə işə düşsün.",
+          "few": "Tələb olunan {count} bənd hələ hazır deyil. Onları tamamlayın və bu düymə işə düşsün.",
+          "many": "Tələb olunan {count} bənd hələ hazır deyil. Onları tamamlayın və bu düymə işə düşsün.",
+          "other": "Tələb olunan {count} bənd hələ hazır deyil. Onları tamamlayın və bu düymə işə düşsün."
+        },
+        "heldWithSuggestions": {
+          "one": "Tələb olunan {count} bənd hələ hazır deyil. Tövsiyə olunan bəndlərin buna aidiyyəti yoxdur.",
+          "few": "Tələb olunan {count} bənd hələ hazır deyil. Tövsiyə olunan bəndlərin buna aidiyyəti yoxdur.",
+          "many": "Tələb olunan {count} bənd hələ hazır deyil. Tövsiyə olunan bəndlərin buna aidiyyəti yoxdur.",
+          "other": "Tələb olunan {count} bənd hələ hazır deyil. Tövsiyə olunan bəndlərin buna aidiyyəti yoxdur."
+        }
+      },
+      "launch": {
+        "heading": "Bu kampaniyanı başladın",
+        "failed": "Bu kampaniya başladılmadı",
+        "confirmHeading": "Bu kampaniya indi başladılsın?",
+        "confirmBody": "O, dərhal açıq olur və dəstək qəbul etməyə başlayır. Maliyyə hədəfi və son tarix başlanğıcda sabitlənir və sonra dəyişdirilə bilmir; aktiv kampaniyanı yenidən qaralamaya qaytarmaq olmur.",
+        "now": "İndi başlat",
+        "launching": "Başladılır",
+        "cancel": "Ləğv et",
+        "explanation": "Kampaniya başladığı an platformanın hər yerində görünür və dəstək qəbul etməyə başlayır. Hədəfi və son tarixi həmin andan dondurulur, aktiv kampaniyanı isə yenidən qaralamaya qaytarmaq olmur."
+      },
+      "failures": {
+        "notFound": "Bu kampaniya tapılmadı.",
+        "planLimit": "Planınız bu kampaniyanı əhatə etmir.",
+        "forbidden": "Bu kampaniyaya girişiniz yoxdur.",
+        "refused": "Xidmət sorğunu rədd etdi.",
+        "unreachable": "Xidmətə çıxmaq mümkün olmadı. Bağlantını yoxlayıb yenidən cəhd edin."
+      }
+    },
+    "pages": {
+      "basics": {
+        "metaDescription": "Kampaniyanızın başlığı, xülasəsi, kateqoriyası, hədəfi, müddəti və örtük şəkli."
+      },
+      "rewards": {
+        "metaDescription": "Kampaniyanızın istehsal etdiyi məhsullar və dəstəkçilərin seçdiyi mükafat səviyyələri — qiymətlər, saylar, çatdırılma və sıra."
+      },
+      "story": {
+        "metaDescription": "Kampaniyanızın geniş hekayəsi, riskləri və çətinlikləri, həmçinin əvvəlki versiyaları."
+      },
+      "faq": {
+        "metaDescription": "Kampaniyanızın öz səhifəsində cavablandırdığı suallar və dəstəkçilərin onları oxuduğu sıra."
+      },
+      "prelaunch": {
+        "metaDescription": "Başlanğıcdan əvvəlki səhifəni açın, linki paylaşın və kampaniyanız açılanda xəbərdar edilmək istəyənləri toplayın."
+      },
+      "review": {
+        "metaDescription": "Kampaniyanızın nə qədər tam olduğu, moderasiyanın onun haqqında nə dediyi və onu baxışa göndərmək."
+      }
     }
   }
 }

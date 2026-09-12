@@ -11,8 +11,18 @@ import {
   type StoryVersionSummary,
 } from '../../lib/projects/api';
 import { measureImage } from '../../lib/projects/coverImage';
-import { IMAGE_ALT_REQUIRED, type StoryDocument } from '../../lib/projects/story';
+import type { StoryDocument } from '../../lib/projects/story';
+import { storyCopyFrom } from '../../lib/i18n/editor-copy';
+import { translatorFor } from '../../test-copy';
 import { StoryPanel } from './StoryPanel';
+
+/*
+ * The copy the page would have resolved, built from `messages/en.json` by the same function it
+ * calls — issue #459. Retyping the sentences here would give a test that passes whatever the
+ * catalogue says, which is the opposite of what it is for; `test-copy.ts` carries the
+ * argument in full.
+ */
+const COPY = storyCopyFrom(translatorFor('editor'));
 
 /**
  * Appearance is reviewed in Storybook. The document model's own rules are pinned
@@ -77,7 +87,7 @@ const PROJECT: ProjectEdit = {
 };
 
 function renderPanel() {
-  return render(<StoryPanel projectId="project-1" />);
+  return render(<StoryPanel projectId="project-1" copy={COPY} />);
 }
 
 /** Every patch the panel has sent, oldest first. */
@@ -147,7 +157,7 @@ describe('StoryPanel', () => {
     renderPanel();
     await screen.findByRole('group', { name: /^Heading 1 of 2/ });
 
-    await user.click(screen.getByRole('button', { name: /Add paragraph/ }));
+    await user.click(screen.getByRole('button', { name: COPY.addLabel.paragraph }));
     // Anchored, because each editable block also carries a nested "Formatting
     // for …" group and an unanchored pattern matches both.
     expect(await screen.findByRole('group', { name: /^Paragraph 3 of 3/ })).toBeInTheDocument();
@@ -174,7 +184,7 @@ describe('StoryPanel', () => {
     renderPanel();
     await screen.findByRole('group', { name: /^Heading 1 of 2/ });
 
-    await user.click(screen.getByRole('button', { name: /Add image/ }));
+    await user.click(screen.getByRole('button', { name: COPY.addLabel.image }));
     await screen.findByRole('group', { name: /^Image 3 of 3/ });
     await user.type(
       screen.getByRole('textbox', { name: /Address of Image 3 of 3/ }),
@@ -191,7 +201,7 @@ describe('StoryPanel', () => {
      * refusal would block every later save until the page was reloaded.
      */
     expect(sent()).toHaveLength(0);
-    expect(screen.getByText(IMAGE_ALT_REQUIRED)).toBeInTheDocument();
+    expect(screen.getByText(COPY.problems.imageAlt)).toBeInTheDocument();
     expect(screen.getByText(/story is not being saved yet/i)).toBeInTheDocument();
 
     await user.type(
@@ -223,7 +233,7 @@ describe('StoryPanel', () => {
     renderPanel();
     await screen.findByRole('group', { name: /^Heading 1 of 2/ });
 
-    await user.click(screen.getByRole('button', { name: /Add image/ }));
+    await user.click(screen.getByRole('button', { name: COPY.addLabel.image }));
     await screen.findByRole('group', { name: /^Image 3 of 3/ });
     await user.type(
       screen.getByRole('textbox', { name: /Address of Image 3 of 3/ }),

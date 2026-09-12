@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Textarea } from '@ideanest/ui';
+import type { StoryCopy } from '../../lib/i18n/editor-copy';
 import { toggleMark } from '../../lib/projects/story';
 import { markForShortcut, StoryMarkToolbar } from './StoryMarkToolbar';
 
@@ -28,6 +29,8 @@ import { markForShortcut, StoryMarkToolbar } from './StoryMarkToolbar';
  * autosave indicator only".
  */
 export interface StoryTextFieldProps {
+  /** Passed through to the toolbar, which is the only part of this that draws words. */
+  copy: StoryCopy['marks'];
   value: string;
   /** Names what is being edited, for the toolbar and for the control itself. */
   label: string;
@@ -43,6 +46,7 @@ export interface StoryTextFieldProps {
 }
 
 export function StoryTextField({
+  copy,
   value,
   label,
   rows = 4,
@@ -100,6 +104,7 @@ export function StoryTextField({
   return (
     <div className="flex flex-col gap-2">
       <StoryMarkToolbar
+        copy={copy}
         value={value}
         selectionStart={selection.start}
         selectionEnd={selection.end}

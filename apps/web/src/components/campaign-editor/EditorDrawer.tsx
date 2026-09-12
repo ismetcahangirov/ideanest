@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { Pill } from '@ideanest/ui';
 import { Drawer } from '@ideanest/ui/motion';
+import type { RewardsCopy } from '../../lib/i18n/editor-copy';
 
 /**
  * A drawer with a cancel and a save in its footer.
@@ -37,6 +38,14 @@ import { Drawer } from '@ideanest/ui/motion';
  * §5 gives the campaign editor "none").
  */
 export interface EditorDrawerProps {
+  /**
+   * The footer's three words — issue #459.
+   *
+   * They are the drawer's rather than each editor's, for the reason this component exists at
+   * all: one place decides the wording of the button, and two spellings of Save between the
+   * item drawer and the reward drawer would be the same control disagreeing with itself.
+   */
+  copy: RewardsCopy['drawer'];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
@@ -48,6 +57,7 @@ export interface EditorDrawerProps {
 }
 
 export function EditorDrawer({
+  copy,
   open,
   onOpenChange,
   title,
@@ -69,10 +79,10 @@ export function EditorDrawer({
       footer={
         <div className="flex flex-wrap justify-end gap-2">
           <Pill variant="ghost" disabled={saving} onClick={() => onOpenChange(false)}>
-            Cancel
+            {copy.cancel}
           </Pill>
           <Pill variant="primary" disabled={saving} onClick={onSave}>
-            {saving ? 'Saving' : 'Save'}
+            {saving ? copy.saving : copy.save}
           </Pill>
         </div>
       }

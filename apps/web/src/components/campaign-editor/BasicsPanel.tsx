@@ -14,6 +14,7 @@ import {
   TextInput,
 } from '@ideanest/ui';
 import { SUPPORTED_CURRENCIES } from '../../lib/money';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import {
   isLocked,
   listCategories,
@@ -39,6 +40,7 @@ import {
   type BasicsField,
 } from '../../lib/projects/basics';
 import { CoverImageField } from './CoverImageField';
+import type { BasicsCopy } from '../../lib/i18n/editor-copy';
 import { EditorShell } from './EditorShell';
 import { SaveStatus } from './SaveStatus';
 import { useAutosave, type SaveFailure } from './useAutosave';
@@ -88,10 +90,20 @@ function serverErrors(failure: SaveFailure | null): BasicsErrors {
 
 export interface BasicsPanelProps {
   projectId: string;
+  /**
+   * Every word this tab draws, resolved on the server — issue #459.
+   *
+   * This panel is a client component and has to be: the form autosaves as it is typed. A
+   * `useTranslations` here would need a `NextIntlClientProvider` above it, which this
+   * repository measured at up to 27.4 KiB on every route in a group; the page reads the
+   * catalogue instead and hands the words down. `lib/i18n/editor-copy.ts` carries the
+   * argument.
+   */
+  copy: BasicsCopy;
 }
 
-export function BasicsPanel({ projectId }: BasicsPanelProps) {
-  const { project, status, error, reload, apply } = useProjectEdit(projectId);
+export function BasicsPanel({ projectId, copy }: BasicsPanelProps) {
+  const { project, status, error, reload, apply } = useProjectEdit(projectId, copy.frame.failures.load);
 
   /**
    * The form's state, seeded once from the project.
@@ -112,6 +124,7 @@ export function BasicsPanel({ projectId }: BasicsPanelProps) {
   const autosave = useAutosave<ProjectPatch, ProjectEdit>({
     send: (patch) => patchProject(projectId, patch),
     onSaved: apply,
+    failures: copy.frame.failures.save,
   });
 
   useEffect(() => {
@@ -158,9 +171,9 @@ export function BasicsPanel({ projectId }: BasicsPanelProps) {
 
   if (status === 'signed-out') {
     return (
-      <EditorShell projectId={projectId} active="basics">
-        <InlineAlert variant="info" title="You are signed out">
-          This browser no longer has a session. Sign in again to keep editing this campaign.
+      <EditorShell projectId={projectId} copy={copy.frame} active="basics">
+        <InlineAlert variant="info" title={copy.frame.signedOut.title}>
+          {copy.frame.signedOut.body}
         </InlineAlert>
       </EditorShell>
     );
@@ -168,18 +181,18 @@ export function BasicsPanel({ projectId }: BasicsPanelProps) {
 
   if (status === 'failed' || draft === null || project === null) {
     return (
-      <EditorShell projectId={projectId} active="basics">
+      <EditorShell projectId={projectId} copy={copy.frame} active="basics">
         {status === 'failed' ? (
           <>
-            <InlineAlert variant="danger" title="This project could not be loaded">
+            <InlineAlert variant="danger" title={copy.frame.loadFailed}>
               {error}
             </InlineAlert>
             <Pill variant="ghost" size="sm" className="mt-4" onClick={reload}>
-              Try again
+              {copy.frame.tryAgain}
             </Pill>
           </>
         ) : (
-          <SkeletonGroup label="Loading this campaign">
+          <SkeletonGroup label={copy.loading}>
             <div className="flex flex-col gap-6">
               {LOADING_ROWS.map((row) => (
                 <div key={row} className="flex flex-col gap-2">
@@ -194,7 +207,7 @@ export function BasicsPanel({ projectId }: BasicsPanelProps) {
     );
   }
 
-  const errors: BasicsErrors = { ...validateBasics(draft), ...serverErrors(failure) };
+  const errors: BasicsErrors = { ...validateBasics(draft, copy.errors), ...serverErrors(failure) };
   const selected = categories?.find((category) => category.id === draft.categoryId) ?? null;
   const subcategories = selected?.subcategories ?? [];
 
@@ -204,10 +217,11 @@ export function BasicsPanel({ projectId }: BasicsPanelProps) {
   return (
     <EditorShell
       projectId={projectId}
+      copy={copy.frame}
       active="basics"
       title={project.title}
       state={project.state}
-      status={<SaveStatus state={autosave.state} />}
+      status={<SaveStatus state={autosave.state} copy={copy.frame.save} />}
     >
       {/*
         There is no submit. The element is a `form` so that Enter inside a field
@@ -216,22 +230,19 @@ export function BasicsPanel({ projectId }: BasicsPanelProps) {
       */}
       <form className="flex flex-col gap-7" onSubmit={(event) => event.preventDefault()}>
         {failure !== null && (
-          <InlineAlert variant="danger" title="This change was not saved">
+          <InlineAlert variant="danger" title={copy.saveFailed.title}>
             <p>{failure.message}</p>
-            <p className="mt-2 text-white/64">
-              Nothing you typed has been lost — it is still in the fields below and will be sent
-              again.
-            </p>
+            <p className="mt-2 text-white/64">{copy.saveFailed.kept}</p>
             <Pill variant="ghost" size="sm" className="mt-3" onClick={autosave.retry}>
-              Try again
+              {copy.frame.tryAgain}
             </Pill>
           </InlineAlert>
         )}
 
         <Field
-          label="Title"
+          label={copy.title.label}
           required
-          hint={`The name on the discovery grid. ${TITLE_MAX_CHARACTERS} characters or fewer.`}
+          hint={fillPlaceholders(copy.title.hint, { max: String(TITLE_MAX_CHARACTERS) })}
           error={errors.title}
         >
           {/*
@@ -250,8 +261,8 @@ export function BasicsPanel({ projectId }: BasicsPanelProps) {
         </Field>
 
         <Field
-          label="Summary"
-          hint={`One or two sentences, shown under the title in search and on the grid. ${BLURB_MAX_CHARACTERS} characters or fewer.`}
+          label={copy.blurb.label}
+          hint={fillPlaceholders(copy.blurb.hint, { max: String(BLURB_MAX_CHARACTERS) })}
           error={errors.blurb}
         >
           <Textarea
@@ -264,21 +275,20 @@ export function BasicsPanel({ projectId }: BasicsPanelProps) {
         </Field>
 
         {categoriesUnavailable && (
-          <InlineAlert variant="warning" title="The category list is unavailable">
-            Categories could not be loaded, so this campaign&rsquo;s category cannot be changed
-            here yet. Everything else on this page still saves.
+          <InlineAlert variant="warning" title={copy.categoriesUnavailable.title}>
+            {copy.categoriesUnavailable.body}
           </InlineAlert>
         )}
 
         <div className="grid gap-6 sm:grid-cols-2">
           <Field
-            label="Category"
-            hint="Where backers will find this project."
+            label={copy.category.label}
+            hint={copy.category.hint}
             error={errors.categoryId}
           >
             <Select
               value={draft.categoryId}
-              placeholder="Choose a category"
+              placeholder={copy.category.placeholder}
               disabled={categories === null}
               onChange={(event) =>
                 change('categoryId', {
@@ -298,19 +308,19 @@ export function BasicsPanel({ projectId }: BasicsPanelProps) {
           </Field>
 
           <Field
-            label="Subcategory"
+            label={copy.subcategory.label}
             hint={
               selected === null
-                ? 'Choose a category first.'
+                ? copy.subcategory.chooseCategory
                 : subcategories.length === 0
-                  ? 'This category has no subcategories.'
-                  : 'Optional, and more specific.'
+                  ? copy.subcategory.none
+                  : copy.subcategory.optional
             }
             error={errors.subcategoryId}
           >
             <Select
               value={draft.subcategoryId}
-              placeholder="No subcategory"
+              placeholder={copy.subcategory.placeholder}
               disabled={subcategories.length === 0}
               onChange={(event) =>
                 change('subcategoryId', { ...draft, subcategoryId: event.target.value })
@@ -327,13 +337,9 @@ export function BasicsPanel({ projectId }: BasicsPanelProps) {
 
         <div className="grid gap-6 sm:grid-cols-[2fr_1fr]">
           <Field
-            label="Funding goal"
+            label={copy.goal.label}
             required
-            hint={
-              goalLocked
-                ? 'The goal cannot change once the campaign has launched.'
-                : 'All or nothing: nothing is collected unless this figure is reached.'
-            }
+            hint={goalLocked ? copy.goal.locked : copy.goal.hint}
             error={errors.goal}
           >
             {/*
@@ -353,7 +359,7 @@ export function BasicsPanel({ projectId }: BasicsPanelProps) {
             />
           </Field>
 
-          <Field label="Currency" hint="Fixed once the campaign launches.">
+          <Field label={copy.currency.label} hint={copy.currency.hint}>
             <Select
               value={draft.currency}
               disabled={goalLocked}
@@ -370,12 +376,16 @@ export function BasicsPanel({ projectId }: BasicsPanelProps) {
 
         <div className="grid gap-6 sm:grid-cols-2">
           <Field
-            label="Duration in days"
+            label={copy.duration.label}
             required
             hint={
               durationLocked
-                ? 'The deadline cannot change once the campaign has launched.'
-                : `${DURATION_MIN_DAYS} to ${DURATION_MAX_DAYS} days. ${DURATION_RECOMMENDED_DAYS} is recommended.`
+                ? copy.duration.locked
+                : fillPlaceholders(copy.duration.hint, {
+                    min: String(DURATION_MIN_DAYS),
+                    max: String(DURATION_MAX_DAYS),
+                    recommended: String(DURATION_RECOMMENDED_DAYS),
+                  })
             }
             error={errors.durationDays}
           >
@@ -392,8 +402,8 @@ export function BasicsPanel({ projectId }: BasicsPanelProps) {
           </Field>
 
           <Field
-            label="Scheduled launch"
-            hint="Optional. Leave it empty to launch by hand once the review is complete."
+            label={copy.schedule.label}
+            hint={copy.schedule.hint}
             error={errors.scheduledLaunchAt}
           >
             <TextInput
@@ -415,19 +425,19 @@ export function BasicsPanel({ projectId }: BasicsPanelProps) {
           */}
           <Switch
             checked={draft.latePledgeEnabled}
-            label="Accept late pledges"
+            label={copy.latePledge.label}
             aria-describedby={latePledgeHintId}
             onCheckedChange={(checked) =>
               change('latePledgeEnabled', { ...draft, latePledgeEnabled: checked })
             }
           />
           <p id={latePledgeHintId} className="mt-2 text-[13px] text-white/64">
-            Keeps the project open to pledges after the deadline, once it has been funded. It can be
-            turned off again at any time.
+            {copy.latePledge.hint}
           </p>
         </div>
 
         <CoverImageField
+          copy={copy.cover}
           url={draft.coverImageUrl}
           cover={draft.coverImage}
           error={errors.coverImage}

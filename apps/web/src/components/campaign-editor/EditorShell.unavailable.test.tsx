@@ -22,18 +22,36 @@ vi.mock('./tabs', async () => {
   return {
     ...actual,
     EDITOR_TABS: [
-      { key: 'basics', label: 'Basics', segment: 'basics', available: true, issue: 33 },
-      { key: 'story', label: 'Story', segment: 'story', available: false, issue: 35 },
+      { key: 'basics', segment: 'basics', available: true, issue: 33 },
+      { key: 'story', segment: 'story', available: false, issue: 35 },
     ],
   };
 });
 
 const { EditorShell } = await import('./EditorShell');
+const { editorFrameCopyFrom } = await import('../../lib/i18n/editor-copy');
+const { translatorFor } = await import('../../test-copy');
+
+/*
+ * The real catalogue, even though the tab list is fabricated — issue #459. The names are
+ * `editor.frame.tabs.*` now, and what this file fakes is which sections exist, not what they
+ * are called.
+ */
+const COPY = editorFrameCopyFrom(translatorFor('editor'));
+
+/* The whole accessible name: the visible word plus the spoken half that says it is not ready. */
+const UNAVAILABLE_STORY = `${COPY.tabs.story}${COPY.unavailable}`;
 
 describe('EditorShell, for a section whose route does not exist', () => {
   function renderShell() {
     return render(
-      <EditorShell projectId="project-1" active="basics" title="A field recorder" state="DRAFT">
+      <EditorShell
+        projectId="project-1"
+        copy={COPY}
+        active="basics"
+        title="A field recorder"
+        state="DRAFT"
+      >
         <p>The basics form</p>
       </EditorShell>,
     );
@@ -46,10 +64,10 @@ describe('EditorShell, for a section whose route does not exist', () => {
   it('renders it as a disabled control rather than a link', () => {
     renderShell();
 
-    const story = screen.getByRole('button', { name: /Story/ });
+    const story = screen.getByRole('button', { name: UNAVAILABLE_STORY });
     expect(story).toHaveAttribute('aria-disabled', 'true');
-    expect(story).toHaveAccessibleName('Story, not available yet');
-    expect(screen.queryByRole('link', { name: /Story/ })).not.toBeInTheDocument();
+    expect(story).toHaveAccessibleName(UNAVAILABLE_STORY);
+    expect(screen.queryByRole('link', { name: UNAVAILABLE_STORY })).not.toBeInTheDocument();
   });
 
   /*
@@ -60,6 +78,8 @@ describe('EditorShell, for a section whose route does not exist', () => {
   it('leaves it in the tab order', () => {
     renderShell();
 
-    expect(screen.getByRole('button', { name: /Story/ })).not.toHaveAttribute('disabled');
+    expect(screen.getByRole('button', { name: UNAVAILABLE_STORY })).not.toHaveAttribute(
+      'disabled',
+    );
   });
 });

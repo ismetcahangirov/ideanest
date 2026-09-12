@@ -19,11 +19,16 @@ import { expectNoViolations } from '../../test-axe';
  *   - every group in `navigation.ts` is rendered **in each of the four languages**, so a link
  *     added there cannot be silently dropped by this component and a key added there cannot
  *     ship with three languages translated.
- *   - the language line names the language being read, in itself. It was the constant
- *     `'English'` before #123, which was honest with one language and a lie at the bottom of
- *     every Russian page once there were four.
- *   - currency is STATED and not offered. #280 is blocked, and a `<select>` that changed
- *     nothing would be a control that lies — the worst of the three options available.
+ *   - the language is OFFERED since #458, and every language is still named in itself. It
+ *     was the constant `'English'` before #123, a statement of the reader's own language
+ *     after it, and a control since a locale-prefixed URL made one possible without turning
+ *     a cached page into a render per visitor. `LanguageSwitch.test.tsx` covers the control
+ *     itself; what is asserted here is that the footer carries it and that the four links
+ *     keep the page the reader is on.
+ *   - currency is STATED and not offered, and #458 did not change that. A display currency is
+ *     a per-reader preference with nothing in the URL to carry it, so a control here would
+ *     have to know who is reading — the dynamic render the language control was careful not
+ *     to reintroduce.
  *   - there is no legal column, because §22 has not written the pages and #293 is
  *     `status: needs-decision`. A Terms link resolving to a 404 is a promise about a document
  *     that does not exist.
@@ -70,6 +75,12 @@ vi.mock('next-intl/server', () => ({
 vi.mock('next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('next/navigation')>()),
   useParams: () => ({ locale }),
+  /*
+   * A page inside the site, so the language links have something to keep. `LanguageSwitch`
+   * reads this through `src/i18n/navigation`'s `usePathname`, which takes the language off
+   * again — which is why the mock carries one.
+   */
+  usePathname: () => `/${locale}/discover`,
 }));
 
 afterEach(cleanup);
@@ -142,23 +153,42 @@ describe('the footer', () => {
     expect(screen.getByText(en.shell.tagline)).toBeInTheDocument();
   });
 
-  it.each(SUPPORTED_LOCALES)('names the language being read, in itself (%s)', async (at) => {
-    /*
-     * Not "Russian" but "Русский". A reader scanning the bottom of the page for their own
-     * language recognises the endonym; the English name is a word they may not read. It also
-     * has to follow the route rather than a build-time constant, which is what the line was
-     * before #123.
-     */
-    const NAMES: Record<Locale, string> = {
-      az: 'Azərbaycan dili',
-      en: 'English',
-      ru: 'Русский',
-      tr: 'Türkçe',
-    };
+  /*
+   * Not "Russian" but "Русский". A reader scanning the bottom of the page for their own
+   * language recognises the endonym; the English name is a word they may not read. It also has
+   * to follow the route rather than a build-time constant, which is what the line was before
+   * #123.
+   */
+  const NAMES: Record<Locale, string> = {
+    az: 'Azərbaycan dili',
+    en: 'English',
+    ru: 'Русский',
+    tr: 'Türkçe',
+  };
 
+  it.each(SUPPORTED_LOCALES)('marks the language being read, in itself (%s)', async (at) => {
     const { unmount } = await renderFooter(at);
 
-    expect(screen.getByText(NAMES[at])).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: NAMES[at] })).toHaveAttribute('aria-current', 'true');
+
+    unmount();
+  });
+
+  it.each(SUPPORTED_LOCALES)('offers the other three as a way out of %s', async (at) => {
+    /*
+     * ISSUE #458. The reader this matters to is signed out: `/settings/language` is inside the
+     * account area, so before this the only way out of a language somebody could not read was
+     * editing the address bar. Each link keeps the page rather than going to that language's
+     * home.
+     */
+    const { unmount } = await renderFooter(at);
+
+    for (const locale of SUPPORTED_LOCALES) {
+      expect(
+        screen.getByRole('link', { name: NAMES[locale] }),
+        `${at} offers ${locale}`,
+      ).toHaveAttribute('href', `/${locale}/discover`);
+    }
 
     unmount();
   });
@@ -169,6 +199,9 @@ describe('the footer', () => {
     expect(screen.getByText(en.shell.footer.currencyValue)).toBeInTheDocument();
     expect(screen.queryByRole('combobox')).toBeNull();
     expect(screen.queryByRole('button')).toBeNull();
+
+    /* And no link out of it either — the four in the footer's bottom row are all languages. */
+    expect(screen.queryByRole('link', { name: /manat|AZN/iu })).toBeNull();
   });
 
   it('offers no legal links, because the documents do not exist', async () => {

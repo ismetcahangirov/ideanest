@@ -1,3 +1,7 @@
+import type { FaqErrorsCopy } from '../i18n/editor-copy';
+import type { Locale } from '../i18n/locale';
+import { fillPlaceholders } from '../i18n/placeholders';
+import { pluralise, type PluralForms } from '../i18n/plurals';
 import { characterCount } from './basics';
 import {
   FAQ_ANSWER_MAX_CHARACTERS,
@@ -57,27 +61,36 @@ export function faqDraftFrom(faq: ProjectFaq): FaqDraft {
  * are allowed. The creator can already see the limit under the field; what they
  * cannot see is how much to cut.
  */
-export function validateFaq(draft: FaqDraft): FaqErrors {
+export function validateFaq(draft: FaqDraft, copy: FaqErrorsCopy, locale: Locale): FaqErrors {
   const errors: FaqErrors = {};
 
   const question = draft.question.trim();
   const answer = draft.answer.trim();
 
+  /*
+   * The overshoot declines, so it is a plural form rather than `${over === 1 ? '' : 's'}` —
+   * which is the whole of English and none of Russian. The count is only known here, so the
+   * form is picked here; `lib/i18n/plurals.ts` carries the argument, and the language is an
+   * argument for the same reason the sentences are (#459).
+   */
+  const tooLong = (forms: PluralForms, over: number, max: number): string =>
+    fillPlaceholders(pluralise(locale, forms, over), { max: String(max) });
+
   if (question === '') {
-    errors.question = 'A question is needed. It is what a backer scans the list for.';
+    errors.question = copy.questionMissing;
   } else {
     const over = characterCount(question) - FAQ_QUESTION_MAX_CHARACTERS;
     if (over > 0) {
-      errors.question = `That is ${over} character${over === 1 ? '' : 's'} too long. A question is at most ${FAQ_QUESTION_MAX_CHARACTERS}.`;
+      errors.question = tooLong(copy.questionTooLong, over, FAQ_QUESTION_MAX_CHARACTERS);
     }
   }
 
   if (answer === '') {
-    errors.answer = 'An answer is needed. A question with no answer reads as a refusal to give one.';
+    errors.answer = copy.answerMissing;
   } else {
     const over = characterCount(answer) - FAQ_ANSWER_MAX_CHARACTERS;
     if (over > 0) {
-      errors.answer = `That is ${over} character${over === 1 ? '' : 's'} too long. An answer is at most ${FAQ_ANSWER_MAX_CHARACTERS}.`;
+      errors.answer = tooLong(copy.answerTooLong, over, FAQ_ANSWER_MAX_CHARACTERS);
     }
   }
 

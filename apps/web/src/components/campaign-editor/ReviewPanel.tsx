@@ -14,7 +14,6 @@ import {
   type ProjectState,
 } from '../../lib/projects/api';
 import {
-  SECTION_LABEL,
   describeProgress,
   isChecklistSection,
   progressOf,
@@ -23,7 +22,13 @@ import {
   unmetOf,
   type UnmetRequirement,
 } from '../../lib/projects/checklist';
-import { EditorShell, PROJECT_STATE_LABEL } from './EditorShell';
+import type { ReviewCopy } from '../../lib/i18n/editor-copy';
+import { dateTimeFormat } from '../../lib/i18n/formats';
+import type { Locale } from '../../lib/i18n/locale';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import { pluralise } from '../../lib/i18n/plurals';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
+import { EditorShell } from './EditorShell';
 import { useProjectEdit } from './useProjectEdit';
 
 /**
@@ -87,16 +92,11 @@ const SUBMITTABLE_FROM: readonly ProjectState[] = ['DRAFT', 'PRELAUNCH', 'CHANGE
  */
 const LAUNCHABLE_FROM: readonly ProjectState[] = ['APPROVED', 'SCHEDULED'];
 
-/** What a campaign in this state is waiting for, said plainly. */
-const STATE_NOTE: Partial<Record<ProjectState, string>> = {
-  SUBMITTED:
-    'This campaign is with our moderators. There is nothing for you to do while it is in review, and you will be told the outcome. You can keep editing in the meantime.',
-  APPROVED:
-    'Moderation has cleared this campaign. It goes live when you launch it, or at the launch time you set.',
-  SCHEDULED: 'Cleared and waiting for its launch time.',
-  REJECTED: 'This campaign was refused and cannot be submitted again.',
-  LIVE: 'This campaign is live and taking pledges.',
-};
+/*
+ * STATE_NOTE LEFT THIS FILE WITH #459. It is `ReviewCopy.stateNote` now, and it is still five
+ * of the sixteen rather than all of them: a note for every state would mean writing one for
+ * `COLLECTING`, where the honest answer is that this tab has nothing to say.
+ */
 
 interface Refusal {
   message: string;
@@ -112,17 +112,33 @@ interface Refusal {
 
 export interface ReviewPanelProps {
   projectId: string;
+  /**
+   * Every word this tab draws, resolved on the server — issue #459.
+   *
+   * This panel is a client component and has to be: the form autosaves as it is typed. A
+   * `useTranslations` here would need a `NextIntlClientProvider` above it, which this
+   * repository measured at up to 27.4 KiB on every route in a group; the page reads the
+   * catalogue instead and hands the words down. `lib/i18n/editor-copy.ts` carries the
+   * argument.
+   */
+  copy: ReviewCopy;
 }
 
-export function ReviewPanel({ projectId }: ReviewPanelProps) {
+export function ReviewPanel({ projectId, copy }: ReviewPanelProps) {
   /*
    * Two reads on open, deliberately. The shell needs the campaign's title and the
    * review needs the checklist, and they are different resources — folding the
    * checklist into `ProjectEdit` would put a query on `project_state_transitions`
    * behind every autosave in every other tab.
    */
-  const { project, status, error, reload, apply } = useProjectEdit(projectId);
+  const { project, status, error, reload, apply } = useProjectEdit(projectId, copy.frame.failures.load);
   const router = useRouter();
+
+  /*
+   * The language, for the one sentence on this tab that declines — how many required items are
+   * left — and for the date a moderator decided, which was `toLocaleDateString('en-GB')`.
+   */
+  const locale = useRouteLocale();
 
   const [checklist, setChecklist] = useState<ProjectChecklist | null>(null);
   const [checklistError, setChecklistError] = useState<string | null>(null);
@@ -146,12 +162,12 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
         setChecklistError(null);
       } catch (cause) {
         if (controller.signal.aborted) return;
-        setChecklistError(messageFor(cause));
+        setChecklistError(messageFor(cause, copy.failures));
       }
     })();
 
     return () => controller.abort();
-  }, [projectId, attempt]);
+  }, [projectId, attempt, copy.failures]);
 
   const reloadAll = useCallback(() => {
     setRefusal(null);
@@ -191,7 +207,7 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
         router.push(`/pricing?from=submit&project=${encodeURIComponent(projectId)}`);
         return;
       }
-      setRefusal(refusalFrom(cause));
+      setRefusal(refusalFrom(cause, copy.failures));
     } finally {
       setSubmitting(false);
     }
@@ -219,7 +235,7 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
       // The state has changed, and with it what this tab has to offer.
       setAttempt((n) => n + 1);
     } catch (cause) {
-      setLaunchError(messageFor(cause));
+      setLaunchError(messageFor(cause, copy.failures));
     } finally {
       setLaunching(false);
     }
@@ -227,9 +243,9 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
 
   if (status === 'signed-out') {
     return (
-      <EditorShell projectId={projectId} active="review">
-        <InlineAlert variant="info" title="You are signed out">
-          This browser no longer has a session. Sign in again to keep editing this campaign.
+      <EditorShell projectId={projectId} copy={copy.frame} active="review">
+        <InlineAlert variant="info" title={copy.frame.signedOut.title}>
+          {copy.frame.signedOut.body}
         </InlineAlert>
       </EditorShell>
     );
@@ -237,12 +253,12 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
 
   if (status === 'failed' || checklistError !== null) {
     return (
-      <EditorShell projectId={projectId} active="review">
-        <InlineAlert variant="danger" title="This campaign could not be loaded">
+      <EditorShell projectId={projectId} copy={copy.frame} active="review">
+        <InlineAlert variant="danger" title={copy.loadFailed}>
           {error ?? checklistError}
         </InlineAlert>
         <Pill variant="ghost" size="sm" className="mt-4" onClick={reloadAll}>
-          Try again
+          {copy.frame.tryAgain}
         </Pill>
       </EditorShell>
     );
@@ -250,8 +266,8 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
 
   if (project === null || checklist === null) {
     return (
-      <EditorShell projectId={projectId} active="review">
-        <SkeletonGroup label="Checking how complete this campaign is">
+      <EditorShell projectId={projectId} copy={copy.frame} active="review">
+        <SkeletonGroup label={copy.loading}>
           <div className="flex flex-col gap-4">
             {LOADING_ROWS.map((row) => (
               <Skeleton key={row} height="2.5rem" />
@@ -273,6 +289,7 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
   return (
     <EditorShell
       projectId={projectId}
+      copy={copy.frame}
       active="review"
       title={project.title}
       state={checklist.state}
@@ -289,16 +306,16 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
           <InlineAlert
             variant={moderation.outcome === 'REJECTED' ? 'danger' : 'warning'}
             title={
-              moderation.outcome === 'REJECTED'
-                ? 'This campaign was refused'
-                : 'Our moderators have asked for changes'
+              moderation.outcome === 'REJECTED' ? copy.moderation.rejected : copy.moderation.changes
             }
           >
             <p className="whitespace-pre-line text-white">
-              {moderation.note ?? 'No reason was recorded.'}
+              {moderation.note ?? copy.moderation.noReason}
             </p>
             <p className="mt-2">
-              <time dateTime={moderation.decidedAt}>{formatDate(moderation.decidedAt)}</time>
+              <time dateTime={moderation.decidedAt}>
+                {formatDate(moderation.decidedAt, locale)}
+              </time>
             </p>
           </InlineAlert>
         )}
@@ -308,20 +325,25 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
           not look like something went wrong: `info`, not `warning`, and a sentence
           that says there is nothing to do.
         */}
-        {STATE_NOTE[checklist.state] !== undefined && (
-          <InlineAlert variant="info" title={PROJECT_STATE_LABEL[checklist.state]}>
-            {STATE_NOTE[checklist.state]}
+        {copy.stateNote[checklist.state] !== undefined && (
+          <InlineAlert variant="info" title={copy.frame.states[checklist.state]}>
+            {copy.stateNote[checklist.state]}
           </InlineAlert>
         )}
 
         {refusal !== null && (
-          <InlineAlert variant="danger" title="This campaign was not submitted">
+          <InlineAlert variant="danger" title={copy.refusal.title}>
             <p>{refusal.message}</p>
             {refusal.unmet.length > 0 && (
               <ul className="mt-2 flex flex-col gap-1">
                 {refusal.unmet.map((item) => (
                   <li key={item.requirement}>
-                    {item.label}: {item.detail}
+                    {/* Both halves are the server's own words (§10.4); only the punctuation
+                        between them is the catalogue's. */}
+                    {fillPlaceholders(copy.refusal.item, {
+                      label: item.label,
+                      detail: item.detail,
+                    })}
                   </li>
                 ))}
               </ul>
@@ -335,12 +357,12 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
             {refusal.limit != null && (
               <p className="mt-3">
                 <Link href="/pricing" className="text-white underline underline-offset-4">
-                  See what the other plans allow
+                  {copy.refusal.plans}
                 </Link>
               </p>
             )}
             <Pill variant="ghost" size="sm" className="mt-3" onClick={reloadAll}>
-              Check again
+              {copy.refusal.checkAgain}
             </Pill>
           </InlineAlert>
         )}
@@ -350,28 +372,31 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
             id="review-progress-heading"
             className="text-[13px] font-medium tracking-[0.06em] text-white/40 uppercase"
           >
-            Completeness
+            {copy.progress.heading}
           </h2>
           {/*
             The sentence carries the meaning; the bar is a picture of it. Announcing
             both would say the same number twice, and the counts are the half that
             answers "is what is left optional".
           */}
-          <p className="mt-2 text-[15px] text-white">{describeProgress(progress)}</p>
+          <p className="mt-2 text-[15px] text-white">
+            {describeProgress(progress, copy.progress.summary)}
+          </p>
           <ProgressBar
             aria-hidden="true"
             value={progress.score}
             size="md"
             className="mt-3"
-            label={`Campaign completeness: ${progress.score} percent`}
+            label={fillPlaceholders(copy.progress.barLabel, { score: String(progress.score) })}
           />
         </section>
 
         <ChecklistSection
           id="review-required"
+          copy={copy}
           headingRef={blockingHeading}
-          heading="Required before you can submit"
-          description="Every one of these comes from the platform's submission rules. A campaign cannot go to moderation until they are all done."
+          heading={copy.blocking.heading}
+          description={copy.blocking.description}
           items={checklist.blocking}
           projectId={projectId}
           tone="blocking"
@@ -379,8 +404,9 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
 
         <ChecklistSection
           id="review-recommended"
-          heading="Recommended, but not required"
-          description="None of these stops you submitting. Each one is something campaigns that do well tend to have."
+          copy={copy}
+          heading={copy.advisory.heading}
+          description={copy.advisory.description}
           items={checklist.advisory}
           projectId={projectId}
           tone="advisory"
@@ -389,7 +415,7 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
         {canOfferSubmit && (
           <section aria-labelledby="review-submit-heading" className="flex flex-col gap-3">
             <h2 id="review-submit-heading" className="sr-only">
-              Submit for review
+              {copy.submit.heading}
             </h2>
 
             {/*
@@ -414,19 +440,23 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
               }}
               className={held || submitting ? 'opacity-40' : undefined}
             >
-              {submitting ? 'Submitting' : 'Submit for review'}
+              {submitting ? copy.submit.submitting : copy.submit.heading}
             </Pill>
 
             <p id="review-submit-explanation" className="text-[13px] text-white/64">
+              {/*
+                TWO WHOLE SENTENCES PER CASE RATHER THAN A STEM AND TWO TAILS. The English
+                version built this from a plural stem and a conditional ending, which fixes
+                both the agreement and the order of the two clauses — and "item is" against
+                "items are" is the whole of English and none of Russian (#459).
+              */}
               {held
-                ? `${blockers.length} required ${
-                    blockers.length === 1 ? 'item is' : 'items are'
-                  } not done yet. ${
-                    suggestions.length > 0
-                      ? 'The recommended items are not part of this.'
-                      : 'Finish them and this becomes available.'
-                  }`
-                : 'A moderator reads the campaign and either clears it, asks for changes, or refuses it. You can keep editing while it is in review.'}
+                ? pluralise(
+                    locale,
+                    suggestions.length > 0 ? copy.submit.heldWithSuggestions : copy.submit.held,
+                    blockers.length,
+                  )
+                : copy.submit.ready}
             </p>
           </section>
         )}
@@ -443,14 +473,14 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
         {canOfferLaunch && (
           <section aria-labelledby="review-launch-heading" className="flex flex-col gap-3">
             <h2 id="review-launch-heading" className="sr-only">
-              Launch this campaign
+              {copy.launch.heading}
             </h2>
 
             {launchError !== null && (
-              <InlineAlert variant="danger" title="This campaign was not launched">
+              <InlineAlert variant="danger" title={copy.launch.failed}>
                 <p>{launchError}</p>
                 <Pill variant="ghost" size="sm" className="mt-3" onClick={reloadAll}>
-                  Check again
+                  {copy.refusal.checkAgain}
                 </Pill>
               </InlineAlert>
             )}
@@ -476,13 +506,9 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
                 className="rounded-2xl border border-white/8 bg-surface-2 p-5"
               >
                 <h3 id="review-launch-confirm-heading" className="text-[15px] font-medium text-white">
-                  Launch this campaign now?
+                  {copy.launch.confirmHeading}
                 </h3>
-                <p className="mt-2 text-[13px] text-white/64">
-                  It becomes public immediately and starts taking pledges. The funding goal and
-                  the deadline are fixed on launch and cannot be edited afterwards, and a live
-                  campaign cannot be taken back to a draft.
-                </p>
+                <p className="mt-2 text-[13px] text-white/64">{copy.launch.confirmBody}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Pill
                     variant="accent"
@@ -497,7 +523,7 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
                       void launch();
                     }}
                   >
-                    {launching ? 'Launching' : 'Launch now'}
+                    {launching ? copy.launch.launching : copy.launch.now}
                   </Pill>
                   <Pill
                     variant="ghost"
@@ -507,7 +533,7 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
                       setConfirmingLaunch(false);
                     }}
                   >
-                    Cancel
+                    {copy.launch.cancel}
                   </Pill>
                 </div>
               </div>
@@ -519,16 +545,14 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
                   aria-describedby="review-launch-explanation"
                   onClick={() => setConfirmingLaunch(true)}
                 >
-                  Launch this campaign
+                  {copy.launch.heading}
                 </Pill>
 
                 {/* Not drawn beside the confirmation, which says the same thing at the moment
                     it matters. Two copies of one warning on one screen is one of them being
                     read and the other being scrolled past. */}
                 <p id="review-launch-explanation" className="text-[13px] text-white/64">
-                  The campaign appears everywhere on the platform and starts taking pledges the
-                  moment it launches. Its goal and its deadline freeze from that point, and a
-                  live campaign cannot be taken back to a draft.
+                  {copy.launch.explanation}
                 </p>
               </>
             )}
@@ -545,6 +569,7 @@ export function ReviewPanel({ projectId }: ReviewPanelProps) {
 
 interface ChecklistSectionProps {
   id: string;
+  copy: ReviewCopy;
   heading: string;
   description: string;
   items: readonly ChecklistItem[];
@@ -555,6 +580,7 @@ interface ChecklistSectionProps {
 
 function ChecklistSection({
   id,
+  copy,
   heading,
   description,
   items,
@@ -582,7 +608,13 @@ function ChecklistSection({
 
       <ul className="mt-4 flex flex-col gap-2">
         {items.map((item) => (
-          <ChecklistRow key={item.requirement} item={item} projectId={projectId} tone={tone} />
+          <ChecklistRow
+            key={item.requirement}
+            copy={copy}
+            item={item}
+            projectId={projectId}
+            tone={tone}
+          />
         ))}
       </ul>
     </section>
@@ -590,10 +622,12 @@ function ChecklistSection({
 }
 
 function ChecklistRow({
+  copy,
   item,
   projectId,
   tone,
 }: {
+  copy: ReviewCopy;
   item: ChecklistItem;
   projectId: string;
   tone: 'blocking' | 'advisory';
@@ -607,10 +641,10 @@ function ChecklistRow({
     would be unreadable to both (docs/ui-kit.md §9.2).
   */
   const status = item.satisfied
-    ? 'Done'
+    ? copy.row.done
     : tone === 'blocking'
-      ? 'Required, not done'
-      : 'Recommended, not done';
+      ? copy.row.requiredNotDone
+      : copy.row.recommendedNotDone;
 
   return (
     <li className="flex items-start gap-3 rounded-lg border border-white/8 bg-surface-2 p-3">
@@ -625,7 +659,7 @@ function ChecklistRow({
       <div className="min-w-0 flex-1">
         <p className="text-[15px] text-white">
           {item.label}
-          <span className="sr-only">, {status}</span>
+          <span className="sr-only">{fillPlaceholders(copy.row.status, { status })}</span>
         </p>
         {!item.satisfied && item.detail != null && (
           <p className="mt-1 text-[13px] text-white/64">{item.detail}</p>
@@ -642,8 +676,10 @@ function ChecklistRow({
           href={href}
           className="shrink-0 rounded-full bg-surface-3 px-3 py-1 text-[13px] text-white transition-colors duration-150 ease-in-out hover:bg-surface-4"
         >
-          Fix in {SECTION_LABEL[item.section]}
-          <span className="sr-only">: {item.label}</span>
+          {fillPlaceholders(copy.row.fix, { section: copy.sections[item.section] })}
+          <span className="sr-only">
+            {fillPlaceholders(copy.row.fixDetail, { label: item.label })}
+          </span>
         </Link>
       )}
     </li>
@@ -654,9 +690,9 @@ function ChecklistRow({
  * Failures
  * ---------------------------------------------------------------------- */
 
-function messageFor(cause: unknown): string {
+function messageFor(cause: unknown, copy: ReviewCopy['failures']): string {
   if (cause instanceof ApiError) {
-    if (cause.status === 404) return 'That campaign could not be found.';
+    if (cause.status === 404) return copy.notFound;
     /*
      * A plan refusal is a 403 and is not "you do not have access to this campaign" — it is
      * this creator's own campaign and they can edit every part of it. The server's own
@@ -664,12 +700,12 @@ function messageFor(cause: unknown): string {
      * preferred over the generic line below.
      */
     if (cause.problem?.code === 'PLAN_LIMIT_EXCEEDED') {
-      return cause.problem?.detail ?? 'Your plan does not cover this campaign.';
+      return cause.problem?.detail ?? copy.planLimit;
     }
-    if (cause.status === 403) return 'You do not have access to this campaign.';
-    return cause.problem?.detail ?? cause.problem?.title ?? 'The service refused the request.';
+    if (cause.status === 403) return copy.forbidden;
+    return cause.problem?.detail ?? cause.problem?.title ?? copy.refused;
   }
-  return 'The service could not be reached. Check your connection and try again.';
+  return copy.unreachable;
 }
 
 /**
@@ -680,15 +716,15 @@ function messageFor(cause: unknown): string {
  * which is usually another tab or a moderator having moved it, so the message is
  * the server's and the fix is to reload.
  */
-function refusalFrom(cause: unknown): Refusal {
+function refusalFrom(cause: unknown, copy: ReviewCopy['failures']): Refusal {
   if (cause instanceof ApiError) {
     return {
-      message: messageFor(cause),
+      message: messageFor(cause, copy),
       unmet: unmetFromRefusal(cause.problem?.meta),
       limit: planLimitFrom(cause),
     };
   }
-  return { message: messageFor(cause), unmet: [] };
+  return { message: messageFor(cause, copy), unmet: [] };
 }
 
 /**
@@ -712,8 +748,18 @@ function planLimitFrom(cause: ApiError): Refusal['limit'] {
   };
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale: Locale): string {
   const when = new Date(iso);
   if (Number.isNaN(when.getTime())) return iso;
-  return when.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  /*
+   * `lib/i18n/formats.ts` rather than `toLocaleDateString('en-GB')`, which is what this line
+   * was: a British date printed on an Azerbaijani page. That module also routes `az` away from
+   * `Intl`, which Chromium claims and then formats from root-locale data — #401.
+   */
+  return dateTimeFormat(
+    locale,
+    { day: 'numeric', month: 'long', year: 'numeric' },
+    'review-decided',
+  ).format(when);
 }

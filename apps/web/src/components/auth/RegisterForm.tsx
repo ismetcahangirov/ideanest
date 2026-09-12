@@ -11,6 +11,7 @@ import type { RegisterCopy } from '../../lib/i18n/auth-copy';
 import { fillNodes } from '../../lib/i18n/placeholders';
 import { DEFAULT_SIGNED_IN_PATH, RETURN_TO_PARAM, safeReturnPath } from '../../lib/auth/redirect';
 import { AuthPageHeader } from './AuthPageHeader';
+import { PasswordReveal } from './PasswordReveal';
 import { ProviderSignIn } from './ProviderSignIn';
 import { TwoFactorChallenge } from './TwoFactorChallenge';
 import { useSignInOutcome } from './useSignInOutcome';
@@ -60,6 +61,12 @@ export function RegisterForm({ copy }: RegisterFormProps) {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
+  /*
+   * Never persisted — issue #457. It is local to this component so that a reveal cannot
+   * outlive the form: leaving a password legible on a screen somebody has walked away from is
+   * the one thing the mask is actually for.
+   */
+  const [revealed, setRevealed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<AuthFailure | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Readonly<Record<string, string>>>({});
@@ -193,6 +200,16 @@ export function RegisterForm({ copy }: RegisterFormProps) {
           />
         </Field>
 
+        {/*
+          THE PASSWORD CAN BE READ BACK — issue #457. This is the screen where the cost of a
+          mask is highest: a typo here becomes an account whose password nobody knows, and the
+          refusal arrives afterwards, from a mailbox somebody has to open first.
+
+          `autoComplete` stays `new-password` whichever type the input carries. It describes
+          what the field is for — it is what makes a manager offer to generate and store one —
+          and losing that because somebody pressed the reveal control would make the safer path
+          the slower one.
+        */}
         <Field
           label={copy.fields.password}
           required
@@ -200,11 +217,19 @@ export function RegisterForm({ copy }: RegisterFormProps) {
           error={fieldErrors['password']}
         >
           <TextInput
-            type="password"
+            type={revealed ? 'text' : 'password'}
             name="password"
             autoComplete="new-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
+            trailing={
+              <PasswordReveal
+                revealed={revealed}
+                onToggle={() => setRevealed((shown) => !shown)}
+                showLabel={copy.fields.revealPassword}
+                hideLabel={copy.fields.hidePassword}
+              />
+            }
           />
         </Field>
 

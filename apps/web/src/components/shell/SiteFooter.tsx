@@ -1,7 +1,8 @@
 import { Link } from '../../i18n/navigation';
 import { getLocale } from 'next-intl/server';
-import { LOCALE_NAMES, localeOrDefault } from '../../lib/i18n/locale';
+import { localeOrDefault } from '../../lib/i18n/locale';
 import { footerCopy } from '../../lib/i18n/shell-copy.server';
+import { LanguageSwitch } from './LanguageSwitch';
 
 /**
  * The global footer — §4.13 WS-02, docs/ui-kit.md §8.6.
@@ -22,28 +23,30 @@ import { footerCopy } from '../../lib/i18n/shell-copy.server';
  * `--text-tertiary` and lift to white on hover, which is 4.9:1 at rest and is why they are
  * set at 16px or above (§9.1).
  *
- * <h2>Language and currency are stated here, and chosen elsewhere</h2>
+ * <h2>The language is offered here now, and the currency is still only stated</h2>
  *
- * WS-02 lists both. #280 built the preference and it lives on `/settings/language`, not in
- * this footer, for two separate reasons that happen to point the same way.
+ * WS-02 lists both, and until #458 this footer offered neither. The refusal was argued and
+ * the argument was right at the time: choosing a language meant reading a cookie, reading a
+ * cookie makes a render dynamic, and this component is on `/`, the category landings and
+ * every static page — so a control here would have turned all of them into a render per
+ * visitor to translate a navigation bar.
  *
- * THE LANGUAGE IS NOT OFFERED HERE BECAUSE THIS FOOTER IS ON CACHED PAGES. Choosing a
- * language means reading a cookie, and reading a cookie makes a render dynamic — this
- * component is on `/`, the category landings and the static pages, every one of which is a
- * shared cached render today. A control here would turn all of them into a render per
- * visitor to translate a navigation bar, paid on the largest contentful paint of the pages a
- * stranger meets first. #324's catalogue therefore covers the already-dynamic account area,
- * and the public shell stays English until #123's locale-prefixed URLs make one cached
- * render per language possible. `src/i18n/request.ts` carries the long form of this.
+ * #123 REMOVED THE PREMISE RATHER THAN THE COST. The language is a path segment now, so
+ * switching is a link from one cached address to another and nothing is read at render time.
+ * `src/i18n/request.ts` states the consequence: "there is no longer a performance argument
+ * for leaving any surface in English." `LanguageSwitch` is the one client boundary in this
+ * file, and it is a boundary only because the anchors need the route's own path; the footer
+ * around it is unchanged and still renders on the server.
  *
- * So what the footer states remains true: this build serves the public site in English.
+ * <p>The old sentence this replaced — "this build serves the public site in English" — was
+ * the honest statement of a limitation that no longer exists.
  *
- * THE CURRENCY IS A CONTROL NOW, AND IT IS STILL NOT HERE. #327 built the rate source §21.2
- * asks for — the Central Bank of Azerbaijan's daily publication, refreshed hourly — so
- * `/settings/language`'s currency panel is a real choice rather than the sentence #280 could honestly
- * offer. This footer keeps the statement, for the language's reason rather than for the old
- * one: a control here would have to know who is reading, and this component is on cached
- * shared renders.
+ * THE CURRENCY IS A CONTROL ELSEWHERE, AND IT IS STILL NOT HERE. #327 built the rate source
+ * §21.2 asks for — the Central Bank of Azerbaijan's daily publication, refreshed hourly — so
+ * `/settings/language`'s currency panel is a real choice rather than the sentence #280 could
+ * honestly offer. The language's argument does not carry over to it: a display currency is a
+ * per-reader preference with nothing in the URL to carry it, so a control here would have to
+ * know who is reading, which is the dynamic render #458 was careful not to reintroduce.
  *
  * What it states is what every visitor is charged in, which does not vary by reader: §21.2
  * collects in the campaign's currency, and phase 1's campaigns are all in manat. A display
@@ -59,11 +62,10 @@ import { footerCopy } from '../../lib/i18n/shell-copy.server';
 
 export async function SiteFooter() {
   /*
-   * The footer's words, and the reader's own language name. The language line used to be the
-   * constant `'English'` — an honest statement while the site had one language and a lie the
-   * moment it had four, printed at the bottom of every Russian page. `LOCALE_NAMES` holds
-   * each language's name in itself, which is the only spelling worth showing here: a reader
-   * looking for их язык recognises "Русский" and not "Russian".
+   * The footer's words, and the language the page was drawn in. That value used to pick one
+   * name out of `LOCALE_NAMES` to print as a statement; since #458 it marks which of the four
+   * the reader is on, and the other three are the way out of it. Each is still named in
+   * itself — a reader looking for их язык recognises "Русский" and not "Russian".
    */
   const [copy, locale] = await Promise.all([footerCopy(), getLocale()]);
 
@@ -73,7 +75,7 @@ export async function SiteFooter() {
    * renders — and narrowing costs nothing while a cast would be a lie the compiler stops
    * checking.
    */
-  const language = LOCALE_NAMES[localeOrDefault(locale)];
+  const language = localeOrDefault(locale);
 
   return (
     <footer className="mt-24 border-t border-white/6 bg-surface-1">
@@ -121,16 +123,21 @@ export async function SiteFooter() {
           */}
           <p>© IdeaNest</p>
 
-          <dl className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <div className="flex items-center gap-2">
-              <dt>{copy.languageHeading}</dt>
-              <dd className="text-white/64">{language}</dd>
-            </div>
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-2">
+            {/*
+              The language is a control and the currency is a statement, so they are no longer
+              two rows of one description list. A `<dd>` holding four links would be a
+              definition of a term that is really a choice, and `LanguageSwitch` names itself
+              as a navigation landmark — which is what a reader looking for the control will
+              be moving between.
+            */}
+            <LanguageSwitch heading={copy.languageHeading} current={language} />
+
+            <dl className="flex items-center gap-2">
               <dt>{copy.currencyHeading}</dt>
               <dd className="text-white/64">{copy.currencyValue}</dd>
-            </div>
-          </dl>
+            </dl>
+          </div>
         </div>
       </div>
     </footer>

@@ -2306,7 +2306,9 @@
       "email": "E-posta adresi",
       "emailPlaceholder": "you@example.com",
       "password": "Parola",
-      "passwordHint": "Uzun parola karmaşık paroladan güçlüdür. Kesin gereklilik, bu parola reddedilirse servisin kendisinden gelir."
+      "passwordHint": "Uzun parola karmaşık paroladan güçlüdür. Kesin gereklilik, bu parola reddedilirse servisin kendisinden gelir.",
+      "revealPassword": "Parolayı göster",
+      "hidePassword": "Parolayı gizle"
     },
     "failures": {
       "unexpectedTitle": "Bir şeyler ters gitti",
@@ -3231,6 +3233,880 @@
       "fixedFee": "Ödeme sağlayıcısı ayrıca işlem başına {amount} alır.",
       "twoFees": "Bunlar iki ayrı kesintidir. IdeaNest’in ücreti platformun aldığıdır; işlem ücreti parayı taşıyan şirkete gider ve IdeaNest onu hiçbir zaman almaz. Yürürlükteki oranlar yukarıdakilerdir ve ödeme tam olarak bunlarla hesaplanır.",
       "unconfigured": "IdeaNest henüz bir ücret tarifesi belirlemedi, bu yüzden bugün desteklerden hiçbir şey kesilmiyor. Bu kalıcı bir taahhüt değildir: herhangi bir oran belirlendiği anda burada yayımlanır, koşullar ise yaratıcı sözleşmesinde belirtilir."
+    }
+  },
+  "editor": {
+    "frame": {
+      "eyebrow": "Kampanya düzenleyici",
+      "loading": "Yükleniyor",
+      "sections": "Kampanya bölümleri",
+      "soon": "yakında",
+      "unavailable": ", henüz kullanılamıyor",
+      "tabs": {
+        "basics": "Temel bilgiler",
+        "rewards": "Ödüller",
+        "story": "Hikâye",
+        "faq": "Sorular",
+        "prelaunch": "Lansman öncesi",
+        "review": "İnceleme"
+      },
+      "states": {
+        "DRAFT": "Taslak",
+        "PRELAUNCH": "Lansman öncesi",
+        "SUBMITTED": "İncelemede",
+        "CHANGES_REQUESTED": "Değişiklik istendi",
+        "REJECTED": "Reddedildi",
+        "APPROVED": "Onaylandı",
+        "SCHEDULED": "Planlandı",
+        "LIVE": "Etkin",
+        "SUSPENDED": "Askıya alındı",
+        "CANCELED": "İptal edildi",
+        "SUCCESSFUL": "Fonlandı",
+        "UNSUCCESSFUL": "Fonlanmadı",
+        "COLLECTING": "Tahsilat",
+        "LATE_PLEDGE": "Geç destekler",
+        "FULFILLING": "Gönderim",
+        "COMPLETED": "Tamamlandı"
+      },
+      "save": {
+        "saving": "Kaydediliyor",
+        "saved": "Kaydedildi",
+        "failed": "Kaydedilmedi"
+      },
+      "signedOut": {
+        "title": "Oturumunuz kapalı",
+        "body": "Bu tarayıcıda artık oturum yok. Kampanyayı düzenlemeye devam etmek için yeniden giriş yapın."
+      },
+      "loadFailed": "Bu proje yüklenemedi",
+      "tryAgain": "Yeniden deneyin",
+      "failures": {
+        "save": {
+          "signedOut": "Oturumunuz kapandı. Yeniden giriş yapın — yazdığınız hiçbir şey kaybolmadı.",
+          "notAllowed": "Bu projeyi düzenleme izniniz yok.",
+          "gone": "Bu proje artık mevcut değil.",
+          "stale": "Bu sayfa açıldığından beri proje değişti. Güncel sürümü görmek için sayfayı yeniden yükleyin.",
+          "invalid": "Servis değişikliği reddetti. Aşağıda işaretlenen alanları kontrol edin.",
+          "unsaved": "Değişiklik kaydedilemedi. Yeniden deneyin.",
+          "unreachable": "Servise ulaşılamadı, bu yüzden hiçbir şey kaydedilmedi. Yeniden deneyin."
+        },
+        "load": {
+          "forbidden": "Bu projeye erişiminiz yok.",
+          "notFound": "Bu proje bulunamadı.",
+          "refused": "Servis isteği reddetti. Yeniden deneyin.",
+          "unreachable": "Servise ulaşılamadı. Bağlantınızı kontrol edip yeniden deneyin."
+        }
+      }
+    },
+    "basics": {
+      "loading": "Kampanya yükleniyor",
+      "saveFailed": {
+        "title": "Bu değişiklik kaydedilmedi",
+        "kept": "Yazdığınız hiçbir şey kaybolmadı — hepsi aşağıdaki alanlarda duruyor ve yeniden gönderilecek."
+      },
+      "title": {
+        "label": "Başlık",
+        "hint": "Keşfet ızgarasında görünen ad. En çok {max} karakter."
+      },
+      "blurb": {
+        "label": "Özet",
+        "hint": "Bir veya iki cümle; aramada ve ızgarada başlığın altında görünür. En çok {max} karakter."
+      },
+      "categoriesUnavailable": {
+        "title": "Kategori listesi kullanılamıyor",
+        "body": "Kategoriler yüklenemedi, bu yüzden kampanyanın kategorisi şimdilik burada değiştirilemiyor. Sayfadaki diğer her şey yine de kaydediliyor."
+      },
+      "category": {
+        "label": "Kategori",
+        "hint": "Destekçiler bu projeyi burada bulacak.",
+        "placeholder": "Bir kategori seçin"
+      },
+      "subcategory": {
+        "label": "Alt kategori",
+        "placeholder": "Alt kategori yok",
+        "chooseCategory": "Önce bir kategori seçin.",
+        "none": "Bu kategorinin alt kategorisi yok.",
+        "optional": "İsteğe bağlı ve daha belirgin."
+      },
+      "goal": {
+        "label": "Fonlama hedefi",
+        "hint": "Ya hep ya hiç: bu rakama ulaşılmazsa hiçbir şey tahsil edilmez.",
+        "locked": "Kampanya başladıktan sonra hedef değiştirilemez."
+      },
+      "currency": {
+        "label": "Para birimi",
+        "hint": "Kampanya başlayınca sabitlenir."
+      },
+      "duration": {
+        "label": "Süre, gün",
+        "hint": "{min} ile {max} gün arası. {recommended} gün öneriyoruz.",
+        "locked": "Kampanya başladıktan sonra son tarih değiştirilemez."
+      },
+      "schedule": {
+        "label": "Planlanan lansman",
+        "hint": "İsteğe bağlı. İnceleme bittikten sonra elle başlatmak için boş bırakın."
+      },
+      "latePledge": {
+        "label": "Geç destekleri kabul et",
+        "hint": "Proje fonlandıysa son tarihten sonra da desteklere açık kalır. İstediğiniz zaman yeniden kapatabilirsiniz."
+      },
+      "errors": {
+        "titleMissing": "Bir projenin başlığı olmalıdır.",
+        "titleTooLong": "Başlık en çok {max} karakter olmalıdır. {over} karakter çıkarın.",
+        "blurbTooLong": "Özet en çok {max} karakter olmalıdır. {over} karakter çıkarın.",
+        "subcategoryWithoutCategory": "Önce bir kategori seçin.",
+        "currencyUnsupported": "Platformun tahsilat yapabildiği bir para birimi seçin.",
+        "durationNotWhole": "Süreyi tam gün sayısı olarak girin.",
+        "durationOutOfRange": "Bir kampanya {min} ile {max} gün arası sürer.",
+        "scheduleUnreadable": "Bir tarih ve saat girin.",
+        "schedulePast": "Gelecekte bir tarih ve saat seçin.",
+        "amount": {
+          "empty": "Toplamanız gereken tutarı girin.",
+          "notANumber": "Hedefi rakamla girin, örneğin 5000.00.",
+          "comma": "Ondalık ayırıcı olarak nokta kullanın, örneğin 5000.00.",
+          "tooManyDecimals": "Hedefte en çok iki ondalık basamak olabilir.",
+          "tooLarge": "Bu hedef platformun tutabileceğinden büyük.",
+          "notPositive": "Hedef sıfırdan büyük olmalıdır."
+        }
+      },
+      "cover": {
+        "label": "Kapak görseli",
+        "hint": "Keşfet ızgarasında ve proje sayfasının üstünde görünür. {minimum} piksel ve üzeri en iyi görünür.",
+        "set": "Kapak {size} piksel",
+        "uploaded": " · yüklendi",
+        "remove": "Kapağı kaldır",
+        "drop": "Kapak olarak kullanmak için bir görseli buraya bırakın",
+        "release": "Bu görseli yüklemek için bırakın",
+        "choose": "Bir görsel seçin",
+        "dropHint": "20 MB’a kadar. Görsel burada dönüştürülüp yeniden boyutlandırılır, orijinali saklanmaz. {minimum} ve üzeri en iyi görünür.",
+        "addressLabel": "Kapak görselinin adresi",
+        "addressPlaceholder": "Ya da bir adres yapıştırın: https://images.example.com/cover.jpg",
+        "checking": "Denetleniyor",
+        "useAddress": "Bu adresi kullan",
+        "addressMissing": "Önce bir görselin adresini girin.",
+        "accepted": "Kapak {size} piksellik bir görselden ayarlandı.",
+        "softTitle": "Tam genişlikte bulanık görünecek",
+        "soft": "Kapak {size} piksellik bir görselden ayarlandı. Bu, önerilen {minimum} ölçüsünün altında; başlığı doldurmak için büyütülecek ve bulanık görünecek. Oranları korunur — çerçeve germez, kırpar. Kampanya yine de gönderilebilir.",
+        "rejectedTitle": "Bu dosya kullanılmadı",
+        "unusable": "Bu görsel kullanılamadı.",
+        "stages": {
+          "preparing": "Görsel hazırlanıyor…",
+          "uploading": "Görsel yükleniyor…",
+          "processing": "Görsel işleniyor…"
+        },
+        "refusals": {
+          "UNSUPPORTED_FORMAT": "Bu dosya platformun okuyabildiği bir görsel değil. JPEG, PNG, WebP, AVIF ve HEIC çalışır.",
+          "TOO_LARGE": "Bu dosya çok büyük. Sınır 20 MB.",
+          "TOO_SMALL": "Bu görsel göstermek için çok küçük. {minimum} ve üzeri iyi görünür.",
+          "EMPTY": "Bu dosya boş.",
+          "UNREADABLE": "Bu görsel dönüştürülemedi. Farklı bir dosya çalışacaktır.",
+          "UPLOADS_UNAVAILABLE": "Bu ortamda yükleme açık değil. Bunun yerine bir adres yapıştırın.",
+          "MEDIA_STORAGE_UNREACHABLE": "Görsel deposu yanıt vermiyor. Lütfen birazdan yeniden deneyin.",
+          "UPLOAD_STILL_PROCESSING": "Bu görsel her zamankinden uzun sürüyor. Bu sekmeye geri döndüğünüzde görünebilir.",
+          "UPLOAD_TRANSFER_FAILED": "Görsel depoya ulaşmadı. Bağlantıyı kontrol edip yeniden deneyin."
+        }
+      }
+    },
+    "rewards": {
+      "loading": "Bu kampanyanın ödülleri yükleniyor",
+      "listFailed": "Ödüller yüklenemedi",
+      "actionFailed": "Bu işe yaramadı",
+      "kept": "Yazdığınız hiçbir şey kaybolmadı — hepsi aşağıdaki alanlarda duruyor.",
+      "itemInUse": {
+        "one": "{tiers} içinde yer alıyor. Önce o ödülden çıkarın, sonra silin.",
+        "few": "{tiers} içinde yer alıyor. Önce o ödüllerden çıkarın, sonra silin.",
+        "many": "{tiers} içinde yer alıyor. Önce o ödüllerden çıkarın, sonra silin.",
+        "other": "{tiers} içinde yer alıyor. Önce o ödüllerden çıkarın, sonra silin."
+      },
+      "rewardHasBackers": "Bunun yerine gizleyin — onu seçenlerde neyi hak ettiklerinin açıklaması kalır ve ödül başkasına sunulmaz.",
+      "heading": "Ödüller",
+      "count": "({max} ödülden {count})",
+      "add": "Ödül ekleyin",
+      "fullTitle": "Bu kampanyada olabilecek en fazla ödül var",
+      "fullBody": "§5.3 {max} ödüle izin verir. Yenisini eklemeden önce birini silin ya da birleştirin.",
+      "empty": {
+        "title": "Henüz ödül yok",
+        "body": "Ödül, bir destekçinin seçip ödediği şeydir: bir başlık, bir fiyat ve aldığı öğeler. Bir kampanya ödülsüz de yürüyebilir, ama neredeyse hiçbiri yürütmez.",
+        "action": "İlk ödülü ekleyin"
+      },
+      "listLabel": "Ödül kademeleri, destekçilerin gördüğü sırayla",
+      "announce": {
+        "moved": "{title} {total} konumdan {position}. konuma taşındı.",
+        "duplicated": "{title} {position}. konuma kopyalandı.",
+        "hidden": "{title} kampanya sayfasında gizlendi.",
+        "shown": "{title} yeniden kampanya sayfasında.",
+        "deleted": "{title} silindi."
+      },
+      "card": {
+        "hidden": "Gizli",
+        "opensLater": "Sonra açılır",
+        "featured": "Öne çıkarıldı",
+        "secret": "Gizli davetli",
+        "earlyBird": "Erken kuş",
+        "addon": "Ek ürün",
+        "delivers": "{month} tarihinde teslim",
+        "moveUp": "{title} yukarı taşı, şu anda {total} konumdan {position}.",
+        "moveDown": "{title} aşağı taşı, şu anda {total} konumdan {position}.",
+        "edit": "Düzenle",
+        "editLabel": "{title} ödülünü düzenle",
+        "duplicate": "Çoğalt",
+        "duplicateLabel": "{title} ödülünü çoğalt",
+        "show": "Göster",
+        "showLabel": "{title} ödülünü kampanya sayfasında göster",
+        "hide": "Gizle",
+        "hideLabel": "{title} ödülünü kampanya sayfasında gizle",
+        "delete": "Sil",
+        "deleteLabel": "{title} ödülünü sil",
+        "backed": {
+          "one": "Bu ödülü {count} destekçi seçti, bu yüzden gizlenebilir ama silinemez.",
+          "few": "Bu ödülü {count} destekçi seçti, bu yüzden gizlenebilir ama silinemez.",
+          "many": "Bu ödülü {count} destekçi seçti, bu yüzden gizlenebilir ama silinemez.",
+          "other": "Bu ödülü {count} destekçi seçti, bu yüzden gizlenebilir ama silinemez."
+        }
+      },
+      "contents": {
+        "none": "İçinde öğe yok",
+        "some": "İçeriği: {items}",
+        "quantity": "{name} ×{quantity}",
+        "missing": "artık bu kampanyada olmayan bir öğe"
+      },
+      "namedTiers": {
+        "unknown": "bu kampanyadaki bir ödül",
+        "one": "bir ödül"
+      },
+      "deleteItem": {
+        "title": "Öğeyi sil",
+        "named": "{name} silinsin mi?",
+        "body": "Bir ödülün içinde yer alan öğe silinemez — önce ödülden çıkarın. Bu sayfanın bildiği kadarıyla bu öğe hiçbir ödülde değil, servis de bunu yeniden denetler."
+      },
+      "deleteReward": {
+        "title": "Ödülü sil",
+        "named": "{title} silinsin mi?",
+        "body": "Bir ödülü biri destekledikten sonra artık silinemez, yalnızca gizlenebilir — bu yüzden silme, kimse desteklemediği sürece sunulur."
+      },
+      "deleteNote": "Bu geri alınamaz.",
+      "keepIt": "Kalsın",
+      "confirmDelete": "Sil",
+      "items": {
+        "heading": "Öğeler",
+        "count": "({count})",
+        "add": "Öğe ekleyin",
+        "loading": "Bu kampanyanın öğeleri yükleniyor",
+        "empty": {
+          "title": "Henüz öğe yok",
+          "body": "Öğe, tek bir fiziksel ya da dijital şeydir — bir kupa, bir poster, bir indirme. Ödüller bunlardan kurulur, bu yüzden kampanya buradan başlar.",
+          "action": "İlk öğeyi ekleyin"
+        },
+        "digital": "Dijital",
+        "physical": "Fiziksel",
+        "grams": "{weight} g",
+        "editLabel": "{name} öğesini düzenle",
+        "deleteLabel": "{name} öğesini sil"
+      },
+      "drawer": {
+        "cancel": "Vazgeç",
+        "save": "Kaydet",
+        "saving": "Kaydediliyor"
+      },
+      "itemEditor": {
+        "titleNew": "Öğe ekleyin",
+        "titleEdit": "Öğeyi düzenle",
+        "intro": "Öğeler, kampanyanızın ürettiği şeylerdir. Ödül ise bunların adetleriyle birlikte bir seçkisidir.",
+        "failed": "Bu öğe kaydedilmedi",
+        "name": {
+          "label": "Ad",
+          "hint": "Bir destekçinin tanıyacağı şekliyle ne olduğu. En çok {max} karakter."
+        },
+        "description": {
+          "label": "Açıklama",
+          "hint": "İsteğe bağlı. Beden, renk, baskı — bunu diğerinden ne ayırıyorsa."
+        },
+        "image": {
+          "label": "Görsel adresi",
+          "hint": "Yayımlanmış bir adres. Henüz yükleyici yok, bu yüzden zaten çevrimiçi olan bir görselin bağlantısını yapıştırın."
+        },
+        "digital": {
+          "label": "Dosya olarak teslim edilir",
+          "hint": "Bir indirme ya da lisans. Hiçbir şey gönderilmez, bu yüzden ağırlık ve adres yok."
+        },
+        "weight": {
+          "label": "Ağırlık, gram",
+          "hint": "İsteğe bağlı; kargo bundan hesaplanacak.",
+          "digital": "Bir dosyanın kargo ağırlığı yoktur."
+        },
+        "sku": {
+          "label": "Stok kodu",
+          "hint": "İsteğe bağlı. Bu kampanya içinde benzersiz, kendi referansınız."
+        }
+      },
+      "itemErrors": {
+        "nameMissing": "Bir öğenin adı olmalıdır.",
+        "nameTooLong": "Ad en çok {max} karakter olmalıdır. {over} karakter çıkarın.",
+        "skuTooLong": "Stok kodu en çok {max} karakter olmalıdır.",
+        "weightOnDigital": "Dijital bir öğenin kargo ağırlığı olmaz. Ağırlığı temizleyin ya da öğeyi fiziksel yapın.",
+        "weightNotWhole": "Ağırlığı tam gram sayısı olarak girin.",
+        "weightNotPositive": "Ağırlık sıfır gramdan büyük olmalıdır."
+      },
+      "tierEditor": {
+        "titleNew": "Ödül ekleyin",
+        "titleEdit": "Ödülü düzenle",
+        "intro": "Bir destekçinin seçip ödediği şey. Yukarıdaki öğelerden, sizin seçtiğiniz adetlerle oluşur.",
+        "failed": "Bu ödül kaydedilmedi",
+        "ratesFailed": "Kargo tarifeleri kaydedilmedi",
+        "ratesKeptLead": "Ödülün kendisi kaydedildi.",
+        "ratesKeptRest": "Yalnızca ülke bazlı tarifeler reddedildi; onları düzeltip yeniden kaydedin — geri kalanı iki kez gönderilmeyecek.",
+        "title": {
+          "label": "Başlık",
+          "hint": "Bir destekçinin ödül listesinde gördüğü ad. En çok {max} karakter."
+        },
+        "description": {
+          "label": "Açıklama",
+          "hint": "Ne alacakları, bir iki cümleyle."
+        },
+        "price": {
+          "label": "Fiyat",
+          "hint": "Bir destekçinin ödediği tutar. Kampanyanın para birimi olan {currency} ile.",
+          "locked": "Kampanya başladıktan sonra fiyat değiştirilemez. {currency} ile."
+        },
+        "delivery": {
+          "label": "Tahmini teslim",
+          "hint": "Teslim etmeyi beklediğiniz ay. Destekçiler bunu bir söz olarak okur."
+        },
+        "places": {
+          "label": "Kontenjan",
+          "hint": "Sınırsız için boş bırakın. Adet her zaman artırılabilir; azaltmak ise yalnızca hâlihazırda alınmış sayının üzerinde mümkündür.",
+          "committed": "Sınırsız için boş bırakın. Hâlihazırda alınan kontenjan: {committed}, bu yüzden sınır bunun altına inemez."
+        },
+        "shipping": {
+          "label": "Teslimat"
+        }
+      },
+      "scopes": {
+        "NONE": {
+          "label": "Hiçbir şey teslim edilmez",
+          "hint": "Bir teşekkür, bir künye, duvardaki bir isim."
+        },
+        "DIGITAL": {
+          "label": "Dijital teslimat",
+          "hint": "Bir dosya ya da lisans. Adres sorulmaz."
+        },
+        "LOCAL_PICKUP": {
+          "label": "Elden teslim alınır",
+          "hint": "Taşıyıcı ve tarife yok, ama destekçinin ülkesi yine de sorulur."
+        },
+        "DOMESTIC": {
+          "label": "Yurt içine gönderilir",
+          "hint": "Yalnızca kendi ülkenizde. Her varış noktası için tarife gerekir."
+        },
+        "INTERNATIONAL": {
+          "label": "Yurt dışına gönderilir",
+          "hint": "Tarife girdiğiniz her yere. Tarifesi olmayan bir varış noktası seçilemez."
+        }
+      },
+      "rates": {
+        "label": "Kargo tarifeleri",
+        "hint": "Her varış noktası için bir tarife, {currency} ile. Tarifesi olmayan bir ülke ödeme adımında seçilemez, 0 ise ücretsiz kargodur.",
+        "empty": "Henüz hiçbir varış noktasının tarifesi yok, bu yüzden bu ödül hiçbir yere gönderilemez.",
+        "add": "Varış noktası ekleyin",
+        "unnamed": "{position}. varış noktası",
+        "countryLabel": "{destination} için ülke kodu",
+        "ratePlaceholder": "Tarife",
+        "rateLabel": "{destination} için kargo tarifesi",
+        "extraPlaceholder": "Her ek",
+        "extraLabel": "{destination} için her ek öğenin tarifesi",
+        "removeLabel": "{destination} kaldır"
+      },
+      "composition": {
+        "label": "İçinde ne var",
+        "hint": "Bir destekçinin aldığı öğeler. İçi boş bir ödül de meşrudur — bir teşekkür, bir künye — ve boş liste tam olarak bunu ifade eder.",
+        "missing": "Artık bu kampanyada olmayan bir öğe",
+        "quantityLabel": "{name} adedi",
+        "removeLabel": "{name} öğesini bu ödülden çıkar",
+        "addPlaceholder": "Öğe ekleyin…",
+        "addLabel": "Bu ödüle bir öğe ekleyin",
+        "noItems": "Bu kampanyada henüz öğe yok. Bu panelin arkasındaki listeye bir öğe ekleyin, burada görünecek.",
+        "allChosen": "Bu kampanyadaki bütün öğeler zaten bu ödülün içinde."
+      },
+      "opens": {
+        "label": "Açılış",
+        "hint": "İsteğe bağlı. Kampanyayla aynı anda açılan bir ödül için boş bırakın."
+      },
+      "closes": {
+        "label": "Kapanış",
+        "hint": "İsteğe bağlı. Geçmişte bir an ödülü gizler — listedeki Gizle düğmesinin yaptığı da budur."
+      },
+      "offering": {
+        "legend": "Nasıl sunuluyor"
+      },
+      "earlyBird": {
+        "label": "Erken kuş",
+        "hint": "Tükenen, daha avantajlı bir teklif. Ya bir kapanış tarihi ya da sınırlı bir kontenjan gerekir — bunlarsız, insanları boşuna acele ettiren bir etikete sahip sıradan bir ödüldür."
+      },
+      "featured": {
+        "label": "Öne çıkarıldı",
+        "hint": "Kampanya sayfasında ilk sırada gösterilir."
+      },
+      "secret": {
+        "label": "Gizli davetli",
+        "hint": "Herkese açık listeye girmez, bunun yerine özel bir belirteçle erişilir. Yeniden herkese açık yapmak o belirteci yok eder, böylece gönderilmiş bağlantılar çalışmaz olur.",
+        "token": "Belirteç"
+      },
+      "addon": {
+        "label": "Ek ürün olarak satılır",
+        "hint": "Bir ödülün yerine değil, yanında sunulur."
+      },
+      "errors": {
+        "titleMissing": "Bir ödülün başlığı olmalıdır.",
+        "titleTooLong": "Başlık en çok {max} karakter olmalıdır. {over} karakter çıkarın.",
+        "price": {
+          "empty": "Bir ödülün fiyatı olmalıdır.",
+          "notANumber": "Fiyatı rakamla girin, örneğin 19.99.",
+          "comma": "Ondalık ayırıcı olarak nokta kullanın, örneğin 19.99.",
+          "tooManyDecimals": "Fiyatta en çok iki ondalık basamak olabilir.",
+          "tooLarge": "Bu fiyat platformun tutabileceğinden büyük.",
+          "notPositive": "Ödül fiyatı sıfırdan büyük olmalıdır."
+        },
+        "rate": {
+          "empty": "Bu varış noktasına kargonun ne kadar tuttuğunu girin.",
+          "notANumber": "Tarifeyi rakamla girin, örneğin 12.50.",
+          "comma": "Ondalık ayırıcı olarak nokta kullanın, örneğin 12.50.",
+          "tooManyDecimals": "Tarifede en çok iki ondalık basamak olabilir.",
+          "tooLarge": "Bu tarife platformun tutabileceğinden büyük.",
+          "notPositive": "Tarife eksi olamaz. Ücretsiz kargo için 0 girin."
+        },
+        "limitNotWhole": "Kontenjanı tam sayı olarak girin ya da sınırsız için boş bırakın.",
+        "limitTooSmall": "Sınırlı bir ödül en az bir kontenjan sunar. Sınırsız yapmak için sınırı temizleyin.",
+        "limitBelowCommitted": "Bu, hâlihazırda alınmış olanın altında: {committed}. Adet her zaman artırılabilir, azaltmak ise yalnızca alınmış sayının üzerinde mümkündür.",
+        "secretFeatured": "Gizli davetli bir ödül sayfada gösterilmez, bu yüzden aynı anda öne de çıkarılamaz.",
+        "earlyBirdNeedsLimit": "Erken kuş ödülü için ya bir kapanış tarihi ya da sınırlı bir kontenjan gerekir.",
+        "dateUnreadable": "Bir tarih ve saat girin ya da boş bırakın.",
+        "closesBeforeOpens": "Bir ödül açıldıktan sonra kapanır, önce değil.",
+        "itemsDuplicate": "Her öğe bir kez görünür, sayısı ise adet olarak yazılır.",
+        "itemsQuantity": "Bir ödül, listelediği her öğeden en az bir tane içerir.",
+        "rulesNotShipped": "Ülke bazlı tarifeler yalnızca yurt içine ya da yurt dışına gönderilen bir ödülde olur. Teslimat yöntemini değiştirin ya da tarifeleri kaldırın.",
+        "rulesCountryCode": "Varış noktası iki harfli bir ülke kodudur, örneğin AZ ya da TR.",
+        "rulesDuplicate": "Her varış noktası bir kez görünür: {code} iki kez listelenmiş.",
+        "rulesRow": "{code}: {reason}"
+      },
+      "stock": {
+        "unlimited": "Sınırsız kontenjan",
+        "remaining": {
+          "one": "{limit} kontenjandan {count} kaldı",
+          "few": "{limit} kontenjandan {count} kaldı",
+          "many": "{limit} kontenjandan {count} kaldı",
+          "other": "{limit} kontenjandan {count} kaldı"
+        }
+      },
+      "showBlocked": "Bu bir erken kuş ödülü ve böyle bir ödül için ya bir kapanış tarihi ya da sınırlı bir kontenjan gerekir. Yeniden göstermeden önce bir sınır koyun ya da erken kuşu kapatın."
+    },
+    "story": {
+      "loading": "Bu kampanyanın hikâyesi yükleniyor",
+      "unreadable": {
+        "title": "Bu hikâye bu sayfada düzenlenemez",
+        "body": "Bu düzenleyicinin anladığından daha yeni bir biçimde yazılmış. Güncel düzenleyiciyi almak için sayfayı yeniden yükleyin. Hiçbir şey değişmedi ve hikâye hâlâ proje sayfanızda.",
+        "reload": "Yeniden yükle"
+      },
+      "saveFailed": {
+        "title": "Bu değişiklik kaydedilmedi",
+        "kept": "Yazdığınız hiçbir şey kaybolmadı — hepsi bu sayfada duruyor ve yeniden gönderilecek."
+      },
+      "blocked": {
+        "title": "Hikâye henüz kaydedilmiyor",
+        "body": {
+          "one": "Bir blok eksik. Yanındaki ileti neyin eksik olduğunu söylüyor; doldurulur doldurulmaz kaydetme sürüyor.",
+          "few": "{count} blok eksik. Yanlarındaki iletiler neyin eksik olduğunu söylüyor; doldurulur doldurulmaz kaydetme sürüyor.",
+          "many": "{count} blok eksik. Yanlarındaki iletiler neyin eksik olduğunu söylüyor; doldurulur doldurulmaz kaydetme sürüyor.",
+          "other": "{count} blok eksik. Yanlarındaki iletiler neyin eksik olduğunu söylüyor; doldurulur doldurulmaz kaydetme sürüyor."
+        }
+      },
+      "counter": "Göndermek için gereken {minimum} karakterden {count}",
+      "earlierVersions": "Önceki sürümler",
+      "anchors": {
+        "heading": "Proje sayfanızdaki bölüm menüsü",
+        "untitled": "Başlıksız bölüm"
+      },
+      "risks": {
+        "label": "Riskler ve zorluklar",
+        "hint": "Neler ters gidebilir ve bu konuda ne yapacaksınız. En az {minimum} karakter; göndermeden önce zorunlu.",
+        "placeholder": "Genelde üçü olur: üretim, kargo ve zamanlama. Neyin çözüldüğünü ve neyin çözülmediğini yazın."
+      },
+      "blocks": {
+        "heading": "Hikâye",
+        "empty": "Henüz bir şey yok. Başlamak için bir paragraf ekleyin — kampanyaların çoğu ürünün ne olduğu ve kime yönelik olduğuyla açılır.",
+        "addHeading": "Blok ekleyin",
+        "position": " · {total} bloktan {position}",
+        "moveUp": "{name} yukarı taşı",
+        "moveDown": "{name} aşağı taşı",
+        "remove": "{name} kaldır"
+      },
+      "blockLabel": {
+        "heading": "Başlık",
+        "paragraph": "Paragraf",
+        "list": "Liste",
+        "quote": "Alıntı",
+        "rule": "Ayırıcı",
+        "image": "Görsel",
+        "embed": "Gömülü"
+      },
+      "addLabel": {
+        "paragraph": "Bir paragraf ekleyin. Kalın ve italik içerebilen bir metin bloğu.",
+        "heading": "Bir başlık ekleyin. Bölüm adı. Başlıklar bölüm menüsünü oluşturur.",
+        "list": "Bir liste ekleyin. Madde işaretli ya da numaralı.",
+        "quote": "Bir alıntı ekleyin. Öne çıkarılmış bir alıntı.",
+        "image": "Bir görsel ekleyin. Bir yerde zaten yayımlanmış bir görsel.",
+        "embed": "Bir gömülü içerik ekleyin. Bir YouTube ya da Vimeo videosu.",
+        "rule": "Bir ayırıcı ekleyin. Yatay bir ayırıcı çizgi."
+      },
+      "announce": {
+        "added": "{block} {total} bloktan {position}. blok olarak eklendi.",
+        "moved": "{block} {total} bloktan {position}. konuma taşındı.",
+        "removed": {
+          "one": "{block} kaldırıldı. {count} blok kaldı.",
+          "few": "{block} kaldırıldı. {count} blok kaldı.",
+          "many": "{block} kaldırıldı. {count} blok kaldı.",
+          "other": "{block} kaldırıldı. {count} blok kaldı."
+        }
+      },
+      "describe": {
+        "empty": "boş",
+        "heading": "Başlık, {total} bloktan {position}: {text}",
+        "paragraph": "Paragraf, {total} bloktan {position}: {preview}",
+        "quote": "Alıntı, {total} bloktan {position}: {preview}",
+        "rule": "Ayırıcı, {total} bloktan {position}",
+        "image": "Görsel, {total} bloktan {position}: {alt}",
+        "imageNoAlt": "henüz açıklama yok",
+        "embed": "{provider} gömülü içeriği, {total} bloktan {position}: {title}",
+        "embedNoTitle": "henüz başlık yok",
+        "listBulleted": {
+          "one": "Madde işaretli liste, {total} bloktan {position}, {count} öğe",
+          "few": "Madde işaretli liste, {total} bloktan {position}, {count} öğe",
+          "many": "Madde işaretli liste, {total} bloktan {position}, {count} öğe",
+          "other": "Madde işaretli liste, {total} bloktan {position}, {count} öğe"
+        },
+        "listOrdered": {
+          "one": "Numaralı liste, {total} bloktan {position}, {count} öğe",
+          "few": "Numaralı liste, {total} bloktan {position}, {count} öğe",
+          "many": "Numaralı liste, {total} bloktan {position}, {count} öğe",
+          "other": "Numaralı liste, {total} bloktan {position}, {count} öğe"
+        }
+      },
+      "problems": {
+        "headingText": "Bir başlığın metni olmalıdır.",
+        "anchorUnusable": "Bu çapa bir bağlantıda kullanılamaz. Yeniden oluşturmak için başlığı yeniden adlandırın.",
+        "anchorDuplicate": "Bu çapayı başka bir başlık zaten kullanıyor. Birini yeniden adlandırın.",
+        "imageAddress": "Bir görselin adresi olmalıdır.",
+        "addressScheme": "Bir adres http:// ya da https:// ile başlamalıdır.",
+        "imageUnmeasured": "Bu görsel henüz ölçülmedi. Boyutunun kaydedilmesi için “Ölç ve ekle” düğmesini kullanın.",
+        "imageAlt": "Açıklama zorunludur. Ekran okuyucu kullanan bir destekçi resmin yerine bunu alır.",
+        "embedAddress": "Gömülü içeriğin adresi olmalıdır.",
+        "embedTitle": "Gömülü içeriğin bir başlığı olmalıdır. Ekran okuyucu “çerçeve” yerine bunu söyler."
+      },
+      "fields": {
+        "headingLevel": "{name} düzeyi",
+        "headingSection": "Bölüm",
+        "headingSubsection": "Alt bölüm",
+        "headingText": "{name} metni",
+        "headingPlaceholder": "Nasıl çalışır",
+        "paragraphPlaceholder": "Bir paragraf yazın. Metni seçip Kalın ya da İtalik düğmesini kullanın veya **kalın** ve *italik* yazın.",
+        "quotePlaceholder": "Birinin bu proje hakkında söylediği bir şey",
+        "ruleNote": "Bir ayırıcı. Bölümleri ayırır ve metin taşımaz.",
+        "listStyle": "{name} biçimi",
+        "listBulleted": "Madde işaretli",
+        "listOrdered": "Numaralı",
+        "listItem": "{name} içinde {total} öğeden {position}.",
+        "listRemoveItem": "{name} içinde {total} öğeden {position}. öğeyi kaldır",
+        "listAddItem": "Öğe ekleyin",
+        "listAddItemLabel": "{name} listesine bir öğe ekleyin",
+        "embedProvider": "{name} sağlayıcısı",
+        "embedAddress": "{name} adresi",
+        "embedAddressPlaceholder": "https://www.youtube.com/watch?v=…",
+        "embedTitle": "{name} başlığı",
+        "embedTitlePlaceholder": "Bu videoda ne gösteriliyor",
+        "embedNote": "Başlık, ekran okuyucunun “çerçeve” yerine söylediği şeydir. Yalnızca YouTube ve Vimeo gömülebilir."
+      },
+      "image": {
+        "noUploadTitle": "Burada hiçbir şey yüklenmez",
+        "noUploadBody": "Zaten yayımlanmış bir görselin adresini verin. Boyutu tarayıcınızda okunur ve hikâyeyle birlikte saklanır, böylece sayfa yüklenmeden önce yerini ayırabilir.",
+        "address": "{name} adresi",
+        "addressPlaceholder": "https://images.example.com/prototype.jpg",
+        "measure": "Ölç ve ekle",
+        "measuring": "Ölçülüyor",
+        "addressMissing": "Önce bir görselin adresini girin.",
+        "added": "{size} piksellik bir görsel eklendi.",
+        "unreadable": "Bu adres bir görsel olarak yüklenemedi.",
+        "pixels": "{size} piksel",
+        "alt": "{name} açıklaması",
+        "altPlaceholder": "Resimde ne gösteriliyor",
+        "altNote": "Zorunlu. Ekran okuyucu kullanan bir destekçi resmin yerine bunu alır, bu yüzden dosya adını değil ne gösterildiğini yazın."
+      },
+      "marks": {
+        "group": "{label} için biçimlendirme",
+        "bold": "Kalın",
+        "italic": "İtalik",
+        "named": "{name}, {shortcut}"
+      },
+      "history": {
+        "title": "Önceki sürümler",
+        "intro": "Hikâye her değiştiğinde bir sürüm saklanır, birkaç dakikada en fazla bir tane. En son elli tanesi burada.",
+        "loading": "Önceki sürümler yükleniyor",
+        "failed": "Geçmiş yüklenemedi",
+        "emptyTitle": "Henüz önceki sürüm yok",
+        "emptyBody": "İlki, hikâye ilk değiştiğinde saklanır; sonra siz yazdıkça birkaç dakikada en fazla bir tane.",
+        "version": "{number}. sürüm",
+        "mostRecent": "en yeni",
+        "characters": "{count} karakter",
+        "preview": "Önizle",
+        "previewLabel": "{number}. sürümü önizle",
+        "hide": "Gizle",
+        "restore": "Geri yükle",
+        "restoreLabel": "{number}. sürümü geri yükle",
+        "loadingVersion": "Bu sürüm yükleniyor…",
+        "previewNewer": "Bu sürüm, düzenleyicinin anladığından daha yeni bir biçimde yazılmış. Güncel düzenleyiciyi almak için sayfayı yeniden yükleyin.",
+        "historyFailed": "Sürüm geçmişi yüklenemedi.",
+        "versionFailed": "Bu sürüm yüklenemedi.",
+        "restoreFailed": "Bu sürüm geri yüklenemedi. Hiçbir şey değişmedi.",
+        "unreachable": "Servise ulaşılamadı. Bağlantınızı kontrol edip yeniden deneyin.",
+        "confirmTitle": "Bir sürümü geri yükle",
+        "confirmNamed": "{number}. sürüm geri yüklensin mi?",
+        "confirmIntro": "Şu anki hikâyeniz değiştirilir.",
+        "keep": "Bendekini koru",
+        "confirm": "Bu sürümü geri yükle",
+        "restoring": "Geri yükleniyor",
+        "savedAt": "{number}. sürüm {when} tarihinde kaydedildi ve {characters} karakter içeriyor.",
+        "currentHolds": "Şu anki hikâyeniz {characters} karakter içeriyor. Değiştirilmeden önce bir sürüm olarak saklanır, bu yüzden bu işlem aynı listeden geri alınabilir.",
+        "previewEmpty": "Bu sürümde blok yok.",
+        "previewSummary": {
+          "one": "{count} blok · {characters} karakter",
+          "few": "{count} blok · {characters} karakter",
+          "many": "{count} blok · {characters} karakter",
+          "other": "{count} blok · {characters} karakter"
+        }
+      }
+    },
+    "faq": {
+      "loading": "Bu kampanyanın soruları yükleniyor",
+      "listFailed": "Sorular yüklenemedi",
+      "actionFailed": "Bu işe yaramadı",
+      "heading": "Sorular",
+      "count": "({count})",
+      "intro": "Bunlar kampanyanın sorular sekmesinde bu sırayla görünür. Listenin amacı, destekçinin aksi hâlde yorumlarda soracağı soruyu yanıtlamaktır.",
+      "add": "Soru ekleyin",
+      "fullTitle": "Bu kampanya sınıra ulaştı",
+      "fullBody": "Bir kampanya {max} soru yayımlayabilir. Yenisini eklemek için birini silin.",
+      "empty": {
+        "title": "Henüz soru yok",
+        "body": "Kampanya sayfası bu listeyi kendi sekmesinde gösterir. Liste boş kaldıkça sekme, destekçiye kampanyanın henüz hiçbir şeyi yanıtlamadığını söyler — bu doğrudur ve lansmandan önce değiştirmeye değer.",
+        "action": "İlk soruyu ekleyin"
+      },
+      "listLabel": "Sorular, destekçilerin gördüğü sırayla",
+      "announce": {
+        "moved": "{question} {total} konumdan {position}. konuma taşındı.",
+        "deleted": "{question} silindi."
+      },
+      "row": {
+        "moveUp": "{question} yukarı taşı, şu anda {total} konumdan {position}.",
+        "moveDown": "{question} aşağı taşı, şu anda {total} konumdan {position}.",
+        "edit": "Düzenle",
+        "editLabel": "{question} sorusunu düzenle",
+        "delete": "Sil",
+        "deleteLabel": "{question} sorusunu sil"
+      },
+      "delete": {
+        "title": "Soruyu sil",
+        "named": "“{question}” silinsin mi?",
+        "note": "Bu geri alınamaz.",
+        "keep": "Kalsın",
+        "confirm": "Sil",
+        "body": "Bir soru karşılığında kimseye bir şey borçlu değilsiniz, bu yüzden tamamen silinir — biri seçtikten sonra yalnızca gizlenebilen bir ödül kademesinin aksine."
+      },
+      "orderRefusal": {
+        "missing": "Sıralama reddedildi, çünkü bu sayfa {missing} görmemişti.",
+        "unexpected": "Sıralama reddedildi, çünkü {unexpected} artık mevcut değil.",
+        "both": "Sıralama reddedildi, çünkü bu sayfa {missing} görmemişti ve {unexpected} artık mevcut değil.",
+        "unknown": "Sıralama reddedildi, çünkü iki liste birbirini tutmadı.",
+        "reread": "Liste yeniden okundu ve artık kampanyayla örtüşüyor — istediğiniz sıraya yeniden getirin.",
+        "conjunction": "ve",
+        "others": {
+          "one": "{count} soru daha",
+          "few": "{count} soru daha",
+          "many": "{count} soru daha",
+          "other": "{count} soru daha"
+        }
+      },
+      "editor": {
+        "titleNew": "Soru ekleyin",
+        "titleEdit": "Soruyu düzenle",
+        "intro": "Sorular ve yanıtlar kampanya sayfasında sizin koyduğunuz sırayla görünür.",
+        "failed": "Bu soru kaydedilmedi",
+        "kept": "Yazdığınız hiçbir şey kaybolmadı — hepsi aşağıdaki alanlarda duruyor.",
+        "question": {
+          "label": "Soru",
+          "hint": "Bir destekçinin soracağı gibi. En çok {max} karakter."
+        },
+        "answer": {
+          "label": "Yanıt",
+          "hint": "Düz metin. Boş satırlar kampanya sayfasında paragraf sonu olur; başka hiçbir şey biçimlendirme değildir. En çok {max} karakter."
+        }
+      },
+      "errors": {
+        "questionMissing": "Bir soru gerekir. Bir destekçi listeyi tam da bunun için tarar.",
+        "answerMissing": "Bir yanıt gerekir. Yanıtsız bir soru, yanıt vermeyi reddetmek gibi okunur.",
+        "questionTooLong": {
+          "one": "Bu, {count} karakter fazla. Bir soru en çok {max} karakterdir.",
+          "few": "Bu, {count} karakter fazla. Bir soru en çok {max} karakterdir.",
+          "many": "Bu, {count} karakter fazla. Bir soru en çok {max} karakterdir.",
+          "other": "Bu, {count} karakter fazla. Bir soru en çok {max} karakterdir."
+        },
+        "answerTooLong": {
+          "one": "Bu, {count} karakter fazla. Bir yanıt en çok {max} karakterdir.",
+          "few": "Bu, {count} karakter fazla. Bir yanıt en çok {max} karakterdir.",
+          "many": "Bu, {count} karakter fazla. Bir yanıt en çok {max} karakterdir.",
+          "other": "Bu, {count} karakter fazla. Bir yanıt en çok {max} karakterdir."
+        }
+      }
+    },
+    "prelaunch": {
+      "loading": "Kampanya yükleniyor",
+      "saveFailed": {
+        "title": "Bu değişiklik kaydedilmedi",
+        "kept": "Yazdığınız hiçbir şey kaybolmadı — hepsi aşağıdaki alanlarda duruyor ve yeniden gönderilecek."
+      },
+      "notOpen": {
+        "heading": "Lansman öncesi sayfa henüz açık değil",
+        "body": "Açmak, aşağıdaki başlığı, özeti ve kapak görselini paylaşabileceğiniz bir bağlantıda yayımlar ve insanların kampanya açılır açılmaz haber verilmesini istemesine olanak tanır. Kampanyayla ilgili başka hiçbir şey herkese açık olmaz ve para söz konusu değildir.",
+        "permanent": "Yeniden kapatılamaz — kampanya buradan ileri gider: önce incelemeye, sonra lansmana.",
+        "failed": "Sayfa açılmadı",
+        "action": "Lansman öncesi sayfayı aç"
+      },
+      "live": {
+        "heading": "Lansman öncesi sayfa açık",
+        "countUnavailable": "Bekleyen kişi sayısı yüklenemedi.",
+        "waiting": {
+          "one": "Bu kampanyayı {count} kişi bekliyor.",
+          "few": "Bu kampanyayı {count} kişi bekliyor.",
+          "many": "Bu kampanyayı {count} kişi bekliyor.",
+          "other": "Bu kampanyayı {count} kişi bekliyor."
+        },
+        "linkLabel": "Lansman öncesi bağlantı",
+        "linkHint": "Bunu istediğiniz yerde paylaşın. Bağlantıyı açan herkes kampanya başladığında haber verilmesini isteyebilir.",
+        "copy": "Kopyala",
+        "copied": "Kopyalandı",
+        "copiedAnnounced": "Bağlantı kopyalandı"
+      },
+      "closed": {
+        "title": "Lansman öncesi sayfa kapandı",
+        "body": "Bu kampanya lansman öncesi sayfasını geçti. Hatırlatılmasını isteyen herkese, kampanya başladığında bir kez haber verilir."
+      },
+      "form": {
+        "heading": "Sayfa ne diyor",
+        "intro": "Bunlar kampanyanın başlığı, özeti ve kapak görselidir — Temel bilgiler sekmesindekilerin aynısı. Kampanyadan farklı bir şey vaat eden bir lansman öncesi sayfa, bunu fark etmesi en olası kişilere vaatte bulunurdu.",
+        "titleHint": "Lansman öncesi sayfada ve keşfet ızgarasında görünen ad. En çok {max} karakter.",
+        "blurbHint": "Bir veya iki cümle. Takip etmeye karar vermeden önce okunan şey budur. En çok {max} karakter."
+      },
+      "confirm": {
+        "title": "Lansman öncesi sayfa açılsın mı?",
+        "intro": "Başlık, özet ve kapak görseli, herkesin açabileceği bir bağlantıda herkese açık olur. Bu geri alınamaz.",
+        "body": "Ödülleriniz, hikâyeniz veya fonlama hedefinizle ilgili hiçbir şey yayımlanmaz ve kampanya, incelenip başlatılana kadar para almaz.",
+        "cancel": "Vazgeç",
+        "action": "Sayfayı aç",
+        "opening": "Açılıyor"
+      }
+    },
+    "review": {
+      "loading": "Bu kampanyanın ne kadar eksiksiz olduğu denetleniyor",
+      "loadFailed": "Bu kampanya yüklenemedi",
+      "moderation": {
+        "rejected": "Bu kampanya reddedildi",
+        "changes": "Moderatörlerimiz değişiklik istedi",
+        "noReason": "Bir gerekçe kaydedilmemiş."
+      },
+      "stateNote": {
+        "SUBMITTED": "Bu kampanya moderatörlerimizde. İnceleme sürerken yapmanız gereken bir şey yok, sonuç size bildirilecek. Bu arada düzenlemeye devam edebilirsiniz.",
+        "APPROVED": "Moderasyon bu kampanyayı onayladı. Siz başlattığınızda ya da belirlediğiniz lansman saatinde yayına girer.",
+        "SCHEDULED": "Onaylandı ve lansman saatini bekliyor.",
+        "REJECTED": "Bu kampanya reddedildi ve yeniden gönderilemez.",
+        "LIVE": "Bu kampanya etkin ve destek alıyor."
+      },
+      "refusal": {
+        "title": "Bu kampanya gönderilmedi",
+        "item": "{label}: {detail}",
+        "plans": "Diğer planların neye izin verdiğine bakın",
+        "checkAgain": "Yeniden denetleyin"
+      },
+      "progress": {
+        "heading": "Eksiksizlik",
+        "summary": "%{score} tamamlandı. Zorunlu {blockingTotal} maddeden {blockingDone}, önerilen {advisoryTotal} maddeden {advisoryDone} hazır.",
+        "barLabel": "Kampanyanın eksiksizliği: yüzde {score}"
+      },
+      "blocking": {
+        "heading": "Göndermeden önce zorunlu",
+        "description": "Bunların her biri platformun gönderim kurallarından gelir. Hepsi tamamlanmadan kampanya moderasyona gidemez."
+      },
+      "advisory": {
+        "heading": "Önerilir ama zorunlu değil",
+        "description": "Bunların hiçbiri göndermenizi engellemez. Her biri, iyi giden kampanyalarda genelde bulunan bir şeydir."
+      },
+      "row": {
+        "done": "Hazır",
+        "requiredNotDone": "Zorunlu, hazır değil",
+        "recommendedNotDone": "Önerilir, hazır değil",
+        "status": ", {status}",
+        "fix": "{section} bölümünde düzeltin",
+        "fixDetail": ": {label}"
+      },
+      "submit": {
+        "heading": "İncelemeye gönder",
+        "submitting": "Gönderiliyor",
+        "ready": "Bir moderatör kampanyayı okur ve ya onaylar, ya değişiklik ister, ya da reddeder. İnceleme sürerken düzenlemeye devam edebilirsiniz.",
+        "held": {
+          "one": "Zorunlu {count} madde henüz hazır değil. Onu tamamlayın, bu düğme kullanılabilir olsun.",
+          "few": "Zorunlu {count} madde henüz hazır değil. Onları tamamlayın, bu düğme kullanılabilir olsun.",
+          "many": "Zorunlu {count} madde henüz hazır değil. Onları tamamlayın, bu düğme kullanılabilir olsun.",
+          "other": "Zorunlu {count} madde henüz hazır değil. Onları tamamlayın, bu düğme kullanılabilir olsun."
+        },
+        "heldWithSuggestions": {
+          "one": "Zorunlu {count} madde henüz hazır değil. Önerilen maddelerin bununla ilgisi yok.",
+          "few": "Zorunlu {count} madde henüz hazır değil. Önerilen maddelerin bununla ilgisi yok.",
+          "many": "Zorunlu {count} madde henüz hazır değil. Önerilen maddelerin bununla ilgisi yok.",
+          "other": "Zorunlu {count} madde henüz hazır değil. Önerilen maddelerin bununla ilgisi yok."
+        }
+      },
+      "launch": {
+        "heading": "Bu kampanyayı başlat",
+        "failed": "Bu kampanya başlatılmadı",
+        "confirmHeading": "Bu kampanya şimdi başlatılsın mı?",
+        "confirmBody": "Hemen herkese açık olur ve destek almaya başlar. Fonlama hedefi ve son tarih lansmanda sabitlenir ve sonradan düzenlenemez; etkin bir kampanya taslağa geri alınamaz.",
+        "now": "Şimdi başlat",
+        "launching": "Başlatılıyor",
+        "cancel": "Vazgeç",
+        "explanation": "Kampanya başladığı anda platformun her yerinde görünür ve destek almaya başlar. Hedefi ve son tarihi o andan itibaren dondurulur; etkin bir kampanya taslağa geri alınamaz."
+      },
+      "failures": {
+        "notFound": "Bu kampanya bulunamadı.",
+        "planLimit": "Planınız bu kampanyayı kapsamıyor.",
+        "forbidden": "Bu kampanyaya erişiminiz yok.",
+        "refused": "Servis isteği reddetti.",
+        "unreachable": "Servise ulaşılamadı. Bağlantınızı kontrol edip yeniden deneyin."
+      }
+    },
+    "pages": {
+      "basics": {
+        "metaDescription": "Kampanyanızın başlığı, özeti, kategorisi, hedefi, süresi ve kapak görseli."
+      },
+      "rewards": {
+        "metaDescription": "Kampanyanızın ürettiği öğeler ve destekçilerin seçtiği ödül kademeleri — fiyatlar, adetler, teslimat ve sıra."
+      },
+      "story": {
+        "metaDescription": "Kampanyanızın uzun hikâyesi, riskleri ve zorlukları ile önceki sürümleri."
+      },
+      "faq": {
+        "metaDescription": "Kampanyanızın kendi sayfasında yanıtladığı sorular ve destekçilerin onları okuduğu sıra."
+      },
+      "prelaunch": {
+        "metaDescription": "Bir lansman öncesi sayfa açın, bağlantıyı paylaşın ve kampanyanız açıldığında haber verilmesini isteyenleri toplayın."
+      },
+      "review": {
+        "metaDescription": "Kampanyanızın ne kadar eksiksiz olduğu, moderasyonun onun hakkında ne dediği ve incelemeye gönderilmesi."
+      }
     }
   }
 }

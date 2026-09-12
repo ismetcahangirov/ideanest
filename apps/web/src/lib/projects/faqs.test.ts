@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { FAQ_ANSWER_MAX_CHARACTERS, FAQ_QUESTION_MAX_CHARACTERS, type ProjectFaq } from './api';
 import { faqPatchFrom, isEmptyFaqPatch, newFaqFrom, validateFaq } from './faqs';
+import { faqCopyFrom } from '../i18n/editor-copy';
+import { translatorFor } from '../../test-copy';
 
 /**
  * The FAQ form's rules — the editor half of #283.
@@ -19,6 +21,12 @@ import { faqPatchFrom, isEmptyFaqPatch, newFaqFrom, validateFaq } from './faqs';
  *     renders them.
  */
 
+/*
+ * The refusal vocabulary, from `messages/en.json` through the builder the drawer calls — issue
+ * #459. The assertions below are about which rule fires and where the boundary is.
+ */
+const ERRORS = faqCopyFrom(translatorFor('editor')).errors;
+
 const FAQ: ProjectFaq = {
   id: 'faq-a',
   question: 'Do you ship to Germany?',
@@ -27,7 +35,7 @@ const FAQ: ProjectFaq = {
 
 describe('validating an entry', () => {
   it('refuses a blank question and a blank answer, separately', () => {
-    const errors = validateFaq({ question: '   ', answer: '' });
+    const errors = validateFaq({ question: '   ', answer: '' }, ERRORS, 'en');
 
     expect(errors.question).toMatch(/A question is needed/u);
     expect(errors.answer).toMatch(/An answer is needed/u);
@@ -35,20 +43,20 @@ describe('validating an entry', () => {
 
   it('accepts an entry at exactly the limit and refuses one past it', () => {
     expect(
-      validateFaq({ question: 'q'.repeat(FAQ_QUESTION_MAX_CHARACTERS), answer: 'a' }).question,
+      validateFaq({ question: 'q'.repeat(FAQ_QUESTION_MAX_CHARACTERS), answer: 'a' }, ERRORS, 'en').question,
     ).toBeUndefined();
 
     expect(
-      validateFaq({ question: 'q'.repeat(FAQ_QUESTION_MAX_CHARACTERS + 3), answer: 'a' }).question,
+      validateFaq({ question: 'q'.repeat(FAQ_QUESTION_MAX_CHARACTERS + 3), answer: 'a' }, ERRORS, 'en').question,
     ).toMatch(/3 characters too long/u);
 
     expect(
-      validateFaq({ question: 'q', answer: 'a'.repeat(FAQ_ANSWER_MAX_CHARACTERS + 1) }).answer,
+      validateFaq({ question: 'q', answer: 'a'.repeat(FAQ_ANSWER_MAX_CHARACTERS + 1) }, ERRORS, 'en').answer,
     ).toMatch(/1 character too long/u);
   });
 
   it('says nothing about an entry that is within both bounds', () => {
-    expect(validateFaq({ question: 'Do you ship to Germany?', answer: 'Yes.' })).toEqual({});
+    expect(validateFaq({ question: 'Do you ship to Germany?', answer: 'Yes.' }, ERRORS, 'en')).toEqual({});
   });
 });
 

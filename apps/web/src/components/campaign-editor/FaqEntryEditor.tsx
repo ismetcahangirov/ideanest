@@ -21,6 +21,9 @@ import {
   type FaqDraft,
   type FaqErrors,
 } from '../../lib/projects/faqs';
+import type { FaqCopy } from '../../lib/i18n/editor-copy';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 import { EditorDrawer } from './EditorDrawer';
 import { fieldErrorsFrom } from './rewardFailure';
 import { describeFailure, type SaveFailure } from './useAutosave';
@@ -55,6 +58,8 @@ import { describeFailure, type SaveFailure } from './useAutosave';
  * gives the campaign editor "none — autosave indicator only".
  */
 export interface FaqEntryEditorProps {
+  /** Every word this drawer draws, and the refusal vocabulary below it — issue #459. */
+  copy: Pick<FaqCopy, 'frame' | 'drawer' | 'editor' | 'errors'>;
   projectId: string;
   open: boolean;
   /** The entry being edited, or null to add one. */
@@ -65,12 +70,15 @@ export interface FaqEntryEditorProps {
 }
 
 export function FaqEntryEditor({
+  copy,
   projectId,
   open,
   faq,
   onOpenChange,
   onSaved,
 }: FaqEntryEditorProps) {
+  /* The language, for the one message that declines: how many characters over the cap. */
+  const locale = useRouteLocale();
   const [draft, setDraft] = useState<FaqDraft>(EMPTY_FAQ);
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<SaveFailure | null>(null);
@@ -89,7 +97,7 @@ export function FaqEntryEditor({
     setAttempted(false);
   }, [open, faq]);
 
-  const errors = validateFaq(draft);
+  const errors = validateFaq(draft, copy.errors, locale);
   const serverErrors = fieldErrorsFrom(failure, isFaqField);
 
   /*
@@ -119,7 +127,7 @@ export function FaqEntryEditor({
       }
       onOpenChange(false);
     } catch (cause) {
-      setFailure(describeFailure(cause));
+      setFailure(describeFailure(cause, copy.frame.failures.save));
     } finally {
       setSaving(false);
     }
@@ -127,27 +135,28 @@ export function FaqEntryEditor({
 
   return (
     <EditorDrawer
+      copy={copy.drawer}
       open={open}
       onOpenChange={onOpenChange}
-      title={faq === null ? 'Add a question' : 'Edit question'}
-      description="Questions and answers appear on the campaign page, in the order you put them in."
+      title={faq === null ? copy.editor.titleNew : copy.editor.titleEdit}
+      description={copy.editor.intro}
       saving={saving}
       onSave={() => void save()}
     >
       <div className="flex flex-col gap-6">
         {failure !== null && (
-          <InlineAlert variant="danger" title="This question was not saved">
+          <InlineAlert variant="danger" title={copy.editor.failed}>
             <p>{failure.message}</p>
-            <p className="mt-2 text-white/64">
-              Nothing you typed has been lost — it is still in the fields below.
-            </p>
+            <p className="mt-2 text-white/64">{copy.editor.kept}</p>
           </InlineAlert>
         )}
 
         <Field
-          label="Question"
+          label={copy.editor.question.label}
           required
-          hint={`As a backer would ask it. ${FAQ_QUESTION_MAX_CHARACTERS} characters or fewer.`}
+          hint={fillPlaceholders(copy.editor.question.hint, {
+            max: String(FAQ_QUESTION_MAX_CHARACTERS),
+          })}
           error={visible.question}
         >
           {/*
@@ -167,9 +176,11 @@ export function FaqEntryEditor({
         </Field>
 
         <Field
-          label="Answer"
+          label={copy.editor.answer.label}
           required
-          hint={`Plain text. Blank lines become paragraph breaks on the campaign page; nothing else is formatting. ${FAQ_ANSWER_MAX_CHARACTERS} characters or fewer.`}
+          hint={fillPlaceholders(copy.editor.answer.hint, {
+            max: String(FAQ_ANSWER_MAX_CHARACTERS),
+          })}
           error={visible.answer}
         >
           {/*

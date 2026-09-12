@@ -4,6 +4,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { EmptyState, InlineAlert, Pill, Skeleton, SkeletonGroup } from '@ideanest/ui';
 import { Drawer, Modal } from '@ideanest/ui/motion';
 import { ApiError } from '../../lib/api/problem';
+import type { StoryCopy } from '../../lib/i18n/editor-copy';
+import { dateTimeFormat, numberFormat } from '../../lib/i18n/formats';
+import type { Locale } from '../../lib/i18n/locale';
+import { fillNodes, fillPlaceholders } from '../../lib/i18n/placeholders';
+import { pluralise } from '../../lib/i18n/plurals';
 import {
   getStoryVersion,
   listStoryVersions,
@@ -46,6 +51,10 @@ import {
  * `prefers-reduced-motion`. Nothing here adds any.
  */
 export interface StoryVersionHistoryProps {
+  /** Every word this drawer and its confirmation draw — issue #459. */
+  copy: StoryCopy['history'];
+  /** The language, for the counts and for the moment each version was saved. */
+  locale: Locale;
   projectId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -70,20 +79,23 @@ type Loading = 'loading' | 'ready' | 'failed';
  * was broken, and `STORY_VERSION_NOT_FOUND` in particular carries the distinction
  * between "never existed" and "no longer kept" that this drawer exists to explain.
  */
-function errorMessage(cause: unknown, fallback: string): string {
+function errorMessage(cause: unknown, fallback: string, unreachable: string): string {
   if (cause instanceof ApiError) {
     return cause.problem?.detail ?? cause.problem?.title ?? fallback;
   }
-  return 'The service could not be reached. Check your connection and try again.';
+  return unreachable;
 }
 
 export function StoryVersionHistory({
+  copy,
+  locale,
   projectId,
   open,
   onOpenChange,
   currentCharacters,
   onRestored,
 }: StoryVersionHistoryProps) {
+  const counts = numberFormat(locale, {}, 'story-history-characters');
   const [versions, setVersions] = useState<readonly StoryVersionSummary[]>([]);
   const [status, setStatus] = useState<Loading>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -105,11 +117,11 @@ export function StoryVersionHistory({
         setStatus('ready');
       } catch (cause) {
         if (signal?.aborted === true) return;
-        setError(errorMessage(cause, 'The version history could not be loaded.'));
+        setError(errorMessage(cause, copy.historyFailed, copy.unreachable));
         setStatus('failed');
       }
     },
-    [projectId],
+    [projectId, copy.historyFailed, copy.unreachable],
   );
 
   useEffect(() => {
@@ -133,14 +145,12 @@ export function StoryVersionHistory({
       if (document === null) {
         // A version written by a newer editor. Showing it as best we can would
         // invite a restore into a document this build cannot then save.
-        setPreviewProblem(
-          'This version was written in a newer format than this editor understands. Reload the page to get the current editor.',
-        );
+        setPreviewProblem(copy.previewNewer);
         return;
       }
       setPreview(document);
     } catch (cause) {
-      setPreviewProblem(errorMessage(cause, 'That version could not be loaded.'));
+      setPreviewProblem(errorMessage(cause, copy.versionFailed, copy.unreachable));
     }
   }
 
@@ -152,7 +162,7 @@ export function StoryVersionHistory({
       setConfirming(null);
       onOpenChange(false);
     } catch (cause) {
-      setRestoreError(errorMessage(cause, 'That version could not be restored. Nothing has changed.'));
+      setRestoreError(errorMessage(cause, copy.restoreFailed, copy.unreachable));
     } finally {
       setRestoring(false);
     }
@@ -163,11 +173,11 @@ export function StoryVersionHistory({
       <Drawer
         open={open}
         onOpenChange={onOpenChange}
-        title="Earlier versions"
-        description="A version is kept each time the story changes, at most one every few minutes. The most recent fifty are here."
+        title={copy.title}
+        description={copy.intro}
       >
         {status === 'loading' && (
-          <SkeletonGroup label="Loading earlier versions">
+          <SkeletonGroup label={copy.loading}>
             <div className="flex flex-col gap-3">
               {[0, 1, 2].map((row) => (
                 <Skeleton key={row} height="4.5rem" />
@@ -178,11 +188,11 @@ export function StoryVersionHistory({
 
         {status === 'failed' && (
           <>
-            <InlineAlert variant="danger" title="The history could not be loaded">
+            <InlineAlert variant="danger" title={copy.failed}>
               {error}
             </InlineAlert>
             <Pill variant="ghost" size="sm" className="mt-3" onClick={() => void load()}>
-              Try again
+              {copy.tryAgain}
             </Pill>
           </>
         )}
@@ -190,8 +200,8 @@ export function StoryVersionHistory({
         {status === 'ready' && versions.length === 0 && (
           <EmptyState
             headingLevel={3}
-            title="No earlier versions yet"
-            description="One is kept the first time the story changes, and then at most one every few minutes while you write."
+            title={copy.emptyTitle}
+            description={copy.emptyBody}
           />
         )}
 
@@ -202,7 +212,7 @@ export function StoryVersionHistory({
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="text-[15px] font-medium text-white">
-                      Version {version.number}
+                      {fillPlaceholders(copy.version, { number: String(version.number) })}
                       {/*
                         "Current" is a word, not a colour: the difference between the
                         version that matches what is on screen and the rest must not
@@ -210,14 +220,18 @@ export function StoryVersionHistory({
                       */}
                       {position === 0 && (
                         <span className="ml-2 text-[13px] font-normal text-white/64">
-                          most recent
+                          {copy.mostRecent}
                         </span>
                       )}
                     </p>
                     <p className="mt-0.5 text-[13px] text-white/64">
-                      <time dateTime={version.createdAt}>{formatMoment(version.createdAt)}</time>
+                      <time dateTime={version.createdAt}>
+                        {formatMoment(version.createdAt, locale)}
+                      </time>
                       {' · '}
-                      {version.characters.toLocaleString('en')} characters
+                      {fillPlaceholders(copy.characters, {
+                        count: counts.format(version.characters),
+                      })}
                     </p>
                   </div>
 
@@ -226,25 +240,29 @@ export function StoryVersionHistory({
                       variant="ghost"
                       size="sm"
                       aria-expanded={previewing === version.number}
-                      aria-label={`Preview version ${version.number}`}
+                      aria-label={fillPlaceholders(copy.previewLabel, {
+                        number: String(version.number),
+                      })}
                       onClick={() =>
                         previewing === version.number
                           ? setPreviewing(null)
                           : void showPreview(version)
                       }
                     >
-                      {previewing === version.number ? 'Hide' : 'Preview'}
+                      {previewing === version.number ? copy.hide : copy.preview}
                     </Pill>
                     <Pill
                       variant="ghost"
                       size="sm"
-                      aria-label={`Restore version ${version.number}`}
+                      aria-label={fillPlaceholders(copy.restoreLabel, {
+                        number: String(version.number),
+                      })}
                       onClick={() => {
                         setRestoreError(null);
                         setConfirming(version);
                       }}
                     >
-                      Restore
+                      {copy.restore}
                     </Pill>
                   </div>
                 </div>
@@ -254,9 +272,14 @@ export function StoryVersionHistory({
                     {previewProblem !== null ? (
                       <InlineAlert variant="warning">{previewProblem}</InlineAlert>
                     ) : preview === null ? (
-                      <p className="text-[13px] text-white/64">Loading this version…</p>
+                      <p className="text-[13px] text-white/64">{copy.loadingVersion}</p>
                     ) : (
-                      <StoryPreview document={preview} />
+                      <StoryPreview
+                        copy={copy}
+                        locale={locale}
+                        counts={counts}
+                        document={preview}
+                      />
                     )}
                   </div>
                 )}
@@ -271,8 +294,12 @@ export function StoryVersionHistory({
         onOpenChange={(next) => {
           if (!next) setConfirming(null);
         }}
-        title={confirming === null ? 'Restore a version' : `Restore version ${confirming.number}?`}
-        description="The story you have now is replaced."
+        title={
+          confirming === null
+            ? copy.confirmTitle
+            : fillPlaceholders(copy.confirmNamed, { number: String(confirming.number) })
+        }
+        description={copy.confirmIntro}
         // The creator has to choose. Dismissing by clicking outside a dialog about
         // overwriting an afternoon's work is too easy a way to press the wrong thing.
         closeOnBackdropClick={false}
@@ -280,7 +307,7 @@ export function StoryVersionHistory({
         footer={
           <div className="flex flex-wrap justify-end gap-2">
             <Pill variant="ghost" disabled={restoring} onClick={() => setConfirming(null)}>
-              Keep what I have
+              {copy.keep}
             </Pill>
             {/*
               Lime, because this is the action the dialog exists for and lime means
@@ -296,21 +323,33 @@ export function StoryVersionHistory({
                 if (confirming !== null) void restore(confirming);
               }}
             >
-              {restoring ? 'Restoring' : 'Restore this version'}
+              {restoring ? copy.restoring : copy.confirm}
             </Pill>
           </div>
         }
       >
         {confirming !== null && (
           <div className="flex flex-col gap-3 text-[15px]">
+            {/*
+              `fillNodes` rather than three fragments concatenated: the `<time>` is a node in
+              the middle of a sentence, and where that clause falls is the translator's to
+              decide — `lib/i18n/placeholders.ts` carries the argument (#459).
+            */}
             <p>
-              Version {confirming.number} was saved{' '}
-              <time dateTime={confirming.createdAt}>{formatMoment(confirming.createdAt)}</time> and
-              holds {confirming.characters.toLocaleString('en')} characters.
+              {fillNodes(copy.savedAt, {
+                number: String(confirming.number),
+                when: (
+                  <time dateTime={confirming.createdAt}>
+                    {formatMoment(confirming.createdAt, locale)}
+                  </time>
+                ),
+                characters: counts.format(confirming.characters),
+              })}
             </p>
             <p>
-              The story you have now holds {currentCharacters.toLocaleString('en')} characters. It is
-              kept as a version before being replaced, so this can be undone from this same list.
+              {fillPlaceholders(copy.currentHolds, {
+                characters: counts.format(currentCharacters),
+              })}
             </p>
             {restoreError !== null && <InlineAlert variant="danger">{restoreError}</InlineAlert>}
           </div>
@@ -332,31 +371,38 @@ export function StoryVersionHistory({
  * `h2`, so that a preview inside a drawer does not add a second document outline to
  * the page.
  */
-function StoryPreview({ document }: { document: StoryDocument }) {
+function StoryPreview({
+  copy,
+  locale,
+  counts,
+  document,
+}: {
+  copy: StoryCopy['history'];
+  locale: Locale;
+  counts: { format: (value: number) => string };
+  document: StoryDocument;
+}) {
   if (document.blocks.length === 0) {
-    return <p className="text-[13px] text-white/64">This version has no blocks.</p>;
+    return <p className="text-[13px] text-white/64">{copy.previewEmpty}</p>;
   }
 
   return (
     <div className="flex flex-col gap-2">
       <p className="text-[13px] text-white/40">
-        {document.blocks.length} {document.blocks.length === 1 ? 'block' : 'blocks'} ·{' '}
-        {storyCharacterCount(document).toLocaleString('en')} characters
+        {fillPlaceholders(pluralise(locale, copy.previewSummary, document.blocks.length), {
+          characters: counts.format(storyCharacterCount(document)),
+        })}
       </p>
       <ol className="flex flex-col gap-2 text-[13px]">
         {document.blocks.map((block, index) => (
           <li key={index} className="text-white/64">
-            <span className="text-white/40">{blockKind(block.type)}: </span>
+            <span className="text-white/40">{copy.blockLabel[block.type]}: </span>
             {blockText(block)}
           </li>
         ))}
       </ol>
     </div>
   );
-}
-
-function blockKind(type: StoryDocument['blocks'][number]['type']): string {
-  return type === 'rule' ? 'Divider' : type.charAt(0).toUpperCase() + type.slice(1);
 }
 
 function blockText(block: StoryDocument['blocks'][number]): string {
@@ -385,13 +431,18 @@ function blockText(block: StoryDocument['blocks'][number]): string {
  * alternative is a relative time ("3 minutes ago") that has to be re-rendered on a
  * timer, and a page that never settles is exactly what the motion budget forbids.
  */
-function formatMoment(iso: string): string {
+function formatMoment(iso: string, locale: Locale): string {
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return iso;
-  return at.toLocaleString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+
+  /*
+   * `lib/i18n/formats.ts` rather than `toLocaleString('en-GB')`, which was the whole of this
+   * line before #459: a British date printed on an Azerbaijani page. That module also routes
+   * `az` away from `Intl`, which Chromium claims and formats from root-locale data — #401.
+   */
+  return dateTimeFormat(
+    locale,
+    { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' },
+    'story-version',
+  ).format(at);
 }
