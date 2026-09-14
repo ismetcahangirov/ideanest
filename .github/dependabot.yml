@@ -76,6 +76,36 @@ updates:
       - dependency-name: 'react-native-worklets'
         update-types:
           ['version-update:semver-minor', 'version-update:semver-major']
+      # Expo majors are the SDK's, and Expo SDK 58 is not released -- issue
+      # #391 again, from the other side.
+      #
+      # The module packages reach 58 before the SDK does. `expo-font@58.0.0`
+      # and `expo-localization@58.0.0` are on npm right now, but both are
+      # published under the `next` tag: `latest` for expo-font is 57.0.4, and
+      # `expo` itself has no 58 at all -- its `latest` is 57.0.22 and 58 exists
+      # only as `58.0.0-preview.0` and a canary. Taking one is not an upgrade
+      # to SDK 58, because there is no SDK 58 to be on. It is a preview module
+      # dropped into an SDK 57 application beside fifteen siblings still on 57.
+      #
+      # Nothing in the pipeline can catch it. `expo-font@58.0.0` declares its
+      # peers as `expo: "*"`, so the wildcard matches 57 and pnpm installs it
+      # without a word. `apps/mobile`'s job runs typecheck, test and config,
+      # all of which pass, and the EAS build that would actually link the
+      # native module is `skipping` on pull requests. A green pipeline on one
+      # of these proves the JavaScript compiles against a module that will not
+      # be part of the app it ships in.
+      #
+      # Minors and patches within 57 still come through, which is how the SDK
+      # is meant to move between majors.
+      #
+      # Drop this when apps/mobile moves to Expo SDK 58, not before -- and move
+      # it then as one `npx expo install --fix`, not as sixteen pull requests.
+      - dependency-name: 'expo'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'expo-*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@expo/*'
+        update-types: ['version-update:semver-major']
     groups:
       # THE MOBILE GROUP EXISTS SO ONE BROKEN NATIVE BUMP CANNOT HOLD BACK THE
       # WEB.
