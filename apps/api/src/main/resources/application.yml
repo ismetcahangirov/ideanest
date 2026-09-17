@@ -669,17 +669,9 @@ ideanest:
       # capabilities below. Without them the service does not start, which is the
       # point.
       primary: ${PAYMENT_PROVIDER:}
-    # IDN-EXT-01 (#38): the Epoint.az adapter, API v1.0.3, used when `provider.primary` is
-    # EPOINT -- spelled so. The owner chose Epoint; it stays unset by default because the
-    # keys are per merchant, and naming EPOINT without the base URL and both keys is a
-    # start-up failure rather than a first payment that cannot be signed. Epoint cannot
-    # collect stored cards, so the retired collection jobs stay inert behind it (#39).
-    epoint:
-      base-url: ${EPOINT_BASE_URL:https://epoint.az/api/1}
-      public-key: ${EPOINT_PUBLIC_KEY:}
-      private-key: ${EPOINT_PRIVATE_KEY:}
-      # The payment page's language when a request names none: az, en or ru.
-      language: ${EPOINT_LANGUAGE:az}
+    # The Epoint block is further down, next to the webhook settings it is read with.
+    # There is one, and it carries the confirmed capabilities as well as the credentials.
+    #
     # IDN-EXT-01 (#40): `campaign-refunds`. Every backer of a campaign that ends below its
     # threshold, or is suspended or cancelled, is refunded in full, a batch at a time.
     refunds:
