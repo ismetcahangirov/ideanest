@@ -161,6 +161,9 @@ All under `https://epoint.az`, all `POST` with two form fields, `data` and
 
 | Call | Endpoint | Notes |
 |---|---|---|
+| `beginHostedPayment` | `/api/1/request` | `amount` + `currency` + `order_id`. Returns `status`, `transaction`, `redirect_url` |
+| `lookUpPayment` | `/api/1/get-status` | By `transaction` |
+| `beginPayoutCardRegistration` | `/api/1/card-registration` | `refund=1`. Returns `status`, `redirect_url`, `card_id` |
 | `beginTokenization` | `/api/1/card-registration` | `refund=0`. Returns `status`, `redirect_url`, `card_id` |
 | `resolveTokenization` | `/api/1/get-status` | By `order_id` |
 | `chargeStoredCard` | `/api/1/execute-pay` | `card_id` + `order_id` + `amount` + `currency` |
@@ -169,10 +172,24 @@ All under `https://epoint.az`, all `POST` with two form fields, `data` and
 | `parseWebhook` | — | Epoint POSTs to the configured `result_url` |
 | liveness | `GET /api/heartbeat` | Answers `{"status": "ok"}`. Not used by the adapter; useful in a runbook |
 
-Not used, and deliberately: `/api/1/request` (hosted checkout for a card the
-platform has not stored), `/api/1/pre-auth-request` and `/api/1/pre-auth-complete`
-(§9.1 rejected authorisation holds), `/api/1/split-*` (R-10 is unanswered),
-`/api/1/wallet/*`, `/api/1/invoices/*`, `/api/1/token/widget`.
+**`/api/1/request` is used, and this document said it was not.** It said so while
+§9.1's design was the only one: a card stored at pledge time and charged, merchant
+initiated, when the campaign closed. That design needs R-01, R-02 and R-03, and
+R-03 is one of the six rows this specification does not answer — which is why
+`scheme-chaining` defaults to false and the service does not start with it unset.
+Charging on Epoint's own page at the moment the pledge is confirmed needs none of
+the three: the backer is present, enters the card there, and the outcome arrives
+on the callback. The two paths are both in the adapter and neither replaces the
+other; which one a deployment can use is what its confirmed capabilities decide.
+
+Nothing about the fourteen rows changes. `/api/1/request` is documented in the
+same specification, it is signed the same way, its statuses are the ones below,
+and its `order_id` carries the same **unanswered R-08** as every other endpoint's.
+
+Still not used, and deliberately: `/api/1/pre-auth-request` and
+`/api/1/pre-auth-complete` (§9.1 rejected authorisation holds), `/api/1/split-*`
+(R-10 is unanswered), `/api/1/wallet/*`, `/api/1/invoices/*`,
+`/api/1/token/widget`.
 
 ### Signing, exactly
 

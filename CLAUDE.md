@@ -106,7 +106,7 @@ does not build the Java service — and **a required status check that never run
 is reported as pending, not as passed**, so requiring `Frontend (typecheck,
 test, storybook)` and `Backend (Java)` by name would leave those pull requests
 unmergeable for ever. `CI complete` always runs, waits for the rest, and fails
-if any job that had work to do did not succeed. Issue #67 has the reasoning.
+if any job that had work to do did not succeed.
 
 > Anyone adding a job to `ci.yml` that should be able to block a merge adds it
 > to `ci-complete`'s `needs` **and** to the list its script checks. Adding it to
