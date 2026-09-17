@@ -4,13 +4,12 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { fetchSession } from '../../../../../lib/session/session';
 import { SessionProvider } from '../../../../../components/session/SessionProvider';
 import { EditorShell } from '../../../../../components/campaign-editor/EditorShell';
-import { editorFrameCopyFrom } from '../../../../../lib/i18n/editor-copy';
-import { translatorFor } from '../../../../../test-copy';
 import { MAIN_CONTENT_ID } from '../../../../../components/shell/SkipLink';
 import CampaignEditorLayout from './layout';
 import NewProjectLayout from '../../new/layout';
 import MESSAGES from '../../../../../../messages/en.json';
 import { resolveServerTree } from '../../../../../test-support/server-tree';
+import { EDITOR_COPY } from '../../../../../test-editor-copy';
 
 /**
  * The campaign editor and the create form carry the site shell — issue #347.
@@ -65,11 +64,6 @@ vi.mock('../../../../../lib/api/access-token', () => ({
  * The shell reads the catalogue on the server, so the frame under test is an async component.
  * These two mocks are what let it resolve here: the real `messages/en.json`, reached the way
  * `i18n/request.ts` reaches it, and `resolveServerTree` to await the component itself.
- *
- * At the top level, with the others, and not inside the test that needs it. `vi.mock` is
- * hoisted to the top of the module whatever it is written next to, so a call nested in an
- * `it` has never applied only to that test -- it read as scoped and was not. Vitest 5 refuses
- * the arrangement outright rather than hoisting it silently, which is how it was found.
  */
 vi.mock('next-intl/server', () => ({
   getLocale: async () => 'en',
@@ -103,13 +97,7 @@ async function renderInLayout(
 
 describe('the campaign editor', () => {
   const editor = (
-    <EditorShell
-      projectId="p1"
-      copy={editorFrameCopyFrom(translatorFor('editor'))}
-      active="basics"
-      title="A solar lamp"
-      state="DRAFT"
-    >
+    <EditorShell projectId="p1" copy={EDITOR_COPY} active="basics" title="A solar lamp" state="DRAFT">
       <p>The basics form</p>
     </EditorShell>
   );
@@ -140,8 +128,6 @@ describe('the campaign editor', () => {
     // which is exactly what keeps `EditorShell`'s `<header>` generic.
     expect(mains[0]).not.toContainElement(banners[0] ?? null);
     expect(mains[0]).toContainElement(screen.getByRole('heading', { level: 1 }));
-
-
   });
 });
 

@@ -4,8 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import az.ideanest.payment.domain.ChargeResult;
+import az.ideanest.payment.domain.HostedPaymentRequest;
+import az.ideanest.payment.domain.HostedPaymentSession;
 import az.ideanest.payment.domain.PaymentEvent;
 import az.ideanest.payment.domain.PaymentEventType;
+import az.ideanest.payment.domain.PaymentLookup;
+import az.ideanest.payment.domain.PayoutCardRequest;
+import az.ideanest.payment.domain.PayoutCardSession;
 import az.ideanest.payment.domain.PayoutRequest;
 import az.ideanest.payment.domain.PayoutResult;
 import az.ideanest.payment.domain.ProviderName;
@@ -155,6 +160,118 @@ class EpointPaymentProviderTests {
         assertThat(adapter.capabilities().preAuthHoldDays()).isNull();
         assertThat(adapter.capabilities().currencies()).containsExactly("AZN");
         assertThat(adapter.capabilities().wallets()).containsExactlyInAnyOrder(WalletType.APPLE_PAY, WalletType.GOOGLE_PAY);
+    }
+
+    // ------------------------------------------------------------------
+    // The hosted page — IDN-EXT-01
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("a hosted payment answers with the transaction and where to send the backer")
+    void hostedPaymentBegins() {
+        epointAnswers("/api/1/request", """
+                {"status":"success","transaction":"te002222222","redirect_url":"https://epoint.az/pay/te002222222"}
+                """);
+
+        HostedPaymentSession session =
+                adapter().beginHostedPayment(hostedPayment(Money.of(new BigDecimal("45.00"), "AZN"), "az"));
+
+        assertThat(session.providerTransactionId()).isEqualTo("te002222222");
+        assertThat(session.redirectUrl()).isEqualTo(URI.create("https://epoint.az/pay/te002222222"));
+    }
+
+    /**
+     * §9.3's R-08 again, and the reason the order is the key rather than the pledge: a pledge
+     * paid again after a failed attempt is a second Epoint transaction, and Epoint requires the
+     * order identifier to be unique per transaction.
+     */
+    @Test
+    @DisplayName("the idempotency key travels as the order, and the amount as a decimal")
+    void hostedPaymentSendsTheKeyAndTheAmount() {
+        epointAnswers("/api/1/request", """
+                {"status":"success","transaction":"te002222222","redirect_url":"https://epoint.az/pay/te002222222"}
+                """);
+
+        adapter().beginHostedPayment(hostedPayment(Money.of(new BigDecimal("45.10"), "AZN"), "az"));
+
+        JsonNode sent = whatWasSentTo("/api/1/request");
+        assertThat(sent.get("order_id").asString()).isEqualTo("payment-key-1");
+        assertThat(sent.get("currency").asString()).isEqualTo("AZN");
+        // The decimal as it is, never through a double: 45.10 and not 45.1.
+        assertThat(jsonSentTo("/api/1/request")).contains("45.10");
+    }
+
+    @Test
+    @DisplayName("the backer's language is sent when Epoint has a page in it, and the deployment's when it does not")
+    void hostedPaymentPicksTheLanguage() {
+        epointAnswers("/api/1/request", """
+                {"status":"success","transaction":"te002222222","redirect_url":"https://epoint.az/pay/te002222222"}
+                """);
+
+        adapter().beginHostedPayment(hostedPayment(Money.of(new BigDecimal("45.00"), "AZN"), "tr"));
+
+        assertThat(whatWasSentTo("/api/1/request").get("language").asString()).isEqualTo("az");
+    }
+
+    @Test
+    @DisplayName("an Epoint that refuses to open a page is unreachable, not a declined payment")
+    void hostedPaymentRefused() {
+        epointAnswers("/api/1/request", """
+                {"status":"error","message":"order_id is not unique"}
+                """);
+
+        assertThatThrownBy(() ->
+                        adapter().beginHostedPayment(hostedPayment(Money.of(new BigDecimal("45.00"), "AZN"), "az")))
+                .isInstanceOf(ProviderUnavailableException.class)
+                .hasMessageContaining("begin a payment");
+    }
+
+    @Test
+    @DisplayName("a lookup reports what the payment is, and server_error is a provider that could not look")
+    void lookUpPayment() {
+        epointAnswers("/api/1/get-status", """
+                {"status":"success","code":"000","transaction":"te002222222","message":"ok"}
+                """);
+        PaymentLookup found = adapter().lookUpPayment("te002222222");
+        assertThat(found.state()).isEqualTo(PaymentLookup.State.SUCCEEDED);
+        assertThat(found.providerTransactionId()).isEqualTo("te002222222");
+
+        server.resetAll();
+        epointAnswers("/api/1/get-status", """
+                {"status":"returned","transaction":"te002222222"}
+                """);
+        assertThat(adapter().lookUpPayment("te002222222").state()).isEqualTo(PaymentLookup.State.RETURNED);
+
+        server.resetAll();
+        epointAnswers("/api/1/get-status", """
+                {"status":"server_error","message":"status doğrulama xətası"}
+                """);
+        assertThatThrownBy(() -> adapter().lookUpPayment("te002222222"))
+                .isInstanceOf(ProviderUnavailableException.class);
+    }
+
+    /**
+     * "Kart növü: 0 - ödəniş üçün kart; 1 - vəsaitlərin köçürülməsi üçün kart". A payout card is
+     * the second, and registering it as the first would give {@code payout} a card Epoint will
+     * not transfer to.
+     */
+    @Test
+    @DisplayName("a payout card is registered as a destination and never as a card to charge")
+    void payoutCardRegistration() {
+        epointAnswers("/api/1/card-registration", """
+                {"status":"success","card_id":"cd003333333","redirect_url":"https://epoint.az/card/cd003333333"}
+                """);
+
+        PayoutCardSession session = adapter()
+                .beginPayoutCardRegistration(new PayoutCardRequest(
+                        UUID.randomUUID(),
+                        "IdeaNest payout card",
+                        "az",
+                        URI.create("https://ideanest.az/az/settings/payout"),
+                        URI.create("https://ideanest.az/az/settings/payout")));
+
+        assertThat(session.cardId()).isEqualTo("cd003333333");
+        assertThat(whatWasSentTo("/api/1/card-registration").get("refund").asInt()).isEqualTo(1);
     }
 
     // ------------------------------------------------------------------
@@ -665,7 +782,18 @@ class EpointPaymentProviderTests {
 
     private static PaymentProperties propertiesOf(PaymentProperties.Epoint epoint) {
         return new PaymentProperties(
-                new PaymentProperties.Provider("epoint"), null, null, null, null, epoint);
+                new PaymentProperties.Provider("epoint"), null, null, null, null, epoint, null);
+    }
+
+    private static HostedPaymentRequest hostedPayment(Money amount, String language) {
+        return new HostedPaymentRequest(
+                UUID.randomUUID(),
+                amount,
+                "IdeaNest pledge",
+                language,
+                URI.create("https://ideanest.az/en/pledges/paid"),
+                URI.create("https://ideanest.az/en/pledges/failed"),
+                "payment-key-1");
     }
 
     private static StoredCardChargeRequest charge(Money amount) {

@@ -2,9 +2,9 @@
 
 import { Bold, Italic } from 'lucide-react';
 import { cn } from '@ideanest/ui';
-import type { StoryCopy } from '../../lib/i18n/editor-copy';
-import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import { isMarkActive, toggleMark, type StoryMark } from '../../lib/projects/story';
+import type { StoryToolbarCopy } from '../../lib/i18n/campaign-editor-copy';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
 
 /**
  * Bold and emphasis, applied to whatever is selected in one text control.
@@ -33,23 +33,15 @@ import { isMarkActive, toggleMark, type StoryMark } from '../../lib/projects/sto
  * indicator only" (docs/motion-system.md §5).
  */
 
-interface MarkControl {
-  mark: StoryMark;
-  /** Which of the two names in the catalogue this control carries. */
-  name: 'bold' | 'italic';
-  /**
-   * Announced as part of the name, so the shortcut is discoverable by ear.
-   *
-   * NOT TRANSLATED, and that is deliberate: `Control B` is the name of a key on the keyboard
-   * in front of the reader, and the key does not change with the language of the page (#459).
-   */
-  shortcut: string;
-  icon: typeof Bold;
-}
-
-const CONTROLS: readonly MarkControl[] = [
-  { mark: 'strong', name: 'bold', shortcut: 'Control B', icon: Bold },
-  { mark: 'em', name: 'italic', shortcut: 'Control I', icon: Italic },
+/**
+ * The two marks, in the order they are offered.
+ *
+ * NO `label` AND NO `shortcut` ANY MORE — issue #324. Both are catalogue copy, read from
+ * `copy`, so a control and the word announced with it cannot be spelled in two places.
+ */
+const CONTROLS: readonly { mark: StoryMark; icon: typeof Bold }[] = [
+  { mark: 'strong', icon: Bold },
+  { mark: 'em', icon: Italic },
 ];
 
 /** The keyboard shortcuts, so a control and its shortcut cannot disagree. */
@@ -61,8 +53,8 @@ export function markForShortcut(key: string): StoryMark | null {
 }
 
 export interface StoryMarkToolbarProps {
-  /** The four words this toolbar draws — issue #459. */
-  copy: StoryCopy['marks'];
+  /** The two controls' words. */
+  copy: StoryToolbarCopy;
   /** The control's current value, in the inline mark syntax. */
   value: string;
   selectionStart: number;
@@ -90,20 +82,18 @@ export function StoryMarkToolbar({
       formatting expects. Promising the arrow keys and not implementing them is
       worse than not promising them.
     */
-    <div
-      role="group"
-      aria-label={fillPlaceholders(copy.group, { label })}
-      className="flex items-center gap-1"
-    >
-      {CONTROLS.map(({ mark, name, shortcut, icon: Icon }) => {
+    <div role="group" aria-label={fillPlaceholders(copy.formattingFor, { label })} className="flex items-center gap-1">
+      {CONTROLS.map(({ mark, icon: Icon }) => {
         const active = isMarkActive(value, selectionStart, selectionEnd, mark);
+        const name = mark === 'strong' ? copy.bold : copy.italic;
+        const shortcut = mark === 'strong' ? copy.boldShortcut : copy.italicShortcut;
 
         return (
           <button
             key={mark}
             type="button"
             aria-pressed={active}
-            aria-label={fillPlaceholders(copy.named, { name: copy[name], shortcut })}
+            aria-label={`${name}, ${shortcut}`}
             disabled={disabled}
             /*
               `onMouseDown` with `preventDefault` rather than `onClick`: pressing a

@@ -3,7 +3,7 @@
 import { Link } from '../../i18n/navigation';
 import type { ReactNode } from 'react';
 import { Tag, cn } from '@ideanest/ui';
-import type { EditorFrameCopy } from '../../lib/i18n/editor-copy';
+import type { EditorChromeCopy } from '../../lib/i18n/campaign-editor-copy';
 import type { ProjectState } from '../../lib/projects/api';
 import { EDITOR_TABS, editorTabHref, type EditorTabKey } from './tabs';
 
@@ -28,13 +28,6 @@ import { EDITOR_TABS, editorTabHref, type EditorTabKey } from './tabs';
  * uses; nothing enters, nothing fades up.
  */
 
-/*
- * THE SIXTEEN STATE LABELS LEFT THIS FILE WITH #459. They were a `Record<ProjectState, string>`
- * exported from here so that every editor surface named a state the same way; they are
- * `editor.frame.states.*` now, and `EditorFrameCopy` is what stops the two spellings drifting.
- * The reason for one vocabulary has not changed — two translations of `CHANGES_REQUESTED`
- * would eventually disagree — only where it is kept.
- */
 
 const TAB_BASE = [
   'inline-flex h-[34px] shrink-0 items-center gap-1.5 whitespace-nowrap',
@@ -44,15 +37,8 @@ const TAB_BASE = [
 
 export interface EditorShellProps {
   projectId: string;
-  /**
-   * Every word this frame draws, resolved on the server — issue #459.
-   *
-   * This is a client component and has to be: it is rendered inside six panels that hold a
-   * form's state. `useTranslations` here would need a `NextIntlClientProvider` above every one
-   * of them, which this repository measured at up to 27.4 KiB on every route in a group.
-   * `lib/i18n/editor-copy.ts` carries the rest of the argument.
-   */
-  copy: EditorFrameCopy;
+  /** The frame's words, resolved on the server by the tab's own page. */
+  copy: EditorChromeCopy;
   /** Which tab the surrounding route is. */
   active: EditorTabKey;
   /** The project's title, once it has loaded. */
@@ -101,7 +87,7 @@ export function EditorShell({
           <h1 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
             {/* An untitled project is impossible — creation requires a title —
                 but a project still loading has no title to show yet. */}
-            {title ?? copy.loading}
+            {title ?? copy.loadingTitle}
           </h1>
         </div>
 
@@ -111,7 +97,7 @@ export function EditorShell({
         </div>
       </div>
 
-      <nav aria-label={copy.sections} className="mt-7">
+      <nav aria-label={copy.sectionsLabel} className="mt-7">
         <ul className="scrollbar-none flex gap-2 overflow-x-auto">
           {EDITOR_TABS.map((tab) => {
             const current = tab.key === active;
@@ -148,11 +134,11 @@ export function EditorShell({
                     <span aria-hidden="true" className="text-white/40">
                       {copy.soon}
                     </span>
-                    {/* The comma is load-bearing, and it is part of the message rather than
-                        written here. An accessible name is the concatenation of its parts with
-                        each part trimmed and no separator inserted, so a leading space would be
-                        dropped and the name would read "Rewardsnot available yet". */}
-                    <span className="sr-only">{copy.unavailable}</span>
+                    {/* The comma is load-bearing. An accessible name is the
+                        concatenation of its parts with each part trimmed and no
+                        separator inserted, so a leading space would be dropped
+                        and the name would read "Rewardsnot available yet". */}
+                    <span className="sr-only">{copy.notAvailable}</span>
                   </button>
                 </li>
               );

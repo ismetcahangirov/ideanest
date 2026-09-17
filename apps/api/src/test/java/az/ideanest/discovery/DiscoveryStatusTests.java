@@ -42,7 +42,8 @@ class DiscoveryStatusTests {
         // And nothing in both, or the two statements would not be a partition and
         // one of them would be decorative.
         assertThat(DiscoveryStatus.PUBLIC_STATES).doesNotContainAnyElementsOf(DiscoveryStatus.HIDDEN_STATES);
-        assertThat(ALL_STATES).hasSize(16);
+        // Nineteen since IDN-EXT-01 (#32) added CLOSING_WINDOW, EXTENDED and WITHDRAWN.
+        assertThat(ALL_STATES).hasSize(19);
     }
 
     @Test
@@ -59,28 +60,49 @@ class DiscoveryStatusTests {
     }
 
     @Test
-    @DisplayName("no status grouping can name a state the public may not see")
+    @DisplayName("IDN-EXT-01: an unsuccessful campaign is public but not listed, and nothing else differs")
+    void unsuccessfulIsPublicButNotListed() {
+        // Hidden from the catalogue and search only: its page and rewards still resolve.
+        assertThat(DiscoveryStatus.PUBLIC_STATES).contains("UNSUCCESSFUL");
+        assertThat(DiscoveryStatus.LISTED_STATES).doesNotContain("UNSUCCESSFUL");
+        Set<String> difference = new LinkedHashSet<>(DiscoveryStatus.PUBLIC_STATES);
+        difference.removeAll(DiscoveryStatus.LISTED_STATES);
+        assertThat(difference).containsExactly("UNSUCCESSFUL");
+    }
+
+    @Test
+    @DisplayName("no status grouping can name a state the catalogue does not list")
     void groupingsStayInsideTheVisibleSet() {
         for (DiscoveryStatus status : DiscoveryStatus.values()) {
             assertThat(status.states())
-                    .withFailMessage("%s covers a state outside PUBLIC_STATES: %s", status, status.states())
-                    .allMatch(DiscoveryStatus.PUBLIC_STATES::contains);
+                    .withFailMessage("%s covers a state outside LISTED_STATES: %s", status, status.states())
+                    .allMatch(DiscoveryStatus.LISTED_STATES::contains);
         }
     }
 
     @Test
-    @DisplayName("no status filter means every publicly visible state")
+    @DisplayName("no status filter means every listed state")
     void anAbsentFilterIsTheWholeVisibleSet() {
-        assertThat(DiscoveryStatus.statesFor(Set.of())).isEqualTo(DiscoveryStatus.PUBLIC_STATES);
+        assertThat(DiscoveryStatus.statesFor(Set.of())).isEqualTo(DiscoveryStatus.LISTED_STATES);
+    }
+
+    @Test
+    @DisplayName("IDN-EXT-01: the filter words are upcoming, live, extended and successful")
+    void theFilterWords() {
+        assertThat(DiscoveryStatus.wireValues()).containsExactly("upcoming", "live", "extended", "successful");
+        assertThat(DiscoveryStatus.EXTENDED.states()).containsExactly("EXTENDED");
     }
 
     @Test
     @DisplayName("a status filter narrows the visible set and never widens it")
     void aFilterOnlyNarrows() {
         for (DiscoveryStatus status : DiscoveryStatus.values()) {
-            assertThat(DiscoveryStatus.statesFor(Set.of(status))).isSubsetOf(DiscoveryStatus.PUBLIC_STATES);
+            assertThat(DiscoveryStatus.statesFor(Set.of(status))).isSubsetOf(DiscoveryStatus.LISTED_STATES);
         }
-        assertThat(DiscoveryStatus.statesFor(Set.of(DiscoveryStatus.LIVE))).containsExactly("LIVE");
+        // IDN-EXT-01 (#32): a campaign in its seven-day window or its extension is still taking
+        // pledges, and "live" is the filter a backer looking for something to back uses.
+        assertThat(DiscoveryStatus.statesFor(Set.of(DiscoveryStatus.LIVE)))
+                .containsExactlyInAnyOrder("LIVE", "CLOSING_WINDOW", "EXTENDED");
     }
 
     @Test
@@ -89,16 +111,19 @@ class DiscoveryStatusTests {
         // A backer filtering for successful campaigns wants what this platform has
         // funded, not the newest tenth of it.
         assertThat(DiscoveryStatus.SUCCESSFUL.states())
-                .containsExactlyInAnyOrder("SUCCESSFUL", "COLLECTING", "LATE_PLEDGE", "FULFILLING", "COMPLETED");
+                .containsExactlyInAnyOrder(
+                        "SUCCESSFUL", "COLLECTING", "LATE_PLEDGE", "WITHDRAWN", "FULFILLING", "COMPLETED");
     }
 
     @Test
-    @DisplayName("a late-pledge campaign badges as late pledge, not as successful")
+    @DisplayName("IDN-EXT-01: a campaign left in LATE_PLEDGE badges as successful, and an extended one as live")
     void theBadgeIsTheNarrowestGrouping() {
-        // It is in both groupings on purpose. The badge is the one that tells a
-        // reader what they can still do about it.
-        assertThat(DiscoveryStatus.badgeFor("LATE_PLEDGE")).contains(DiscoveryStatus.LATE_PLEDGE);
-        assertThat(DiscoveryStatus.SUCCESSFUL.states()).contains("LATE_PLEDGE");
+        // Late pledges are switched off, so there is no late-pledge word left to badge with.
+        assertThat(DiscoveryStatus.badgeFor("LATE_PLEDGE")).contains(DiscoveryStatus.SUCCESSFUL);
+        // Extended is a filter and a label on the card, not the badge: it is still live.
+        assertThat(DiscoveryStatus.badgeFor("EXTENDED")).contains(DiscoveryStatus.LIVE);
+        assertThat(DiscoveryStatus.badgeFor("CLOSING_WINDOW")).contains(DiscoveryStatus.LIVE);
+        assertThat(DiscoveryStatus.badgeFor("UNSUCCESSFUL")).isEmpty();
     }
 
     @Test
@@ -106,7 +131,7 @@ class DiscoveryStatusTests {
     void cancelledIsVisibleAndUnlabelled() {
         // It launched and the public saw it, so hiding it here while its page still
         // resolves would answer one question two ways. §4.3 has no word for it, and
-        // inventing one — or folding it into "unsuccessful" — would tell a reader
+        // inventing one — or folding it into the unsuccessful campaigns — would tell a reader
         // that a withdrawn campaign failed to find backers.
         assertThat(DiscoveryStatus.PUBLIC_STATES).contains("CANCELED");
         assertThat(DiscoveryStatus.badgeFor("CANCELED")).isEmpty();

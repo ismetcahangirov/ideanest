@@ -1,8 +1,6 @@
 import { Link } from '../../i18n/navigation';
-import { getLocale } from 'next-intl/server';
-import { localeOrDefault } from '../../lib/i18n/locale';
 import { footerCopy } from '../../lib/i18n/shell-copy.server';
-import { LanguageSwitch } from './LanguageSwitch';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 /**
  * The global footer — §4.13 WS-02, docs/ui-kit.md §8.6.
@@ -23,30 +21,36 @@ import { LanguageSwitch } from './LanguageSwitch';
  * `--text-tertiary` and lift to white on hover, which is 4.9:1 at rest and is why they are
  * set at 16px or above (§9.1).
  *
- * <h2>The language is offered here now, and the currency is still only stated</h2>
+ * <h2>The language is chosen here now, and the currency still is not</h2>
  *
- * WS-02 lists both, and until #458 this footer offered neither. The refusal was argued and
- * the argument was right at the time: choosing a language meant reading a cookie, reading a
- * cookie makes a render dynamic, and this component is on `/`, the category landings and
- * every static page — so a control here would have turned all of them into a render per
- * visitor to translate a navigation bar.
+ * WS-02 lists both. They were both statements until #123, for one shared reason that has
+ * since stopped applying to one of them.
  *
- * #123 REMOVED THE PREMISE RATHER THAN THE COST. The language is a path segment now, so
- * switching is a link from one cached address to another and nothing is read at render time.
- * `src/i18n/request.ts` states the consequence: "there is no longer a performance argument
- * for leaving any surface in English." `LanguageSwitch` is the one client boundary in this
- * file, and it is a boundary only because the anchors need the route's own path; the footer
- * around it is unchanged and still renders on the server.
+ * THE LANGUAGE USED TO BE A STATEMENT BECAUSE CHOOSING ONE MEANT READING A COOKIE, and
+ * reading a cookie makes a render dynamic — this component is on `/`, the category landings
+ * and the static pages, every one of which is a shared cached render. A control here would
+ * have turned all of them into a render per visitor to translate a navigation bar, paid on
+ * the largest contentful paint of the pages a stranger meets first.
  *
- * <p>The old sentence this replaced — "this build serves the public site in English" — was
- * the honest statement of a limitation that no longer exists.
+ * #123 removed the premise. The language is a path segment, so the control reads nothing at
+ * render time: it is four links from this address to the same page under another prefix, and
+ * each of those is a cached render of its own. `src/i18n/request.ts` states the consequence
+ * outright — "there is no longer a performance argument for leaving any surface in English".
+ * `LanguageSwitcher` is the only client boundary in this footer and carries the rest. It is
+ * a globe with the four names behind it since it became an icon, and the header carries the
+ * same control — a reader who landed in the wrong language looks up, not down.
  *
- * THE CURRENCY IS A CONTROL ELSEWHERE, AND IT IS STILL NOT HERE. #327 built the rate source
- * §21.2 asks for — the Central Bank of Azerbaijan's daily publication, refreshed hourly — so
- * `/settings/language`'s currency panel is a real choice rather than the sentence #280 could
- * honestly offer. The language's argument does not carry over to it: a display currency is a
- * per-reader preference with nothing in the URL to carry it, so a control here would have to
- * know who is reading, which is the dynamic render #458 was careful not to reintroduce.
+ * Until that control existed the four languages were reachable only from
+ * `/settings/language`, which is the account area: a signed-out visitor could change the
+ * language of the site only by editing the address bar. That is what this fixes.
+ *
+ * THE CURRENCY IS A CONTROL NOW, AND IT IS STILL NOT HERE. #327 built the rate source §21.2
+ * asks for — the Central Bank of Azerbaijan's daily publication, refreshed hourly — so
+ * `/settings/language`'s currency panel is a real choice rather than the sentence #280 could honestly
+ * offer. This footer keeps the statement, and now for a reason of its own rather than one
+ * borrowed from the language: a display currency has nothing in the URL to carry it, so a
+ * control here would have to know who is reading, and this component is on cached shared
+ * renders.
  *
  * What it states is what every visitor is charged in, which does not vary by reader: §21.2
  * collects in the campaign's currency, and phase 1's campaigns are all in manat. A display
@@ -62,24 +66,24 @@ import { LanguageSwitch } from './LanguageSwitch';
 
 export async function SiteFooter() {
   /*
-   * The footer's words, and the language the page was drawn in. That value used to pick one
-   * name out of `LOCALE_NAMES` to print as a statement; since #458 it marks which of the four
-   * the reader is on, and the other three are the way out of it. Each is still named in
-   * itself — a reader looking for их язык recognises "Русский" and not "Russian".
+   * The footer's words, and the reader's own language name. The language line used to be the
+   * constant `'English'` — an honest statement while the site had one language and a lie the
+   * moment it had four, printed at the bottom of every Russian page. `LOCALE_NAMES` holds
+   * each language's name in itself, which is the only spelling worth showing here: a reader
+   * looking for их язык recognises "Русский" and not "Russian".
    */
-  const [copy, locale] = await Promise.all([footerCopy(), getLocale()]);
-
-  /*
-   * `getLocale()` is typed as `string`, so it is narrowed rather than asserted. The value can
-   * only be one of the four — the layout calls `notFound()` on anything else before this
-   * renders — and narrowing costs nothing while a cast would be a lie the compiler stops
-   * checking.
-   */
-  const language = localeOrDefault(locale);
+  const copy = await footerCopy();
 
   return (
     <footer className="mt-24 border-t border-white/6 bg-surface-1">
-      <div className="mx-auto w-full max-w-[1400px] px-5 py-14 sm:px-6">
+      {/*
+        THE BOTTOM PADDING CLEARS THE FLOATING WHATSAPP CONTROL. That button is fixed to the
+        bottom-right corner of the viewport, so at the very end of a page it sits over
+        whatever this row ends with — which is the currency statement. Padding here rather
+        than a rule in the launcher: the footer is the one surface that is guaranteed to be
+        under it, and a control that moved out of the way would move on every page.
+      */}
+      <div className="mx-auto w-full max-w-[1400px] px-5 pt-14 pb-24 sm:px-6">
         <div className="flex flex-col gap-12 lg:flex-row lg:justify-between">
           {/*
             The platform's own statement of what it is (WS-02). It says the funding model,
@@ -123,16 +127,21 @@ export async function SiteFooter() {
           */}
           <p>© IdeaNest</p>
 
-          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-2">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             {/*
-              The language is a control and the currency is a statement, so they are no longer
-              two rows of one description list. A `<dd>` holding four links would be a
-              definition of a term that is really a choice, and `LanguageSwitch` names itself
-              as a navigation landmark — which is what a reader looking for the control will
-              be moving between.
+              THE LANGUAGE IS A CONTROL AND THE CURRENCY IS A STATEMENT, so the two stopped
+              being one `dl` when the language became an icon: a `dt`/`dd` pair describes a
+              value, and a button that opens a list of four languages is not one. The
+              currency keeps the pair, because it is still a term and its value.
             */}
-            <LanguageSwitch heading={copy.languageHeading} current={language} />
-
+            <div className="flex items-center gap-2">
+              <span>{copy.languageHeading}</span>
+              <LanguageSwitcher
+                label={copy.languageSwitcherLabel}
+                placement="up"
+                appearance="quiet"
+              />
+            </div>
             <dl className="flex items-center gap-2">
               <dt>{copy.currencyHeading}</dt>
               <dd className="text-white/64">{copy.currencyValue}</dd>

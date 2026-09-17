@@ -1,7 +1,10 @@
 package az.ideanest.payment.infrastructure;
 
 import az.ideanest.payment.domain.PaymentTransaction;
+import az.ideanest.payment.domain.ProviderName;
 import az.ideanest.payment.domain.TransactionStatus;
+import az.ideanest.payment.domain.TransactionType;
+import java.util.Collection;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -34,6 +37,24 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
      * pledge row, which makes a read-then-write correct here in a way it usually is not.
      */
     boolean existsByIdempotencyKey(String idempotencyKey);
+
+    /** IDN-EXT-01 (#43): whether money has been paid out for a campaign — a settled PAYOUT row. */
+    @Query(
+            """
+            SELECT COUNT(t) > 0 FROM PaymentTransaction t
+            WHERE t.projectId = :projectId
+              AND t.type = az.ideanest.payment.domain.TransactionType.PAYOUT
+              AND t.status = az.ideanest.payment.domain.TransactionStatus.SUCCEEDED
+            """)
+    boolean hasPaidOut(@Param("projectId") UUID projectId);
+
+    /** IDN-EXT-01 (#39): the charge a payment page opened, by the provider's name for it. */
+    Optional<PaymentTransaction> findFirstByProviderAndProviderTransactionIdAndTypeAndStatus(
+            ProviderName provider, String providerTransactionId, TransactionType type, TransactionStatus status);
+
+    /** Whether a provider transaction already has its final row — the settled index's question. */
+    boolean existsByProviderAndProviderTransactionIdAndStatusIn(
+            ProviderName provider, String providerTransactionId, Collection<TransactionStatus> statuses);
 
     /** An attempt by its key, for the re-poll that finds the provider has since decided. */
     Optional<PaymentTransaction> findByIdempotencyKey(String idempotencyKey);

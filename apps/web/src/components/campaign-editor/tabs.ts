@@ -28,14 +28,13 @@ export type EditorTabKey = 'basics' | 'rewards' | 'story' | 'faq' | 'prelaunch' 
 
 export interface EditorTab {
   key: EditorTabKey;
-  /**
-   * Path segment under `/projects/[id]/edit`.
-   *
-   * There is no `label` here since #459. The words live in the catalogue, under
-   * `editor.frame.tabs.<key>`, and `EditorShell` is the one place the two meet — exactly as
-   * `components/shell/navigation.ts` holds the routes while `shell.nav.*` holds their names.
-   * A label on this row would be a seventh English string that no translation could reach.
+  /*
+   * NO `label`. The section's name is catalogue copy, read by `EditorShell` as
+   * `copy.tabs[tab.key]` — issue #324. A spelling here as well would be a second
+   * one, and this file's own warning about two declarations drifting applies to
+   * it first.
    */
+  /** Path segment under `/projects/[id]/edit`. */
   segment: EditorTabKey;
   /** Whether the route exists. Flip it in the pull request that adds the page. */
   available: boolean;

@@ -1,32 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { editorFrameCopyFrom } from '../../lib/i18n/editor-copy';
-import { translatorFor } from '../../test-copy';
 import { EditorShell } from './EditorShell';
 import { EDITOR_TABS } from './tabs';
+import { EDITOR_COPY } from '../../test-editor-copy';
 
 /**
  * Appearance is reviewed in Storybook. These cover the navigation contract: the
  * section a creator is on, the sections that do not exist yet, and reaching all
  * of them with a keyboard.
- *
- * <p>The words come from `messages/en.json` through the same builder the page calls — issue
- * #459. Retyping them here would give a test that passes whatever the catalogue says, which is
- * exactly the defect the section names were moved out of `tabs.ts` to avoid.
  */
-
-const COPY = editorFrameCopyFrom(translatorFor('editor'));
 
 function renderShell() {
   return render(
-    <EditorShell
-      projectId="project-1"
-      copy={COPY}
-      active="basics"
-      title="A field recorder"
-      state="DRAFT"
-    >
+    <EditorShell projectId="project-1" copy={EDITOR_COPY} active="basics" title="A field recorder" state="DRAFT">
       <p>The basics form</p>
     </EditorShell>
   );
@@ -36,11 +23,11 @@ describe('EditorShell', () => {
   it('names the navigation and lists every section once', () => {
     renderShell();
 
-    const nav = screen.getByRole('navigation', { name: COPY.sections });
+    const nav = screen.getByRole('navigation', { name: EDITOR_COPY.sectionsLabel });
     expect(nav).toBeInTheDocument();
 
     for (const tab of EDITOR_TABS) {
-      expect(screen.getByText(COPY.tabs[tab.key])).toBeInTheDocument();
+      expect(screen.getByText(EDITOR_COPY.tabs[tab.key])).toBeInTheDocument();
     }
   });
 
@@ -99,11 +86,10 @@ describe('EditorShell', () => {
      * behaviour the test is named for.
      */
     for (const tab of EDITOR_TABS) {
-      const label = COPY.tabs[tab.key];
-
       await user.tab();
+      const name = EDITOR_COPY.tabs[tab.key];
       expect(document.activeElement).toHaveAccessibleName(
-        tab.available ? label : `${label}${COPY.unavailable}`,
+        tab.available ? name : `${name}${EDITOR_COPY.notAvailable}`,
       );
     }
   });
@@ -117,7 +103,7 @@ describe('EditorShell', () => {
      * next and asserting a name that happened to match, so the list and the
      * markup are checked against each other rather than each against itself.
      */
-    const nav = screen.getByRole('navigation', { name: COPY.sections });
+    const nav = screen.getByRole('navigation', { name: 'Campaign sections' });
     const controls = [
       ...within(nav).getAllByRole('link'),
       ...within(nav).queryAllByRole('button'),
@@ -128,7 +114,7 @@ describe('EditorShell', () => {
   it('says which state the campaign is in, in words', () => {
     renderShell();
     // Colour alone must never carry meaning (docs/ui-kit.md §9.2).
-    expect(screen.getByText(COPY.states.DRAFT)).toBeInTheDocument();
+    expect(screen.getByText('Draft')).toBeInTheDocument();
   });
 
   it('renders the tab content it was given', () => {

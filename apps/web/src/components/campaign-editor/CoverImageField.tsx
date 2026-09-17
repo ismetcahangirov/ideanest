@@ -2,8 +2,6 @@
 
 import { useRef, useState } from 'react';
 import { Field, FileDropZone, InlineAlert, Media, Pill, TextInput } from '@ideanest/ui';
-import type { CoverImageCopy } from '../../lib/i18n/editor-copy';
-import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import type { CoverImage } from '../../lib/projects/api';
 import {
   COVER_MIN_HEIGHT,
@@ -33,14 +31,15 @@ import { UploadFailed, uploadImage, type UploadStage } from '../../lib/media/upl
  * the dimensions are read here in the browser and are the client's word — which is one of the
  * two reasons the size rule stopped blocking.
  */
+import {
+  COVER_FAILURE_CODES,
+  type CoverFailureCode,
+  type CoverImageCopy,
+} from '../../lib/i18n/campaign-editor-copy';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+
 export interface CoverImageFieldProps {
-  /**
-   * Every word this field draws, resolved on the server — issue #459.
-   *
-   * It is the largest vocabulary on the basics tab: nine refusal codes, three upload stages,
-   * and the paragraph that explains what a small image will look like. `BasicsPanel` passes it
-   * straight through, because the component that owns the words is the one that draws them.
-   */
+  /** This field's words, including what a refused upload is called. */
   copy: CoverImageCopy;
   /** The address as typed, which may not yet be a saved cover. */
   url: string;
@@ -57,16 +56,13 @@ type Note = { tone: 'success' | 'info' | 'danger'; title?: string; text: string 
 
 const MINIMUM = `${COVER_MIN_WIDTH}×${COVER_MIN_HEIGHT}`;
 
-/*
- * THE REFUSAL TABLE AND THE THREE STAGE WORDS LEFT THIS FILE WITH #459, and the comment they
- * carried predicted it: "the editor is not translated yet; when it is, this table is what moves
- * to the catalogue". They are `editor.basics.cover.refusals.*` and `.stages.*`, still keyed on
- * the service's own code — the sentence it writes is English for a log, and these are read by
- * somebody deciding what to do next.
+/**
+ * What each refusal means, in words a creator can act on.
  *
- * <p>Processing keeps a word of its own rather than a spinner stuck at the end of the upload:
- * the bytes have arrived and the conversion has not run yet, and on a large photograph that is
- * seconds.
+ * Keyed on the server's code rather than rendering its sentence, because the sentence is
+ * English for a log and these are read by somebody deciding what to do next. The editor is
+ * not translated yet (#324 scopes that separately); when it is, this table is what moves to
+ * the catalogue.
  */
 
 export function CoverImageField({
@@ -95,10 +91,7 @@ export function CoverImageField({
 
   function sizeAdvice(size: { width: number; height: number }): Note {
     return meetsCoverMinimum(size)
-      ? {
-          tone: 'success',
-          text: fillPlaceholders(copy.accepted, { size: describeSize(size) }),
-        }
+      ? { tone: 'success', text: fillPlaceholders(copy.set, { size: describeSize(size) }) }
       : {
           // Not `danger`. The image is saved and the campaign can be submitted; this is the
           // one thing the creator might want to change and not a thing they must.
@@ -113,20 +106,16 @@ export function CoverImageField({
            * distorted, and telling somebody their photograph will be squashed would send
            * them to fix a problem they do not have.
            */
-          text: fillPlaceholders(copy.soft, { size: describeSize(size), minimum: MINIMUM }),
+          text: fillPlaceholders(copy.setSmall, {
+            size: describeSize(size),
+            minimum: MINIMUM,
+          }),
         };
   }
 
   function describeFailure(cause: unknown): string {
     if (cause instanceof UploadFailed) {
-      const refusal = copy.refusals[cause.code];
-      /*
-       * An unknown code falls back to what the service said, which is the honest failure: a
-       * wrong sentence in the reader's own language would be worse than a right one in
-       * English. `TOO_SMALL` is the one that carries a placeholder, and filling every refusal
-       * costs nothing — `fillPlaceholders` leaves a sentence without one exactly as it was.
-       */
-      return refusal === undefined ? cause.message : fillPlaceholders(refusal, { minimum: MINIMUM });
+      return refusalFor(copy, cause.code) ?? cause.message;
     }
     return cause instanceof Error ? cause.message : copy.unusable;
   }
@@ -134,7 +123,7 @@ export function CoverImageField({
   async function useAddress(): Promise<void> {
     const address = url.trim();
     if (address === '') {
-      setNote({ tone: 'danger', text: copy.addressMissing });
+      setNote({ tone: 'danger', text: copy.needUrlFirst });
       return;
     }
 
@@ -181,7 +170,7 @@ export function CoverImageField({
       setNote(sizeAdvice(image));
     } catch (cause) {
       if (cause instanceof DOMException && cause.name === 'AbortError') return;
-      setNote({ tone: 'danger', title: copy.rejectedTitle, text: describeFailure(cause) });
+      setNote({ tone: 'danger', title: copy.notUsedTitle, text: describeFailure(cause) });
     } finally {
       if (inFlight.current === controller) inFlight.current = null;
       setStage(null);
@@ -224,8 +213,8 @@ export function CoverImageField({
             />
             <figcaption className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-[13px] text-white/64">
               <span>
-                {fillPlaceholders(copy.set, { size: describeSize(cover) })}
-                {cover.mediaId ? copy.uploaded : ''}
+                Cover is {describeSize(cover)} pixels
+                {cover.mediaId ? ' · uploaded' : ''}
               </span>
               <Pill
                 variant="ghost"
@@ -246,9 +235,9 @@ export function CoverImageField({
         <FileDropZone
           accept="image/*"
           disabled={disabled || checking}
-          prompt={copy.drop}
-          dragPrompt={copy.release}
-          buttonLabel={copy.choose}
+          prompt={copy.prompt}
+          dragPrompt={copy.dragPrompt}
+          buttonLabel={copy.buttonLabel}
           hint={fillPlaceholders(copy.dropHint, { minimum: MINIMUM })}
           onFiles={(files) => {
             const [first] = files;
@@ -265,13 +254,13 @@ export function CoverImageField({
             // The `Field` label names a group here, so it cannot name this
             // control; without a label of its own the input would be announced
             // as "edit text" and nothing else.
-            aria-label={copy.addressLabel}
-            placeholder={copy.addressPlaceholder}
+            aria-label="Cover image address"
+            placeholder={copy.urlPlaceholder}
             className="sm:flex-1"
             onChange={(event) => onUrlChange(event.target.value)}
           />
           <Pill variant="ghost" disabled={disabled || checking} onClick={() => void useAddress()}>
-            {checking && stage === null ? copy.checking : copy.useAddress}
+            {checking && stage === null ? 'Checking' : 'Use this address'}
           </Pill>
         </div>
 
@@ -288,7 +277,7 @@ export function CoverImageField({
         */}
         <div role="status" aria-live="polite" className="empty:hidden">
           {stage !== null && (
-            <InlineAlert variant="info">{copy.stages[stage]}</InlineAlert>
+            <InlineAlert variant="info">{copy.stage[stage]} the image…</InlineAlert>
           )}
           {stage === null && note !== null && note.tone !== 'danger' && (
             <InlineAlert variant={note.tone} title={note.title}>
@@ -305,4 +294,19 @@ export function CoverImageField({
       </div>
     </Field>
   );
+}
+
+/**
+ * The sentence for an upload refusal this build knows, or `null`.
+ *
+ * A lookup on a `Record` keyed by the service's own codes. An unknown code falls through to
+ * the service's own message rather than to nothing: the deployment may refuse for a reason
+ * this build has never heard of, and its sentence is better than silence.
+ */
+function refusalFor(copy: CoverImageCopy, code: string): string | null {
+  return isKnownCode(code) ? copy.failures[code] : null;
+}
+
+function isKnownCode(code: string): code is CoverFailureCode {
+  return (COVER_FAILURE_CODES as readonly string[]).includes(code);
 }

@@ -21,11 +21,11 @@ import type { Money } from '../money';
  * Every optional field is typed `?: T | null` so the two readings are the same
  * thing to a caller — the same decision both existing clients took.
  *
- * NOTHING HERE CHARGES A CARD, and nothing here can. §9.2's phase 1 —
- * verification authorisation, 3-D Secure, store the token, void — belongs to
- * #55, which is blocked on #60 (`status: needs-decision`), so there is no
- * provider to call. Confirmation performs the state transition and commits the
- * stock, and that is all it does.
+ * NOTHING HERE TAKES A CARD. Under IDN-EXT-01 a pledge is charged on the
+ * payment provider's own page: `payForPledge` asks the service to open one and
+ * returns where to send the browser, and the provider's webhook — not this
+ * client — settles the pledge. `confirmPledge` is the retired model's call and
+ * goes with #45.
  */
 
 export type { Money } from '../money';
@@ -501,6 +501,54 @@ export async function confirmPledge(
 }
 
 /* -------------------------------------------------------------------------
+ * The payment page — POST /v1/pledges/{id}/payment (IDN-EXT-01, #39 and #44)
+ * ---------------------------------------------------------------------- */
+
+/**
+ * What paying for a draft sends.
+ *
+ * The same acknowledgement `ConfirmPledgeRequest` carries, because the payment endpoint makes
+ * confirmation's refusals and records the backer agreement in its place. `successUrl` and
+ * `errorUrl` are where the provider sends the backer back; `language` is the page's, so the
+ * provider's page speaks the one the backer was reading.
+ */
+export interface PayPledgeRequest {
+  acknowledgedAgreementVersion: number | null;
+  language: string;
+  successUrl: string;
+  errorUrl: string;
+}
+
+/**
+ * The provider's page for this pledge.
+ *
+ * `redirectUrl` is the whole answer: the browser goes there and the card is entered on the
+ * provider's page, never here (§17.2's SAQ A). The pledge stays `DRAFT` until the provider's
+ * webhook settles it `COLLECTED`, so nothing on this side may read the response as "paid".
+ */
+export interface PaymentPageResponse {
+  pledgeId: string;
+  providerTransactionId: string;
+  redirectUrl: string;
+}
+
+export async function payForPledge(
+  id: string,
+  body: PayPledgeRequest,
+  idempotencyKey: string,
+  signal?: AbortSignal,
+): Promise<PaymentPageResponse> {
+  const response = await authorizedFetch(`/v1/pledges/${encodeURIComponent(id)}/payment`, {
+    method: 'POST',
+    headers: mutationHeaders(idempotencyKey),
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (!response.ok) throw await errorFrom(response);
+  return (await response.json()) as PaymentPageResponse;
+}
+
+/* -------------------------------------------------------------------------
  * The pledge manager — PATCH and DELETE /v1/pledges/{id} (#287)
  * ---------------------------------------------------------------------- */
 
@@ -558,6 +606,10 @@ export interface PledgeEdit {
  *     (409), carrying `meta.deadline`, which is the same code and body the draft endpoint
  *     gives, so one fact has one answer wherever it is asked.
  *
+ * And IDN-EXT-01 (#35) adds one rule of its own: a `CONFIRMED` pledge may only be raised. An edit
+ * that would lower its total is `PLEDGE_DECREASE_NOT_ALLOWED` (409), carrying `meta.current` and
+ * `meta.requested`. There is no cancel call here any more — a backer cannot withdraw a pledge.
+ *
  * A draft whose five minutes have run out is `RESERVATION_EXPIRED` (409): editing it would
  * re-price a place the tier has already promised to give back. Every one of these is worded
  * for a backer in `./failure`.
@@ -584,40 +636,6 @@ export async function editPledge(
       signal,
     }),
   );
-}
-
-/**
- * §4.5's PL-10 — `DELETE /v1/pledges/{id}`. The backer withdraws.
- *
- * **What it releases is the point, and the confirmation on screen has to say so.** Every place
- * the pledge held goes back: the reward tier's, and each add-on's quantity (#203), from
- * whichever counter was holding them. That is stock another backer can then take, which is why
- * this is not a reversible action even though nothing was charged.
- *
- * **Nothing is refunded, because nothing was collected** (§9.7). There is no refund path here
- * and there must not be one: money that really was collected comes back through #67.
- *
- * `204`, and a retry is `204` too — the ordinary retry carries the same key and is replayed
- * from `idempotency_keys`, and a client that lost its key and sent a fresh one is answered
- * `204` as well, because "it is cancelled" is true either way. So this function returns
- * nothing: there is no body to read and no state to reconcile beyond re-reading the pledge.
- *
- * **A lapsed draft may still be cancelled**, unlike edited. The backer is asking for the place
- * to go back and the sweep is about to do the same thing; refusing would be our scheduling
- * getting in their way.
- */
-export async function cancelPledge(
-  id: string,
-  idempotencyKey: string,
-  signal?: AbortSignal,
-): Promise<void> {
-  const response = await authorizedFetch(`/v1/pledges/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-    headers: mutationHeaders(idempotencyKey),
-    signal,
-  });
-
-  if (!response.ok) throw await errorFrom(response);
 }
 
 /* -------------------------------------------------------------------------

@@ -35,10 +35,14 @@ import {
   type BasicsField,
 } from '../../lib/projects/basics';
 import { CoverImageField } from './CoverImageField';
-import type { PrelaunchCopy } from '../../lib/i18n/editor-copy';
+import type {
+  BasicsValidationCopy,
+  CoverImageCopy,
+  EditorChromeCopy,
+  PrelaunchPanelCopy,
+} from '../../lib/i18n/campaign-editor-copy';
 import { fillNodes, fillPlaceholders } from '../../lib/i18n/placeholders';
 import { pluralForm } from '../../lib/i18n/plurals';
-import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 import { EditorShell } from './EditorShell';
 import { SaveStatus } from './SaveStatus';
 import { useAutosave, describeFailure, type SaveFailure } from './useAutosave';
@@ -102,23 +106,33 @@ function prelaunchLink(projectId: string): string {
 
 export interface PrelaunchPanelProps {
   projectId: string;
+  /** The editor frame's words, resolved by this tab's page. */
+  copy: EditorChromeCopy;
   /**
-   * Every word this tab draws, resolved on the server — issue #459.
-   *
-   * This panel is a client component and has to be: the form autosaves as it is typed. A
-   * `useTranslations` here would need a `NextIntlClientProvider` above it, which this
-   * repository measured at up to 27.4 KiB on every route in a group; the page reads the
-   * catalogue instead and hands the words down. `lib/i18n/editor-copy.ts` carries the
-   * argument.
+   * The basics form's refusals. This tab edits the same fields through the same
+   * `validateBasics`, so it refuses in the same vocabulary rather than a second one.
    */
-  copy: PrelaunchCopy;
+  validation: BasicsValidationCopy;
+  /**
+   * The cover field's words.
+   *
+   * From the basics copy, the way `validation` is: this tab edits the same three fields and
+   * draws the same upload, so it refuses and explains in the same vocabulary rather than a
+   * second one. The tab's own words are `prelaunch` below.
+   */
+  cover: CoverImageCopy;
+  /** This tab's own words. */
+  prelaunch: PrelaunchPanelCopy;
 }
 
-export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
-  const { project, status, error, reload, apply } = useProjectEdit(projectId, copy.frame.failures.load);
-
-  /* The language, for the one sentence here that declines: how many people are waiting. */
-  const locale = useRouteLocale();
+export function PrelaunchPanel({
+  projectId,
+  copy,
+  validation,
+  cover,
+  prelaunch: words,
+}: PrelaunchPanelProps) {
+  const { project, status, error, reload, apply } = useProjectEdit(projectId);
 
   /** Seeded once, for the reason `BasicsPanel` gives: re-seeding eats keystrokes. */
   const [draft, setDraft] = useState<BasicsDraft | null>(null);
@@ -132,7 +146,6 @@ export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
   const autosave = useAutosave<ProjectPatch, ProjectEdit>({
     send: (patch) => patchProject(projectId, patch),
     onSaved: apply,
-    failures: copy.frame.failures.save,
   });
 
   useEffect(() => {
@@ -181,7 +194,7 @@ export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
       apply(await openPrelaunch(projectId));
       setConfirming(false);
     } catch (cause) {
-      setOpenFailure(describeFailure(cause, copy.frame.failures.save));
+      setOpenFailure(describeFailure(cause));
     } finally {
       setOpening(false);
     }
@@ -202,9 +215,9 @@ export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
 
   if (status === 'signed-out') {
     return (
-      <EditorShell projectId={projectId} copy={copy.frame} active="prelaunch">
-        <InlineAlert variant="info" title={copy.frame.signedOut.title}>
-          {copy.frame.signedOut.body}
+      <EditorShell projectId={projectId} copy={copy} active="prelaunch">
+        <InlineAlert variant="info" title={copy.signedOutTitle}>
+          {copy.signedOutDetail}
         </InlineAlert>
       </EditorShell>
     );
@@ -212,18 +225,18 @@ export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
 
   if (status === 'failed' || draft === null || project === null) {
     return (
-      <EditorShell projectId={projectId} copy={copy.frame} active="prelaunch">
+      <EditorShell projectId={projectId} copy={copy} active="prelaunch">
         {status === 'failed' ? (
           <>
-            <InlineAlert variant="danger" title={copy.frame.loadFailed}>
+            <InlineAlert variant="danger" title={copy.loadFailedTitle}>
               {error}
             </InlineAlert>
             <Pill variant="ghost" size="sm" className="mt-4" onClick={reload}>
-              {copy.frame.tryAgain}
+              {copy.tryAgain}
             </Pill>
           </>
         ) : (
-          <SkeletonGroup label={copy.loading}>
+          <SkeletonGroup label={words.loadingLabel}>
             <div className="flex flex-col gap-6">
               {LOADING_ROWS.map((row) => (
                 <div key={row} className="flex flex-col gap-2">
@@ -238,29 +251,29 @@ export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
     );
   }
 
-  const errors: BasicsErrors = {
-    ...validateBasics(draft, copy.errors),
-    ...serverErrors(autosave.failure),
-  };
+  const errors: BasicsErrors = { ...validateBasics(draft, validation), ...serverErrors(autosave.failure) };
   const canOpen = project.state === 'DRAFT';
   const closed = !canOpen && !collecting;
 
   return (
     <EditorShell
       projectId={projectId}
-      copy={copy.frame}
+      copy={copy}
       active="prelaunch"
       title={project.title}
       state={project.state}
-      status={<SaveStatus state={autosave.state} copy={copy.frame.save} />}
+      status={<SaveStatus state={autosave.state} copy={copy.save} />}
     >
       <div className="flex flex-col gap-7">
         {autosave.failure !== null && (
-          <InlineAlert variant="danger" title={copy.saveFailed.title}>
+          <InlineAlert variant="danger" title={words.notSavedTitle}>
             <p>{autosave.failure.message}</p>
-            <p className="mt-2 text-white/64">{copy.saveFailed.kept}</p>
+            <p className="mt-2 text-white/64">
+              Nothing you typed has been lost — it is still in the fields below and will be sent
+              again.
+            </p>
             <Pill variant="ghost" size="sm" className="mt-3" onClick={autosave.retry}>
-              {copy.frame.tryAgain}
+              {copy.tryAgain}
             </Pill>
           </InlineAlert>
         )}
@@ -275,17 +288,21 @@ export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
             className="rounded-lg border border-white/8 bg-surface-2 p-5"
           >
             <h2 id="prelaunch-open-heading" className="text-base font-semibold text-white">
-              {copy.notOpen.heading}
+              {words.notOpenHeading}
             </h2>
-            <p className="mt-2 text-[13px] text-white/64">{copy.notOpen.body}</p>
-            <p className="mt-2 text-[13px] text-white/64">{copy.notOpen.permanent}</p>
+            <p className="mt-2 text-[13px] text-white/64">
+              {words.notOpenBody}
+            </p>
+            <p className="mt-2 text-[13px] text-white/64">
+              {words.notOpenIrreversible}
+            </p>
             {openFailure !== null && (
-              <InlineAlert variant="danger" title={copy.notOpen.failed} className="mt-4">
+              <InlineAlert variant="danger" title={words.openFailedTitle} className="mt-4">
                 {openFailure.message}
               </InlineAlert>
             )}
             <Pill className="mt-4" onClick={() => setConfirming(true)}>
-              {copy.notOpen.action}
+              {words.open}
             </Pill>
           </section>
         )}
@@ -296,7 +313,7 @@ export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
             className="rounded-lg border border-white/8 bg-surface-2 p-5"
           >
             <h2 id="prelaunch-live-heading" className="text-base font-semibold text-white">
-              {copy.live.heading}
+              {words.openHeading}
             </h2>
 
             <div className="mt-4 flex items-center gap-2 text-sm text-white">
@@ -305,16 +322,12 @@ export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
                   sentence a screen reader can read out usefully. */}
               <Users aria-hidden="true" className="size-4 text-white/64" />
               {followerCount === null ? (
-                <span className="text-white/64">{copy.live.countUnavailable}</span>
+                <span className="text-white/64">
+                  {words.followersFailed}
+                </span>
               ) : (
-                /*
-                  ONE SENTENCE WITH THE NUMBER IN IT, not a bold number and an English clause
-                  after it. The count decides the form of the verb, and in Russian it decides
-                  the form of the noun as well — `fillNodes` puts the styled number wherever the
-                  translator's own word order puts it (#459).
-                */
                 <span>
-                  {fillNodes(pluralForm(locale, copy.live.waiting, followerCount), {
+                  {fillNodes(pluralForm(words.locale, words.waiting, followerCount), {
                     count: <strong className="font-semibold">{followerCount}</strong>,
                   })}
                 </span>
@@ -322,8 +335,8 @@ export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
             </div>
 
             <Field
-              label={copy.live.linkLabel}
-              hint={copy.live.linkHint}
+              label={words.link}
+              hint={words.linkHint}
               className="mt-5"
             >
               <div className="flex gap-2">
@@ -343,22 +356,22 @@ export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
                     )
                   }
                 >
-                  {copied ? copy.live.copied : copy.live.copy}
+                  {copied ? words.copied : words.copy}
                 </Pill>
               </div>
               {/* Announced rather than only shown, so that a keyboard user who
                   pressed Copy is told it worked. Present from the first render so
                   the region is registered before anything is put in it. */}
               <span role="status" aria-live="polite" className="sr-only">
-                {copied ? copy.live.copiedAnnounced : ''}
+                {copied ? words.copiedAnnouncement : ''}
               </span>
             </Field>
           </section>
         )}
 
         {closed && (
-          <InlineAlert variant="info" title={copy.closed.title}>
-            {copy.closed.body}
+          <InlineAlert variant="info" title={words.closedTitle}>
+            {words.closedBody}
           </InlineAlert>
         )}
 
@@ -369,14 +382,16 @@ export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
 
         <form className="flex flex-col gap-7" onSubmit={(event) => event.preventDefault()}>
           <div>
-            <h2 className="text-base font-semibold text-white">{copy.form.heading}</h2>
-            <p className="mt-1 text-[13px] text-white/64">{copy.form.intro}</p>
+            <h2 className="text-base font-semibold text-white">{words.saysHeading}</h2>
+            <p className="mt-1 text-[13px] text-white/64">
+              {words.saysBody}
+            </p>
           </div>
 
           <Field
-            label={copy.form.titleLabel}
+            label={words.title}
             required
-            hint={fillPlaceholders(copy.form.titleHint, { max: String(TITLE_MAX_CHARACTERS) })}
+            hint={fillPlaceholders(words.titleHint, { max: String(TITLE_MAX_CHARACTERS) })}
             error={errors.title}
           >
             <TextInput
@@ -385,12 +400,17 @@ export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
               onChange={(event) => change('title', { ...draft, title: event.target.value })}
               onBlur={autosave.flush}
             />
-            <CharacterCount count={characterCount(draft.title)} limit={TITLE_MAX_CHARACTERS} />
+            <CharacterCount
+            count={characterCount(draft.title)}
+            limit={TITLE_MAX_CHARACTERS}
+            copy={copy.characterCount}
+            locale={copy.locale}
+          />
           </Field>
 
           <Field
-            label={copy.form.blurbLabel}
-            hint={fillPlaceholders(copy.form.blurbHint, { max: String(BLURB_MAX_CHARACTERS) })}
+            label={words.summary}
+            hint={fillPlaceholders(words.summaryHint, { max: String(BLURB_MAX_CHARACTERS) })}
             error={errors.blurb}
           >
             <Textarea
@@ -399,11 +419,16 @@ export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
               onChange={(event) => change('blurb', { ...draft, blurb: event.target.value })}
               onBlur={autosave.flush}
             />
-            <CharacterCount count={characterCount(draft.blurb)} limit={BLURB_MAX_CHARACTERS} />
+            <CharacterCount
+            count={characterCount(draft.blurb)}
+            limit={BLURB_MAX_CHARACTERS}
+            copy={copy.characterCount}
+            locale={copy.locale}
+          />
           </Field>
 
           <CoverImageField
-            copy={copy.cover}
+            copy={cover}
             url={draft.coverImageUrl}
             cover={draft.coverImage}
             error={errors.coverImage}
@@ -420,15 +445,15 @@ export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
         open={confirming}
         onOpenChange={setConfirming}
         size="sm"
-        title={copy.confirm.title}
-        description={copy.confirm.intro}
+        title={words.confirmTitle}
+        description={words.confirmBody}
         footer={
           <div className="flex justify-end gap-2">
             <Pill variant="outline" onClick={() => setConfirming(false)} disabled={opening}>
-              {copy.confirm.cancel}
+              {words.cancel}
             </Pill>
             <Pill onClick={() => void open()} disabled={opening}>
-              {opening ? copy.confirm.opening : copy.confirm.action}
+              {opening ? words.opening : words.confirmOpen}
             </Pill>
           </div>
         }
@@ -436,7 +461,10 @@ export function PrelaunchPanel({ projectId, copy }: PrelaunchPanelProps) {
         {/* `text-on-white`, not `text-white`: the modal is the one white surface
             in the system (docs/ui-kit.md §7.14), and white text on it is
             invisible. */}
-        <p className="text-sm text-on-white/64">{copy.confirm.body}</p>
+        <p className="text-sm text-on-white/64">
+          Nothing about your rewards, story, or funding goal is published, and the campaign does not
+          take money until it is reviewed and launched.
+        </p>
       </Modal>
     </EditorShell>
   );

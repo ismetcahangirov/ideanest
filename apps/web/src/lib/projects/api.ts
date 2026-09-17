@@ -29,7 +29,9 @@ export type { Money } from '../money';
  * ---------------------------------------------------------------------- */
 
 /**
- * Exactly the sixteen states of docs/architecture.md §6.1, no more.
+ * Exactly the nineteen states of docs/architecture.md §6.1, no more. IDN-EXT-01 added
+ * `CLOSING_WINDOW`, `EXTENDED` and `WITHDRAWN` (#32); `COLLECTING` and `LATE_PLEDGE` stay
+ * until stage 4 removes them (#45).
  *
  * The editor only ever renders these; the transitions themselves are the
  * server's business and there is deliberately no client-side copy of the
@@ -44,10 +46,13 @@ export type ProjectState =
   | 'APPROVED'
   | 'SCHEDULED'
   | 'LIVE'
+  | 'CLOSING_WINDOW'
+  | 'EXTENDED'
   | 'SUSPENDED'
   | 'CANCELED'
   | 'SUCCESSFUL'
   | 'UNSUCCESSFUL'
+  | 'WITHDRAWN'
   | 'COLLECTING'
   | 'LATE_PLEDGE'
   | 'FULFILLING'
@@ -344,6 +349,39 @@ export async function submitProject(id: string, signal?: AbortSignal): Promise<P
 export async function launchProject(id: string, signal?: AbortSignal): Promise<ProjectEdit> {
   return readProject(
     await authorizedFetch(`/v1/projects/${encodeURIComponent(id)}/launch`, {
+      method: 'POST',
+      signal,
+    }),
+  );
+}
+
+/**
+ * Extends a campaign's deadline, once — IDN-EXT-01 §5.1 (#34, #44).
+ *
+ * `until` is an instant no later than sixty days after the first deadline. The service decides
+ * everything else — the window, the 50% floor, that there has been no extension before — and
+ * refuses with `EXTENSION_NOT_AVAILABLE` and a `meta.reason`, which the dashboard words.
+ */
+export async function extendProject(id: string, until: string, signal?: AbortSignal): Promise<ProjectEdit> {
+  return readProject(
+    await authorizedFetch(`/v1/projects/${encodeURIComponent(id)}/extension`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ until }),
+      signal,
+    }),
+  );
+}
+
+/**
+ * Withdraws the funds and closes the campaign — IDN-EXT-01 §5.1 (#41, #44).
+ *
+ * No body: the payout is priced by the service from what the campaign collected. A campaign below
+ * 80%, or in a state with nothing to withdraw from, is refused with `WITHDRAWAL_NOT_AVAILABLE`.
+ */
+export async function withdrawProject(id: string, signal?: AbortSignal): Promise<ProjectEdit> {
+  return readProject(
+    await authorizedFetch(`/v1/projects/${encodeURIComponent(id)}/withdrawal`, {
       method: 'POST',
       signal,
     }),

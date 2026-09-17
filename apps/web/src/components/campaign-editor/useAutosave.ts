@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError } from '../../lib/api/problem';
-import type { EditorFrameCopy } from '../../lib/i18n/editor-copy';
 
 /**
  * Autosave, per the epic contract §6: debounced, one request in flight at a
@@ -64,14 +63,6 @@ export interface Autosave<P> {
 
 export interface AutosaveOptions<P, R> {
   send: (patch: P) => Promise<R>;
-  /**
-   * What a refusal is called when the service did not name it — issue #459.
-   *
-   * Required rather than optional, the way `lib/auth/failures.ts` takes its vocabulary: an
-   * optional one would leave an autosave failure quietly answering in English, which is the
-   * moment a creator most needs to be able to read the screen.
-   */
-  failures: EditorFrameCopy['failures']['save'];
   /** The server's answer, which is the authority on what the project now is. */
   onSaved?: (result: R) => void;
   /** How long the creator has to stop typing before a request goes out. */
@@ -86,10 +77,7 @@ export interface AutosaveOptions<P, R> {
  * function cannot. The wording below is for the cases where there is no body to
  * read, or where the status means something the creator has to be told plainly.
  */
-export function describeFailure(
-  cause: unknown,
-  copy: EditorFrameCopy['failures']['save'],
-): SaveFailure {
+export function describeFailure(cause: unknown): SaveFailure {
   if (cause instanceof ApiError) {
     const detail = cause.problem?.detail ?? cause.problem?.title ?? null;
     const fieldErrors = cause.problem?.errors ?? {};
@@ -98,22 +86,22 @@ export function describeFailure(
     const message =
       detail ??
       (cause.status === 401
-        ? copy.signedOut
+        ? 'You have been signed out. Sign in again — nothing you typed has been lost.'
         : cause.status === 403
-          ? copy.notAllowed
+          ? 'You are not allowed to edit this project.'
           : cause.status === 404
-            ? copy.gone
+            ? 'This project no longer exists.'
             : cause.status === 409
-              ? copy.stale
+              ? 'The project has changed since this page was opened. Reload it to see the current version.'
               : cause.status === 422 || cause.status === 400
-                ? copy.invalid
-                : copy.unsaved);
+                ? 'The service rejected the change. Check the fields marked below.'
+                : 'The change could not be saved. Try again.');
 
     return { message, fieldErrors, status: cause.status, code, meta: cause.problem?.meta ?? null };
   }
 
   return {
-    message: copy.unreachable,
+    message: 'The service could not be reached, so nothing was saved. Try again.',
     fieldErrors: {},
     status: null,
     code: null,
@@ -124,7 +112,6 @@ export function describeFailure(
 export function useAutosave<P extends object, R>({
   send,
   onSaved,
-  failures,
   delayMs = 800,
 }: AutosaveOptions<P, R>): Autosave<P> {
   const [state, setState] = useState<SaveState>('idle');
@@ -141,12 +128,9 @@ export function useAutosave<P extends object, R>({
   // every render.
   const sendRef = useRef(send);
   const onSavedRef = useRef(onSaved);
-  /* Read through a ref for the reason the two callbacks are: `run` is memoised on nothing. */
-  const failuresRef = useRef(failures);
   useEffect(() => {
     sendRef.current = send;
     onSavedRef.current = onSaved;
-    failuresRef.current = failures;
   }, [send, onSaved]);
 
   const run = useCallback((): void => {
@@ -185,7 +169,7 @@ export function useAutosave<P extends object, R>({
          * it is still here after the second failure too.
          */
         queued.current = { ...patch, ...(queued.current ?? {}) };
-        setFailure(describeFailure(cause, failuresRef.current));
+        setFailure(describeFailure(cause));
         setPending(true);
         setState('failed');
       },

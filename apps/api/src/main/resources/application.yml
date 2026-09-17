@@ -401,6 +401,11 @@ ideanest:
     # and /admin/staff says so.
     bootstrap-emails: ${MODERATOR_EMAILS:}
 
+  payout:
+    # IDN-EXT-01 (#41): `payout-destination-reminders`. Daily; a creator whose payout waits for their
+    # VÖEN and business card is reminded on the days that are whole weeks after the hold ended.
+    destination-reminder-schedule: "0 0 9 * * *"
+
   project:
     collaborators:
       # Seven days. An invitation nobody has accepted in a week is a typo or
@@ -460,6 +465,29 @@ ideanest:
       # the ends of months; the pass takes the oldest and returns a minute later
       # rather than becoming a run that overlaps its own next tick.
       batch-size: 200
+      # §5.1, IDN-EXT-01 (#31): a campaign succeeds at this share of its goal. A share
+      # in (0, 1], not a percentage — `80` is refused at start-up rather than failing
+      # every campaign on the platform.
+      success-threshold: 0.80
+      # §5.1, IDN-EXT-01 (#33): how long after the first deadline a campaign is decided.
+      # During it the campaign is CLOSING_WINDOW and the creator may extend or withdraw.
+      closing-window: 7d
+
+    extension:
+      # §5.1, IDN-EXT-01 (#34). The Extend control opens this long before the first
+      # deadline and stays open until the closing window ends; a campaign needs this
+      # share of its goal; and the extension may reach this far past the FIRST deadline.
+      opens-before: 7d
+      threshold: 0.50
+      limit: 60d
+
+    withdrawal:
+      # §5.1, IDN-EXT-01 (#41). A successful campaign whose creator has not withdrawn is withdrawn
+      # for them this long after funding ended -- the first deadline, or the extension's end --
+      # and the payout's fourteen-day hold then makes it day 44.
+      automatic-after: 30d
+      # Hourly: the day a campaign becomes due is what matters, not the minute.
+      automatic-schedule: "0 15 * * * *"
 
     submission:
       # The three bounds §5.3 states as somebody else's decision rather than as a
@@ -600,6 +628,13 @@ ideanest:
     # hour of freshness.
     request-timeout: ${IDEANEST_FX_REQUEST_TIMEOUT:PT10S}
 
+  fee:
+    # §5.2, IDN-EXT-01 (#42): 15% of any withdrawal, the bank's and the provider's fees included,
+    # when no row in fee_schedules is in force. A schedule created by staff still wins.
+    default-platform-rate: 0.15
+    default-processing-rate: 0
+    default-currency: AZN
+
   payment:
     # §8.4's `ledger-reconciliation` -- issue #70. A daily pass that asks whether the
     # platform's money adds up: the books balance, no account holds a sign it cannot,
@@ -634,6 +669,28 @@ ideanest:
       # capabilities below. Without them the service does not start, which is the
       # point.
       primary: ${PAYMENT_PROVIDER:}
+    # IDN-EXT-01 (#38): the Epoint.az adapter, API v1.0.3, used when `provider.primary` is
+    # EPOINT -- spelled so. The owner chose Epoint; it stays unset by default because the
+    # keys are per merchant, and naming EPOINT without the base URL and both keys is a
+    # start-up failure rather than a first payment that cannot be signed. Epoint cannot
+    # collect stored cards, so the retired collection jobs stay inert behind it (#39).
+    epoint:
+      base-url: ${EPOINT_BASE_URL:https://epoint.az/api/1}
+      public-key: ${EPOINT_PUBLIC_KEY:}
+      private-key: ${EPOINT_PRIVATE_KEY:}
+      # The payment page's language when a request names none: az, en or ru.
+      language: ${EPOINT_LANGUAGE:az}
+    # IDN-EXT-01 (#40): `campaign-refunds`. Every backer of a campaign that ends below its
+    # threshold, or is suspended or cancelled, is refunded in full, a batch at a time.
+    refunds:
+      # Every ten minutes: refunds are owed promptly, and a pass is bounded, so a campaign of
+      # four thousand backers clears in a few hours without one pass holding the provider.
+      schedule: "0 */10 * * * *"
+      per-pass: 100
+      # A refused refund is sent again after this, not on the next pass.
+      retry-after: PT6H
+      # A refund with no recorded outcome this old is settled from the provider's status.
+      unresolved-after: PT1H
     collection:
       # §8.4: charge-processor, every minute. The pass that opens the collection of
       # campaigns that closed above goal and makes §9.6's first attempt against
@@ -918,6 +975,11 @@ ideanest:
       # and its worst. The right number comes from watching real checkouts, and it
       # should not need a deployment.
       ttl: ${RESERVATION_TTL:5m}
+      # IDN-EXT-01 (#39): once the backer opens the provider's payment page, the draft is held
+      # this long instead, so a place is not given back while somebody is typing a card
+      # number. Long enough for 3-D Secure and a bank app; a payment that arrives after it is
+      # a paid pledge with no place, which is logged for a refund (#40).
+      payment-window: ${PAYMENT_WINDOW:15m}
       # §8.4: reservation-cleaner, every minute. PostgreSQL has no TTL, so a
       # reservation lapses because this notices that it has -- see V17 for why the
       # reservation is in the database and not in Redis. A minute late is a minute

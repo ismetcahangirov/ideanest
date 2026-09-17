@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import az from '../../../messages/az.json';
 import en from '../../../messages/en.json';
 import ru from '../../../messages/ru.json';
@@ -19,16 +20,13 @@ import { expectNoViolations } from '../../test-axe';
  *   - every group in `navigation.ts` is rendered **in each of the four languages**, so a link
  *     added there cannot be silently dropped by this component and a key added there cannot
  *     ship with three languages translated.
- *   - the language is OFFERED since #458, and every language is still named in itself. It
- *     was the constant `'English'` before #123, a statement of the reader's own language
- *     after it, and a control since a locale-prefixed URL made one possible without turning
- *     a cached page into a render per visitor. `LanguageSwitch.test.tsx` covers the control
- *     itself; what is asserted here is that the footer carries it and that the four links
- *     keep the page the reader is on.
- *   - currency is STATED and not offered, and #458 did not change that. A display currency is
- *     a per-reader preference with nothing in the URL to carry it, so a control here would
- *     have to know who is reading — the dynamic render the language control was careful not
- *     to reintroduce.
+ *   - the language is a CONTROL, and every language in it is named in itself. It was the
+ *     constant `'English'` before #123, then the endonym of the language being read, and it
+ *     is four links now that a locale-prefixed URL makes switching a navigation rather than
+ *     a cookie read. `LanguageSwitcher.test.tsx` covers the control itself; what is asserted
+ *     here is that the footer carries it, in every language.
+ *   - currency is STATED and not offered, and that is now a decision of its own rather than
+ *     one shared with the language: a display currency has nothing in the URL to carry it.
  *   - there is no legal column, because §22 has not written the pages and #293 is
  *     `status: needs-decision`. A Terms link resolving to a 404 is a promise about a document
  *     that does not exist.
@@ -37,6 +35,15 @@ import { expectNoViolations } from '../../test-axe';
  */
 
 const CATALOGUES: Record<Locale, typeof en> = { az, en, ru, tr };
+
+/** Each language's name in itself. Never "Russian": a reader scanning for their own language
+ *  recognises the endonym, and the English name is a word they may not read. */
+const NAMES: Record<Locale, string> = {
+  az: 'Azərbaycan dili',
+  en: 'English',
+  ru: 'Русский',
+  tr: 'Türkçe',
+};
 
 /** Swapped per render, then read by the mocked server helpers below. */
 let locale: Locale = 'en';
@@ -75,12 +82,6 @@ vi.mock('next-intl/server', () => ({
 vi.mock('next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('next/navigation')>()),
   useParams: () => ({ locale }),
-  /*
-   * A page inside the site, so the language links have something to keep. `LanguageSwitch`
-   * reads this through `src/i18n/navigation`'s `usePathname`, which takes the language off
-   * again — which is why the mock carries one.
-   */
-  usePathname: () => `/${locale}/discover`,
 }));
 
 afterEach(cleanup);
@@ -153,41 +154,49 @@ describe('the footer', () => {
     expect(screen.getByText(en.shell.tagline)).toBeInTheDocument();
   });
 
-  /*
-   * Not "Russian" but "Русский". A reader scanning the bottom of the page for their own
-   * language recognises the endonym; the English name is a word they may not read. It also has
-   * to follow the route rather than a build-time constant, which is what the line was before
-   * #123.
-   */
-  const NAMES: Record<Locale, string> = {
-    az: 'Azərbaycan dili',
-    en: 'English',
-    ru: 'Русский',
-    tr: 'Türkçe',
-  };
-
-  it.each(SUPPORTED_LOCALES)('marks the language being read, in itself (%s)', async (at) => {
+  it.each(SUPPORTED_LOCALES)('names the language being read, in itself (%s)', async (at) => {
+    /*
+     * Not "Russian" but "Русский". A reader looking for their own language recognises the
+     * endonym; the English name is a word they may not read. It also has to follow the route
+     * rather than a build-time constant, which is what the line was before #123.
+     *
+     * BEHIND THE CONTROL RATHER THAN BESIDE IT since the switcher became an icon. The name is
+     * still drawn from the route, and it is still the current one that is marked — what
+     * changed is that a reader opens a globe to see it rather than reading four names at the
+     * bottom of every page.
+     */
     const { unmount } = await renderFooter(at);
+    const catalogue = CATALOGUES[at];
 
-    expect(screen.getByRole('link', { name: NAMES[at] })).toHaveAttribute('aria-current', 'true');
+    await userEvent.click(screen.getByRole('button', { name: catalogue.shell.language.label }));
+
+    expect(screen.getByRole('link', { name: NAMES[at] })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
 
     unmount();
   });
 
-  it.each(SUPPORTED_LOCALES)('offers the other three as a way out of %s', async (at) => {
+  it.each(SUPPORTED_LOCALES)('carries the language control, in %s', async (at) => {
     /*
-     * ISSUE #458. The reader this matters to is signed out: `/settings/language` is inside the
-     * account area, so before this the only way out of a language somebody could not read was
-     * editing the address bar. Each link keeps the page rather than going to that language's
-     * home.
+     * The footer's own assertion is presence and reach: a signed-out reader must be able to
+     * leave the language they landed in without editing the address bar, which before this
+     * control meant reaching `/settings/language` behind a sign-in they may not have.
      */
     const { unmount } = await renderFooter(at);
+    const catalogue = CATALOGUES[at];
+    const label = catalogue.shell.language.label;
 
-    for (const locale of SUPPORTED_LOCALES) {
+    /* Icon-only, so the name is the assertion as much as the reach is (§9.2). */
+    await userEvent.click(screen.getByRole('button', { name: label }));
+    const group = screen.getByRole('navigation', { name: label });
+
+    for (const target of SUPPORTED_LOCALES) {
       expect(
-        screen.getByRole('link', { name: NAMES[locale] }),
-        `${at} offers ${locale}`,
-      ).toHaveAttribute('href', `/${locale}/discover`);
+        within(group).getByRole('link', { name: NAMES[target] }),
+        `${at} offers ${target}`,
+      ).toHaveAttribute('href', `/${target}`);
     }
 
     unmount();
@@ -196,12 +205,17 @@ describe('the footer', () => {
   it('states the currency rather than offering a control', async () => {
     await renderFooter();
 
-    expect(screen.getByText(en.shell.footer.currencyValue)).toBeInTheDocument();
-    expect(screen.queryByRole('combobox')).toBeNull();
-    expect(screen.queryByRole('button')).toBeNull();
-
-    /* And no link out of it either — the four in the footer's bottom row are all languages. */
-    expect(screen.queryByRole('link', { name: /manat|AZN/iu })).toBeNull();
+    /*
+     * Scoped to the currency's own pair. The footer does carry a button now — the language
+     * globe — and an assertion that there is no button anywhere would be asserting that the
+     * language is not a control either, which is the opposite of what #123 built.
+     */
+    const value = screen.getByText(en.shell.footer.currencyValue);
+    const pair = value.closest('dl');
+    expect(pair).not.toBeNull();
+    expect(within(pair as HTMLElement).queryByRole('combobox')).toBeNull();
+    expect(within(pair as HTMLElement).queryByRole('button')).toBeNull();
+    expect(within(pair as HTMLElement).queryByRole('link')).toBeNull();
   });
 
   it('offers no legal links, because the documents do not exist', async () => {

@@ -14,7 +14,6 @@ import {
   TextInput,
 } from '@ideanest/ui';
 import { SUPPORTED_CURRENCIES } from '../../lib/money';
-import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import {
   isLocked,
   listCategories,
@@ -40,7 +39,11 @@ import {
   type BasicsField,
 } from '../../lib/projects/basics';
 import { CoverImageField } from './CoverImageField';
-import type { BasicsCopy } from '../../lib/i18n/editor-copy';
+import type {
+  BasicsPanelCopy,
+  EditorChromeCopy,
+} from '../../lib/i18n/campaign-editor-copy';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import { EditorShell } from './EditorShell';
 import { SaveStatus } from './SaveStatus';
 import { useAutosave, type SaveFailure } from './useAutosave';
@@ -90,20 +93,14 @@ function serverErrors(failure: SaveFailure | null): BasicsErrors {
 
 export interface BasicsPanelProps {
   projectId: string;
-  /**
-   * Every word this tab draws, resolved on the server — issue #459.
-   *
-   * This panel is a client component and has to be: the form autosaves as it is typed. A
-   * `useTranslations` here would need a `NextIntlClientProvider` above it, which this
-   * repository measured at up to 27.4 KiB on every route in a group; the page reads the
-   * catalogue instead and hands the words down. `lib/i18n/editor-copy.ts` carries the
-   * argument.
-   */
-  copy: BasicsCopy;
+  /** The editor frame's words, resolved by this tab's page. */
+  copy: EditorChromeCopy;
+  /** This tab's own words. */
+  basics: BasicsPanelCopy;
 }
 
-export function BasicsPanel({ projectId, copy }: BasicsPanelProps) {
-  const { project, status, error, reload, apply } = useProjectEdit(projectId, copy.frame.failures.load);
+export function BasicsPanel({ projectId, copy, basics }: BasicsPanelProps) {
+  const { project, status, error, reload, apply } = useProjectEdit(projectId);
 
   /**
    * The form's state, seeded once from the project.
@@ -124,7 +121,6 @@ export function BasicsPanel({ projectId, copy }: BasicsPanelProps) {
   const autosave = useAutosave<ProjectPatch, ProjectEdit>({
     send: (patch) => patchProject(projectId, patch),
     onSaved: apply,
-    failures: copy.frame.failures.save,
   });
 
   useEffect(() => {
@@ -171,9 +167,9 @@ export function BasicsPanel({ projectId, copy }: BasicsPanelProps) {
 
   if (status === 'signed-out') {
     return (
-      <EditorShell projectId={projectId} copy={copy.frame} active="basics">
-        <InlineAlert variant="info" title={copy.frame.signedOut.title}>
-          {copy.frame.signedOut.body}
+      <EditorShell projectId={projectId} copy={copy} active="basics">
+        <InlineAlert variant="info" title={copy.signedOutTitle}>
+          {copy.signedOutDetail}
         </InlineAlert>
       </EditorShell>
     );
@@ -181,18 +177,18 @@ export function BasicsPanel({ projectId, copy }: BasicsPanelProps) {
 
   if (status === 'failed' || draft === null || project === null) {
     return (
-      <EditorShell projectId={projectId} copy={copy.frame} active="basics">
+      <EditorShell projectId={projectId} copy={copy} active="basics">
         {status === 'failed' ? (
           <>
-            <InlineAlert variant="danger" title={copy.frame.loadFailed}>
+            <InlineAlert variant="danger" title={copy.loadFailedTitle}>
               {error}
             </InlineAlert>
             <Pill variant="ghost" size="sm" className="mt-4" onClick={reload}>
-              {copy.frame.tryAgain}
+              {copy.tryAgain}
             </Pill>
           </>
         ) : (
-          <SkeletonGroup label={copy.loading}>
+          <SkeletonGroup label={basics.loadingLabel}>
             <div className="flex flex-col gap-6">
               {LOADING_ROWS.map((row) => (
                 <div key={row} className="flex flex-col gap-2">
@@ -207,7 +203,10 @@ export function BasicsPanel({ projectId, copy }: BasicsPanelProps) {
     );
   }
 
-  const errors: BasicsErrors = { ...validateBasics(draft, copy.errors), ...serverErrors(failure) };
+  const errors: BasicsErrors = {
+    ...validateBasics(draft, basics.validation),
+    ...serverErrors(failure),
+  };
   const selected = categories?.find((category) => category.id === draft.categoryId) ?? null;
   const subcategories = selected?.subcategories ?? [];
 
@@ -217,11 +216,11 @@ export function BasicsPanel({ projectId, copy }: BasicsPanelProps) {
   return (
     <EditorShell
       projectId={projectId}
-      copy={copy.frame}
+      copy={copy}
       active="basics"
       title={project.title}
       state={project.state}
-      status={<SaveStatus state={autosave.state} copy={copy.frame.save} />}
+      status={<SaveStatus state={autosave.state} copy={copy.save} />}
     >
       {/*
         There is no submit. The element is a `form` so that Enter inside a field
@@ -230,19 +229,19 @@ export function BasicsPanel({ projectId, copy }: BasicsPanelProps) {
       */}
       <form className="flex flex-col gap-7" onSubmit={(event) => event.preventDefault()}>
         {failure !== null && (
-          <InlineAlert variant="danger" title={copy.saveFailed.title}>
+          <InlineAlert variant="danger" title={basics.notSavedTitle}>
             <p>{failure.message}</p>
-            <p className="mt-2 text-white/64">{copy.saveFailed.kept}</p>
+            <p className="mt-2 text-white/64">{basics.notSavedDetail}</p>
             <Pill variant="ghost" size="sm" className="mt-3" onClick={autosave.retry}>
-              {copy.frame.tryAgain}
+              {copy.tryAgain}
             </Pill>
           </InlineAlert>
         )}
 
         <Field
-          label={copy.title.label}
+          label={basics.title}
           required
-          hint={fillPlaceholders(copy.title.hint, { max: String(TITLE_MAX_CHARACTERS) })}
+          hint={fillPlaceholders(basics.titleHint, { max: String(TITLE_MAX_CHARACTERS) })}
           error={errors.title}
         >
           {/*
@@ -257,12 +256,17 @@ export function BasicsPanel({ projectId, copy }: BasicsPanelProps) {
             onChange={(event) => change('title', { ...draft, title: event.target.value })}
             onBlur={autosave.flush}
           />
-          <CharacterCount count={characterCount(draft.title)} limit={TITLE_MAX_CHARACTERS} />
+          <CharacterCount
+            count={characterCount(draft.title)}
+            limit={TITLE_MAX_CHARACTERS}
+            copy={copy.characterCount}
+            locale={copy.locale}
+          />
         </Field>
 
         <Field
-          label={copy.blurb.label}
-          hint={fillPlaceholders(copy.blurb.hint, { max: String(BLURB_MAX_CHARACTERS) })}
+          label={basics.summary}
+          hint={fillPlaceholders(basics.summaryHint, { max: String(BLURB_MAX_CHARACTERS) })}
           error={errors.blurb}
         >
           <Textarea
@@ -271,24 +275,29 @@ export function BasicsPanel({ projectId, copy }: BasicsPanelProps) {
             onChange={(event) => change('blurb', { ...draft, blurb: event.target.value })}
             onBlur={autosave.flush}
           />
-          <CharacterCount count={characterCount(draft.blurb)} limit={BLURB_MAX_CHARACTERS} />
+          <CharacterCount
+            count={characterCount(draft.blurb)}
+            limit={BLURB_MAX_CHARACTERS}
+            copy={copy.characterCount}
+            locale={copy.locale}
+          />
         </Field>
 
         {categoriesUnavailable && (
-          <InlineAlert variant="warning" title={copy.categoriesUnavailable.title}>
-            {copy.categoriesUnavailable.body}
+          <InlineAlert variant="warning" title={basics.categoriesUnavailableTitle}>
+            {basics.categoriesUnavailableDetail}
           </InlineAlert>
         )}
 
         <div className="grid gap-6 sm:grid-cols-2">
           <Field
-            label={copy.category.label}
-            hint={copy.category.hint}
+            label={basics.category}
+            hint={basics.categoryHint}
             error={errors.categoryId}
           >
             <Select
               value={draft.categoryId}
-              placeholder={copy.category.placeholder}
+              placeholder={basics.categoryPlaceholder}
               disabled={categories === null}
               onChange={(event) =>
                 change('categoryId', {
@@ -308,19 +317,19 @@ export function BasicsPanel({ projectId, copy }: BasicsPanelProps) {
           </Field>
 
           <Field
-            label={copy.subcategory.label}
+            label={basics.subcategory}
             hint={
               selected === null
-                ? copy.subcategory.chooseCategory
+                ? basics.subcategoryHintNoCategory
                 : subcategories.length === 0
-                  ? copy.subcategory.none
-                  : copy.subcategory.optional
+                  ? basics.subcategoryHintNone
+                  : basics.subcategoryHint
             }
             error={errors.subcategoryId}
           >
             <Select
               value={draft.subcategoryId}
-              placeholder={copy.subcategory.placeholder}
+              placeholder={basics.subcategoryPlaceholder}
               disabled={subcategories.length === 0}
               onChange={(event) =>
                 change('subcategoryId', { ...draft, subcategoryId: event.target.value })
@@ -337,9 +346,9 @@ export function BasicsPanel({ projectId, copy }: BasicsPanelProps) {
 
         <div className="grid gap-6 sm:grid-cols-[2fr_1fr]">
           <Field
-            label={copy.goal.label}
+            label={basics.goal}
             required
-            hint={goalLocked ? copy.goal.locked : copy.goal.hint}
+            hint={goalLocked ? basics.goalHintLocked : basics.goalHint}
             error={errors.goal}
           >
             {/*
@@ -359,7 +368,7 @@ export function BasicsPanel({ projectId, copy }: BasicsPanelProps) {
             />
           </Field>
 
-          <Field label={copy.currency.label} hint={copy.currency.hint}>
+          <Field label={basics.currency} hint={basics.currencyHint}>
             <Select
               value={draft.currency}
               disabled={goalLocked}
@@ -376,12 +385,12 @@ export function BasicsPanel({ projectId, copy }: BasicsPanelProps) {
 
         <div className="grid gap-6 sm:grid-cols-2">
           <Field
-            label={copy.duration.label}
+            label={basics.duration}
             required
             hint={
               durationLocked
-                ? copy.duration.locked
-                : fillPlaceholders(copy.duration.hint, {
+                ? basics.durationHintLocked
+                : fillPlaceholders(basics.durationHint, {
                     min: String(DURATION_MIN_DAYS),
                     max: String(DURATION_MAX_DAYS),
                     recommended: String(DURATION_RECOMMENDED_DAYS),
@@ -402,8 +411,8 @@ export function BasicsPanel({ projectId, copy }: BasicsPanelProps) {
           </Field>
 
           <Field
-            label={copy.schedule.label}
-            hint={copy.schedule.hint}
+            label={basics.scheduledLaunch}
+            hint={basics.scheduledLaunchHint}
             error={errors.scheduledLaunchAt}
           >
             <TextInput
@@ -425,19 +434,19 @@ export function BasicsPanel({ projectId, copy }: BasicsPanelProps) {
           */}
           <Switch
             checked={draft.latePledgeEnabled}
-            label={copy.latePledge.label}
+            label={basics.latePledges}
             aria-describedby={latePledgeHintId}
             onCheckedChange={(checked) =>
               change('latePledgeEnabled', { ...draft, latePledgeEnabled: checked })
             }
           />
           <p id={latePledgeHintId} className="mt-2 text-[13px] text-white/64">
-            {copy.latePledge.hint}
+            {basics.latePledgesHint}
           </p>
         </div>
 
         <CoverImageField
-          copy={copy.cover}
+          copy={basics.cover}
           url={draft.coverImageUrl}
           cover={draft.coverImage}
           error={errors.coverImage}

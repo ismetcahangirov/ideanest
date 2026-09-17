@@ -2,8 +2,6 @@
 
 import { useEffect, useId, useState } from 'react';
 import { CharacterCount, Field, InlineAlert, Switch, Textarea, TextInput } from '@ideanest/ui';
-import type { RewardsCopy } from '../../lib/i18n/editor-copy';
-import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import { createItem, patchItem, type Item } from '../../lib/projects/api';
 import { characterCount } from '../../lib/projects/basics';
 import {
@@ -39,9 +37,17 @@ import { describeFailure, type SaveFailure } from './useAutosave';
  * messages land through the same `fieldErrorsFrom` both editors use, so a
  * refusal reads the same wherever in the editor it happened.
  */
+import type {
+  ItemEditorCopy,
+  ItemValidationCopy,
+} from '../../lib/i18n/campaign-editor-copy';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+
 export interface ItemEditorProps {
-  /** This drawer's words, and the two vocabularies below it — issue #459. */
-  copy: Pick<RewardsCopy, 'frame' | 'drawer' | 'itemEditor' | 'itemErrors' | 'kept'>;
+  /** This drawer's words. */
+  copy: ItemEditorCopy;
+  /** The vocabulary `validateItem` refuses in. */
+  validation: ItemValidationCopy;
   projectId: string;
   open: boolean;
   /** The item being edited, or null to create one. */
@@ -52,8 +58,9 @@ export interface ItemEditorProps {
 }
 
 export function ItemEditor({
-  copy,
   projectId,
+  copy,
+  validation,
   open,
   item,
   onOpenChange,
@@ -79,7 +86,7 @@ export function ItemEditor({
     setAttempted(false);
   }, [open, item]);
 
-  const errors = validateItem(draft, copy.itemErrors);
+  const errors = validateItem(draft, validation);
   const serverErrors = fieldErrorsFrom(failure, isItemField);
 
   /*
@@ -110,7 +117,7 @@ export function ItemEditor({
       }
       onOpenChange(false);
     } catch (cause) {
-      setFailure(describeFailure(cause, copy.frame.failures.save));
+      setFailure(describeFailure(cause));
     } finally {
       setSaving(false);
     }
@@ -121,25 +128,25 @@ export function ItemEditor({
       copy={copy.drawer}
       open={open}
       onOpenChange={onOpenChange}
-      title={item === null ? copy.itemEditor.titleNew : copy.itemEditor.titleEdit}
-      description={copy.itemEditor.intro}
+      title={item === null ? copy.addTitle : copy.editTitle}
+      description={copy.drawerDescription}
       saving={saving}
       onSave={() => void save()}
     >
       <div className="flex flex-col gap-6">
         {failure !== null && (
-          <InlineAlert variant="danger" title={copy.itemEditor.failed}>
+          <InlineAlert variant="danger" title={copy.notSavedTitle}>
             <p>{failure.message}</p>
-            <p className="mt-2 text-white/64">{copy.kept}</p>
+            <p className="mt-2 text-white/64">
+              Nothing you typed has been lost — it is still in the fields below.
+            </p>
           </InlineAlert>
         )}
 
         <Field
-          label={copy.itemEditor.name.label}
+          label={copy.name}
           required
-          hint={fillPlaceholders(copy.itemEditor.name.hint, {
-            max: String(ITEM_NAME_MAX_CHARACTERS),
-          })}
+          hint={fillPlaceholders(copy.nameHint, { max: String(ITEM_NAME_MAX_CHARACTERS) })}
           error={visible.name}
         >
           {/*
@@ -152,12 +159,17 @@ export function ItemEditor({
             autoComplete="off"
             onChange={(event) => setDraft({ ...draft, name: event.target.value })}
           />
-          <CharacterCount count={characterCount(draft.name)} limit={ITEM_NAME_MAX_CHARACTERS} />
+          <CharacterCount
+            count={characterCount(draft.name)}
+            limit={ITEM_NAME_MAX_CHARACTERS}
+            copy={copy.characterCount}
+            locale={copy.locale}
+          />
         </Field>
 
         <Field
-          label={copy.itemEditor.description.label}
-          hint={copy.itemEditor.description.hint}
+          label={copy.description}
+          hint={copy.descriptionHint}
           error={visible.description}
         >
           <Textarea
@@ -168,8 +180,8 @@ export function ItemEditor({
         </Field>
 
         <Field
-          label={copy.itemEditor.image.label}
-          hint={copy.itemEditor.image.hint}
+          label={copy.imageUrl}
+          hint={copy.imageUrlHint}
           error={visible.imageUrl}
         >
           {/*
@@ -182,7 +194,7 @@ export function ItemEditor({
             type="url"
             inputMode="url"
             autoComplete="off"
-            placeholder="https://"
+            placeholder={copy.imageUrlPlaceholder}
             value={draft.imageUrl}
             onChange={(event) => setDraft({ ...draft, imageUrl: event.target.value })}
           />
@@ -197,7 +209,7 @@ export function ItemEditor({
           */}
           <Switch
             checked={draft.isDigital}
-            label={copy.itemEditor.digital.label}
+            label={copy.isDigital}
             aria-describedby={digitalHintId}
             onCheckedChange={(checked) =>
               setDraft({
@@ -213,14 +225,18 @@ export function ItemEditor({
             }
           />
           <p id={digitalHintId} className="mt-2 text-[13px] text-white/64">
-            {copy.itemEditor.digital.hint}
+            {copy.isDigitalHint}
           </p>
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2">
           <Field
-            label={copy.itemEditor.weight.label}
-            hint={draft.isDigital ? copy.itemEditor.weight.digital : copy.itemEditor.weight.hint}
+            label={copy.weight}
+            hint={
+              draft.isDigital
+                ? copy.weightHintDigital
+                : 'Optional, and what shipping is worked out from later.'
+            }
             error={visible.weightGrams}
           >
             <TextInput
@@ -233,8 +249,8 @@ export function ItemEditor({
           </Field>
 
           <Field
-            label={copy.itemEditor.sku.label}
-            hint={copy.itemEditor.sku.hint}
+            label={copy.sku}
+            hint={copy.skuHint}
             error={visible.sku}
           >
             <TextInput

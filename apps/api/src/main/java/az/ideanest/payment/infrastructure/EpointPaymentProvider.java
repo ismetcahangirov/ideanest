@@ -2,9 +2,14 @@ package az.ideanest.payment.infrastructure;
 
 import az.ideanest.payment.PaymentProperties;
 import az.ideanest.payment.domain.ChargeResult;
+import az.ideanest.payment.domain.HostedPaymentRequest;
+import az.ideanest.payment.domain.HostedPaymentSession;
 import az.ideanest.payment.domain.PaymentEvent;
 import az.ideanest.payment.domain.PaymentEventType;
+import az.ideanest.payment.domain.PaymentLookup;
 import az.ideanest.payment.domain.PaymentProvider;
+import az.ideanest.payment.domain.PayoutCardRequest;
+import az.ideanest.payment.domain.PayoutCardSession;
 import az.ideanest.payment.domain.PayoutRequest;
 import az.ideanest.payment.domain.PayoutResult;
 import az.ideanest.payment.domain.ProviderCapabilities;
@@ -112,6 +117,9 @@ public class EpointPaymentProvider implements PaymentProvider {
 
     /** Epoint's approval code. Everything else on a refused answer is a decline reason. */
     private static final String APPROVED_CODE = "000";
+
+    /** The three languages Epoint renders its hosted pages in. */
+    private static final Set<String> PAGE_LANGUAGES = Set.of("az", "en", "ru");
 
     /**
      * The reader for everything Epoint says, and it exists for one field.
@@ -314,6 +322,130 @@ public class EpointPaymentProvider implements PaymentProvider {
                 outcome == ProviderOutcome.DECLINED ? failureCode(answer) : null,
                 outcome == ProviderOutcome.DECLINED ? text(answer, "message") : null,
                 redacted(answer));
+    }
+
+    // ------------------------------------------------------------------
+    // The hosted page: §9.2's other shape, and the one the platform charges on
+    // ------------------------------------------------------------------
+
+    /**
+     * Send the backer to Epoint's own page to pay for one pledge — {@code /api/1/request}.
+     *
+     * <p>This is the path a confirmed pledge is charged on. It does not store a card and it does
+     * not need §9.3's R-01 to R-03: the backer enters the card on Epoint's page, Epoint answers
+     * with the transaction and where to send them, and the outcome arrives on the callback
+     * {@link #parseWebhook} reads. {@link #beginTokenization} and {@link #chargeStoredCard} are
+     * the other shape — a card kept for a later, merchant-initiated charge — and the two are not
+     * alternatives to each other: a deployment whose capabilities do not admit stored-card
+     * collection can still take a payment here.
+     *
+     * <p><strong>The {@code order_id} is the idempotency key and not the pledge.</strong> Epoint
+     * requires it to be unique per transaction, and a pledge paid again after a failed attempt is
+     * a second transaction. Sending the pledge would make the retry a duplicate order.
+     *
+     * <p>A refusal here is a {@link ProviderUnavailableException} and never a declined payment:
+     * nothing has been charged, because nobody has been shown a card form yet.
+     */
+    @Override
+    public HostedPaymentSession beginHostedPayment(HostedPaymentRequest request) {
+        requireSupportedCurrency(request.amount());
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("public_key", settings.publicKey());
+        payload.put("language", languageOr(request.language()));
+        payload.put("amount", request.amount().amount());
+        payload.put("currency", request.amount().currency());
+        payload.put("order_id", request.idempotencyKey());
+        putIfPresent(payload, "description", request.description());
+        putIfPresent(payload, "success_redirect_url", request.successUrl());
+        putIfPresent(payload, "error_redirect_url", request.errorUrl());
+
+        JsonNode answer = call("/api/1/request", payload);
+        requireSuccess(answer, "begin a payment");
+
+        String transaction = text(answer, "transaction");
+        String redirect = text(answer, "redirect_url");
+        if (transaction == null || redirect == null) {
+            throw new ProviderUnavailableException(
+                    NAME, "Epoint began a payment and did not say which, or where to send the backer");
+        }
+        return new HostedPaymentSession(transaction, URI.create(redirect));
+    }
+
+    /**
+     * Ask Epoint what one payment is now — {@code /api/1/get-status}.
+     *
+     * <p>The callback is how an outcome normally arrives; this is how an outcome that never did
+     * is settled. §9.6's sweep asks about a payment whose callback was lost, and the refund pass
+     * asks about one whose reversal it cannot see.
+     *
+     * <p>{@code server_error} — Epoint failing to look — is a throw and not a state, for the
+     * class comment's reason. Reporting it as {@code FAILED} would tell the refund sweep there
+     * is nothing to return and tell collection that a paid pledge was never paid.
+     */
+    @Override
+    public PaymentLookup lookUpPayment(String providerTransactionId) {
+        if (providerTransactionId == null || providerTransactionId.isBlank()) {
+            throw new IllegalArgumentException("A lookup is a lookup of a transaction");
+        }
+
+        JsonNode answer = call(
+                "/api/1/get-status",
+                Map.of(
+                        "public_key", settings.publicKey(),
+                        "language", settings.language(),
+                        "transaction", providerTransactionId));
+
+        String status = text(answer, "status");
+        PaymentLookup.State state = switch (status == null ? "" : status.toLowerCase(Locale.ROOT)) {
+            case "new", "pending" -> PaymentLookup.State.PENDING;
+            case "success" -> PaymentLookup.State.SUCCEEDED;
+            case "returned" -> PaymentLookup.State.RETURNED;
+            case "error", "failed" -> PaymentLookup.State.FAILED;
+            default -> throw new ProviderUnavailableException(
+                    NAME,
+                    "Epoint answered a lookup of " + providerTransactionId + " with status " + status);
+        };
+
+        String transaction = text(answer, "transaction");
+        return new PaymentLookup(
+                state,
+                transaction == null ? providerTransactionId : transaction,
+                text(answer, "code"),
+                text(answer, "message"),
+                redacted(answer));
+    }
+
+    /**
+     * Register a creator's card as a payout destination — {@code /api/1/card-registration} with
+     * {@code refund=1}.
+     *
+     * <p>The same endpoint {@link #beginTokenization} uses and the other value of the same field:
+     * "Kart növü: 0 - ödəniş üçün kart; 1 - vəsaitlərin köçürülməsi üçün kart". Epoint keeps a
+     * card registered for collection apart from one registered to be paid, and {@link #payout}
+     * only accepts the second. The creator enters the card on Epoint's page, so the platform
+     * never holds a pan.
+     */
+    @Override
+    public PayoutCardSession beginPayoutCardRegistration(PayoutCardRequest request) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("public_key", settings.publicKey());
+        payload.put("language", languageOr(request.language()));
+        payload.put("refund", 1);
+        putIfPresent(payload, "description", request.description());
+        putIfPresent(payload, "success_redirect_url", request.successUrl());
+        putIfPresent(payload, "error_redirect_url", request.errorUrl());
+
+        JsonNode answer = call("/api/1/card-registration", payload);
+        requireSuccess(answer, "register a payout card");
+
+        String cardId = text(answer, "card_id");
+        String redirect = text(answer, "redirect_url");
+        if (cardId == null || redirect == null) {
+            throw new ProviderUnavailableException(
+                    NAME, "Epoint began a card registration and did not name the card or the page");
+        }
+        return new PayoutCardSession(cardId, URI.create(redirect));
     }
 
     /**
@@ -529,6 +661,50 @@ public class EpointPaymentProvider implements PaymentProvider {
      * is the situation the platform must not confuse with a bank saying no — a decline costs a
      * backer one of §9.6's attempts and an unreachable provider does not.
      */
+    /**
+     * Epoint's language, or the caller's when Epoint has a page in it.
+     *
+     * <p>The hosted endpoints show the backer a page, so the language is the backer's rather than
+     * the deployment's. Epoint has three; anything else falls back to the configured one instead
+     * of being sent through and refused.
+     */
+    private String languageOr(String requested) {
+        if (requested == null) {
+            return settings.language();
+        }
+        String normalised = requested.trim().toLowerCase(Locale.ROOT);
+        return PAGE_LANGUAGES.contains(normalised) ? normalised : settings.language();
+    }
+
+    /** Every Epoint field is optional or absent; a blank one is absent. */
+    private static void putIfPresent(Map<String, Object> payload, String field, Object value) {
+        if (value != null && !value.toString().isBlank()) {
+            payload.put(field, value.toString());
+        }
+    }
+
+    /** A currency this deployment has not confirmed Epoint takes is refused before it is sent. */
+    private void requireSupportedCurrency(Money amount) {
+        if (!capabilities.currencies().contains(amount.currency())) {
+            throw new IllegalArgumentException(
+                    "Epoint has been confirmed to take " + capabilities.currencies() + ", and this amount is " + amount);
+        }
+    }
+
+    /**
+     * Epoint agreeing to open a page, or a provider that could not.
+     *
+     * <p>Not {@link #outcomeOf}: nothing has been charged at this point, so there is no decline
+     * to report. Either the platform has somewhere to send the payer or it does not.
+     */
+    private void requireSuccess(JsonNode answer, String what) {
+        String status = text(answer, "status");
+        if (status == null || !"success".equalsIgnoreCase(status)) {
+            throw new ProviderUnavailableException(
+                    NAME, "Epoint refused to " + what + ": " + text(answer, "message"));
+        }
+    }
+
     private ProviderOutcome outcomeOf(JsonNode answer, String what) {
         String status = text(answer, "status");
         if (status == null) {

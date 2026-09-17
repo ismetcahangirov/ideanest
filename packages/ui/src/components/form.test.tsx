@@ -4,9 +4,10 @@ import userEvent from '@testing-library/user-event';
 
 import { Field } from './form/Field';
 import { TextInput } from './form/TextInput';
+import { PasswordInput } from './form/PasswordInput';
 import { Textarea } from './form/Textarea';
 import { Select } from './form/Select';
-import { CharacterCount } from './form/CharacterCount';
+import { CharacterCount, type CharacterCountCopy } from './form/CharacterCount';
 import { Checkbox } from './form/Checkbox';
 import { Radio, RadioGroup } from './form/Radio';
 import { Switch } from './form/Switch';
@@ -103,6 +104,99 @@ describe('TextInput', () => {
   });
 });
 
+describe('PasswordInput', () => {
+  /*
+   * A masked input has no `textbox` role, so every query here goes through the
+   * label the `Field` wired up rather than through a role.
+   */
+  it('masks the value until the toggle is pressed, and masks it again after', async () => {
+    render(
+      <Field label="Password">
+        <PasswordInput />
+      </Field>,
+    );
+
+    const input = screen.getByLabelText('Password');
+    expect(input).toHaveAttribute('type', 'password');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Show password' }));
+    expect(input).toHaveAttribute('type', 'text');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Hide password' }));
+    expect(input).toHaveAttribute('type', 'password');
+  });
+
+  it('states the toggle in aria-pressed, not in the icon alone', async () => {
+    render(
+      <Field label="Password">
+        <PasswordInput />
+      </Field>,
+    );
+
+    const toggle = screen.getByRole('button', { name: 'Show password' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+
+    await userEvent.click(toggle);
+    expect(screen.getByRole('button', { name: 'Hide password' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  it('does not submit the form it sits in', async () => {
+    const onSubmit = vi.fn((event: { preventDefault: () => void }) => event.preventDefault());
+    render(
+      <form onSubmit={onSubmit}>
+        <Field label="Password">
+          <PasswordInput />
+        </Field>
+      </form>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Show password' }));
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('is reachable by keyboard, because the people who need it may have no pointer', async () => {
+    render(
+      <Field label="Password">
+        <PasswordInput />
+      </Field>,
+    );
+
+    screen.getByLabelText('Password').focus();
+    await userEvent.tab();
+    expect(screen.getByRole('button', { name: 'Show password' })).toHaveFocus();
+  });
+
+  it('takes its accessible names from the caller, so they can be translated', () => {
+    render(
+      <Field label="Parol">
+        <PasswordInput showLabel="Parolu göstər" hideLabel="Parolu gizlət" />
+      </Field>,
+    );
+    expect(screen.getByRole('button', { name: 'Parolu göstər' })).toBeInTheDocument();
+  });
+
+  it('inherits the Field invalid wiring like any other control', () => {
+    render(
+      <Field label="Password" error="That password was refused.">
+        <PasswordInput />
+      </Field>,
+    );
+    expect(screen.getByLabelText('Password')).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('disables the toggle with the field, so a locked value cannot be read out', () => {
+    render(
+      <Field label="Password">
+        <PasswordInput disabled />
+      </Field>,
+    );
+    expect(screen.getByRole('button', { name: 'Show password' })).toBeDisabled();
+  });
+});
+
 describe('Textarea', () => {
   it('inherits the Field wiring like any other control', () => {
     render(
@@ -133,6 +227,73 @@ describe('Select', () => {
 
     await userEvent.selectOptions(select, 'art');
     expect(select).toHaveValue('art');
+  });
+});
+
+describe('CharacterCount in a language that declines', () => {
+  /*
+   * Russian picks between three forms by the last digit, which is the case an
+   * English singular/plural ternary gets wrong for most numbers with nothing on
+   * screen to say so. The forms are the ones `messages/ru.json` carries.
+   */
+  const RU: CharacterCountCopy = {
+    remaining: {
+      one: 'Остался {count} символ',
+      few: 'Осталось {count} символа',
+      many: 'Осталось {count} символов',
+      other: 'Осталось {count} символа',
+    },
+    tooMany: {
+      one: 'На {count} символ больше',
+      few: 'На {count} символа больше',
+      many: 'На {count} символов больше',
+      other: 'На {count} символа больше',
+    },
+  };
+
+  it.each([
+    [59, 'Остался 1 символ'],
+    [57, 'Осталось 3 символа'],
+    [55, 'Осталось 5 символов'],
+    [39, 'Остался 21 символ'],
+  ])('selects the Russian form for what is left after %i of 60', (count, expected) => {
+    const { unmount } = render(
+      <CharacterCount count={count} limit={60} copy={RU} locale="ru" />,
+    );
+    expect(screen.getByText(expected)).toBeInTheDocument();
+    unmount();
+  });
+
+  it('counts upwards past the limit, in the same three forms', () => {
+    render(<CharacterCount count={65} limit={60} copy={RU} locale="ru" />);
+    expect(screen.getByText('На 5 символов больше')).toBeInTheDocument();
+    expect(screen.queryByText(/Осталось/u)).toBeNull();
+  });
+
+  it('needs no declension in Azerbaijani, which repeats one form', () => {
+    const AZ: CharacterCountCopy = {
+      remaining: {
+        one: '{count} simvol qalıb',
+        few: '{count} simvol qalıb',
+        many: '{count} simvol qalıb',
+        other: '{count} simvol qalıb',
+      },
+      tooMany: {
+        one: '{count} simvol artıqdır',
+        few: '{count} simvol artıqdır',
+        many: '{count} simvol artıqdır',
+        other: '{count} simvol artıqdır',
+      },
+    };
+
+    render(<CharacterCount count={59} limit={60} copy={AZ} locale="az" />);
+    expect(screen.getByText('1 simvol qalıb')).toBeInTheDocument();
+  });
+
+  it('falls back rather than throwing on a language tag Intl cannot parse', () => {
+    /* A counter that took the field down over a locale string would be the worse failure. */
+    render(<CharacterCount count={57} limit={60} copy={RU} locale="not a locale" />);
+    expect(screen.getByText('Осталось 3 символа')).toBeInTheDocument();
   });
 });
 

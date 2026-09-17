@@ -93,6 +93,9 @@ public class NotificationFacts {
             case CAMPAIGN_SUCCEEDED, CAMPAIGN_UNSUCCESSFUL -> facts.withAmount(money(params, "pledged"))
                     .withDetail(text(params, "backersCount"));
             case PROJECT_APPROVED -> facts;
+            // IDN-EXT-01 (#34). The new deadline is the whole of the message: backers are
+            // told, not asked, so the copy leads with the date and needs nothing else.
+            case CAMPAIGN_EXTENDED -> facts.withDetail(text(params, "extendedUntil"));
             // #437's warning. `dueAt` is the date the copy leads with -- "soon" is what a
             // reminder says when it does not know, and this one does.
             case UPDATE_DUE_SOON -> facts.withDetail(text(params, "dueAt"));
@@ -110,6 +113,8 @@ public class NotificationFacts {
             // its future event will carry where an amount is the point of the message, and
             // nothing where it is not.
             case PAYOUT_SENT -> facts.withAmount(money(params, "amount"));
+            case WITHDRAWAL_REQUESTED -> facts.withDetail(text(params, "disputeUntil"));
+            case PAYOUT_DETAILS_NEEDED -> facts.withDetail(text(params, "payableAt"));
             case NEW_UPDATE_PUBLISHED,
                     COMMENT_REPLY,
                     DIRECT_MESSAGE,

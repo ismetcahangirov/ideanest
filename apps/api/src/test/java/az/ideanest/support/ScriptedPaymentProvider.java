@@ -1,9 +1,14 @@
 package az.ideanest.support;
 
 import az.ideanest.payment.domain.ChargeResult;
+import az.ideanest.payment.domain.HostedPaymentRequest;
+import az.ideanest.payment.domain.HostedPaymentSession;
+import az.ideanest.payment.domain.PaymentLookup;
 import az.ideanest.payment.domain.PaymentEvent;
 import az.ideanest.payment.domain.PaymentEventType;
 import az.ideanest.payment.domain.PaymentProvider;
+import az.ideanest.payment.domain.PayoutCardRequest;
+import az.ideanest.payment.domain.PayoutCardSession;
 import az.ideanest.payment.domain.PayoutRequest;
 import az.ideanest.payment.domain.PayoutResult;
 import az.ideanest.payment.domain.ProviderCapabilities;
@@ -17,6 +22,7 @@ import az.ideanest.payment.domain.TokenizationRequest;
 import az.ideanest.payment.domain.TokenizationResult;
 import az.ideanest.payment.domain.TokenizationSession;
 import az.ideanest.shared.money.Money;
+import java.net.URI;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -169,6 +175,8 @@ public class ScriptedPaymentProvider implements PaymentProvider {
      * would look like a bug in the code under test rather than in the fixture.
      */
     public void reset() {
+        refundRefusal = null;
+        lookups.clear();
         scripted.clear();
         charges.clear();
         standing = ProviderOutcome.APPROVED;
@@ -233,6 +241,40 @@ public class ScriptedPaymentProvider implements PaymentProvider {
      * <p>{@code preAuthHoldDays} is 7, which is §9.1's whole problem: a hold that expires
      * before a thirty-day campaign closes is why the platform stores a card instead.
      */
+    /** IDN-EXT-01 (#44): every payout card registration the platform began, in order. */
+    private final List<PayoutCardRequest> payoutCardRegistrations = Collections.synchronizedList(new ArrayList<>());
+
+    public List<PayoutCardRequest> payoutCardRegistrations() {
+        synchronized (payoutCardRegistrations) {
+            return List.copyOf(payoutCardRegistrations);
+        }
+    }
+
+    /** A card entry page on a host nothing resolves; the registration is settled by a scripted webhook. */
+    @Override
+    public PayoutCardSession beginPayoutCardRegistration(PayoutCardRequest request) {
+        payoutCardRegistrations.add(request);
+        String card = "scripted-card-" + providerTransactionCounter.incrementAndGet();
+        return new PayoutCardSession(card, URI.create("https://pay.scripted.invalid/card/" + card));
+    }
+
+    /** IDN-EXT-01 (#39): every payment page the platform asked for, in order. */
+    private final List<HostedPaymentRequest> hostedPayments = Collections.synchronizedList(new ArrayList<>());
+
+    public List<HostedPaymentRequest> hostedPayments() {
+        synchronized (hostedPayments) {
+            return List.copyOf(hostedPayments);
+        }
+    }
+
+    /** A payment page on a host nothing resolves; the payment is settled by a scripted webhook. */
+    @Override
+    public HostedPaymentSession beginHostedPayment(HostedPaymentRequest request) {
+        hostedPayments.add(request);
+        String transaction = "scripted-hosted-" + providerTransactionCounter.incrementAndGet();
+        return new HostedPaymentSession(transaction, URI.create("https://pay.scripted.invalid/" + transaction));
+    }
+
     @Override
     public ProviderCapabilities capabilities() {
         return new ProviderCapabilities(
@@ -253,9 +295,52 @@ public class ScriptedPaymentProvider implements PaymentProvider {
         throw new UnsupportedOperationException("Tokenisation is #55; no test drives it yet");
     }
 
+    /** IDN-EXT-01 (#40): every reversal the platform asked for, in order. */
+    private final List<RefundRequest> refunds = Collections.synchronizedList(new ArrayList<>());
+
+    private volatile String refundRefusal;
+
+    /** What {@link #lookUpPayment} answers, by provider transaction; {@code SUCCEEDED} when unscripted. */
+    private final Map<String, PaymentLookup.State> lookups = new java.util.concurrent.ConcurrentHashMap<>();
+
+    public List<RefundRequest> refunds() {
+        synchronized (refunds) {
+            return List.copyOf(refunds);
+        }
+    }
+
+    /** The next refunds are refused with this code, until {@link #willRefund()}. */
+    public void willRefuseRefunds(String code) {
+        refundRefusal = code;
+    }
+
+    public void willRefund() {
+        refundRefusal = null;
+    }
+
+    public void willLookUp(String providerTransactionId, PaymentLookup.State state) {
+        lookups.put(providerTransactionId, state);
+    }
+
     @Override
     public RefundResult refund(RefundRequest request) {
-        throw new UnsupportedOperationException("Refunds are #67; no test drives them yet");
+        refunds.add(request);
+        String refusal = refundRefusal;
+        if (refusal != null) {
+            return new RefundResult(ProviderOutcome.DECLINED, null, refusal, "Scripted refusal", "{\"scripted\":true}");
+        }
+        // Like Epoint's /reverse: no transaction of its own.
+        return new RefundResult(ProviderOutcome.APPROVED, null, null, null, "{\"scripted\":true}");
+    }
+
+    @Override
+    public PaymentLookup lookUpPayment(String providerTransactionId) {
+        return new PaymentLookup(
+                lookups.getOrDefault(providerTransactionId, PaymentLookup.State.SUCCEEDED),
+                providerTransactionId,
+                null,
+                null,
+                "{\"scripted\":true}");
     }
 
     @Override

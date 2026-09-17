@@ -3,10 +3,11 @@ import {
   isSupportedCurrency,
   parseAmount,
   toMoney,
+  type AmountRejection,
 } from '../money';
-import type { BasicsErrorsCopy } from '../i18n/editor-copy';
-import { fillPlaceholders } from '../i18n/placeholders';
 import type { CoverImage, ProjectEdit, ProjectPatch } from './api';
+import type { BasicsValidationCopy } from '../i18n/campaign-editor-copy';
+import { fillPlaceholders } from '../i18n/placeholders';
 
 /**
  * The basics tab, as data: what the creator has typed, what is wrong with it,
@@ -192,17 +193,23 @@ export function fromDateTimeLocal(value: string): string | null {
  * Validation
  * ---------------------------------------------------------------------- */
 
-/*
- * THE SENTENCES LEFT THIS FILE WITH #459. They were a `Record<AmountRejection, string>` and
- * eight string literals below it, and they are `editor.basics.errors.*` now — arriving as the
- * `copy` argument to {@link validateBasics}.
+/**
+ * The rejection the amount parser reports, as the sentence for it — issue #324.
  *
- * <p>An argument rather than a lookup, the way `lib/auth/failures.ts` takes `AuthFailuresCopy`:
- * these are §5.3's rules and they belong in a pure function that can be tested at its
- * boundaries — sixty characters, one day, sixty days — and a pure function cannot read a
- * catalogue. It is required rather than optional, because an optional one would leave the goal
- * field quietly answering in English on the figure the whole campaign is measured against.
+ * A `Record` rather than a `switch` so that a rejection added to `AmountRejection` fails to
+ * compile here rather than rendering `undefined` under the field it refuses.
  */
+function amountMessage(copy: BasicsValidationCopy, reason: AmountRejection): string {
+  const messages: Record<AmountRejection, string> = {
+    empty: copy.amount.empty,
+    'not-a-number': copy.amount.notANumber,
+    comma: copy.amount.comma,
+    'too-many-decimals': copy.amount.tooManyDecimals,
+    'too-large': copy.amount.tooLarge,
+    'not-positive': copy.amount.notPositive,
+  };
+  return messages[reason];
+}
 
 /** Integer days only — `"14.5"` and `"14 days"` are both refusals. */
 const WHOLE_DAYS = /^\d+$/;
@@ -212,9 +219,16 @@ export interface ValidationContext {
   now?: Date;
 }
 
+/**
+ * THE COPY IS AN ARGUMENT, AND IT IS REQUIRED.
+ *
+ * This runs on every keystroke in two client panels, so it cannot reach a catalogue, and an
+ * optional vocabulary would leave the form quietly refusing in English at the moment somebody
+ * is already stuck. `lib/auth/failures.ts` states the same rule for the same reason.
+ */
 export function validateBasics(
   draft: BasicsDraft,
-  copy: BasicsErrorsCopy,
+  copy: BasicsValidationCopy,
   context: ValidationContext = {},
 ): BasicsErrors {
   const errors: BasicsErrors = {};
@@ -222,14 +236,8 @@ export function validateBasics(
 
   const titleLength = characterCount(draft.title.trim());
   if (titleLength === 0) {
-    errors.title = copy.titleMissing;
+    errors.title = copy.titleRequired;
   } else if (titleLength > TITLE_MAX_CHARACTERS) {
-    /*
-     * `fillPlaceholders` rather than a template literal, because the sentence is the
-     * translator's and the word order is theirs to change: Azerbaijani does not put "remove
-     * three" where English does, and two half-sentences concatenated here could not express
-     * that. `lib/i18n/placeholders.ts` carries the argument.
-     */
     errors.title = fillPlaceholders(copy.titleTooLong, {
       max: String(TITLE_MAX_CHARACTERS),
       over: String(titleLength - TITLE_MAX_CHARACTERS),
@@ -238,7 +246,7 @@ export function validateBasics(
 
   const blurbLength = characterCount(draft.blurb);
   if (blurbLength > BLURB_MAX_CHARACTERS) {
-    errors.blurb = fillPlaceholders(copy.blurbTooLong, {
+    errors.blurb = fillPlaceholders(copy.summaryTooLong, {
       max: String(BLURB_MAX_CHARACTERS),
       over: String(blurbLength - BLURB_MAX_CHARACTERS),
     });
@@ -252,7 +260,7 @@ export function validateBasics(
 
   if (draft.goalAmount.trim() !== '') {
     const parsed = parseAmount(draft.goalAmount);
-    if (!parsed.ok) errors.goal = copy.amount[parsed.reason];
+    if (!parsed.ok) errors.goal = amountMessage(copy, parsed.reason);
   }
 
   if (!isSupportedCurrency(draft.currency)) {
@@ -277,9 +285,9 @@ export function validateBasics(
   if (draft.scheduledLaunchAt.trim() !== '') {
     const instant = fromDateTimeLocal(draft.scheduledLaunchAt);
     if (instant === null) {
-      errors.scheduledLaunchAt = copy.scheduleUnreadable;
+      errors.scheduledLaunchAt = copy.launchNotADate;
     } else if (new Date(instant).getTime() <= now.getTime()) {
-      errors.scheduledLaunchAt = copy.schedulePast;
+      errors.scheduledLaunchAt = copy.launchInPast;
     }
   }
 

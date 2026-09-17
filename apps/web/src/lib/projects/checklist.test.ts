@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { EDITOR_TABS, editorTabHref } from '../../components/campaign-editor/tabs';
 import type { ChecklistItem, ProjectChecklist } from './api';
+import { EDITOR_COPY, REVIEW_COPY } from '../../test-editor-copy';
 import {
   CHECKLIST_SECTIONS,
   describeProgress,
@@ -10,16 +11,6 @@ import {
   unmetFromRefusal,
   unmetOf,
 } from './checklist';
-import { reviewCopyFrom } from '../i18n/editor-copy';
-import { translatorFor } from '../../test-copy';
-
-/*
- * The review tab's words, from `messages/en.json` through the builder the page calls — issue
- * #459. The sentence a progress figure is put into is the catalogue's now, so this reads it
- * from there rather than repeating it.
- */
-const COPY = reviewCopyFrom(translatorFor('editor'));
-const SECTIONS = COPY.sections;
 
 function item(overrides: Partial<ChecklistItem> = {}): ChecklistItem {
   return {
@@ -56,12 +47,8 @@ describe('checklist sections', () => {
 
     for (const section of CHECKLIST_SECTIONS) {
       expect(segments).toContain(section);
-      /*
-       * And the editor has a name for it. The three labels used to be `SECTION_LABEL` in the
-       * module beside this one; since #459 they are the tabs' own catalogue keys, so this
-       * asserts against the same object the panel draws "Fix in Basics" from.
-       */
-      expect(SECTIONS[section]).toBeTruthy();
+      /* The section's name is the tab's own now, so this asserts the catalogue has one. */
+      expect(EDITOR_COPY.tabs[section]).toBeTruthy();
     }
   });
 
@@ -104,7 +91,10 @@ describe('progress', () => {
   });
 
   it('says the score in words, with the counts a bar cannot carry', () => {
-    const described = describeProgress(progressOf(checklist({ score: 83 })), COPY.progress.summary);
+    const described = describeProgress(
+      progressOf(checklist({ score: 83 })),
+      REVIEW_COPY.progressSummary,
+    );
 
     expect(described).toContain('83%');
     // The half that answers "is what is left optional".
