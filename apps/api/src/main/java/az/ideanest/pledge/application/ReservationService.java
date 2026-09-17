@@ -371,6 +371,14 @@ public class ReservationService {
         PledgeQuote quote = PledgeQuote.of(
                 selectionFor(projectId, rewardTierId, addonSelections, contribution, shippingCountry));
 
+        // IDN-EXT-01 (#35): a confirmed pledge may only be raised. Checked against the quote and
+        // before any place moves, so a refused edit leaves the pledge and every counter exactly as
+        // they were. A draft is still being chosen and is not held to it.
+        if (pledge.getState() == PledgeState.CONFIRMED
+                && quote.totalAmount().compareTo(pledge.getTotalAmount()) < 0) {
+            throw new PledgeDecreaseNotAllowedException(pledge.getId(), pledge.getTotalAmount(), quote.totalAmount());
+        }
+
         moveThePlaces(pledge, HeldPlaces.of(rewardTierId, addonSelections), existingAddons);
 
         pledge.edit(quote, rewardTierId, shippingCountry, anonymous, paymentMethodId);
@@ -434,6 +442,27 @@ public class ReservationService {
         // Where §9.2's phase 1 goes: authorise, 3-D Secure, store the token, void.
         // PledgeCapability.CARD_VERIFICATION — #55, blocked on #60.
         pledge.confirm(now, paymentMethodId);
+        return pledge;
+    }
+
+    /**
+     * IDN-EXT-01 (#39): a paid draft commits the places it was holding and becomes {@code COLLECTED}.
+     *
+     * <p>The same commit {@link #confirm} makes — a draft holds <em>reserved</em> places and a paid
+     * pledge holds <em>claimed</em> ones — without the stop at {@code CONFIRMED}, because under the
+     * charge-now model a pledge is confirmed by being paid for.
+     */
+    public Pledge collect(Pledge pledge, List<PledgeAddon> heldAddons, Instant now) {
+        for (Map.Entry<UUID, Integer> line : HeldPlaces.heldBy(pledge, heldAddons).entrySet()) {
+            if (!stock.commitPlaces(line.getKey(), line.getValue())) {
+                log.error(
+                        "Pledge {} was paid for against reward tier {}, which had no {} reserved places to commit.",
+                        pledge.getId(),
+                        line.getKey(),
+                        line.getValue());
+            }
+        }
+        pledge.paid(now);
         return pledge;
     }
 

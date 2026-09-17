@@ -17,20 +17,29 @@ import {
   verifyEmailCopyFrom,
 } from './auth-copy';
 import { type CheckoutCopy, checkoutCopyFrom } from './checkout-copy';
+import { type PayoutPanelCopy, payoutPanelCopyFrom } from './payout-copy';
+import { type CampaignControlsCopy, campaignControlsCopyFrom } from './campaign-controls-copy';
+import type { PluralForms } from '@ideanest/ui';
 import {
-  type BasicsCopy,
-  type FaqCopy,
-  type PrelaunchCopy,
-  type ReviewCopy,
-  type RewardsCopy,
-  type StoryCopy,
-  basicsCopyFrom,
-  faqCopyFrom,
-  prelaunchCopyFrom,
-  reviewCopyFrom,
-  rewardsCopyFrom,
-  storyCopyFrom,
-} from './editor-copy';
+  type BasicsPanelCopy,
+  type EditorChromeCopy,
+  type FaqPanelCopy,
+  type PrelaunchPanelCopy,
+  type ReviewPanelCopy,
+  type EditorMetaCopy,
+  type NewProjectCopy,
+  type RewardsPanelCopy,
+  type StoryPanelCopy,
+  basicsPanelCopyFrom,
+  editorChromeCopyFrom,
+  faqPanelCopyFrom,
+  prelaunchPanelCopyFrom,
+  reviewPanelCopyFrom,
+  editorMetaCopyFrom,
+  newProjectCopyFrom,
+  rewardsPanelCopyFrom,
+  storyPanelCopyFrom,
+} from './campaign-editor-copy';
 import {
   type CampaignActionsCopy,
   type CommentCopy,
@@ -65,9 +74,11 @@ import {
   type FailureCopy,
   type FooterCopy,
   type ShellCopy,
+  type WhatsAppCopy,
   failureCopyFrom,
   footerCopyFrom,
   shellCopyFrom,
+  whatsappCopyFrom,
 } from './shell-copy';
 
 /**
@@ -88,6 +99,16 @@ export async function shellCopy(): Promise<ShellCopy> {
 
 export async function footerCopy(): Promise<FooterCopy> {
   return footerCopyFrom(await getTranslations('shell'));
+}
+
+/**
+ * The floating WhatsApp control's words — `shell-copy.ts` explains why they are their own object.
+ *
+ * Resolved by `SiteShell` beside `shellCopy`, and handed to the launcher whole. One extra
+ * lookup on a render that was already reading this namespace.
+ */
+export async function whatsappCopy(): Promise<WhatsAppCopy> {
+  return whatsappCopyFrom(await getTranslations('shell'));
 }
 
 export async function failureCopy(): Promise<FailureCopy> {
@@ -228,6 +249,16 @@ export async function checkoutCopy(): Promise<CheckoutCopy> {
   return checkoutCopyFrom(await getTranslations('checkout'));
 }
 
+/** The creator's payout details panel — IDN-EXT-01 (#44). */
+export async function payoutPanelCopy(): Promise<PayoutPanelCopy> {
+  return payoutPanelCopyFrom(await getTranslations('settings.panels.payout'));
+}
+
+/** The creator's Extend and Withdraw controls on the dashboard — IDN-EXT-01 (#44). */
+export async function campaignControlsCopy(): Promise<CampaignControlsCopy> {
+  return campaignControlsCopyFrom(await getTranslations('dashboardControls'));
+}
+
 /** The pricing page and the plan chooser on it. */
 export async function pricingCopy(): Promise<PricingCopy> {
   return pricingCopyFrom(await getTranslations('pricing'));
@@ -274,35 +305,96 @@ export async function graphContext(): Promise<{
   return { locale: localeOrDefault(await getLocale()), trailCopy: await trailCopy() };
 }
 
-/* -------------------------------------------------------------------------
- * The campaign editor — issue #459
+/**
+ * The campaign editor's frame — `lib/i18n/campaign-editor-copy.ts`.
  *
- * One accessor per tab, for the reason the authentication block above gives: each of the six
- * pages under `app/[locale]/projects/[id]/edit` renders one panel, and handing it the whole
- * editor's vocabulary would put the reward drawer's sixty-seven strings into the flight
- * payload of the screen where somebody is typing a title.
- * ---------------------------------------------------------------------- */
-
-export async function editorBasicsCopy(): Promise<BasicsCopy> {
-  return basicsCopyFrom(await getTranslations('editor'));
+ * <p>Every one of the six tab pages resolves this and hands it to its panel, which threads it
+ * into `EditorShell` and `SaveStatus`. It is the frame only: a panel's own field labels and
+ * refusals belong to that panel, so translating one tab does not touch the other five.
+ */
+export async function editorChromeCopy(): Promise<EditorChromeCopy> {
+  const [editor, counter, locale] = await Promise.all([
+    getTranslations('campaignEditor'),
+    getTranslations('common.characterCount'),
+    getLocale(),
+  ]);
+  return editorChromeCopyFrom(editor, counter, localeOrDefault(locale));
 }
 
-export async function editorRewardsCopy(): Promise<RewardsCopy> {
-  return rewardsCopyFrom(await getTranslations('editor'));
+/** The basics tab's own words — the first of the six panels. */
+export async function basicsPanelCopy(): Promise<BasicsPanelCopy> {
+  return basicsPanelCopyFrom(await getTranslations('campaignEditor'));
 }
 
-export async function editorStoryCopy(): Promise<StoryCopy> {
-  return storyCopyFrom(await getTranslations('editor'));
+/** The rewards tab, the items list, and the two drawers they open. */
+export async function rewardsPanelCopy(): Promise<RewardsPanelCopy> {
+  const [editor, counter, locale] = await Promise.all([
+    getTranslations('campaignEditor'),
+    getTranslations('common.characterCount'),
+    getLocale(),
+  ]);
+  return rewardsPanelCopyFrom(editor, localeOrDefault(locale), {
+    remaining: counter.raw('remaining') as PluralForms,
+    tooMany: counter.raw('tooMany') as PluralForms,
+  });
 }
 
-export async function editorFaqCopy(): Promise<FaqCopy> {
-  return faqCopyFrom(await getTranslations('editor'));
+/** The story tab, the block editor, the mark toolbar and the version history. */
+export async function storyPanelCopy(): Promise<StoryPanelCopy> {
+  const [editor, counter, locale] = await Promise.all([
+    getTranslations('campaignEditor'),
+    getTranslations('common.characterCount'),
+    getLocale(),
+  ]);
+  return storyPanelCopyFrom(editor, localeOrDefault(locale), {
+    remaining: counter.raw('remaining') as PluralForms,
+    tooMany: counter.raw('tooMany') as PluralForms,
+  });
 }
 
-export async function editorPrelaunchCopy(): Promise<PrelaunchCopy> {
-  return prelaunchCopyFrom(await getTranslations('editor'));
+/** The FAQ tab and the drawer one question is written in. */
+export async function faqPanelCopy(): Promise<FaqPanelCopy> {
+  const [editor, counter, locale] = await Promise.all([
+    getTranslations('campaignEditor'),
+    getTranslations('common.characterCount'),
+    getLocale(),
+  ]);
+  return faqPanelCopyFrom(editor, localeOrDefault(locale), {
+    remaining: counter.raw('remaining') as PluralForms,
+    tooMany: counter.raw('tooMany') as PluralForms,
+  });
 }
 
-export async function editorReviewCopy(): Promise<ReviewCopy> {
-  return reviewCopyFrom(await getTranslations('editor'));
+/** The pre-launch tab — the page that goes public before the campaign does. */
+export async function prelaunchPanelCopy(): Promise<PrelaunchPanelCopy> {
+  const [editor, counter, locale] = await Promise.all([
+    getTranslations('campaignEditor'),
+    getTranslations('common.characterCount'),
+    getLocale(),
+  ]);
+  return prelaunchPanelCopyFrom(editor, localeOrDefault(locale), {
+    remaining: counter.raw('remaining') as PluralForms,
+    tooMany: counter.raw('tooMany') as PluralForms,
+  });
+}
+
+/** The review tab — what is left to do, and the two irreversible buttons. */
+export async function reviewPanelCopy(): Promise<ReviewPanelCopy> {
+  const [editor, locale] = await Promise.all([getTranslations('campaignEditor'), getLocale()]);
+  return reviewPanelCopyFrom(editor, localeOrDefault(locale));
+}
+
+/** The one field that starts a campaign. */
+export async function newProjectCopy(): Promise<NewProjectCopy> {
+  return newProjectCopyFrom(await getTranslations('campaignEditor'));
+}
+
+/**
+ * The six editor pages' descriptions.
+ *
+ * The titles are not here: they are the tabs' own names, so a page reads them from
+ * {@link editorChromeCopy} rather than carrying a second spelling of "Basics".
+ */
+export async function editorMetaCopy(): Promise<EditorMetaCopy> {
+  return editorMetaCopyFrom(await getTranslations('campaignEditor'));
 }

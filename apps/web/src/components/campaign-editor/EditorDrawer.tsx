@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react';
 import { Pill } from '@ideanest/ui';
 import { Drawer } from '@ideanest/ui/motion';
-import type { RewardsCopy } from '../../lib/i18n/editor-copy';
 
 /**
  * A drawer with a cancel and a save in its footer.
@@ -37,15 +36,11 @@ import type { RewardsCopy } from '../../lib/i18n/editor-copy';
  * under `prefers-reduced-motion`. Nothing here adds any (docs/motion-system.md
  * §5 gives the campaign editor "none").
  */
+import type { EditorDrawerCopy } from '../../lib/i18n/campaign-editor-copy';
+
 export interface EditorDrawerProps {
-  /**
-   * The footer's three words — issue #459.
-   *
-   * They are the drawer's rather than each editor's, for the reason this component exists at
-   * all: one place decides the wording of the button, and two spellings of Save between the
-   * item drawer and the reward drawer would be the same control disagreeing with itself.
-   */
-  copy: RewardsCopy['drawer'];
+  /** The two buttons' words. */
+  copy: EditorDrawerCopy;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;

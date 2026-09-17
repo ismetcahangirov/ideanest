@@ -9,17 +9,8 @@ import {
   type PrelaunchPage,
   type ProjectEdit,
 } from '../../lib/projects/api';
-import { prelaunchCopyFrom } from '../../lib/i18n/editor-copy';
-import { translatorFor } from '../../test-copy';
 import { PrelaunchPanel } from './PrelaunchPanel';
-
-/*
- * The copy the page would have resolved, built from `messages/en.json` by the same function it
- * calls — issue #459. Retyping the sentences here would give a test that passes whatever the
- * catalogue says, which is the opposite of what it is for; `test-copy.ts` carries the
- * argument in full.
- */
-const COPY = prelaunchCopyFrom(translatorFor('editor'));
+import { BASICS_COPY, EDITOR_COPY, PRELAUNCH_COPY } from '../../test-editor-copy';
 
 /**
  * The creator's pre-launch tab.
@@ -91,7 +82,15 @@ async function openPanel(overrides: Partial<ProjectEdit> = {}): Promise<UserEven
   getProjectEditMock.mockResolvedValue({ ...PROJECT, ...overrides });
 
   const user = userEvent.setup({ advanceTimers: (ms) => void vi.advanceTimersByTime(ms) });
-  render(<PrelaunchPanel projectId="project-1" copy={COPY} />);
+  render(
+    <PrelaunchPanel
+      projectId="project-1"
+      copy={EDITOR_COPY}
+      validation={BASICS_COPY.validation}
+      cover={BASICS_COPY.cover}
+      prelaunch={PRELAUNCH_COPY}
+    />,
+  );
 
   // The project and, when the page is open, the follower count resolve
   // independently.

@@ -18,17 +18,8 @@ import {
   type ProjectEdit,
   type Reward,
 } from '../../lib/projects/api';
-import { rewardsCopyFrom } from '../../lib/i18n/editor-copy';
-import { translatorFor } from '../../test-copy';
 import { RewardsPanel } from './RewardsPanel';
-
-/*
- * The copy the page would have resolved, built from `messages/en.json` by the same function it
- * calls — issue #459. Retyping the sentences here would give a test that passes whatever the
- * catalogue says, which is the opposite of what it is for; `test-copy.ts` carries the
- * argument in full.
- */
-const COPY = rewardsCopyFrom(translatorFor('editor'));
+import { EDITOR_COPY, REWARDS_COPY } from '../../test-editor-copy';
 
 /**
  * Appearance is reviewed in Storybook. These cover what fails silently: the
@@ -155,7 +146,7 @@ async function openRewards({ project, items, rewards }: Fixture = {}): Promise<U
   listRewardsMock.mockResolvedValue(rewards ?? [FIRST, SECOND]);
 
   const user = userEvent.setup({ advanceTimers: (ms) => void vi.advanceTimersByTime(ms) });
-  render(<RewardsPanel projectId="project-1" copy={COPY} />);
+  render(<RewardsPanel projectId="project-1" copy={EDITOR_COPY} rewards={REWARDS_COPY} />);
 
   // The project, and the two lists that resolve together.
   await tick();
@@ -187,7 +178,7 @@ describe('RewardsPanel', () => {
     listItemsMock.mockReturnValue(new Promise<readonly Item[]>(() => {}));
     listRewardsMock.mockReturnValue(new Promise<readonly Reward[]>(() => {}));
 
-    render(<RewardsPanel projectId="project-1" copy={COPY} />);
+    render(<RewardsPanel projectId="project-1" copy={EDITOR_COPY} rewards={REWARDS_COPY} />);
     await tick();
 
     const label = screen.getByText('Loading this campaign’s items');
@@ -377,12 +368,9 @@ describe('RewardsPanel', () => {
       await user.click(screen.getByRole('button', { name: 'Save' }));
       await tick();
 
-      /*
-       * A reservation is somebody entering their card details, so it counts as taken exactly as
-       * a confirmed pledge does. The sentence names the number rather than declining it — a
-       * plural is ICU's and `validateReward` is a pure function with no formatter (#459).
-       */
-      expect(screen.getByText(/^That is below what is already taken: 40\./u)).toBeInTheDocument();
+      // A reservation is somebody entering their card details, so it counts as
+      // taken exactly as a confirmed pledge does.
+      expect(screen.getByText(/below the 40 places already taken/)).toBeInTheDocument();
       expect(patchRewardMock).not.toHaveBeenCalled();
     });
 
@@ -670,7 +658,7 @@ describe('RewardsPanel', () => {
       listItemsMock.mockResolvedValue([]);
       listRewardsMock.mockResolvedValue([]);
 
-      render(<RewardsPanel projectId="project-1" copy={COPY} />);
+      render(<RewardsPanel projectId="project-1" copy={EDITOR_COPY} rewards={REWARDS_COPY} />);
       await tick();
 
       expect(screen.getByText('You are signed out')).toBeInTheDocument();
@@ -682,7 +670,7 @@ describe('RewardsPanel', () => {
       listRewardsMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
 
       const user = userEvent.setup({ advanceTimers: (ms) => void vi.advanceTimersByTime(ms) });
-      render(<RewardsPanel projectId="project-1" copy={COPY} />);
+      render(<RewardsPanel projectId="project-1" copy={EDITOR_COPY} rewards={REWARDS_COPY} />);
       await tick();
       await tick();
 

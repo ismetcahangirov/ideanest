@@ -1,5 +1,7 @@
 package az.ideanest.project;
 
+import az.ideanest.project.domain.CampaignOutcome;
+
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
@@ -18,6 +20,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param submissions how much of the moderation submission queue one request may read
  * @param directory how much of the console's campaign directory one request may read
  * @param launches how often campaigns whose launch time has arrived are taken live
+ * @param extension when and how far a creator may extend a campaign once — IDN-EXT-01 (#34)
  */
 @ConfigurationProperties(prefix = "ideanest.project")
 public record ProjectProperties(
@@ -26,10 +29,11 @@ public record ProjectProperties(
         Submission submission,
         Reminders reminders,
         Finalisation finalisation,
-        LatePledges latePledges,
         Submissions submissions,
         Directory directory,
-        Launches launches) {
+        Launches launches,
+        Extension extension,
+        Withdrawal withdrawal) {
 
     public ProjectProperties {
         // A deployment that configures neither section still starts. Nested records
@@ -42,10 +46,11 @@ public record ProjectProperties(
         submission = submission == null ? Submission.defaults() : submission;
         reminders = reminders == null ? Reminders.defaults() : reminders;
         finalisation = finalisation == null ? Finalisation.defaults() : finalisation;
-        latePledges = latePledges == null ? LatePledges.defaults() : latePledges;
         submissions = submissions == null ? Submissions.defaults() : submissions;
         directory = directory == null ? Directory.defaults() : directory;
         launches = launches == null ? Launches.defaults() : launches;
+        extension = extension == null ? Extension.defaults() : extension;
+        withdrawal = withdrawal == null ? Withdrawal.defaults() : withdrawal;
     }
 
     /**
@@ -169,39 +174,6 @@ public record ProjectProperties(
     }
 
     /**
-     * §4.5's PL-16 and §4.8's PM-23 (#81): the window a creator may keep open after
-     * their campaign has closed.
-     *
-     * @param maxWindow the furthest ahead a late-pledge window may end, measured from
-     *     the moment it is opened. Ninety days, which is a bound on a promise rather
-     *     than a technical limit: a late pledge is a commitment to send somebody a
-     *     reward, and a campaign still taking money nine months after it closed is one
-     *     whose backers are indistinguishable from customers of a shop that has no
-     *     stock. A creator who needs longer reopens the window, which is one decision
-     *     they have to take again rather than one they took once
-     */
-    public record LatePledges(Duration maxWindow) {
-
-        private static final Duration DEFAULT_MAX_WINDOW = Duration.ofDays(90);
-
-        public static LatePledges defaults() {
-            return new LatePledges(DEFAULT_MAX_WINDOW);
-        }
-
-        public LatePledges {
-            maxWindow = maxWindow == null ? DEFAULT_MAX_WINDOW : maxWindow;
-
-            if (maxWindow.isZero() || maxWindow.isNegative()) {
-                // Zero would mean a window that is closed the moment it opens, which
-                // is a campaign that offers late pledges and refuses every one of
-                // them. Switching the feature off is `latePledgeEnabled`, per
-                // campaign, and it is the creator's rather than an operator's.
-                throw new IllegalArgumentException("A late-pledge window is some length of time");
-            }
-        }
-    }
-
-    /**
      * §8.4's {@code campaign-finalizer} (#63).
      *
      * @param schedule when the sweep fires, as a UTC cron expression, or {@code -} to
@@ -219,21 +191,47 @@ public record ProjectProperties(
      *     {@link Reminders#sendBatchSize()}, because both are one short transaction per row
      *     against an indexed lookup and there is no reason for the platform to hold two
      *     different opinions about how big a sweep is
+     * @param successThreshold the share of the goal at which a campaign succeeds — §5.1,
+     *     IDN-EXT-01 (#31). {@code 0.80}. Configuration because it is a product decision that
+     *     has already moved once, from one hundred per cent; refused at start-up outside
+     *     {@code (0, 1]} by the same check {@code CampaignOutcome} applies, so a mistyped
+     *     {@code 80} stops the service instead of failing every campaign on the platform
+     * @param closingWindow how long after the first deadline a campaign is decided — §5.1's
+     *     seven days, IDN-EXT-01 (#33). During it the campaign is {@code CLOSING_WINDOW}, the
+     *     creator may extend or withdraw, and on its end (D+8 counted in days) the outcome is
+     *     frozen. Configuration for the reason the threshold is; refused unless positive,
+     *     because a zero window would decide every campaign at its deadline — the rule this
+     *     setting exists to replace — without anybody having chosen that
      */
-    public record Finalisation(String schedule, int batchSize) {
+    public record Finalisation(
+            String schedule, int batchSize, BigDecimal successThreshold, Duration closingWindow) {
 
         /** Every minute, which is what §8.4 says {@code campaign-finalizer} runs at. */
         private static final String DEFAULT_SCHEDULE = "0 * * * * *";
 
         private static final int DEFAULT_BATCH_SIZE = 200;
 
+        /** IDN-EXT-01: success from eighty per cent of the goal. */
+        private static final BigDecimal DEFAULT_SUCCESS_THRESHOLD = new BigDecimal("0.80");
+
+        /** IDN-EXT-01: the seven days after the first deadline. */
+        private static final Duration DEFAULT_CLOSING_WINDOW = Duration.ofDays(7);
+
         static Finalisation defaults() {
-            return new Finalisation(DEFAULT_SCHEDULE, DEFAULT_BATCH_SIZE);
+            return new Finalisation(
+                    DEFAULT_SCHEDULE, DEFAULT_BATCH_SIZE, DEFAULT_SUCCESS_THRESHOLD, DEFAULT_CLOSING_WINDOW);
         }
 
         public Finalisation {
             schedule = schedule == null || schedule.isBlank() ? DEFAULT_SCHEDULE : schedule;
             batchSize = batchSize == 0 ? DEFAULT_BATCH_SIZE : batchSize;
+            successThreshold = CampaignOutcome.requireThreshold(
+                    successThreshold == null ? DEFAULT_SUCCESS_THRESHOLD : successThreshold);
+            closingWindow = closingWindow == null ? DEFAULT_CLOSING_WINDOW : closingWindow;
+            if (closingWindow.isNegative() || closingWindow.isZero()) {
+                throw new IllegalArgumentException(
+                        "A closing window is some length of time after the deadline, and " + closingWindow + " is not");
+            }
 
             if (batchSize < 1) {
                 // A sweep that closes no campaigns is the feature switched off, and it
@@ -241,6 +239,73 @@ public record ProjectProperties(
                 // deadline, with nothing in the log saying why. An operator sees this at
                 // start-up instead.
                 throw new IllegalArgumentException("A finalisation pass that closes no campaigns never closes any");
+            }
+        }
+    }
+
+    /**
+     * §5.1's one extension — IDN-EXT-01 (#34).
+     *
+     * @param opensBefore how long before the first deadline the Extend control becomes available.
+     *     Seven days. It stays available until the seven-day window after the deadline ends,
+     *     which is {@link Finalisation#closingWindow()} and deliberately not a second setting: the
+     *     window in which a creator may extend and the window before a campaign is decided are the
+     *     same seven days, and two settings could disagree about them
+     * @param threshold the share of the goal a campaign must have raised to be extended. {@code
+     *     0.50}. Refused outside {@code (0, 1]}, by the same check the success threshold uses
+     * @param limit how far after the <em>first</em> deadline an extension may reach. Sixty days —
+     *     "even if the creator presses it on the seventh day after", so it is measured from the
+     *     deadline and never from the moment of extending
+     */
+    /**
+     * §5.1's withdrawal — IDN-EXT-01 (#41).
+     *
+     * @param automaticAfter how long after funding ends — the first deadline, or the extension's end
+     *     — a successful campaign the creator has not withdrawn is withdrawn for them
+     * @param automaticSchedule when {@code automatic-withdrawal} fires, or {@code -}
+     */
+    public record Withdrawal(Duration automaticAfter, String automaticSchedule) {
+
+        private static final Duration DEFAULT_AUTOMATIC_AFTER = Duration.ofDays(30);
+
+        private static final String DEFAULT_SCHEDULE = "0 15 * * * *";
+
+        static Withdrawal defaults() {
+            return new Withdrawal(DEFAULT_AUTOMATIC_AFTER, DEFAULT_SCHEDULE);
+        }
+
+        public Withdrawal {
+            automaticAfter = automaticAfter == null ? DEFAULT_AUTOMATIC_AFTER : automaticAfter;
+            automaticSchedule = automaticSchedule == null || automaticSchedule.isBlank() ? DEFAULT_SCHEDULE : automaticSchedule;
+            if (automaticAfter.isNegative()) {
+                throw new IllegalArgumentException("An automatic withdrawal does not come before funding ends");
+            }
+        }
+    }
+
+    public record Extension(Duration opensBefore, BigDecimal threshold, Duration limit) {
+
+        private static final Duration DEFAULT_OPENS_BEFORE = Duration.ofDays(7);
+
+        private static final BigDecimal DEFAULT_THRESHOLD = new BigDecimal("0.50");
+
+        private static final Duration DEFAULT_LIMIT = Duration.ofDays(60);
+
+        static Extension defaults() {
+            return new Extension(DEFAULT_OPENS_BEFORE, DEFAULT_THRESHOLD, DEFAULT_LIMIT);
+        }
+
+        public Extension {
+            opensBefore = opensBefore == null ? DEFAULT_OPENS_BEFORE : opensBefore;
+            threshold = CampaignOutcome.requireThreshold(threshold == null ? DEFAULT_THRESHOLD : threshold);
+            limit = limit == null ? DEFAULT_LIMIT : limit;
+            if (opensBefore.isNegative()) {
+                throw new IllegalArgumentException("The Extend control cannot open after the deadline it extends");
+            }
+            if (limit.isNegative() || limit.isZero()) {
+                // A zero limit is an extension that ends where the campaign already did, which is
+                // the feature switched off without anybody having said so.
+                throw new IllegalArgumentException("An extension reaches some time past the first deadline");
             }
         }
     }

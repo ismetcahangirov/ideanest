@@ -2,7 +2,7 @@ import az from '../../../messages/az.json';
 import en from '../../../messages/en.json';
 import ru from '../../../messages/ru.json';
 import tr from '../../../messages/tr.json';
-import { type Locale } from '../../lib/i18n/locale';
+import { SUPPORTED_LOCALES, type Locale } from '../../lib/i18n/locale';
 import { type ShellCopy, shellCopyFrom } from '../../lib/i18n/shell-copy';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
@@ -215,6 +215,64 @@ describe('the current section', () => {
     const nav = screen.getByRole('link', { name: 'Categories' });
     expect(nav).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Discover' })).not.toHaveAttribute('aria-current');
+  });
+});
+
+describe('the navigation pill', () => {
+  /**
+   * #19. Below `md` the links are in the drawer, and the pill they sit in used to stay
+   * behind: an empty white oval once the bar collapsed, holding 66px of a 390px row open and
+   * pushing the drawer's own button past the edge of the screen. jsdom resolves no media
+   * query, so what is asserted is that the decision is on the pill rather than on the list —
+   * which is the thing that regressed.
+   */
+  it('is what is hidden below md, not the list inside it', () => {
+    renderHeader();
+
+    const list = screen.getByRole('list', { name: en.shell.nav.label });
+    expect(list.className, 'the list itself is always displayed').not.toContain('hidden');
+
+    const pill = list.parentElement as HTMLElement;
+    expect(pill.className).toContain('hidden md:flex');
+    expect(pill.className, 'and it is still the pill §4.7 collapses').toContain('rounded-full');
+  });
+});
+
+describe('the language control', () => {
+  /**
+   * It is in the header as well as the footer now, and that is the point of it: somebody who
+   * landed in a language they cannot read does not scroll to the bottom of the page looking
+   * for a way out. Before this the footer was the only route out that did not need an
+   * account — `/settings/language` is behind a sign-in.
+   */
+  it.each(SUPPORTED_LOCALES)('is offered to every visitor, in %s', async (at) => {
+    const { unmount } = renderHeader(at);
+    const label = CATALOGUES[at].shell.language.label;
+
+    /* Icon-only, so the name is what makes it reachable at all (§9.2). */
+    const control = screen.getByRole('button', { name: label });
+    expect(control).toHaveAttribute('aria-expanded', 'false');
+
+    await userEvent.click(control);
+
+    const panel = screen.getByRole('navigation', { name: label });
+    for (const [name, tag] of [
+      ['Azərbaycan dili', 'az'],
+      ['English', 'en'],
+      ['Русский', 'ru'],
+      ['Türkçe', 'tr'],
+    ] as const) {
+      expect(within(panel).getByRole('link', { name })).toHaveAttribute('lang', tag);
+    }
+
+    unmount();
+  });
+
+  it('is drawn before the session is known, so the row does not reflow around it', () => {
+    renderHeader();
+
+    /* The signed-out pair is still unknown at this point — see the placeholder above. */
+    expect(screen.getByRole('button', { name: en.shell.language.label })).toBeInTheDocument();
   });
 });
 

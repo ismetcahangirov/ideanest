@@ -207,6 +207,52 @@ somebody reads" — and it is not in `ACCOUNT_GROUPS`, so the account rail would
 have drawn thirteen entries with none of them marked `aria-current="page"`. It
 gave up a `<main>` of its own for the same reason the two screens above did.
 
+**The site shell carries a floating WhatsApp control**
+(`components/shell/WhatsAppLauncher.tsx`). It opens a dialog asking for a first
+name, a last name and a message, and hands all three to WhatsApp as a `wa.me`
+deep link on `+421 952 480 349`.
+
+**Nothing is sent from this application.** The link opens WhatsApp with the
+message written and waiting, and the visitor presses send there, so it arrives
+from their own number and the reply goes back to a person. That is a deliberate
+choice rather than a shortcut: sending on the platform's behalf means the
+WhatsApp Business Cloud API, a Meta application, a permanent token and a
+template approved in advance for any message a business starts, none of which
+exists here. `lib/contact/whatsapp.ts` holds the number, the text, and the
+reasoning; the copy tells the reader who presses send, and the panel afterwards
+says WhatsApp is open rather than claiming delivery. It also keeps the link as a
+real anchor, because a blocked `window.open` would otherwise be a form that
+swallowed somebody's message in silence.
+
+Two things about it are worth knowing before the next change to the shell:
+
+- **It is the second animation on a frame `docs/motion-system.md` §5 budgets at
+  one.** The halo and the glyph's wave are CSS keyframes in `app/globals.css`
+  (written rather than imported, for the reason the drawer's are: the shell
+  cannot pay 116 kB of animation runtime on every route). The movement stops on
+  the surfaces §5 gives "None" — `/projects/new` and the six editor tabs — and
+  the checkout never carries this shell at all, so "motion decreases as money
+  gets closer" is kept by the route table rather than by a condition. **Whether
+  the frame keeps a second animation is a design decision and is not settled
+  here.**
+- **Its dialog is dark, where §7.14 says a modal is white.** `inputSkin` fills a
+  field with `--surface-3` and `Field` labels it in `--text-primary`; both are
+  invisible on white, and there is no `on-white` variant of `TextInput`,
+  `Textarea` or `Field` to switch to. A white panel means adding those to the
+  kit. `ReportControl` met the same wall and resolved it the same way.
+
+**The language is changed from a globe, in three places.**
+`components/shell/LanguageSwitcher.tsx` is an icon with the four names behind
+it: in the header from `sm` up, in the footer's bottom row at every width, and
+flat inside the mobile drawer below `sm` — measured at 390px the icon pushed the
+register pill and the drawer's own button past the edge of the screen, and §8.6
+spends the shell's one lime element on that pill. It used to be four names
+written out in the footer and nothing in the header at all, which put the only
+account-free way out of a language a reader cannot read at the bottom of the
+page. Each name is its own endonym, each link goes to the same page under
+another prefix, and choosing one writes the cookie `proxy.ts` reads when it
+answers a bare path.
+
 **Every route is served under a `[locale]` segment (#123).** `/az/discover`, `/ru/discover`
 and so on; `proxy.ts` answers a bare path with a 307 to the language the reader last
 chose. `src/i18n/routing.ts` declares the shape, `src/i18n/request.ts` resolves the catalogue
@@ -244,9 +290,7 @@ percentage is a formatter's job and never a template's.
 **Which routes are key-based, and which are still English literals (#324).** The
 message catalogue lives in `messages/{az,en,ru,tr}.json` and covers, in full:
 
-- the site shell — header, mobile drawer, account menu, footer, skip link, failure links, and
-  since #458 the footer's own language control, which is four links to the page being read
-  under another prefix;
+- the site shell — header, mobile drawer, account menu, footer, skip link, failure links;
 - every public route: the home page, the feed and its filter rail, the search box and its
   suggestions, the category and subcategory landings, the collection index and the
   collection pages, the three editorial pages, the public profile, and the campaign card
@@ -254,11 +298,6 @@ message catalogue lives in `messages/{az,en,ru,tr}.json` and covers, in full:
 - the six authentication screens under `app/[locale]/(auth)`, and the two credential
   panels under `/settings` that share their refusal vocabulary;
 - the checkout, and the public campaign page;
-- the campaign editor, **in full** (#459) — the frame and its six section names, the sixteen
-  §6.1 states in the creator's own vocabulary, and all six tabs: the basics, the rewards with
-  both of their drawers, the story with its block editor and version history, the FAQ, the
-  pre-launch page and the review checklist. `lib/i18n/editor-copy.ts` holds one shape per tab,
-  and each page under `app/[locale]/projects/[id]/edit` resolves its own;
 - the account area: the frame, all thirteen screens' headings, the notifications inbox and
   its settings, and the two fulfilment screens;
 - the administration console, **in full** — the bar, the rail, the index that lists §4.11's
@@ -270,6 +309,7 @@ What is still English:
 
 | Surface | Where |
 |---|---|
+| The campaign editor | `components/campaign-editor` |
 | The creator dashboard | `components/dashboard` |
 | The panels below eleven account headings | `components/settings`, `components/sessions`, `components/surveys`, `components/pledges`, `components/profile`'s editor |
 | The public report dialog | `components/moderation/ReportControl` |
@@ -298,22 +338,7 @@ in `messages.properties` so that a key no translation has still resolves to a fi
 sentence rather than throwing. `EmailChannelSender` reads `users.locale` off the account it
 already loaded for the address.
 
-**A sentence that declines is a plural form, not a ternary.** `count === 1 ? 'item' : 'items'`
-is the whole of English and none of Russian, which picks between three forms by the last digit.
-Where the count is known on the server the message is ICU and next-intl formats it; where it is
-only known in the browser — a tier's remaining stock, how many blocks are incomplete, how many
-characters a question is over its cap — `lib/i18n/plurals.ts` picks the form from
-`Intl.PluralRules`. `pluralForm` is the same choice with `{count}` left in it, for the one
-sentence whose number is a styled node rather than a string.
-
-**A sentence assembled from clauses is a sentence in English word order.** #459 found four:
-a refusal built by joining fragments with `", and "`, a progress figure built with `+`, a
-plural stem with a conditional ending glued on, and an emphasised clause fixed in place by a
-`<strong>` in the middle of it. Each is a set of whole messages now, chosen rather than
-composed — the conjunction, the comma, the position of the per-cent sign and where the emphasis
-falls are all things another language does differently.
-
-**Three suites hold the catalogue honest, and they cover different halves.**
+**Two suites hold the catalogue honest, and they cover different halves.**
 `lib/i18n/catalogue.test.ts` asserts properties of the messages: that the four languages hold
 the same keys, that none is empty, that every rich-text tag is balanced and matches English,
 and that no Latin-script language contains a Cyrillic homoglyph — а, е, о, р, с, х and у are
@@ -322,12 +347,7 @@ as correct to every reviewer while breaking search and switching a screen reader
 mid-word. One was found in `account.pages.surveys.intro` this way.
 `app/[locale]/account-area.pages.test.ts` asserts the other half — that each page actually
 *asks* for its keys, since a screen rewritten with a literal back in it passes every catalogue
-check while showing English to everybody. `app/[locale]/projects/[id]/edit/editor.pages.test.ts`
-does the same for the six editor tabs and adds one the other two do not: it scans
-`components/campaign-editor` for a `label`, `hint`, `title`, `description` or `placeholder`
-whose value is a quoted literal. The regression it exists for is a sentence typed back in by
-the next person to add a field, which nothing else here would notice. Two literals are pinned
-as exceptions and both are tokens the service parses rather than words — `https://` and `AZ`.
+check while showing English to everybody.
 
 **How a word reaches a component, and the measurement behind it.** Server components call
 `getTranslations`. Client components are handed a resolved object as a prop by their server

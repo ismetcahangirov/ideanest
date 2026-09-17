@@ -81,20 +81,20 @@ export interface AuthFailuresCopy {
   readonly refusedDetail: string;
 }
 
-/** The three fields more than one of these forms asks for. */
+/**
+ * The three fields more than one of these forms asks for.
+ *
+ * `showPassword` and `hidePassword` are the reveal toggle's accessible name in each of its
+ * two states. They live here rather than in the component because `@ideanest/ui` carries no
+ * catalogue — its English defaults are there so the component works standing alone, not so
+ * that an Azerbaijani sign-in form announces a button in English.
+ */
 export interface AuthFieldsCopy {
   readonly email: string;
   readonly emailPlaceholder: string;
   readonly password: string;
   readonly passwordHint: string;
-  /**
-   * The reveal control's two names — issue #457.
-   *
-   * Two keys rather than one, because the name has to change with the state: docs/ui-kit.md
-   * §9.2 forbids the icon swap from being the only thing that says whether the password is
-   * legible, and a single "Password visibility" would announce the same word in both.
-   */
-  readonly revealPassword: string;
+  readonly showPassword: string;
   readonly hidePassword: string;
 }
 
@@ -294,7 +294,7 @@ function fieldsCopyFrom(t: AuthTranslator): AuthFieldsCopy {
     emailPlaceholder: t('fields.emailPlaceholder'),
     password: t('fields.password'),
     passwordHint: t('fields.passwordHint'),
-    revealPassword: t('fields.revealPassword'),
+    showPassword: t('fields.showPassword'),
     hidePassword: t('fields.hidePassword'),
   };
 }

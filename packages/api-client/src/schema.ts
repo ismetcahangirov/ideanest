@@ -164,6 +164,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/backer-disputes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["backerDisputeQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/backer-disputes/{disputeId}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["backerDisputeDecide"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/collections": {
         parameters: {
             query?: never;
@@ -1156,6 +1188,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/subscription/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["subscriptionRevenuePayments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/subscription/payments/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["subscriptionRevenueExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/subscription/revenue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["subscriptionRevenueReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/subscriptions": {
         parameters: {
             query?: never;
@@ -1452,6 +1532,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["adminUserSearch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/users/{accountId}/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminSubscriptionAccountHistory"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2436,6 +2532,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/payout-destination/card-registration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["myPayoutDestinationRegisterCard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/pledges": {
         parameters: {
             query?: never;
@@ -2692,6 +2804,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/pledges/{id}/payment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["pledgePay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/pledges/{id}/upgrade": {
         parameters: {
             query?: never;
@@ -2702,6 +2830,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["pledgeUpgrade"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/pledges/{pledgeId}/disputes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["backerDisputeOpen"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2830,6 +2974,22 @@ export interface paths {
         get: operations["projectForEdit"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{id}/extension": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["projectExtend"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2990,6 +3150,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["projectSubmit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{id}/withdrawal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["projectWithdraw"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3793,8 +3969,17 @@ export interface components {
             sessions?: components["schemas"]["SessionRecord"][];
             verifications?: components["schemas"]["VerificationRecord"][];
         };
+        AccountSubscriptionHistoryResponse: {
+            payments?: components["schemas"]["SubscriptionPaymentEntry"][];
+            subscriptions?: components["schemas"]["ConsoleRow"][];
+        };
         ActivateRequest: {
+            /** @enum {string} */
+            method?: "BANK_TRANSFER" | "CARD" | "CASH" | "OTHER";
             note?: string;
+            /** Format: date-time */
+            receivedAt?: string;
+            reference?: string;
         };
         AddEvidenceRequest: {
             description: string;
@@ -4106,6 +4291,7 @@ export interface components {
             /** Format: int32 */
             backersCount?: number;
             badge?: string;
+            closingSoon?: boolean;
             completionPercent?: string;
             creator?: components["schemas"]["Creator"];
             creatorSlug?: string;
@@ -4113,6 +4299,7 @@ export interface components {
             daysLeft?: number;
             /** Format: date-time */
             deadline?: string;
+            extended?: boolean;
             goal?: components["schemas"]["Money"];
             id?: string;
             image?: components["schemas"]["Image"];
@@ -4122,6 +4309,18 @@ export interface components {
             slug?: string;
             state?: string;
             title?: string;
+        };
+        CardRegistrationRequest: {
+            /** Format: uri */
+            errorUrl?: string;
+            language?: string;
+            /** Format: uri */
+            successUrl?: string;
+        };
+        CardRegistrationResponse: {
+            provider?: string;
+            /** Format: uri */
+            redirectUrl?: string;
         };
         Catalogue: {
             documents?: components["schemas"]["Summary"][];
@@ -4451,6 +4650,11 @@ export interface components {
             pledgeCount?: number;
             timeZone?: string;
         };
+        DecisionRequest: {
+            note?: string;
+            /** @enum {string} */
+            outcome: "UPHOLD" | "REJECT";
+        };
         DeleteAccountRequest: {
             password: string;
         };
@@ -4520,6 +4724,24 @@ export interface components {
             /** @enum {string} */
             state?: "OPEN" | "UNDER_REVIEW" | "WON" | "LOST" | "CONCEDED";
         };
+        DisputeBody: {
+            /** Format: date-time */
+            decidedAt?: string;
+            /** Format: uuid */
+            id?: string;
+            /** Format: date-time */
+            openedAt?: string;
+            /** Format: uuid */
+            payoutId?: string;
+            /** Format: uuid */
+            pledgeId?: string;
+            /** Format: uuid */
+            projectId?: string;
+            reason?: string;
+            /** Format: uuid */
+            refundId?: string;
+            state?: string;
+        };
         DisputePage: {
             disputes?: components["schemas"]["Dispute"][];
             hasMore?: boolean;
@@ -4546,7 +4768,7 @@ export interface components {
             shippedBody?: string;
             shippedSubject?: string;
             /** @enum {string} */
-            type?: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "UPDATE_DUE_SOON" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
+            type?: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "CAMPAIGN_EXTENDED" | "UPDATE_DUE_SOON" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "WITHDRAWAL_REQUESTED" | "PAYOUT_DETAILS_NEEDED" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
         };
         DraftPledgeRequest: {
             addons?: components["schemas"]["PledgeAddonBody"][];
@@ -4625,6 +4847,10 @@ export interface components {
             filter?: components["schemas"]["BackerFilterBody"];
             /** Format: uuid */
             segmentId?: string;
+        };
+        ExtendCampaignRequest: {
+            /** Format: date-time */
+            until: string;
         };
         Facets: {
             amountRaised?: components["schemas"]["ValueCount"][];
@@ -5064,7 +5290,7 @@ export interface components {
             subjectId?: string;
             subjectType?: string;
             /** @enum {string} */
-            type?: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "UPDATE_DUE_SOON" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
+            type?: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "CAMPAIGN_EXTENDED" | "UPDATE_DUE_SOON" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "WITHDRAWAL_REQUESTED" | "PAYOUT_DETAILS_NEEDED" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
         };
         OAuthSignInRequest: {
             deviceLabel?: string;
@@ -5088,6 +5314,9 @@ export interface components {
             /** Format: uuid */
             projectId?: string;
             state?: string;
+        };
+        OpenDisputeRequest: {
+            reason: string;
         };
         OpenLatePledgesRequest: {
             /** Format: date-time */
@@ -5147,6 +5376,15 @@ export interface components {
             /** Format: uuid */
             rewardTierId?: string;
             shippingCountry?: string;
+        };
+        PayPledgeRequest: {
+            /** Format: int32 */
+            acknowledgedAgreementVersion?: number;
+            /** Format: uri */
+            errorUrl?: string;
+            language?: string;
+            /** Format: uri */
+            successUrl?: string;
         };
         PayoutFile: {
             approvals?: components["schemas"]["Approval"][];
@@ -6115,6 +6353,86 @@ export interface components {
             /** Format: uuid */
             planId: string;
         };
+        SubscriptionPaymentEntry: {
+            accountEmail?: string;
+            /** Format: uuid */
+            accountId?: string;
+            accountName?: string;
+            amount?: string;
+            /** @enum {string} */
+            billingPeriod?: "MONTHLY" | "YEARLY";
+            currency?: string;
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            method?: "BANK_TRANSFER" | "CARD" | "CASH" | "OTHER";
+            note?: string;
+            planCode?: string;
+            /** Format: uuid */
+            planId?: string;
+            planName?: string;
+            /** Format: date-time */
+            receivedAt?: string;
+            /** Format: date-time */
+            recordedAt?: string;
+            /** Format: uuid */
+            recordedBy?: string;
+            reference?: string;
+            reversal?: boolean;
+            /** Format: uuid */
+            reverses?: string;
+            /** Format: uuid */
+            subscriptionId?: string;
+        };
+        SubscriptionPaymentList: {
+            nextCursor?: string;
+            payments?: components["schemas"]["SubscriptionPaymentEntry"][];
+        };
+        SubscriptionRevenueCurrencyTotal: {
+            currency?: string;
+            gross?: string;
+            net?: string;
+            /** Format: int64 */
+            payments?: number;
+            /** Format: int64 */
+            reversals?: number;
+            reversed?: string;
+        };
+        SubscriptionRevenueFilter: {
+            /** Format: uuid */
+            accountId?: string;
+            /** @enum {string} */
+            method?: "BANK_TRANSFER" | "CARD" | "CASH" | "OTHER";
+            planCode?: string;
+        };
+        SubscriptionRevenueMethodTotal: {
+            currency?: string;
+            /** Format: int64 */
+            entries?: number;
+            /** @enum {string} */
+            method?: "BANK_TRANSFER" | "CARD" | "CASH" | "OTHER";
+            net?: string;
+        };
+        SubscriptionRevenuePlanTotal: {
+            /** @enum {string} */
+            billingPeriod?: "MONTHLY" | "YEARLY";
+            currency?: string;
+            /** Format: int64 */
+            entries?: number;
+            net?: string;
+            planCode?: string;
+            planName?: string;
+        };
+        SubscriptionRevenueReport: {
+            currencies?: components["schemas"]["SubscriptionRevenueCurrencyTotal"][];
+            filter?: components["schemas"]["SubscriptionRevenueFilter"];
+            /** Format: date-time */
+            from?: string;
+            methods?: components["schemas"]["SubscriptionRevenueMethodTotal"][];
+            plans?: components["schemas"]["SubscriptionRevenuePlanTotal"][];
+            /** Format: date-time */
+            to?: string;
+        };
         SuggestionItem: {
             kind?: string;
             label?: string;
@@ -6465,6 +6783,7 @@ export type SchemaAcceptance = components['schemas']['Acceptance'];
 export type SchemaAcceptanceRecord = components['schemas']['AcceptanceRecord'];
 export type SchemaAccount = components['schemas']['Account'];
 export type SchemaAccountExport = components['schemas']['AccountExport'];
+export type SchemaAccountSubscriptionHistoryResponse = components['schemas']['AccountSubscriptionHistoryResponse'];
 export type SchemaActivateRequest = components['schemas']['ActivateRequest'];
 export type SchemaAddEvidenceRequest = components['schemas']['AddEvidenceRequest'];
 export type SchemaAddPlanRequest = components['schemas']['AddPlanRequest'];
@@ -6504,6 +6823,8 @@ export type SchemaCancelProjectRequest = components['schemas']['CancelProjectReq
 export type SchemaCancelRequest = components['schemas']['CancelRequest'];
 export type SchemaCaptureVisitRequest = components['schemas']['CaptureVisitRequest'];
 export type SchemaCard = components['schemas']['Card'];
+export type SchemaCardRegistrationRequest = components['schemas']['CardRegistrationRequest'];
+export type SchemaCardRegistrationResponse = components['schemas']['CardRegistrationResponse'];
 export type SchemaCatalogue = components['schemas']['Catalogue'];
 export type SchemaCategory = components['schemas']['Category'];
 export type SchemaCategoryCount = components['schemas']['CategoryCount'];
@@ -6543,6 +6864,7 @@ export type SchemaCurrencyRequest = components['schemas']['CurrencyRequest'];
 export type SchemaDailyPoint = components['schemas']['DailyPoint'];
 export type SchemaDashboardResponse = components['schemas']['DashboardResponse'];
 export type SchemaDay = components['schemas']['Day'];
+export type SchemaDecisionRequest = components['schemas']['DecisionRequest'];
 export type SchemaDeleteAccountRequest = components['schemas']['DeleteAccountRequest'];
 export type SchemaDeletionScheduledResponse = components['schemas']['DeletionScheduledResponse'];
 export type SchemaDestinationRequest = components['schemas']['DestinationRequest'];
@@ -6551,6 +6873,7 @@ export type SchemaDirectory = components['schemas']['Directory'];
 export type SchemaDisableTwoFactorRequest = components['schemas']['DisableTwoFactorRequest'];
 export type SchemaDisclosure = components['schemas']['Disclosure'];
 export type SchemaDispute = components['schemas']['Dispute'];
+export type SchemaDisputeBody = components['schemas']['DisputeBody'];
 export type SchemaDisputePage = components['schemas']['DisputePage'];
 export type SchemaDocument = components['schemas']['Document'];
 export type SchemaDraft = components['schemas']['Draft'];
@@ -6564,6 +6887,7 @@ export type SchemaEscalation = components['schemas']['Escalation'];
 export type SchemaEvidence = components['schemas']['Evidence'];
 export type SchemaExplanationResponse = components['schemas']['ExplanationResponse'];
 export type SchemaExportBackersRequest = components['schemas']['ExportBackersRequest'];
+export type SchemaExtendCampaignRequest = components['schemas']['ExtendCampaignRequest'];
 export type SchemaFacets = components['schemas']['Facets'];
 export type SchemaFaqPatchRequest = components['schemas']['FaqPatchRequest'];
 export type SchemaFeed = components['schemas']['Feed'];
@@ -6617,12 +6941,14 @@ export type SchemaNotificationPreferencesResponse = components['schemas']['Notif
 export type SchemaNotificationResponse = components['schemas']['NotificationResponse'];
 export type SchemaOAuthSignInRequest = components['schemas']['OAuthSignInRequest'];
 export type SchemaObligation = components['schemas']['Obligation'];
+export type SchemaOpenDisputeRequest = components['schemas']['OpenDisputeRequest'];
 export type SchemaOpenLatePledgesRequest = components['schemas']['OpenLatePledgesRequest'];
 export type SchemaOutcome = components['schemas']['Outcome'];
 export type SchemaOutcomes = components['schemas']['Outcomes'];
 export type SchemaOverride = components['schemas']['Override'];
 export type SchemaOwnProfileResponse = components['schemas']['OwnProfileResponse'];
 export type SchemaPatchPledgeRequest = components['schemas']['PatchPledgeRequest'];
+export type SchemaPayPledgeRequest = components['schemas']['PayPledgeRequest'];
 export type SchemaPayoutFile = components['schemas']['PayoutFile'];
 export type SchemaPayoutPage = components['schemas']['PayoutPage'];
 export type SchemaPayoutRecord = components['schemas']['PayoutRecord'];
@@ -6729,6 +7055,13 @@ export type SchemaSubcategoryResponse = components['schemas']['SubcategoryRespon
 export type SchemaSubmission = components['schemas']['Submission'];
 export type SchemaSubmissionQueueResponse = components['schemas']['SubmissionQueueResponse'];
 export type SchemaSubscribeRequest = components['schemas']['SubscribeRequest'];
+export type SchemaSubscriptionPaymentEntry = components['schemas']['SubscriptionPaymentEntry'];
+export type SchemaSubscriptionPaymentList = components['schemas']['SubscriptionPaymentList'];
+export type SchemaSubscriptionRevenueCurrencyTotal = components['schemas']['SubscriptionRevenueCurrencyTotal'];
+export type SchemaSubscriptionRevenueFilter = components['schemas']['SubscriptionRevenueFilter'];
+export type SchemaSubscriptionRevenueMethodTotal = components['schemas']['SubscriptionRevenueMethodTotal'];
+export type SchemaSubscriptionRevenuePlanTotal = components['schemas']['SubscriptionRevenuePlanTotal'];
+export type SchemaSubscriptionRevenueReport = components['schemas']['SubscriptionRevenueReport'];
 export type SchemaSuggestionItem = components['schemas']['SuggestionItem'];
 export type SchemaSuggestions = components['schemas']['Suggestions'];
 export type SchemaSummary = components['schemas']['Summary'];
@@ -7033,6 +7366,54 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TrailPage"];
+                };
+            };
+        };
+    };
+    backerDisputeQueue: {
+        parameters: {
+            query?: {
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisputeBody"][];
+                };
+            };
+        };
+    };
+    backerDisputeDecide: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                disputeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisputeBody"];
                 };
             };
         };
@@ -7449,7 +7830,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                type: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "UPDATE_DUE_SOON" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
+                type: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "CAMPAIGN_EXTENDED" | "UPDATE_DUE_SOON" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "WITHDRAWAL_REQUESTED" | "PAYOUT_DETAILS_NEEDED" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
             };
             cookie?: never;
         };
@@ -7471,7 +7852,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                type: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "UPDATE_DUE_SOON" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
+                type: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "CAMPAIGN_EXTENDED" | "UPDATE_DUE_SOON" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "WITHDRAWAL_REQUESTED" | "PAYOUT_DETAILS_NEEDED" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
             };
             cookie?: never;
         };
@@ -7497,7 +7878,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                type: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "UPDATE_DUE_SOON" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
+                type: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "CAMPAIGN_EXTENDED" | "UPDATE_DUE_SOON" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "WITHDRAWAL_REQUESTED" | "PAYOUT_DETAILS_NEEDED" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
             };
             cookie?: never;
         };
@@ -7519,7 +7900,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                type: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "UPDATE_DUE_SOON" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
+                type: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "CAMPAIGN_EXTENDED" | "UPDATE_DUE_SOON" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "WITHDRAWAL_REQUESTED" | "PAYOUT_DETAILS_NEEDED" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
             };
             cookie?: never;
         };
@@ -7542,7 +7923,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                type: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "UPDATE_DUE_SOON" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
+                type: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "CAMPAIGN_EXTENDED" | "UPDATE_DUE_SOON" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "WITHDRAWAL_REQUESTED" | "PAYOUT_DETAILS_NEEDED" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
             };
             cookie?: never;
         };
@@ -7562,7 +7943,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                type: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "UPDATE_DUE_SOON" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
+                type: "PLEDGE_CONFIRMED" | "PLEDGE_EDITED" | "GOAL_REACHED" | "DEADLINE_48H" | "DEADLINE_24H" | "CAMPAIGN_SUCCEEDED" | "CAMPAIGN_UNSUCCESSFUL" | "CAMPAIGN_EXTENDED" | "UPDATE_DUE_SOON" | "PROJECT_APPROVED" | "PAYMENT_COLLECTED" | "PAYMENT_FAILED" | "FINAL_PAYMENT_WARNING" | "PAYOUT_SENT" | "WITHDRAWAL_REQUESTED" | "PAYOUT_DETAILS_NEEDED" | "NEW_UPDATE_PUBLISHED" | "COMMENT_REPLY" | "DIRECT_MESSAGE" | "SURVEY_AVAILABLE" | "SURVEY_OVERDUE" | "REWARD_SHIPPED" | "FOLLOWED_CREATOR_LAUNCHED" | "LAUNCH_REMINDER" | "SAVED_PROJECT_ENDING_SOON" | "NEW_DEVICE_SIGN_IN";
             };
             cookie?: never;
         };
@@ -7933,7 +8314,7 @@ export interface operations {
     submissionQueueSubmissions: {
         parameters: {
             query?: {
-                state?: "DRAFT" | "PRELAUNCH" | "SUBMITTED" | "CHANGES_REQUESTED" | "REJECTED" | "APPROVED" | "SCHEDULED" | "LIVE" | "SUSPENDED" | "CANCELED" | "SUCCESSFUL" | "UNSUCCESSFUL" | "COLLECTING" | "LATE_PLEDGE" | "FULFILLING" | "COMPLETED";
+                state?: "DRAFT" | "PRELAUNCH" | "SUBMITTED" | "CHANGES_REQUESTED" | "REJECTED" | "APPROVED" | "SCHEDULED" | "LIVE" | "CLOSING_WINDOW" | "EXTENDED" | "SUSPENDED" | "CANCELED" | "SUCCESSFUL" | "UNSUCCESSFUL" | "WITHDRAWN" | "COLLECTING" | "LATE_PLEDGE" | "FULFILLING" | "COMPLETED";
                 after?: string;
                 limit?: number;
             };
@@ -8334,7 +8715,7 @@ export interface operations {
     campaignDirectoryCampaigns: {
         parameters: {
             query?: {
-                state?: "DRAFT" | "PRELAUNCH" | "SUBMITTED" | "CHANGES_REQUESTED" | "REJECTED" | "APPROVED" | "SCHEDULED" | "LIVE" | "SUSPENDED" | "CANCELED" | "SUCCESSFUL" | "UNSUCCESSFUL" | "COLLECTING" | "LATE_PLEDGE" | "FULFILLING" | "COMPLETED";
+                state?: "DRAFT" | "PRELAUNCH" | "SUBMITTED" | "CHANGES_REQUESTED" | "REJECTED" | "APPROVED" | "SCHEDULED" | "LIVE" | "CLOSING_WINDOW" | "EXTENDED" | "SUSPENDED" | "CANCELED" | "SUCCESSFUL" | "UNSUCCESSFUL" | "WITHDRAWN" | "COLLECTING" | "LATE_PLEDGE" | "FULFILLING" | "COMPLETED";
                 creatorId?: string;
                 query?: string;
                 after?: string;
@@ -8718,6 +9099,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Membership"];
+                };
+            };
+        };
+    };
+    subscriptionRevenuePayments: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                planCode?: string;
+                accountId?: string;
+                method?: "BANK_TRANSFER" | "CARD" | "CASH" | "OTHER";
+                after?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionPaymentList"];
+                };
+            };
+        };
+    };
+    subscriptionRevenueExport: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                planCode?: string;
+                accountId?: string;
+                method?: "BANK_TRANSFER" | "CARD" | "CASH" | "OTHER";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    subscriptionRevenueReport: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                planCode?: string;
+                accountId?: string;
+                method?: "BANK_TRANSFER" | "CARD" | "CASH" | "OTHER";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionRevenueReport"];
                 };
             };
         };
@@ -9229,6 +9690,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminUserListResponse"];
+                };
+            };
+        };
+    };
+    adminSubscriptionAccountHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountSubscriptionHistoryResponse"];
                 };
             };
         };
@@ -10044,7 +10527,7 @@ export interface operations {
                 /** @description Free text. §11.3 folds diacritics, so "kitab" matches "kitаb". */
                 q?: string;
                 /** @description Which of §6.1's states a campaign may be in. Repeat or comma-separate. */
-                status?: ("upcoming" | "live" | "late_pledge" | "successful" | "unsuccessful")[];
+                status?: ("upcoming" | "live" | "extended" | "successful")[];
                 /** @description Category slugs. An open vocabulary: an unknown slug is an empty feed, not a 400, so a link shared after a rename still resolves. */
                 category?: string[];
                 /** @description Subcategory slugs, under the categories above. */
@@ -10109,7 +10592,7 @@ export interface operations {
                 /** @description Free text. §11.3 folds diacritics, so "kitab" matches "kitаb". */
                 q?: string;
                 /** @description Which of §6.1's states a campaign may be in. Repeat or comma-separate. */
-                status?: ("upcoming" | "live" | "late_pledge" | "successful" | "unsuccessful")[];
+                status?: ("upcoming" | "live" | "extended" | "successful")[];
                 /** @description Category slugs. An open vocabulary: an unknown slug is an empty feed, not a 400, so a link shared after a rename still resolves. */
                 category?: string[];
                 /** @description Subcategory slugs, under the categories above. */
@@ -10903,6 +11386,30 @@ export interface operations {
             };
         };
     };
+    myPayoutDestinationRegisterCard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CardRegistrationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardRegistrationResponse"];
+                };
+            };
+        };
+    };
     backerArchiveMine: {
         parameters: {
             query?: {
@@ -11416,6 +11923,34 @@ export interface operations {
             };
         };
     };
+    pledgePay: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PayPledgeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
     pledgeUpgrade: {
         parameters: {
             query?: never;
@@ -11440,6 +11975,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": string;
+                };
+            };
+        };
+    };
+    backerDisputeOpen: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pledgeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenDisputeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisputeBody"];
                 };
             };
         };
@@ -11647,6 +12208,32 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectEdit"];
+                };
+            };
+        };
+    };
+    projectExtend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExtendCampaignRequest"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {
@@ -11916,6 +12503,28 @@ export interface operations {
         };
     };
     projectSubmit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectEdit"];
+                };
+            };
+        };
+    };
+    projectWithdraw: {
         parameters: {
             query?: never;
             header?: never;
@@ -13027,7 +13636,7 @@ export interface operations {
                 /** @description Free text. §11.3 folds diacritics, so "kitab" matches "kitаb". */
                 q?: string;
                 /** @description Which of §6.1's states a campaign may be in. Repeat or comma-separate. */
-                status?: ("upcoming" | "live" | "late_pledge" | "successful" | "unsuccessful")[];
+                status?: ("upcoming" | "live" | "extended" | "successful")[];
                 /** @description Category slugs. An open vocabulary: an unknown slug is an empty feed, not a 400, so a link shared after a rename still resolves. */
                 category?: string[];
                 /** @description Subcategory slugs, under the categories above. */

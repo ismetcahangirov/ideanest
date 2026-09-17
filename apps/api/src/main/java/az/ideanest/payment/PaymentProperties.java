@@ -12,6 +12,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param circuitBreaker what happens when the provider stops answering
  * @param webhooks §17.2's replay tolerance
  * @param epoint credentials and confirmed capabilities for §9.3's chosen provider. See {@link Epoint}
+ * @param refunds §8.4's {@code campaign-refunds} sweep. See {@link Refunds}
  */
 @ConfigurationProperties(prefix = "ideanest.payment")
 public record PaymentProperties(
@@ -20,7 +21,8 @@ public record PaymentProperties(
         CircuitBreaker circuitBreaker,
         Webhooks webhooks,
         Reconciliation reconciliation,
-        Epoint epoint) {
+        Epoint epoint,
+        Refunds refunds) {
 
     public PaymentProperties {
         // A deployment that configures none of these still starts, for ProjectProperties'
@@ -33,6 +35,7 @@ public record PaymentProperties(
         webhooks = webhooks == null ? Webhooks.defaults() : webhooks;
         reconciliation = reconciliation == null ? Reconciliation.defaults() : reconciliation;
         epoint = epoint == null ? Epoint.defaults() : epoint;
+        refunds = refunds == null ? Refunds.defaults() : refunds;
     }
 
     /**
@@ -167,6 +170,30 @@ public record PaymentProperties(
      *     and a reconciliation that competes with the nightly backup for the same connections
      *     is a reconciliation that is slow for a reason nobody will find
      */
+    /**
+     * §8.4's {@code campaign-refunds} — IDN-EXT-01 (#40).
+     *
+     * @param schedule when the sweep fires, or {@code -} to register it without scheduling
+     * @param perPass how many paid pledges one pass may refund, and how many lost outcomes it settles
+     * @param retryAfter how long a refused refund waits before it is sent again
+     * @param unresolvedAfter how old a refund with no recorded outcome is before the provider is asked
+     */
+    public record Refunds(String schedule, int perPass, Duration retryAfter, Duration unresolvedAfter) {
+
+        private static final String DEFAULT_REFUND_SCHEDULE = "0 */10 * * * *";
+
+        public static Refunds defaults() {
+            return new Refunds(DEFAULT_REFUND_SCHEDULE, 100, Duration.ofHours(6), Duration.ofHours(1));
+        }
+
+        public Refunds {
+            schedule = schedule == null || schedule.isBlank() ? DEFAULT_REFUND_SCHEDULE : schedule;
+            perPass = perPass < 1 ? 100 : perPass;
+            retryAfter = retryAfter == null ? Duration.ofHours(6) : retryAfter;
+            unresolvedAfter = unresolvedAfter == null ? Duration.ofHours(1) : unresolvedAfter;
+        }
+    }
+
     public record Reconciliation(String schedule) {
 
         private static final String DEFAULT_SCHEDULE = "0 30 2 * * *";

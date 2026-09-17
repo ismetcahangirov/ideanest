@@ -55,12 +55,15 @@ class ProjectStateMachineTests {
             REJECTED          ->
             APPROVED          -> SCHEDULED, LIVE
             SCHEDULED         -> LIVE
-            LIVE              -> SUSPENDED, CANCELED, SUCCESSFUL, UNSUCCESSFUL
+            LIVE              -> SUSPENDED, CANCELED, CLOSING_WINDOW, EXTENDED, WITHDRAWN
+            CLOSING_WINDOW    -> EXTENDED, WITHDRAWN, SUCCESSFUL, UNSUCCESSFUL, SUSPENDED, CANCELED
+            EXTENDED          -> WITHDRAWN, SUCCESSFUL, UNSUCCESSFUL, SUSPENDED, CANCELED
             SUSPENDED         ->
             CANCELED          ->
-            SUCCESSFUL        -> COLLECTING
+            SUCCESSFUL        -> COLLECTING, WITHDRAWN
             UNSUCCESSFUL      ->
-            COLLECTING        -> LATE_PLEDGE, FULFILLING
+            WITHDRAWN         -> FULFILLING
+            COLLECTING        -> FULFILLING
             LATE_PLEDGE       -> FULFILLING
             FULFILLING        -> COMPLETED
             COMPLETED         ->

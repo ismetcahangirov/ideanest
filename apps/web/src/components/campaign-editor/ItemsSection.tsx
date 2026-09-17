@@ -2,8 +2,6 @@
 
 import { Plus } from 'lucide-react';
 import { EmptyState, Pill, Skeleton, SkeletonGroup, Tag } from '@ideanest/ui';
-import type { RewardsCopy } from '../../lib/i18n/editor-copy';
-import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import type { Item } from '../../lib/projects/api';
 
 /**
@@ -20,9 +18,12 @@ import type { Item } from '../../lib/projects/api';
  *
  * MOTION: none. Creators spend hours here (docs/motion-system.md §5).
  */
+import type { ItemsSectionCopy } from '../../lib/i18n/campaign-editor-copy';
+import { fillPlaceholders } from '../../lib/i18n/placeholders';
+
 export interface ItemsSectionProps {
-  /** This section's own words, handed down by the panel that resolved them — issue #459. */
-  copy: RewardsCopy['items'];
+  /** This list's words. */
+  copy: ItemsSectionCopy;
   items: readonly Item[];
   loading: boolean;
   onAdd: () => void;
@@ -45,12 +46,10 @@ export function ItemsSection({
     <section aria-labelledby="items-heading" className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="items-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-          {copy.heading}{' '}
+          {copy.itemsHeading}{' '}
           {/* The count is tertiary at 12px: present, never competing with the
               title (docs/ui-kit.md §7.12). */}
-          <span className="text-xs font-normal text-white/40">
-            {fillPlaceholders(copy.count, { count: String(items.length) })}
-          </span>
+          <span className="text-xs font-normal text-white/40">({items.length})</span>
         </h2>
 
         <Pill
@@ -64,7 +63,7 @@ export function ItemsSection({
       </div>
 
       {loading ? (
-        <SkeletonGroup label={copy.loading}>
+        <SkeletonGroup label={copy.loadingLabel}>
           <div className="flex flex-col gap-2">
             {[0, 1].map((row) => (
               <Skeleton key={row} height="4.5rem" />
@@ -74,11 +73,11 @@ export function ItemsSection({
       ) : items.length === 0 ? (
         <EmptyState
           headingLevel={3}
-          title={copy.empty.title}
-          description={copy.empty.body}
+          title={copy.emptyTitle}
+          description={copy.description}
           action={
             <Pill variant="ghost" size="sm" onClick={onAdd}>
-              {copy.empty.action}
+              {copy.addFirst}
             </Pill>
           }
         />
@@ -103,9 +102,7 @@ export function ItemsSection({
                     (docs/ui-kit.md §9.2).
                   */}
                   <Tag>{item.isDigital ? copy.digital : copy.physical}</Tag>
-                  {item.weightGrams != null && (
-                    <Tag>{fillPlaceholders(copy.grams, { weight: String(item.weightGrams) })}</Tag>
-                  )}
+                  {item.weightGrams != null && <Tag>{item.weightGrams} g</Tag>}
                   {item.sku != null && item.sku !== '' && <Tag>{item.sku}</Tag>}
                 </div>
               </div>
@@ -115,7 +112,7 @@ export function ItemsSection({
                   variant="ghost"
                   size="sm"
                   disabled={busyId === item.id}
-                  aria-label={fillPlaceholders(copy.editLabel, { name: item.name })}
+                  aria-label={fillPlaceholders(copy.editNamed, { name: item.name })}
                   onClick={() => onEdit(item)}
                 >
                   {copy.edit}
@@ -124,7 +121,7 @@ export function ItemsSection({
                   variant="ghost"
                   size="sm"
                   disabled={busyId === item.id}
-                  aria-label={fillPlaceholders(copy.deleteLabel, { name: item.name })}
+                  aria-label={fillPlaceholders(copy.deleteNamed, { name: item.name })}
                   onClick={() => onDelete(item)}
                 >
                   {copy.delete}

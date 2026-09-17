@@ -35,11 +35,12 @@ import {
   showBlockedReason,
   showPatch,
 } from '../../lib/projects/rewards';
-import type { RewardsCopy } from '../../lib/i18n/editor-copy';
-import type { Locale } from '../../lib/i18n/locale';
+import type {
+  EditorChromeCopy,
+  RewardsPanelCopy,
+} from '../../lib/i18n/campaign-editor-copy';
 import { fillPlaceholders } from '../../lib/i18n/placeholders';
 import { pluralise } from '../../lib/i18n/plurals';
-import { useRouteLocale } from '../../lib/i18n/useRouteLocale';
 import { EditorShell } from './EditorShell';
 import { ItemEditor } from './ItemEditor';
 import { ItemsSection } from './ItemsSection';
@@ -102,29 +103,14 @@ type ListStatus = 'loading' | 'ready' | 'failed';
 
 export interface RewardsPanelProps {
   projectId: string;
-  /**
-   * Every word this tab draws, resolved on the server — issue #459.
-   *
-   * This panel is a client component and has to be: the form autosaves as it is typed. A
-   * `useTranslations` here would need a `NextIntlClientProvider` above it, which this
-   * repository measured at up to 27.4 KiB on every route in a group; the page reads the
-   * catalogue instead and hands the words down. `lib/i18n/editor-copy.ts` carries the
-   * argument.
-   */
-  copy: RewardsCopy;
+  /** The editor frame's words, resolved by this tab's page. */
+  copy: EditorChromeCopy;
+  /** This tab's own words, and those of the drawers it opens. */
+  rewards: RewardsPanelCopy;
 }
 
-export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
-  const { project, status, error, reload } = useProjectEdit(projectId, copy.frame.failures.load);
-
-  /*
-   * The language, for the two sentences on this tab that decline with a number: how many
-   * places a tier has left, and how many people have backed it. The copy is resolved on the
-   * server and the counts are not — a tier's stock changes while this page is open — so the
-   * plural form is picked in the browser from `Intl.PluralRules`. `lib/i18n/plurals.ts` carries
-   * why that is not a ternary.
-   */
-  const locale = useRouteLocale();
+export function RewardsPanel({ projectId, copy, rewards: words }: RewardsPanelProps) {
+  const { project, status, error, reload } = useProjectEdit(projectId);
 
   const [items, setItems] = useState<readonly Item[]>([]);
   const [rewards, setRewards] = useState<readonly Reward[]>([]);
@@ -180,7 +166,7 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
         setListStatus('ready');
       } catch (cause) {
         if (controller.signal.aborted) return;
-        setListError(describeFailure(cause, copy.frame.failures.save).message);
+        setListError(describeFailure(cause).message);
         setListStatus('failed');
       }
     })();
@@ -260,7 +246,7 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
           setRewards(await reorderRewards(projectId, order));
           setFailure(null);
         } catch (cause) {
-          setFailure(describeFailure(cause, copy.frame.failures.save));
+          setFailure(describeFailure(cause));
           /*
            * The optimistic order on screen is now a lie. Re-reading is the only
            * honest recovery: the service refuses a partial order outright, so a
@@ -286,7 +272,7 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
     const next = movedTo(rewards, index, target);
     setRewards(next);
     setAnnouncement(
-      fillPlaceholders(copy.announce.moved, {
+      fillPlaceholders(words.movedAnnouncement, {
         title: moving.title,
         position: String(target + 1),
         total: String(rewards.length),
@@ -318,7 +304,7 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
     try {
       await action();
     } catch (cause) {
-      setFailure(describeFailure(cause, copy.frame.failures.save));
+      setFailure(describeFailure(cause));
     } finally {
       setBusyId(null);
     }
@@ -326,10 +312,10 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
 
   async function duplicate(reward: Reward): Promise<void> {
     await run(reward.id, async () => {
-      const made = await duplicateReward(reward.id);
-      setRewards((current) => [...current, made]);
+      const copy = await duplicateReward(reward.id);
+      setRewards((current) => [...current, copy]);
       setAnnouncement(
-        fillPlaceholders(copy.announce.duplicated, {
+        fillPlaceholders(words.duplicatedAnnouncement, {
           title: reward.title,
           position: String(rewards.length + 1),
         }),
@@ -342,9 +328,9 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
       const saved = await patchReward(reward.id, hidden ? hidePatch(reward) : showPatch());
       setRewards((current) => current.map((one) => (one.id === saved.id ? saved : one)));
       setAnnouncement(
-        fillPlaceholders(hidden ? copy.announce.hidden : copy.announce.shown, {
-          title: reward.title,
-        }),
+        hidden
+          ? fillPlaceholders(words.hiddenAnnouncement, { title: reward.title })
+          : fillPlaceholders(words.shownAnnouncement, { title: reward.title }),
       );
     });
   }
@@ -354,7 +340,7 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
       await deleteReward(reward.id);
       setRewards((current) => current.filter((one) => one.id !== reward.id));
       setDeletingReward(null);
-      setAnnouncement(fillPlaceholders(copy.announce.deleted, { title: reward.title }));
+      setAnnouncement(fillPlaceholders(words.rewardDeletedAnnouncement, { title: reward.title }));
     });
   }
 
@@ -363,7 +349,7 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
       await deleteItem(item.id);
       setItems((current) => current.filter((one) => one.id !== item.id));
       setDeletingItem(null);
-      setAnnouncement(fillPlaceholders(copy.announce.deleted, { title: item.name }));
+      setAnnouncement(fillPlaceholders(words.itemDeletedAnnouncement, { name: item.name }));
     });
   }
 
@@ -373,9 +359,9 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
 
   if (status === 'signed-out') {
     return (
-      <EditorShell projectId={projectId} copy={copy.frame} active="rewards">
-        <InlineAlert variant="info" title={copy.frame.signedOut.title}>
-          {copy.frame.signedOut.body}
+      <EditorShell projectId={projectId} copy={copy} active="rewards">
+        <InlineAlert variant="info" title={copy.signedOutTitle}>
+          {copy.signedOutDetail}
         </InlineAlert>
       </EditorShell>
     );
@@ -383,18 +369,18 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
 
   if (status === 'failed' || project === null) {
     return (
-      <EditorShell projectId={projectId} copy={copy.frame} active="rewards">
+      <EditorShell projectId={projectId} copy={copy} active="rewards">
         {status === 'failed' ? (
           <>
-            <InlineAlert variant="danger" title={copy.frame.loadFailed}>
+            <InlineAlert variant="danger" title={copy.loadFailedTitle}>
               {error}
             </InlineAlert>
             <Pill variant="ghost" size="sm" className="mt-4" onClick={reload}>
-              {copy.frame.tryAgain}
+              {copy.tryAgain}
             </Pill>
           </>
         ) : (
-          <SkeletonGroup label={copy.loading}>
+          <SkeletonGroup label={words.loadingLabel}>
             <div className="flex flex-col gap-3">
               {LOADING_ROWS.map((row) => (
                 <Skeleton key={row} height="6rem" />
@@ -411,7 +397,7 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
   return (
     <EditorShell
       projectId={projectId}
-      copy={copy.frame}
+      copy={copy}
       active="rewards"
       title={project.title}
       state={project.state}
@@ -429,30 +415,25 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
         </p>
 
         {failure !== null && (
-          <InlineAlert variant="danger" title={copy.actionFailed}>
+          <InlineAlert variant="danger" title={words.failedTitle}>
             <p>{failure.message}</p>
             {failure.code === 'ITEM_IN_USE' && (
-              /*
-                One sentence rather than a stem and a branch. It used to be built from two JSX
-                fragments with a ternary between them, which fixed "that reward"/"those rewards"
-                at a point in English word order and gave Russian two forms where it needs three
-                (#459).
-              */
               <p className="mt-2 text-white/64">
-                {fillPlaceholders(pluralise(locale, copy.itemInUse, tierCount(failure)), {
-                  tiers: namedTiers(failure, rewards, copy.namedTiers),
-                })}
+                {fillPlaceholders(
+                  pluralise(words.locale, words.itemInUse, tierCount(failure)),
+                  { tiers: namedTiers(failure, rewards, words) },
+                )}
               </p>
             )}
             {failure.code === 'REWARD_HAS_BACKERS' && (
-              <p className="mt-2 text-white/64">{copy.rewardHasBackers}</p>
+              <p className="mt-2 text-white/64">{words.rewardHasBackers}</p>
             )}
           </InlineAlert>
         )}
 
         {listStatus === 'failed' && (
           <>
-            <InlineAlert variant="danger" title={copy.listFailed}>
+            <InlineAlert variant="danger" title={words.rewardsFailedTitle}>
               {listError}
             </InlineAlert>
             <Pill
@@ -461,13 +442,13 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
               className="self-start"
               onClick={() => setAttempt((n) => n + 1)}
             >
-              {copy.frame.tryAgain}
+              {copy.tryAgain}
             </Pill>
           </>
         )}
 
         <ItemsSection
-          copy={copy.items}
+          copy={words.items}
           items={items}
           loading={listStatus === 'loading'}
           busyId={busyId}
@@ -479,12 +460,14 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
         <section aria-labelledby="rewards-heading" className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 id="rewards-heading" className="text-lg font-medium tracking-[-0.02em] text-white">
-              {copy.heading}{' '}
+              {words.rewardsHeading}{' '}
               <span className="text-xs font-normal text-white/40">
-                {fillPlaceholders(copy.count, {
+                (
+                {fillPlaceholders(words.countOf, {
                   count: String(rewards.length),
                   max: String(MAX_REWARD_TIERS),
                 })}
+                )
               </span>
             </h2>
 
@@ -495,18 +478,18 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
               iconLeft={<Plus aria-hidden="true" className="size-4" />}
               onClick={() => setTierEditor({ open: true, reward: null })}
             >
-              {copy.add}
+              {words.add}
             </Pill>
           </div>
 
           {full && (
-            <InlineAlert variant="warning" title={copy.fullTitle}>
-              {fillPlaceholders(copy.fullBody, { max: String(MAX_REWARD_TIERS) })}
+            <InlineAlert variant="warning" title={words.atCapacityTitle}>
+              §5.3 allows {MAX_REWARD_TIERS}. Delete or combine one before adding another.
             </InlineAlert>
           )}
 
           {listStatus === 'loading' ? (
-            <SkeletonGroup label={copy.loading}>
+            <SkeletonGroup label={words.loadingLabel}>
               <div className="flex flex-col gap-3">
                 {LOADING_ROWS.map((row) => (
                   <Skeleton key={row} height="7rem" />
@@ -516,15 +499,15 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
           ) : rewards.length === 0 ? (
             <EmptyState
               headingLevel={3}
-              title={copy.empty.title}
-              description={copy.empty.body}
+              title={words.emptyTitle}
+              description={words.description}
               action={
                 <Pill
                   variant="ghost"
                   size="sm"
                   onClick={() => setTierEditor({ open: true, reward: null })}
                 >
-                  {copy.empty.action}
+                  {words.addFirst}
                 </Pill>
               }
             />
@@ -535,12 +518,11 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
               `div` of cards would leave a screen reader saying "5 items" with
               no way to know which one is third.
             */
-            <ol ref={listRef} aria-label={copy.listLabel} className="flex flex-col gap-3">
+            <ol ref={listRef} aria-label={words.listLabel} className="flex flex-col gap-3">
               {rewards.map((reward, index) => (
                 <RewardCard
+                  words={words}
                   key={reward.id}
-                  copy={copy}
-                  locale={locale}
                   reward={reward}
                   items={items}
                   position={index + 1}
@@ -561,7 +543,8 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
       </div>
 
       <ItemEditor
-        copy={copy}
+        copy={words.item}
+        validation={words.vocabulary.item}
         projectId={projectId}
         open={itemEditor.open}
         item={itemEditor.item}
@@ -570,7 +553,8 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
       />
 
       <RewardTierEditor
-        copy={copy}
+        copy={words.tier}
+        vocabulary={words.vocabulary}
         project={project}
         open={tierEditor.open}
         reward={tierEditor.reward}
@@ -586,10 +570,10 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
         }}
         title={
           deletingItem === null
-            ? copy.deleteItem.title
-            : fillPlaceholders(copy.deleteItem.named, { name: deletingItem.name })
+            ? words.deleteItemTitle
+            : fillPlaceholders(words.deleteItemNamed, { name: deletingItem.name })
         }
-        description={copy.deleteNote}
+        description={words.cannotBeUndone}
         // The creator has to choose. Dismissing a dialog about deletion by
         // clicking beside it is too easy a way to press the wrong thing.
         closeOnBackdropClick={false}
@@ -597,7 +581,7 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
         footer={
           <div className="flex flex-wrap justify-end gap-2">
             <Pill variant="ghost" disabled={busyId !== null} onClick={() => setDeletingItem(null)}>
-              {copy.keepIt}
+              {words.keepIt}
             </Pill>
             <Pill
               variant="danger"
@@ -606,12 +590,15 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
                 if (deletingItem !== null) void removeItem(deletingItem);
               }}
             >
-              {copy.confirmDelete}
+              {words.delete}
             </Pill>
           </div>
         }
       >
-        <p>{copy.deleteItem.body}</p>
+        <p>
+          An item that a reward contains cannot be deleted — take it out of the reward first. This
+          one is not in any reward as far as this page knows, and the service checks again.
+        </p>
       </Modal>
 
       <Modal
@@ -621,10 +608,10 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
         }}
         title={
           deletingReward === null
-            ? copy.deleteReward.title
-            : fillPlaceholders(copy.deleteReward.named, { title: deletingReward.title })
+            ? words.deleteRewardTitle
+            : fillPlaceholders(words.deleteRewardNamed, { title: deletingReward.title })
         }
-        description={copy.deleteNote}
+        description={words.cannotBeUndone}
         closeOnBackdropClick={false}
         showClose={false}
         footer={
@@ -634,7 +621,7 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
               disabled={busyId !== null}
               onClick={() => setDeletingReward(null)}
             >
-              {copy.keepIt}
+              {words.keepIt}
             </Pill>
             <Pill
               variant="danger"
@@ -643,12 +630,15 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
                 if (deletingReward !== null) void removeReward(deletingReward);
               }}
             >
-              {copy.confirmDelete}
+              {words.delete}
             </Pill>
           </div>
         }
       >
-        <p>{copy.deleteReward.body}</p>
+        <p>
+          Once somebody has backed a reward it can no longer be deleted, only hidden — so deleting
+          is offered while nobody has.
+        </p>
       </Modal>
     </EditorShell>
   );
@@ -659,8 +649,7 @@ export function RewardsPanel({ projectId, copy }: RewardsPanelProps) {
  * ---------------------------------------------------------------------- */
 
 function RewardCard({
-  copy,
-  locale,
+  words,
   reward,
   items,
   position,
@@ -674,8 +663,7 @@ function RewardCard({
   onShow,
   onDelete,
 }: {
-  copy: RewardsCopy;
-  locale: Locale;
+  words: RewardsPanelCopy;
   reward: Reward;
   items: readonly Item[];
   position: number;
@@ -692,7 +680,7 @@ function RewardCard({
   const hidden = isHiddenReward(reward);
   const scheduled = isScheduledReward(reward);
   const backed = reward.claimedQuantity > 0;
-  const blocked = showBlockedReason(reward, copy.showBlocked);
+  const blocked = showBlockedReason(reward, words.vocabulary);
 
   return (
     <li className="rounded-lg border border-white/8 bg-surface-2 p-5">
@@ -706,9 +694,9 @@ function RewardCard({
                 `tabular-nums` so a column of prices lines up by place value. */}
             <span className="tabular-nums">{formatMoney(reward.price)}</span>
             {' · '}
-            {describeStock(reward, copy.stock, locale)}
+            {describeStock(reward, words.vocabulary)}
             {' · '}
-            {shippingScopeLabel(reward.shippingType, copy.scopes)}
+            {shippingScopeLabel(reward.shippingType, words.vocabulary.scopes)}
           </p>
 
           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -718,22 +706,18 @@ function RewardCard({
               screen reader or to a creator who cannot separate two hues
               (docs/ui-kit.md §9.2).
             */}
-            {hidden && <Tag variant="warning">{copy.card.hidden}</Tag>}
-            {scheduled && <Tag>{copy.card.opensLater}</Tag>}
-            {reward.isFeatured && <Tag>{copy.card.featured}</Tag>}
-            {reward.isSecret && <Tag>{copy.card.secret}</Tag>}
-            {reward.isEarlyBird && <Tag>{copy.card.earlyBird}</Tag>}
-            {reward.isAddon && <Tag>{copy.card.addon}</Tag>}
+            {hidden && <Tag variant="warning">{words.hidden}</Tag>}
+            {scheduled && <Tag>{words.opensLater}</Tag>}
+            {reward.isFeatured && <Tag>{words.featured}</Tag>}
+            {reward.isSecret && <Tag>{words.secret}</Tag>}
+            {reward.isEarlyBird && <Tag>{words.earlyBird}</Tag>}
+            {reward.isAddon && <Tag>{words.addOn}</Tag>}
             {reward.estimatedDelivery != null && reward.estimatedDelivery !== '' && (
-              <Tag>
-                {fillPlaceholders(copy.card.delivers, { month: reward.estimatedDelivery })}
-              </Tag>
+              <Tag>Delivers {reward.estimatedDelivery}</Tag>
             )}
           </div>
 
-          <p className="mt-2 text-[13px] text-white/40">
-            {describeContents(reward, items, copy.contents)}
-          </p>
+          <p className="mt-2 text-[13px] text-white/40">{describeContents(reward, items, words)}</p>
         </div>
 
         <div className="flex shrink-0 flex-col items-end gap-2">
@@ -745,7 +729,7 @@ function RewardCard({
             */}
             <IconButton
               icon={<ChevronUp />}
-              label={fillPlaceholders(copy.card.moveUp, {
+              label={fillPlaceholders(words.moveUpLabel, {
                 title: reward.title,
                 position: String(position),
                 total: String(total),
@@ -759,7 +743,7 @@ function RewardCard({
             />
             <IconButton
               icon={<ChevronDown />}
-              label={fillPlaceholders(copy.card.moveDown, {
+              label={fillPlaceholders(words.moveDownLabel, {
                 title: reward.title,
                 position: String(position),
                 total: String(total),
@@ -774,23 +758,17 @@ function RewardCard({
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <Pill
-              variant="ghost"
-              size="sm"
-              disabled={busy}
-              aria-label={fillPlaceholders(copy.card.editLabel, { title: reward.title })}
-              onClick={onEdit}
-            >
-              {copy.card.edit}
+            <Pill variant="ghost" size="sm" disabled={busy} aria-label={fillPlaceholders(words.editLabel, { title: reward.title })} onClick={onEdit}>
+              {words.edit}
             </Pill>
             <Pill
               variant="ghost"
               size="sm"
               disabled={busy}
-              aria-label={fillPlaceholders(copy.card.duplicateLabel, { title: reward.title })}
+              aria-label={fillPlaceholders(words.duplicateLabel, { title: reward.title })}
               onClick={onDuplicate}
             >
-              {copy.card.duplicate}
+              {words.duplicate}
             </Pill>
 
             {hidden ? (
@@ -798,20 +776,20 @@ function RewardCard({
                 variant="ghost"
                 size="sm"
                 disabled={busy || blocked !== null}
-                aria-label={fillPlaceholders(copy.card.showLabel, { title: reward.title })}
+                aria-label={fillPlaceholders(words.showLabel, { title: reward.title })}
                 onClick={onShow}
               >
-                {copy.card.show}
+                {words.show}
               </Pill>
             ) : (
               <Pill
                 variant="ghost"
                 size="sm"
                 disabled={busy}
-                aria-label={fillPlaceholders(copy.card.hideLabel, { title: reward.title })}
+                aria-label={fillPlaceholders(words.hideLabel, { title: reward.title })}
                 onClick={onHide}
               >
-                {copy.card.hide}
+                {words.hide}
               </Pill>
             )}
 
@@ -826,10 +804,10 @@ function RewardCard({
                 variant="ghost"
                 size="sm"
                 disabled={busy}
-                aria-label={fillPlaceholders(copy.card.deleteLabel, { title: reward.title })}
+                aria-label={fillPlaceholders(words.deleteLabel, { title: reward.title })}
                 onClick={onDelete}
               >
-                {copy.card.delete}
+                {words.delete}
               </Pill>
             )}
           </div>
@@ -838,7 +816,8 @@ function RewardCard({
 
       {backed && (
         <p className="mt-3 text-[13px] text-white/64">
-          {pluralise(locale, copy.card.backed, reward.claimedQuantity)}
+          {reward.claimedQuantity} {reward.claimedQuantity === 1 ? 'backer has' : 'backers have'}{' '}
+          chosen this reward, so it can be hidden but not deleted.
         </p>
       )}
 
@@ -866,37 +845,37 @@ function RewardCard({
 function describeContents(
   reward: Reward,
   items: readonly Item[],
-  copy: RewardsCopy['contents'],
+  words: RewardsPanelCopy,
 ): string {
-  if (reward.items.length === 0) return copy.none;
+  if (reward.items.length === 0) return words.containsNothing;
 
-  const named = reward.items
+  const listed = reward.items
     .map((line) => {
       const item = items.find((one) => one.id === line.itemId);
-      const name = item?.name ?? copy.missing;
+      const name = item?.name ?? words.missingItemInline;
       return line.quantity === 1
         ? name
-        : fillPlaceholders(copy.quantity, { name, quantity: String(line.quantity) });
+        : fillPlaceholders(words.itemTimes, { name, quantity: String(line.quantity) });
     })
     .join(', ');
 
-  return fillPlaceholders(copy.some, { items: named });
+  return fillPlaceholders(words.contains, { items: listed });
 }
 
 /** The tiers an `ITEM_IN_USE` refusal named, as titles rather than identifiers. */
 function namedTiers(
   failure: SaveFailure,
   rewards: readonly Reward[],
-  copy: RewardsCopy['namedTiers'],
+  words: RewardsPanelCopy,
 ): string {
   const ids = failure.meta?.rewardTierIds;
-  if (!Array.isArray(ids)) return copy.unknown;
+  if (!Array.isArray(ids)) return words.aRewardInCampaign;
 
   const titles = ids
     .filter((id): id is string => typeof id === 'string')
-    .map((id) => rewards.find((reward) => reward.id === id)?.title ?? copy.one);
+    .map((id) => rewards.find((reward) => reward.id === id)?.title ?? words.aReward);
 
-  return titles.length === 0 ? copy.unknown : titles.join(', ');
+  return titles.length === 0 ? words.aRewardInCampaign : titles.join(', ');
 }
 
 function tierCount(failure: SaveFailure): number {

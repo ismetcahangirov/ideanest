@@ -1,4 +1,3 @@
-import { fillPlaceholders } from '../i18n/placeholders';
 import type { ChecklistItem, ProjectChecklist } from './api';
 
 /**
@@ -16,6 +15,8 @@ import type { ChecklistItem, ProjectChecklist } from './api';
  * between this file and `basics.ts`, where the client validates for immediate
  * feedback while somebody types.
  */
+
+import { fillPlaceholders } from '../i18n/placeholders';
 
 /**
  * The editor sections a requirement can point at.
@@ -48,11 +49,10 @@ export function sectionHref(projectId: string, section: string): string | null {
   return `/projects/${encodeURIComponent(projectId)}/edit/${section}`;
 }
 
-/** How a section is named in a sentence — "Fix in Basics". */
 /*
- * SECTION_LABEL LEFT THIS FILE WITH #459. The three words were the editor's own tab names
- * spelled a second time, and they are `ReviewCopy.sections` now — read straight from
- * `editor.frame.tabs`, so "Fix in Basics" cannot name the tab differently from the tab.
+ * NO `SECTION_LABEL` — issue #8. The three sections are named by the editor's own tabs, read
+ * as `copy.tabs[section]`, so "Fix in Rewards" and the Rewards tab cannot end up spelled
+ * differently. `tabs.ts` gave up its labels for the same reason.
  */
 
 /* -------------------------------------------------------------------------
@@ -87,13 +87,8 @@ export function progressOf(checklist: ProjectChecklist): ChecklistProgress {
  * required" answers the question the bar cannot — whether the remainder is
  * optional.
  */
-export function describeProgress(progress: ChecklistProgress, sentence: string): string {
-  /*
-   * One sentence with five holes in it, rather than three fragments concatenated. The English
-   * version built this with `+`, which fixes the order of the three clauses and the position of
-   * the per-cent sign — both of which another language puts elsewhere (#459).
-   */
-  return fillPlaceholders(sentence, {
+export function describeProgress(progress: ChecklistProgress, template: string): string {
+  return fillPlaceholders(template, {
     score: String(progress.score),
     blockingDone: String(progress.blockingDone),
     blockingTotal: String(progress.blockingTotal),

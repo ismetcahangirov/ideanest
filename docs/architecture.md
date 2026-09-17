@@ -45,8 +45,10 @@
 
 A **reward-based crowdfunding platform**. Creators publish projects; backers
 pledge money and receive a physical or digital reward in return. The platform
-operates an **all-or-nothing** funding model: if a project does not reach its
-goal by the deadline, nobody is charged.
+operates a **threshold** funding model (IDN-EXT-01, §5.1): a backer is charged when
+they pledge, a campaign succeeds at **80% of its goal**, a creator may extend the
+deadline once, and if a campaign ends below 80% every backer is refunded in full.
+It is not all-or-nothing, and must not be described as such.
 
 > **This is not investment.** A backer receives no equity, no share, and no
 > interest — only a product or an experience. That distinction is decisive under
@@ -457,7 +459,7 @@ and each entry needs a translation per supported locale.
 
 | Filter | Values |
 |---|---|
-| Status | Upcoming, live, late pledge, successful, unsuccessful |
+| Status | Upcoming, live, extended, successful (IDN-EXT-01, #37) |
 | Category | 15 primary plus subcategories, each with a live count |
 | Location | Country, city, or proximity |
 | Goal amount | Bands plus a custom range |
@@ -493,6 +495,23 @@ and each entry needs a translation per supported locale.
 > found backers. **`DRAFT`, `SUBMITTED`, `CHANGES_REQUESTED`, `REJECTED`,
 > `APPROVED`, `SCHEDULED`, and `SUSPENDED` are never returned by discovery, under
 > any filter or sort.**
+>
+> **IDN-EXT-01 changes the statuses (#37).** *Late pledge* is withdrawn. Two badges are
+> added, and a campaign can carry both: **Extended** — every extended campaign — and
+> **Closing soon** — 14 days or fewer to its deadline, extended ones included, and every
+> campaign inside the 7 days after its first deadline. **A campaign that ended without
+> succeeding is hidden from the catalogue and from search only**: by direct link, and in a
+> backer's account, its page stays, with its updates, tracking numbers and the creator's
+> history.
+>
+> **Built (#37).** The status filter is *upcoming*, *live* (`LIVE`, `CLOSING_WINDOW`,
+> `EXTENDED`), *extended* (`EXTENDED`, also inside *live*) and *successful*; *late pledge*
+> and *unsuccessful* are no longer filter values, and a campaign left in `LATE_PLEDGE`
+> badges as *successful*. A card carries `closingSoon` and `extended` beside its badge;
+> an extended card counts `daysLeft` to the extension's end. `UNSUCCESSFUL` stays in
+> `DiscoveryStatus.PUBLIC_STATES` — its page and rewards resolve — and is not in
+> `LISTED_STATES`, which every feed, search, suggestion, facet, explanation and collection
+> read applies. The description of the five words above is the pre-IDN-EXT-01 design.
 >
 > **Bands are closed below and open above** — `[lower, upper)` — so that the five
 > partition the line rather than overlapping at four boundaries. A campaign at
@@ -709,14 +728,19 @@ and each entry needs a translation per supported locale.
 
 **Header:** media player (poster-first, no autoplay), editorial badge,
 subcategory and location links, amount raised, backer count, live countdown,
-progress bar, primary call to action, reminder control, share, save, and an
-explicit all-or-nothing statement with the deadline in the viewer's timezone.
+progress bar, primary call to action, reminder control, share, save, and the
+**success rule beside the progress bar** — success from 80% of the goal, with a possible
+one-time extension (§5.1) — with the deadline in the viewer's timezone.
 
 **Trust block** — fixed copy on every project:
 
 > The platform connects creators with backers. Rewards are not guaranteed, but
-> creators must keep backers informed. You are only charged if the project
-> reaches its goal by the deadline.
+> creators must keep backers informed. You are charged when you pledge; if the
+> campaign ends below 80% of its goal, you are refunded in full.
+
+The last sentence changed with IDN-EXT-01. `CampaignTrustBlock` and `wording.test.ts` still
+carry the all-or-nothing sentence until stage 3 (#44) — which is why this is written down
+before the code rather than after it.
 
 **Tabs**
 
@@ -776,9 +800,9 @@ sequenceDiagram
     W->>PSP: 3-D Secure (hosted or SDK)
     PSP-->>W: Card token
     W->>API: POST /pledges/:id/confirm
-    API->>PSP: Verification authorisation, then void
-    PSP-->>API: Approved, stored card token
-    API->>DB: Pledge CONFIRMED, stock committed
+    API->>PSP: Charge the pledge (IDN-EXT-01)
+    PSP-->>API: Approved, charged
+    API->>DB: Pledge COLLECTED, stock committed, ledger posted
     API-->>B: Confirmation
 ```
 
@@ -792,15 +816,20 @@ sequenceDiagram
 | PL-06 | Total calculation | Reward + add-ons + shipping + tax |
 | PL-07 | Card entry or stored card | Card data never reaches our servers |
 | PL-08 | 3-D Secure | Mandatory |
-| PL-09 | Edit a pledge | Until the deadline |
-| PL-10 | Cancel a pledge | Releases reserved stock |
-| PL-11 | Replace the card | After a failed collection |
+| PL-09 | Edit a pledge | **Upward only**, while the campaign takes pledges (IDN-EXT-01). Built (#35): an edit that would lower a confirmed pledge is refused with `PLEDGE_DECREASE_NOT_ALLOWED`; a draft is still being chosen and may go either way |
+| PL-10 | ~~Cancel a pledge~~ | **Withdrawn by IDN-EXT-01**: a backer cannot cancel; refunds are campaign-level (§9.7). Built (#35): `DELETE /v1/pledges/{id}` answers `PLEDGE_CANNOT_BE_CANCELLED` for anything past `DRAFT`, and only abandoning an unpaid checkout remains. The web's cancel panel is gone |
+| PL-11 | ~~Replace the card~~ | **Withdrawn**: the charge is at confirmation, so there is no later collection to fail |
 | PL-12 | Anonymous pledging | Hidden from public lists |
 | PL-13 | Stock reservation | A DRAFT pledge, expiring five minutes after it is made |
 | PL-14 | Idempotency | `Idempotency-Key` prevents duplicates |
 | PL-15 | Secret rewards | Reachable only by a private URL |
-| PL-16 | Late pledge | If the creator enables it. Built (#81) |
+| PL-16 | ~~Late pledge~~ | **Withdrawn by IDN-EXT-01**: withdrawal closes the campaign. Built by #81; switched off by #36 — `PledgeAcceptance` takes a pledge only while `LIVE` before the first deadline, in `CLOSING_WINDOW` before the seven days end, and `EXTENDED` before the extension ends, and the edge into `LATE_PLEDGE` is gone; removed by #45 |
 
+> **Everything below about PL-10 and PL-16 records what was built, and IDN-EXT-01 has
+> withdrawn both.** Pledges are accepted while the campaign is live, during the 7-day
+> window after the first deadline, and during an extension — and at no other time (#36).
+> The notes stay because the code does until stage 4 (#45) removes it.
+>
 > **PL-16, as #81 built it.** A campaign takes pledges in two windows and not one:
 > while it is `LIVE` and before its deadline, and again while it is `LATE_PLEDGE` and
 > inside a window its creator opened. **Three facts have to be true**, and each is a
@@ -821,7 +850,7 @@ sequenceDiagram
 > re-stamps the flag, so a backer changing their shirt size in the late window does not
 > move their original pledge into the late column.
 >
-> **The window is bounded** by `ideanest.project.late-pledges.max-window`, ninety days.
+> **The window was bounded** by `ideanest.project.late-pledges.max-window`, ninety days, until #36 removed the setting with the edge.
 > That is a bound on a promise rather than a technical limit: a campaign still taking
 > money nine months after it closed has customers rather than backers, and it has no
 > stock to sell them.
@@ -1111,7 +1140,7 @@ The most valuable and most complex module. It begins when funding closes.
 > introduce one. **No pledge state moves either** — §6.2's `FULFILLED` is reached from
 > `COLLECTED`, and marking a parcel delivered must not skip the charge.
 >
-> **#81 built late pledges (PM-23).** §4.5's PL-16 carries the design; what belongs
+> **#81 built late pledges (PM-23), and #36 switched them off** — the edge into `LATE_PLEDGE` is gone, so opening a window is refused. §4.5's PL-16 carries the design; what belongs
 > here is the shape of the creator's side. `POST /projects/{id}/late-pledges` takes the
 > `COLLECTING → LATE_PLEDGE` edge and names the date the window closes, and
 > `POST …/late-pledges/close` takes `LATE_PLEDGE → FULFILLING` and stops them. The
@@ -1401,7 +1430,7 @@ Preferences are per category and per channel, with a digest option.
 | AD-01 | Project moderation | Queue, approve, reject, request changes, notes, history. **The queue was the missing half until #381**: the three outcomes shipped with #101 and nothing listed what they applied to, so the console's only route to a submitted campaign was a report somebody had filed about it — a campaign nobody complained about waited in `SUBMITTED` indefinitely, invisible here, while its creator was shown "submitted for review". `/admin/moderation/submissions` is that queue. **And the directory since #387**: both that queue and the report queue list campaigns that have DONE something, so a draft, a live campaign, or one cleared for launch and never launched was on no screen here and could be reached only through psql. `/admin/campaigns` lists §6.1 entire, newest first. **And the staff preview since #399**: both of those screens linked a campaign to its public page, which for a campaign awaiting review is a 404 by construction — a campaign in review is not public, and that is what being in review means — so approval was taken on a title, a creator's name and a goal figure. `/admin/campaigns/{id}` renders the same projection the public page is served from, without the state filter, and `/admin/moderation/{id}` now shows the reported comment or update inline with its author and its campaign |
 | AD-02 | Trust and safety | Report queue, fraud signals, suspension. Reporting and the queue are built (#102, §7.2's `content_reports`), **suspension is built (#103)**, and **fraud signals are built (#108)** — `risk_assessments`, a queue at `/v1/admin/risk/queue`, and the identity review at `/v1/admin/verifications/queue` (#105). The signals **advise and do not decide**: nothing refuses a pledge or suspends an account on a score. See §17.2 |
 | AD-03 | Curation | Editorial badges, collections, open calls, placement. The endpoints arrived with #48; **the four screens are built (#300 to #303)** at `/admin/curation` and its three siblings |
-| AD-04 | User management | Search, inspect, ban, verification status, audited impersonation. **Search, inspect and the ban are built (#104)**, and **`/admin/staff` is built (#295)** — the role model that replaced the configured list. **The search folds like every other search since #413**: it matched on `lower()`, which leaves ə, ı, ö, ü, ğ, ş and ç alone, so this box found "Köhnə" from `köhnə` and not from `kohne` while the campaign directory beside it found both — and, matching a different expression from the one V63's indexes are built on, it read every row. It now names §11.3's `ideanest_fold`, which V64 completes with the third index the address needed. Impersonation is not, and is the one thing in this table still waiting on a decision (#299) |
+| AD-04 | User management | Search, inspect, ban, verification status, audited impersonation. **Search, inspect and the ban are built (#104)**, and **`/admin/staff` is built (#295)** — the role model that replaced the configured list. **The search folds like every other search since #413**: it matched on `lower()`, which leaves ə, ı, ö, ü, ğ, ş and ç alone, so this box found "Köhnə" from `köhnə` and not from `kohne` while the campaign directory beside it found both — and, matching a different expression from the one V63's indexes are built on, it read every row. It now names §11.3's `ideanest_fold`, which V64 completes with the third index the address needed. **The account page also shows what the account held and paid the platform (#23)**: every subscription with its plan, state and price, and the payments received with reversals marked. Any member of staff may read it, as with the account's pledges, and an `ACTIVE` subscription whose period has run out is drawn as expired, because `state` alone would say somebody can publish who cannot. Impersonation is not, and is the one thing in this table still waiting on a decision (#299) |
 | AD-05 | Finance | Payment log, ledger, payout queue, approvals, disputes, and whether the sum of them is right. **All of it is built**: the log and the ledger with #304 and #305, the payout queue and its dual approval with #69 and #306, and the reconciliation with #106 at `/admin/reconciliation`. That last screen is what kept "financial operations tooling" open with the other three built — #70's nightly pass answered "do the books balance" to a log line and a Prometheus gauge and to nobody who works in this console. It reports and never repairs, so there is no control on it that corrects anything. **Since #431 the queue also says why a payout is held on identity** — the standing is drawn as one of eight values rather than as "not verified", because a creator who has never been asked and one whose documents are already in the review queue are different things for an operator to do next, and a waiver (#436) is drawn as a waiver rather than as a verification. **The payment log is ordered by `created_at` since #412**, not by the primary key — AD-14's defect on the one console surface that is entirely money, and it cost more there: §9.6 permits four collection attempts, so "declined, declined, collected" read in the wrong order is a different story about the same pledge. The cursor carries the instant and the identifier that breaks its tie, and is therefore an opaque string rather than a `uuid` |
 | AD-06 | Refunds | Full and partial with reason codes. **Built (#67, #307)** at `/admin/refunds`. The decision — reason code, author, state — is `refunds`; the money is a `REFUND` transaction and a ledger posting, and the two are deliberately separate tables |
 | AD-07 | Chargebacks | Notification, evidence, outcome. **Built (#68, #308)** at `/admin/disputes`. Intake is a provider webhook and no endpoint opens one; evidence is recorded here and still submitted through the provider's own console, because §9.3's interface has no upload |
@@ -1409,7 +1438,7 @@ Preferences are per category and per channel, with a digest option.
 | AD-01a | Lapsed update obligations | §5.5's escalation queue (#437), at `GET /v1/admin/update-obligations` and `POST /v1/admin/update-obligations/{projectId}/resolve` — `MODERATE_CONTENT`, audited. **Filed under AD-01 rather than as a seventeenth module** because it is the same authority over the same subject: a campaign the platform has a concern about, decided by a person. Lapses nobody has closed, oldest first, because the campaign that has been silent longest is the one a backer is most likely to be asking about. **Resolving closes the case and not the obligation** — the clock keeps running, and a creator who lapses again is escalated again — which is why the note is required: the next moderator has to be able to tell "spoke to them" from "they had already posted". Nothing here refunds, suspends or de-ranks anything; §9.7 says the platform mediates |
 | AD-09 | Content moderation | Comments, updates, profiles. **All three are built**: the profile queue with #298 and the comment and update queue with #297, which published `POST /v1/updates/{id}/report` and cost no migration because V23's constraint had named the value since #102 |
 | AD-10 | Support | Tickets with user context and action history. **Built (#310)** at `/admin/support`. Staff record a conversation against an account; there is no public form, which is a separate surface with its own rate limiting. The list narrows by state, priority and assignment (#404), and by **a named colleague since #414** — `?assigneeId=` had been accepted since #404 with no control to set it, so "what is on their plate" was reachable only by editing the URL. A named assignee and "nobody yet" are mutually exclusive on the screen, because the service answers the contradiction with nothing |
-| AD-11 | Fee configuration | Platform and processing rates, exceptions. **Built (#311)** at `/admin/fees`. There is no edit: a change closes the schedule in force and opens a new one, so a payout calculated last month still prices against last month's terms. **The creator subscription catalogue is here too**, at `/admin/plans` — §5.6's plans, and the payments waiting to be recorded against them. Filed under this module rather than a seventeenth row: a fee comes out of a backer's pledge and a plan comes out of a creator's pocket, which is one authority over two subjects. Unlike a fee schedule, a plan **is** edited in place, because what a subscriber was charged is written on their own subscription |
+| AD-11 | Fee configuration | Platform and processing rates, exceptions. **Built (#311)** at `/admin/fees`. There is no edit: a change closes the schedule in force and opens a new one, so a payout calculated last month still prices against last month's terms. **The creator subscription catalogue is here too**, at `/admin/plans` — §5.6's plans, and the payments waiting to be recorded against them. **So is what those plans brought in**, at `/admin/revenue` (#23): received, reversed and kept per currency for a period in Baku's calendar, broken down by plan and by payment method, with the payments behind the figures and the same list as a CSV download. Filed under this module rather than a seventeenth row: a fee comes out of a backer's pledge and a plan comes out of a creator's pocket, which is one authority over two subjects. Unlike a fee schedule, a plan **is** edited in place, because what a subscriber was charged is written on their own subscription |
 | AD-12 | Feature flags | Gradual rollout, experiments. **Rollout is built (#312)** at `/admin/flags`; experiments are not, because a variant needs a metric to judge it by and nothing measures one |
 | AD-13 | Analytics | Volume, success rate, average pledge, cohorts, funnels. **The first three are built (#313)** at `/admin/analytics`, over V27's rollups summed across campaigns rather than within one. Cohorts and funnels are not, and the screen says what each waits on |
 | AD-04a | Compliance overrides | An exception to one compliance requirement for one account (#436), at `/v1/admin/accounts/{id}/compliance-overrides` — `GRANT_COMPLIANCE_OVERRIDE`, which only `ADMINISTRATOR` holds, and readable with `REVIEW_IDENTITY_VERIFICATION` so that the person deciding a verification can see an exception was made. **Under the account and not on a screen of its own**, because §3.1 asks that an override appear "on the account it was applied to where the next person to look at that account will see it" — a separate overrides screen would be a list nobody opens except when they are already looking for one. `DELETE` revokes and never deletes: an override withdrawn after somebody used it is a different fact from one that was never granted |
@@ -1717,24 +1746,96 @@ Preferences are per category and per channel, with a digest option.
 
 ## 5. Business rules
 
-### 5.1 All-or-nothing
+### 5.1 Funding threshold, the 7-day window, and one extension
+
+> **IDN-EXT-01, edition 6 (13.09.2026), epic #29.** This section replaced
+> all-or-nothing. It is the product owner's approved rule set and it has no open
+> questions; where the code still does the old thing, the note on each built
+> behaviour says so and names the sub-issue that changes it.
+>
+> **Built (#44), the words.** The web states this rule wherever it used to state
+> all-or-nothing: the trust block names the amount a campaign must raise (80% of the
+> goal, rounded up to the cent) and says every backer is refunded in full below it; the
+> rule is printed beside the progress bar on the campaign page and on every catalogue
+> card; a closed campaign that did not succeed says its backers are refunded rather than
+> that nobody was charged; the campaign page badges `CLOSING_WINDOW`, `EXTENDED` and
+> `WITHDRAWN`. The tagline, home, about, how-it-works, editor hint and metadata say the
+> same in all four languages. The 80% is written down in `lib/projects/threshold.ts` for
+> the sentences only; the campaign's state decides every outcome. The checkout's own
+> wording changes with the payment page it describes.
+
+**The pledge.** A backer's card is charged when the pledge is confirmed, and the
+money is held on the platform's account. A backer **cannot cancel** a pledge; they
+may only **raise** it (a higher tier or more add-ons), and only before the campaign
+stops taking pledges. Every refund is for the **full** amount.
+
+**The thresholds**, measured against the goal, which never changes after launch:
+
+| Collected | What the creator may do |
+|---|---|
+| **80% or more** | The campaign **succeeds**. Withdraw at any time — before the first deadline included — or extend |
+| **50% to 79%** | Extend only |
+| **Below 50%** | Nothing, unless it reaches 50% inside the 7-day window below |
+
+**The 7 days after the first deadline — one rule for every campaign.** Written `D`
+for the first deadline:
 
 ```
-IF pledged_total >= goal AND now >= deadline
-    → SUCCESSFUL
-    → collect every confirmed pledge
-    → open a 7-day retry window for failures
-    → after 7 days, compute the payout
-
-ELSE IF pledged_total < goal AND now >= deadline
-    → UNSUCCESSFUL
-    → collect nothing
-    → delete stored card tokens within 30 days
-    → charge no fee
+D-7 .. D+7   the Extend control is available, at 50% or more
+D .. D+7     the campaign still takes pledges and is badged "Closing soon"
+D+8          not extended AND below 80%   → UNSUCCESSFUL → every backer refunded in full
+             not extended AND 80% or more → SUCCESSFUL; the 30 days to withdraw run from D
 ```
+
+**The extension.**
+
+- **Once.** There is no second extension.
+- The creator chooses its length, ending **no later than D+60** — sixty days from the
+  *first* deadline, even when they extend on D+7.
+- Backers are **notified** of the new deadline; they are not asked.
+- Funding has **no upper limit** — past 100% — until the creator withdraws.
+- When the extension ends: **80% or more** → SUCCESSFUL, and the 30 days to withdraw run
+  from the end of the *extension*; **below 80%** → UNSUCCESSFUL, every backer refunded.
+
+**Withdrawal closes the campaign.** No pledge is accepted after it, so there are no
+late pledges (PL-16 is withdrawn, §4.5). §9's withdrawal section carries the money:
+the 14-day hold, the automatic payout on day 30 + 14, and disputes.
+
+> **Built (#44), the creator's controls.** The dashboard overview offers **Withdraw** at 80%
+> or more (live, closing window, extended or successful) and **Extend** while the campaign takes
+> pledges and has raised 50%, to a day after the deadline and no later than D+60, keeping the
+> deadline's time of day. Each asks before acting and states what it closes or promises; the
+> service applies the window and the thresholds and its `meta.reason` is worded, never guessed.
+
+**Everyone is refunded in full** when: D+8 passes unextended below 80%; an extension
+ends below 80%; a moderator suspends the campaign; the creator cancels it.
+
+**A campaign that has withdrawn at 80% or more owes every reward to every backer**
+(§5.5), whatever percentage between 80 and 100 it closed at.
+
+**Accepted risks, recorded rather than rediscovered.** Success is no longer
+"all or nothing", and the previous marketing promise may not be used. Backers' money
+sits on the platform's account for up to roughly 120 days, which is a question for
+§22.1's payment-institution analysis. No cancellation plus an extension without
+consent is a consumer-protection exposure. §5.3's "deadline immutable after launch"
+is withdrawn.
+
+> **What the code does today.** The threshold is built (#31): `CampaignOutcome.of`
+> succeeds at `pledged >= goal × ideanest.project.finalisation.success-threshold`, which is
+> `0.80`, and a threshold outside `(0, 1]` stops the service at start-up. The rest is still
+> the old rule — the extension is built (#34: `POST …/extension`, creator only, and every backer
+> is told the new date), but pledges stop at the first deadline rather
+> than at the end of the window (#36), and a card is stored and charged at the close.
+> **The timing is built (#33):** at `D` a campaign enters `CLOSING_WINDOW` and nothing is
+> frozen; on D+8 — `ideanest.project.finalisation.closing-window`, seven days — or when an
+> extension ends, it is decided and the outcome frozen. Stage 1 (#32–#37) moves the rules;
+> stage 2 (#38–#43) moves the money.
 
 > **This is applied by §8.4's `campaign-finalizer` (#63), and the decision is
-> frozen when it is taken.** V29 gives `projects` four columns — `finalized_at`,
+> frozen when it is taken.** Under IDN-EXT-01 it is taken on D+8 or when an extension
+> ends, rather than at `D` (#33) — and the freezing is exactly what the new rule needs:
+> an approved dispute refund reduces the payout and never the outcome, even when it
+> takes the total below 80%. V29 gives `projects` four columns — `finalized_at`,
 > `outcome_goal_amount`, `outcome_pledged_amount`, `outcome_backers_count` —
 > written once, in the same transaction as the `LIVE → SUCCESSFUL` or
 > `LIVE → UNSUCCESSFUL` edge and the `project.succeeded` / `project.unsuccessful`
@@ -1759,10 +1860,23 @@ ELSE IF pledged_total < goal AND now >= deadline
 
 | Component | Rate | When |
 |---|---|---|
-| Platform fee | 5% of the amount raised | Successful projects only |
-| Processing fee | Roughly 2.5–3% plus a fixed amount per pledge | Per successful collection |
-| Small pledge fee | An alternative rate below a threshold | Optional |
-| Unsuccessful project | **Zero** | No fee of any kind |
+| Platform fee | **15% of any withdrawal, bank and provider fees included** | Every withdrawal (IDN-EXT-01) |
+| Processing fee | **Inside the 15%** — `processing_rate = 0` | Never charged separately |
+| Small pledge fee | None | — |
+| Unsuccessful project | **Zero** to the creator | The cost of refunding backers is the platform's, on its own expense account |
+
+> **15% including the bank replaced "5% plus the bank"** (IDN-EXT-01). A creator reads one
+> number and receives 85% of what they withdraw. The schedule change is #42: `platform_rate =
+> 0.15`, `processing_rate = 0`, and refund costs posted to a separate platform expense account
+> rather than netted against anybody's payout.
+>
+> **Built (#42).** With no row in force, `FeeSchedules` prices at `ideanest.fee` — 15% platform,
+> 0 processing — instead of zero fees, and `/v1/fees/disclosure` discloses those terms
+> (`configured: true`, no `effectiveFrom`); a schedule staff create still takes precedence, and the
+> admin editor now starts from 0.15 and 0. V78 adds `platform_expense` to the ledger's accounts,
+> apart from `refunds` (backers' money going back). **Nothing posts to it yet**: Epoint's `/reverse`
+> reports no fee, and a cost posted without a transaction would put escrow out of agreement with
+> reconciliation's record of what moved — the amount a refund costs is a question for Epoint.
 
 Rates are configuration, not code — a `fee_schedules` table, so a category or an
 individual agreement can differ without a deployment.
@@ -1780,7 +1894,8 @@ individual agreement can differ without a deployment.
 | Risks and challenges | **Required**, minimum 200 characters |
 | Reward tiers | 0–100 |
 | Reward price | At least the smallest chargeable amount |
-| Goal or deadline after launch | **Immutable** |
+| Goal after launch | **Immutable** |
+| Deadline after launch | **Extends once** — §5.1, no later than 60 days after the first deadline (IDN-EXT-01; this row used to say immutable) |
 | Delete a reward with backers | **Forbidden** — it may only be hidden |
 | Reward price after launch | **Immutable** |
 | Increase reward quantity | Permitted |
@@ -2104,6 +2219,51 @@ sells — an invoice and a bank transfer — rather than a stub pretending to be
 A plan priced at zero activates on the spot. When #60 lands, the provider's
 callback replaces the second step and nothing above it changes.
 
+**What the platform was paid is written down separately, and it is not the
+subscription row.** A subscription carries a price; it does not carry a receipt.
+`subscription_payments` (§7.2) takes one append-only row per payment received,
+written in the same transaction that opens the entitlement — an entitlement
+without a receipt is revenue nobody can account for, and a receipt without an
+entitlement is a creator who paid and cannot publish. Both are found weeks later
+by whoever is reconciling a bank statement, which is the worst time to find
+either.
+
+Three properties of that table are load-bearing:
+
+- **The plan is copied onto the row**, code, name, price and billing period as
+  they stood when the money arrived. A plan is an editable row on purpose, so a
+  report that read the name through `subscription_plans` would be retitled by a
+  rename and re-priced by a repricing. A report about March must not change in
+  April.
+- **There are no foreign keys.** `subscriptions.account_id` cascades, so a closed
+  account takes its subscription with it — and a key here would take the receipt
+  with it too, or make closing the account fail. Money the platform was paid does
+  not stop having been paid when the payer leaves.
+- **A correction is a reversing row**, never an edit, so every total over the
+  journal is a sum that nets. `received_at` is the caller's and may be backdated
+  to the day a transfer cleared; `recorded_at` is the database's, which is what
+  makes the backdating visible rather than silent. A future `received_at` is
+  refused: it would move a payment into a period nobody reconciles for a year.
+
+**The report reads the journal, and never the catalogue.** AD-11's revenue
+screen asks three `GROUP BY`s of one window — per currency, per plan, per method —
+and a keyset list behind them that the CSV export and the console's per-account
+history also read. Three decisions shape what it shows:
+
+- **Per currency, never summed across.** Each currency row carries `gross`,
+  `reversed` (negative, as stored) and `net`, so `gross + reversed = net` is visible
+  arithmetic rather than a claimed figure. There is no grand total, for §21.2's
+  reason.
+- **A renamed plan is two rows under one code.** Grouping by code alone would need
+  one name chosen for the group, and any choice retitles the other month.
+- **The default window is this month in `Asia/Baku`**, half-open. A UTC month would
+  put the last four hours of the local month into the next one, which is exactly the
+  figure an operator checks against a bank statement. An explicit `from`/`to` is
+  taken as given; a window longer than 400 days is refused rather than clamped.
+
+Opening the report is not audited; exporting it is (`subscription.revenue_exported`),
+because the file is every paying creator's address beside what they paid.
+
 **Not built, deliberately:** proration, mid-period upgrades, automatic renewal,
 invoices as documents, and per-plan fee rates. The first three need a provider
 that can refund a part-month or charge a stored card. A per-plan fee rate would
@@ -2131,12 +2291,22 @@ stateDiagram-v2
     SCHEDULED --> LIVE
     LIVE --> SUSPENDED
     LIVE --> CANCELED
-    LIVE --> SUCCESSFUL: deadline, pledged >= goal
-    LIVE --> UNSUCCESSFUL: deadline, pledged < goal
-    SUCCESSFUL --> COLLECTING
-    COLLECTING --> LATE_PLEDGE
-    COLLECTING --> FULFILLING
-    LATE_PLEDGE --> FULFILLING
+    LIVE --> CLOSING_WINDOW: first deadline D
+    LIVE --> EXTENDED: creator extends, D-7..D, 50% or more
+    CLOSING_WINDOW --> EXTENDED: creator extends, by D+7, 50% or more
+    LIVE --> WITHDRAWN: creator withdraws, 80% or more
+    CLOSING_WINDOW --> WITHDRAWN: creator withdraws, 80% or more
+    EXTENDED --> WITHDRAWN: creator withdraws, 80% or more
+    CLOSING_WINDOW --> SUCCESSFUL: D+8, 80% or more
+    CLOSING_WINDOW --> UNSUCCESSFUL: D+8, below 80%
+    EXTENDED --> SUCCESSFUL: extension ends, 80% or more
+    EXTENDED --> UNSUCCESSFUL: extension ends, below 80%
+    SUCCESSFUL --> WITHDRAWN: requested, or automatic after 30 days
+    CLOSING_WINDOW --> SUSPENDED
+    CLOSING_WINDOW --> CANCELED
+    EXTENDED --> SUSPENDED
+    EXTENDED --> CANCELED
+    WITHDRAWN --> FULFILLING
     FULFILLING --> COMPLETED
     REJECTED --> [*]
     CANCELED --> [*]
@@ -2145,6 +2315,24 @@ stateDiagram-v2
     COMPLETED --> [*]
 ```
 
+> **This diagram is IDN-EXT-01's (#32).** `CLOSING_WINDOW`, `EXTENDED` and `WITHDRAWN` are
+> new; `COLLECTING` and `LATE_PLEDGE` are gone from the diagram. **The states and their edges
+> exist in the code since #32.** Since #33 the finaliser moves `LIVE → CLOSING_WINDOW` at the
+> deadline and decides on D+8, and the direct `LIVE → SUCCESSFUL`/`UNSUCCESSFUL` edges are gone
+> from `ProjectStateMachine` — a campaign the sweep finds after its window already ended walks
+> both edges in one transaction rather than skipping the window. The extension is #34 and the
+> withdrawal #41; `SUCCESSFUL → COLLECTING` stays until #39.
+> V74 only *adds* — the three states, `extended_until` and `extension_used_at` — and the old
+> two stay in the database until stage 4 (#45), because expand-then-contract (CLAUDE.md)
+> forbids both in one release. `deadline` stays the *first* deadline: the seven-day window
+> and the D+60 limit are both measured from it, so an extension is its own column rather
+> than an overwrite.
+>
+> Pledges are accepted in `LIVE`, `CLOSING_WINDOW` and `EXTENDED`, and in no other state.
+> `SUCCESSFUL` means the outcome is decided and the 30 days to withdraw are running;
+> `WITHDRAWN` means the creator has taken the money, and the campaign is closed. `SUSPENDED`
+> and `CANCELED` refund every backer (§9.7). `UNSUCCESSFUL` does too.
+>
 > **`SUBMITTED → CHANGES_REQUESTED → SUBMITTED` needs the note to be readable.**
 > The moderator's reason is written on the `project_state_transitions` row, and the
 > creator reads it back on `GET /v1/projects/{id}/checklist` as `moderation`: the
@@ -2169,22 +2357,22 @@ stateDiagram-v2
 ```mermaid
 stateDiagram-v2
     [*] --> DRAFT
-    DRAFT --> CONFIRMED: card verified
+    DRAFT --> COLLECTED: charged at confirmation
     DRAFT --> EXPIRED: reservation TTL
-    DRAFT --> CANCELED_BY_BACKER: backer abandons
-    CONFIRMED --> CANCELED_BY_BACKER
-    CONFIRMED --> CANCELED_BY_PROJECT
-    CONFIRMED --> CHARGE_PENDING: campaign succeeded
-    CHARGE_PENDING --> COLLECTED
-    CHARGE_PENDING --> CHARGE_FAILED
-    CHARGE_FAILED --> CHARGE_PENDING: retry
-    CHARGE_FAILED --> DROPPED: window elapsed
-    COLLECTED --> REFUNDED
+    DRAFT --> CANCELED_BY_BACKER: backer abandons checkout, nothing charged
+    DRAFT --> CANCELED_BY_PROJECT
+    COLLECTED --> REFUNDED: campaign unsuccessful, suspended or cancelled, or dispute upheld
     COLLECTED --> CHARGEBACK
     COLLECTED --> FULFILLED
     FULFILLED --> [*]
 ```
 
+> **IDN-EXT-01 redrew this diagram (#35, #39).** A confirmed pledge is a charged one, so
+> `CONFIRMED`, `CHARGE_PENDING`, `CHARGE_FAILED` and `DROPPED` leave the diagram, and there is
+> no edge from a paid pledge to `CANCELED_BY_BACKER`: a backer cannot cancel. A raise is not
+> an edge — the pledge stays `COLLECTED` and gains a supplement. The removed states remain in
+> the code until stage 4 (#45); the notes below record why each was added.
+>
 > **`DRAFT --> CANCELED_BY_BACKER` is new, and #56 added it while building
 > PL-10.** The diagram had one edge out of a draft that ends it —
 > `DRAFT --> EXPIRED: reservation TTL` — and that edge is about nobody doing
@@ -2216,10 +2404,52 @@ stateDiagram-v2
 ### 6.3 Payout
 
 ```
-PENDING → HOLD (14 days) → APPROVED → PROCESSING → PAID
-                              ↓
-                           BLOCKED (fraud or dispute)
+REQUESTED (by the creator, or automatically 30 days after the outcome)
+    → HOLD (14 days: every backer notified, disputes open)
+    → APPROVED (VÖEN real, business card belongs to the VÖEN's holder)
+    → PROCESSING → PAID
+HOLD → WAITING_FOR_DESTINATION (no VÖEN or business card: weekly reminder)
+HOLD → BLOCKED (fraud)
 ```
+
+> **IDN-EXT-01 (#41).** Withdrawal is the creator's to request, at 80% or more, at any time;
+> if they have not requested it 30 days after the outcome (the end of the first deadline, or
+> of the extension), it is requested for them and the money arrives 14 days later — day 44.
+> **VÖEN and a business card are not asked for at creation or moderation.** The creator is
+> warned twice — when creating the campaign and before submitting it — and gives both at the
+> withdrawal screen. They are §9.5's payout destination (V72): visible to administrators,
+> never public. The business card is registered on Epoint's own page with `refund=1`, never
+> in an IdeaNest form (§9.2).
+>
+> **At every withdrawal request, automatic ones included, every backer is notified**: "the
+> creator has requested a withdrawal; until DATE you may dispute your payment". An
+> administrator decides each dispute; an upheld one refunds that backer and reduces the
+> payout, and the campaign stays successful even if the remainder is below 80%. **After the
+> payout, nothing is refunded through the platform** — a chargeback through the bank is
+> recovered from the creator's future payouts, and the account is blocked until it is repaid
+> (§9.8).
+>
+> **The decision edition 6 left to this specification: the dispute window when a payout waits
+> for VÖEN.** It stays open **until the money is actually sent**, not only for the 14 days.
+> The rule is that disputes are possible until payout and that nothing is refunded through
+> the platform after it; a payout held back by the creator's own missing details has not
+> happened, and closing the window on day 14 would take a backer's remedy away because of a
+> delay that was not theirs. The notification's DATE is therefore "until the payout is sent,
+> and no earlier than" the end of the hold.
+>
+> **Built (#41).** `POST /v1/projects/{id}/withdrawal` is the creator's, at the success threshold,
+> from `LIVE`, `CLOSING_WINDOW`, `EXTENDED` or `SUCCESSFUL` (409 `WITHDRAWAL_NOT_AVAILABLE` with
+> `WRONG_STATE` or `BELOW_THRESHOLD`); it moves the campaign to `WITHDRAWN`, freezes its outcome if
+> no deadline did, and records `project.withdrawn`. `automatic-withdrawal` does the same as the
+> system for a `SUCCESSFUL` campaign 30 days (`ideanest.project.withdrawal.automatic-after`) after
+> funding ended. The payout module requests the payout from the event — the figure `calculate`
+> produces, with `payable_at` fourteen days out, audited as the system, idempotent on the campaign
+> — and records `payout.requested`, from which every backer but the creator is sent
+> `WITHDRAWAL_REQUESTED` with the end of the hold as the dispute date. `payout-destination-reminders`
+> runs daily and sends the creator `PAYOUT_DETAILS_NEEDED` on each whole week after the hold ended
+> while their destination standing asks them for something. **Approval and sending stay with
+> staff**: the hold is when an administrator checks the VÖEN and business card, and approval
+> refuses until both stand; an automatic *send* on day 44 is not built.
 
 **The hold is also where identity verification fits** — #431. A payout does not
 leave `HOLD` unless the creator's verification stands at `APPROVED`, and the gate
@@ -2907,6 +3137,7 @@ by a database constraint and verified by a nightly reconciliation job.
 | `update_obligations` | §5.5's monthly-update clock, one row per funded campaign (#437). **One row per campaign and not one per cycle**, which is where it departs from `deadline_notices`: that table is a set of claims because a deadline notice happens twice ever, and this one has to answer "is this creator up to date" on every render of the campaign page. So the row is the current state, and the two claims it makes idempotently -- the reminder and the escalation -- are columns holding **the due date they were made for** rather than booleans. That is what makes "escalate once rather than daily" expressible: `due_at` does not move until an update moves it, and a boolean would have needed clearing by a release that eventually forgets. `lapsed_for` is cleared by an update and `lapsed_at` is not, which is what makes the moderator's queue a queue rather than a snooze button. No column here is derived into money or campaign state, and that absence is the design |
 | `compliance_overrides` | One exception to one compliance requirement for one account (#436). Time-boxed by a NOT NULL `expires_at`, so there is no shape for a permanent one; reasoned from a closed set plus the grantor's own words; attributed through a `RESTRICT` foreign key rather than `SET NULL`, unlike `identity_verifications.reviewed_by`, because an override with no named grantor is an anonymous waiver. `granted_by <> subject_user_id` is total -- both columns are NOT NULL and the grantor cannot become null -- which is the gap `payout_approvals` warns a two-column CHECK leaves. Never deleted: expiry is a comparison rather than a swept state, so an override stops working because time passed |
 | `signatures` | One SİMA İmza signature: what was signed, by which certificate subject, and when (#428). **Never a copy of the certificate material**, which is V58's territory with V58's encryption and V58's sweep -- this must not become a second uncontrolled place where a person's identity sits. The name and FIN are §17.4 personal data and are kept because without them the row proves a certificate signed and not that *this creator* did; #423 governs for how long. `document_acceptances.signature_id` finally has its referent, `RESTRICT`, so a signed agreement cannot silently become a ticked one |
+| `subscription_payments` | What the platform was paid for a subscription, one append-only row per payment (§5.6). **Not `transactions` and `ledger_entries`**: those hold a backer's money moving through the platform — `transactions.project_id` is NOT NULL and `ledger_entries.account` is closed by a CHECK over escrow, fees, tax and a creator's own — and a subscription payment has no campaign and belongs to none of those accounts, so making it fit would mean relaxing a NOT NULL and widening a CHECK on the two tables that hold every pledge, to admit rows that are not pledges. **The plan is copied onto the row** — code, name, price, billing period — because a plan is editable on purpose, so a report joining to `subscription_plans` would be retitled by a rename and re-priced by a repricing; `plan_id` is kept alongside so it can still be filtered by. **No foreign keys at all**, for V21's reason with a sharper edge: `subscriptions` cascades with its account, so a key here would delete the platform's only record of money it was paid when the payer closed their account — or, as `RESTRICT`, make closing the account fail — and either arrives as a DELETE the append-only trigger then refuses, breaking account closure with an error about a table nobody touched. `amount` is **signed and never zero**: a correction is a reversing row, so every total is a sum that nets, and `reverses` is unique so a payment cannot be reversed twice. `received_at` is the caller's and may be backdated to the day a transfer cleared — it is what every total is grouped by, so the report agrees with the bank statement it is checked against — while `recorded_at` is `DEFAULT now()`, which is what makes backdating visible rather than silent; a future `received_at` is refused by the service rather than clamped. `method` is a closed CHECK (`BANK_TRANSFER`, `CARD`, `CASH`, `OTHER`) unlike the free-text plan code, because an operator adds a plan from the console and nobody adds a way of being paid without the platform learning to reconcile it |
 | `signature_sessions` | A signing session in flight (#429): what was to be signed, by whom, and what became of it. **A row rather than a handle the client holds**, and V71 names the three quiet failures of the stateless alternative -- a session identifier becomes a bearer token for somebody else's signature, the hash a resolve compares against arrives from the party with the reason to change it, and a cancellation leaves nothing, so "the citizen declined" is indistinguishable from "nothing happened". The FIN and mobile number the citizen typed are passed to the provider and **not stored**: §17.4 asks for the data the purpose needs and this purpose needs neither; the FIN that is kept is the certificate's, in `signatures`. Terminal outcomes are recorded once and a resolved session is never re-resolved, which is what stops one act of signing producing two `signatures` rows |
 | `creator_legal_subjects` | Who a creator legally is (#430): the subject kind, the legal name, and -- for a registered entity -- the VÖEN, the registered address and the registration number. **A fact about the account and not a record of a check**, which is the whole of #430: `identity_verifications.subject_kind` says what a reviewer was looking at when they looked, and a creator who has never been asked to verify has no row there at all while a payout still needs to know whether to withhold as a person or as a company. The VÖEN is **shape-validated and nothing more** -- ten digits, in the schema -- because a validator that appeared to confirm existence "would produce a green tick that means nothing, in front of the exact field where a green tick is relied upon"; whether the number names a real company is a human reading a `COMPANY_REGISTRATION` document in V58's queue. There is deliberately **no constraint requiring a legal entity to carry all three of its fields**: completeness is a gate's question, asked of a row rather than enforced on one, so a creator part-way through a form does not lose their work. The foreign key cascades, for the reason every reference to `users` in this schema gives twice over |
 | `campaign_legal_subjects` | The creator's legal subject as it stood when a campaign was submitted (#430). **A copy, never a reference**, and there is no foreign key back to the live row precisely so it cannot follow it: §5.6 snapshots a subscription's price, V42 freezes a retry window, and `payouts.creator_id` is denormalised because "a campaign's creator is a mutable fact and the payout was calculated for the person who held it at the time". A creator who submits as an individual and registers a company three months later has not retroactively submitted as a company, and a payout reading the live row would withhold as though they had. Keyed by the campaign: a resubmission overwrites, because that submission is the one being decided |
@@ -3319,10 +3550,65 @@ collecting it.
 | Approach | Problem |
 |---|---|
 | **Card authorisation hold** | Holds typically expire after 7 days, occasionally 30. A 30–60 day campaign outlives them. **Unworkable.** |
-| **Charge immediately, refund on failure** | Mass refunds on unsuccessful campaigns: high cost, poor experience, and it makes us hold client funds |
-| **Stored card, charge at close** | ✅ **The selected approach.** |
+| **Charge immediately, refund on failure** | ✅ **The selected approach since IDN-EXT-01.** Its costs are accepted rather than avoided: mass refunds on unsuccessful campaigns (paid by the platform, §5.2), and holding backers' money for up to ~120 days (§22.1) |
+| **Stored card, charge at close** | **Superseded.** Built (#64, #65) and retired by #39; removed by #45 |
 
 ### 9.2 Card-on-file with merchant-initiated collection
+
+> **Superseded by IDN-EXT-01.** The pledge is charged at confirmation through **Epoint.az**
+> (API v1.0.3, AZN only), and posted to the ledger at once (#39). The collection at close,
+> the stored card and §9.6's retries are retired by #39 and removed by #45; everything below
+> records what was built and why.
+>
+> **Epoint, as the owner decided it.** A backer's payment is an ordinary charge. A refund to
+> a backer is `/reverse` — which has **no duplicate protection of its own**, so the platform
+> keeps its own (#40). A payout to a creator is `/refund-request` against a `card_id` — a
+> payout, despite the name — to a business card registered through `/card-registration` with
+> `refund=1`, entered on Epoint's page and never in an IdeaNest form (#38, #41). **Questions
+> for Epoint, owned by the product owner:** how long after a payment `/reverse` stays
+> available (believed to be about 120 days), and the limits on payouts to a card.
+>
+> **Built (#39): charged at confirmation.** `POST /v1/pledges/{id}/payment` makes
+> `confirm`'s refusals, records the backer agreement, holds the draft's places for
+> `ideanest.pledge.reservation.payment-window` (15 minutes) and opens the provider's payment
+> page, recording a `PENDING` charge. The pledge stays `DRAFT`. The provider's
+> `CHARGE_SUCCEEDED` settles it in one transaction: a `SUCCEEDED` charge row, the ledger posting
+> escrow → creator, §6.2's `DRAFT → COLLECTED` with the places committed, the campaign's totals,
+> and `pledge.confirmed` plus `pledge.collected`. `CHARGE_FAILED` writes a `FAILED` row and leaves
+> the draft to its hold. **`projects.pledged_amount` and `backers_count` are written for the
+> first time here** — nothing in production moved them before, so §5.1 had been deciding on a
+> number no pledge changed; `CampaignTotals` adds a paid pledge in one statement. A payment that
+> arrives for a pledge whose hold already ended is posted and logged for a refund (#40).
+> `confirm` stays for the retired model until the web checkout moves (#44) and #45 removes it;
+> the collection jobs stay inert behind any provider that cannot collect stored cards.
+>
+> **Built (#44), the checkout.** The review step's control now reads "Continue to payment"
+> (with §22.3's acknowledgement in its label when an agreement is published) and calls
+> `/payment` with the page's language and two return addresses, `/{locale}/pledges/{id}` with
+> `?payment=returned` or `?payment=failed`. The browser leaves for the provider's page; no card
+> is ever entered in IdeaNest. The rule — success at 80%, one extension — and "you are charged
+> on the next page; an unfinished payment takes nothing" are printed above the control, with no
+> motion. The pledge page the provider returns to decides what to say from the pledge's state,
+> not from the word in the address: `COLLECTED` is paid; a `DRAFT` after a successful return is
+> a webhook still on its way, re-read every three seconds for a minute; anything else took
+> nothing. The web no longer calls `confirm`.
+>
+> **Built (#44), the payout card.** `POST /v1/me/payout-destination/card-registration` asks the
+> primary provider for its card page (`/card-registration`, `refund=1`) and records the card
+> identifier it answers as `PENDING` in V81's `payout_card_registrations`; 503
+> `PAYOUT_CARDS_UNAVAILABLE` when no provider can. The card is entered on the provider's page. Its
+> callback (`operation_code` `001`) is `PAYOUT_CARD_REGISTERED` or `PAYOUT_CARD_FAILED`, carrying the
+> card, its mask and the holder's name on the event — the name is still removed from the stored body.
+> Registered, `payout-card.registered` goes through the outbox to compliance, which files the card as
+> the creator's payout destination through the same `record` as before: matched against the legal
+> name, `AWAITING_VERIFICATION` until a person verifies it, hint `**` and the last four digits. A
+> callback about a card nobody began, or one already settled, moves nothing.
+>
+> **Built (#44), the page.** `/settings/payout`, linked from the account's settings, holds both halves:
+> the legal subject form (individual or company, legal name, VÖEN) saved to `/v1/me/legal-subject`,
+> and the card on file with its standing in words and a control that opens the provider's page,
+> returning to `/{locale}/settings/payout?card=returned|failed`. A return re-reads the destination
+> every three seconds for a minute until it changes. No card number is entered on the page.
 
 ```mermaid
 sequenceDiagram
@@ -3525,6 +3811,25 @@ single-file change.
 > result type, which is the checkable form of "changing provider is a single-file
 > change".
 >
+> **The first adapter: Epoint (#38, IDN-EXT-01).** `EpointPaymentProvider` speaks API
+> v1.0.3 — every call a form POST of `data` (base64 JSON) and `signature`
+> (`base64(sha1(private_key + data + private_key))` over the raw digest), callbacks verified the
+> same way. The port gains three default methods for the charge-now model:
+> `beginHostedPayment` (`/request`, the backer pays on Epoint's page), `lookUpPayment`
+> (`/get-status`: `new`, `success`, `returned`, `error`; `server_error` is Epoint unable to
+> answer, never a failed payment) and `beginPayoutCardRegistration` (`/card-registration` with
+> `refund=1`). `refund` is `/reverse`, which has no duplicate protection of its own (#40 keeps
+> it); `payout` is `/refund-request` against the card. Amounts go on the wire from the
+> `BigDecimal`, AZN only, and the cardholder's name is removed from every stored response.
+> **The start-up refusal above is lifted**: an adapter that cannot do R-01 to R-03 now
+> registers, and `PaymentProviders.collecting()` — not `primary()` — is what `CollectionRun`
+> uses, so the retired stored-card collection stays inert behind Epoint until #39 and #45
+> remove it. Configured as `ideanest.payment.provider.primary: EPOINT` with
+> `ideanest.payment.epoint.{base-url,public-key,private-key,language}`; unset by default.
+> Epoint's callback carries no event id or timestamp, so a delivery is identified by
+> transaction, status and operation code, and deduplication rather than a replay window is
+> what refuses a repeat.
+>
 > Two departures from the sketch above, both small. `ProviderCapabilities` gains
 > `schemeChaining`, because R-03 is one of the three the design cannot work without and
 > the record had no field for it; `preAuthHoldDays` stays, as the number that records
@@ -3629,6 +3934,10 @@ than arriving inside an adapter.
 
 ### 9.6 Failed collections
 
+> **Withdrawn by IDN-EXT-01.** A card is charged at confirmation, so a declined card fails
+> the checkout in front of the backer rather than a collection weeks later, and there is
+> nothing to retry. The schedule below was built (#65) and is retired by #39.
+
 Industry experience puts failure at **5–15%** of pledges at campaign close —
 expired cards, limits, and issuer declines.
 
@@ -3674,15 +3983,36 @@ expired cards, limits, and issuer declines.
 
 ### 9.7 Refund policy
 
-| Scenario | Outcome |
+| Scenario | Outcome (IDN-EXT-01) |
 |---|---|
-| Campaign unsuccessful | Nothing was collected |
-| Creator cancels | Full refund of collected pledges. **The halt itself is built (#103)**: every `DRAFT` and `CONFIRMED` pledge becomes `CANCELED_BY_PROJECT` and gives its place back. A *collected* pledge is deliberately left alone, because reversing one is a refund and refunds are #67's |
-| Moderator suspends | Full refund. The same release, from the same event — §4.11's AD-02 |
+| D+8 passes unextended below 80% | **Full refund to every backer** |
+| An extension ends below 80% | **Full refund to every backer** |
+| Creator cancels | **Full refund to every backer.** The halt is built (#103); the refund of charged pledges is #40 |
+| Moderator suspends | **Full refund to every backer.** The same release, from the same event — §4.11's AD-02 |
+| Backer disputes during the payout hold | An administrator decides; an upheld dispute refunds that backer in full and reduces the payout. **Built (#43)**: `POST /v1/pledges/{id}/disputes` while a payout for the campaign is in flight (409 `DISPUTE_WINDOW_CLOSED` otherwise); `/v1/admin/backer-disputes` queue and `…/{id}/decision` (UPHOLD refunds with `DISPUTE_CONCEDED` and recalculates the payout keeping its hold end; REJECT moves nothing); V79 `backer_disputes`, one open per pledge |
+| Backer changes their mind | **No cancellation.** A pledge may only be raised (§5.1) |
+| After the creator is paid | Nothing is refunded through the platform; a bank chargeback is recovered from the creator (§9.8) |
 | Creator cannot deliver | Creator offers a refund; the platform mediates |
-| Backer changes their mind while live | Cancel — nothing was collected (built: #56) |
-| Backer changes their mind after collection | Creator's decision; not compelled |
 | Fraud established | Full refund and account action |
+
+Refunds go out in batches through Epoint's `/reverse`, with the platform's own protection
+against refunding twice, reconciled against the provider's `returned` status (#40).
+
+> **Built (#40).** `campaign-refunds` (every ten minutes, `ideanest.payment.refunds`) finds paid
+> (`COLLECTED`) pledges on `UNSUCCESSFUL`, `SUSPENDED` and `CANCELED` campaigns and refunds each in
+> full, a bounded batch per pass, each refund in its own transactions. The reason is
+> `CAMPAIGN_FAILED` or `CAMPAIGN_HALTED`, and the refund has no staff author — V76 lets
+> `requested_by` be null for exactly those two reasons, and the audit row names the system. **Double
+> refunds**: a pledge is offered only with no refund `REQUESTED` or `SUCCEEDED`; a `REQUESTED` row
+> blocks every later attempt; the idempotency key is unique per attempt; and a refund whose outcome
+> was lost is never re-sent blind — after `unresolved-after` the provider's payment status decides it
+> (`returned` settles it as succeeded, still `success` fails it so the next pass re-sends). A refused
+> refund waits `retry-after` (six hours) before it is sent again. A full refund moves the pledge to
+> `REFUNDED` and takes it out of the campaign's totals, never below zero; the campaign's frozen
+> outcome is untouched. The admin refund console shows such refunds as requested by the platform.
+> A refund's transaction row carries no provider transaction identifier when the provider issues
+> none — Epoint's `/reverse` does not — because V41 admits one settled row per provider transaction
+> and the charge is that row; the refund reaches its charge through `refunds.charge_transaction_id`.
 
 ### 9.8 Chargebacks
 
@@ -3693,6 +4023,29 @@ expired cards, limits, and issuer declines.
 5. The outcome is recorded as a reversal either way
 6. If lost, the amount and any fee are deducted from the payout
 
+> **After the payout (IDN-EXT-01, #43).** A chargeback that arrives once the creator has been
+> paid is withheld from the creator's future payouts, and the account is blocked until the
+> amount is repaid. The rule "nothing is refunded through the platform after payout" does not
+> stop a bank chargeback; if the creator never has another payout, the loss is the platform's.
+> That risk is accepted in §5.1.
+>
+> **Built (#43).** Resolving a dispute `LOST` or `CONCEDED` still posts the loss (the backer's money
+> returns from escrow). When the campaign already has a settled `PAYOUT` transaction, the amount and
+> its fee become a `creator_debts` row (V80, one per dispute) and the creator's account is suspended
+> by the administrator who resolved it, with a reason saying why. Every later payout — requested by a
+> withdrawal or calculated by finance — withholds what is outstanding into `payouts.debt_withheld`,
+> lowering the net, and the amount is applied to the debts, oldest first, when that payout is sent. A
+> debt as large as the payout leaves no payout: a withdrawal applies it all at once, and finance's
+> calculation answers nothing to pay. Reinstating the account once the debt is settled is a staff
+> action. Epoint documents no chargeback webhook, so how its chargebacks reach `disputes` is still open.
+>
+> **Built (#44), the screens.** A paid pledge's page offers "Dispute this payment" behind one press;
+> the reason goes to `POST /v1/pledges/{id}/disputes`, and `DISPUTE_WINDOW_CLOSED` and
+> `NOTHING_TO_DISPUTE` are worded rather than pre-judged. Administrators decide on `/admin/disputes`,
+> below the chargebacks: each open dispute shows the backer's reason and takes a note; upholding asks
+> first, because it refunds in full and recalculates the payout, and rejecting is one press. A refund
+> the provider refuses leaves the dispute open and says so.
+>
 > **Step 1 has nothing to trigger it, and #434 did not fix that.** Epoint's
 > specification documents five payment statuses — `new`, `success`, `returned`,
 > `error`, `server_error` — and none of them is a dispute. §9.3's R-13 is therefore
@@ -3840,8 +4193,10 @@ POST   /v1/projects/{id}/prelaunch
 POST   /v1/projects/{id}/submit
 POST   /v1/projects/{id}/launch
 POST   /v1/projects/{id}/cancel
-POST   /v1/projects/{id}/late-pledges        # PL-16 (#81); COLLECTING -> LATE_PLEDGE, names the window
-POST   /v1/projects/{id}/late-pledges/close  # LATE_PLEDGE -> FULFILLING; no edge back
+POST   /v1/projects/{id}/late-pledges        # WITHDRAWN by IDN-EXT-01: refused for every campaign since #36 (PROJECT_TRANSITION_NOT_ALLOWED); removed by #45
+POST   /v1/projects/{id}/late-pledges/close  # WITHDRAWN by IDN-EXT-01: still moves a campaign already in LATE_PLEDGE to FULFILLING; removed by #45
+POST   /v1/projects/{id}/extension           # IDN-EXT-01 (#34): creator only; once, D-7..D+7, 50%+, ends after D and no later than D+60. 409 EXTENSION_NOT_AVAILABLE {reason}; backers get CAMPAIGN_EXTENDED
+POST   /v1/projects/{id}/withdrawal          # IDN-EXT-01 (#41): 80%+, closes the campaign, requests the payout with the 14-day hold
 GET    /v1/projects/{id}/checklist
 GET    /v1/projects/{id}/items
 POST   /v1/projects/{id}/items
@@ -3871,8 +4226,9 @@ POST   /v1/collaborators/invitations/{token}/accept
 POST   /v1/pledges/draft
 GET    /v1/pledges/{id}
 POST   /v1/pledges/{id}/confirm
+POST   /v1/pledges/{id}/payment          # IDN-EXT-01 (#39): hold the draft, open the payment page; paid → COLLECTED by webhook
 PATCH  /v1/pledges/{id}
-DELETE /v1/pledges/{id}
+DELETE /v1/pledges/{id}   # IDN-EXT-01 (#35): abandons an unpaid DRAFT only; PLEDGE_CANNOT_BE_CANCELLED otherwise
 GET    /v1/pledges/{id}/receipt
 
 # Payment methods
@@ -3986,7 +4342,16 @@ POST   /v1/admin/plans                   # add one; on sale from the moment it i
 PATCH  /v1/admin/plans/{id}              # edit in place. Absent means "leave alone"; clearMaxActiveCampaigns and clearGoalCeiling mean "remove"
 GET    /v1/admin/subscriptions           # ?awaitingPayment= defaults true, which is the queue rather than the archive
 POST   /v1/admin/subscriptions/{id}/activate  # record that the transfer arrived. Audited; this is what starts an entitlement
+                                              # body: method, receivedAt, reference, note -- all optional, defaulting to a
+                                              # bank transfer received now. There is no amount: what was paid is the price
+                                              # snapshotted on the subscription, not a figure the request may disagree with
 POST   /v1/admin/subscriptions/{id}/cancel    # end one outright, with a required reason. Audited
+GET    /v1/admin/subscription/revenue         # #23: totals per currency (gross, reversed, net), per plan and name, per method.
+                                              # ?from=&to= half-open, defaulting to this month in Asia/Baku; ?planCode=&accountId=&method=
+GET    /v1/admin/subscription/payments        # the journal behind those totals, newest by received_at; same filters, ?after= keyset cursor
+GET    /v1/admin/subscription/payments/export # the same list as text/csv, capped, X-Export-Rows / X-Export-Truncated. Audited
+GET    /v1/admin/users/{accountId}/subscriptions # one account's subscriptions (every state) and payments, unpaged. Any member of
+                                              # staff, like the account's pledges; audited as counts. 404 ACCOUNT_NOT_FOUND
 ```
 
 > **Two-factor is four endpoints rather than two.** `2fa/verify` is the second
@@ -6223,8 +6588,9 @@ These reduce legal exposure and are product requirements, not legal boilerplate:
 | The creator's project history visible | **Built** — §5.5's clock (#437), surfaced on the campaign page and the creator's profile (#439) |
 | A reporting mechanism | Built — `ReportControl`. **Its copy is still hard-coded English**: the component reaches no catalogue at all, so a Russian reader is offered the reasons in a language they may not read. #439 checked this rather than assuming it, and #324's remainder is where it is fixed |
 | Clear fee disclosure | **Built** — `GET /v1/fees/disclosure`, derived from `fee_schedules` (#439) |
+| The success rule — from 80% of the goal, with a possible extension — **beside the progress bar and before the pay button** | **Not built** — IDN-EXT-01 makes it mandatory; stage 3 (#44) |
 
-All six are built. This is the issue that gets to say so, and each was checked against
+The first six are built; the seventh arrived with IDN-EXT-01 and is #44's. This is the issue that gets to say so, and each was checked against
 what is on screen rather than against what was intended.
 
 **Fee disclosure was the one still open, and the reason is worth keeping.** The platform's
@@ -6240,7 +6606,9 @@ not, and `FeeDisclosureApiTests` asserts that the answer changes when the schedu
 
 **§5.2's fee and the payment provider's fee stay distinguishable**, and are never summed
 for the reader: a creator reading "5%" and receiving 94.2% will ask, and the answer needs
-to already be on the page. `creatorReceivesRate` is computed on the server for the same
+to already be on the page. IDN-EXT-01 removes the second fee — 15% with the bank inside, so
+`processing_rate` is zero and the two numbers are one (§5.2) — but the distinction stays in
+the response for a schedule that ever sets it again. `creatorReceivesRate` is computed on the server for the same
 reason `open` is on a fee schedule — three clients deriving it would round it three ways.
 
 **No schedule in force answers `configured: false`, not zeros.** The two are different

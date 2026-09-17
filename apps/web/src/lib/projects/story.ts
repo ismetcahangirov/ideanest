@@ -1,8 +1,3 @@
-import type { StoryDescribeCopy, StoryProblemsCopy } from '../i18n/editor-copy';
-import type { Locale } from '../i18n/locale';
-import { fillPlaceholders } from '../i18n/placeholders';
-import { pluralise } from '../i18n/plurals';
-
 /**
  * The story document: its shape, its rules, and the operations the editor
  * performs on it.
@@ -20,6 +15,10 @@ import { pluralise } from '../i18n/plurals';
  * folds to, how a character is counted — this file matches the server rather than
  * doing what is convenient in JavaScript.
  */
+
+import type { StoryVocabularyCopy } from '../i18n/campaign-editor-copy';
+import { fillPlaceholders } from '../i18n/placeholders';
+import { pluralise } from '../i18n/plurals';
 
 /* -------------------------------------------------------------------------
  * The document — contract §5, exactly
@@ -724,12 +723,7 @@ export function moveBlock(
  * What is wrong with a block
  * ---------------------------------------------------------------------- */
 
-/*
- * IMAGE_ALT_REQUIRED LEFT THIS FILE WITH #459. It was a constant so that the editor and the
- * checklist could not disagree about the one rule this document model refuses to bend on, and
- * it is `editor.story.problems.imageAlt` now — reached through {@link StoryProblemsCopy}, which
- * is the same guarantee kept in the catalogue instead of in a string literal.
- */
+
 
 /**
  * The client's copy of the server's rules, for immediate feedback.
@@ -743,29 +737,29 @@ export function moveBlock(
  * An empty paragraph is not an error; a creator has just added it. An image with
  * no description is an error, because it is a picture that has been chosen.
  */
-export function blockProblem(block: StoryBlock, copy: StoryProblemsCopy): string | null {
+export function blockProblem(block: StoryBlock, copy: StoryVocabularyCopy): string | null {
   switch (block.type) {
     case 'heading': {
-      if (block.text.trim() === '') return copy.headingText;
+      if (block.text.trim() === '') return copy.problems.headingNeedsText;
       if (slugifyHeading(block.id) !== block.id || block.id === '') {
-        return copy.anchorUnusable;
+        return copy.problems.anchorUnusable;
       }
       return null;
     }
     case 'image': {
-      if (block.url.trim() === '') return copy.imageAddress;
-      if (!isWebUrl(block.url)) return copy.addressScheme;
+      if (block.url.trim() === '') return copy.problems.imageNeedsUrl;
+      if (!isWebUrl(block.url)) return copy.problems.urlScheme;
       if (block.width <= 0 || block.height <= 0) {
-        return copy.imageUnmeasured;
+        return copy.problems.imageNotMeasured;
       }
-      if (block.alt.trim() === '') return copy.imageAlt;
+      if (block.alt.trim() === '') return copy.problems.imageNeedsAlt;
       return null;
     }
     case 'embed': {
-      if (block.url.trim() === '') return copy.embedAddress;
-      if (!isWebUrl(block.url)) return copy.addressScheme;
+      if (block.url.trim() === '') return copy.problems.embedNeedsUrl;
+      if (!isWebUrl(block.url)) return copy.problems.urlScheme;
       if (block.title.trim() === '') {
-        return copy.embedTitle;
+        return copy.problems.embedNeedsTitle;
       }
       return null;
     }
@@ -790,7 +784,7 @@ export function isWebUrl(value: string): boolean {
 /** Every problem in the document, with the block each belongs to. */
 export function storyProblems(
   document: StoryDocument,
-  copy: StoryProblemsCopy,
+  copy: StoryVocabularyCopy,
 ): ReadonlyMap<number, string> {
   const problems = new Map<number, string>();
   const anchors = new Set<string>();
@@ -805,7 +799,7 @@ export function storyProblems(
       // Duplicated anchors are the failure that looks like it works: every link in
       // the navigation resolves and half of them scroll to the wrong heading.
       if (anchors.has(block.id)) {
-        problems.set(index, copy.anchorDuplicate);
+        problems.set(index, copy.problems.anchorDuplicate);
         return;
       }
       anchors.add(block.id);
@@ -816,7 +810,7 @@ export function storyProblems(
 }
 
 /** Whether the document is one the server will accept. */
-export function isSaveable(document: StoryDocument, copy: StoryProblemsCopy): boolean {
+export function isSaveable(document: StoryDocument, copy: StoryVocabularyCopy): boolean {
   return storyProblems(document, copy).size === 0;
 }
 
@@ -824,12 +818,7 @@ export function isSaveable(document: StoryDocument, copy: StoryProblemsCopy): bo
  * Naming a block
  * ---------------------------------------------------------------------- */
 
-/*
- * BLOCK_LABEL LEFT THIS FILE WITH #459. The seven words are `editor.story.blockLabel.*` and
- * reach the editor through `StoryCopy`, which is the arrangement `tabs.ts` and
- * `components/shell/navigation.ts` both use: the model holds what a thing is, the catalogue
- * holds what it is called.
- */
+
 
 /**
  * How a block is announced: what kind it is, where it is, and enough of its
@@ -840,66 +829,55 @@ export function isSaveable(document: StoryDocument, copy: StoryProblemsCopy): bo
  * identical buttons, and the position is the only thing that makes them
  * distinguishable — so the position is in the name rather than only in the
  * markup.
- *
- * <p>It takes a language as well as its words, because a list names how many items it holds
- * and "1 item" against "2 items" is the whole of English and none of Russian. The count is
- * only known here, so the plural form is picked here — `lib/i18n/plurals.ts` carries why that
- * is `Intl.PluralRules` rather than a ternary.
  */
 export function describeBlock(
   block: StoryBlock,
   index: number,
   total: number,
-  copy: StoryDescribeCopy,
-  locale: Locale,
+  copy: StoryVocabularyCopy,
 ): string {
-  const where = { position: String(index + 1), total: String(total) };
+  const position = fillPlaceholders(copy.describe.position, {
+    index: String(index + 1),
+    total: String(total),
+  });
 
   switch (block.type) {
     case 'heading':
-      return fillPlaceholders(copy.heading, {
-        ...where,
-        text: block.text.trim() === '' ? copy.empty : block.text,
+      return fillPlaceholders(copy.describe.heading, {
+        position,
+        text: block.text.trim() === '' ? copy.describe.headingEmpty : block.text,
       });
     case 'paragraph':
     case 'quote':
-      return fillPlaceholders(block.type === 'quote' ? copy.quote : copy.paragraph, {
-        ...where,
-        preview: preview(spansToText(block.spans), copy.empty),
+      return fillPlaceholders(copy.describe.withPreview, {
+        label: copy.blockLabel[block.type],
+        position,
+        preview: preview(spansToText(block.spans)),
       });
     case 'list':
       return fillPlaceholders(
-        pluralise(
-          locale,
-          block.ordered ? copy.listOrdered : copy.listBulleted,
-          block.items.length,
-        ),
-        where,
+        pluralise(copy.locale, copy.describe.list, block.items.length),
+        { style: block.ordered ? copy.describe.numbered : copy.describe.bulleted, position },
       );
     case 'rule':
-      return fillPlaceholders(copy.rule, where);
+      return fillPlaceholders(copy.describe.rule, { position });
     case 'image':
-      return fillPlaceholders(copy.image, {
-        ...where,
-        alt: block.alt.trim() === '' ? copy.imageNoAlt : block.alt,
+      return fillPlaceholders(copy.describe.image, {
+        position,
+        alt: block.alt.trim() === '' ? copy.describe.imageNoAlt : block.alt,
       });
     case 'embed':
-      return fillPlaceholders(copy.embed, {
-        ...where,
-        /*
-         * The provider's own name, which is a brand rather than a word: "YouTube" is
-         * "YouTube" in all four languages, and the catalogue would only offer somebody the
-         * chance to mistranslate it.
-         */
-        provider: block.provider === 'youtube' ? 'YouTube' : 'Vimeo',
-        title: block.title.trim() === '' ? copy.embedNoTitle : block.title,
+      return fillPlaceholders(copy.describe.embed, {
+        provider: block.provider,
+        position,
+        title: block.title.trim() === '' ? copy.describe.embedNoTitle : block.title,
       });
   }
 }
 
-function preview(text: string, empty: string): string {
+function preview(text: string): string {
   const trimmed = text.trim();
-  if (trimmed === '') return empty;
+  if (trimmed === '') return 'empty';
   const characters = Array.from(trimmed);
   return characters.length <= 40 ? trimmed : `${characters.slice(0, 40).join('')}…`;
 }

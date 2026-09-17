@@ -40,13 +40,12 @@ import { fillPlaceholders } from './placeholders';
 export type PluralForms = Readonly<Record<'one' | 'few' | 'many' | 'other', string>>;
 
 /**
- * The form for `count`, with `{count}` still in it.
+ * The form `locale` selects for `count`, WITH `{count}` STILL IN IT.
  *
- * <p>Separate from {@link pluralise} because a count is sometimes a NODE rather than a string —
- * issue #459. The pre-launch tab prints how many people are waiting with the number in
- * `font-semibold`, and the count decides the form of the verb around it (and in Russian the
- * form of the noun as well). Filling `{count}` with a string first would leave `fillNodes`
- * nothing to put the styled number into.
+ * For a sentence whose number is a node rather than a string — a bold count inside the
+ * sentence, say. `fillNodes` needs the placeholder to still be there, and {@link pluralise}
+ * has already replaced it, so a caller that reached for `pluralise` and then `fillNodes`
+ * silently got the plain text and no node. That happened; this is the half to reach for.
  *
  * The rules object is constructed per call rather than cached. It is built from a four-value
  * table, `Intl` implementations memoise their own, and a module-level cache keyed by locale
@@ -63,7 +62,7 @@ export function pluralForm(locale: Locale, forms: PluralForms, count: number): s
   return (forms as Readonly<Record<string, string | undefined>>)[category] ?? forms.other;
 }
 
-/** The form for `count`, with `{count}` filled in. */
+/** The form for `count`, with `{count}` filled in. The common case. */
 export function pluralise(locale: Locale, forms: PluralForms, count: number): string {
   return fillPlaceholders(pluralForm(locale, forms, count), { count: String(count) });
 }

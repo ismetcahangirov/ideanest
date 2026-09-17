@@ -12,7 +12,8 @@
         "few": "{count} backers",
         "many": "{count} backers",
         "other": "{count} backers"
-      }
+      },
+      "rule": "Succeeds at 80% of the goal"
     },
     "saving": "Saving…",
     "tryAgain": "Try again",
@@ -21,15 +22,30 @@
       "discover": "Discover",
       "categories": "Categories",
       "collections": "Collections"
+    },
+    "characterCount": {
+      "remaining": {
+        "one": "{count} character remaining",
+        "few": "{count} characters remaining",
+        "many": "{count} characters remaining",
+        "other": "{count} characters remaining"
+      },
+      "tooMany": {
+        "one": "{count} character too many",
+        "few": "{count} characters too many",
+        "many": "{count} characters too many",
+        "other": "{count} characters too many"
+      }
     }
   },
   "shell": {
     "skipToContent": "Skip to content",
-    "tagline": "Reward-based crowdfunding. Creators publish campaigns, backers pledge, and nobody is charged unless a campaign reaches its goal by its deadline.",
+    "tagline": "Reward-based crowdfunding. Creators publish campaigns, backers pledge, and a campaign that does not raise 80% of its goal refunds every backer in full.",
     "nav": {
       "label": "Primary",
       "discover": "Discover",
-      "categories": "Categories"
+      "categories": "Categories",
+      "pricing": "Pricing"
     },
     "drawer": {
       "open": "Open navigation",
@@ -47,6 +63,9 @@
       "settings": "Settings",
       "startCampaign": "Start a campaign",
       "console": "Administration console"
+    },
+    "language": {
+      "label": "Choose a language"
     },
     "footer": {
       "label": "Footer",
@@ -82,6 +101,28 @@
         "browse": "Browse campaigns",
         "categories": "Categories",
         "search": "Search"
+      }
+    },
+    "whatsapp": {
+      "open": "Message us on WhatsApp",
+      "title": "Write to us on WhatsApp",
+      "intro": "Fill this in and WhatsApp opens with the message ready. You press send there, so it arrives from your own number and we can reply to it.",
+      "fields": {
+        "firstName": "First name",
+        "lastName": "Last name",
+        "message": "Message"
+      },
+      "errors": {
+        "firstName": "Tell us your first name.",
+        "lastName": "Tell us your last name.",
+        "message": "Write the message you want to send."
+      },
+      "submit": "Send on WhatsApp",
+      "cancel": "Cancel",
+      "handoff": {
+        "title": "WhatsApp is open",
+        "detail": "Press send in WhatsApp to deliver it. Nothing has been sent from this page.",
+        "again": "Open WhatsApp again"
       }
     }
   },
@@ -149,6 +190,10 @@
       "language": {
         "label": "Language and currency",
         "summary": "The language IdeaNest writes to you in, and the currency amounts are shown in."
+      },
+      "payout": {
+        "label": "Payout details",
+        "summary": "Your VÖEN and the business card payouts go to."
       }
     },
     "pages": {
@@ -156,7 +201,7 @@
         "metaTitle": "Your pledges",
         "metaDescription": "Every campaign you have backed, and what you chose.",
         "title": "Your pledges",
-        "intro": "Every campaign you have backed. Nothing has been charged yet — a pledge is collected when its campaign closes successfully, and you can change or withdraw one until then."
+        "intro": "Every campaign you have backed. A pledge is charged when you make it and refunded in full if its campaign does not succeed. While a campaign is taking pledges you can raise yours, but not withdraw it."
       },
       "campaigns": {
         "metaTitle": "My campaigns",
@@ -292,7 +337,10 @@
         "FOLLOWED_CREATOR_LAUNCHED": "A creator you follow launched {campaign}",
         "LAUNCH_REMINDER": "{campaign} is about to launch",
         "SAVED_PROJECT_ENDING_SOON": "{campaign}, which you saved, is ending soon",
-        "NEW_DEVICE_SIGN_IN": "A new device signed in to your account"
+        "NEW_DEVICE_SIGN_IN": "A new device signed in to your account",
+        "CAMPAIGN_EXTENDED": "{campaign} has a new deadline",
+        "WITHDRAWAL_REQUESTED": "The creator of {campaign} requested their payout",
+        "PAYOUT_DETAILS_NEEDED": "Your payout for {campaign} is waiting for your details"
       },
       "unnamed": {
         "PLEDGE_CONFIRMED": "Your pledge of {amount} to a campaign is confirmed",
@@ -316,7 +364,10 @@
         "FOLLOWED_CREATOR_LAUNCHED": "A creator you follow launched a campaign",
         "LAUNCH_REMINDER": "A campaign is about to launch",
         "SAVED_PROJECT_ENDING_SOON": "A campaign, which you saved, is ending soon",
-        "NEW_DEVICE_SIGN_IN": "A new device signed in to your account"
+        "NEW_DEVICE_SIGN_IN": "A new device signed in to your account",
+        "CAMPAIGN_EXTENDED": "A campaign you backed has a new deadline",
+        "WITHDRAWAL_REQUESTED": "The creator of a campaign you backed requested their payout",
+        "PAYOUT_DETAILS_NEEDED": "Your payout is waiting for your VÖEN and business card"
       },
       "amount": {
         "total": "your chosen amount",
@@ -431,7 +482,8 @@
       "/admin/health": "System health",
       "/admin/legal": "Legal documents",
       "/admin/moderation/submissions": "Campaigns for review",
-      "/admin/campaigns": "All campaigns"
+      "/admin/campaigns": "All campaigns",
+      "/admin/revenue": "Revenue"
     },
     "states": {
       "built": "Built",
@@ -751,6 +803,12 @@
         "metaDescription": "The eight documents §22.2 requires, their versions, and publishing them.",
         "title": "Legal documents",
         "intro": "A published version is never edited. A correction is a new version and the old one stays readable, because an acceptance names a version."
+      },
+      "revenue": {
+        "metaTitle": "Revenue",
+        "metaDescription": "What subscriptions brought in, by period, plan and payment method.",
+        "title": "Revenue",
+        "intro": "What creators paid for their plans, grouped by when the money arrived. Each currency is reported on its own and never added to another."
       }
     },
     "screens": {
@@ -1376,7 +1434,31 @@
           "REFUNDED": "Refunded",
           "CHARGEBACK": "Charged back",
           "FULFILLED": "Fulfilled"
-        }
+        },
+        "subscriptionsHeading": "Subscriptions",
+        "loadingSubscriptions": "Loading this account's subscriptions",
+        "subscriptionsFailed": "This account's subscriptions could not be read. Everything else on this page is what it says.",
+        "noSubscriptionsTitle": "No subscription",
+        "noSubscriptionsBody": "This account has never chosen a plan.",
+        "subscriptionState": {
+          "PENDING_PAYMENT": "Awaiting payment",
+          "ACTIVE": "Active",
+          "CANCELED": "Cancelled",
+          "EXPIRED": "Expired"
+        },
+        "subscriptionWindow": "{from} to {to}",
+        "subscriptionChosen": "chosen {date}",
+        "notRenewing": "Will not renew",
+        "paymentsHeading": "Payments received",
+        "noPaymentsBody": "Nothing has been paid for a subscription on this account.",
+        "paymentReceived": "received {date}",
+        "paymentMethod": {
+          "BANK_TRANSFER": "Bank transfer",
+          "CARD": "Card",
+          "CASH": "Cash",
+          "OTHER": "Other"
+        },
+        "reversal": "Reversal"
       },
       "support": {
         "subject": "the support queue",
@@ -1719,6 +1801,7 @@
         "onPledge": "{fullness} on pledge {id}",
         "reasonAndDetail": "{reason} — {detail}",
         "requestedBy": "Requested by {by} on {date}",
+        "platform": "the platform",
         "refused": "refused: {code}",
         "state": {
           "REQUESTED": "Requested",
@@ -1978,7 +2061,10 @@
           "COMPLETED": "Completed",
           "REJECTED": "Rejected",
           "SUSPENDED": "Suspended",
-          "CANCELED": "Cancelled"
+          "CANCELED": "Cancelled",
+          "CLOSING_WINDOW": "Closing soon",
+          "EXTENDED": "Extended",
+          "WITHDRAWN": "Funds withdrawn"
         }
       },
       "campaignPreview": {
@@ -2057,6 +2143,91 @@
           "ru": "Russian",
           "tr": "Turkish"
         }
+      },
+      "revenue": {
+        "subject": "the revenue report",
+        "noticeTitle": "A reversal is shown, not hidden",
+        "noticeBody": "Received is what arrived, reversed is what was given back, and kept is the difference. Check received against the bank statement, and use kept to close the month.",
+        "periodLegend": "Period",
+        "fromLabel": "From",
+        "toLabel": "To",
+        "toHint": "Inclusive. Days are counted in Baku time.",
+        "thisMonth": "This month",
+        "lastMonth": "Last month",
+        "show": "Show",
+        "planLabel": "Plan code",
+        "planHint": "Leave empty for every plan.",
+        "methodLabel": "Payment method",
+        "anyMethod": "Every method",
+        "method": {
+          "BANK_TRANSFER": "Bank transfer",
+          "CARD": "Card",
+          "CASH": "Cash",
+          "OTHER": "Other"
+        },
+        "periodCaption": "{from} to {to}",
+        "totalsHeading": "Totals",
+        "loadingTotals": "Loading the totals",
+        "gross": "Received",
+        "reversed": "Reversed",
+        "net": "Kept",
+        "payments": {
+          "one": "{count} payment",
+          "few": "{count} payments",
+          "many": "{count} payments",
+          "other": "{count} payments"
+        },
+        "reversals": {
+          "one": "{count} reversal",
+          "few": "{count} reversals",
+          "many": "{count} reversals",
+          "other": "{count} reversals"
+        },
+        "byPlanHeading": "By plan",
+        "byMethodHeading": "By payment method",
+        "entries": {
+          "one": "{count} entry",
+          "few": "{count} entries",
+          "many": "{count} entries",
+          "other": "{count} entries"
+        },
+        "emptyTitle": "Nothing was paid in this period",
+        "emptyBody": "No subscription payment arrived between these dates. A payment appears here once it is recorded on the Plans screen.",
+        "listHeading": "Payments",
+        "loadingList": "Loading the payments",
+        "reversal": "Reversal",
+        "closedAccount": "Closed account",
+        "receivedOn": "Received {date}",
+        "recordedOn": "recorded {date}",
+        "reference": "Reference {reference}",
+        "exportCsv": "Download CSV",
+        "exporting": "Preparing the file",
+        "exported": {
+          "one": "Downloaded {count} payment.",
+          "few": "Downloaded {count} payments.",
+          "many": "Downloaded {count} payments.",
+          "other": "Downloaded {count} payments."
+        },
+        "truncated": "The file is incomplete: it holds only the first {count} payments of the period. Narrow the period and download the rest separately."
+      },
+      "backerDisputes": {
+        "subject": "the backer dispute queue",
+        "heading": "Backer disputes",
+        "intro": "Opened by backers while a payout is held. Upholding refunds the backer in full and recalculates the payout without them; the campaign stays successful. Rejecting moves nothing.",
+        "loadingList": "Loading the backer dispute queue",
+        "emptyTitle": "No open backer disputes",
+        "emptyBody": "Nothing is waiting for a decision. Backers can dispute only while a payout for their campaign is held.",
+        "pledgeLine": "Pledge {pledge} · campaign {project} · opened {date}",
+        "noteLabel": "Note",
+        "noteHint": "Recorded with the decision, and in the audit log.",
+        "uphold": "Uphold and refund",
+        "reject": "Reject",
+        "confirmUphold": "Refund this backer in full and recalculate the payout?",
+        "confirmNow": "Refund in full",
+        "deciding": "Deciding…",
+        "alreadyDecided": "Somebody has already decided this dispute. The list has been reloaded.",
+        "refundFailed": "The refund was refused, so the dispute is still open. Try again, or look at the refund on the refunds screen.",
+        "failedTitle": "That did not work"
       }
     },
     "moderation": {
@@ -2188,7 +2359,8 @@
         "platform_fee": "Platform fee",
         "psp_fee": "Processing fee",
         "tax_payable": "Tax payable",
-        "refunds": "Refunds"
+        "refunds": "Refunds",
+        "platform_expense": "Platform expenses"
       },
       "creatorAccount": "Creator {id}",
       "creatorNamed": "{name}, creator account"
@@ -2258,6 +2430,12 @@
         "metaDescription": "Choose who can see your profile, download a copy of your IdeaNest data, or close your account.",
         "title": "Privacy, data and closure",
         "intro": "Who can see you, everything IdeaNest holds about you, and what happens to it if you leave."
+      },
+      "payout": {
+        "metaTitle": "Payout details",
+        "metaDescription": "Your VÖEN and the business card your campaign payouts go to.",
+        "title": "Payout details",
+        "intro": "Where the money from a campaign you withdraw is sent. Payouts are held until this is complete and verified."
       }
     },
     "panels": {
@@ -2293,12 +2471,46 @@
         "mismatchTitle": "The two new passwords do not match",
         "mismatchDetail": "Type the same password in both boxes, then try again.",
         "mismatchField": "This does not match the password above."
+      },
+      "payout": {
+        "loading": "Loading your payout details",
+        "subjectHeading": "Who is paid",
+        "subjectIntro": "IdeaNest pays the person or company named here. Before any payout is sent, an administrator checks that the VÖEN is real and that the business card belongs to its holder.",
+        "kind": "You are",
+        "kindIndividual": "An individual",
+        "kindEntity": "A company",
+        "legalName": "Legal name",
+        "legalNameHint": "Exactly as on your VÖEN registration.",
+        "taxId": "VÖEN",
+        "taxIdHint": "Ten digits.",
+        "registeredAddress": "Registered address",
+        "registrationNumber": "Registration number",
+        "save": "Save",
+        "saving": "Saving…",
+        "saved": "Saved.",
+        "cardHeading": "Business card",
+        "cardIntro": "Payouts go to a business card you register on the payment provider’s page. The card number is never entered on IdeaNest.",
+        "cardNone": "No card on file yet.",
+        "cardOnFile": "{hint}, held by {holder}",
+        "standingAwaiting": "Waiting for verification",
+        "standingVerified": "Verified",
+        "standingWaived": "Verification waived",
+        "standingMismatch": "The name on the card does not match your legal name",
+        "standingRejected": "Rejected",
+        "register": "Register a business card",
+        "replace": "Register a different card",
+        "opening": "Opening the payment provider’s page…",
+        "waiting": "Waiting for the provider to confirm your card. This page checks again for a minute.",
+        "cardFailed": "The card was not registered. Nothing on file changed, and you can try again.",
+        "unavailable": "A card cannot be registered right now. Nothing was recorded; try again later.",
+        "malformedTaxId": "A VÖEN is ten digits.",
+        "failed": "That did not work. Try again in a moment."
       }
     }
   },
   "auth": {
     "layout": {
-      "footer": "Reward-based crowdfunding. Nobody is charged unless a campaign reaches its goal by its deadline."
+      "footer": "Reward-based crowdfunding. A campaign that does not raise 80% of its goal refunds every backer in full."
     },
     "loadingForm": "Loading the form…",
     "checkingLink": "Checking the link…",
@@ -2307,7 +2519,7 @@
       "emailPlaceholder": "you@example.com",
       "password": "Password",
       "passwordHint": "Long is stronger than complicated. The exact requirement comes from the service if this one is refused.",
-      "revealPassword": "Show password",
+      "showPassword": "Show password",
       "hidePassword": "Hide password"
     },
     "failures": {
@@ -2473,13 +2685,13 @@
     "metaTitle": "IdeaNest — reward-based crowdfunding",
     "hero": {
       "title": "Fund what does not exist yet",
-      "standfirst": "Creators publish a campaign with a goal and a deadline. Backers pledge. Nobody is charged unless the goal is reached in time — and if it is not, nothing is collected at all.",
+      "standfirst": "Creators publish a campaign with a goal and a deadline. Backers pledge. A campaign succeeds at 80% of its goal — and if it does not get there, every backer is refunded in full.",
       "browse": "Browse campaigns",
       "start": "Start a campaign"
     },
     "closing": {
       "heading": "Ending soon",
-      "standfirst": "Campaigns whose deadline is closest. All-or-nothing means these are the ones a pledge still changes.",
+      "standfirst": "Campaigns whose deadline is closest. A campaign succeeds at 80% of its goal, so these are the ones a pledge still changes.",
       "link": "See everything ending soon",
       "gridLabel": "Campaigns ending soon"
     },
@@ -2509,9 +2721,9 @@
       "badges": {
         "upcoming": "Upcoming",
         "live": "Live",
-        "late_pledge": "Late pledge",
-        "successful": "Successful",
-        "unsuccessful": "Unsuccessful"
+        "extended": "Extended",
+        "closing_soon": "Closing soon",
+        "successful": "Successful"
       },
       "by": "by {creator}",
       "lastDay": "Last day",
@@ -2527,9 +2739,8 @@
       "status": {
         "upcoming": "Upcoming",
         "live": "Live",
-        "late_pledge": "Late pledge",
-        "successful": "Successful",
-        "unsuccessful": "Unsuccessful"
+        "extended": "Extended",
+        "successful": "Successful"
       },
       "sort": {
         "best_match": "Best match",
@@ -2752,7 +2963,7 @@
     "steps": {
       "choose": "Choose your reward",
       "review": "Review and confirm",
-      "confirmed": "Confirmed"
+      "confirmed": "Pay"
     },
     "intro": "Pick a reward, or choose to pledge without one — both are pledges.",
     "loading": "Loading the rewards",
@@ -2806,9 +3017,9 @@
     },
     "payment": {
       "heading": "Payment",
-      "none": "No card is collected yet",
-      "body": "This campaign records your pledge without taking a payment method. Card details are not collected anywhere on this page, and nothing you confirm here charges you.",
-      "later": "Money is only ever collected if the campaign reaches its goal, and you will be told before that happens."
+      "none": "You pay on the payment provider’s page",
+      "body": "Continuing opens the payment provider’s secure page, where you enter your card. Card details are never entered on IdeaNest, and your pledge is charged there, once.",
+      "later": "Your pledge is refunded in full if the campaign does not raise 80% of its goal, or if it is cancelled or suspended."
     },
     "anonymous": {
       "label": "Pledge anonymously",
@@ -2824,29 +3035,20 @@
       "noReward": "No reward — support only",
       "deliveredTo": "Delivered to",
       "listedAs": "Listed publicly as",
-      "notCharged": "Confirming records your pledge. It does not charge you.",
       "change": "Change what I chose",
       "reserve": "Reserve and review",
-      "confirm": "Confirm pledge",
-      "confirming": "Confirming…"
+      "confirm": "Continue to payment",
+      "confirming": "Opening the payment page…",
+      "charged": "You are charged on the next page. If you do not finish paying, nothing is taken and the reward is released when the hold ends.",
+      "rule": "A campaign succeeds at 80% of its goal. Its creator may extend the deadline once, and you are not asked."
     },
     "risk": {
       "heading": "What backing means",
       "body": "A pledge is not a purchase. You are funding an attempt, and a reward is not guaranteed — the campaign may be delayed, may change, or may never arrive. The creator owes you the reward, not IdeaNest.",
-      "confirm": "I understand — confirm my pledge",
+      "confirm": "I understand — continue to payment",
       "stale": "This statement was updated while this page was open. Read it again, then confirm."
     },
     "done": {
-      "announced": "Your pledge is confirmed",
-      "heading": "The campaign has your pledge and your reward is yours if it reaches its goal.",
-      "next": "What happens now",
-      "backed": "What you backed",
-      "reference": "Pledge reference",
-      "keepReference": "Keep the reference above if you need to write to the campaign about this pledge.",
-      "released": "Your card was checked and released, not charged.",
-      "noCard": "No card has been charged.",
-      "noMethod": "No payment method was collected, and nothing is taken unless the campaign reaches its goal by its deadline.",
-      "methodKept": "The payment method you gave is kept for later, and nothing is taken unless the campaign reaches its goal by its deadline.",
       "expired": "Your reward is no longer held"
     },
     "errors": {
@@ -2861,6 +3063,27 @@
       "amountNotANumber": "Amounts are digits and at most one full stop, like 45.00.",
       "belowRewardPrice": "This reward costs {price}. Give that or more, or choose a cheaper reward.",
       "destinationUnpriced": "The creator has not set a delivery cost to this destination for {lines}. Choose somewhere else, or take that out of your pledge."
+    },
+    "returned": {
+      "paidTitle": "Your pledge is paid",
+      "paidBody": "The payment went through and the campaign has your pledge. It is refunded in full if the campaign does not succeed.",
+      "waitingTitle": "Waiting for the payment to be confirmed",
+      "waitingBody": "The payment provider has not told us the outcome yet. This page checks again for a minute; you do not need to pay a second time.",
+      "failedTitle": "The payment did not go through",
+      "failedBody": "Nothing was taken. Your reward stays held until the hold ends, and you can pay again from the campaign."
+    },
+    "dispute": {
+      "heading": "Dispute this payment",
+      "intro": "While the creator’s payout is held, you can ask for your payment back. An administrator reads your reason and decides; if they agree, you are refunded in full.",
+      "reasonLabel": "What went wrong",
+      "reasonHint": "Up to 2,000 characters. Say what you were promised and what happened.",
+      "submit": "Send the dispute",
+      "sending": "Sending…",
+      "cancel": "Cancel",
+      "opened": "Your dispute is open. An administrator will decide it before the payout is sent.",
+      "windowClosed": "This payment can no longer be disputed through IdeaNest: no payout is being held for the campaign.",
+      "nothing": "There is nothing left of this payment to refund.",
+      "failed": "That did not work. Try again in a moment."
     }
   },
   "pricing": {
@@ -2926,7 +3149,10 @@
       "FULFILLING": "Fulfilling",
       "COMPLETED": "Completed",
       "UNSUCCESSFUL": "Did not fund",
-      "CANCELED": "Cancelled"
+      "CANCELED": "Cancelled",
+      "CLOSING_WINDOW": "Closing soon",
+      "EXTENDED": "Extended",
+      "WITHDRAWN": "Funded"
     },
     "daysLeft": "{days, plural, =0 {Last day} one {# day left} other {# days left}}",
     "backers": "{count, plural, =0 {No backers} one {# backer} other {# backers}}",
@@ -2936,8 +3162,7 @@
       "remind": "Remind me"
     },
     "back": {
-      "cta": "Back this campaign",
-      "late": "Make a late pledge"
+      "cta": "Back this campaign"
     },
     "rewards": {
       "heading": "Rewards",
@@ -2955,7 +3180,10 @@
     },
     "trust": {
       "heading": "How funding works here",
-      "body": "The platform connects creators with backers. Rewards are not guaranteed, but creators must keep backers informed. You are only charged if the project reaches its goal by the deadline."
+      "body": "The platform connects creators with backers. Rewards are not guaranteed, but creators must keep backers informed. You are charged when you pledge, and refunded in full if the project does not raise 80% of its goal.",
+      "open": "This campaign succeeds if it raises <b>{threshold}</b>, 80% of its {goal} goal, by <deadline></deadline>. If it does not, and is not extended, every backer is refunded in full.",
+      "openNoGoal": "This campaign succeeds if it raises 80% of its goal by <deadline></deadline>. If it does not, and is not extended, every backer is refunded in full.",
+      "closed": "This campaign’s deadline was <deadline></deadline>. A campaign that does not raise 80% of its goal by its deadline, or by the end of its one extension, refunds every backer in full."
     },
     "obligation": {
       "lateHeading": "This creator owes an update",
@@ -2967,13 +3195,13 @@
     },
     "outcome": {
       "funded": "This campaign was funded",
-      "notFunded": "This campaign did not reach its goal",
-      "reached": "It reached its goal before the deadline.",
-      "notReached": "It did not reach its goal before the deadline.",
+      "notFunded": "This campaign was not funded",
+      "reached": "It raised at least 80% of its goal.",
+      "notReached": "It did not raise 80% of its goal in time.",
       "raised": "It raised",
       "closedOn": "on {date}",
-      "settling": "The figures above are what the campaign raised at its deadline. Every confirmed pledge is collected after it closes, so the amount shown elsewhere on this page may change as those collections settle.",
-      "nobodyCharged": "Nobody was charged. On IdeaNest a campaign that does not reach its goal collects nothing and pays no fee."
+      "settling": "The figures above are what the campaign had raised when it closed. A refund after that lowers what the creator is paid; it does not change the outcome.",
+      "refunded": "Every backer is refunded in full. A campaign that does not raise 80% of its goal pays no fee."
     },
     "faqs": {
       "heading": "Frequently asked questions",
@@ -3005,6 +3233,675 @@
       "withdraw": "Withdraw",
       "withdrawWarning": "Withdrawing leaves a note saying the comment was removed. Any replies to it stay, and it cannot be edited or restored.",
       "keep": "Keep it"
+    },
+    "rule": "A campaign succeeds at 80% of its goal. Its creator may extend the deadline once."
+  },
+  "campaignEditor": {
+    "eyebrow": "Campaign editor",
+    "loadingTitle": "Loading",
+    "sectionsLabel": "Campaign sections",
+    "soon": "soon",
+    "notAvailable": ", not available yet",
+    "signedOutTitle": "You are signed out",
+    "signedOutDetail": "This browser no longer has a session. Sign in again to keep editing this campaign.",
+    "loadFailedTitle": "This project could not be loaded",
+    "tryAgain": "Try again",
+    "tabs": {
+      "basics": "Basics",
+      "rewards": "Rewards",
+      "story": "Story",
+      "faq": "FAQ",
+      "prelaunch": "Pre-launch",
+      "review": "Review"
+    },
+    "save": {
+      "saving": "Saving",
+      "saved": "Saved",
+      "notSaved": "Not saved"
+    },
+    "state": {
+      "DRAFT": "Draft",
+      "PRELAUNCH": "Pre-launch",
+      "SUBMITTED": "In review",
+      "CHANGES_REQUESTED": "Changes requested",
+      "REJECTED": "Rejected",
+      "APPROVED": "Approved",
+      "SCHEDULED": "Scheduled",
+      "LIVE": "Live",
+      "SUSPENDED": "Suspended",
+      "CANCELED": "Canceled",
+      "SUCCESSFUL": "Funded",
+      "UNSUCCESSFUL": "Not funded",
+      "COLLECTING": "Collecting",
+      "LATE_PLEDGE": "Late pledges",
+      "FULFILLING": "Fulfilling",
+      "COMPLETED": "Completed",
+      "CLOSING_WINDOW": "Closing soon",
+      "EXTENDED": "Extended",
+      "WITHDRAWN": "Funds withdrawn"
+    },
+    "basics": {
+      "loadingLabel": "Loading this campaign",
+      "notSavedTitle": "This change was not saved",
+      "notSavedDetail": "Nothing you typed has been lost — it is still in the fields below and will be sent again.",
+      "categoriesUnavailableTitle": "The category list is unavailable",
+      "categoriesUnavailableDetail": "Categories could not be loaded, so this campaign’s category cannot be changed here yet. Everything else on this page still saves.",
+      "title": "Title",
+      "titleHint": "The name on the discovery grid. {max} characters or fewer.",
+      "summary": "Summary",
+      "summaryHint": "One or two sentences, shown under the title in search and on the grid. {max} characters or fewer.",
+      "category": "Category",
+      "categoryHint": "Where backers will find this project.",
+      "categoryPlaceholder": "Choose a category",
+      "subcategory": "Subcategory",
+      "subcategoryPlaceholder": "No subcategory",
+      "subcategoryHintNoCategory": "Choose a category first.",
+      "subcategoryHintNone": "This category has no subcategories.",
+      "subcategoryHint": "Optional, and more specific.",
+      "goal": "Funding goal",
+      "goalHint": "The campaign succeeds at 80% of this figure. Below that, every backer is refunded in full.",
+      "goalHintLocked": "The goal cannot change once the campaign has launched.",
+      "currency": "Currency",
+      "currencyHint": "Fixed once the campaign launches.",
+      "duration": "Duration in days",
+      "durationHint": "{min} to {max} days. {recommended} is recommended.",
+      "durationHintLocked": "The deadline cannot change once the campaign has launched.",
+      "scheduledLaunch": "Scheduled launch",
+      "scheduledLaunchHint": "Optional. Leave it empty to launch by hand once the review is complete.",
+      "latePledges": "Accept late pledges",
+      "latePledgesHint": "Keeps the project open to pledges after the deadline, once it has been funded. It can be turned off again at any time.",
+      "validation": {
+        "titleRequired": "A project needs a title.",
+        "titleTooLong": "A title is {max} characters or fewer. Remove {over}.",
+        "summaryTooLong": "A summary is {max} characters or fewer. Remove {over}.",
+        "subcategoryWithoutCategory": "Choose a category first.",
+        "currencyUnsupported": "Choose a currency the platform can collect in.",
+        "durationNotWhole": "Enter the duration as a whole number of days.",
+        "durationOutOfRange": "A campaign runs for {min} to {max} days.",
+        "launchNotADate": "Enter a date and time.",
+        "launchInPast": "Choose a date and time in the future.",
+        "amount": {
+          "empty": "Enter the amount you need to raise.",
+          "notANumber": "Enter the goal in digits, for example 5000.00.",
+          "comma": "Use a full stop for the decimal point, for example 5000.00.",
+          "tooManyDecimals": "A goal has at most two decimal places.",
+          "tooLarge": "That goal is larger than the platform can hold.",
+          "notPositive": "A goal has to be more than zero."
+        }
+      }
+    },
+    "rewards": {
+      "loadingLabel": "Loading this campaign’s rewards",
+      "failedTitle": "That did not work",
+      "rewardsFailedTitle": "The rewards could not be loaded",
+      "listLabel": "Reward tiers, in the order backers see them",
+      "description": "A reward is what a backer selects and pays for: a title, a price, and the items they receive. A campaign can run without any, but almost none do.",
+      "emptyTitle": "No rewards yet",
+      "add": "Add a reward",
+      "addFirst": "Add the first reward",
+      "atCapacityTitle": "This campaign has the most rewards it can have",
+      "deleteItemTitle": "Delete item",
+      "deleteRewardTitle": "Delete reward",
+      "cannotBeUndone": "This cannot be undone.",
+      "keepIt": "Keep it",
+      "delete": "Delete",
+      "duplicate": "Duplicate",
+      "hidden": "Hidden",
+      "opensLater": "Opens later",
+      "featured": "Featured",
+      "secret": "Secret",
+      "earlyBird": "Early bird",
+      "addOn": "Add-on",
+      "items": {
+        "description": "An item is one physical or digital thing — a mug, a poster, a download. Rewards are built out of them, so this is where a campaign starts.",
+        "loadingLabel": "Loading this campaign’s items",
+        "emptyTitle": "No items yet",
+        "add": "Add an item",
+        "addFirst": "Add the first item",
+        "delete": "Delete",
+        "digital": "Digital",
+        "physical": "Physical",
+        "editNamed": "Edit {name}",
+        "deleteNamed": "Delete {name}",
+        "itemsHeading": "Items",
+        "edit": "Edit"
+      },
+      "item": {
+        "addTitle": "Add an item",
+        "editTitle": "Edit item",
+        "notSavedTitle": "This item was not saved",
+        "name": "Name",
+        "description": "Description",
+        "descriptionHint": "Optional. Size, colour, edition — whatever distinguishes this from the next item.",
+        "imageUrl": "Image address",
+        "imageUrlHint": "A published address. There is no uploader yet, so paste a link to an image that is already online.",
+        "imageUrlPlaceholder": "https://",
+        "isDigital": "Delivered as a file",
+        "weight": "Weight in grams",
+        "weightHintDigital": "A file has no shipping weight.",
+        "sku": "Stock code",
+        "skuHint": "Optional. Your own reference, unique within this campaign.",
+        "isDigitalHint": "A download or a licence. Nothing is shipped, so no weight and no address.",
+        "nameHint": "What it is, as a backer would recognise it. {max} characters or fewer.",
+        "drawerDescription": "Items are the things your campaign produces. A reward is a selection of them with quantities.",
+        "drawer": {
+          "cancel": "Cancel",
+          "save": "Save",
+          "saving": "Saving"
+        }
+      },
+      "tier": {
+        "addTitle": "Add a reward",
+        "editTitle": "Edit reward",
+        "description": "What a backer selects and pays for. It is made of the items above, in the quantities you choose.",
+        "notSavedTitle": "This reward was not saved",
+        "ratesNotSavedTitle": "The shipping rates were not saved",
+        "title": "Title",
+        "summary": "Description",
+        "summaryHint": "What they get, in a sentence or two.",
+        "price": "Price",
+        "estimatedDelivery": "Estimated delivery",
+        "estimatedDeliveryHint": "The month you expect to deliver in. Backers read this as a promise.",
+        "places": "Number of places",
+        "placesHint": "Leave empty for unlimited. A quantity may always be raised later; it may only be lowered above what is already taken.",
+        "rest": "Everything else about the reward",
+        "offering": "How it is offered",
+        "opens": "Opens",
+        "opensHint": "Optional. Leave it empty for a reward that is available as soon as the campaign is.",
+        "closes": "Closes",
+        "closesHint": "Optional. A moment in the past hides the reward — which is what the Hide control in the list sets.",
+        "earlyBird": "Early bird",
+        "featured": "Featured",
+        "featuredHint": "Shown first on the campaign page.",
+        "secret": "Secret",
+        "addOn": "Sold as an add-on",
+        "addOnHint": "Offered alongside a reward rather than instead of one.",
+        "contents": "What is in it",
+        "contentsHint": "The items a backer receives. A reward with nothing in it is legitimate — a thank-you, a credit — and it is what an empty list means.",
+        "addItem": "Add an item to this reward",
+        "addItemPlaceholder": "Add an item…",
+        "missingItem": "An item that is no longer in this campaign",
+        "noItemsYet": "This campaign has no items yet. Add one in the list behind this panel, and it will appear here.",
+        "everyItemAdded": "Every item in this campaign is already in this reward.",
+        "shipping": "Shipping rates",
+        "delivery": "Delivery",
+        "ratesHint": "One rate per destination, in {currency}. A country with no rate cannot be chosen at checkout, and 0 is free shipping.",
+        "noDestinations": "No destinations priced yet, so this reward cannot be shipped anywhere.",
+        "addDestination": "Add a destination",
+        "countryPlaceholder": "AZ",
+        "ratePlaceholder": "Rate",
+        "extraPlaceholder": "Each extra",
+        "token": "Token",
+        "titleHint": "What a backer sees in the reward list. {max} characters or fewer.",
+        "priceHint": "The amount a backer pays. Priced in {currency}, the campaign’s currency.",
+        "priceHintLocked": "The price cannot change once the campaign has launched. Priced in {currency}.",
+        "quantityOf": "Quantity of {name}",
+        "removeFromReward": "Remove {name} from this reward",
+        "countryCodeFor": "Country code for {name}",
+        "shippingRateTo": "Shipping rate to {name}",
+        "additionalRateTo": "Rate for each additional item to {name}",
+        "removeNamed": "Remove {name}",
+        "placesHintCommitted": {
+          "one": "Leave empty for unlimited. {count} place is already taken, so the limit cannot go below that.",
+          "few": "Leave empty for unlimited. {count} places are already taken, so the limit cannot go below that.",
+          "many": "Leave empty for unlimited. {count} places are already taken, so the limit cannot go below that.",
+          "other": "Leave empty for unlimited. {count} places are already taken, so the limit cannot go below that."
+        },
+        "drawer": {
+          "cancel": "Cancel",
+          "save": "Save",
+          "saving": "Saving"
+        }
+      },
+      "deleteItemNamed": "Delete {name}?",
+      "deleteRewardNamed": "Delete {title}?",
+      "movedAnnouncement": "{title} moved to position {position} of {total}.",
+      "duplicatedAnnouncement": "{title} was copied to position {position}.",
+      "hiddenAnnouncement": "{title} is hidden from the campaign page.",
+      "shownAnnouncement": "{title} is back on the campaign page.",
+      "rewardDeletedAnnouncement": "{title} was deleted.",
+      "itemDeletedAnnouncement": "{name} was deleted.",
+      "moveUpLabel": "Move {title} up, currently {position} of {total}",
+      "moveDownLabel": "Move {title} down, currently {position} of {total}",
+      "editLabel": "Edit {title}",
+      "duplicateLabel": "Duplicate {title}",
+      "showLabel": "Show {title} on the campaign page",
+      "hideLabel": "Hide {title} from the campaign page",
+      "deleteLabel": "Delete {title}",
+      "rewardsHeading": "Rewards",
+      "countOf": "{count} of {max}",
+      "edit": "Edit",
+      "show": "Show",
+      "hide": "Hide",
+      "containsNothing": "Contains no items",
+      "contains": "Contains {items}",
+      "itemTimes": "{name} ×{quantity}",
+      "missingItemInline": "an item no longer in this campaign",
+      "aRewardInCampaign": "a reward in this campaign",
+      "aReward": "a reward",
+      "itemInUse": {
+        "one": "It is part of {tiers}. Take it out of that reward first, then delete it.",
+        "few": "It is part of {tiers}. Take it out of those rewards first, then delete it.",
+        "many": "It is part of {tiers}. Take it out of those rewards first, then delete it.",
+        "other": "It is part of {tiers}. Take it out of those rewards first, then delete it."
+      },
+      "rewardHasBackers": "Hide it instead — the people who chose it keep the description of what they are owed, and it stops being offered to anybody else.",
+      "vocabulary": {
+        "scopes": {
+          "NONE": {
+            "label": "Nothing is delivered",
+            "hint": "A credit, a thank-you, a name on a wall."
+          },
+          "DIGITAL": {
+            "label": "Digital delivery",
+            "hint": "A file or a licence. No address is asked for."
+          },
+          "LOCAL_PICKUP": {
+            "label": "Collected in person",
+            "hint": "No carrier and no rate, but the backer’s country is still asked for."
+          },
+          "DOMESTIC": {
+            "label": "Shipped domestically",
+            "hint": "Inside your own country only. Needs a rate per destination."
+          },
+          "INTERNATIONAL": {
+            "label": "Shipped internationally",
+            "hint": "Anywhere you have priced. A destination with no rate cannot be chosen."
+          }
+        },
+        "item": {
+          "nameRequired": "An item needs a name.",
+          "nameTooLong": "A name is {max} characters or fewer. Remove {over}.",
+          "skuTooLong": "A stock code is {max} characters or fewer.",
+          "weightOnDigital": "A digital item has no shipping weight. Clear the weight, or make it a physical item.",
+          "weightNotWhole": "Enter the weight as a whole number of grams.",
+          "weightNotPositive": "A weight is more than zero grams."
+        },
+        "price": {
+          "empty": "A reward needs a price.",
+          "notANumber": "Enter the price in digits, for example 19.99.",
+          "comma": "Use a full stop for the decimal point, for example 19.99.",
+          "tooManyDecimals": "A price has at most two decimal places.",
+          "tooLarge": "That price is larger than the platform can hold.",
+          "notPositive": "A reward price is more than zero."
+        },
+        "rate": {
+          "empty": "Enter what shipping to this destination costs.",
+          "notANumber": "Enter the rate in digits, for example 12.50.",
+          "comma": "Use a full stop for the decimal point, for example 12.50.",
+          "tooManyDecimals": "A rate has at most two decimal places.",
+          "tooLarge": "That rate is larger than the platform can hold.",
+          "notPositive": "A rate cannot be negative. Enter 0 for free shipping."
+        },
+        "reward": {
+          "titleRequired": "A reward needs a title.",
+          "titleTooLong": "A title is {max} characters or fewer. Remove {over}.",
+          "limitNotWhole": "Enter the number of places as a whole number, or leave it empty for unlimited.",
+          "limitBelowOne": "A limited reward offers at least one place. Clear the limit to make it unlimited.",
+          "limitBelowCommitted": {
+            "one": "That is below the {count} place already taken. A quantity may always be raised, and lowered only above what is claimed.",
+            "few": "That is below the {count} places already taken. A quantity may always be raised, and lowered only above what is claimed.",
+            "many": "That is below the {count} places already taken. A quantity may always be raised, and lowered only above what is claimed.",
+            "other": "That is below the {count} places already taken. A quantity may always be raised, and lowered only above what is claimed."
+          },
+          "secretAndFeatured": "A secret reward is not shown on the page, so it cannot also be featured.",
+          "earlyBirdNeedsLimit": "An early-bird reward needs either a closing date or a limited number of places.",
+          "dateInvalid": "Enter a date and time, or leave it empty.",
+          "closesBeforeOpens": "A reward closes after it opens, not before.",
+          "itemsDuplicate": "Each item appears once, with the quantity as its count.",
+          "itemsQuantity": "A reward contains at least one of every item it lists."
+        },
+        "rates": {
+          "notShipped": "Only a reward shipped domestically or internationally has per-country rates. Change the delivery method, or remove the rates.",
+          "badCountryCode": "A destination is a two-letter country code, for example AZ or TR.",
+          "duplicateDestination": "Each destination appears once: {code} is listed twice.",
+          "prefixed": "{code}: {message}"
+        },
+        "showBlockedEarlyBird": "This is an early-bird reward, and one needs either a closing date or a limited number of places. Set a limit, or turn off early bird, before showing it again.",
+        "stock": {
+          "unlimited": "Unlimited places",
+          "remaining": "{remaining} of {limit} places left"
+        }
+      }
+    },
+    "drawer": {
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving"
+    },
+    "story": {
+      "vocabulary": {
+        "blockLabel": {
+          "heading": "Heading",
+          "paragraph": "Paragraph",
+          "list": "List",
+          "quote": "Quote",
+          "rule": "Divider",
+          "image": "Image",
+          "embed": "Embed"
+        },
+        "describe": {
+          "position": "{index} of {total}",
+          "heading": "Heading {position}: {text}",
+          "headingEmpty": "empty",
+          "withPreview": "{label} {position}: {preview}",
+          "list": {
+            "one": "{style} list {position}, {count} item",
+            "few": "{style} list {position}, {count} items",
+            "many": "{style} list {position}, {count} items",
+            "other": "{style} list {position}, {count} items"
+          },
+          "rule": "Divider {position}",
+          "image": "Image {position}: {alt}",
+          "imageNoAlt": "no description yet",
+          "embed": "{provider} embed {position}: {title}",
+          "embedNoTitle": "no title yet",
+          "numbered": "Numbered",
+          "bulleted": "Bulleted"
+        },
+        "problems": {
+          "headingNeedsText": "A heading needs its text.",
+          "anchorUnusable": "This anchor is not usable in a link. Rename the heading to regenerate it.",
+          "anchorDuplicate": "Another heading already uses this anchor. Rename one of them.",
+          "imageNeedsUrl": "An image needs an address.",
+          "urlScheme": "An address has to begin with http:// or https://.",
+          "imageNotMeasured": "This image has not been measured yet. Use “Measure and add” so its size is recorded.",
+          "imageNeedsAlt": "A description is required. It is what a backer using a screen reader receives instead of the picture.",
+          "embedNeedsUrl": "An embed needs an address.",
+          "embedNeedsTitle": "An embed needs a title. It is what a screen reader announces instead of “frame”."
+        }
+      },
+      "panel": {
+        "readOnlyTitle": "This story cannot be edited by this page",
+        "notSavedTitle": "This change was not saved",
+        "notSavingTitle": "The story is not being saved yet",
+        "notSavingDetail": "One block is incomplete. The message beside it says what is missing, and saving resumes as soon as it is filled in.",
+        "loadingLabel": "Loading this campaign’s story",
+        "reload": "Reload",
+        "earlierVersions": "Earlier versions",
+        "anchorMenu": "Anchor menu on your project page",
+        "risks": "Risks and challenges",
+        "risksHint": "What could go wrong, and what you will do about it. At least {min} characters, and required before you can submit.",
+        "risksPlaceholder": "Manufacturing, shipping, and timing are the usual three. Say what is already settled and what is not.",
+        "charactersNeeded": "{count} of {min} characters needed to submit"
+      },
+      "blocks": {
+        "heading": "Story",
+        "add": "Add a block",
+        "addOne": "Add {kind}. {hint}",
+        "section": "Section",
+        "subsection": "Subsection",
+        "ruleHint": "A divider. It separates sections and carries no text.",
+        "bulleted": "Bulleted",
+        "numbered": "Numbered",
+        "addItem": "Add item",
+        "headingPlaceholder": "How it works",
+        "embedUrlPlaceholder": "https://www.youtube.com/watch?v=…",
+        "embedTitlePlaceholder": "What this video shows",
+        "imageUrlPlaceholder": "https://images.example.com/prototype.jpg",
+        "imageAltPlaceholder": "What the picture shows",
+        "nothingUploadedTitle": "Nothing is uploaded here",
+        "listHint": "Bulleted or numbered.",
+        "imageHint": "An image that is already published somewhere.",
+        "quoteHint": "Something somebody said about this project",
+        "paragraphHint": "Write a paragraph. Select text and use Bold or Italic, or type **bold** and *italic*.",
+        "needUrlFirst": "Enter the address of an image first.",
+        "notAnImage": "That address could not be loaded as an image.",
+        "measuring": "Measuring",
+        "measureAndAdd": "Measure and add",
+        "measured": "Added a {size} pixel image.",
+        "moveUp": "Move {name} up",
+        "moveDown": "Move {name} down",
+        "remove": "Remove {name}",
+        "levelOf": "Level of {name}",
+        "textOf": "Text of {name}",
+        "providerOf": "Provider of {name}",
+        "addressOf": "Address of {name}",
+        "titleOf": "Title of {name}",
+        "styleOf": "Style of {name}",
+        "descriptionOf": "Description of {name}",
+        "itemOf": "Item {at} of {count} in {name}",
+        "removeItemOf": "Remove item {at} of {count} in {name}",
+        "addItemTo": "Add an item to {name}",
+        "addedAnnouncement": "{label} added as block {position} of {total}.",
+        "movedAnnouncement": "{label} moved to {position} of {total}.",
+        "removedAnnouncement": {
+          "one": "{label} removed. {count} block left.",
+          "few": "{label} removed. {count} blocks left.",
+          "many": "{label} removed. {count} blocks left.",
+          "other": "{label} removed. {count} blocks left."
+        },
+        "hints": {
+          "paragraph": "A run of text, with bold and italics.",
+          "heading": "A section title. Headings become the anchor menu.",
+          "list": "Bulleted or numbered.",
+          "quote": "A pulled-out quotation.",
+          "image": "An image that is already published somewhere.",
+          "embed": "A YouTube or Vimeo video.",
+          "rule": "A horizontal divider."
+        },
+        "empty": "Nothing here yet. Add a paragraph to begin — most campaigns open with what the product is and who it is for."
+      },
+      "history": {
+        "title": "Earlier versions",
+        "failedTitle": "The history could not be loaded",
+        "emptyTitle": "No earlier versions yet",
+        "loadingLabel": "Loading earlier versions",
+        "description": "A version is kept each time the story changes, at most one every few minutes. The most recent fifty are here.",
+        "emptyDescription": "One is kept the first time the story changes, and then at most one every few minutes while you write.",
+        "replaceWarning": "The story you have now is replaced.",
+        "preview": "Preview",
+        "previewVersion": "Preview version {number}",
+        "restoreTitle": "Restore a version",
+        "restore": "Restore",
+        "restoring": "Restoring",
+        "restoreThis": "Restore this version",
+        "restoreVersion": "Restore version {number}",
+        "confirmTitle": "Restore version {number}?",
+        "keepMine": "Keep what I have",
+        "noBlocks": "This version has no blocks.",
+        "divider": "Divider",
+        "tryAgain": "Try again",
+        "previewSummary": {
+          "one": "{count} block · {characters} characters",
+          "few": "{count} blocks · {characters} characters",
+          "many": "{count} blocks · {characters} characters",
+          "other": "{count} blocks · {characters} characters"
+        }
+      },
+      "toolbar": {
+        "formattingFor": "Formatting for {label}",
+        "bold": "Bold",
+        "italic": "Italic",
+        "boldShortcut": "Control B",
+        "italicShortcut": "Control I"
+      }
+    },
+    "faq": {
+      "atLimitTitle": "This campaign is at the limit",
+      "failedTitle": "That did not work",
+      "questionsFailedTitle": "The questions could not be loaded",
+      "emptyTitle": "No questions yet",
+      "loadingLabel": "Loading this campaign’s questions",
+      "listLabel": "Questions, in the order backers see them",
+      "description": "The campaign page shows this list on its own tab. Until there is something in it, the tab tells a backer the campaign has not answered anything yet — which is true, and is worth changing before you launch.",
+      "add": "Add a question",
+      "addFirst": "Add the first question",
+      "keepIt": "Keep it",
+      "delete": "Delete",
+      "edit": "Edit",
+      "deleteTitle": "Delete question",
+      "deleteNamed": "Delete “{question}”?",
+      "cannotBeUndone": "This cannot be undone.",
+      "moveUpLabel": "Move {question} up, currently {position} of {total}",
+      "moveDownLabel": "Move {question} down, currently {position} of {total}",
+      "editLabel": "Edit {question}",
+      "deleteLabel": "Delete {question}",
+      "movedAnnouncement": "{question} moved to position {position} of {total}.",
+      "deletedAnnouncement": "{question} was deleted.",
+      "order": {
+        "refusal": "The order was refused because {detail}. The list has been read again, so it now matches the campaign — put it back in the order you wanted.",
+        "missing": "this page had not seen {items}",
+        "unexpected": "{items} no longer exists",
+        "disagreed": "the two lists disagreed",
+        "quoted": "“{question}”",
+        "joinAnd": "{head} and {last}",
+        "otherQuestions": {
+          "one": "{count} other question",
+          "few": "{count} other questions",
+          "many": "{count} other questions",
+          "other": "{count} other questions"
+        }
+      },
+      "entry": {
+        "addTitle": "Add a question",
+        "editTitle": "Edit question",
+        "notSavedTitle": "This question was not saved",
+        "notSavedDetail": "Nothing you typed has been lost — it is still in the fields below.",
+        "description": "Questions and answers appear on the campaign page, in the order you put them in.",
+        "question": "Question",
+        "questionHint": "As a backer would ask it. {max} characters or fewer.",
+        "answer": "Answer",
+        "answerHint": "Plain text. Blank lines become paragraph breaks on the campaign page; nothing else is formatting. {max} characters or fewer."
+      }
+    },
+    "prelaunch": {
+      "loadingLabel": "Loading this campaign",
+      "notSavedTitle": "This change was not saved",
+      "notOpenHeading": "The pre-launch page is not open yet",
+      "notOpenBody": "Opening it publishes the title, summary, and cover image below at a link you can share, and lets people ask to be told the moment the campaign opens. Nothing else about the campaign becomes public, and no money is involved.",
+      "notOpenIrreversible": "It cannot be closed again — the campaign moves forward from here, to review and then to launch.",
+      "openFailedTitle": "The page was not opened",
+      "open": "Open the pre-launch page",
+      "openHeading": "The pre-launch page is open",
+      "followersFailed": "The number of people waiting could not be loaded.",
+      "waiting": {
+        "one": "{count} person is waiting for this campaign.",
+        "few": "{count} people are waiting for this campaign.",
+        "many": "{count} people are waiting for this campaign.",
+        "other": "{count} people are waiting for this campaign."
+      },
+      "link": "Pre-launch link",
+      "linkHint": "Share this anywhere. Anybody who opens it can ask to be told when the campaign goes live.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copiedAnnouncement": "Link copied",
+      "closedTitle": "The pre-launch page has closed",
+      "closedBody": "This campaign has moved past its pre-launch page. Everybody who asked to be reminded is told once, when it goes live.",
+      "saysHeading": "What the page says",
+      "saysBody": "These are the campaign’s title, summary, and cover image — the same ones the Basics tab holds. A pre-launch page that promised something different from the campaign would be promising it to the people most likely to notice.",
+      "title": "Title",
+      "titleHint": "The name on the pre-launch page and on the discovery grid. {max} characters or fewer.",
+      "summary": "Summary",
+      "summaryHint": "One or two sentences. This is what somebody reads before deciding to follow. {max} characters or fewer.",
+      "confirmTitle": "Open the pre-launch page?",
+      "confirmBody": "The title, summary, and cover image become public at a link anyone can open. This cannot be undone.",
+      "cancel": "Cancel",
+      "opening": "Opening",
+      "confirmOpen": "Open the page"
+    },
+    "review": {
+      "loadFailedTitle": "This campaign could not be loaded",
+      "notSubmittedTitle": "This campaign was not submitted",
+      "notLaunchedTitle": "This campaign was not launched",
+      "loadingLabel": "Checking how complete this campaign is",
+      "completeness": "Completeness",
+      "progressLabel": "Campaign completeness: {score} percent",
+      "checkAgain": "Check again",
+      "seeOtherPlans": "See what the other plans allow",
+      "requiredHeading": "Required before you can submit",
+      "requiredDescription": "Every one of these comes from the platform's submission rules. A campaign cannot go to moderation until they are all done.",
+      "recommendedHeading": "Recommended, but not required",
+      "recommendedDescription": "None of these stops you submitting. Each one is something campaigns that do well tend to have.",
+      "requiredNotDone": "Required, not done",
+      "recommendedNotDone": "Recommended, not done",
+      "fixIn": "Fix in {section}",
+      "submit": "Submit for review",
+      "submitting": "Submitting",
+      "recommendedNotPartOfThis": "The recommended items are not part of this.",
+      "finishThem": "Finish them and this becomes available.",
+      "launch": "Launch this campaign",
+      "launching": "Launching",
+      "launchNow": "Launch now",
+      "confirmLaunchTitle": "Launch this campaign now?",
+      "cancel": "Cancel",
+      "noReason": "No reason was recorded.",
+      "refusedTitle": "This campaign was refused",
+      "changesRequestedTitle": "Our moderators have asked for changes",
+      "planDoesNotCover": "Your plan does not cover this campaign.",
+      "serviceRefused": "The service refused the request.",
+      "stateNote": {
+        "SUBMITTED": "This campaign is with our moderators. There is nothing for you to do while it is in review, and you will be told the outcome. You can keep editing in the meantime.",
+        "APPROVED": "Moderation has cleared this campaign. It goes live when you launch it, or at the launch time you set.",
+        "SCHEDULED": "Cleared and waiting for its launch time.",
+        "REJECTED": "This campaign was refused and cannot be submitted again.",
+        "LIVE": "This campaign is live and taking pledges."
+      },
+      "notFound": "That campaign could not be found.",
+      "noAccess": "You do not have access to this campaign.",
+      "unreachable": "The service could not be reached. Check your connection and try again.",
+      "progressSummary": "{score}% complete. {blockingDone} of {blockingTotal} required items done, {advisoryDone} of {advisoryTotal} recommended.",
+      "blockersRemaining": {
+        "one": "{count} required item is not done yet.",
+        "few": "{count} required items are not done yet.",
+        "many": "{count} required items are not done yet.",
+        "other": "{count} required items are not done yet."
+      },
+      "moderatorNote": "A moderator reads the campaign and either clears it, asks for changes, or refuses it. You can keep editing while it is in review."
+    },
+    "cover": {
+      "label": "Cover image",
+      "hint": "Shown on the discovery grid and at the top of the project page. {minimum} pixels or larger reads best.",
+      "remove": "Remove cover",
+      "prompt": "Drop an image here to use it as the cover",
+      "dragPrompt": "Release to upload this image",
+      "buttonLabel": "Choose an image",
+      "dropHint": "Up to 20 MB. It is converted and resized here, and the original is not kept. {minimum} or larger reads best.",
+      "urlPlaceholder": "Or paste an address: https://images.example.com/cover.jpg",
+      "needUrlFirst": "Enter the address of an image first.",
+      "notUsedTitle": "That file was not used",
+      "unusable": "That image could not be used.",
+      "softTitle": "This will look soft at full width",
+      "set": "Cover set from a {size} pixel image.",
+      "setSmall": "Cover set from a {size} pixel image. It is below the recommended {minimum}, so it will be scaled up to fill the header and will look soft. Its proportions are kept — the frame crops rather than stretches. The campaign can still be submitted.",
+      "stage": {
+        "preparing": "Preparing",
+        "uploading": "Uploading",
+        "processing": "Processing"
+      },
+      "failures": {
+        "TOO_SMALL": "That image is too small to display. Anything from {minimum} upwards reads well.",
+        "UNSUPPORTED_FORMAT": "That file is not an image this platform can read. JPEG, PNG, WebP, AVIF and HEIC all work.",
+        "TOO_LARGE": "That file is too large. The limit is 20 MB.",
+        "EMPTY": "That file is empty.",
+        "UNREADABLE": "That image could not be converted. A different file should work.",
+        "UPLOADS_UNAVAILABLE": "Uploading is not switched on for this environment. Paste an address instead.",
+        "MEDIA_STORAGE_UNREACHABLE": "Image storage is not answering. Please try again shortly.",
+        "UPLOAD_STILL_PROCESSING": "That image is taking longer than usual. It may appear if you come back to this tab.",
+        "UPLOAD_TRANSFER_FAILED": "The image did not reach storage. Check the connection and try again."
+      }
+    },
+    "newProject": {
+      "notCreatedTitle": "The draft was not created",
+      "notCreated": "The draft could not be created. Try again.",
+      "title": "Project title",
+      "titleHint": "It can be changed at any time before the campaign launches. {max} characters or fewer.",
+      "creating": "Creating the draft",
+      "start": "Start editing",
+      "signInFirst": "Sign in to start a project.",
+      "notAllowed": "This account is not allowed to create projects.",
+      "unreachable": "The service could not be reached, so no draft was created. Try again.",
+      "heading": "Start a project",
+      "intro": "Give it a working title. The editor saves as you type, and nothing is visible to anybody else until you submit the campaign for review.",
+      "metaDescription": "Name your campaign and start editing it. Nothing is public until you submit it."
+    },
+    "meta": {
+      "basics": "The title, summary, category, goal, duration, and cover image of your campaign.",
+      "rewards": "The items your campaign produces, and the reward tiers backers choose from — prices, quantities, delivery, and order.",
+      "story": "The long-form story of your campaign, its risks and challenges, and its earlier versions.",
+      "faq": "The questions your campaign answers on its own page, and the order backers read them in.",
+      "prelaunch": "Open a pre-launch page, share the link, and collect the people who want to be told when your campaign opens.",
+      "review": "How complete your campaign is, what moderation has said about it, and submitting it for review."
     }
   },
   "profile": {
@@ -3062,18 +3959,18 @@
   "static": {
     "about": {
       "metaTitle": "About",
-      "metaDescription": "What IdeaNest is, how all-or-nothing funding works, and what it costs.",
+      "metaDescription": "What IdeaNest is, how success at 80% of the goal works, and what it costs.",
       "title": "About IdeaNest",
       "summary": "A place to fund things that do not exist yet, on terms that are the same for everybody.",
-      "intro": "IdeaNest is a reward-based crowdfunding platform. A creator publishes a campaign with a goal and a deadline; people who want the thing to exist pledge towards it; and if the goal is met by the deadline, the pledges are collected and the creator makes the thing. If it is not, nobody is charged at all.",
+      "intro": "IdeaNest is a reward-based crowdfunding platform. A creator publishes a campaign with a goal and a deadline; people who want the thing to exist pledge towards it and are charged when they do; and if the campaign raises at least 80% of its goal, the creator withdraws the money and makes the thing. If it does not, every backer is refunded in full.",
       "allOrNothing": {
-        "heading": "All or nothing, and why it is not a detail",
-        "first": "A partly funded campaign is worse than an unfunded one. It leaves a creator holding money that is not enough to finish with and backers holding a promise nobody can keep. So a campaign that misses its goal collects nothing, costs its creator no fee, and leaves every card untouched.",
-        "second": "The consequence is that a deadline means something. A campaign at 90% on its last day is genuinely at risk, and the platform says so rather than dressing it up."
+        "heading": "Success at 80%, and why the line is there",
+        "first": "A campaign that raises 80% of its goal succeeds, and its creator owes every reward to every backer whatever percentage it closed at. Below that the money is not enough to rely on, so the campaign fails, costs its creator no fee, and every backer is refunded in full.",
+        "second": "A deadline still means something. A creator may extend it once, to no more than sixty days after the first deadline, and backers are told the new date. A campaign below 80% at the end of that is refunded, and the platform says so rather than dressing it up."
       },
       "cost": {
         "heading": "What it costs",
-        "successful": "<b>A successful campaign</b> pays 5% of what it raised, plus the payment processor’s own fee — roughly 2.5–3% and a small fixed amount per pledge.",
+        "successful": "<b>A successful campaign</b> pays 15% of every withdrawal — the bank’s and the payment provider’s fees are inside it — and the creator receives 85%.",
         "unsuccessful": "<b>An unsuccessful campaign</b> pays nothing. No listing fee, no platform fee, no processing fee.",
         "note": "Rates are configuration rather than code, so a category or an individual agreement can carry a different one. The rate above is the standard schedule."
       },
@@ -3093,9 +3990,9 @@
       "summary": "What happens between finding a campaign and holding the thing it funded.",
       "backing": {
         "heading": "If you are backing something",
-        "first": "Choose a reward tier, or pledge without one. Your card is authorised and <b>nothing is taken</b> while the campaign is running — you can change your pledge, move to a different tier, add an extra, or cancel outright until the deadline.",
-        "second": "At the deadline one of two things happens. If the campaign reached its goal, every confirmed pledge is collected and the campaign moves into fulfilment. If it did not, nothing is collected, no fee is charged, and the stored card tokens are deleted within thirty days.",
-        "third": "A card can fail at collection — expired, out of funds, refused by a bank. There is a seven-day window in which it is retried before the pledge is given up on."
+        "first": "Choose a reward tier, or pledge without one. <b>You are charged when you pledge</b>, and the money is held on the platform’s account. A pledge cannot be cancelled; while the campaign is taking pledges you can raise it with a higher tier or an extra.",
+        "second": "A campaign succeeds at 80% of its goal. From then on its creator can withdraw the money, or extend the deadline once. If the campaign has not reached 80% by its deadline, or by the end of the extension, every backer is refunded in full and no fee is charged.",
+        "third": "Once a creator withdraws, the payout is held for fourteen days. In that time a backer can dispute their payment and an administrator decides; an upheld dispute is refunded in full."
       },
       "surveys": {
         "heading": "Then the creator asks you some questions",
@@ -3235,878 +4132,31 @@
       "unconfigured": "IdeaNest has not set a fee schedule, so nothing is being deducted from pledges today. This is not a permanent commitment: the rates are published here the moment any are set, and the creator agreement is where the terms are stated."
     }
   },
-  "editor": {
-    "frame": {
-      "eyebrow": "Campaign editor",
-      "loading": "Loading",
-      "sections": "Campaign sections",
-      "soon": "soon",
-      "unavailable": ", not available yet",
-      "tabs": {
-        "basics": "Basics",
-        "rewards": "Rewards",
-        "story": "Story",
-        "faq": "FAQ",
-        "prelaunch": "Pre-launch",
-        "review": "Review"
-      },
-      "states": {
-        "DRAFT": "Draft",
-        "PRELAUNCH": "Pre-launch",
-        "SUBMITTED": "In review",
-        "CHANGES_REQUESTED": "Changes requested",
-        "REJECTED": "Rejected",
-        "APPROVED": "Approved",
-        "SCHEDULED": "Scheduled",
-        "LIVE": "Live",
-        "SUSPENDED": "Suspended",
-        "CANCELED": "Canceled",
-        "SUCCESSFUL": "Funded",
-        "UNSUCCESSFUL": "Not funded",
-        "COLLECTING": "Collecting",
-        "LATE_PLEDGE": "Late pledges",
-        "FULFILLING": "Fulfilling",
-        "COMPLETED": "Completed"
-      },
-      "save": {
-        "saving": "Saving",
-        "saved": "Saved",
-        "failed": "Not saved"
-      },
-      "signedOut": {
-        "title": "You are signed out",
-        "body": "This browser no longer has a session. Sign in again to keep editing this campaign."
-      },
-      "loadFailed": "This project could not be loaded",
-      "tryAgain": "Try again",
-      "failures": {
-        "save": {
-          "signedOut": "You have been signed out. Sign in again — nothing you typed has been lost.",
-          "notAllowed": "You are not allowed to edit this project.",
-          "gone": "This project no longer exists.",
-          "stale": "The project has changed since this page was opened. Reload it to see the current version.",
-          "invalid": "The service rejected the change. Check the fields marked below.",
-          "unsaved": "The change could not be saved. Try again.",
-          "unreachable": "The service could not be reached, so nothing was saved. Try again."
-        },
-        "load": {
-          "forbidden": "You do not have access to this project.",
-          "notFound": "That project could not be found.",
-          "refused": "The service refused the request. Try again.",
-          "unreachable": "The service could not be reached. Check your connection and try again."
-        }
-      }
-    },
-    "basics": {
-      "loading": "Loading this campaign",
-      "saveFailed": {
-        "title": "This change was not saved",
-        "kept": "Nothing you typed has been lost — it is still in the fields below and will be sent again."
-      },
-      "title": {
-        "label": "Title",
-        "hint": "The name on the discovery grid. {max} characters or fewer."
-      },
-      "blurb": {
-        "label": "Summary",
-        "hint": "One or two sentences, shown under the title in search and on the grid. {max} characters or fewer."
-      },
-      "categoriesUnavailable": {
-        "title": "The category list is unavailable",
-        "body": "Categories could not be loaded, so this campaign’s category cannot be changed here yet. Everything else on this page still saves."
-      },
-      "category": {
-        "label": "Category",
-        "hint": "Where backers will find this project.",
-        "placeholder": "Choose a category"
-      },
-      "subcategory": {
-        "label": "Subcategory",
-        "placeholder": "No subcategory",
-        "chooseCategory": "Choose a category first.",
-        "none": "This category has no subcategories.",
-        "optional": "Optional, and more specific."
-      },
-      "goal": {
-        "label": "Funding goal",
-        "hint": "All or nothing: nothing is collected unless this figure is reached.",
-        "locked": "The goal cannot change once the campaign has launched."
-      },
-      "currency": {
-        "label": "Currency",
-        "hint": "Fixed once the campaign launches."
-      },
-      "duration": {
-        "label": "Duration in days",
-        "hint": "{min} to {max} days. {recommended} is recommended.",
-        "locked": "The deadline cannot change once the campaign has launched."
-      },
-      "schedule": {
-        "label": "Scheduled launch",
-        "hint": "Optional. Leave it empty to launch by hand once the review is complete."
-      },
-      "latePledge": {
-        "label": "Accept late pledges",
-        "hint": "Keeps the project open to pledges after the deadline, once it has been funded. It can be turned off again at any time."
-      },
-      "errors": {
-        "titleMissing": "A project needs a title.",
-        "titleTooLong": "A title is {max} characters or fewer. Remove {over}.",
-        "blurbTooLong": "A summary is {max} characters or fewer. Remove {over}.",
-        "subcategoryWithoutCategory": "Choose a category first.",
-        "currencyUnsupported": "Choose a currency the platform can collect in.",
-        "durationNotWhole": "Enter the duration as a whole number of days.",
-        "durationOutOfRange": "A campaign runs for {min} to {max} days.",
-        "scheduleUnreadable": "Enter a date and time.",
-        "schedulePast": "Choose a date and time in the future.",
-        "amount": {
-          "empty": "Enter the amount you need to raise.",
-          "notANumber": "Enter the goal in digits, for example 5000.00.",
-          "comma": "Use a full stop for the decimal point, for example 5000.00.",
-          "tooManyDecimals": "A goal has at most two decimal places.",
-          "tooLarge": "That goal is larger than the platform can hold.",
-          "notPositive": "A goal has to be more than zero."
-        }
-      },
-      "cover": {
-        "label": "Cover image",
-        "hint": "Shown on the discovery grid and at the top of the project page. {minimum} pixels or larger reads best.",
-        "set": "Cover is {size} pixels",
-        "uploaded": " · uploaded",
-        "remove": "Remove cover",
-        "drop": "Drop an image here to use it as the cover",
-        "release": "Release to upload this image",
-        "choose": "Choose an image",
-        "dropHint": "Up to 20 MB. It is converted and resized here, and the original is not kept. {minimum} or larger reads best.",
-        "addressLabel": "Cover image address",
-        "addressPlaceholder": "Or paste an address: https://images.example.com/cover.jpg",
-        "checking": "Checking",
-        "useAddress": "Use this address",
-        "addressMissing": "Enter the address of an image first.",
-        "accepted": "Cover set from a {size} pixel image.",
-        "softTitle": "This will look soft at full width",
-        "soft": "Cover set from a {size} pixel image. It is below the recommended {minimum}, so it will be scaled up to fill the header and will look soft. Its proportions are kept — the frame crops rather than stretches. The campaign can still be submitted.",
-        "rejectedTitle": "That file was not used",
-        "unusable": "That image could not be used.",
-        "stages": {
-          "preparing": "Preparing the image…",
-          "uploading": "Uploading the image…",
-          "processing": "Processing the image…"
-        },
-        "refusals": {
-          "UNSUPPORTED_FORMAT": "That file is not an image this platform can read. JPEG, PNG, WebP, AVIF and HEIC all work.",
-          "TOO_LARGE": "That file is too large. The limit is 20 MB.",
-          "TOO_SMALL": "That image is too small to display. Anything from {minimum} upwards reads well.",
-          "EMPTY": "That file is empty.",
-          "UNREADABLE": "That image could not be converted. A different file should work.",
-          "UPLOADS_UNAVAILABLE": "Uploading is not switched on for this environment. Paste an address instead.",
-          "MEDIA_STORAGE_UNREACHABLE": "Image storage is not answering. Please try again shortly.",
-          "UPLOAD_STILL_PROCESSING": "That image is taking longer than usual. It may appear if you come back to this tab.",
-          "UPLOAD_TRANSFER_FAILED": "The image did not reach storage. Check the connection and try again."
-        }
-      }
-    },
-    "rewards": {
-      "loading": "Loading this campaign’s rewards",
-      "listFailed": "The rewards could not be loaded",
-      "actionFailed": "That did not work",
-      "kept": "Nothing you typed has been lost — it is still in the fields below.",
-      "itemInUse": {
-        "one": "It is part of {tiers}. Take it out of that reward first, then delete it.",
-        "few": "It is part of {tiers}. Take it out of those rewards first, then delete it.",
-        "many": "It is part of {tiers}. Take it out of those rewards first, then delete it.",
-        "other": "It is part of {tiers}. Take it out of those rewards first, then delete it."
-      },
-      "rewardHasBackers": "Hide it instead — the people who chose it keep the description of what they are owed, and it stops being offered to anybody else.",
-      "heading": "Rewards",
-      "count": "({count} of {max})",
-      "add": "Add a reward",
-      "fullTitle": "This campaign has the most rewards it can have",
-      "fullBody": "§5.3 allows {max}. Delete or combine one before adding another.",
-      "empty": {
-        "title": "No rewards yet",
-        "body": "A reward is what a backer selects and pays for: a title, a price, and the items they receive. A campaign can run without any, but almost none do.",
-        "action": "Add the first reward"
-      },
-      "listLabel": "Reward tiers, in the order backers see them",
-      "announce": {
-        "moved": "{title} moved to position {position} of {total}.",
-        "duplicated": "{title} was copied to position {position}.",
-        "hidden": "{title} is hidden from the campaign page.",
-        "shown": "{title} is back on the campaign page.",
-        "deleted": "{title} was deleted."
-      },
-      "card": {
-        "hidden": "Hidden",
-        "opensLater": "Opens later",
-        "featured": "Featured",
-        "secret": "Secret",
-        "earlyBird": "Early bird",
-        "addon": "Add-on",
-        "delivers": "Delivers {month}",
-        "moveUp": "Move {title} up, currently {position} of {total}",
-        "moveDown": "Move {title} down, currently {position} of {total}",
-        "edit": "Edit",
-        "editLabel": "Edit {title}",
-        "duplicate": "Duplicate",
-        "duplicateLabel": "Duplicate {title}",
-        "show": "Show",
-        "showLabel": "Show {title} on the campaign page",
-        "hide": "Hide",
-        "hideLabel": "Hide {title} from the campaign page",
-        "delete": "Delete",
-        "deleteLabel": "Delete {title}",
-        "backed": {
-          "one": "{count} backer has chosen this reward, so it can be hidden but not deleted.",
-          "few": "{count} backers have chosen this reward, so it can be hidden but not deleted.",
-          "many": "{count} backers have chosen this reward, so it can be hidden but not deleted.",
-          "other": "{count} backers have chosen this reward, so it can be hidden but not deleted."
-        }
-      },
-      "contents": {
-        "none": "Contains no items",
-        "some": "Contains {items}",
-        "quantity": "{name} ×{quantity}",
-        "missing": "an item no longer in this campaign"
-      },
-      "namedTiers": {
-        "unknown": "a reward in this campaign",
-        "one": "a reward"
-      },
-      "deleteItem": {
-        "title": "Delete item",
-        "named": "Delete {name}?",
-        "body": "An item that a reward contains cannot be deleted — take it out of the reward first. This one is not in any reward as far as this page knows, and the service checks again."
-      },
-      "deleteReward": {
-        "title": "Delete reward",
-        "named": "Delete {title}?",
-        "body": "Once somebody has backed a reward it can no longer be deleted, only hidden — so deleting is offered while nobody has."
-      },
-      "deleteNote": "This cannot be undone.",
-      "keepIt": "Keep it",
-      "confirmDelete": "Delete",
-      "items": {
-        "heading": "Items",
-        "count": "({count})",
-        "add": "Add an item",
-        "loading": "Loading this campaign’s items",
-        "empty": {
-          "title": "No items yet",
-          "body": "An item is one physical or digital thing — a mug, a poster, a download. Rewards are built out of them, so this is where a campaign starts.",
-          "action": "Add the first item"
-        },
-        "digital": "Digital",
-        "physical": "Physical",
-        "grams": "{weight} g",
-        "editLabel": "Edit {name}",
-        "deleteLabel": "Delete {name}"
-      },
-      "drawer": {
-        "cancel": "Cancel",
-        "save": "Save",
-        "saving": "Saving"
-      },
-      "itemEditor": {
-        "titleNew": "Add an item",
-        "titleEdit": "Edit item",
-        "intro": "Items are the things your campaign produces. A reward is a selection of them with quantities.",
-        "failed": "This item was not saved",
-        "name": {
-          "label": "Name",
-          "hint": "What it is, as a backer would recognise it. {max} characters or fewer."
-        },
-        "description": {
-          "label": "Description",
-          "hint": "Optional. Size, colour, edition — whatever distinguishes this from the next item."
-        },
-        "image": {
-          "label": "Image address",
-          "hint": "A published address. There is no uploader yet, so paste a link to an image that is already online."
-        },
-        "digital": {
-          "label": "Delivered as a file",
-          "hint": "A download or a licence. Nothing is shipped, so no weight and no address."
-        },
-        "weight": {
-          "label": "Weight in grams",
-          "hint": "Optional, and what shipping is worked out from later.",
-          "digital": "A file has no shipping weight."
-        },
-        "sku": {
-          "label": "Stock code",
-          "hint": "Optional. Your own reference, unique within this campaign."
-        }
-      },
-      "itemErrors": {
-        "nameMissing": "An item needs a name.",
-        "nameTooLong": "A name is {max} characters or fewer. Remove {over}.",
-        "skuTooLong": "A stock code is {max} characters or fewer.",
-        "weightOnDigital": "A digital item has no shipping weight. Clear the weight, or make it a physical item.",
-        "weightNotWhole": "Enter the weight as a whole number of grams.",
-        "weightNotPositive": "A weight is more than zero grams."
-      },
-      "tierEditor": {
-        "titleNew": "Add a reward",
-        "titleEdit": "Edit reward",
-        "intro": "What a backer selects and pays for. It is made of the items above, in the quantities you choose.",
-        "failed": "This reward was not saved",
-        "ratesFailed": "The shipping rates were not saved",
-        "ratesKeptLead": "The reward itself was saved.",
-        "ratesKeptRest": "Only the per-country rates were refused, so fix them and save again — the rest will not be sent twice.",
-        "title": {
-          "label": "Title",
-          "hint": "What a backer sees in the reward list. {max} characters or fewer."
-        },
-        "description": {
-          "label": "Description",
-          "hint": "What they get, in a sentence or two."
-        },
-        "price": {
-          "label": "Price",
-          "hint": "The amount a backer pays. Priced in {currency}, the campaign’s currency.",
-          "locked": "The price cannot change once the campaign has launched. Priced in {currency}."
-        },
-        "delivery": {
-          "label": "Estimated delivery",
-          "hint": "The month you expect to deliver in. Backers read this as a promise."
-        },
-        "places": {
-          "label": "Number of places",
-          "hint": "Leave empty for unlimited. A quantity may always be raised later; it may only be lowered above what is already taken.",
-          "committed": "Leave empty for unlimited. Places already taken: {committed}, so the limit cannot go below that."
-        },
-        "shipping": {
-          "label": "Delivery"
-        }
-      },
-      "scopes": {
-        "NONE": {
-          "label": "Nothing is delivered",
-          "hint": "A credit, a thank-you, a name on a wall."
-        },
-        "DIGITAL": {
-          "label": "Digital delivery",
-          "hint": "A file or a licence. No address is asked for."
-        },
-        "LOCAL_PICKUP": {
-          "label": "Collected in person",
-          "hint": "No carrier and no rate, but the backer’s country is still asked for."
-        },
-        "DOMESTIC": {
-          "label": "Shipped domestically",
-          "hint": "Inside your own country only. Needs a rate per destination."
-        },
-        "INTERNATIONAL": {
-          "label": "Shipped internationally",
-          "hint": "Anywhere you have priced. A destination with no rate cannot be chosen."
-        }
-      },
-      "rates": {
-        "label": "Shipping rates",
-        "hint": "One rate per destination, in {currency}. A country with no rate cannot be chosen at checkout, and 0 is free shipping.",
-        "empty": "No destinations priced yet, so this reward cannot be shipped anywhere.",
-        "add": "Add a destination",
-        "unnamed": "destination {position}",
-        "countryLabel": "Country code for {destination}",
-        "ratePlaceholder": "Rate",
-        "rateLabel": "Shipping rate to {destination}",
-        "extraPlaceholder": "Each extra",
-        "extraLabel": "Rate for each additional item to {destination}",
-        "removeLabel": "Remove {destination}"
-      },
-      "composition": {
-        "label": "What is in it",
-        "hint": "The items a backer receives. A reward with nothing in it is legitimate — a thank-you, a credit — and it is what an empty list means.",
-        "missing": "An item that is no longer in this campaign",
-        "quantityLabel": "Quantity of {name}",
-        "removeLabel": "Remove {name} from this reward",
-        "addPlaceholder": "Add an item…",
-        "addLabel": "Add an item to this reward",
-        "noItems": "This campaign has no items yet. Add one in the list behind this panel, and it will appear here.",
-        "allChosen": "Every item in this campaign is already in this reward."
-      },
-      "opens": {
-        "label": "Opens",
-        "hint": "Optional. Leave it empty for a reward that is available as soon as the campaign is."
-      },
-      "closes": {
-        "label": "Closes",
-        "hint": "Optional. A moment in the past hides the reward — which is what the Hide control in the list sets."
-      },
-      "offering": {
-        "legend": "How it is offered"
-      },
-      "earlyBird": {
-        "label": "Early bird",
-        "hint": "A better deal that runs out. It needs either a closing date or a limited number of places — without one it is an ordinary reward with a label that hurries people for nothing."
-      },
-      "featured": {
-        "label": "Featured",
-        "hint": "Shown first on the campaign page."
-      },
-      "secret": {
-        "label": "Secret",
-        "hint": "Left out of the public list and reached by a private token instead. Making it public again destroys that token, so any link already sent stops working.",
-        "token": "Token"
-      },
-      "addon": {
-        "label": "Sold as an add-on",
-        "hint": "Offered alongside a reward rather than instead of one."
-      },
-      "errors": {
-        "titleMissing": "A reward needs a title.",
-        "titleTooLong": "A title is {max} characters or fewer. Remove {over}.",
-        "price": {
-          "empty": "A reward needs a price.",
-          "notANumber": "Enter the price in digits, for example 19.99.",
-          "comma": "Use a full stop for the decimal point, for example 19.99.",
-          "tooManyDecimals": "A price has at most two decimal places.",
-          "tooLarge": "That price is larger than the platform can hold.",
-          "notPositive": "A reward price is more than zero."
-        },
-        "rate": {
-          "empty": "Enter what shipping to this destination costs.",
-          "notANumber": "Enter the rate in digits, for example 12.50.",
-          "comma": "Use a full stop for the decimal point, for example 12.50.",
-          "tooManyDecimals": "A rate has at most two decimal places.",
-          "tooLarge": "That rate is larger than the platform can hold.",
-          "notPositive": "A rate cannot be negative. Enter 0 for free shipping."
-        },
-        "limitNotWhole": "Enter the number of places as a whole number, or leave it empty for unlimited.",
-        "limitTooSmall": "A limited reward offers at least one place. Clear the limit to make it unlimited.",
-        "limitBelowCommitted": "That is below what is already taken: {committed}. A quantity may always be raised, and lowered only above what is claimed.",
-        "secretFeatured": "A secret reward is not shown on the page, so it cannot also be featured.",
-        "earlyBirdNeedsLimit": "An early-bird reward needs either a closing date or a limited number of places.",
-        "dateUnreadable": "Enter a date and time, or leave it empty.",
-        "closesBeforeOpens": "A reward closes after it opens, not before.",
-        "itemsDuplicate": "Each item appears once, with the quantity as its count.",
-        "itemsQuantity": "A reward contains at least one of every item it lists.",
-        "rulesNotShipped": "Only a reward shipped domestically or internationally has per-country rates. Change the delivery method, or remove the rates.",
-        "rulesCountryCode": "A destination is a two-letter country code, for example AZ or TR.",
-        "rulesDuplicate": "Each destination appears once: {code} is listed twice.",
-        "rulesRow": "{code}: {reason}"
-      },
-      "stock": {
-        "unlimited": "Unlimited places",
-        "remaining": {
-          "one": "{count} of {limit} place left",
-          "few": "{count} of {limit} places left",
-          "many": "{count} of {limit} places left",
-          "other": "{count} of {limit} places left"
-        }
-      },
-      "showBlocked": "This is an early-bird reward, and one needs either a closing date or a limited number of places. Set a limit, or turn off early bird, before showing it again."
-    },
-    "story": {
-      "loading": "Loading this campaign’s story",
-      "unreadable": {
-        "title": "This story cannot be edited by this page",
-        "body": "It was written in a newer format than this editor understands. Reload the page to get the current editor. Nothing has been changed, and the story is still on your project page.",
-        "reload": "Reload"
-      },
-      "saveFailed": {
-        "title": "This change was not saved",
-        "kept": "Nothing you have written has been lost — it is still on this page and will be sent again."
-      },
-      "blocked": {
-        "title": "The story is not being saved yet",
-        "body": {
-          "one": "One block is incomplete. The message beside it says what is missing, and saving resumes as soon as it is filled in.",
-          "few": "{count} blocks are incomplete. The messages beside them say what is missing, and saving resumes as soon as they are filled in.",
-          "many": "{count} blocks are incomplete. The messages beside them say what is missing, and saving resumes as soon as they are filled in.",
-          "other": "{count} blocks are incomplete. The messages beside them say what is missing, and saving resumes as soon as they are filled in."
-        }
-      },
-      "counter": "{count} of {minimum} characters needed to submit",
-      "earlierVersions": "Earlier versions",
-      "anchors": {
-        "heading": "Anchor menu on your project page",
-        "untitled": "Untitled section"
-      },
-      "risks": {
-        "label": "Risks and challenges",
-        "hint": "What could go wrong, and what you will do about it. At least {minimum} characters, and required before you can submit.",
-        "placeholder": "Manufacturing, shipping, and timing are the usual three. Say what is already settled and what is not."
-      },
-      "blocks": {
-        "heading": "Story",
-        "empty": "Nothing here yet. Add a paragraph to begin — most campaigns open with what the product is and who it is for.",
-        "addHeading": "Add a block",
-        "position": " · {position} of {total}",
-        "moveUp": "Move {name} up",
-        "moveDown": "Move {name} down",
-        "remove": "Remove {name}"
-      },
-      "blockLabel": {
-        "heading": "Heading",
-        "paragraph": "Paragraph",
-        "list": "List",
-        "quote": "Quote",
-        "rule": "Divider",
-        "image": "Image",
-        "embed": "Embed"
-      },
-      "addLabel": {
-        "paragraph": "Add a paragraph. A run of text, with bold and italics.",
-        "heading": "Add a heading. A section title. Headings become the anchor menu.",
-        "list": "Add a list. Bulleted or numbered.",
-        "quote": "Add a quote. A pulled-out quotation.",
-        "image": "Add an image. An image that is already published somewhere.",
-        "embed": "Add an embed. A YouTube or Vimeo video.",
-        "rule": "Add a divider. A horizontal divider."
-      },
-      "announce": {
-        "added": "{block} added as block {position} of {total}.",
-        "moved": "{block} moved to {position} of {total}.",
-        "removed": {
-          "one": "{block} removed. {count} block left.",
-          "few": "{block} removed. {count} blocks left.",
-          "many": "{block} removed. {count} blocks left.",
-          "other": "{block} removed. {count} blocks left."
-        }
-      },
-      "describe": {
-        "empty": "empty",
-        "heading": "Heading {position} of {total}: {text}",
-        "paragraph": "Paragraph {position} of {total}: {preview}",
-        "quote": "Quote {position} of {total}: {preview}",
-        "rule": "Divider {position} of {total}",
-        "image": "Image {position} of {total}: {alt}",
-        "imageNoAlt": "no description yet",
-        "embed": "{provider} embed {position} of {total}: {title}",
-        "embedNoTitle": "no title yet",
-        "listBulleted": {
-          "one": "Bulleted list {position} of {total}, {count} item",
-          "few": "Bulleted list {position} of {total}, {count} items",
-          "many": "Bulleted list {position} of {total}, {count} items",
-          "other": "Bulleted list {position} of {total}, {count} items"
-        },
-        "listOrdered": {
-          "one": "Numbered list {position} of {total}, {count} item",
-          "few": "Numbered list {position} of {total}, {count} items",
-          "many": "Numbered list {position} of {total}, {count} items",
-          "other": "Numbered list {position} of {total}, {count} items"
-        }
-      },
-      "problems": {
-        "headingText": "A heading needs its text.",
-        "anchorUnusable": "This anchor is not usable in a link. Rename the heading to regenerate it.",
-        "anchorDuplicate": "Another heading already uses this anchor. Rename one of them.",
-        "imageAddress": "An image needs an address.",
-        "addressScheme": "An address has to begin with http:// or https://.",
-        "imageUnmeasured": "This image has not been measured yet. Use “Measure and add” so its size is recorded.",
-        "imageAlt": "A description is required. It is what a backer using a screen reader receives instead of the picture.",
-        "embedAddress": "An embed needs an address.",
-        "embedTitle": "An embed needs a title. It is what a screen reader announces instead of “frame”."
-      },
-      "fields": {
-        "headingLevel": "Level of {name}",
-        "headingSection": "Section",
-        "headingSubsection": "Subsection",
-        "headingText": "Text of {name}",
-        "headingPlaceholder": "How it works",
-        "paragraphPlaceholder": "Write a paragraph. Select text and use Bold or Italic, or type **bold** and *italic*.",
-        "quotePlaceholder": "Something somebody said about this project",
-        "ruleNote": "A divider. It separates sections and carries no text.",
-        "listStyle": "Style of {name}",
-        "listBulleted": "Bulleted",
-        "listOrdered": "Numbered",
-        "listItem": "Item {position} of {total} in {name}",
-        "listRemoveItem": "Remove item {position} of {total} in {name}",
-        "listAddItem": "Add item",
-        "listAddItemLabel": "Add an item to {name}",
-        "embedProvider": "Provider of {name}",
-        "embedAddress": "Address of {name}",
-        "embedAddressPlaceholder": "https://www.youtube.com/watch?v=…",
-        "embedTitle": "Title of {name}",
-        "embedTitlePlaceholder": "What this video shows",
-        "embedNote": "The title is what a screen reader announces instead of “frame”. Only YouTube and Vimeo can be embedded."
-      },
-      "image": {
-        "noUploadTitle": "Nothing is uploaded here",
-        "noUploadBody": "Give the address of an image that is already published. Its size is read in your browser and stored with the story, so the page can reserve its space before it loads.",
-        "address": "Address of {name}",
-        "addressPlaceholder": "https://images.example.com/prototype.jpg",
-        "measure": "Measure and add",
-        "measuring": "Measuring",
-        "addressMissing": "Enter the address of an image first.",
-        "added": "Added a {size} pixel image.",
-        "unreadable": "That address could not be loaded as an image.",
-        "pixels": "{size} pixels",
-        "alt": "Description of {name}",
-        "altPlaceholder": "What the picture shows",
-        "altNote": "Required. It is what a backer using a screen reader receives instead of the picture, so describe what it shows rather than naming the file."
-      },
-      "marks": {
-        "group": "Formatting for {label}",
-        "bold": "Bold",
-        "italic": "Italic",
-        "named": "{name}, {shortcut}"
-      },
-      "history": {
-        "title": "Earlier versions",
-        "intro": "A version is kept each time the story changes, at most one every few minutes. The most recent fifty are here.",
-        "loading": "Loading earlier versions",
-        "failed": "The history could not be loaded",
-        "emptyTitle": "No earlier versions yet",
-        "emptyBody": "One is kept the first time the story changes, and then at most one every few minutes while you write.",
-        "version": "Version {number}",
-        "mostRecent": "most recent",
-        "characters": "{count} characters",
-        "preview": "Preview",
-        "previewLabel": "Preview version {number}",
-        "hide": "Hide",
-        "restore": "Restore",
-        "restoreLabel": "Restore version {number}",
-        "loadingVersion": "Loading this version…",
-        "previewNewer": "This version was written in a newer format than this editor understands. Reload the page to get the current editor.",
-        "historyFailed": "The version history could not be loaded.",
-        "versionFailed": "That version could not be loaded.",
-        "restoreFailed": "That version could not be restored. Nothing has changed.",
-        "unreachable": "The service could not be reached. Check your connection and try again.",
-        "confirmTitle": "Restore a version",
-        "confirmNamed": "Restore version {number}?",
-        "confirmIntro": "The story you have now is replaced.",
-        "keep": "Keep what I have",
-        "confirm": "Restore this version",
-        "restoring": "Restoring",
-        "savedAt": "Version {number} was saved {when} and holds {characters} characters.",
-        "currentHolds": "The story you have now holds {characters} characters. It is kept as a version before being replaced, so this can be undone from this same list.",
-        "previewEmpty": "This version has no blocks.",
-        "previewSummary": {
-          "one": "{count} block · {characters} characters",
-          "few": "{count} blocks · {characters} characters",
-          "many": "{count} blocks · {characters} characters",
-          "other": "{count} blocks · {characters} characters"
-        }
-      }
-    },
-    "faq": {
-      "loading": "Loading this campaign’s questions",
-      "listFailed": "The questions could not be loaded",
-      "actionFailed": "That did not work",
-      "heading": "Questions",
-      "count": "({count})",
-      "intro": "These appear on the campaign’s FAQ tab, in this order. Answering the question a backer would otherwise ask in the comments is the point of the list.",
-      "add": "Add a question",
-      "fullTitle": "This campaign is at the limit",
-      "fullBody": "A campaign may publish {max} questions. Delete one to add another.",
-      "empty": {
-        "title": "No questions yet",
-        "body": "The campaign page shows this list on its own tab. Until there is something in it, the tab tells a backer the campaign has not answered anything yet — which is true, and is worth changing before you launch.",
-        "action": "Add the first question"
-      },
-      "listLabel": "Questions, in the order backers see them",
-      "announce": {
-        "moved": "{question} moved to position {position} of {total}.",
-        "deleted": "{question} was deleted."
-      },
-      "row": {
-        "moveUp": "Move {question} up, currently {position} of {total}",
-        "moveDown": "Move {question} down, currently {position} of {total}",
-        "edit": "Edit",
-        "editLabel": "Edit {question}",
-        "delete": "Delete",
-        "deleteLabel": "Delete {question}"
-      },
-      "delete": {
-        "title": "Delete question",
-        "named": "Delete “{question}”?",
-        "note": "This cannot be undone.",
-        "keep": "Keep it",
-        "confirm": "Delete",
-        "body": "Nothing is owed against a question, so it goes for good — unlike a reward tier, which can only be hidden once somebody has chosen it."
-      },
-      "orderRefusal": {
-        "missing": "The order was refused because this page had not seen {missing}.",
-        "unexpected": "The order was refused because {unexpected} no longer exists.",
-        "both": "The order was refused because this page had not seen {missing}, and {unexpected} no longer exists.",
-        "unknown": "The order was refused because the two lists disagreed.",
-        "reread": "The list has been read again, so it now matches the campaign — put it back in the order you wanted.",
-        "conjunction": "and",
-        "others": {
-          "one": "{count} other question",
-          "few": "{count} other questions",
-          "many": "{count} other questions",
-          "other": "{count} other questions"
-        }
-      },
-      "editor": {
-        "titleNew": "Add a question",
-        "titleEdit": "Edit question",
-        "intro": "Questions and answers appear on the campaign page, in the order you put them in.",
-        "failed": "This question was not saved",
-        "kept": "Nothing you typed has been lost — it is still in the fields below.",
-        "question": {
-          "label": "Question",
-          "hint": "As a backer would ask it. {max} characters or fewer."
-        },
-        "answer": {
-          "label": "Answer",
-          "hint": "Plain text. Blank lines become paragraph breaks on the campaign page; nothing else is formatting. {max} characters or fewer."
-        }
-      },
-      "errors": {
-        "questionMissing": "A question is needed. It is what a backer scans the list for.",
-        "answerMissing": "An answer is needed. A question with no answer reads as a refusal to give one.",
-        "questionTooLong": {
-          "one": "That is {count} character too long. A question is at most {max}.",
-          "few": "That is {count} characters too long. A question is at most {max}.",
-          "many": "That is {count} characters too long. A question is at most {max}.",
-          "other": "That is {count} characters too long. A question is at most {max}."
-        },
-        "answerTooLong": {
-          "one": "That is {count} character too long. An answer is at most {max}.",
-          "few": "That is {count} characters too long. An answer is at most {max}.",
-          "many": "That is {count} characters too long. An answer is at most {max}.",
-          "other": "That is {count} characters too long. An answer is at most {max}."
-        }
-      }
-    },
-    "prelaunch": {
-      "loading": "Loading this campaign",
-      "saveFailed": {
-        "title": "This change was not saved",
-        "kept": "Nothing you typed has been lost — it is still in the fields below and will be sent again."
-      },
-      "notOpen": {
-        "heading": "The pre-launch page is not open yet",
-        "body": "Opening it publishes the title, summary, and cover image below at a link you can share, and lets people ask to be told the moment the campaign opens. Nothing else about the campaign becomes public, and no money is involved.",
-        "permanent": "It cannot be closed again — the campaign moves forward from here, to review and then to launch.",
-        "failed": "The page was not opened",
-        "action": "Open the pre-launch page"
-      },
-      "live": {
-        "heading": "The pre-launch page is open",
-        "countUnavailable": "The number of people waiting could not be loaded.",
-        "waiting": {
-          "one": "{count} person is waiting for this campaign.",
-          "few": "{count} people are waiting for this campaign.",
-          "many": "{count} people are waiting for this campaign.",
-          "other": "{count} people are waiting for this campaign."
-        },
-        "linkLabel": "Pre-launch link",
-        "linkHint": "Share this anywhere. Anybody who opens it can ask to be told when the campaign goes live.",
-        "copy": "Copy",
-        "copied": "Copied",
-        "copiedAnnounced": "Link copied"
-      },
-      "closed": {
-        "title": "The pre-launch page has closed",
-        "body": "This campaign has moved past its pre-launch page. Everybody who asked to be reminded is told once, when it goes live."
-      },
-      "form": {
-        "heading": "What the page says",
-        "intro": "These are the campaign’s title, summary, and cover image — the same ones the Basics tab holds. A pre-launch page that promised something different from the campaign would be promising it to the people most likely to notice.",
-        "titleHint": "The name on the pre-launch page and on the discovery grid. {max} characters or fewer.",
-        "blurbHint": "One or two sentences. This is what somebody reads before deciding to follow. {max} characters or fewer."
-      },
-      "confirm": {
-        "title": "Open the pre-launch page?",
-        "intro": "The title, summary, and cover image become public at a link anyone can open. This cannot be undone.",
-        "body": "Nothing about your rewards, story, or funding goal is published, and the campaign does not take money until it is reviewed and launched.",
-        "cancel": "Cancel",
-        "action": "Open the page",
-        "opening": "Opening"
-      }
-    },
-    "review": {
-      "loading": "Checking how complete this campaign is",
-      "loadFailed": "This campaign could not be loaded",
-      "moderation": {
-        "rejected": "This campaign was refused",
-        "changes": "Our moderators have asked for changes",
-        "noReason": "No reason was recorded."
-      },
-      "stateNote": {
-        "SUBMITTED": "This campaign is with our moderators. There is nothing for you to do while it is in review, and you will be told the outcome. You can keep editing in the meantime.",
-        "APPROVED": "Moderation has cleared this campaign. It goes live when you launch it, or at the launch time you set.",
-        "SCHEDULED": "Cleared and waiting for its launch time.",
-        "REJECTED": "This campaign was refused and cannot be submitted again.",
-        "LIVE": "This campaign is live and taking pledges."
-      },
-      "refusal": {
-        "title": "This campaign was not submitted",
-        "item": "{label}: {detail}",
-        "plans": "See what the other plans allow",
-        "checkAgain": "Check again"
-      },
-      "progress": {
-        "heading": "Completeness",
-        "summary": "{score}% complete. {blockingDone} of {blockingTotal} required items done, {advisoryDone} of {advisoryTotal} recommended.",
-        "barLabel": "Campaign completeness: {score} percent"
-      },
-      "blocking": {
-        "heading": "Required before you can submit",
-        "description": "Every one of these comes from the platform’s submission rules. A campaign cannot go to moderation until they are all done."
-      },
-      "advisory": {
-        "heading": "Recommended, but not required",
-        "description": "None of these stops you submitting. Each one is something campaigns that do well tend to have."
-      },
-      "row": {
-        "done": "Done",
-        "requiredNotDone": "Required, not done",
-        "recommendedNotDone": "Recommended, not done",
-        "status": ", {status}",
-        "fix": "Fix in {section}",
-        "fixDetail": ": {label}"
-      },
-      "submit": {
-        "heading": "Submit for review",
-        "submitting": "Submitting",
-        "ready": "A moderator reads the campaign and either clears it, asks for changes, or refuses it. You can keep editing while it is in review.",
-        "held": {
-          "one": "{count} required item is not done yet. Finish it and this becomes available.",
-          "few": "{count} required items are not done yet. Finish them and this becomes available.",
-          "many": "{count} required items are not done yet. Finish them and this becomes available.",
-          "other": "{count} required items are not done yet. Finish them and this becomes available."
-        },
-        "heldWithSuggestions": {
-          "one": "{count} required item is not done yet. The recommended items are not part of this.",
-          "few": "{count} required items are not done yet. The recommended items are not part of this.",
-          "many": "{count} required items are not done yet. The recommended items are not part of this.",
-          "other": "{count} required items are not done yet. The recommended items are not part of this."
-        }
-      },
-      "launch": {
-        "heading": "Launch this campaign",
-        "failed": "This campaign was not launched",
-        "confirmHeading": "Launch this campaign now?",
-        "confirmBody": "It becomes public immediately and starts taking pledges. The funding goal and the deadline are fixed on launch and cannot be edited afterwards, and a live campaign cannot be taken back to a draft.",
-        "now": "Launch now",
-        "launching": "Launching",
-        "cancel": "Cancel",
-        "explanation": "The campaign appears everywhere on the platform and starts taking pledges the moment it launches. Its goal and its deadline freeze from that point, and a live campaign cannot be taken back to a draft."
-      },
-      "failures": {
-        "notFound": "That campaign could not be found.",
-        "planLimit": "Your plan does not cover this campaign.",
-        "forbidden": "You do not have access to this campaign.",
-        "refused": "The service refused the request.",
-        "unreachable": "The service could not be reached. Check your connection and try again."
-      }
-    },
-    "pages": {
-      "basics": {
-        "metaDescription": "The title, summary, category, goal, duration, and cover image of your campaign."
-      },
-      "rewards": {
-        "metaDescription": "The items your campaign produces, and the reward tiers backers choose from — prices, quantities, delivery, and order."
-      },
-      "story": {
-        "metaDescription": "The long-form story of your campaign, its risks and challenges, and its earlier versions."
-      },
-      "faq": {
-        "metaDescription": "The questions your campaign answers on its own page, and the order backers read them in."
-      },
-      "prelaunch": {
-        "metaDescription": "Open a pre-launch page, share the link, and collect the people who want to be told when your campaign opens."
-      },
-      "review": {
-        "metaDescription": "How complete your campaign is, what moderation has said about it, and submitting it for review."
-      }
-    }
+  "dashboardControls": {
+    "heading": "Extend or withdraw",
+    "rule": "A campaign succeeds at 80% of its goal. While it has raised at least 50%, you may extend its deadline once, to no later than sixty days after the first deadline. Withdrawing closes the campaign.",
+    "extend": "Extend the deadline",
+    "extendLabel": "New deadline",
+    "extendHint": "No later than {latest}. Backers are told the new date; they are not asked.",
+    "extendConfirmTitle": "Extend this campaign to {date}?",
+    "extendConfirmBody": "You can extend only once, and the new deadline cannot be moved again. Every backer is notified.",
+    "extendNow": "Extend to this date",
+    "extending": "Extending…",
+    "extended": "The deadline is now {date}. Backers are being told.",
+    "withdraw": "Withdraw the funds",
+    "withdrawConfirmTitle": "Withdraw and close this campaign?",
+    "withdrawConfirmBody": "The campaign stops taking pledges at once and cannot reopen. The payout is held for fourteen days, during which backers may dispute their payment. You owe every reward to every backer.",
+    "withdrawNow": "Withdraw and close",
+    "withdrawing": "Withdrawing…",
+    "withdrawn": "The campaign is closed and the payout is requested. We will ask for your VÖEN and business card before it is sent.",
+    "cancel": "Cancel",
+    "belowThreshold": "Funds can be withdrawn once the campaign has raised 80% of its goal.",
+    "extendWrongState": "This campaign cannot be extended in its current state.",
+    "extendAlready": "This campaign has already been extended once.",
+    "extendOutsideWindow": "A campaign can be extended from seven days before its first deadline until seven days after it.",
+    "extendBelow": "A campaign can be extended once it has raised at least 50% of its goal.",
+    "extendDate": "Choose a date after the current deadline and no later than {latest}.",
+    "withdrawWrongState": "Funds can be withdrawn only from a campaign that is live, in its closing week, extended or successful.",
+    "failed": "That did not work. Try again in a moment."
   }
 }

@@ -67,6 +67,13 @@ public enum NotificationType {
             NotificationChannel.IN_APP),
 
     /**
+     * IDN-EXT-01 (#34): the creator extended the deadline once. Every backer is told the new
+     * date and asked nothing — §5.1 — so it goes by every channel a funding outcome does.
+     */
+    CAMPAIGN_EXTENDED(NotificationCategory.CAMPAIGN, NotificationChannel.EMAIL, NotificationChannel.PUSH,
+            NotificationChannel.IN_APP),
+
+    /**
      * §5.5's monthly update is nearly due — issue #437.
      *
      * <p><strong>The only message the obligation clock sends, and it is a warning rather than a
@@ -101,6 +108,13 @@ public enum NotificationType {
     /** The creator's money left the platform — §4.11's AD-05. */
     PAYOUT_SENT(NotificationCategory.PAYMENTS, NotificationChannel.EMAIL, NotificationChannel.PUSH,
             NotificationChannel.IN_APP),
+
+    /** IDN-EXT-01 (#41): to every backer — the creator's payout was requested; dispute until the date. */
+    WITHDRAWAL_REQUESTED(NotificationCategory.PAYMENTS, NotificationChannel.EMAIL, NotificationChannel.PUSH,
+            NotificationChannel.IN_APP),
+
+    /** IDN-EXT-01 (#41): to the creator, weekly — the payout waits for their VÖEN and business card. */
+    PAYOUT_DETAILS_NEEDED(NotificationCategory.PAYMENTS, NotificationChannel.EMAIL, NotificationChannel.IN_APP),
 
     /** A campaign published an update — §5.5 and #83. */
     NEW_UPDATE_PUBLISHED(NotificationCategory.COMMUNITY, NotificationChannel.EMAIL, NotificationChannel.PUSH,

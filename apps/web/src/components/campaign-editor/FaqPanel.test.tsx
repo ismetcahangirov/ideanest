@@ -12,17 +12,8 @@ import {
   type ProjectEdit,
   type ProjectFaq,
 } from '../../lib/projects/api';
-import { faqCopyFrom } from '../../lib/i18n/editor-copy';
-import { translatorFor } from '../../test-copy';
 import { FaqPanel } from './FaqPanel';
-
-/*
- * The copy the page would have resolved, built from `messages/en.json` by the same function it
- * calls — issue #459. Retyping the sentences here would give a test that passes whatever the
- * catalogue says, which is the opposite of what it is for; `test-copy.ts` carries the
- * argument in full.
- */
-const COPY = faqCopyFrom(translatorFor('editor'));
+import { EDITOR_COPY, FAQ_COPY } from '../../test-editor-copy';
 
 /**
  * §4.4's creator-managed question and answer list — the editor half of #283.
@@ -104,7 +95,7 @@ async function openFaqs(faqs: readonly ProjectFaq[] = [SHIPPING, DELIVERY]): Pro
   listFaqsMock.mockResolvedValue(faqs);
 
   const user = userEvent.setup({ advanceTimers: (ms) => void vi.advanceTimersByTime(ms) });
-  render(<FaqPanel projectId="project-1" copy={COPY} />);
+  render(<FaqPanel projectId="project-1" copy={EDITOR_COPY} faq={FAQ_COPY} />);
 
   // The project, then the list.
   await tick();
@@ -160,7 +151,7 @@ describe('FaqPanel', () => {
     getProjectEditMock.mockResolvedValue(PROJECT);
     listFaqsMock.mockRejectedValue(new ApiError(500, { status: 500, title: 'Server error' }));
 
-    render(<FaqPanel projectId="project-1" copy={COPY} />);
+    render(<FaqPanel projectId="project-1" copy={EDITOR_COPY} faq={FAQ_COPY} />);
     await tick();
     await tick();
 

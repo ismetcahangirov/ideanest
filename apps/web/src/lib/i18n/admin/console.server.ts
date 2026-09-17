@@ -35,18 +35,22 @@ import {
   type TaxonomyManagerCopy,
 } from './curation-copy';
 import {
+  backerDisputeQueueCopyFrom,
   disputeConsoleCopyFrom,
   feeEditorCopyFrom,
   ledgerExplorerCopyFrom,
   planManagerCopyFrom,
+  revenueReportCopyFrom,
   paymentLogCopyFrom,
   payoutQueueCopyFrom,
   reconciliationCopyFrom,
   refundConsoleCopyFrom,
+  type BackerDisputeQueueCopy,
   type DisputeConsoleCopy,
   type FeeEditorCopy,
   type LedgerExplorerCopy,
   type PlanManagerCopy,
+  type RevenueReportCopy,
   type PaymentLogCopy,
   type PayoutQueueCopy,
   type ReconciliationCopy,
@@ -208,6 +212,11 @@ export async function refundConsoleCopy(): Promise<RefundConsoleCopy> {
   return refundConsoleCopyFrom(await getTranslations('admin'), await consoleChrome());
 }
 
+/** IDN-EXT-01 (#44): the backer dispute queue, below the chargebacks. */
+export async function backerDisputeQueueCopy(): Promise<BackerDisputeQueueCopy> {
+  return backerDisputeQueueCopyFrom(await getTranslations('admin'), await consoleChrome());
+}
+
 export async function disputeConsoleCopy(): Promise<DisputeConsoleCopy> {
   return disputeConsoleCopyFrom(await getTranslations('admin'), await consoleChrome());
 }
@@ -219,6 +228,10 @@ export async function feeEditorCopy(): Promise<FeeEditorCopy> {
 /** AD-11's other screen: the plan catalogue and the payments waiting to be recorded. */
 export async function planManagerCopy(): Promise<PlanManagerCopy> {
   return planManagerCopyFrom(await getTranslations('admin'), await consoleChrome());
+}
+
+export async function revenueReportCopy(): Promise<RevenueReportCopy> {
+  return revenueReportCopyFrom(await getTranslations('admin'), await consoleChrome());
 }
 
 export async function moderationQueueCopy(): Promise<ModerationQueueCopy> {

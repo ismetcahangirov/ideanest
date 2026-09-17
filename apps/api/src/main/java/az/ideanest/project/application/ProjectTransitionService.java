@@ -438,7 +438,7 @@ public class ProjectTransitionService {
      * questions.</strong> The campaign must have <em>enabled</em> late pledges — the
      * editor's switch, which is the creator saying they offer them at all — and the
      * window must end in the future and within
-     * {@link az.ideanest.project.ProjectProperties.LatePledges#maxWindow()}. Enabling
+     * {@code late-pledges.max-window} (removed by #36). Enabling
      * is a standing decision and the window is this one; keeping them apart is what
      * lets a creator who runs out of stock switch the feature off and stop taking
      * pledges on the next request, without a transition they cannot reverse.
@@ -457,37 +457,166 @@ public class ProjectTransitionService {
      * @throws ProjectFieldRejectedException when the window is in the past or beyond
      *     the platform's bound
      */
+    /**
+     * Extends a campaign's deadline, once — IDN-EXT-01 (#34), §5.1: {@code LIVE} or
+     * {@code CLOSING_WINDOW} → {@code EXTENDED}.
+     *
+     * <p><strong>The creator alone</strong>, through the two-argument {@code requireTransitionable}
+     * that {@link #cancel} uses. It moves the date every backer committed to, without asking them,
+     * and no grant confers that.
+     *
+     * <p><strong>The conditions, in the order a creator can act on them:</strong> the campaign is
+     * live or in its window; it has not been extended; it is between seven days before and seven
+     * days after its first deadline; it has raised at least half its goal. The date then has to
+     * end after the first deadline and in the future, and no later than sixty days after the first
+     * deadline — "even if extended on the seventh day after", so the limit is measured from the
+     * deadline and never from now. Each bound is configuration under
+     * {@code ideanest.project.extension}.
+     *
+     * <p>Backers are told, not asked: the {@code project.extended} event is recorded in this
+     * transaction and the notification module sends {@code CAMPAIGN_EXTENDED} to every backer.
+     *
+     * @throws ExtensionNotAvailableException when the campaign may not be extended now, with the
+     *     reason
+     * @throws ProjectFieldRejectedException on {@code until} when the date is outside §5.1's bounds
+     */
     @Transactional
-    public Project openLatePledges(UUID projectId, UUID accountId, Instant endsAt) {
+    public Project extend(UUID projectId, UUID accountId, Instant until) {
         Project project = access.requireTransitionable(projectId, accountId);
-        requireEdge(project.getState(), ProjectState.LATE_PLEDGE);
+        ProjectProperties.Extension rules = properties.extension();
 
-        if (!project.isLatePledgeEnabled()) {
-            throw new LatePledgesNotEnabledException(projectId);
+        if (project.getExtensionUsedAt() != null || project.getState() == ProjectState.EXTENDED) {
+            throw new ExtensionNotAvailableException(projectId, ExtensionNotAvailableException.Reason.ALREADY_EXTENDED);
         }
-        Instant now = clock.instant();
-        if (endsAt == null || !endsAt.isAfter(now)) {
-            throw new ProjectFieldRejectedException(
-                    "endsAt", "A late-pledge window has to end in the future.");
-        }
-        Instant furthest = now.plus(properties.latePledges().maxWindow());
-        if (endsAt.isAfter(furthest)) {
-            throw new ProjectFieldRejectedException(
-                    "endsAt",
-                    "A late-pledge window may run for at most "
-                            + properties.latePledges().maxWindow().toDays() + " days.");
+        if (project.getState() != ProjectState.LIVE && project.getState() != ProjectState.CLOSING_WINDOW) {
+            throw new ExtensionNotAvailableException(projectId, ExtensionNotAvailableException.Reason.WRONG_STATE);
         }
 
-        // The window and the state, in one transaction. A campaign in LATE_PLEDGE with
-        // no window would refuse every pledge -- PledgeAcceptance requires all three
-        // facts -- and would look, to its creator, like a feature that does not work.
-        project.openLatePledgesUntil(endsAt.truncatedTo(ChronoUnit.MICROS));
-        return apply(
+        Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
+        Instant deadline = project.getDeadline();
+        Instant opens = deadline.minus(rules.opensBefore());
+        Instant closes = deadline.plus(properties.finalisation().closingWindow());
+        if (now.isBefore(opens) || !now.isBefore(closes)) {
+            throw new ExtensionNotAvailableException(projectId, ExtensionNotAvailableException.Reason.OUTSIDE_WINDOW);
+        }
+        if (project.getGoalAmount() == null
+                || project.getPledgedAmount().compareTo(project.getGoalAmount().multiply(rules.threshold())) < 0) {
+            throw new ExtensionNotAvailableException(projectId, ExtensionNotAvailableException.Reason.BELOW_THRESHOLD);
+        }
+
+        if (until == null || !until.isAfter(deadline) || !until.isAfter(now)) {
+            throw new ProjectFieldRejectedException(
+                    "until", "An extension has to end after the first deadline and in the future.");
+        }
+        Instant furthest = deadline.plus(rules.limit());
+        if (until.isAfter(furthest)) {
+            throw new ProjectFieldRejectedException(
+                    "until",
+                    "An extension may end at most " + rules.limit().toDays() + " days after the first deadline.");
+        }
+
+        project.extendUntil(until.truncatedTo(ChronoUnit.MICROS), now);
+        Project extended = apply(
                 project,
-                ProjectState.LATE_PLEDGE,
+                ProjectState.EXTENDED,
                 access.roleOf(project, accountId),
                 accountId,
-                "Late pledges accepted until " + endsAt);
+                "Extended once, until " + project.getExtendedUntil() + "; first deadline " + deadline);
+
+        outbox.record(
+                CampaignExtendedEvent.AGGREGATE_TYPE,
+                extended.getId(),
+                CampaignExtendedEvent.EVENT_TYPE,
+                CampaignExtendedEvent.of(extended));
+        return extended;
+    }
+
+    /**
+     * IDN-EXT-01 (#41), §5.1: the creator withdraws the funds, which closes the campaign.
+     *
+     * <p>At the success threshold or above, at any time: while live, in the seven days after the
+     * deadline, during an extension, or once decided successful. The creator's alone, as extending is.
+     * The campaign's numbers are frozen now if no deadline froze them, because withdrawal is the
+     * decision — a later approved dispute reduces the payout and never the outcome.
+     *
+     * @throws WithdrawalNotAvailableException when the campaign is in no state to withdraw from, or
+     *     below the threshold
+     */
+    @Transactional
+    public Project withdraw(UUID projectId, UUID accountId) {
+        Project project = access.requireTransitionable(projectId, accountId);
+        return withdrawNow(project, access.roleOf(project, accountId), accountId, false);
+    }
+
+    /**
+     * IDN-EXT-01 (#41): withdraw a successful campaign whose creator has not, once
+     * {@code withdrawal.automatic-after} has passed since funding ended.
+     *
+     * <p>Under the row lock and re-checked, for the finaliser's reason: the sweep's query ran before
+     * the lock, and the creator may have withdrawn in between.
+     *
+     * @return the withdrawn campaign, or empty when it was no longer this pass's to withdraw
+     */
+    @Transactional
+    public Optional<Project> withdrawAutomatically(UUID projectId, Instant now) {
+        Project project =
+                projects.findByIdForUpdate(projectId).orElseThrow(() -> new ProjectNotFoundException(projectId));
+        if (project.getState() != ProjectState.SUCCESSFUL) {
+            return Optional.empty();
+        }
+        Instant ended = project.getExtendedUntil() != null ? project.getExtendedUntil() : project.getDeadline();
+        if (ended == null || ended.plus(properties.withdrawal().automaticAfter()).isAfter(now)) {
+            return Optional.empty();
+        }
+        return Optional.of(withdrawNow(project, ActorRole.SYSTEM, null, true));
+    }
+
+    private Project withdrawNow(Project project, ActorRole role, UUID actorId, boolean automatic) {
+        ProjectState state = project.getState();
+        if (state != ProjectState.LIVE
+                && state != ProjectState.CLOSING_WINDOW
+                && state != ProjectState.EXTENDED
+                && state != ProjectState.SUCCESSFUL) {
+            throw new WithdrawalNotAvailableException(project.getId(), WithdrawalNotAvailableException.Reason.WRONG_STATE);
+        }
+        // A campaign already decided successful passed the threshold when it was decided; a later
+        // dispute refund lowering the live total does not take its withdrawal away.
+        if (!project.isFinalised()
+                && project.outcome(properties.finalisation().successThreshold()) != CampaignOutcome.SUCCESSFUL) {
+            throw new WithdrawalNotAvailableException(project.getId(), WithdrawalNotAvailableException.Reason.BELOW_THRESHOLD);
+        }
+
+        Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
+        Project withdrawn = apply(
+                project,
+                ProjectState.WITHDRAWN,
+                role,
+                actorId,
+                automatic
+                        ? "Withdrawn automatically, " + properties.withdrawal().automaticAfter().toDays()
+                                + " days after funding ended"
+                        : "Withdrawn by the creator");
+        if (!withdrawn.isFinalised()) {
+            withdrawn.freezeOutcome(now);
+        }
+        outbox.record(
+                CampaignWithdrawnEvent.AGGREGATE_TYPE,
+                withdrawn.getId(),
+                CampaignWithdrawnEvent.EVENT_TYPE,
+                CampaignWithdrawnEvent.of(withdrawn, now, automatic));
+        return withdrawn;
+    }
+
+    @Transactional
+    public Project openLatePledges(UUID projectId, UUID accountId, Instant endsAt) {
+        // IDN-EXT-01 (#36): late pledges are switched off. No state has an edge into
+        // LATE_PLEDGE any more, so this refuses every campaign with
+        // PROJECT_TRANSITION_NOT_ALLOWED — after the same access check as before, so a
+        // stranger is still answered 404 rather than told what state the campaign is in.
+        // The route stays until stage 4 (#45) removes it.
+        Project project = access.requireTransitionable(projectId, accountId);
+        requireEdge(project.getState(), ProjectState.LATE_PLEDGE);
+        throw new IllegalStateException("The state machine has an edge into LATE_PLEDGE again");
     }
 
     /**
@@ -511,9 +640,14 @@ public class ProjectTransitionService {
     }
 
     /**
-     * Applies §5.1 to a campaign whose deadline has passed: {@code LIVE} →
-     * {@code SUCCESSFUL} or {@code LIVE} → {@code UNSUCCESSFUL}, and freezes the numbers
-     * that decided it.
+     * Applies §5.1 as IDN-EXT-01 (#33) times it: a {@code LIVE} campaign past its deadline
+     * enters {@code CLOSING_WINDOW}; a campaign whose window or extension has ended is decided
+     * — {@code SUCCESSFUL} or {@code UNSUCCESSFUL} — and the numbers that decided it are frozen.
+     *
+     * <p><strong>Entering the window freezes nothing.</strong> The campaign is not decided, the
+     * creator may still extend or withdraw, and a frozen outcome written now would be the
+     * evidence for a decision that has not been taken. {@code finalized_at} stays null, which
+     * is also what lets the sweep find the campaign again when the window ends.
      *
      * <p><strong>The first transition performed by nobody</strong>, which is what the
      * {@link ActorRole#SYSTEM} parameter on {@link #apply} has been waiting for since this
@@ -553,24 +687,57 @@ public class ProjectTransitionService {
         Project project =
                 projects.findByIdForUpdate(projectId).orElseThrow(() -> new ProjectNotFoundException(projectId));
 
-        if (project.getState() != ProjectState.LIVE) {
-            log.debug("Campaign {} is in {} and is not this pass's to finalise.", projectId, project.getState());
+        Instant deadline = project.getDeadline();
+        if (deadline == null) {
+            // A campaign past LIVE always has a deadline — applyTransition computes one on the
+            // edge into LIVE and refuses the edge without a duration — so this branch is
+            // unreachable through this service. It is here because "unreachable" describes
+            // today's callers, and the alternative is a NullPointerException inside a sweep
+            // that then stops closing everybody else's campaigns.
+            log.debug("Campaign {} has no deadline and is not this pass's to finalise.", projectId);
             return Optional.empty();
         }
-        Instant deadline = project.getDeadline();
-        if (deadline == null || deadline.isAfter(now)) {
-            // A LIVE campaign always has a deadline — applyTransition computes one on the
-            // edge into LIVE and refuses the edge without a duration — so the null branch
-            // is unreachable through this service. It is here because "unreachable"
-            // describes today's callers, and the alternative is a NullPointerException
-            // inside a sweep that then stops closing everybody else's campaigns.
-            log.debug("Campaign {} closes at {}, which is not yet.", projectId, deadline);
-            return Optional.empty();
+        Instant windowEnds = deadline.plus(properties.finalisation().closingWindow());
+
+        switch (project.getState()) {
+            case LIVE -> {
+                if (deadline.isAfter(now)) {
+                    log.debug("Campaign {} closes at {}, which is not yet.", projectId, deadline);
+                    return Optional.empty();
+                }
+                // IDN-EXT-01 (#33): the first deadline opens the seven days, it does not decide.
+                apply(project, ProjectState.CLOSING_WINDOW, ActorRole.SYSTEM, null, windowOpened(project, windowEnds));
+                if (windowEnds.isAfter(now)) {
+                    log.info("Campaign {} reached its deadline; it is decided at {}.", projectId, windowEnds);
+                    return Optional.of(project);
+                }
+                // Found after its window had already ended — a sweep that was down for a week.
+                // The window happened whether or not the job saw it, so the campaign walks both
+                // edges in this transaction rather than skipping one: §6.1 draws no edge from
+                // LIVE to an outcome, and the history should not either.
+            }
+            case CLOSING_WINDOW -> {
+                if (windowEnds.isAfter(now)) {
+                    log.debug("Campaign {} is in its window until {}.", projectId, windowEnds);
+                    return Optional.empty();
+                }
+            }
+            case EXTENDED -> {
+                Instant extensionEnds = project.getExtendedUntil();
+                if (extensionEnds == null || extensionEnds.isAfter(now)) {
+                    log.debug("Campaign {} is extended until {}.", projectId, extensionEnds);
+                    return Optional.empty();
+                }
+            }
+            default -> {
+                log.debug("Campaign {} is in {} and is not this pass's to finalise.", projectId, project.getState());
+                return Optional.empty();
+            }
         }
 
         // Read before the transition and used for both halves, so the state a campaign is
         // moved to and the numbers frozen against it are one reading of one locked row.
-        CampaignOutcome outcome = project.outcome();
+        CampaignOutcome outcome = project.outcome(properties.finalisation().successThreshold());
 
         apply(project, outcome.state(), ActorRole.SYSTEM, null, decision(project));
         project.freezeOutcome(now);
@@ -641,8 +808,18 @@ public class ProjectTransitionService {
      * decision was actually taken on; {@link Project#freezeOutcome} then stores the same
      * two numbers.
      */
+    private static String windowOpened(Project project, Instant windowEnds) {
+        return "Raised %s of %s %s from %d backers by the deadline; decided at %s unless extended or withdrawn."
+                .formatted(
+                        project.getPledgedAmount(),
+                        project.getGoalAmount(),
+                        project.getCurrency(),
+                        project.getBackersCount(),
+                        windowEnds);
+    }
+
     private static String decision(Project project) {
-        return "Raised %s of %s %s from %d backers at the deadline."
+        return "Raised %s of %s %s from %d backers when decided."
                 .formatted(
                         project.getPledgedAmount(),
                         project.getGoalAmount(),

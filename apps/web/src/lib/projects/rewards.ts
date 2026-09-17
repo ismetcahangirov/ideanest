@@ -1,13 +1,17 @@
-import { parseAmount, toMoney, toWireAmount } from '../money';
-import type { ItemErrorsCopy, RewardErrorsCopy, RewardsCopy } from '../i18n/editor-copy';
-import type { Locale } from '../i18n/locale';
-import { fillPlaceholders } from '../i18n/placeholders';
-import { pluralise } from '../i18n/plurals';
+import { parseAmount, toMoney, toWireAmount, type AmountRejection } from '../money';
 import {
   characterCount,
   fromDateTimeLocal,
   toDateTimeLocal,
 } from './basics';
+import type {
+  AmountMessagesCopy,
+  ItemValidationCopy,
+  RewardValidationCopy,
+  RewardsVocabularyCopy,
+} from '../i18n/campaign-editor-copy';
+import { fillPlaceholders } from '../i18n/placeholders';
+import { pluralise } from '../i18n/plurals';
 import type {
   Item,
   ItemPatch,
@@ -83,6 +87,14 @@ const COUNTRY_CODE = /^[A-Za-z]{2}$/;
  * `NONE` and `DIGITAL` is invisible from the words alone, and choosing wrongly
  * decides whether a backer is asked for a postal address at all.
  */
+/**
+ * The delivery scopes §5.3 recognises, in the order they are offered.
+ *
+ * NO `label` AND NO `hint` ANY MORE — issue #324. The words are catalogue copy, read as
+ * `copy.scopes[scope]`, for the reason `tabs.ts` gives about its own sections: a spelling
+ * here as well would be the second declaration, and the second is the one nobody updates.
+ * What stays is the list, which is what the guard below and the option order need.
+ */
 export const SHIPPING_SCOPES: readonly ShippingType[] = [
   'NONE',
   'DIGITAL',
@@ -101,7 +113,7 @@ export const SHIPPING_SCOPES: readonly ShippingType[] = [
  * cannot fall out of step with what is offered.
  */
 export function isShippingType(value: string): value is ShippingType {
-  return (SHIPPING_SCOPES as readonly string[]).includes(value);
+  return SHIPPING_SCOPES.some((scope) => scope === value);
 }
 
 /** Whether a per-country rate means anything for this scope. `ShippingType.isShipped`. */
@@ -109,7 +121,10 @@ export function isShippedScope(scope: ShippingType): boolean {
   return scope === 'DOMESTIC' || scope === 'INTERNATIONAL';
 }
 
-export function shippingScopeLabel(scope: ShippingType, copy: RewardsCopy['scopes']): string {
+export function shippingScopeLabel(
+  scope: ShippingType,
+  copy: Readonly<Record<ShippingType, { label: string }>>,
+): string {
   return copy[scope]?.label ?? scope;
 }
 
@@ -177,14 +192,15 @@ export function isItemField(value: string): value is ItemField {
 
 export type ItemErrors = Partial<Record<ItemField, string>>;
 
-export function validateItem(draft: ItemDraft, copy: ItemErrorsCopy): ItemErrors {
+/** THE COPY IS AN ARGUMENT, for the reason `validateBasics` states: this runs per keystroke. */
+export function validateItem(draft: ItemDraft, copy: ItemValidationCopy): ItemErrors {
   const errors: ItemErrors = {};
 
   const nameLength = characterCount(draft.name.trim());
   if (nameLength === 0) {
     // Not "not filled in yet": `items.name` is NOT NULL and the service refuses
     // a blank one, so an empty name is a save that cannot succeed.
-    errors.name = copy.nameMissing;
+    errors.name = copy.nameRequired;
   } else if (nameLength > ITEM_NAME_MAX_CHARACTERS) {
     errors.name = fillPlaceholders(copy.nameTooLong, {
       max: String(ITEM_NAME_MAX_CHARACTERS),
@@ -420,17 +436,26 @@ export function isRewardField(value: string): value is RewardField {
 
 export type RewardErrors = Partial<Record<RewardField, string>>;
 
-/*
- * THE TWO AMOUNT TABLES LEFT THIS FILE WITH #459, and the reason they were two rather than one
- * moved with them: `parseAmount` returns a reason and not a sentence exactly so that a price and
- * a shipping rate can be refused in their own words. "Enter the goal in digits" is wrong on a
- * field labelled Price, and a creator reading it wonders which field the message is about.
+/**
+ * Worded for a reward price rather than for a funding goal.
  *
- * <p>§5.3 puts the price floor at "the smallest chargeable amount", which is the payment
- * provider's and belongs to configuration. Zero and below are not prices at all, which is what
- * `RewardService.requirePrice` refuses and what `rewards.errors.price.notPositive` says. A rate
- * of zero is the opposite: free shipping, and a real offer.
+ * `parseAmount` returns a reason and not a sentence exactly so that the two can
+ * differ: "Enter the goal in digits" is wrong on a field labelled Price, and a
+ * creator reading it wonders which field the message is about.
  */
+function amountMessage(copy: AmountMessagesCopy, reason: AmountRejection): string {
+  const messages: Record<AmountRejection, string> = {
+    empty: copy.empty,
+    'not-a-number': copy.notANumber,
+    comma: copy.comma,
+    'too-many-decimals': copy.tooManyDecimals,
+    'too-large': copy.tooLarge,
+    'not-positive': copy.notPositive,
+  };
+  return messages[reason];
+}
+
+
 
 export interface RewardValidationContext {
   /**
@@ -445,7 +470,7 @@ export interface RewardValidationContext {
 
 export function validateReward(
   draft: RewardDraft,
-  copy: RewardErrorsCopy,
+  copy: RewardValidationCopy,
   context: RewardValidationContext = {},
 ): RewardErrors {
   const errors: RewardErrors = {};
@@ -453,7 +478,7 @@ export function validateReward(
 
   const titleLength = characterCount(draft.title.trim());
   if (titleLength === 0) {
-    errors.title = copy.titleMissing;
+    errors.title = copy.titleRequired;
   } else if (titleLength > REWARD_TITLE_MAX_CHARACTERS) {
     errors.title = fillPlaceholders(copy.titleTooLong, {
       max: String(REWARD_TITLE_MAX_CHARACTERS),
@@ -462,7 +487,7 @@ export function validateReward(
   }
 
   const price = parseAmount(draft.priceAmount);
-  if (!price.ok) errors.price = copy.price[price.reason];
+  if (!price.ok) errors.price = amountMessage(copy.price, price.reason);
 
   const limit = draft.limitQuantity.trim();
   if (limit !== '') {
@@ -471,17 +496,9 @@ export function validateReward(
     } else {
       const places = Number.parseInt(limit, 10);
       if (places < 1) {
-        errors.limitQuantity = copy.limitTooSmall;
+        errors.limitQuantity = copy.limitBelowOne;
       } else if (places < committed) {
-        /*
-         * The count is stated rather than declined. "the 40 places already taken" needs a
-         * plural form for one and another for forty, and a plural is ICU's — which this pure
-         * function has no formatter for. The sentence names the number instead, which every
-         * one of the four languages can say without agreement.
-         */
-        errors.limitQuantity = fillPlaceholders(copy.limitBelowCommitted, {
-          committed: String(committed),
-        });
+        errors.limitQuantity = pluralise(copy.locale, copy.limitBelowCommitted, committed);
       }
     }
   }
@@ -490,7 +507,7 @@ export function validateReward(
     // Featured means shown first; secret means not shown at all. A tier
     // claiming both leaves the campaign page to guess, and the service refuses
     // it on this field.
-    errors.isFeatured = copy.secretFeatured;
+    errors.isFeatured = copy.secretAndFeatured;
   }
 
   if (draft.isEarlyBird && draft.availableUntil.trim() === '' && limit === '') {
@@ -502,10 +519,10 @@ export function validateReward(
   const from = draft.availableFrom.trim() === '' ? null : fromDateTimeLocal(draft.availableFrom);
   const until = draft.availableUntil.trim() === '' ? null : fromDateTimeLocal(draft.availableUntil);
   if (draft.availableFrom.trim() !== '' && from === null) {
-    errors.availableFrom = copy.dateUnreadable;
+    errors.availableFrom = copy.dateInvalid;
   }
   if (draft.availableUntil.trim() !== '' && until === null) {
-    errors.availableUntil = copy.dateUnreadable;
+    errors.availableUntil = copy.dateInvalid;
   }
   if (from !== null && until !== null && new Date(until).getTime() <= new Date(from).getTime()) {
     errors.availableUntil = copy.closesBeforeOpens;
@@ -542,34 +559,41 @@ export function validateReward(
  * `RewardService` reports the first row it cannot accept. Naming the
  * destination in the message is what makes a single message enough to act on.
  */
-function validateShippingRates(draft: RewardDraft, copy: RewardErrorsCopy): string | null {
+function validateShippingRates(draft: RewardDraft, copy: RewardValidationCopy): string | null {
   if (draft.shippingRules.length === 0) return null;
 
   if (!isShippedScope(draft.shippingType)) {
-    return copy.rulesNotShipped;
+    return copy.rates.notShipped;
   }
 
   const seen = new Set<string>();
   for (const rule of draft.shippingRules) {
     const code = rule.countryCode.trim().toUpperCase();
     if (!COUNTRY_CODE.test(code)) {
-      return copy.rulesCountryCode;
+      return copy.rates.badCountryCode;
     }
     if (seen.has(code)) {
-      return fillPlaceholders(copy.rulesDuplicate, { code });
+      return fillPlaceholders(copy.rates.duplicateDestination, { code });
     }
     seen.add(code);
 
-    const row = (reason: keyof typeof copy.rate): string =>
-      fillPlaceholders(copy.rulesRow, { code, reason: copy.rate[reason] });
-
     const amount = parseAmount(rule.amount, { allowZero: true });
-    if (!amount.ok) return row(amount.reason);
+    if (!amount.ok) {
+      return fillPlaceholders(copy.rates.prefixed, {
+        code,
+        message: amountMessage(copy.rate, amount.reason),
+      });
+    }
 
     const additional = parseAmount(rule.additionalItemAmount.trim() === '' ? '0' : rule.additionalItemAmount, {
       allowZero: true,
     });
-    if (!additional.ok) return row(additional.reason);
+    if (!additional.ok) {
+      return fillPlaceholders(copy.rates.prefixed, {
+        code,
+        message: amountMessage(copy.rate, additional.reason),
+      });
+    }
   }
 
   return null;
@@ -806,9 +830,9 @@ export function showPatch(): RewardPatch {
  * fixing one field and a creator reading a 400 about a field they did not
  * touch.
  */
-export function showBlockedReason(reward: Reward, sentence: string): string | null {
+export function showBlockedReason(reward: Reward, copy: RewardsVocabularyCopy): string | null {
   if (reward.isEarlyBird && reward.limitQuantity == null) {
-    return sentence;
+    return copy.showBlockedEarlyBird;
   }
   return null;
 }
@@ -848,23 +872,14 @@ export function movedTo<T>(list: readonly T[], from: number, to: number): readon
  * against. "Unlimited" is a real state and by far the commonest, so it is said
  * rather than shown as an empty count.
  */
-export function describeStock(
-  reward: Reward,
-  copy: RewardsCopy['stock'],
-  locale: Locale,
-): string {
-  if (reward.limitQuantity == null) return copy.unlimited;
+export function describeStock(reward: Reward, copy: RewardsVocabularyCopy): string {
+  if (reward.limitQuantity == null) return copy.stock.unlimited;
 
   const taken = reward.claimedQuantity + reward.reservedQuantity;
   const remaining = reward.remainingQuantity ?? reward.limitQuantity - taken;
 
-  /*
-   * `pluralise` picks the form for the number left and fills `{count}`; `{limit}` is filled
-   * after, because the ceiling does not decline the sentence. "place" against "places" is the
-   * whole of English and none of Russian, which picks between three forms by the last digit —
-   * `lib/i18n/plurals.ts` carries the argument.
-   */
-  return fillPlaceholders(pluralise(locale, copy.remaining, remaining), {
+  return fillPlaceholders(copy.stock.remaining, {
+    remaining: String(remaining),
     limit: String(reward.limitQuantity),
   });
 }

@@ -157,6 +157,18 @@ public class Project {
      *
      * <p>All four or none, which the database also states.
      */
+    /**
+     * IDN-EXT-01 (#32, V74): where the one extension ends. {@link #deadline} stays the first
+     * deadline, because the seven-day window and the D+60 limit are both measured from it.
+     * Read by the finaliser (#33); written only by the extension (#34).
+     */
+    @Column(name = "extended_until")
+    private Instant extendedUntil;
+
+    /** IDN-EXT-01 (#32, V74): when the creator extended. Set once, with {@link #extendedUntil}. */
+    @Column(name = "extension_used_at")
+    private Instant extensionUsedAt;
+
     @Column(name = "finalized_at")
     private Instant finalizedAt;
 
@@ -268,9 +280,12 @@ public class Project {
      * <p>Asked before the transition rather than derived from it, so that the state a
      * campaign is moved to and the numbers frozen against it are one reading of one row
      * — see {@link #freezeOutcome}.
+     *
+     * @param successThreshold the share of the goal that succeeds, from configuration. Passed
+     *     in rather than read here because this is an entity and the number is an operator's
      */
-    public CampaignOutcome outcome() {
-        return CampaignOutcome.of(pledgedAmount, goalAmount);
+    public CampaignOutcome outcome(BigDecimal successThreshold) {
+        return CampaignOutcome.of(pledgedAmount, goalAmount, successThreshold);
     }
 
     /**
@@ -294,7 +309,9 @@ public class Project {
     public void freezeOutcome(Instant at) {
         Objects.requireNonNull(at, "A frozen outcome needs the moment it was decided");
 
-        if (state != ProjectState.SUCCESSFUL && state != ProjectState.UNSUCCESSFUL) {
+        // WITHDRAWN too since IDN-EXT-01 (#41): a creator at 80% may withdraw before the deadline,
+        // and withdrawal is the decision — its numbers are frozen as a deadline's would be.
+        if (state != ProjectState.SUCCESSFUL && state != ProjectState.UNSUCCESSFUL && state != ProjectState.WITHDRAWN) {
             throw new IllegalStateException(
                     "A campaign in " + state + " has no outcome to freeze; §5.1 decides only at the deadline");
         }
@@ -426,6 +443,16 @@ public class Project {
         return deadline;
     }
 
+    /** Where the one extension ends, or null when the campaign was never extended. */
+    public Instant getExtendedUntil() {
+        return extendedUntil;
+    }
+
+    /** When the creator extended, or null. */
+    public Instant getExtensionUsedAt() {
+        return extensionUsedAt;
+    }
+
     public String getStory() {
         return story;
     }
@@ -510,39 +537,16 @@ public class Project {
         return latePledgeEndsAt;
     }
 
-    /**
-     * §4.8's PM-23: when late pledging stops.
-     *
-     * <p>Only ever written beside the edge into {@link ProjectState#LATE_PLEDGE} —
-     * {@code ProjectTransitionService.openLatePledges} is the one caller, and it is
-     * the one place that checks the window is in the future and inside the platform's
-     * bound. A setter reachable from the editor would let a creator extend a window
-     * after it had closed, which is a campaign that stopped taking pledges and started
-     * again with nothing recorded about either moment.
-     *
-     * <p>{@code projects_late_pledge_window_needs_the_feature} refuses a window on a
-     * campaign that has not enabled the feature, which is why the caller checks that
-     * first and answers with something a client can act on.
-     */
-    public void openLatePledgesUntil(Instant endsAt) {
-        this.latePledgeEndsAt = Objects.requireNonNull(endsAt, "A late-pledge window ends at some point");
-    }
-
-    /**
-     * Whether this campaign is taking a late pledge at {@code now}.
-     *
-     * <p>All three conditions, and each is a different fact: the campaign is in the
-     * state that accepts them, the creator still offers them, and the window has not
-     * run out. {@code PledgeAcceptance} is the only caller — the rule lives on the
-     * entity because it is a statement about this row and nothing else, and it is
-     * asked through the application layer because the pledge module may not read
-     * {@code projects}.
-     */
-    public boolean isTakingLatePledges(Instant now) {
-        return state == ProjectState.LATE_PLEDGE
-                && latePledgeEnabled
-                && latePledgeEndsAt != null
-                && latePledgeEndsAt.isAfter(now);
+    public void extendUntil(Instant until, Instant at) {
+        // IDN-EXT-01 (#34). Only ever written beside the edge into EXTENDED, by
+        // `ProjectTransitionService.extend`, which is the one place that checks the window, the
+        // threshold and the D+60 limit. Both columns together: V74 refuses one without the other,
+        // and `extensionUsedAt` is what makes "once" a fact on the row.
+        if (this.extensionUsedAt != null) {
+            throw new IllegalStateException("A campaign is extended once");
+        }
+        this.extendedUntil = Objects.requireNonNull(until, "An extension ends at some point");
+        this.extensionUsedAt = Objects.requireNonNull(at, "An extension happens at some instant");
     }
 
     public Instant getFinalizedAt() {

@@ -104,7 +104,10 @@ export interface CheckoutCopy {
     readonly noReward: string;
     readonly deliveredTo: string;
     readonly listedAs: string;
-    readonly notCharged: string;
+    /** IDN-EXT-01 (#44): that the charge happens on the provider's page, and only if finished. */
+    readonly charged: string;
+    /** IDN-EXT-01 §9: the 80% rule, stated before the pay control. */
+    readonly rule: string;
     readonly change: string;
     readonly reserve: string;
     readonly confirm: string;
@@ -129,17 +132,35 @@ export interface CheckoutCopy {
     readonly stale: string;
   };
   readonly done: {
-    readonly announced: string;
-    readonly heading: string;
-    readonly next: string;
-    readonly backed: string;
-    readonly reference: string;
-    readonly keepReference: string;
-    readonly released: string;
-    readonly noCard: string;
-    readonly noMethod: string;
-    readonly methodKept: string;
+    /** The title shown when the reward's hold ran out on the review step. */
     readonly expired: string;
+  };
+  /**
+   * IDN-EXT-01 (#44): what the pledge page says to a backer the payment provider sent back.
+   * The provider's redirect says which page to return to, not what happened; the pledge's
+   * state is the answer, so each pair is chosen by that state.
+   */
+  readonly returned: {
+    readonly paidTitle: string;
+    readonly paidBody: string;
+    readonly waitingTitle: string;
+    readonly waitingBody: string;
+    readonly failedTitle: string;
+    readonly failedBody: string;
+  };
+  /** IDN-EXT-01 (#44): a backer disputing a paid pledge while the creator's payout is held. */
+  readonly dispute: {
+    readonly heading: string;
+    readonly intro: string;
+    readonly reasonLabel: string;
+    readonly reasonHint: string;
+    readonly submit: string;
+    readonly sending: string;
+    readonly cancel: string;
+    readonly opened: string;
+    readonly windowClosed: string;
+    readonly nothing: string;
+    readonly failed: string;
   };
   readonly errors: {
     readonly amountMissing: string;
@@ -277,7 +298,8 @@ export function checkoutCopyFrom(t: CheckoutTranslator): CheckoutCopy {
       noReward: t('review.noReward'),
       deliveredTo: t('review.deliveredTo'),
       listedAs: t('review.listedAs'),
-      notCharged: t('review.notCharged'),
+      charged: t('review.charged'),
+      rule: t('review.rule'),
       change: t('review.change'),
       reserve: t('review.reserve'),
       confirm: t('review.confirm'),
@@ -290,17 +312,28 @@ export function checkoutCopyFrom(t: CheckoutTranslator): CheckoutCopy {
       stale: t('risk.stale'),
     },
     done: {
-      announced: t('done.announced'),
-      heading: t('done.heading'),
-      next: t('done.next'),
-      backed: t('done.backed'),
-      reference: t('done.reference'),
-      keepReference: t('done.keepReference'),
-      released: t('done.released'),
-      noCard: t('done.noCard'),
-      noMethod: t('done.noMethod'),
-      methodKept: t('done.methodKept'),
       expired: t('done.expired'),
+    },
+    returned: {
+      paidTitle: t('returned.paidTitle'),
+      paidBody: t('returned.paidBody'),
+      waitingTitle: t('returned.waitingTitle'),
+      waitingBody: t('returned.waitingBody'),
+      failedTitle: t('returned.failedTitle'),
+      failedBody: t('returned.failedBody'),
+    },
+    dispute: {
+      heading: t('dispute.heading'),
+      intro: t('dispute.intro'),
+      reasonLabel: t('dispute.reasonLabel'),
+      reasonHint: t('dispute.reasonHint'),
+      submit: t('dispute.submit'),
+      sending: t('dispute.sending'),
+      cancel: t('dispute.cancel'),
+      opened: t('dispute.opened'),
+      windowClosed: t('dispute.windowClosed'),
+      nothing: t('dispute.nothing'),
+      failed: t('dispute.failed'),
     },
     errors: {
       amountMissing: t('errors.amountMissing'),

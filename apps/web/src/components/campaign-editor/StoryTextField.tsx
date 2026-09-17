@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Textarea } from '@ideanest/ui';
-import type { StoryCopy } from '../../lib/i18n/editor-copy';
 import { toggleMark } from '../../lib/projects/story';
 import { markForShortcut, StoryMarkToolbar } from './StoryMarkToolbar';
 
@@ -28,9 +27,11 @@ import { markForShortcut, StoryMarkToolbar } from './StoryMarkToolbar';
  * MOTION: none. `docs/motion-system.md` §5 gives the campaign editor "none —
  * autosave indicator only".
  */
+import type { StoryToolbarCopy } from '../../lib/i18n/campaign-editor-copy';
+
 export interface StoryTextFieldProps {
-  /** Passed through to the toolbar, which is the only part of this that draws words. */
-  copy: StoryCopy['marks'];
+  /** The mark toolbar's words. */
+  toolbar: StoryToolbarCopy;
   value: string;
   /** Names what is being edited, for the toolbar and for the control itself. */
   label: string;
@@ -46,7 +47,7 @@ export interface StoryTextFieldProps {
 }
 
 export function StoryTextField({
-  copy,
+  toolbar,
   value,
   label,
   rows = 4,
@@ -104,7 +105,7 @@ export function StoryTextField({
   return (
     <div className="flex flex-col gap-2">
       <StoryMarkToolbar
-        copy={copy}
+        copy={toolbar}
         value={value}
         selectionStart={selection.start}
         selectionEnd={selection.end}
