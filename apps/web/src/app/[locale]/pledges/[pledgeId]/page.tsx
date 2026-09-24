@@ -2,12 +2,14 @@ import type { Metadata } from 'next';
 import { AccountPageHeader } from '../../../../components/account/AccountPageHeader';
 import { PledgeManager } from '../../../../components/pledges/PledgeManager';
 import { privatePageMetadata } from '../../../../lib/seo/metadata';
-import { checkoutCopy } from '../../../../lib/i18n/shell-copy.server';
+import { checkoutCopy, pledgeManagerCopy } from '../../../../lib/i18n/shell-copy.server';
+import { getTranslations } from 'next-intl/server';
 
-export const metadata: Metadata = privatePageMetadata({
-  title: 'Your pledge',
-  description: 'What you chose, what it comes to, and how to raise it.',
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('account.pages.pledgeDetail');
+
+  return privatePageMetadata({ title: t('metaTitle'), description: t('metaDescription') });
+}
 
 /**
  * `/pledges/{pledgeId}` — §4.5's PL-09 and PL-10. Issue #287.
@@ -42,17 +44,22 @@ export default async function PledgePage({
 }: {
   params: Promise<{ pledgeId: string }>;
 }) {
-  const { pledgeId } = await params;
+  // Words, not data: the manager and the editor under it are client islands, so the route
+  // resolves both vocabularies — this screen's own, and the checkout's, which the editor's
+  // field, hints and refusals come from.
+  const [{ pledgeId }, t, checkout, pledges] = await Promise.all([
+    params,
+    getTranslations('account.pages.pledgeDetail'),
+    checkoutCopy(),
+    pledgeManagerCopy(),
+  ]);
 
   return (
     <>
-      <AccountPageHeader title="Your pledge">
-        What you chose, what it comes to, and how to raise it. A pledge is charged when it is
-        made, and refunded in full if its campaign does not succeed.
-      </AccountPageHeader>
+      <AccountPageHeader title={t('title')}>{t('intro')}</AccountPageHeader>
 
       <div className="mt-8">
-        <PledgeManager pledgeId={pledgeId} copy={await checkoutCopy()} />
+        <PledgeManager pledgeId={pledgeId} copy={checkout} pledges={pledges} />
       </div>
     </>
   );

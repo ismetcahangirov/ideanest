@@ -290,34 +290,172 @@ percentage is a formatter's job and never a template's.
 **Which routes are key-based, and which are still English literals (#324).** The
 message catalogue lives in `messages/{az,en,ru,tr}.json` and covers, in full:
 
-- the site shell — header, mobile drawer, account menu, footer, skip link, failure links;
+- the site shell — header, mobile drawer, account menu, footer, skip link, the search box
+  in the bar and the drawer, and the failure pages in full: the two 404s, the profile 404,
+  `/maintenance`, the two error boundaries and the link rail they share;
 - every public route: the home page, the feed and its filter rail, the search box and its
   suggestions, the category and subcategory landings, the collection index and the
   collection pages, the three editorial pages, the public profile, and the campaign card
   those six surfaces all render;
 - the six authentication screens under `app/[locale]/(auth)`, and the two credential
   panels under `/settings` that share their refusal vocabulary;
-- the checkout, and the public campaign page;
-- the account area: the frame, all thirteen screens' headings, the notifications inbox and
-  its settings, and the two fulfilment screens;
+- the checkout, the public campaign page and the public pre-launch page, **in full** since
+  #101 closed the last four components on them;
+- the account area: the frame, all thirteen screens' headings, one pledge's own screen, the
+  notifications inbox and its settings, and the two fulfilment screens;
 - the administration console, **in full** — the bar, the rail, the index that lists §4.11's
   sixteen modules, the metadata and standfirst of all twenty-eight routes, and the twenty-six
   screens inside them. `lib/i18n/admin/` holds the copy, grouped as `CONSOLE_GROUPS` groups
-  the rail; `lib/i18n/admin/console.server.ts` is where a route resolves it.
+  the rail; `lib/i18n/admin/console.server.ts` is where a route resolves it;
+- the creator dashboard, **in full** (#79) — the five panels under
+  `/projects/[id]/dashboard`, their navigation and their metadata: the overview and its
+  countdown, the funding trend and the two share charts, the backer report with its filter
+  chips, its saved segments and its table, the financial summary down to §7.2's ledger, and
+  §4.8's survey builder with the five answer types PM-03 offers.
+  `lib/i18n/dashboard-copy.ts` holds the shape and one accessor per panel;
+  `lib/i18n/shell-copy.server.ts` is where a route resolves it;
+- the screens somebody secures or closes an account with (#80) — `/settings/security`'s
+  two-factor enrolment down to the recovery codes shown once, `/settings/privacy`'s data
+  export and account closure, and `/settings/sessions`' device list and its row. All four
+  read their refusals from `auth.failures` rather than carrying a second spelling of them,
+  which is what the email and password panels beside them already did.
+  `lib/i18n/settings-copy.ts` holds the shape;
+- the pledge panels (#81) — the list under `/pledges`, one pledge's own screen and the
+  editor on it, and §6.2's twelve pledge states, which both screens now read from one
+  group. The editor's field, its two hints and its four quote refusals are the
+  **checkout's** words rather than pledge-specific copies of them:
+  `components/checkout/refusals.ts` is the one function that turns a refusal into a
+  sentence, and both screens call it. `lib/i18n/pledges-copy.ts` holds the rest.
+- the profile editor and the visibility switch (#82) — the last English half of a pair
+  whose public side was already key-based. Both halves read one namespace on purpose:
+  the two describe the same six fields, and somebody who edits "Biography" should meet
+  the word they saw on their own profile. `profile.editor` in the catalogue;
+- the saved-campaigns and following lists (#83) — the two panels under `/account/saved`
+  and `/account/following`. They are the same paginated list with different nouns, so
+  both are handed one `SignalListCopy` rather than two parallel shapes that would drift
+  the first time either gained a field. The paginator's three words and "Browse
+  campaigns" moved to `common.list` and `common.browseCampaigns`, because every list on
+  the platform ends with the first and every empty one offers the second.
+  `lib/i18n/signals-copy.ts` holds the shape and its two builders.
+- the backer survey screens (#84) — the list under `/account/surveys`, the card that
+  answers one survey, and the field that draws a question. One `SurveysCopy` is resolved
+  for the three of them, because they are one screen and three accessors would be three
+  reads of one namespace threaded through one tree. Two of the sentences are the reason
+  this group was worth more than its size: `card.savedBody` tells somebody that the
+  creator can see what they have just typed, and `question.addressNote` says why the one
+  answer that is not in the form is held separately and encrypted. "How many creators are
+  waiting" is a plural group rather than a ternary — the count is only known in the
+  browser, so `pluralise` picks the form. `lib/i18n/surveys-copy.ts` holds the shape.
+- the public report dialog (#85) — the only surface on this list a signed-out stranger
+  can reach, mounted on the campaign page and under every comment. It is also the one
+  child of #78 that **deleted** more than it added: `lib/moderation/describe.ts`'s
+  `REASON_LABELS`, `lib/moderation/report.ts`'s `TARGET_NOUNS` and `REASON_DESCRIPTIONS`,
+  and the rule in `lib/i18n/wording.test.ts` that existed to hold the first of those level
+  with the console's copy of the same nine reasons. Both surfaces read
+  `admin.moderation.reason` now. The three target kinds are three whole phrases rather
+  than a noun in a slot, because "Report this campaign" is a sentence only English builds
+  that way. `lib/i18n/report-copy.ts` holds the shape.
+- the strays (#86) — six strings that belonged to no surface, each a single literal in an
+  otherwise translated component, which is how they survived. **Four were `SkeletonGroup`
+  labels**, and that is not a coincidence: a skeleton's label is the accessible name of a
+  loading region, invisible to everybody reviewing the screen and announced to exactly the
+  readers who cannot see it. `src/components/accessible-names.test.ts` is the rule that
+  followed — no literal `aria-label`, no literal skeleton label, anywhere under `src`.
+  `lib/media/upload.ts`'s refusals came off the same pass: a library cannot read a
+  catalogue, so it answers with a code and the editor draws the words
+  (`campaignEditor.cover.failures`).
+- the pledge module's refusal table (#91) — the twenty sentences the **service** says no
+  with, rendered by the checkout, the pledge editor and the pledge manager. It was the one
+  entry on this list that was not a screen, and the one nobody found by reading the list:
+  `checkout.errors` covers the form's own validation, so both ends read as translated while
+  a backer who chose Azerbaijani was refused in English at the moment something went wrong
+  with their money. `lib/pledges/failure.ts` keeps the half that is behaviour — which
+  recovery belongs to a code, which control it is about, whether the idempotency key must
+  be retired — because those are decisions and they are the same in four languages. The
+  sentences are `checkout.failures`.
+- the funding block under §4.4's header (#99) — the progress bar's accessible name and the
+  three words under the figures. They survived seven surfaces of translation because
+  `LiveFunding` is a client island and a `StatBlock` label is a word nobody proofreads: the
+  block was drawn from the server's own numbers, so nothing about it looked untranslated
+  except four words. One of the four was also **wrong**, and not only in English — the
+  count picked between "backer" and "backers" with a ternary, which is the whole of English
+  and none of Russian. It is a plural group and `pluralForm` now, for the reason
+  `lib/i18n/plurals.ts` gives. `campaign.funding` holds the words and
+  `src/components/accessible-names.test.ts` holds the rule that followed: no literal label
+  on a `ProgressBar` or a `StatBlock`, anywhere under `src`. The byline above the figures
+  and the goal line below them came off the same pass — the second is `common.card.ofGoal`,
+  word for word what both campaign cards already print under their own bars.
+
+- the save, share and reminder controls, the live countdown and the checkout's approximate
+  total (#101) — twenty-four strings across four components, **fourteen of which nobody
+  reviewing those pages with their eyes would ever have met**: five accessible names and nine
+  sentences in a polite live region, which is the only thing said to a reader whose save,
+  share or reminder finished in a table row, an operating-system sheet or a clipboard.
+  `CampaignActions` was the worst of it — it was already handed three words as a prop and
+  ignored two of them, so the same pill said a translated word to a stranger and an English
+  one to the reader about to press it. `campaign.actions`, `campaign.countdown` and
+  `checkout.summary.approximately` hold them. The rule that followed closes the half of #86's
+  that was missing: an `aria-label` may not be built from a template with words in it, only
+  from values that were words before they arrived. That rule is what found the countdown and
+  the checkout total, neither of which was on any list.
 
 What is still English:
 
 | Surface | Where |
 |---|---|
 | The campaign editor | `components/campaign-editor` |
-| The creator dashboard | `components/dashboard` |
-| The panels below eleven account headings | `components/settings`, `components/sessions`, `components/surveys`, `components/pledges`, `components/profile`'s editor |
-| The public report dialog | `components/moderation/ReportControl` |
 
-`ReportControl` is the reason `lib/moderation/describe.ts` still exports `REASON_LABELS`: the
-console reads the same nine reasons from `admin.moderation.reason`, and the two say the same
-words in English until that dialog is translated too. `lib/i18n/wording.test.ts` asserts they
-match, so the duplication cannot drift while it lasts.
+**Azerbaijani does not write an ordinal after a number it has not met yet (#104).** The
+suffix's vowel is chosen from the number's last digit — 1-ci, 3-cü, 6-cı, 9-cu — so twelve
+`campaignEditor` strings that wrote a fixed `-ci` after a placeholder were right for 1, 2, 5,
+7 and 8 and wrong for every other position. **All twelve are names or notices only a screen
+reader meets**: six are the reorder buttons' `aria-label`s and six are the live region that
+says a reward, a block or a question moved, so a creator reordering ten story blocks with the
+keyboard heard four wrong endings out of nine moves, in the only channel that told them the
+move had worked. They are rephrased rather than inflected — `{total} bloqdan {index}` is
+cardinal and needs no suffix, and "moved to position N" is `{position} nömrəli mövqeyə`, which
+is what `profile.editor.links.platformFor` became in #105. A suffix table was the other option
+and is the wrong one: `{position}` is only known in the browser, and the rule is not only
+about the last digit — 100 is `100-cü` while 1000 is `1000-ci`. `lib/i18n/catalogue.test.ts`
+forbids the shape now.
+
+**#109 finished it, and widened the rule to every suffix.** Two strings inflected a **case**
+after a placeholder the same way — `story.panel.charactersNeeded` wrote `{count}-i` and
+`review.progressSummary` wrote `{blockingTotal}-dən {blockingDone}-i` — which is right for a
+number ending in 1, 2, 5, 7 or 8 and wrong for the rest, because a case harmonises with the
+number as it is READ. The character count is the sharper of the two: it reaches the sentence
+already grouped for the reader, so the ending would have had to agree with "1.200" rather than
+with 1200. Both are cardinal now (`{min} simvoldan {count} yazılıb`), where the suffix sits on
+the noun it has always sat on. With nothing left violating it, `catalogue.test.ts` states the
+whole shape rather than the ordinal half: **nothing in the Azerbaijani catalogue may hyphenate
+letters onto a placeholder**, whether the value is a number or a name. The other three
+languages do not have this defect to have — Russian's ordinal is `-й` whatever the digit and
+Turkish marks one with a full stop — so the rule is Azerbaijani's alone.
+
+**One word per concept, console included (#102).** Every non-English language carried two
+words for *creator* and Russian carried two for *backer*, split roughly along `admin.` against
+everything else — the console was translated first and set one vocabulary, the reader-facing
+surfaces set another, and nothing could compare them because the catalogues are checked by key
+and never by word. It was not two registers for two readers: `account.pledges.states` and
+`admin.screens.accountDetail.pledgeState` named the same cancellation `Отменён вами` and
+`Отменён спонсором`, and one Russian sentence used both words for two different people.
+
+| Concept | az | en | ru | tr |
+|---|---|---|---|---|
+| creator | `müəllif` | creator | `автор` | `yaratıcı` |
+| backer | `dəstəkçi` | backer | `бэкер` | `destekçi` |
+| pledge (noun) | `dəstək` | pledge | `взнос` | `destek` |
+
+The losing words were not merely less popular. `üretici` is a **manufacturer**, and English
+never names one anywhere in this catalogue; `спонсор` is a **sponsor**, which is a different
+relationship from a backer and the one §22.1 is careful not to imply; `yaradıcı` reads as the
+adjective "creative" as often as the noun. `lib/i18n/catalogue.test.ts` holds all four now,
+in the `CONFUSIONS` table that already existed for `təhsil`.
+
+**The one exception is a document's name.** `müəllif müqaviləsi` is a copyright licence in
+Azerbaijani law — a different instrument from the agreement somebody signs here — so the
+creator agreement keeps `yaradıcı müqaviləsi`, for the same reason the three kinds of value
+below keep theirs. The test's rule carries that exception and no other.
 
 **Three kinds of value in the console stay in the service's own spelling, deliberately.** A
 provider name (`PAYRIFF`), a card network's reason code and a staff capability
@@ -366,10 +504,12 @@ are against the words the application draws rather than words retyped into a tes
 **The one exception, and it is measured rather than assumed.** `app/[locale]/error.tsx` and
 `app/[locale]/(site)/error.tsx` are error boundaries, which Next requires to be client
 components and renders itself — no server parent can hand them anything.
-`src/lib/i18n/failure-copy.client.ts` carries their eight strings in all four languages, under
-a kilobyte, and `failure-copy.client.test.ts` asserts every one of them against the catalogue
-so the two cannot drift. A third such surface should re-measure the provider rather than
-extend that file.
+`src/lib/i18n/failure-copy.client.ts` carries their strings in all four languages — the link
+rail and the skip link they share with the other failure pages, and since these two stopped
+carrying English literals their own heading, body, digest line and retry button as well. Still
+comfortably under two kilobytes, and `failure-copy.client.test.ts` asserts every one of them
+against the catalogue so the two cannot drift. A **third such surface** should re-measure the
+provider rather than extend that file; a word these two already draw belongs in it.
 
 **The console is in scope now, and #294's exemption is withdrawn.** That issue argued that
 §21.1's catalogue exists for the product's readers while the console's readers are the
@@ -628,6 +768,16 @@ top of them: the socket carries "40.50 arrived since I last spoke", never a
 total, so the component starts from the server's figure and adds each delta. A
 client component that *fetched* these numbers would break #119; one that starts
 from them does not.
+
+**Its five words arrive as a prop, and the backer count is declined rather than
+switched (#99).** `CampaignSummary` resolves `campaign.funding` and hands it
+down, because there is no `NextIntlClientProvider` on this platform and a client
+component cannot read a catalogue. The count is the interesting half: it picked
+between "backer" and "backers" with a ternary until #99, which is right in
+English, wrong for most numbers in Russian, and invisible to everybody reviewing
+the page in English. `pluralForm` asks `Intl.PluralRules` instead — the locale
+comes from the `[locale]` segment through `useRouteLocale`, which is the one
+thing on this block the server could not send a finished sentence for.
 
 **It is opt-in and unset by default.** `next.config.mjs` says the browser never
 learns the API's real origin — it talks to this application, and `/v1` is
@@ -1149,7 +1299,7 @@ reads is PL-15's `?token=`, repeatable, which unlocks secret tiers.
 | `lib/pledges/api.ts` | The public reward list, the draft, the read, and the confirm |
 | `lib/pledges/quote.ts` | PL-06's total, mirroring `PledgeQuote` in `pledge/domain` |
 | `lib/pledges/idempotency.ts` | What "the same intent" means, and when a key is retired |
-| `lib/pledges/failure.ts` | Each contract refusal, with the recovery that belongs to it |
+| `lib/pledges/failure.ts` | Each contract refusal, with the recovery that belongs to it. The words are `checkout.failures` (#91) |
 | `components/checkout/useCheckout.ts` | The selection, the two requests, and the phase |
 | `components/checkout/useReservationClock.ts` | PL-13's five minutes, counted down and not animated |
 

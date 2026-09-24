@@ -17,6 +17,12 @@
     },
     "saving": "Saving…",
     "tryAgain": "Try again",
+    "browseCampaigns": "Browse campaigns",
+    "list": {
+      "showMore": "Show more",
+      "loadingMore": "Loading",
+      "nextPageFailed": "The next page did not load"
+    },
     "trail": {
       "home": "Home",
       "discover": "Discover",
@@ -101,6 +107,34 @@
         "browse": "Browse campaigns",
         "categories": "Categories",
         "search": "Search"
+      },
+      "pages": {
+        "notFound": {
+          "metaTitle": "Page not found",
+          "metaDescription": "There is nothing at this address.",
+          "title": "There is nothing at this address",
+          "description": "The page may have moved, or the link that brought you here may be wrong. Campaigns are also removed when a creator cancels them or when moderation takes them down.",
+          "action": "Go to the home page"
+        },
+        "profileNotFound": {
+          "title": "There is no profile at this address",
+          "description": "The link may be wrong, or the person may have closed their account. Profiles also stop being public when somebody chooses to hide theirs.",
+          "action": "Browse campaigns"
+        },
+        "maintenance": {
+          "metaTitle": "Down for maintenance",
+          "metaDescription": "IdeaNest is briefly unavailable while we make a change.",
+          "title": "IdeaNest is down for a short while",
+          "description": "We are making a planned change and the platform is unavailable while it finishes. No pledge is affected: nothing is collected during a maintenance window, and every campaign deadline is unchanged.",
+          "action": "Try the home page"
+        },
+        "error": {
+          "title": "Something went wrong on our side",
+          "description": "This page could not be rendered. It is usually temporary — trying again is worth one press before anything else.",
+          "referenceLabel": "Reference",
+          "referenceHint": "Quoting it lets us find the exact failure in the log.",
+          "retry": "Try again"
+        }
       }
     },
     "whatsapp": {
@@ -124,6 +158,9 @@
         "detail": "Press send in WhatsApp to deliver it. Nothing has been sent from this page.",
         "again": "Open WhatsApp again"
       }
+    },
+    "search": {
+      "label": "Search campaigns"
     }
   },
   "account": {
@@ -246,6 +283,12 @@
         "metaDescription": "Everything IdeaNest has told you, newest first.",
         "title": "Notifications",
         "intro": "Everything the platform has told you, newest first. Opening one marks it read. <settings>Change what you are sent</settings>."
+      },
+      "pledgeDetail": {
+        "metaTitle": "Your pledge",
+        "metaDescription": "What you chose, what it comes to, and how to raise it.",
+        "title": "Your pledge",
+        "intro": "What you chose, what it comes to, and how to raise it. A pledge is charged when it is made, and refunded in full if its campaign does not succeed."
       }
     },
     "fulfilment": {
@@ -298,6 +341,7 @@
         "phoneHint": "Some carriers will not deliver without one.",
         "requiredField": "A parcel cannot be addressed without this.",
         "loadFailedTitle": "This address could not be loaded",
+        "loading": "Loading your address",
         "notFound": "That pledge could not be found, or it is not yours.",
         "unreachable": "The service could not be reached. Check your connection and try again.",
         "refused": "The address was refused.",
@@ -312,6 +356,131 @@
         "savedBodyAt": "This is where the reward goes, as of {at}.",
         "save": "Save address",
         "saving": "Saving"
+      }
+    },
+    "signals": {
+      "saved": {
+        "loading": "Loading your saved campaigns",
+        "failedTitle": "Your saved campaigns could not be loaded",
+        "emptyTitle": "Nothing saved yet",
+        "emptyBody": "Saving a campaign keeps it here so you can come back before it closes.",
+        "meta": "Saved {time} · by {creator}",
+        "remove": "Remove",
+        "removeLabel": "Remove {name} from your saved campaigns",
+        "removalFailedTitle": "That was not removed",
+        "removalFailedBody": "“{name}” could not be removed. It is still saved — try again in a moment."
+      },
+      "following": {
+        "loading": "Loading the creators you follow",
+        "failedTitle": "The list could not be loaded",
+        "emptyTitle": "You are not following anyone yet",
+        "emptyBody": "Following a creator means a message when they launch something new.",
+        "emptyAction": "Find creators",
+        "meta": "{creator} · following since {time}",
+        "remove": "Unfollow",
+        "removeLabel": "Stop following {name}",
+        "removalFailedTitle": "That did not change",
+        "removalFailedBody": "You are still following {name}. The change did not reach the service — try again in a moment."
+      }
+    },
+    "pledges": {
+      "states": {
+        "DRAFT": "Not finished",
+        "CONFIRMED": "Confirmed",
+        "EXPIRED": "Expired",
+        "CANCELED_BY_BACKER": "Cancelled by you",
+        "CANCELED_BY_PROJECT": "Cancelled by the creator",
+        "CHARGE_PENDING": "Payment in progress",
+        "CHARGE_FAILED": "Payment failed",
+        "COLLECTED": "Paid",
+        "DROPPED": "Dropped",
+        "REFUNDED": "Refunded",
+        "CHARGEBACK": "Charged back",
+        "FULFILLED": "Delivered"
+      },
+      "latePledge": "Late pledge",
+      "anonymous": "Anonymous",
+      "list": {
+        "loading": "Loading your pledges",
+        "failedTitle": "Your pledges could not be loaded",
+        "emptyTitle": "You have not backed anything yet",
+        "emptyBody": "Every pledge you make appears here, with what you chose and what you will be charged when the campaign closes.",
+        "browse": "Browse campaigns",
+        "noReward": "Support, with no reward",
+        "byCreator": "by {creator}",
+        "cancelledAt": "Cancelled {time}",
+        "confirmedAt": "Confirmed {time}",
+        "collected": "collected",
+        "toBeCollected": "to be collected when the campaign closes",
+        "loadingMore": "Loading",
+        "showMore": "Show more",
+        "nextPageFailed": "The next page did not load"
+      },
+      "manager": {
+        "loading": "Loading this pledge",
+        "unreadableTitle": "This pledge could not be read",
+        "unreadableBody": "The service did not answer. Try again in a moment.",
+        "allPledges": "All your pledges",
+        "campaignUnnamed": "This pledge’s campaign could not be loaded",
+        "confirmedAt": "Confirmed {time}",
+        "withdrawnAt": "Withdrawn {time}",
+        "whereGoing": "Where this reward is going",
+        "supplementsHeading": "Bought after the campaign closed",
+        "upgrade": "Reward upgrade",
+        "extraAddons": "Extra add-ons",
+        "supplementsNote": "Charged separately from the pledge above, and not yet charged at all.",
+        "lockedTitle": "This pledge can no longer be changed here",
+        "lockedBody": "A pledge can be changed while it is being made, and raised — never lowered or withdrawn — after it is confirmed, while the campaign takes pledges. This one is {state}, so those controls are not offered. If something about it is wrong, the campaign’s creator is who to ask."
+      },
+      "editor": {
+        "loadingRewards": "Loading the rewards",
+        "heading": "Change this pledge",
+        "intro": "You can change what you chose until the campaign’s deadline. Nothing has been charged yet, so an edit re-prices the whole pledge rather than billing a difference.",
+        "anonymousHint": "Your name is kept off the campaign’s public backer list and off your profile. The creator still sees it, because they have to post your reward.",
+        "saving": "Saving",
+        "save": "Save changes",
+        "noChanges": "Nothing has been changed yet.",
+        "savedTitle": "Your pledge was updated",
+        "savedBody": "The figures above are the service’s, not this page’s arithmetic. Nothing has been charged — collection happens when the campaign closes successfully."
+      }
+    },
+    "surveys": {
+      "list": {
+        "loading": "Loading your surveys",
+        "failedTitle": "Your surveys could not be loaded",
+        "refused": "The service refused the request.",
+        "unreachable": "The service could not be reached. Check your connection and try again.",
+        "emptyTitle": "Nothing to answer",
+        "emptyBody": "A creator sends a survey once their campaign has funded, to find out which size, which colour, and where to send it.",
+        "waitingTitle": {
+          "one": "One creator is waiting on you",
+          "few": "{count} creators are waiting on you",
+          "many": "{count} creators are waiting on you",
+          "other": "{count} creators are waiting on you"
+        },
+        "waitingBody": "A campaign cannot be packed until the answers are in."
+      },
+      "card": {
+        "needsAnAnswer": "Needs an answer",
+        "answered": "Answered",
+        "closed": "Closed",
+        "respondBy": "Asked for by {time}.",
+        "noDate": "No date was set for this one.",
+        "answeredOn": "You answered on {time}.",
+        "closedTitle": "This survey is closed",
+        "closedBody": "The creator has what they need and is no longer taking changes. Your answers are below as they were saved.",
+        "failedTitle": "Your answers were not saved",
+        "refused": "The service refused the answers.",
+        "unreachable": "The service could not be reached. Check your connection and try again.",
+        "savedTitle": "Saved",
+        "savedBody": "The creator can see your answers. You can change them while this survey is open.",
+        "required": "This one is required.",
+        "saving": "Saving",
+        "submit": "Save answers"
+      },
+      "question": {
+        "addressNote": "A shipping address is not part of this form — it is held separately and encrypted.",
+        "addressLink": "Add or change your address"
       }
     },
     "notifications": {
@@ -416,6 +585,7 @@
         "signedOut": "You are signed out",
         "signedOutBody": "This browser no longer has a session. Sign in again to read your notifications.",
         "loadingList": "Loading your notifications",
+        "errorTitle": "Something went wrong",
         "emptyTitle": "Nothing yet",
         "emptyBody": "When a campaign you back reaches its goal, closes, or takes a payment, it will appear here.",
         "filteredTitle": "Nothing here in what has loaded",
@@ -493,9 +663,11 @@
     "index": {
       "title": "Administration console",
       "metaDescription": "The platform modules, which of them have a screen, and what the rest wait on.",
-      "standfirst": "The {total} modules §4.11 describes. {complete} of them are finished and {partial} are partly built; each of those says what it is still waiting for, because a backlog that reads as though the console were nearly done is worse than one that names the gap.",
+      "standfirst": "The {total} modules your roles open — finished: {complete}, partly built: {partial}. Each of the latter says what it is still waiting for, because a list that reads as though the console were nearly done is worse than one that names the gap.",
       "issue": "Issue #{issue}",
-      "footnote": "No screen here is a gate. Every endpoint the console calls checks the caller itself — refusing a stranger as a stranger, and a colleague by the capability the screen wanted — and each screen renders that refusal as it arrived. A check in the browser would be a second, weaker copy of one the service already makes correctly."
+      "notYours": "Modules your roles do not open are not listed here: {count}.",
+      "rolesLink": "What each role holds",
+      "footnote": "The console lists what your roles open, and that is a courtesy rather than a lock. Every endpoint it calls checks the caller itself — refusing a stranger as a stranger, and a colleague by the capability the screen wanted — and each screen renders that refusal as it arrived. The browser cannot be the authority here: the session it would have to spend to check is the one it is checking."
     },
     "modules": {
       "AD-01": {
@@ -573,6 +745,7 @@
       }
     },
     "refusals": {
+      "consoleSubject": "the administration console",
       "signedOutTitle": "You are signed out",
       "signedOutBody": "This browser no longer has a session. Sign in again to read {subject}.",
       "forbiddenTitle": "You do not work here",
@@ -2505,6 +2678,113 @@
         "unavailable": "A card cannot be registered right now. Nothing was recorded; try again later.",
         "malformedTaxId": "A VÖEN is ten digits.",
         "failed": "That did not work. Try again in a moment."
+      },
+      "twoFactor": {
+        "heading": "Two-factor authentication",
+        "passwordHeading": "Confirm your password",
+        "scanHeading": "Add IdeaNest to your authenticator",
+        "codesHeading": "Save your recovery codes",
+        "disableHeading": "Turn two-factor authentication off",
+        "fromService": "From the service",
+        "intro": "A code from your phone, on top of your password. §4.1 makes it {emphasis}, so a creator will be asked for one sooner or later — switching it on now is the cheaper moment.",
+        "introEmphasis": "required before a payout",
+        "setUp": "Set it up",
+        "turnOff": "Turn it off",
+        "bothOffered": "Both are offered because this screen cannot read which one applies — the service publishes no field saying whether your account is enrolled. Whichever you choose, it answers honestly.",
+        "passwordIntro": "Turning a security control on costs your password, so that a stolen sign-in cannot bolt a second factor onto your account.",
+        "currentPassword": "Current password",
+        "checking": "Checking",
+        "continue": "Continue",
+        "cancel": "Cancel",
+        "scanIntro": "Two-factor is {emphasis}. Add this to your authenticator, then enter the code it shows — that is what switches it on.",
+        "scanIntroEmphasis": "not on yet",
+        "onThisDevice": "On this device",
+        "openApp": "Open in your authenticator app",
+        "byHand": "Or enter this key by hand",
+        "parameters": "{digits} digits, every {seconds} seconds, {algorithm}.",
+        "codeLabel": "Code from your authenticator",
+        "codePlaceholder": "000000",
+        "confirming": "Confirming",
+        "switchOn": "Switch it on",
+        "codesWarningTitle": "This is the only time these are shown",
+        "codesWarningBody": "We store a hash of them, so they cannot be shown again — only replaced by enrolling afresh. Each one works once, and any of them signs you in when your authenticator is out of reach.",
+        "acknowledge": "I have saved these somewhere I can reach without my phone.",
+        "done": "Done",
+        "enabledNotice": "Two-factor authentication is on. You will be asked for a code when you sign in.",
+        "disableIntro": "Your password {emphasis} a code. Without the code the whole feature would be worth exactly one password, which is the thing it was added to stop being enough.",
+        "disableIntroEmphasis": "and",
+        "recoveryLabel": "Or a recovery code",
+        "recoveryHint": "For the person whose phone is the reason they are here. Each one works once.",
+        "turningOff": "Turning it off",
+        "alreadyEnabled": "Two-factor authentication is already enabled.",
+        "disabledNotice": "Two-factor authentication is off. Your password alone signs you in again."
+      },
+      "closure": {
+        "heading": "Close your account",
+        "goneTitle": "This account is no longer there",
+        "goneBody": "Sign out and sign in again — there is nothing left here to close.",
+        "scheduledTitle": "This account is scheduled to close",
+        "scheduledBody": "It will be anonymised on {date}. Until then you can still sign in, and cancelling below puts everything back.",
+        "cancelling": "Cancelling",
+        "keep": "Keep my account",
+        "notImmediate": "Closing is not immediate. The account is kept for thirty days and then anonymised, so a closure made in anger — or by somebody else — can be undone.",
+        "recordsKept": "Financial records are kept for the statutory period whatever happens to the account, and campaigns you have backed keep their totals. Neither of those names you afterwards.",
+        "currentPassword": "Current password",
+        "understood": "I understand this closes my account and anonymises it after thirty days.",
+        "scheduling": "Scheduling",
+        "close": "Close my account",
+        "rateLimited": "That has been tried a few times recently. Wait a little and try again."
+      },
+      "export": {
+        "heading": "Take a copy of your data",
+        "intro": "One JSON file with everything IdeaNest holds about your account. It downloads to this device and is not stored anywhere afterwards.",
+        "errorTitle": "The export did not arrive",
+        "rateLimited": "You have asked for this a few times recently. Try again in a little while.",
+        "refused": "The export was refused.",
+        "savedTitle": "Saved",
+        "savedBody": "Look for {filename} wherever this browser puts downloads.",
+        "preparing": "Preparing your copy",
+        "download": "Download my data"
+      },
+      "sessions": {
+        "signedOutTitle": "You are signed out",
+        "signedOutBody": "This browser no longer has a session. Sign in again to manage your devices.",
+        "heading": "Your devices",
+        "signOutEverywhere": "Sign out everywhere else",
+        "errorTitle": "Something went wrong",
+        "loading": "Loading your devices",
+        "emptyTitle": "No devices are signed in",
+        "emptyBody": "That should not be possible while you are reading this page. Reload it to check again.",
+        "tryAgain": "Try again",
+        "confirmTitle": "Sign out everywhere else?",
+        "confirmDescription": "{devices} will be signed out immediately. This one stays signed in.",
+        "confirmBody": "Anyone using those devices will have to sign in again. Do this if you have lost a device or you do not recognise something in the list.",
+        "cancel": "Cancel",
+        "signingOutAll": "Signing out",
+        "signOutCount": "Sign out {devices}",
+        "devices": {
+          "one": "{count} device",
+          "few": "{count} devices",
+          "many": "{count} devices",
+          "other": "{count} devices"
+        },
+        "signedOutDevice": "Signed out {name}.",
+        "signedOutDevices": "Signed out {devices}.",
+        "signedOutPartly": "Signed out {done}. {failed} could not be signed out — try again.",
+        "deletionScheduled": "Your account is scheduled for deletion, so devices cannot be managed. Cancel the deletion to manage them again.",
+        "row": {
+          "thisDevice": "This device",
+          "unknownDevice": "Unknown device",
+          "noDetails": "No device details recorded",
+          "lastActive": "Last active {seen} · signed in {created}",
+          "signOut": "Sign out",
+          "signingOut": "Signing out",
+          "signOutLabel": "Sign out {device}",
+          "signingOutLabel": "Signing out {device}",
+          "signOutThisLabel": "Sign out of this device",
+          "signingOutThisLabel": "Signing out of this device",
+          "onPlatform": "{browser} on {platform}"
+        }
       }
     }
   },
@@ -2999,7 +3279,9 @@
     },
     "contribution": {
       "legend": "Your contribution",
-      "hint": "Every amount goes to the campaign."
+      "hint": "Every amount goes to the campaign.",
+      "legendNoReward": "How much would you like to give?",
+      "rewardHint": "This reward costs {amount}. Give more if you would like to; the extra is bonus support."
     },
     "summary": {
       "label": "Pledge summary",
@@ -3011,6 +3293,7 @@
       "delivery": "Delivery",
       "tax": "Tax",
       "total": "Total",
+      "approximately": "Approximately {amount}",
       "noReward": "Support with no reward",
       "yourSupport": "Your support",
       "rewardLine": "Reward"
@@ -3063,6 +3346,94 @@
       "amountNotANumber": "Amounts are digits and at most one full stop, like 45.00.",
       "belowRewardPrice": "This reward costs {price}. Give that or more, or choose a cheaper reward.",
       "destinationUnpriced": "The creator has not set a delivery cost to this destination for {lines}. Choose somewhere else, or take that out of your pledge."
+    },
+    "failures": {
+      "unreachable": {
+        "title": "The service could not be reached",
+        "detail": "Nothing was sent, or nothing came back. Check your connection and try again — trying again is safe, and cannot pledge twice."
+      },
+      "signedOut": {
+        "title": "You are not signed in",
+        "detail": "Sign in and start again. Nothing was reserved."
+      },
+      "unknown": {
+        "title": "That did not work",
+        "detail": "The service refused the request and did not say why. Nothing was reserved."
+      },
+      "codes": {
+        "REWARD_SOLD_OUT": {
+          "title": "That reward has just gone",
+          "detail": "Somebody took the last one while you were choosing. Nothing has been reserved."
+        },
+        "PLEDGE_ALREADY_EXISTS": {
+          "title": "You are already backing this campaign",
+          "detail": "One pledge per campaign. To change what you chose, open the pledge you already have and edit it."
+        },
+        "IDEMPOTENCY_KEY_REUSED": {
+          "title": "That request did not match the one before it",
+          "detail": "Nothing was reserved. Try again."
+        },
+        "SHIPPING_DESTINATION_UNPRICED": {
+          "title": "The creator does not post to that destination",
+          "detail": "They have not set a delivery cost for it, so there is no honest amount to charge you. Choose somewhere else, or drop the item that is posted."
+        },
+        "CONTRIBUTION_BELOW_REWARD_PRICE": {
+          "title": "That is less than the reward costs",
+          "detail": "Give at least the price of the tier you chose, or choose a cheaper one."
+        },
+        "PROJECT_NOT_LIVE": {
+          "title": "This campaign is not taking pledges",
+          "detail": "It may have closed, or it may not have opened yet. Nothing has changed."
+        },
+        "PLEDGE_CANNOT_BE_CANCELLED": {
+          "title": "A confirmed pledge cannot be withdrawn",
+          "detail": "You can raise this pledge, but not cancel it. Nothing has changed. If the campaign ends below its success threshold, is suspended, or is cancelled, every backer is refunded."
+        },
+        "PLEDGE_DECREASE_NOT_ALLOWED": {
+          "title": "A confirmed pledge can only be raised",
+          "detail": "This change would lower your pledge, and a confirmed pledge can only go up. Nothing has changed."
+        },
+        "PLEDGE_NOT_EDITABLE": {
+          "title": "This pledge can no longer be changed",
+          "detail": "It has moved past the point where a backer can edit or withdraw it. Nothing has changed. If something about it is wrong, the campaign’s creator is who to ask."
+        },
+        "PLEDGE_NOT_FOUND": {
+          "title": "That pledge is not here",
+          "detail": "It may have been cancelled, or the link may be wrong. Your own pledges are listed on your pledges page."
+        },
+        "REWARD_NOT_FOUND": {
+          "title": "That reward is no longer offered",
+          "detail": "The creator has removed the tier you chose. Pick another one, or continue without a reward. Nothing has changed."
+        },
+        "RESERVATION_EXPIRED": {
+          "title": "Your reward was only held for five minutes",
+          "detail": "The hold has ended and the stock has gone back to the campaign. Nothing was confirmed and no card was involved. Reserve it again to carry on."
+        },
+        "AGREEMENT_REQUIRED": {
+          "title": "What backing means has changed",
+          "detail": "This page was showing an older statement of what a pledge is and is not. Nothing was confirmed and no card was involved. Load the page again, read it, and confirm."
+        },
+        "PLEDGE_NOT_DRAFT": {
+          "title": "This pledge has already been dealt with",
+          "detail": "It is confirmed or cancelled, so there is nothing left to confirm."
+        },
+        "IDEMPOTENT_REQUEST_IN_PROGRESS": {
+          "title": "Your first attempt is still going",
+          "detail": "The same request is already being carried out. Nothing has been pledged twice, and waiting a moment and asking again is safe."
+        },
+        "IDEMPOTENCY_KEY_REQUIRED": {
+          "title": "This page sent an incomplete request",
+          "detail": "A header this request needs was missing, which is a fault in this site rather than anything you did. Nothing was reserved and no card was involved. Reloading the page is the only thing that will help."
+        },
+        "IDEMPOTENCY_KEY_INVALID": {
+          "title": "This page sent a malformed request",
+          "detail": "A header this request needs was not in the form the service accepts, which is a fault in this site rather than anything you did. Nothing was reserved and no card was involved. Reloading the page is the only thing that will help."
+        },
+        "PLEDGE_MODIFIED": {
+          "title": "This pledge changed while you were confirming it",
+          "detail": "Something else wrote to it first — most often the five-minute hold running out as you confirmed. Nothing was confirmed and no card was involved. Reserve it again to carry on."
+        }
+      }
     },
     "returned": {
       "paidTitle": "Your pledge is paid",
@@ -3156,10 +3527,50 @@
     },
     "daysLeft": "{days, plural, =0 {Last day} one {# day left} other {# days left}}",
     "backers": "{count, plural, =0 {No backers} one {# backer} other {# backers}}",
+    "by": "by {creator}",
+    "funding": {
+      "progressLabel": "Funding: {percent} percent of the goal",
+      "pledged": "pledged",
+      "funded": "funded",
+      "ofGoal": "of goal",
+      "backers": {
+        "one": "backer",
+        "few": "backers",
+        "many": "backers",
+        "other": "backers"
+      }
+    },
     "actions": {
       "save": "Save",
+      "saved": "Saved",
       "share": "Share",
-      "remind": "Remind me"
+      "remind": "Remind me",
+      "reminderSet": "Reminder set",
+      "saveLabel": "Save {title}",
+      "savedLabel": "{title} is saved",
+      "shareLabel": "Share {title}",
+      "remindLabel": "Remind me when {title} opens",
+      "remindingLabel": "You will be told when {title} opens",
+      "notices": {
+        "saved": "{title} saved.",
+        "notSaved": "{title} is not saved.",
+        "removed": "{title} removed from your saved campaigns.",
+        "shared": "Shared.",
+        "copied": "Link copied.",
+        "shareFailed": "That could not be shared. The link is in the address bar.",
+        "copyFailed": "The link could not be copied. It is in the address bar.",
+        "remindOn": "We will write to you once, when this campaign opens.",
+        "remindOff": "You will not be told when this opens."
+      },
+      "failures": {
+        "signIn": "Sign in first.",
+        "notSaved": "That could not be saved. Try again.",
+        "unreachable": "The service could not be reached. Try again."
+      }
+    },
+    "countdown": {
+      "label": "Time left to back this campaign: {time}",
+      "left": "{time} left"
     },
     "back": {
       "cta": "Back this campaign"
@@ -3232,9 +3643,44 @@
       "replyLabel": "Your reply",
       "withdraw": "Withdraw",
       "withdrawWarning": "Withdrawing leaves a note saying the comment was removed. Any replies to it stay, and it cannot be edited or restored.",
-      "keep": "Keep it"
+      "keep": "Keep it",
+      "postComment": "Post comment",
+      "postReply": "Post reply",
+      "posting": "Posting"
     },
-    "rule": "A campaign succeeds at 80% of its goal. Its creator may extend the deadline once."
+    "rule": "A campaign succeeds at 80% of its goal. Its creator may extend the deadline once.",
+    "prelaunch": {
+      "loading": "Loading this campaign",
+      "unavailableTitle": "Nothing to see here yet",
+      "unavailable": "There is no pre-launch page here. It may not be open yet, or the campaign may already have launched.",
+      "alreadyOpen": "This campaign has already opened, so there is nothing left to be reminded about.",
+      "failedTitle": "This page could not be loaded",
+      "comingSoon": "Coming soon",
+      "waiting": {
+        "one": "{count} person is waiting for this campaign.",
+        "few": "{count} people are waiting for this campaign.",
+        "many": "{count} people are waiting for this campaign.",
+        "other": "{count} people are waiting for this campaign."
+      },
+      "formTitle": "Get told when this opens",
+      "formIntro": "One email, on the day the campaign goes live.",
+      "accountAddress": "We will use the address on your account.",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "you@example.com",
+      "emailInvalid": "Enter an email address, for example you@example.com.",
+      "submit": "Remind me",
+      "submitting": "Adding you",
+      "onListTitle": "You are on the list",
+      "onListSignedIn": "We will write to the address on your account, once, the day this campaign opens. Nothing else.",
+      "onListGuest": "We will write to you once, the day this campaign opens. Nothing else, and every message has a link to stop.",
+      "onListAnnouncement": "You are on the list. We will email you when this campaign opens.",
+      "errors": {
+        "rateLimited": "Too many attempts from here. Try again in a few minutes.",
+        "rateLimitedIn": "Too many attempts from here. Try again in about {minutes} minutes.",
+        "notSaved": "That could not be saved. Try again.",
+        "unreachable": "The service could not be reached. Check your connection and try again."
+      }
+    }
   },
   "campaignEditor": {
     "eyebrow": "Campaign editor",
@@ -3687,6 +4133,7 @@
         "failedTitle": "The history could not be loaded",
         "emptyTitle": "No earlier versions yet",
         "loadingLabel": "Loading earlier versions",
+        "loadingVersion": "Loading this version…",
         "description": "A version is kept each time the story changes, at most one every few minutes. The most recent fifty are here.",
         "emptyDescription": "One is kept the first time the story changes, and then at most one every few minutes while you write.",
         "replaceWarning": "The story you have now is replaced.",
@@ -3858,16 +4305,21 @@
       "buttonLabel": "Choose an image",
       "dropHint": "Up to 20 MB. It is converted and resized here, and the original is not kept. {minimum} or larger reads best.",
       "urlPlaceholder": "Or paste an address: https://images.example.com/cover.jpg",
+      "urlLabel": "Cover image address",
+      "checking": "Checking",
+      "useAddress": "Use this address",
       "needUrlFirst": "Enter the address of an image first.",
       "notUsedTitle": "That file was not used",
       "unusable": "That image could not be used.",
       "softTitle": "This will look soft at full width",
       "set": "Cover set from a {size} pixel image.",
       "setSmall": "Cover set from a {size} pixel image. It is below the recommended {minimum}, so it will be scaled up to fill the header and will look soft. Its proportions are kept — the frame crops rather than stretches. The campaign can still be submitted.",
+      "size": "Cover is {size} pixels",
+      "sizeUploaded": "Cover is {size} pixels · uploaded",
       "stage": {
-        "preparing": "Preparing",
-        "uploading": "Uploading",
-        "processing": "Processing"
+        "preparing": "Preparing the image…",
+        "uploading": "Uploading the image…",
+        "processing": "Processing the image…"
       },
       "failures": {
         "TOO_SMALL": "That image is too small to display. Anything from {minimum} upwards reads well.",
@@ -3878,7 +4330,10 @@
         "UPLOADS_UNAVAILABLE": "Uploading is not switched on for this environment. Paste an address instead.",
         "MEDIA_STORAGE_UNREACHABLE": "Image storage is not answering. Please try again shortly.",
         "UPLOAD_STILL_PROCESSING": "That image is taking longer than usual. It may appear if you come back to this tab.",
-        "UPLOAD_TRANSFER_FAILED": "The image did not reach storage. Check the connection and try again."
+        "UPLOAD_TRANSFER_FAILED": "The image did not reach storage. Check the connection and try again.",
+        "UPLOAD_REFUSED": "That file was refused.",
+        "UPLOAD_UNFINISHED": "That upload could not be finished.",
+        "MEDIA_NOT_FOUND": "That upload could not be read."
       }
     },
     "newProject": {
@@ -3902,6 +4357,47 @@
       "faq": "The questions your campaign answers on its own page, and the order backers read them in.",
       "prelaunch": "Open a pre-launch page, share the link, and collect the people who want to be told when your campaign opens.",
       "review": "How complete your campaign is, what moderation has said about it, and submitting it for review."
+    }
+  },
+  "moderation": {
+    "report": {
+      "trigger": "Report",
+      "triggerOn": {
+        "campaign": "Report this campaign",
+        "account": "Report this account",
+        "comment": "Report this comment"
+      },
+      "dialogLabel": "Report {name}",
+      "commentOn": "a comment on {title}",
+      "signedOutBody": "Reporting needs an account. It is how the platform can tell one complaint from five copies of the same one, and how a moderator can come back to you.",
+      "signIn": "Sign in",
+      "filedTitle": "A moderator will look at this",
+      "filedBody": {
+        "campaign": "We have your report. Nothing about the campaign changes because of it — a report is a request for a person to look, not a vote.",
+        "account": "We have your report. Nothing about the account changes because of it — a report is a request for a person to look, not a vote.",
+        "comment": "We have your report. Nothing about the comment changes because of it — a report is a request for a person to look, not a vote."
+      },
+      "close": "Close",
+      "errorTitle": "It was not sent",
+      "refused": "The report was refused.",
+      "unreachable": "The service could not be reached. Check your connection and try again.",
+      "detailRequired": "“Other” needs a sentence, or a moderator has nothing to look at.",
+      "reasonLabel": "What is wrong with it?",
+      "detailLabel": "Anything else a moderator should know",
+      "detailHint": "Optional, except for “Other”. What you saw, and where.",
+      "sending": "Sending",
+      "submit": "Send report",
+      "descriptions": {
+        "PROHIBITED_ITEM": "It offers something the platform does not allow to be funded.",
+        "MISREPRESENTATION": "It states something about itself that is not true.",
+        "NOT_ORIGINAL": "The work is somebody else’s, presented as the creator’s own.",
+        "INTELLECTUAL_PROPERTY": "It uses a trademark, a design or a work without the right to.",
+        "OFFENSIVE": "The material itself is offensive.",
+        "DISCRIMINATION": "It targets people for who they are.",
+        "SPAM": "It exists to advertise something else.",
+        "FRAUD": "There is reason to believe nobody intends to deliver.",
+        "OTHER": "Something else — say what below."
+      }
     }
   },
   "profile": {
@@ -3953,6 +4449,84 @@
         "LATE_PLEDGE": "Late pledges",
         "FULFILLING": "Fulfilling",
         "COMPLETED": "Completed"
+      }
+    },
+    "editor": {
+      "heading": "How you appear on IdeaNest",
+      "liveAt": "Your profile is at {address}, and everything on this page is public to anybody who opens it.",
+      "handleFixed": "Your handle, @{slug}, cannot be changed here.",
+      "handleWhy": "It is the address of this page and it is printed on every campaign you publish, so moving it would break links other people have already shared.",
+      "loadFailedTitle": "Your profile could not be loaded",
+      "loadFailed": "Your profile could not be loaded. Reload the page to try again.",
+      "loading": "Loading your profile.",
+      "saveFailedTitle": "Nothing was saved",
+      "unreachable": "IdeaNest could not be reached. Nothing was saved.",
+      "name": "Name",
+      "nameHint": "What you are called on your profile and on every campaign you create. {max} characters or fewer.",
+      "bio": "Biography",
+      "bioHint": "A few sentences about you, on the About tab of your profile. {max} characters or fewer.",
+      "website": "Website",
+      "websiteHint": "Has to start with https://. It is shown on your profile as a link.",
+      "websitePlaceholder": "https://example.com",
+      "location": "Location",
+      "locationHint": "Where you are, from the places IdeaNest knows about.",
+      "notSaying": "Not saying",
+      "locationsUnavailable": "The list of places could not be loaded, so this cannot be set here right now. Everything else on this page still saves.",
+      "locationsUnavailableWithValue": "Your profile says {place}. The list of places could not be loaded, so this cannot be changed right now — everything else on this page still saves.",
+      "saving": "Saving",
+      "save": "Save profile",
+      "savedTitle": "Your profile is saved",
+      "savedBody": "It is live at {address}.",
+      "avatar": {
+        "label": "Profile picture",
+        "hint": "Shown beside your name on your profile and on every campaign you create.",
+        "pipelineTitle": "Uploading arrives with the media pipeline",
+        "pipelineBody": "IdeaNest cannot store a file yet, so this takes the address of a picture that is already published somewhere. Choosing which part of it to show — the crop — arrives with the same work.",
+        "noPicture": "{name}, with no picture",
+        "broken": "That address did not load as a picture here. Your profile would show your initials instead.",
+        "cropped": "This is how your picture is cropped to a circle.",
+        "initials": "Your initials are shown while there is no picture.",
+        "address": "Profile picture address",
+        "addressPlaceholder": "https://images.example.com/me.jpg",
+        "remove": "Remove picture",
+        "squareTitle": "This picture is square",
+        "notSquareTitle": "This picture is not square",
+        "square": "{file} is {size} pixels and fits the circle as it is. Nothing has been uploaded — publish it somewhere public and paste the address below.",
+        "notSquare": "{file} is {size} pixels, so it is cropped to a circle from the middle. Nothing has been uploaded — publish it somewhere public and paste the address below.",
+        "unreadable": "That file could not be read as an image.",
+        "prompt": "Or drop a picture here to see how it would be cropped",
+        "dragPrompt": "Release to measure this picture",
+        "buttonLabel": "Choose a picture to measure",
+        "dropHint": "Measured in your browser. Nothing is uploaded."
+      },
+      "links": {
+        "label": "Links to your other accounts",
+        "hint": "One link per platform, and at most {max}. Every address has to start with https://.",
+        "none": "You have not added any. They appear on your public profile, under your biography.",
+        "platformFor": "Platform for link {number}",
+        "addressFor": "{platform} address",
+        "addressPlaceholder": "https://example.com/you",
+        "removeLink": "Remove the {platform} link",
+        "remove": "Remove",
+        "add": "Add a link",
+        "used": "{used} of {max} used.",
+        "atCap": "{max} of {max} used, which is the most a profile can carry. Remove one to add another.",
+        "allListedTitle": "Every platform is already listed",
+        "allListedBody": "There is a link for each platform IdeaNest knows about. Change one instead of adding another."
+      },
+      "visibility": {
+        "heading": "Your public profile",
+        "intro": "Your profile page lists the campaigns you have created and the ones you have backed. It never shows any amounts, and pledges you made anonymously are never listed. Hiding it makes the address answer as though there were nothing there.",
+        "toggle": "Show my profile to everybody",
+        "public": "Public",
+        "hidden": "Hidden",
+        "checking": "Checking what a visitor sees.",
+        "unknownTitle": "This setting could not be read",
+        "unknownBody": "IdeaNest could not check whether your profile is currently visible, so the switch is disabled rather than showing a position it is not sure of. Reload the page to try again.",
+        "failedTitle": "Nothing was changed",
+        "refused": "The service refused the change. Your profile is as it was.",
+        "unreachable": "The service could not be reached. Your profile is as it was.",
+        "seeAsVisitor": "See your profile as a visitor sees it"
       }
     }
   },
@@ -4130,6 +4704,258 @@
       "fixedFee": "The payment provider also charges {amount} per transaction.",
       "twoFees": "These are two separate charges. IdeaNest’s fee is what the platform keeps; the processing fee goes to the company that moves the money, and IdeaNest never receives it. The rates in force are the ones above, and they are the rates a payout is calculated with.",
       "unconfigured": "IdeaNest has not set a fee schedule, so nothing is being deducted from pledges today. This is not a permanent commitment: the rates are published here the moment any are set, and the creator agreement is where the terms are stated."
+    }
+  },
+  "dashboard": {
+    "meta": {
+      "title": "Campaign dashboard",
+      "description": "Live totals, progress and time remaining for a campaign you run."
+    },
+    "nav": {
+      "label": "Dashboard sections",
+      "overview": "Overview",
+      "charts": "Funding and backers",
+      "backers": "Backers",
+      "finance": "Finance",
+      "surveys": "Surveys"
+    },
+    "failures": {
+      "signedOut": "Your session has expired. Sign in again to see this campaign.",
+      "noCampaign": "That campaign does not exist, or it is not one you work on."
+    },
+    "states": {
+      "CONFIRMED": "Confirmed",
+      "CHARGE_PENDING": "Awaiting collection",
+      "CHARGE_FAILED": "Payment failed",
+      "COLLECTED": "Collected",
+      "FULFILLED": "Fulfilled"
+    },
+    "clock": {
+      "none": "No deadline yet — the countdown starts when the campaign launches.",
+      "urgent": "Closing soon",
+      "closed": "Closed",
+      "days": {
+        "one": "{count} day left",
+        "few": "{count} days left",
+        "many": "{count} days left",
+        "other": "{count} days left"
+      },
+      "hours": "{hours}h {minutes}m left",
+      "minutes": "{minutes}m {seconds}s left",
+      "seconds": "{seconds}s left"
+    },
+    "overview": {
+      "loading": "Loading the campaign’s totals",
+      "notGranted": "Your collaborator grant on this campaign does not include the finances, so these figures are not yours to see.",
+      "unavailable": "The dashboard could not be loaded. It is the service rather than your campaign — try again shortly.",
+      "raised": "Raised",
+      "backers": "Backers",
+      "goal": "Goal",
+      "goalUnset": "Not set yet",
+      "noGoal": "This campaign has no funding goal yet, so there is no progress to show.",
+      "progressLabel": "Funding: {percent} percent of the goal",
+      "percentFunded": "{percent}% funded",
+      "goalReached": "Goal reached",
+      "outcomeHeading": "At the deadline",
+      "outcome": "This campaign closed with {pledged} from {backers}, against a goal of {goal}. These figures are frozen: a payment that fails during collection reduces what is paid out, never what the campaign raised.",
+      "outcomeBackers": {
+        "one": "{count} backer",
+        "few": "{count} backers",
+        "many": "{count} backers",
+        "other": "{count} backers"
+      }
+    },
+    "charts": {
+      "heading": "Funding and backers",
+      "intro": "How this campaign has raised what it has raised, which rewards backers chose, and where they are.",
+      "trendHeading": "Funding over time",
+      "trendLoading": "Loading the funding trend",
+      "trendNotGranted": "Your collaborator grant on this campaign does not include the funding trend.",
+      "trendUnavailable": "The funding trend could not be loaded. It is the service rather than your campaign — try again shortly.",
+      "trendEmpty": "Nothing has been pledged between {from} and {to}. The chart appears with the first confirmed pledge.",
+      "trendLabel": "Running total, {from} to {to} ({zone})",
+      "aggregated": "Aggregated {when}. The live totals on the overview are read at the moment you ask for them.",
+      "splitHeading": "Rewards and destinations",
+      "splitLoading": "Loading the reward and destination split",
+      "splitNotGranted": "Your collaborator grant on this campaign does not include the backer breakdown.",
+      "splitUnavailable": "The backer breakdown could not be loaded. It is the service rather than your campaign — try again shortly.",
+      "splitEmpty": "Nobody has backed this campaign yet, so there is nothing to split.",
+      "backers": "Backers",
+      "pledged": "Pledged",
+      "nothingYet": "Nothing yet",
+      "rewardHeading": "By reward tier",
+      "rewardEmpty": "Every backer so far pledged without taking a reward.",
+      "rewardLabel": "Backers by reward tier",
+      "rewardNote": "These cover the backers who chose a tier. A pledge with no reward is not listed here, which is why the tiers can add up to less than the total above.",
+      "destinationHeading": "By destination",
+      "destinationLabel": "Backers by destination",
+      "destinationNote": "A pledge that named no destination — a digital reward, or support with no reward — is counted under “No destination” rather than left out.",
+      "removedTier": "A removed tier",
+      "noDestination": "No destination",
+      "shareBackers": {
+        "one": "{count} backer",
+        "few": "{count} backers",
+        "many": "{count} backers",
+        "other": "{count} backers"
+      }
+    },
+    "trend": {
+      "peak": "{amount} by {day}",
+      "showDaily": "Show the daily figures",
+      "dailyLabel": "Daily funding figures",
+      "day": "Day",
+      "backers": "Backers",
+      "pledged": "Pledged",
+      "runningTotal": "Running total"
+    },
+    "table": {
+      "backer": "Backer",
+      "reward": "Reward",
+      "pledged": "Pledged",
+      "state": "State",
+      "destination": "Destination",
+      "backed": "Backed",
+      "anonymous": "Not named publicly",
+      "noReward": "No reward",
+      "removedTier": "A removed tier"
+    },
+    "backers": {
+      "heading": "Backers",
+      "intro": "Everybody who has backed this campaign, and how to reach them. The export carries the same people as the list below it.",
+      "loading": "Loading this campaign’s backers",
+      "notGranted": "Your collaborator grant on this campaign does not include the backer report.",
+      "tooManyExports": "That is more exports than this account may take in a minute. Try again shortly.",
+      "unavailable": "The backer report could not be loaded. It is the service rather than your campaign — try again shortly.",
+      "searchLabel": "Search backers",
+      "searchHint": "A name or an email address, or part of one.",
+      "search": "Search",
+      "export": "Export CSV",
+      "stateLegend": "Pledge state",
+      "segmentsLegend": "Saved segments",
+      "deleteSegment": "Delete the segment {name}",
+      "saveLabel": "Save this filter as",
+      "saveHint": "Eighty characters or fewer.",
+      "savePlaceholder": "Our German backers",
+      "saveSegment": "Save segment",
+      "saved": "Saved “{name}”.",
+      "saveConflict": "This campaign already has a segment by that name, or has as many as the report holds.",
+      "saveFailed": "That segment could not be saved. Try again shortly.",
+      "deleted": "Deleted “{name}”.",
+      "deleteFailed": "That segment could not be deleted. Try again shortly.",
+      "exported": {
+        "one": "Exported {count} backer.",
+        "few": "Exported {count} backers.",
+        "many": "Exported {count} backers.",
+        "other": "Exported {count} backers."
+      },
+      "exportedTruncated": "Exported the first {count} backers. This campaign has more than one file holds — filter it and export the parts.",
+      "matched": {
+        "one": "{count} backer matches this filter.",
+        "few": "{count} backers match this filter.",
+        "many": "{count} backers match this filter.",
+        "other": "{count} backers match this filter."
+      },
+      "emptyFiltered": "Nothing matches this filter. Clear a chip or widen the search.",
+      "emptyNone": "Nobody has backed this campaign yet. Backers appear here as soon as they confirm.",
+      "tableLabel": "This campaign’s backers",
+      "more": "Showing the most recent {count}. Narrow the filter, or export the file, to see the rest."
+    },
+    "finance": {
+      "heading": "Financial summary",
+      "loading": "Loading the campaign’s finances",
+      "notGranted": "Your collaborator grant on this campaign does not include the finances, so these figures are not yours to see.",
+      "unavailable": "The financial summary could not be loaded. It is the service rather than your campaign — try again shortly.",
+      "projected": "Projected",
+      "settled": "Settled",
+      "projectedIntro": "No payout has been calculated yet, so the fees below are what today’s schedule would charge. They are priced again, against the schedule in force on the day, when the payout is prepared.",
+      "settledIntro": "These are the figures your payout was priced at, read from the payout itself rather than worked out again.",
+      "gross": "Gross",
+      "net": "Net",
+      "netProjected": "Net, projected",
+      "paidOut": "Paid out",
+      "deductionsHeading": "What came off the gross",
+      "deductionsCaption": "Every deduction between what this campaign took and what is payable",
+      "grossCollected": "Gross collected",
+      "platformFee": "Platform fee",
+      "processingFee": "Processing fee",
+      "taxWithheld": "Tax withheld",
+      "taxNote": "IdeaNest withholds no tax. What you owe is between you and your tax authority.",
+      "refunded": "Refunded to backers",
+      "payable": "Payable",
+      "payableProjected": "Payable, projected",
+      "payoutsHeading": "Payouts",
+      "payoutsEmpty": "None yet. A payout is prepared after §5.4’s hold, and every one of them appears here — including any that were cancelled.",
+      "booksHeading": "What the books say",
+      "booksIntro": "§7.2’s accounts, for this campaign. Published so the totals above can be checked against something rather than taken on trust. A negative balance on your account is money the platform is holding for you.",
+      "unbalancedTitle": "These books do not balance",
+      "unbalancedBody": "The entries for this campaign do not sum to zero. Nothing you can do explains this — please contact support, quoting this campaign, before relying on the figures above.",
+      "ledgerEmpty": "Nothing has been posted for this campaign yet.",
+      "ledgerCaption": "Ledger balances for this campaign, by account",
+      "account": "Account",
+      "balance": "Balance",
+      "asOf": "As of {time}.",
+      "payoutStates": {
+        "CALCULATED": "Calculated",
+        "PENDING_APPROVAL": "Waiting for approval",
+        "APPROVED": "Approved",
+        "PAID": "Paid",
+        "FAILED": "Failed",
+        "CANCELLED": "Cancelled"
+      }
+    },
+    "surveys": {
+      "heading": "Surveys",
+      "intro": "What you need to know before you can manufacture and ship. A survey goes to every backer of this campaign, once, and its questions cannot change afterwards.",
+      "loading": "Loading this campaign’s surveys",
+      "notGranted": "Your collaborator grant on this campaign does not include posting to backers.",
+      "alreadySent": "This survey has already gone out. Its questions cannot change — the note and the deadline still can.",
+      "needsQuestion": "This survey cannot be sent yet. Add at least one question.",
+      "invalid": "Something on this survey is not valid.",
+      "unavailable": "The survey could not be saved. It is the service rather than your campaign — try again shortly.",
+      "sentSummary": "Sent to {count} · {answered} answered",
+      "draft": "Draft",
+      "deleteDraft": "Delete the draft survey {title}",
+      "sentHeading": "Sent survey",
+      "editHeading": "Edit draft",
+      "newHeading": "New survey",
+      "titleLabel": "Title",
+      "titleHint": "What the backer sees at the top. A hundred and fifty characters or fewer.",
+      "noteLabel": "Covering note",
+      "noteHint": "Optional. Still editable after the survey has gone out — it is prose nobody answered.",
+      "questionsLegend": "Questions",
+      "questionsLegendLocked": "Questions — these cannot change now that the survey has gone out",
+      "question": "Question {number}",
+      "typeLabel": "Answer type",
+      "types": {
+        "TEXT": "Short text",
+        "CHOICE": "Choose one",
+        "MULTI_CHOICE": "Choose several",
+        "DATE": "A date",
+        "ADDRESS": "Postal address"
+      },
+      "optionsLabel": "Options",
+      "optionsHint": "One per line. At least two, and each one appears once.",
+      "addressNote": "Answered on the pledge rather than here, so the address is stored encrypted and can be locked when you start printing labels.",
+      "required": "This has to be answered",
+      "tierLabel": "Ask only the backers who chose",
+      "tierHint": "Leave as “Everybody” to ask all of them.",
+      "everybody": "Everybody",
+      "removeQuestion": "Remove this question",
+      "addQuestion": "Add a question",
+      "save": "Save",
+      "createDraft": "Create draft",
+      "send": "Send to backers",
+      "confirmSend": "Send it — this cannot be undone",
+      "startNew": "Start a new survey",
+      "savedNotice": "Saved.",
+      "createdNotice": "Draft created. It has not gone out yet.",
+      "deletedNotice": "Deleted “{title}”.",
+      "sentNotice": {
+        "one": "Sent to {count} backer.",
+        "few": "Sent to {count} backers.",
+        "many": "Sent to {count} backers.",
+        "other": "Sent to {count} backers."
+      }
     }
   },
   "dashboardControls": {
