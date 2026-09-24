@@ -17,6 +17,12 @@
     },
     "saving": "Yadda saxlanılır…",
     "tryAgain": "Yenidən cəhd edin",
+    "browseCampaigns": "Kampaniyalara bax",
+    "list": {
+      "showMore": "Daha çox göstər",
+      "loadingMore": "Yüklənir",
+      "nextPageFailed": "Növbəti səhifə yüklənmədi"
+    },
     "trail": {
       "home": "Ana səhifə",
       "discover": "Kəşf et",
@@ -101,6 +107,34 @@
         "browse": "Kampaniyalara baxın",
         "categories": "Kateqoriyalar",
         "search": "Axtarış"
+      },
+      "pages": {
+        "notFound": {
+          "metaTitle": "Səhifə tapılmadı",
+          "metaDescription": "Bu ünvanda heç nə yoxdur.",
+          "title": "Bu ünvanda heç nə yoxdur",
+          "description": "Səhifə köçürülmüş ola bilər, ya da sizi bura gətirən keçid səhvdir. Müəllif kampaniyasını ləğv etdikdə və ya moderasiya onu götürdükdə də kampaniya silinir.",
+          "action": "Ana səhifəyə keçin"
+        },
+        "profileNotFound": {
+          "title": "Bu ünvanda profil yoxdur",
+          "description": "Keçid səhv ola bilər, ya da şəxs hesabını bağlamışdır. Kimsə profilini gizlətməyi seçdikdə də profil ictimai olmaqdan çıxır.",
+          "action": "Kampaniyalara baxın"
+        },
+        "maintenance": {
+          "metaTitle": "Texniki xidmət",
+          "metaDescription": "Dəyişiklik etdiyimiz müddətdə IdeaNest qısa vaxt əlçatan deyil.",
+          "title": "IdeaNest qısa müddətə əlçatan deyil",
+          "description": "Planlı dəyişiklik edirik və o bitənə qədər platforma əlçatan deyil. Heç bir dəstəyə təsir etmir: texniki xidmət zamanı heç nə tutulmur və hər kampaniyanın son tarixi olduğu kimi qalır.",
+          "action": "Ana səhifəni yoxlayın"
+        },
+        "error": {
+          "title": "Bizim tərəfdə nəsə səhv getdi",
+          "description": "Bu səhifə göstərilə bilmədi. Bu, adətən müvəqqətidir — hər şeydən əvvəl bir dəfə yenidən cəhd etməyə dəyər.",
+          "referenceLabel": "İstinad",
+          "referenceHint": "Onu bizə bildirsəniz, jurnalda dəqiq nasazlığı tapa bilərik.",
+          "retry": "Yenidən cəhd edin"
+        }
       }
     },
     "whatsapp": {
@@ -124,6 +158,9 @@
         "detail": "Mesajın çatması üçün WhatsApp-da Göndər düyməsini basın. Bu səhifədən heç nə göndərilmir.",
         "again": "WhatsApp-ı yenidən açın"
       }
+    },
+    "search": {
+      "label": "Kampaniyaları axtarın"
     }
   },
   "account": {
@@ -246,6 +283,12 @@
         "metaDescription": "IdeaNest-in sizə bildirdiyi hər şey, ən yenisi əvvəldə.",
         "title": "Bildirişlər",
         "intro": "Platformanın sizə bildirdiyi hər şey, ən yenisi əvvəldə. Birini açmağınız onu oxunmuş kimi işarələyir. <settings>Sizə nə göndərildiyini dəyişin</settings>."
+      },
+      "pledgeDetail": {
+        "metaTitle": "Dəstəyiniz",
+        "metaDescription": "Nə seçdiniz, məbləği nə qədərdir və onu necə artırmaq olar.",
+        "title": "Dəstəyiniz",
+        "intro": "Nə seçdiniz, məbləği nə qədərdir və onu necə artırmaq olar. Dəstək edildiyi anda pul tutulur və kampaniya uğursuz olarsa, tam qaytarılır."
       }
     },
     "fulfilment": {
@@ -298,6 +341,7 @@
         "phoneHint": "Bəzi daşıyıcılar onsuz çatdırmır.",
         "requiredField": "Bağlamanı bu olmadan ünvanlamaq mümkün deyil.",
         "loadFailedTitle": "Bu ünvanı yükləmək mümkün olmadı",
+        "loading": "Ünvanınız yüklənir",
         "notFound": "Həmin dəstək tapılmadı və ya sizə aid deyil.",
         "unreachable": "Xidmətə çıxmaq mümkün olmadı. Bağlantınızı yoxlayıb yenidən cəhd edin.",
         "refused": "Ünvan rədd edildi.",
@@ -312,6 +356,131 @@
         "savedBodyAt": "Mükafat bura gedir, {at} tarixinə olan məlumata görə.",
         "save": "Ünvanı yadda saxla",
         "saving": "Yadda saxlanılır"
+      }
+    },
+    "signals": {
+      "saved": {
+        "loading": "Saxlanmış kampaniyalarınız yüklənir",
+        "failedTitle": "Saxlanmış kampaniyalarınız yüklənə bilmədi",
+        "emptyTitle": "Hələ heç nə saxlamamısınız",
+        "emptyBody": "Saxladığınız kampaniya burada qalır ki, bağlanmadan əvvəl ona qayıda biləsiniz.",
+        "meta": "{time} saxlanılıb · müəllif: {creator}",
+        "remove": "Çıxar",
+        "removeLabel": "{name} kampaniyasını saxlanmışlardan çıxar",
+        "removalFailedTitle": "Çıxarıla bilmədi",
+        "removalFailedBody": "«{name}» çıxarıla bilmədi. Kampaniya hələ də saxlanılıb — bir azdan yenidən cəhd edin."
+      },
+      "following": {
+        "loading": "İzlədiyiniz müəlliflər yüklənir",
+        "failedTitle": "Siyahı yüklənə bilmədi",
+        "emptyTitle": "Hələ heç kimi izləmirsiniz",
+        "emptyBody": "Müəllifi izləmək, o yeni bir kampaniya başlatdıqda sizə mesaj gəlməsi deməkdir.",
+        "emptyAction": "Müəllif tap",
+        "meta": "{creator} · {time} tarixindən izləyirsiniz",
+        "remove": "İzləməni dayandır",
+        "removeLabel": "{name} adlı müəllifi izləməyi dayandır",
+        "removalFailedTitle": "Dəyişiklik baş tutmadı",
+        "removalFailedBody": "{name} adlı müəllifi hələ də izləyirsiniz. Dəyişiklik xidmətə çatmadı — bir azdan yenidən cəhd edin."
+      }
+    },
+    "pledges": {
+      "states": {
+        "DRAFT": "Tamamlanmayıb",
+        "CONFIRMED": "Təsdiqlənib",
+        "EXPIRED": "Vaxtı bitib",
+        "CANCELED_BY_BACKER": "Sizin tərəfinizdən ləğv edilib",
+        "CANCELED_BY_PROJECT": "Müəllif tərəfindən ləğv edilib",
+        "CHARGE_PENDING": "Ödəniş gedir",
+        "CHARGE_FAILED": "Ödəniş alınmadı",
+        "COLLECTED": "Ödənilib",
+        "DROPPED": "Baş tutmayıb",
+        "REFUNDED": "Geri qaytarılıb",
+        "CHARGEBACK": "Geri tələb edilib",
+        "FULFILLED": "Çatdırılıb"
+      },
+      "latePledge": "Gecikmiş dəstək",
+      "anonymous": "Anonim",
+      "list": {
+        "loading": "Dəstəkləriniz yüklənir",
+        "failedTitle": "Dəstəkləriniz yüklənə bilmədi",
+        "emptyTitle": "Hələ heç nəyi dəstəkləməmisiniz",
+        "emptyBody": "Etdiyiniz hər dəstək burada görünür — nə seçdiyiniz və kampaniya bağlananda nə qədər tutulacağı ilə birlikdə.",
+        "browse": "Kampaniyalara bax",
+        "noReward": "Mükafatsız dəstək",
+        "byCreator": "müəllif: {creator}",
+        "cancelledAt": "{time} tarixində ləğv edilib",
+        "confirmedAt": "{time} tarixində təsdiqlənib",
+        "collected": "tutulub",
+        "toBeCollected": "kampaniya bağlananda tutulacaq",
+        "loadingMore": "Yüklənir",
+        "showMore": "Daha çox göstər",
+        "nextPageFailed": "Növbəti səhifə yüklənmədi"
+      },
+      "manager": {
+        "loading": "Bu dəstək yüklənir",
+        "unreadableTitle": "Bu dəstək oxuna bilmədi",
+        "unreadableBody": "Xidmət cavab vermədi. Bir azdan yenidən cəhd edin.",
+        "allPledges": "Bütün dəstəkləriniz",
+        "campaignUnnamed": "Bu dəstəyin kampaniyası yüklənə bilmədi",
+        "confirmedAt": "{time} tarixində təsdiqlənib",
+        "withdrawnAt": "{time} tarixində geri götürülüb",
+        "whereGoing": "Bu mükafatın hara gedəcəyi",
+        "supplementsHeading": "Kampaniya bağlandıqdan sonra alınanlar",
+        "upgrade": "Mükafatın yüksəldilməsi",
+        "extraAddons": "Əlavə seçimlər",
+        "supplementsNote": "Yuxarıdakı dəstəkdən ayrıca tutulur və hələ heç tutulmayıb.",
+        "lockedTitle": "Bu dəstək artıq burada dəyişdirilə bilməz",
+        "lockedBody": "Dəstək verilərkən dəyişdirilə bilər, təsdiqləndikdən sonra isə — kampaniya dəstək qəbul etdiyi müddətdə — yalnız artırıla bilər, azaldıla və ya geri götürülə bilməz. Bunun vəziyyəti: {state}, ona görə həmin idarəetmələr təklif olunmur. Burada nəsə səhvdirsə, kampaniyanın müəllifinə müraciət edin."
+      },
+      "editor": {
+        "loadingRewards": "Mükafatlar yüklənir",
+        "heading": "Bu dəstəyi dəyiş",
+        "intro": "Kampaniyanın son tarixinə qədər seçdiklərinizi dəyişə bilərsiniz. Hələ heç nə tutulmayıb, ona görə dəyişiklik fərqi hesablamır, bütün dəstəyi yenidən qiymətləndirir.",
+        "anonymousHint": "Adınız kampaniyanın açıq dəstəkçi siyahısında və profilinizdə göstərilmir. Müəllif isə onu görür, çünki mükafatınızı göndərməlidir.",
+        "saving": "Saxlanılır",
+        "save": "Dəyişiklikləri saxla",
+        "noChanges": "Hələ heç nə dəyişdirilməyib.",
+        "savedTitle": "Dəstəyiniz yeniləndi",
+        "savedBody": "Yuxarıdakı rəqəmlər bu səhifənin hesablaması deyil, xidmətin özünündür. Heç nə tutulmayıb — tutulma kampaniya uğurla bağlananda baş verir."
+      }
+    },
+    "surveys": {
+      "list": {
+        "loading": "Sorğularınız yüklənir",
+        "failedTitle": "Sorğularınız yüklənə bilmədi",
+        "refused": "Xidmət müraciəti rədd etdi.",
+        "unreachable": "Xidmətə çıxmaq mümkün olmadı. Bağlantınızı yoxlayıb yenidən cəhd edin.",
+        "emptyTitle": "Cavablanacaq sorğu yoxdur",
+        "emptyBody": "Müəllif kampaniyası maliyyələşdikdən sonra sorğu göndərir — hansı ölçü, hansı rəng və hara göndərəcəyini öyrənmək üçün.",
+        "waitingTitle": {
+          "one": "Bir müəllif sizi gözləyir",
+          "few": "{count} müəllif sizi gözləyir",
+          "many": "{count} müəllif sizi gözləyir",
+          "other": "{count} müəllif sizi gözləyir"
+        },
+        "waitingBody": "Cavablar gəlmədən kampaniya yığıla bilməz."
+      },
+      "card": {
+        "needsAnAnswer": "Cavab gözləyir",
+        "answered": "Cavablanıb",
+        "closed": "Bağlanıb",
+        "respondBy": "{time} tarixinədək istənilib.",
+        "noDate": "Bunun üçün tarix təyin edilməyib.",
+        "answeredOn": "{time} tarixində cavab vermisiniz.",
+        "closedTitle": "Bu sorğu bağlanıb",
+        "closedBody": "Müəllifin ehtiyacı olan məlumat artıq var və dəyişiklik qəbul etmir. Cavablarınız aşağıda, yadda saxlanıldığı kimidir.",
+        "failedTitle": "Cavablarınız yadda saxlanılmadı",
+        "refused": "Xidmət cavabları rədd etdi.",
+        "unreachable": "Xidmətə çıxmaq mümkün olmadı. Bağlantınızı yoxlayıb yenidən cəhd edin.",
+        "savedTitle": "Yadda saxlanıldı",
+        "savedBody": "Müəllif cavablarınızı görür. Sorğu açıq olduğu müddətdə onları dəyişə bilərsiniz.",
+        "required": "Bu sual mütləqdir.",
+        "saving": "Yadda saxlanılır",
+        "submit": "Cavabları yadda saxla"
+      },
+      "question": {
+        "addressNote": "Çatdırılma ünvanı bu formanın hissəsi deyil — ayrıca və şifrələnmiş saxlanılır.",
+        "addressLink": "Ünvanı əlavə edin və ya dəyişin"
       }
     },
     "notifications": {
@@ -416,6 +585,7 @@
         "signedOut": "Sistemdən çıxmısınız",
         "signedOutBody": "Bu brauzerin artıq seansı yoxdur. Bildirişlərinizi oxumaq üçün yenidən daxil olun.",
         "loadingList": "Bildirişləriniz yüklənir",
+        "errorTitle": "Nəsə səhv getdi",
         "emptyTitle": "Hələ heç nə yoxdur",
         "emptyBody": "Dəstəklədiyiniz kampaniya hədəfinə çatanda, bağlananda və ya ödəniş alınanda burada görünəcək.",
         "filteredTitle": "Yüklənənlər arasında heç nə yoxdur",
@@ -493,9 +663,11 @@
     "index": {
       "title": "İdarəetmə konsolu",
       "metaDescription": "Platforma modulları, hansılarının ekranı var və qalanların nəyi gözlədiyi.",
-      "standfirst": "§4.11-in təsvir etdiyi {total} modul. Onlardan {complete} ədədi tamamlanıb, {partial} ədədi isə qismən qurulub; hər biri nəyi gözlədiyini bildirir, çünki konsolun az qala bitdiyi təəssüratını yaradan siyahı, boşluğu adı ilə çağıran siyahıdan pisdir.",
+      "standfirst": "Rollarınızın açdığı {total} modul — tamamlanıb: {complete}, qismən qurulub: {partial}. Sonuncuların hər biri nəyi gözlədiyini bildirir, çünki konsolun az qala bitdiyi təəssüratını yaradan siyahı, boşluğu adı ilə çağıran siyahıdan pisdir.",
       "issue": "Məsələ #{issue}",
-      "footnote": "Buradakı heç bir ekran keçid nəzarəti deyil. Konsolun müraciət etdiyi hər son nöqtə çağırışı özü yoxlayır — işçi olmayanı rədd edir, işçini isə ekranın tələb etdiyi səlahiyyətə görə — və hər ekran həmin rəddi olduğu kimi göstərir. Brauzerdəki yoxlama, xidmətin onsuz da düzgün etdiyi yoxlamanın ikinci, daha zəif surəti olardı."
+      "notYours": "Rollarınızın açmadığı modullar burada sadalanmır: {count}.",
+      "rolesLink": "Hansı rol nəyi daşıyır",
+      "footnote": "Konsol rollarınızın açdığını sadalayır və bu, qıfıl deyil, nəzakətdir. Müraciət etdiyi hər son nöqtə çağırışı özü yoxlayır — işçi olmayanı işçi olmayan kimi rədd edir, işçini isə ekranın tələb etdiyi səlahiyyətə görə — və hər ekran həmin rəddi olduğu kimi göstərir. Brauzer burada səlahiyyət sahibi ola bilməz: yoxlamaq üçün xərcləməli olduğu sessiya elə yoxladığı sessiyadır."
     },
     "modules": {
       "AD-01": {
@@ -573,6 +745,7 @@
       }
     },
     "refusals": {
+      "consoleSubject": "idarəetmə konsolunu",
       "signedOutTitle": "Sessiyanız bitib",
       "signedOutBody": "Bu brauzerin artıq sessiyası yoxdur. {subject} oxumaq üçün yenidən daxil olun.",
       "forbiddenTitle": "Siz burada işləmirsiniz",
@@ -677,7 +850,7 @@
         "metaTitle": "E-poçt şablonları",
         "metaDescription": "Platformanın göndərdiyi hər mesajın mətni və ona edilən hər redaktə.",
         "title": "E-poçt şablonları",
-        "intro": "Kodla gələn mətn, kimsə onu yenidən yazmayıbsa, platformanın göndərdiyidir. Redaktə heç nəyi yerində dəyişmir, versiya əlavə edir, ona görə “bu bildiriş martda nə deyirdi” sualı cavablana bilən qalır."
+        "intro": "Kodla gələn mətn, kimsə onu yenidən yazmayıbsa, platformanın göndərdiyidir. Redaktə heç nəyi yerində dəyişmir, versiya əlavə edir, ona görə «bu bildiriş martda nə deyirdi» sualı cavablana bilən qalır."
       },
       "emailTemplatesType": {
         "metaTitle": "E-poçt mətni",
@@ -688,7 +861,7 @@
         "metaTitle": "Komissiyalar",
         "metaDescription": "Platforma və emal dərəcələri, onların istisnaları və platformanın tətbiq etdiyi hər şərtlər dəsti.",
         "title": "Komissiyalar",
-        "intro": "Komissiyanı dəyişmək indidən başlayan yeni şərtlər açır. Bağlanmışlar ekranda qalır, çünki “martda nə tutmuşduq” sualına §22.1 saxlama qaydası bağlayır."
+        "intro": "Komissiyanı dəyişmək indidən başlayan yeni şərtlər açır. Bağlanmışlar ekranda qalır, çünki «martda nə tutmuşduq» sualına §22.1 saxlama qaydası bağlayır."
       },
       "plans": {
         "metaTitle": "Planlar",
@@ -734,7 +907,7 @@
       },
       "payouts": {
         "metaTitle": "Ödənişlər",
-        "metaDescription": "Hər yaradıcıya nə borcludur, hansı saxlama altındadır və getməzdən əvvəl hansı imzalar lazımdır.",
+        "metaDescription": "Hər müəllifə nə borcludur, hansı saxlama altındadır və getməzdən əvvəl hansı imzalar lazımdır.",
         "title": "Ödənişlər",
         "intro": "Rəqəmlər ödəniş hesablananda dondurulur və heç vaxt yenidən hesablanmır — iki nəfərin təsdiqlədiyi ödəniş göndərilən ödəniş olmalıdır. Təsdiq üçün APPROVE_PAYOUT lazımdır və maliyyə rolu bunu bilərəkdən vermir."
       },
@@ -782,9 +955,9 @@
       },
       "submissions": {
         "metaTitle": "Baxış gözləyən kampaniyalar",
-        "metaDescription": "Yaradıcılarının təqdim etdiyi, qərar gözləyən kampaniyalar.",
+        "metaDescription": "Müəlliflərinin təqdim etdiyi, qərar gözləyən kampaniyalar.",
         "title": "Baxış gözləyən kampaniyalar",
-        "intro": "Yaradıcılarının təqdim etdiyi kampaniyalar, ən köhnəsi əvvəldə. Qərar kampaniyanın öz vəziyyətini dəyişir: təsdiq onu başlanğıca hazırlayır, dəyişiklik tələbi qeydlə birlikdə geri qaytarır, rədd isə qəti olur."
+        "intro": "Müəlliflərinin təqdim etdiyi kampaniyalar, ən köhnəsi əvvəldə. Qərar kampaniyanın öz vəziyyətini dəyişir: təsdiq onu başlanğıca hazırlayır, dəyişiklik tələbi qeydlə birlikdə geri qaytarır, rədd isə qəti olur."
       },
       "campaigns": {
         "metaTitle": "Kampaniyalar",
@@ -808,7 +981,7 @@
         "metaTitle": "Gəlir",
         "metaDescription": "Abunəliklərin gətirdiyi gəlir — dövr, plan və ödəniş üsulu üzrə.",
         "title": "Gəlir",
-        "intro": "Yaradıcıların planlar üçün ödədikləri, pulun daxil olduğu tarixə görə qruplaşdırılıb. Hər valyuta ayrıca göstərilir və heç vaxt başqası ilə toplanmır."
+        "intro": "Müəlliflərin planlar üçün ödədikləri, pulun daxil olduğu tarixə görə qruplaşdırılıb. Hər valyuta ayrıca göstərilir və heç vaxt başqası ilə toplanmır."
       }
     },
     "screens": {
@@ -1062,7 +1235,7 @@
         "loadingList": "Mətn yüklənir",
         "readFailed": "Mətni oxumaq mümkün olmadı.",
         "overriddenTitle": "Bu mətn yenidən yazılıb",
-        "overriddenBody": "Versiya {version} canlıdır və platformanın göndərdiyi budur. Onu geri götürmək kodla gələn mətni yenidən göndərir — versiyalar hər halda saxlanılır, çünki “bu bildiriş martda nə deyirdi” sualını kimsə mütləq verir.",
+        "overriddenBody": "Versiya {version} canlıdır və platformanın göndərdiyi budur. Onu geri götürmək kodla gələn mətni yenidən göndərir — versiyalar hər halda saxlanılır, çünki «bu bildiriş martda nə deyirdi» sualını kimsə mütləq verir.",
         "shippedTitle": "Bu, kodla gələn mətndir",
         "shippedBody": "Heç nə redaktə olunmayıb, ona görə platforma kodla gələn mətni göndərir. Redaktə heç nəyi yerində dəyişmir, versiya əlavə edir.",
         "shippedHeading": "Kodla gələn mətn",
@@ -1342,8 +1515,8 @@
         "newSubcategoryLabel": "Yeni alt kateqoriya",
         "newSubcategoryHint": "Qısa ad, daimidir.",
         "tagsHeading": "Teqlər",
-        "tagsIntro": "Yalnız oxunur. §4.3 teqlərə redaksiya lüğəti vermir — onları yaradıcılar yazır — ona görə birinin adını dəyişmək kiminsə öz kampaniyası haqqında dediyini yenidən yazmaq olardı. Bu siyahı hansı teqlərin kateqoriya olacaq qədər ağır olduğunu görmək üçündür.",
-        "noTags": "Hələ heç bir yaradıcı teq istifadə etməyib."
+        "tagsIntro": "Yalnız oxunur. §4.3 teqlərə redaksiya lüğəti vermir — onları müəlliflər yazır — ona görə birinin adını dəyişmək kiminsə öz kampaniyası haqqında dediyini yenidən yazmaq olardı. Bu siyahı hansı teqlərin kateqoriya olacaq qədər ağır olduğunu görmək üçündür.",
+        "noTags": "Hələ heç bir müəllif teq istifadə etməyib."
       },
       "users": {
         "subject": "hesab kataloqunu",
@@ -1566,7 +1739,7 @@
           "READ_SIGNED_AGREEMENT": "Hesabın imzaladığı yaradıcı müqaviləsini — sertifikatdakı ad və FİN ilə — oxumaq",
           "REVIEW_IDENTITY_VERIFICATION": "Şəxsiyyət təsdiqini qəbul və ya rədd etmək",
           "OPEN_IDENTITY_DOCUMENT": "Şəxsiyyət sənədini açmaq — platformadakı ən həssas oxu",
-          "VERIFY_PAYOUT_DESTINATION": "Ödəniş ünvanının yaradıcıya aid olduğunu təsdiqləmək",
+          "VERIFY_PAYOUT_DESTINATION": "Ödəniş ünvanının müəllifə aid olduğunu təsdiqləmək",
           "GRANT_COMPLIANCE_OVERRIDE": "Bir hesab üçün uyğunluq tələbini məhdud müddətə ləğv etmək",
           "ADMINISTER_STAFF": "Rol vermək və geri almaq"
         },
@@ -1577,7 +1750,7 @@
           "search": "Axtar",
           "searching": "Axtarılır",
           "change": "Başqasını seç",
-          "noneFound": "“{term}” üzrə uyğun hesab yoxdur.",
+          "noneFound": "«{term}» üzrə uyğun hesab yoxdur.",
           "resultsLabel": "Uyğun hesablar",
           "failedTitle": "Kataloqda axtarış aparıla bilmədi"
         },
@@ -1677,7 +1850,7 @@
         "findingsHeading": "Nə səhvdir",
         "finding": {
           "LEDGER_NOT_ZERO": "{currency} üzrə baş kitab sıfıra bərabər deyil: xalis {amount}.",
-          "CREATOR_OVERPAID": "{account} müsbətdir: {amount}. Bu, qazandığından çox ödənilmiş yaradıcıdır.",
+          "CREATOR_OVERPAID": "{account} müsbətdir: {amount}. Bu, qazandığından çox ödənilmiş müəllifdir.",
           "PLATFORM_ACCOUNT_NEGATIVE": "{account} mənfidir: {amount}. Bu, heç vaxt alınmamış, amma verilmiş puldur.",
           "DISAGREES_WITH_PAYMENTS": "Baş kitab {amount} saxlayır, tranzaksiyalar isə {other} deyir."
         },
@@ -1691,7 +1864,7 @@
         },
         "findingMeaning": {
           "UNBALANCED": "PostgreSQL debetləri və kreditləri fərqlənən yazılışı rədd edir, deməli bir sətir həm tətbiqi, həm də həmin triggeri keçib. Bu platformada başqa heç nə bunu yarada bilməz.",
-          "IMPOSSIBLE_SIGN": "Sıfırdan aşağı eskrou heç vaxt alınmamış, amma ödənilmiş puldur; sıfırdan yuxarı yaradıcı hesabı qazandığından çox ödənilmiş yaradıcıdır. Heç biri cəm tərəfindən tutulmur, çünki əks işarəli iki səhv mükəmməl balanslaşır.",
+          "IMPOSSIBLE_SIGN": "Sıfırdan aşağı eskrou heç vaxt alınmamış, amma ödənilmiş puldur; sıfırdan yuxarı müəllif hesabı qazandığından çox ödənilmiş müəllifdir. Heç biri cəm tərəfindən tutulmur, çünki əks işarəli iki səhv mükəmməl balanslaşır.",
           "DISAGREES_WITH_PAYMENTS": "Baş kitabın saxladığı və tranzaksiyaların hərəkət etdiyini dediyi eyni rəqəm deyil. Bu, tətbiqin heç vaxt etmədiyi yazılışı tutan yeganə yoxlamadır."
         }
       },
@@ -1747,28 +1920,28 @@
         "youHaveSigned": "Bu ödənişi artıq imzalamısınız. İkinci imza başqa şəxsə aiddir.",
         "awaitingHold": "{date} tarixində saxlama müddəti bitənə qədər imzalana bilməz.",
         "verificationHeld": "Kimlik gözlənilir",
-        "destinationHeldTitle": "Yaradıcının ödəniş təyinatı təsdiqlənməyib",
-        "destinationHeldBody": "Bu ödəniş {standing}. Pul yalnız yaradıcının özünün göstərdiyi və uyğunluq baxıcısının təsdiqlədiyi hesaba gedir — burada yazılan bir hesaba heç vaxt.",
+        "destinationHeldTitle": "Müəllifin ödəniş təyinatı təsdiqlənməyib",
+        "destinationHeldBody": "Bu ödəniş {standing}. Pul yalnız müəllifin özünün göstərdiyi və uyğunluq baxıcısının təsdiqlədiyi hesaba gedir — burada yazılan bir hesaba heç vaxt.",
         "destinationHeld": "Təyinat gözlənilir",
         "destinationStanding": {
           "WAIVED": "verilmiş istisna ilə buraxılıb",
           "VERIFIED": "təsdiqlənmiş hesaba gedir",
-          "NONE": "gözləyir — yaradıcı hara ödəniş alacağını bildirməyib",
+          "NONE": "gözləyir — müəllif hara ödəniş alacağını bildirməyib",
           "AWAITING_VERIFICATION": "hesabın uyğunluq baxıcısı tərəfindən təsdiqlənməsini gözləyir",
           "NAME_MISMATCH": "gözləyir — hesab başqa adlı şəxsə aiddir",
-          "REJECTED": "gözləyir — hesab rədd edilib, yaradıcı başqasını göstərməlidir"
+          "REJECTED": "gözləyir — hesab rədd edilib, müəllif başqasını göstərməlidir"
         },
-        "verificationHeldTitle": "Yaradıcının kimliyi təsdiqlənməyib",
-        "verificationHeldBody": "Bu ödəniş {standing}. Pul yalnız platformanın kim olduğunu təsdiqlədiyi şəxsə gedir; yaradıcıdan lazım olan sənəd artıq istənilib.",
+        "verificationHeldTitle": "Müəllifin kimliyi təsdiqlənməyib",
+        "verificationHeldBody": "Bu ödəniş {standing}. Pul yalnız platformanın kim olduğunu təsdiqlədiyi şəxsə gedir; müəllifdən lazım olan sənəd artıq istənilib.",
         "standing": {
           "NOT_REQUIRED": "kimlik təsdiqi tələb olunmur",
           "WAIVED": "əl ilə verilmiş istisna ilə buraxılıb",
           "VERIFIED": "təsdiqlənib",
-          "NEVER_REQUESTED": "yaradıcıdan hələ heç nə istənilməyib — indi istənildi",
-          "AWAITING_DOCUMENTS": "yaradıcının sənəd göndərməsini gözləyir",
+          "NEVER_REQUESTED": "müəllifdən hələ heç nə istənilməyib — indi istənildi",
+          "AWAITING_DOCUMENTS": "müəllifin sənəd göndərməsini gözləyir",
           "UNDER_REVIEW": "sənədlər baxış növbəsindədir",
-          "REJECTED": "sənədlər rədd edilib — yaradıcı yenidən göndərməlidir",
-          "EXPIRED": "təsdiq müddəti bitib — yaradıcı yenidən təsdiqləməlidir"
+          "REJECTED": "sənədlər rədd edilib — müəllif yenidən göndərməlidir",
+          "EXPIRED": "təsdiq müddəti bitib — müəllif yenidən təsdiqləməlidir"
         }
       },
       "refunds": {
@@ -1812,7 +1985,7 @@
           "BACKER_REQUEST": "Dəstəkçi istədi",
           "CAMPAIGN_HALTED": "Kampaniya dayandırıldı",
           "CAMPAIGN_FAILED": "Kampaniya hədəfinə çatmadı",
-          "FULFILMENT_FAILURE": "Yaradıcı çatdırmadı",
+          "FULFILMENT_FAILURE": "Müəllif çatdırmadı",
           "DUPLICATE_CHARGE": "İki dəfə tutuldu",
           "PLATFORM_ERROR": "Bizim səhvimiz",
           "DISPUTE_CONCEDED": "Mübahisə etmədiyimiz geri tələb",
@@ -1885,7 +2058,7 @@
         "inForceHeading": "Qüvvədə",
         "loadingList": "Komissiya cədvəlləri yüklənir",
         "emptyTitle": "Komissiya cədvəli konfiqurasiya edilməyib",
-        "emptyBody": "Platforma hazırda hər ödənişi sıfır komissiya ilə qiymətləndirir. Bu bilərəkdəndir — ödəniş işi kimsə sətir yazmadığına görə dayanmamalıdır — amma bu o deməkdir ki, yaradıcılara yığılan tam məbləğ ödənilir.",
+        "emptyBody": "Platforma hazırda hər ödənişi sıfır komissiya ilə qiymətləndirir. Bu bilərəkdəndir — ödəniş işi kimsə sətir yazmadığına görə dayanmamalıdır — amma bu o deməkdir ki, müəlliflərə yığılan tam məbləğ ödənilir.",
         "replaceHeading": "Yeni şərtlər aç",
         "scopeLabel": "Əhatə",
         "categoryLabel": "Kateqoriya",
@@ -1989,7 +2162,7 @@
         "unreachable": "Xidmətə çata bilmədik. Yenidən cəhd edin.",
         "heading": {
           "SUBMITTED": "Qərar gözləyir",
-          "CHANGES_REQUESTED": "Yaradıcılarına geri qaytarılıb",
+          "CHANGES_REQUESTED": "Müəlliflərinə geri qaytarılıb",
           "APPROVED": "Başlanğıca hazırdır",
           "REJECTED": "Rədd edilib"
         },
@@ -2009,7 +2182,7 @@
         },
         "emptyBody": {
           "SUBMITTED": "İndiyədək təqdim edilmiş bütün kampaniyalar barədə qərar verilib.",
-          "CHANGES_REQUESTED": "Hazırda yaradıcısında dəyişiklik gözləyən kampaniya yoxdur.",
+          "CHANGES_REQUESTED": "Hazırda müəllifində dəyişiklik gözləyən kampaniya yoxdur.",
           "APPROVED": "Təsdiqlənmiş kampaniyalar başlayanadək burada görünür.",
           "REJECTED": "Rədd edilmiş kampaniyalar burada qalır ki, qərar sonradan oxuna bilsin."
         },
@@ -2017,7 +2190,7 @@
         "goalLabel": "Hədəf",
         "noGoal": "Hədəf təyin edilməyib",
         "stateLabel": "Vəziyyət",
-        "creatorGone": "Yaradıcının hesabı bağlanıb",
+        "creatorGone": "Müəllifin hesabı bağlanıb",
         "decideHeading": "Bu kampaniya barədə qərar verin",
         "decideGroup": "{title} barədə qərar ver",
         "notice": "{title} indi {state} vəziyyətindədir."
@@ -2036,7 +2209,7 @@
         "emptyBody": "Kampaniya yaradılan kimi, baxışa göndərilməsindən çox əvvəl burada görünür.",
         "filteredTitle": "Uyğun kampaniya yoxdur",
         "filteredBody": "Bu axtarışa və bu vəziyyətə uyğun heç nə yoxdur. Başqa vəziyyət seçin və ya axtarışı qısaldın.",
-        "creatorGone": "Yaradıcının hesabı bağlanıb",
+        "creatorGone": "Müəllifin hesabı bağlanıb",
         "goalLabel": "Hədəf",
         "noGoal": "Hədəf təyin edilməyib",
         "raisedLabel": "Toplanıb",
@@ -2291,7 +2464,7 @@
       },
       "decision": {
         "errorTitle": "Qərar qeyd olunmadı",
-        "noteRequired": "Səbəbini yazın. Yaradıcıya bu qeyd göstərilir və o, buna əsasən hərəkət etməlidir.",
+        "noteRequired": "Səbəbini yazın. Müəllifə bu qeyd göstərilir və o, buna əsasən hərəkət etməlidir.",
         "tooLong": "Qeyd {limit} simvoldan çox ola bilməz.",
         "uphold": {
           "title": "Bu şikayət təsdiqlənsin?",
@@ -2305,7 +2478,7 @@
         "dismiss": {
           "title": "Bu şikayət rədd edilsin?",
           "description": "{name} haqqında şikayət əsassız kimi qeyd olunur. Bunu geri qaytarmaq mümkün deyil.",
-          "body": "Rədd qərarları da audit olunur. “Bu kampaniya haqqında on dörd şikayəti kim rədd etdi” sualı araşdırmanın başladığı sualdır.",
+          "body": "Rədd qərarları da audit olunur. «Bu kampaniya haqqında on dörd şikayəti kim rədd etdi» sualı araşdırmanın başladığı sualdır.",
           "confirmLabel": "Şikayəti rədd et",
           "busyLabel": "Rədd edilir",
           "noteLabel": "Qeyd",
@@ -2322,11 +2495,11 @@
         },
         "request-changes": {
           "title": "Bu kampaniya geri göndərilsin?",
-          "description": "{name} yaradıcısına qayıdır, o da düzəldib yenidən göndərə bilər.",
+          "description": "{name} müəllifinə qayıdır, o da düzəldib yenidən göndərə bilər.",
           "confirmLabel": "Dəyişiklik istə",
           "busyLabel": "Geri göndərilir",
           "noteLabel": "Nə dəyişməlidir",
-          "noteHint": "Məcburi. Yaradıcıya bu göstərilir və o, buna əsasən hərəkət etməlidir — vəziyyətin bütün məzmunu budur."
+          "noteHint": "Məcburi. Müəllifə bu göstərilir və o, buna əsasən hərəkət etməlidir — vəziyyətin bütün məzmunu budur."
         },
         "reject": {
           "title": "Bu kampaniya rədd edilsin?",
@@ -2334,7 +2507,7 @@
           "confirmLabel": "Kampaniyanı rədd et",
           "busyLabel": "Rədd edilir",
           "noteLabel": "Səbəb",
-          "noteHint": "Məcburi. Yaradıcıya bu göstərilir. Problem düzəldilə biləndirsə, kampaniyanı geri göndərin."
+          "noteHint": "Məcburi. Müəllifə bu göstərilir. Problem düzəldilə biləndirsə, kampaniyanı geri göndərin."
         }
       }
     },
@@ -2362,8 +2535,8 @@
         "refunds": "Geri qaytarmalar",
         "platform_expense": "Platforma xərcləri"
       },
-      "creatorAccount": "Yaradıcı {id}",
-      "creatorNamed": "{name}, yaradıcı hesabı"
+      "creatorAccount": "Müəllif {id}",
+      "creatorNamed": "{name}, müəllif hesabı"
     },
     "signedInAs": "{name} kimi daxil olmusunuz — {roles}"
   },
@@ -2505,6 +2678,113 @@
         "unavailable": "Hazırda kartı qeydiyyatdan keçirmək mümkün deyil. Heç nə qeyd olunmadı; sonra yenidən cəhd edin.",
         "malformedTaxId": "VÖEN on rəqəmdən ibarətdir.",
         "failed": "Alınmadı. Bir azdan yenidən cəhd edin."
+      },
+      "twoFactor": {
+        "heading": "İki mərhələli doğrulama",
+        "passwordHeading": "Şifrənizi təsdiqləyin",
+        "scanHeading": "IdeaNest-i autentifikator tətbiqinizə əlavə edin",
+        "codesHeading": "Bərpa kodlarınızı saxlayın",
+        "disableHeading": "İki mərhələli doğrulamanı söndürün",
+        "fromService": "Xidmətdən",
+        "intro": "Şifrənizin üstünə telefonunuzdan gələn kod. §4.1 bunu {emphasis} edir, yəni müəllifdən gec-tez bu soruşulacaq — indi qoşmaq daha ucuz andır.",
+        "introEmphasis": "ödənişdən əvvəl məcburi",
+        "setUp": "Quraşdır",
+        "turnOff": "Söndür",
+        "bothOffered": "Hər ikisi təklif olunur, çünki bu ekran hansının tətbiq olunduğunu oxuya bilmir — xidmət hesabınızın qeydiyyatdan keçib-keçmədiyini bildirən heç bir sahə dərc etmir. Hansını seçsəniz, cavab düz olacaq.",
+        "passwordIntro": "Təhlükəsizlik nəzarətini qoşmaq şifrənizə başa gəlir ki, oğurlanmış giriş hesabınıza ikinci amil bərkidə bilməsin.",
+        "currentPassword": "Cari şifrə",
+        "checking": "Yoxlanılır",
+        "continue": "Davam et",
+        "cancel": "İmtina",
+        "scanIntro": "İki mərhələli doğrulama {emphasis}. Bunu autentifikatorunuza əlavə edin, sonra göstərdiyi kodu daxil edin — qoşan elə odur.",
+        "scanIntroEmphasis": "hələ qoşulmayıb",
+        "onThisDevice": "Bu cihazda",
+        "openApp": "Autentifikator tətbiqinizdə açın",
+        "byHand": "Və ya bu açarı əl ilə daxil edin",
+        "parameters": "{digits} rəqəm, hər {seconds} saniyədən bir, {algorithm}.",
+        "codeLabel": "Autentifikatorunuzdakı kod",
+        "codePlaceholder": "000000",
+        "confirming": "Təsdiqlənir",
+        "switchOn": "Qoş",
+        "codesWarningTitle": "Bunlar yalnız bu dəfə göstərilir",
+        "codesWarningBody": "Biz onların heşini saxlayırıq, ona görə bir daha göstərilə bilməz — yalnız yenidən qeydiyyatdan keçməklə əvəz oluna bilər. Hər biri bir dəfə işləyir və autentifikatorunuz əlinizin altında olmayanda istənilən biri sizi sistemə buraxır.",
+        "acknowledge": "Bunları telefonum olmadan çata biləcəyim bir yerdə saxladım.",
+        "done": "Hazırdır",
+        "enabledNotice": "İki mərhələli doğrulama qoşuludur. Daxil olanda sizdən kod soruşulacaq.",
+        "disableIntro": "Şifrəniz {emphasis} bir kod. Kod olmasa, bütün bu imkan düz bir şifrə qədər dəyərli olardı — bu isə onun aradan qaldırmaq üçün əlavə edildiyi şeydir.",
+        "disableIntroEmphasis": "və",
+        "recoveryLabel": "Və ya bərpa kodu",
+        "recoveryHint": "Elə telefonu buraya gəlməyinin səbəbi olan adam üçün. Hər biri bir dəfə işləyir.",
+        "turningOff": "Söndürülür",
+        "alreadyEnabled": "İki mərhələli doğrulama artıq qoşulub.",
+        "disabledNotice": "İki mərhələli doğrulama söndürülüb. Artıq təkcə şifrəniz sizi sistemə buraxır."
+      },
+      "closure": {
+        "heading": "Hesabınızı bağlayın",
+        "goneTitle": "Bu hesab artıq yoxdur",
+        "goneBody": "Çıxıb yenidən daxil olun — burada bağlanacaq bir şey qalmayıb.",
+        "scheduledTitle": "Bu hesabın bağlanması planlaşdırılıb",
+        "scheduledBody": "O, {date} tarixində anonimləşdiriləcək. O vaxtadək daxil ola bilərsiniz və aşağıdakı ləğv hər şeyi geri qaytarır.",
+        "cancelling": "Ləğv edilir",
+        "keep": "Hesabımı saxla",
+        "notImmediate": "Bağlanma dərhal baş vermir. Hesab otuz gün saxlanılır, sonra anonimləşdirilir — beləliklə hirslə və ya başqası tərəfindən edilmiş bağlanma geri qaytarıla bilər.",
+        "recordsKept": "Maliyyə qeydləri hesaba nə olursa olsun qanunla müəyyən müddət saxlanılır və dəstəklədiyiniz kampaniyalar öz cəmlərini itirmir. Bunların heç biri sonradan sizin adınızı çəkmir.",
+        "currentPassword": "Cari şifrə",
+        "understood": "Bunun hesabımı bağladığını və otuz gündən sonra anonimləşdirdiyini başa düşürəm.",
+        "scheduling": "Planlaşdırılır",
+        "close": "Hesabımı bağla",
+        "rateLimited": "Bu, son vaxtlar bir neçə dəfə sınanıb. Bir az gözləyib yenidən cəhd edin."
+      },
+      "export": {
+        "heading": "Məlumatlarınızın surətini götürün",
+        "intro": "IdeaNest-in hesabınız haqqında saxladığı hər şey bir JSON faylında. O, bu cihaza endirilir və sonra heç yerdə saxlanılmır.",
+        "errorTitle": "İxrac gəlmədi",
+        "rateLimited": "Bunu son vaxtlar bir neçə dəfə istəmisiniz. Bir azdan yenidən cəhd edin.",
+        "refused": "İxrac rədd edildi.",
+        "savedTitle": "Saxlanıldı",
+        "savedBody": "Bu brauzerin endirmələri qoyduğu yerdə {filename} faylını axtarın.",
+        "preparing": "Surətiniz hazırlanır",
+        "download": "Məlumatlarımı endir"
+      },
+      "sessions": {
+        "signedOutTitle": "Siz sistemdən çıxmısınız",
+        "signedOutBody": "Bu brauzerin artıq sessiyası yoxdur. Cihazlarınızı idarə etmək üçün yenidən daxil olun.",
+        "heading": "Cihazlarınız",
+        "signOutEverywhere": "Başqa hər yerdən çıx",
+        "errorTitle": "Nəsə səhv getdi",
+        "loading": "Cihazlarınız yüklənir",
+        "emptyTitle": "Heç bir cihaz sistemə daxil deyil",
+        "emptyBody": "Siz bu səhifəni oxuyarkən bu mümkün olmamalıdır. Yenidən yoxlamaq üçün səhifəni təzələyin.",
+        "tryAgain": "Yenidən cəhd et",
+        "confirmTitle": "Başqa hər yerdən çıxılsın?",
+        "confirmDescription": "{devices} dərhal sistemdən çıxarılacaq. Bu cihaz daxil qalır.",
+        "confirmBody": "Həmin cihazlardan istifadə edən hər kəs yenidən daxil olmalı olacaq. Cihazı itirmisinizsə və ya siyahıda tanımadığınız nəsə varsa, bunu edin.",
+        "cancel": "İmtina",
+        "signingOutAll": "Çıxarılır",
+        "signOutCount": "{devices} çıxar",
+        "devices": {
+          "one": "{count} cihaz",
+          "few": "{count} cihaz",
+          "many": "{count} cihaz",
+          "other": "{count} cihaz"
+        },
+        "signedOutDevice": "{name} sistemdən çıxarıldı.",
+        "signedOutDevices": "{devices} sistemdən çıxarıldı.",
+        "signedOutPartly": "{done} sistemdən çıxarıldı. {failed} çıxarıla bilmədi — yenidən cəhd edin.",
+        "deletionScheduled": "Hesabınızın silinməsi planlaşdırılıb, ona görə cihazları idarə etmək olmaz. Yenidən idarə etmək üçün silinməni ləğv edin.",
+        "row": {
+          "thisDevice": "Bu cihaz",
+          "unknownDevice": "Naməlum cihaz",
+          "noDetails": "Cihaz haqqında məlumat yazılmayıb",
+          "lastActive": "Son aktivlik {seen} · daxil olub {created}",
+          "signOut": "Çıxar",
+          "signingOut": "Çıxarılır",
+          "signOutLabel": "{device} cihazını çıxar",
+          "signingOutLabel": "{device} cihazı çıxarılır",
+          "signOutThisLabel": "Bu cihazdan çıx",
+          "signingOutThisLabel": "Bu cihazdan çıxılır",
+          "onPlatform": "{platform} üzərində {browser}"
+        }
       }
     }
   },
@@ -2806,7 +3086,7 @@
       "errorTitle": "Layihələri yükləmək mümkün olmadı",
       "unreachable": "Xidmətə çıxmaq mümkün olmadı. Bağlantınızı yoxlayıb yenidən cəhd edin.",
       "refused": "Xidmət bu sorğunu rədd etdi və səbəbini bildirmədi. Süzgəcləri təmizləməyə çalışın.",
-      "emptyQueryTitle": "“{query}” üzrə uyğun layihə yoxdur",
+      "emptyQueryTitle": "«{query}» üzrə uyğun layihə yoxdur",
       "emptyFilteredTitle": "Bu süzgəclərə uyğun layihə yoxdur",
       "emptyTitle": "Hələ göstəriləcək layihə yoxdur",
       "emptyQueryBody": "Platformada bu axtarışa uyğun heç nə yoxdur. Yazılışı yoxlayın və ya daha qısa söz sınayın.",
@@ -2855,7 +3135,7 @@
       "unavailableAnnounce": "Təkliflər əlçatan deyil. Yazdığınızı yenə də axtarmaq olar.",
       "failedFallback": "Təklifləri yükləmək mümkün olmadı. Yazdığınızı axtarmaq üçün Enter basın.",
       "failedDetail": "{detail} Yazdığınızı axtarmaq üçün Enter basın.",
-      "none": "“{query}” üzrə təklif yoxdur. Yenə də axtarmaq üçün Enter basın.",
+      "none": "«{query}» üzrə təklif yoxdur. Yenə də axtarmaq üçün Enter basın.",
       "kinds": {
         "campaign": "Kampaniya",
         "category": "Kateqoriya",
@@ -2947,14 +3227,14 @@
     },
     "search": {
       "title": "Axtarış",
-      "resultsTitle": "“{query}” üçün nəticələr",
+      "resultsTitle": "«{query}» üçün nəticələr",
       "prompt": "Axtardığınızı yazın — kampaniya, kateqoriya və ya müəllif. Ya da <feed>bütün lentə baxın</feed> və onu filtrlərlə daraltın.",
       "count": "{count, plural, =0 {Heç bir kampaniya uyğun gəlmədi} other {# kampaniya}}",
       "countMore": "{count, plural, =0 {Heç bir kampaniya uyğun gəlmədi} other {# kampaniya, lentdə daha çoxu var}}",
-      "emptyTitle": "“{query}” üzrə heç nə tapılmadı",
+      "emptyTitle": "«{query}» üzrə heç nə tapılmadı",
       "emptyBody": "Yazılışı yoxlayın və ya daha qısa bir söz sınayın. Lenti ifadə əvəzinə kateqoriya, status və məbləğ üzrə daraltmaq olar.",
       "emptyAction": "Lentə baxın",
-      "gridLabel": "“{query}” üçün axtarış nəticələri"
+      "gridLabel": "«{query}» üçün axtarış nəticələri"
     }
   },
   "checkout": {
@@ -2999,7 +3279,9 @@
     },
     "contribution": {
       "legend": "Sizin töhfəniz",
-      "hint": "Məbləğin hamısı kampaniyaya gedir."
+      "hint": "Məbləğin hamısı kampaniyaya gedir.",
+      "legendNoReward": "Nə qədər vermək istəyirsiniz?",
+      "rewardHint": "Bu mükafat {amount} təşkil edir. İstəsəniz daha çox verin; artıq məbləğ əlavə dəstəkdir."
     },
     "summary": {
       "label": "Dəstəyin xülasəsi",
@@ -3011,6 +3293,7 @@
       "delivery": "Çatdırılma",
       "tax": "Vergi",
       "total": "Cəmi",
+      "approximately": "Təxminən {amount}",
       "noReward": "Mükafatsız dəstək",
       "yourSupport": "Dəstək məbləği",
       "rewardLine": "Mükafat"
@@ -3063,6 +3346,94 @@
       "amountNotANumber": "Məbləğ rəqəmlərdən və ən çox bir nöqtədən ibarət olur, məsələn 45.00.",
       "belowRewardPrice": "Bu mükafat {price} dəyərindədir. Bu qədər və ya daha çox verin, ya da daha ucuz mükafat seçin.",
       "destinationUnpriced": "Müəllif bu istiqamət üçün {lines} çatdırılma qiyməti təyin etməyib. Başqa yer seçin və ya onu dəstəyinizdən çıxarın."
+    },
+    "failures": {
+      "unreachable": {
+        "title": "Xidmətə çıxmaq mümkün olmadı",
+        "detail": "Ya sorğu getmədi, ya da cavab gəlmədi. Bağlantınızı yoxlayıb yenidən cəhd edin — yenidən cəhd etmək təhlükəsizdir və iki dəfə dəstək göndərə bilməz."
+      },
+      "signedOut": {
+        "title": "Hesaba daxil olmamısınız",
+        "detail": "Daxil olub yenidən başlayın. Heç nə rezerv edilmədi."
+      },
+      "unknown": {
+        "title": "Alınmadı",
+        "detail": "Xidmət sorğunu rədd etdi və səbəbini bildirmədi. Heç nə rezerv edilmədi."
+      },
+      "codes": {
+        "REWARD_SOLD_OUT": {
+          "title": "Bu mükafat indicə bitdi",
+          "detail": "Siz seçərkən sonuncunu başqası götürdü. Heç nə rezerv edilmədi."
+        },
+        "PLEDGE_ALREADY_EXISTS": {
+          "title": "Bu kampaniyanı artıq dəstəkləyirsiniz",
+          "detail": "Hər kampaniya üçün bir dəstək. Seçiminizi dəyişmək üçün mövcud dəstəyinizi açıb redaktə edin."
+        },
+        "IDEMPOTENCY_KEY_REUSED": {
+          "title": "Bu sorğu əvvəlkinə uyğun gəlmədi",
+          "detail": "Heç nə rezerv edilmədi. Yenidən cəhd edin."
+        },
+        "SHIPPING_DESTINATION_UNPRICED": {
+          "title": "Müəllif bu istiqamətə göndərmir",
+          "detail": "Onun üçün çatdırılma qiyməti təyin edilməyib, ona görə sizdən tutulacaq düzgün məbləğ yoxdur. Başqa yer seçin və ya göndərilən əşyanı çıxarın."
+        },
+        "CONTRIBUTION_BELOW_REWARD_PRICE": {
+          "title": "Bu, mükafatın qiymətindən azdır",
+          "detail": "Ən azı seçdiyiniz pilləyə görə qiyməti verin və ya daha ucuzunu seçin."
+        },
+        "PROJECT_NOT_LIVE": {
+          "title": "Bu kampaniya dəstək qəbul etmir",
+          "detail": "Bağlanmış ola bilər, ya da hələ açılmayıb. Heç nə dəyişmədi."
+        },
+        "PLEDGE_CANNOT_BE_CANCELLED": {
+          "title": "Təsdiqlənmiş dəstək geri götürülə bilməz",
+          "detail": "Bu dəstəyi artıra bilərsiniz, amma ləğv edə bilməzsiniz. Heç nə dəyişmədi. Kampaniya uğur həddinin altında bitsə, dayandırılsa və ya ləğv edilsə, hər dəstəkçiyə pul qaytarılır."
+        },
+        "PLEDGE_DECREASE_NOT_ALLOWED": {
+          "title": "Təsdiqlənmiş dəstək yalnız artırıla bilər",
+          "detail": "Bu dəyişiklik dəstəyinizi azaldardı, təsdiqlənmiş dəstək isə yalnız arta bilər. Heç nə dəyişmədi."
+        },
+        "PLEDGE_NOT_EDITABLE": {
+          "title": "Bu dəstək artıq dəyişdirilə bilməz",
+          "detail": "O, dəstəkçinin redaktə və ya geri götürə biləcəyi mərhələni keçib. Heç nə dəyişmədi. Onunla bağlı nəsə səhvdirsə, kampaniyanın müəllifinə müraciət edin."
+        },
+        "PLEDGE_NOT_FOUND": {
+          "title": "Belə bir dəstək yoxdur",
+          "detail": "Ləğv edilmiş ola bilər, ya da keçid səhvdir. Öz dəstəkləriniz dəstəklər səhifənizdə sadalanır."
+        },
+        "REWARD_NOT_FOUND": {
+          "title": "Bu mükafat artıq təklif olunmur",
+          "detail": "Müəllif seçdiyiniz pilləni silib. Başqasını seçin və ya mükafatsız davam edin. Heç nə dəyişmədi."
+        },
+        "RESERVATION_EXPIRED": {
+          "title": "Mükafatınız cəmi beş dəqiqə saxlanılırdı",
+          "detail": "Rezervin vaxtı bitdi və ehtiyat kampaniyaya qaytarıldı. Heç nə təsdiqlənmədi və heç bir kart istifadə olunmadı. Davam etmək üçün yenidən rezerv edin."
+        },
+        "AGREEMENT_REQUIRED": {
+          "title": "Dəstəyin nə demək olduğu dəyişdi",
+          "detail": "Bu səhifə dəstəyin nə olduğunu və nə olmadığını izah edən köhnə mətni göstərirdi. Heç nə təsdiqlənmədi və heç bir kart istifadə olunmadı. Səhifəni yenidən yükləyin, mətni oxuyun və təsdiqləyin."
+        },
+        "PLEDGE_NOT_DRAFT": {
+          "title": "Bu dəstək artıq nəticələnib",
+          "detail": "O, təsdiqlənib və ya ləğv edilib, ona görə təsdiqləyəcək bir şey qalmayıb."
+        },
+        "IDEMPOTENT_REQUEST_IN_PROGRESS": {
+          "title": "İlk cəhdiniz hələ gedir",
+          "detail": "Eyni sorğu artıq icra olunur. Heç nə iki dəfə dəstəklənmədi; bir az gözləyib yenidən soruşmaq təhlükəsizdir."
+        },
+        "IDEMPOTENCY_KEY_REQUIRED": {
+          "title": "Bu səhifə natamam sorğu göndərdi",
+          "detail": "Sorğunun ehtiyacı olan bir başlıq çatışmırdı — bu, sizin deyil, saytın nöqsanıdır. Heç nə rezerv edilmədi və heç bir kart istifadə olunmadı. Kömək edəcək yeganə şey səhifəni yenidən yükləməkdir."
+        },
+        "IDEMPOTENCY_KEY_INVALID": {
+          "title": "Bu səhifə səhv formalı sorğu göndərdi",
+          "detail": "Sorğunun ehtiyacı olan bir başlıq xidmətin qəbul etdiyi formada deyildi — bu, sizin deyil, saytın nöqsanıdır. Heç nə rezerv edilmədi və heç bir kart istifadə olunmadı. Kömək edəcək yeganə şey səhifəni yenidən yükləməkdir."
+        },
+        "PLEDGE_MODIFIED": {
+          "title": "Siz təsdiqləyərkən bu dəstək dəyişdi",
+          "detail": "Ona əvvəlcə başqa bir şey yazdı — ən çox rast gəlinəni, siz təsdiqləyərkən beşdəqiqəlik rezervin bitməsidir. Heç nə təsdiqlənmədi və heç bir kart istifadə olunmadı. Davam etmək üçün yenidən rezerv edin."
+        }
+      }
     },
     "returned": {
       "paidTitle": "Dəstəyiniz ödənildi",
@@ -3156,10 +3527,50 @@
     },
     "daysLeft": "{days, plural, =0 {Son gün} other {# gün qaldı}}",
     "backers": "{count, plural, =0 {Dəstəkçi yoxdur} other {# dəstəkçi}}",
+    "by": "müəllif: {creator}",
+    "funding": {
+      "progressLabel": "Maliyyələşmə: hədəfin {percent} faizi",
+      "pledged": "dəstəklənib",
+      "funded": "maliyyələşib",
+      "ofGoal": "hədəfdən",
+      "backers": {
+        "one": "dəstəkçi",
+        "few": "dəstəkçi",
+        "many": "dəstəkçi",
+        "other": "dəstəkçi"
+      }
+    },
     "actions": {
       "save": "Saxla",
+      "saved": "Saxlanılıb",
       "share": "Paylaş",
-      "remind": "Xatırlat"
+      "remind": "Xatırlat",
+      "reminderSet": "Xatırlatma qurulub",
+      "saveLabel": "{title} kampaniyasını saxla",
+      "savedLabel": "{title} saxlanılıb",
+      "shareLabel": "{title} kampaniyasını paylaş",
+      "remindLabel": "{title} açılanda mənə xatırlat",
+      "remindingLabel": "{title} açılanda sizə bildiriləcək",
+      "notices": {
+        "saved": "{title} saxlanıldı.",
+        "notSaved": "{title} saxlanılmayıb.",
+        "removed": "{title} saxlanmışlardan çıxarıldı.",
+        "shared": "Paylaşıldı.",
+        "copied": "Keçid kopyalandı.",
+        "shareFailed": "Paylaşmaq mümkün olmadı. Keçid ünvan sətrindədir.",
+        "copyFailed": "Keçid kopyalana bilmədi. O, ünvan sətrindədir.",
+        "remindOn": "Bu kampaniya açılanda sizə bir dəfə yazacağıq.",
+        "remindOff": "Bu açılanda sizə bildirilməyəcək."
+      },
+      "failures": {
+        "signIn": "Əvvəlcə daxil olun.",
+        "notSaved": "Saxlanıla bilmədi. Yenidən cəhd edin.",
+        "unreachable": "Xidmətə çatmaq mümkün olmadı. Yenidən cəhd edin."
+      }
+    },
+    "countdown": {
+      "label": "Bu kampaniyanı dəstəkləməyə qalan vaxt: {time}",
+      "left": "{time} qalıb"
     },
     "back": {
       "cta": "Bu kampaniyanı dəstəklə"
@@ -3186,12 +3597,12 @@
       "closed": "Bu kampaniyanın son tarixi <deadline></deadline> idi. Son tarixinədək və ya yeganə uzadılmasının sonunadək hədəfinin 80%-ini toplamayan kampaniya hər dəstəkçiyə məbləği tam qaytarır."
     },
     "obligation": {
-      "lateHeading": "Bu yaradıcının yenilənmə borcu var",
+      "lateHeading": "Bu müəllifin yenilənmə borcu var",
       "completeHeading": "İcra tamamlanıb",
       "neverUpdatedBody": "Kampaniya bağlandıqdan sonra burada heç nə dərc olunmayıb. Yenilənmə {due} tarixinədək gözlənilirdi.",
       "lateBody": "Son yenilənmə {lastUpdate} tarixində dərc olunub. Növbətisi {due} tarixinədək gözlənilirdi.",
-      "completeBody": "Yaradıcı bu kampaniyanı icra olunmuş kimi qeyd edib, ona görə də aylıq yenilənmələr artıq gözlənilmir.",
-      "rule": "Yaradıcılar kampaniyaları icra olunana qədər ayda ən azı bir dəfə yenilənmə dərc etməyə razılıq verirlər. IdeaNest baş verənləri bildirir və yaradıcılarla dəstəkçilər arasında vasitəçilik edir; mükafatları çatdırmır və mübahisələri həll etmir."
+      "completeBody": "Müəllif bu kampaniyanı icra olunmuş kimi qeyd edib, ona görə də aylıq yenilənmələr artıq gözlənilmir.",
+      "rule": "Müəlliflər kampaniyaları icra olunana qədər ayda ən azı bir dəfə yenilənmə dərc etməyə razılıq verirlər. IdeaNest baş verənləri bildirir və müəlliflərlə dəstəkçilər arasında vasitəçilik edir; mükafatları çatdırmır və mübahisələri həll etmir."
     },
     "outcome": {
       "funded": "Bu kampaniya maliyyələşdi",
@@ -3232,9 +3643,44 @@
       "replyLabel": "Cavabınız",
       "withdraw": "Geri götür",
       "withdrawWarning": "Geri götürmək şərhin silindiyini bildirən qeyd buraxır. Ona yazılmış cavablar qalır və şərhi nə redaktə etmək, nə də geri qaytarmaq olur.",
-      "keep": "Qalsın"
+      "keep": "Qalsın",
+      "postComment": "Şərhi göndər",
+      "postReply": "Cavabı göndər",
+      "posting": "Göndərilir"
     },
-    "rule": "Kampaniya hədəfinin 80%-ini topladıqda uğurlu sayılır. Müəllif son tarixi bir dəfə uzada bilər."
+    "rule": "Kampaniya hədəfinin 80%-ini topladıqda uğurlu sayılır. Müəllif son tarixi bir dəfə uzada bilər.",
+    "prelaunch": {
+      "loading": "Bu kampaniya yüklənir",
+      "unavailableTitle": "Hələ baxmağa bir şey yoxdur",
+      "unavailable": "Burada başlanğıcdan əvvəlki səhifə yoxdur. O, hələ açılmamış ola bilər, ya da kampaniya artıq başlamışdır.",
+      "alreadyOpen": "Bu kampaniya artıq açılıb, ona görə xatırlatmağa bir şey qalmayıb.",
+      "failedTitle": "Bu səhifə yüklənə bilmədi",
+      "comingSoon": "Tezliklə",
+      "waiting": {
+        "one": "{count} nəfər bu kampaniyanı gözləyir.",
+        "few": "{count} nəfər bu kampaniyanı gözləyir.",
+        "many": "{count} nəfər bu kampaniyanı gözləyir.",
+        "other": "{count} nəfər bu kampaniyanı gözləyir."
+      },
+      "formTitle": "Açılanda xəbər verək",
+      "formIntro": "Kampaniya başlayan gün bir e-məktub.",
+      "accountAddress": "Hesabınızdakı ünvandan istifadə edəcəyik.",
+      "emailLabel": "E-poçt ünvanı",
+      "emailPlaceholder": "siz@example.com",
+      "emailInvalid": "E-poçt ünvanı yazın, məsələn siz@example.com.",
+      "submit": "Mənə xatırlat",
+      "submitting": "Əlavə olunursunuz",
+      "onListTitle": "Siyahıdasınız",
+      "onListSignedIn": "Bu kampaniya açılan gün hesabınızdakı ünvana bir dəfə yazacağıq. Başqa heç nə.",
+      "onListGuest": "Bu kampaniya açılan gün sizə bir dəfə yazacağıq. Başqa heç nə; hər məktubda dayandırmaq üçün keçid var.",
+      "onListAnnouncement": "Siyahıdasınız. Bu kampaniya açılanda sizə e-məktub göndərəcəyik.",
+      "errors": {
+        "rateLimited": "Buradan çox cəhd edildi. Bir neçə dəqiqə sonra yenidən cəhd edin.",
+        "rateLimitedIn": "Buradan çox cəhd edildi. Təxminən {minutes} dəqiqə sonra yenidən cəhd edin.",
+        "notSaved": "Yadda saxlanıla bilmədi. Yenidən cəhd edin.",
+        "unreachable": "Xidmətə çatmaq olmadı. Bağlantınızı yoxlayıb yenidən cəhd edin."
+      }
+    }
   },
   "campaignEditor": {
     "eyebrow": "Kampaniya redaktoru",
@@ -3455,14 +3901,14 @@
       },
       "deleteItemNamed": "«{name}» silinsin?",
       "deleteRewardNamed": "«{title}» silinsin?",
-      "movedAnnouncement": "«{title}» {total} mövqedən {position}-ci mövqeyə keçirildi.",
-      "duplicatedAnnouncement": "«{title}» {position}-ci mövqeyə kopyalandı.",
+      "movedAnnouncement": "«{title}» {total} mövqedən {position} nömrəli mövqeyə keçirildi.",
+      "duplicatedAnnouncement": "«{title}» {position} nömrəli mövqeyə kopyalandı.",
       "hiddenAnnouncement": "«{title}» kampaniya səhifəsindən gizlədildi.",
       "shownAnnouncement": "«{title}» yenidən kampaniya səhifəsindədir.",
       "rewardDeletedAnnouncement": "«{title}» silindi.",
       "itemDeletedAnnouncement": "«{name}» silindi.",
-      "moveUpLabel": "«{title}» yuxarı, hazırda {total} mövqedən {position}-ci",
-      "moveDownLabel": "«{title}» aşağı, hazırda {total} mövqedən {position}-ci",
+      "moveUpLabel": "«{title}» yuxarı, hazırda {total} mövqedən {position}",
+      "moveDownLabel": "«{title}» aşağı, hazırda {total} mövqedən {position}",
       "editLabel": "«{title}» dəyiş",
       "duplicateLabel": "«{title}» nüsxəsini yarat",
       "showLabel": "«{title}» kampaniya səhifəsində göstər",
@@ -3581,7 +4027,7 @@
           "embed": "Yerləşdirmə"
         },
         "describe": {
-          "position": "{total} bloqdan {index}-ci",
+          "position": "{total} bloqdan {index}",
           "heading": "Başlıq {position}: {text}",
           "headingEmpty": "boş",
           "withPreview": "{label} {position}: {preview}",
@@ -3623,7 +4069,7 @@
         "risks": "Risklər və çətinliklər",
         "risksHint": "Nə səhv gedə bilər və siz bununla nə edəcəksiniz. Ən azı {min} simvol; baxışa göndərməzdən əvvəl mütləqdir.",
         "risksPlaceholder": "Adətən üç şey olur: istehsal, çatdırılma və vaxt. Nəyin artıq həll olunduğunu, nəyin isə yox, yazın.",
-        "charactersNeeded": "Baxışa göndərmək üçün lazım olan {min} simvoldan {count}-i"
+        "charactersNeeded": "Baxışa göndərmək üçün lazım olan {min} simvoldan {count} yazılıb"
       },
       "blocks": {
         "heading": "Hekayə",
@@ -3660,11 +4106,11 @@
         "titleOf": "Başlıq: {name}",
         "styleOf": "Üslub: {name}",
         "descriptionOf": "Təsvir: {name}",
-        "itemOf": "«{name}» içində {count} bənddən {at}-ci",
-        "removeItemOf": "«{name}» içində {count} bənddən {at}-cini sil",
+        "itemOf": "«{name}» içində {count} bənddən {at}",
+        "removeItemOf": "«{name}» içində {count} bənddən {at} nömrəli bəndi sil",
         "addItemTo": "«{name}» içinə bənd əlavə et",
-        "addedAnnouncement": "{label} {total} bloqdan {position}-ci kimi əlavə olundu.",
-        "movedAnnouncement": "{label} {total} bloqdan {position}-ci mövqeyə keçdi.",
+        "addedAnnouncement": "{label} {total} bloqdan {position} nömrəli blok kimi əlavə olundu.",
+        "movedAnnouncement": "{label} {total} bloqdan {position} nömrəli mövqeyə keçdi.",
         "removedAnnouncement": {
           "one": "{label} silindi. {count} bloq qaldı.",
           "few": "{label} silindi. {count} bloq qaldı.",
@@ -3687,6 +4133,7 @@
         "failedTitle": "Versiya tarixçəsini yükləmək olmadı",
         "emptyTitle": "Hələ əvvəlki versiya yoxdur",
         "loadingLabel": "Əvvəlki versiyalar yüklənir",
+        "loadingVersion": "Bu versiya yüklənir…",
         "description": "Hekayə hər dəyişdikdə versiya saxlanılır, amma bir neçə dəqiqədə birdən çox yox. Burada son əllisi var.",
         "emptyDescription": "Biri hekayə ilk dəfə dəyişəndə saxlanılır, sonra isə siz yazdıqca bir neçə dəqiqədə birdən çox olmayaraq.",
         "replaceWarning": "İndiki hekayəniz əvəz olunur.",
@@ -3733,11 +4180,11 @@
       "deleteTitle": "Sualı sil",
       "deleteNamed": "«{question}» silinsin?",
       "cannotBeUndone": "Bunu geri qaytarmaq olmaz.",
-      "moveUpLabel": "«{question}» yuxarı, hazırda {total} sualdan {position}-ci",
-      "moveDownLabel": "«{question}» aşağı, hazırda {total} sualdan {position}-ci",
+      "moveUpLabel": "«{question}» yuxarı, hazırda {total} sualdan {position}",
+      "moveDownLabel": "«{question}» aşağı, hazırda {total} sualdan {position}",
       "editLabel": "«{question}» dəyiş",
       "deleteLabel": "«{question}» sil",
-      "movedAnnouncement": "«{question}» {total} mövqedən {position}-ci mövqeyə keçirildi.",
+      "movedAnnouncement": "«{question}» {total} mövqedən {position} nömrəli mövqeyə keçirildi.",
       "deletedAnnouncement": "«{question}» silindi.",
       "order": {
         "refusal": "Sıra qəbul edilmədi, çünki {detail}. Siyahı yenidən oxundu və indi kampaniya ilə uyğundur — istədiyiniz sıraya yenidən düzün.",
@@ -3840,7 +4287,7 @@
       "notFound": "Belə bir kampaniya tapılmadı.",
       "noAccess": "Bu kampaniyaya girişiniz yoxdur.",
       "unreachable": "Xidmətlə əlaqə qurulmadı. Bağlantını yoxlayıb yenidən cəhd edin.",
-      "progressSummary": "{score}% hazırdır. Mütləq bəndlərdən {blockingTotal}-dən {blockingDone}-i, tövsiyə olunanlardan {advisoryTotal}-dən {advisoryDone}-i tamamlanıb.",
+      "progressSummary": "{score}% hazırdır. Mütləq {blockingTotal} bənddən {blockingDone}, tövsiyə olunan {advisoryTotal} bənddən {advisoryDone} tamamlanıb.",
       "blockersRemaining": {
         "one": "{count} mütləq bənd hələ tamamlanmayıb.",
         "few": "{count} mütləq bənd hələ tamamlanmayıb.",
@@ -3858,16 +4305,21 @@
       "buttonLabel": "Şəkil seçin",
       "dropHint": "20 MB-a qədər. Şəkil burada çevrilir və kiçildilir, orijinal saxlanılmır. Ən yaxşısı {minimum} və daha böyük.",
       "urlPlaceholder": "Və ya ünvanı yapışdırın: https://images.example.com/cover.jpg",
+      "urlLabel": "Üz qabığı şəklinin ünvanı",
+      "checking": "Yoxlanılır",
+      "useAddress": "Bu ünvanı işlət",
       "needUrlFirst": "Əvvəlcə şəklin ünvanını yazın.",
       "notUsedTitle": "Bu fayl istifadə olunmadı",
       "unusable": "Bu şəkli işlətmək alınmadı.",
       "softTitle": "Tam enində bulanıq görünəcək",
       "set": "Üz qabığı {size} piksel şəkildən götürüldü.",
       "setSmall": "Üz qabığı {size} piksel şəkildən götürüldü. Bu, tövsiyə olunan {minimum} ölçüdən kiçikdir, ona görə başlığı doldurmaq üçün böyüdüləcək və bulanıq görünəcək. Nisbətləri saxlanılır — çərçivə dartmır, kəsir. Kampaniyanı yenə də göndərmək olar.",
+      "size": "Üz qabığı {size} pikseldir",
+      "sizeUploaded": "Üz qabığı {size} pikseldir · yüklənib",
       "stage": {
-        "preparing": "Hazırlanır",
-        "uploading": "Yüklənir",
-        "processing": "Emal olunur"
+        "preparing": "Şəkil hazırlanır…",
+        "uploading": "Şəkil yüklənir…",
+        "processing": "Şəkil emal olunur…"
       },
       "failures": {
         "TOO_SMALL": "Bu şəkil göstərmək üçün çox kiçikdir. {minimum} və yuxarısı yaxşı oxunur.",
@@ -3878,7 +4330,10 @@
         "UPLOADS_UNAVAILABLE": "Bu mühitdə yükləmə aktiv deyil. Əvəzinə ünvan yapışdırın.",
         "MEDIA_STORAGE_UNREACHABLE": "Şəkil anbarı cavab vermir. Bir azdan yenidən cəhd edin.",
         "UPLOAD_STILL_PROCESSING": "Bu şəkil adətkindən uzun çəkir. Bu bölməyə qayıtsanız, görünə bilər.",
-        "UPLOAD_TRANSFER_FAILED": "Şəkil anbara çatmadı. Bağlantını yoxlayıb yenidən cəhd edin."
+        "UPLOAD_TRANSFER_FAILED": "Şəkil anbara çatmadı. Bağlantını yoxlayıb yenidən cəhd edin.",
+        "UPLOAD_REFUSED": "Bu fayl qəbul edilmədi.",
+        "UPLOAD_UNFINISHED": "Bu yükləməni tamamlamaq alınmadı.",
+        "MEDIA_NOT_FOUND": "Bu yükləməni oxumaq alınmadı."
       }
     },
     "newProject": {
@@ -3904,6 +4359,47 @@
       "review": "Kampaniyanın nə qədər hazır olduğu, moderasiyanın onun haqqında dedikləri və baxışa göndərilməsi."
     }
   },
+  "moderation": {
+    "report": {
+      "trigger": "Şikayət et",
+      "triggerOn": {
+        "campaign": "Bu kampaniyadan şikayət et",
+        "account": "Bu hesabdan şikayət et",
+        "comment": "Bu şərhdən şikayət et"
+      },
+      "dialogLabel": "{name} barəsində şikayət",
+      "commentOn": "{title} kampaniyasındakı bir şərh",
+      "signedOutBody": "Şikayət etmək üçün hesab lazımdır. Platforma bir şikayəti eyni şikayətin beş surətindən beləcə ayırd edir və moderator sizinlə bu yolla əlaqə saxlaya bilir.",
+      "signIn": "Daxil ol",
+      "filedTitle": "Moderator buna baxacaq",
+      "filedBody": {
+        "campaign": "Şikayətiniz bizdədir. Buna görə kampaniyada heç nə dəyişmir — şikayət bir insanın baxması üçün müraciətdir, səsvermə deyil.",
+        "account": "Şikayətiniz bizdədir. Buna görə hesabda heç nə dəyişmir — şikayət bir insanın baxması üçün müraciətdir, səsvermə deyil.",
+        "comment": "Şikayətiniz bizdədir. Buna görə şərhdə heç nə dəyişmir — şikayət bir insanın baxması üçün müraciətdir, səsvermə deyil."
+      },
+      "close": "Bağla",
+      "errorTitle": "Göndərilmədi",
+      "refused": "Şikayət rədd edildi.",
+      "unreachable": "Xidmətə çıxmaq mümkün olmadı. Bağlantınızı yoxlayıb yenidən cəhd edin.",
+      "detailRequired": "«Digər» üçün bir cümlə lazımdır, yoxsa moderatorun baxacağı heç nə olmur.",
+      "reasonLabel": "Burada nə səhvdir?",
+      "detailLabel": "Moderatorun bilməli olduğu başqa nə var",
+      "detailHint": "İstəyə bağlıdır, «Digər» istisna olmaqla. Nə gördünüz və harada.",
+      "sending": "Göndərilir",
+      "submit": "Şikayəti göndər",
+      "descriptions": {
+        "PROHIBITED_ITEM": "Platformanın maliyyələşdirilməsinə icazə vermədiyi bir şey təklif edir.",
+        "MISREPRESENTATION": "Özü haqqında doğru olmayan bir şey iddia edir.",
+        "NOT_ORIGINAL": "İş başqasınındır, müəllifin öz işi kimi təqdim olunur.",
+        "INTELLECTUAL_PROPERTY": "Ticarət nişanından, dizayndan və ya əsərdən buna hüququ olmadan istifadə edir.",
+        "OFFENSIVE": "Materialın özü təhqiramizdir.",
+        "DISCRIMINATION": "İnsanları kim olduqlarına görə hədəf alır.",
+        "SPAM": "Başqa bir şeyin reklamı üçün mövcuddur.",
+        "FRAUD": "Heç kimin çatdırmaq niyyətində olmadığını düşünməyə əsas var.",
+        "OTHER": "Başqa bir şey — aşağıda yazın."
+      }
+    }
+  },
   "profile": {
     "notFound": "Profil tapılmadı",
     "metaDescription": "IdeaNest-də {name} — yaratdığı və dəstəklədiyi kampaniyalar.",
@@ -3916,8 +4412,8 @@
     },
     "obligations": {
       "heading": "{count, plural, one {Bir kampaniya yenilənmədə gecikir} other {# kampaniya yenilənmədə gecikir}}",
-      "body": "{count, plural, one {{name} adlı yaradıcının bir kampaniyası növbəti dəstəkçi yenilənməsinin gözlənildiyi tarixi keçib.} other {{name} adlı yaradıcının # kampaniyası növbəti dəstəkçi yenilənməsinin gözlənildiyi tarixi keçib.}}",
-      "rule": "Yaradıcılar kampaniyaları icra olunana qədər ayda ən azı bir dəfə yenilənmə dərc etməyə razılıq verirlər. Bu, soruşa bilməniz üçün bildirilir; IdeaNest vasitəçilik edir və mübahisələri həll etmir."
+      "body": "{count, plural, one {{name} adlı müəllifin bir kampaniyası növbəti dəstəkçi yenilənməsinin gözlənildiyi tarixi keçib.} other {{name} adlı müəllifin # kampaniyası növbəti dəstəkçi yenilənməsinin gözlənildiyi tarixi keçib.}}",
+      "rule": "Müəlliflər kampaniyaları icra olunana qədər ayda ən azı bir dəfə yenilənmə dərc etməyə razılıq verirlər. Bu, soruşa bilməniz üçün bildirilir; IdeaNest vasitəçilik edir və mübahisələri həll etmir."
     },
     "about": {
       "heading": "{name} haqqında",
@@ -3953,6 +4449,84 @@
         "LATE_PLEDGE": "Gecikmiş dəstəklər",
         "FULFILLING": "İcra olunur",
         "COMPLETED": "Tamamlandı"
+      }
+    },
+    "editor": {
+      "heading": "IdeaNest-də necə görünürsünüz",
+      "liveAt": "Profiliniz {address} ünvanındadır və bu səhifədəki hər şey onu açan hər kəsə açıqdır.",
+      "handleFixed": "İstifadəçi adınız, @{slug}, burada dəyişdirilə bilməz.",
+      "handleWhy": "Bu, həmin səhifənin ünvanıdır və dərc etdiyiniz hər kampaniyada yazılır — onu dəyişmək başqalarının artıq paylaşdığı keçidləri sındırardı.",
+      "loadFailedTitle": "Profiliniz yüklənə bilmədi",
+      "loadFailed": "Profiliniz yüklənə bilmədi. Yenidən cəhd etmək üçün səhifəni təzələyin.",
+      "loading": "Profiliniz yüklənir.",
+      "saveFailedTitle": "Heç nə saxlanılmadı",
+      "unreachable": "IdeaNest-ə çatmaq mümkün olmadı. Heç nə saxlanılmadı.",
+      "name": "Ad",
+      "nameHint": "Profilinizdə və yaratdığınız hər kampaniyada göründüyünüz ad. {max} simvol və ya az.",
+      "bio": "Haqqınızda",
+      "bioHint": "Profilinizin «Haqqında» bölməsində görünən bir neçə cümlə. {max} simvol və ya az.",
+      "website": "Veb sayt",
+      "websiteHint": "https:// ilə başlamalıdır. Profilinizdə keçid kimi göstərilir.",
+      "websitePlaceholder": "https://example.com",
+      "location": "Yer",
+      "locationHint": "Harada olduğunuz — IdeaNest-in tanıdığı yerlərdən.",
+      "notSaying": "Bildirmirəm",
+      "locationsUnavailable": "Yerlərin siyahısı yüklənə bilmədi, ona görə bunu indi burada təyin etmək olmaz. Bu səhifədəki qalan hər şey yenə saxlanılır.",
+      "locationsUnavailableWithValue": "Profilinizdə {place} yazılıb. Yerlərin siyahısı yüklənə bilmədi, ona görə bunu indi dəyişmək olmaz — bu səhifədəki qalan hər şey yenə saxlanılır.",
+      "saving": "Saxlanılır",
+      "save": "Profili saxla",
+      "savedTitle": "Profiliniz saxlanıldı",
+      "savedBody": "O, {address} ünvanında yayımdadır.",
+      "avatar": {
+        "label": "Profil şəkli",
+        "hint": "Profilinizdə və yaratdığınız hər kampaniyada adınızın yanında göstərilir.",
+        "pipelineTitle": "Yükləmə media boru xətti ilə birlikdə gələcək",
+        "pipelineBody": "IdeaNest hələ fayl saxlaya bilmir, ona görə burada artıq harada isə dərc olunmuş şəklin ünvanı verilir. Şəklin hansı hissəsinin göstəriləcəyini seçmək — kəsim — eyni işlə birlikdə gələcək.",
+        "noPicture": "{name}, şəkilsiz",
+        "broken": "Həmin ünvan burada şəkil kimi açılmadı. Profiliniz onun yerinə baş hərflərinizi göstərəcək.",
+        "cropped": "Şəkliniz dairəyə belə kəsilir.",
+        "initials": "Şəkil olmadığı müddətdə baş hərfləriniz göstərilir.",
+        "address": "Profil şəklinin ünvanı",
+        "addressPlaceholder": "https://images.example.com/me.jpg",
+        "remove": "Şəkli sil",
+        "squareTitle": "Bu şəkil kvadratdır",
+        "notSquareTitle": "Bu şəkil kvadrat deyil",
+        "square": "{file} {size} pikseldir və dairəyə olduğu kimi yerləşir. Heç nə yüklənməyib — onu açıq bir yerdə dərc edin və ünvanını aşağıya yapışdırın.",
+        "notSquare": "{file} {size} pikseldir, ona görə ortadan dairəyə kəsilir. Heç nə yüklənməyib — onu açıq bir yerdə dərc edin və ünvanını aşağıya yapışdırın.",
+        "unreadable": "Həmin fayl şəkil kimi oxuna bilmədi.",
+        "prompt": "Və ya necə kəsiləcəyini görmək üçün bura şəkil atın",
+        "dragPrompt": "Şəkli ölçmək üçün buraxın",
+        "buttonLabel": "Ölçmək üçün şəkil seçin",
+        "dropHint": "Brauzerinizdə ölçülür. Heç nə yüklənmir."
+      },
+      "links": {
+        "label": "Digər hesablarınıza keçidlər",
+        "hint": "Hər platforma üçün bir keçid, ən çoxu {max}. Hər ünvan https:// ilə başlamalıdır.",
+        "none": "Hələ heç nə əlavə etməmisiniz. Onlar açıq profilinizdə, haqqınızdakı mətnin altında görünür.",
+        "platformFor": "{number} nömrəli keçidin platforması",
+        "addressFor": "{platform} ünvanı",
+        "addressPlaceholder": "https://example.com/you",
+        "removeLink": "{platform} keçidini sil",
+        "remove": "Sil",
+        "add": "Keçid əlavə et",
+        "used": "{max} keçiddən {used} istifadə olunub.",
+        "atCap": "{max} keçidin hamısı istifadə olunub — bu, bir profilin daşıya biləcəyi ən çox saydır. Yenisini əlavə etmək üçün birini silin.",
+        "allListedTitle": "Bütün platformalar artıq siyahıdadır",
+        "allListedBody": "IdeaNest-in tanıdığı hər platforma üçün bir keçid var. Yenisini əlavə etmək yerinə mövcud olanı dəyişin."
+      },
+      "visibility": {
+        "heading": "Açıq profiliniz",
+        "intro": "Profil səhifəniz yaratdığınız və dəstəklədiyiniz kampaniyaları sadalayır. O, heç bir məbləğ göstərmir və anonim verdiyiniz dəstəklər heç vaxt siyahıya düşmür. Onu gizlətmək ünvanın sanki orada heç nə yoxmuş kimi cavab verməsinə səbəb olur.",
+        "toggle": "Profilimi hamıya göstər",
+        "public": "Açıq",
+        "hidden": "Gizli",
+        "checking": "Ziyarətçinin nə gördüyü yoxlanılır.",
+        "unknownTitle": "Bu parametr oxuna bilmədi",
+        "unknownBody": "IdeaNest profilinizin hazırda görünüb-görünmədiyini yoxlaya bilmədi, ona görə açar əmin olmadığı vəziyyəti göstərmək əvəzinə söndürülüb. Yenidən cəhd etmək üçün səhifəni təzələyin.",
+        "failedTitle": "Heç nə dəyişdirilmədi",
+        "refused": "Xidmət dəyişikliyi rədd etdi. Profiliniz olduğu kimi qalır.",
+        "unreachable": "Xidmətə çatmaq mümkün olmadı. Profiliniz olduğu kimi qalır.",
+        "seeAsVisitor": "Profilinizi ziyarətçinin gördüyü kimi görün"
       }
     }
   },
@@ -4105,7 +4679,7 @@
       },
       "creator-agreement": {
         "title": "Yaradıcı müqaviləsi",
-        "summary": "Yaradıcının öhdəlikləri: vəzifələr, ödəniş şərtləri, komissiya və təminat."
+        "summary": "Müəllifin öhdəlikləri: vəzifələr, ödəniş şərtləri, komissiya və təminat."
       },
       "backer-agreement": {
         "title": "Dəstəkçi müqaviləsi",
@@ -4125,11 +4699,263 @@
     "disclosure": {
       "backerHeading": "Dəstəyinizə nə tətbiq olunur",
       "creatorHeading": "Sizə nə çatır",
-      "backerBody": "Sizdən yalnız dəstək məbləği tutulur, üstünə heç nə əlavə olunmur. Həmin məbləğdən IdeaNest {platform}, ödəniş provayderi isə {processing} saxlayır; qalanı yaradıcıya gedir.",
+      "backerBody": "Sizdən yalnız dəstək məbləği tutulur, üstünə heç nə əlavə olunmur. Həmin məbləğdən IdeaNest {platform}, ödəniş provayderi isə {processing} saxlayır; qalanı müəllifə gedir.",
       "creatorBody": "Yığılan hər dəstəkdən IdeaNest {platform}, ödəniş provayderi isə {processing} saxlayır, beləliklə dəstəkçilərinizin verdiyi məbləğin {keeps} hissəsi sizə çatır.",
       "fixedFee": "Ödəniş provayderi hər əməliyyat üçün əlavə olaraq {amount} tutur.",
       "twoFees": "Bunlar iki ayrı tutulmadır. IdeaNest-in komissiyası platformanın saxladığıdır; emal komissiyası isə pulu hərəkət etdirən şirkətə gedir və IdeaNest onu heç vaxt almır. Qüvvədə olan dərəcələr yuxarıdakılardır və ödəniş məhz onlarla hesablanır.",
       "unconfigured": "IdeaNest hələ komissiya cədvəli təyin etməyib, ona görə də bu gün dəstəklərdən heç nə tutulmur. Bu daimi öhdəlik deyil: hər hansı dərəcə təyin olunan kimi burada dərc olunacaq, şərtlər isə yaradıcı müqaviləsində göstərilir."
+    }
+  },
+  "dashboard": {
+    "meta": {
+      "title": "Kampaniya paneli",
+      "description": "İdarə etdiyiniz kampaniyanın canlı cəmləri, gedişatı və qalan vaxtı."
+    },
+    "nav": {
+      "label": "Panel bölmələri",
+      "overview": "İcmal",
+      "charts": "Maliyyələşmə və dəstəkçilər",
+      "backers": "Dəstəkçilər",
+      "finance": "Maliyyə",
+      "surveys": "Sorğular"
+    },
+    "failures": {
+      "signedOut": "Sessiyanızın vaxtı bitib. Bu kampaniyanı görmək üçün yenidən daxil olun.",
+      "noCampaign": "Belə bir kampaniya yoxdur və ya o, sizin işlədiyiniz kampaniya deyil."
+    },
+    "states": {
+      "CONFIRMED": "Təsdiqlənib",
+      "CHARGE_PENDING": "Tutulma gözlənilir",
+      "CHARGE_FAILED": "Ödəniş alınmadı",
+      "COLLECTED": "Tutulub",
+      "FULFILLED": "Yerinə yetirilib"
+    },
+    "clock": {
+      "none": "Hələ son tarix yoxdur — geri sayım kampaniya başlayanda başlayır.",
+      "urgent": "Tezliklə bağlanır",
+      "closed": "Bağlanıb",
+      "days": {
+        "one": "{count} gün qalıb",
+        "few": "{count} gün qalıb",
+        "many": "{count} gün qalıb",
+        "other": "{count} gün qalıb"
+      },
+      "hours": "{hours} saat {minutes} dəqiqə qalıb",
+      "minutes": "{minutes} dəqiqə {seconds} saniyə qalıb",
+      "seconds": "{seconds} saniyə qalıb"
+    },
+    "overview": {
+      "loading": "Kampaniyanın cəmləri yüklənir",
+      "notGranted": "Bu kampaniya üzrə əməkdaşlıq səlahiyyətiniz maliyyəni əhatə etmir, ona görə bu rəqəmlər sizə açıq deyil.",
+      "unavailable": "Panel yüklənə bilmədi. Səbəb kampaniyanız deyil, xidmətdir — bir azdan yenidən cəhd edin.",
+      "raised": "Toplanıb",
+      "backers": "Dəstəkçilər",
+      "goal": "Hədəf",
+      "goalUnset": "Hələ təyin edilməyib",
+      "noGoal": "Bu kampaniyanın hələ maliyyə hədəfi yoxdur, ona görə göstəriləcək gedişat da yoxdur.",
+      "progressLabel": "Maliyyələşmə: hədəfin {percent} faizi",
+      "percentFunded": "{percent}% maliyyələşib",
+      "goalReached": "Hədəfə çatıldı",
+      "outcomeHeading": "Son tarixdə",
+      "outcome": "Bu kampaniya {backers} tərəfindən verilmiş {pledged} məbləği ilə, {goal} hədəfinə qarşı bağlandı. Bu rəqəmlər dondurulub: tutulma zamanı alınmayan ödəniş yalnız ödəniləcək məbləği azaldır, kampaniyanın topladığını yox.",
+      "outcomeBackers": {
+        "one": "{count} dəstəkçi",
+        "few": "{count} dəstəkçi",
+        "many": "{count} dəstəkçi",
+        "other": "{count} dəstəkçi"
+      }
+    },
+    "charts": {
+      "heading": "Maliyyələşmə və dəstəkçilər",
+      "intro": "Bu kampaniyanın topladığını necə topladığı, dəstəkçilərin hansı mükafatları seçdiyi və harada olduqları.",
+      "trendHeading": "Zaman üzrə maliyyələşmə",
+      "trendLoading": "Maliyyələşmə dinamikası yüklənir",
+      "trendNotGranted": "Bu kampaniya üzrə əməkdaşlıq səlahiyyətiniz maliyyələşmə dinamikasını əhatə etmir.",
+      "trendUnavailable": "Maliyyələşmə dinamikası yüklənə bilmədi. Səbəb kampaniyanız deyil, xidmətdir — bir azdan yenidən cəhd edin.",
+      "trendEmpty": "{from} və {to} tarixləri arasında heç nə dəstəklənməyib. Qrafik ilk təsdiqlənmiş dəstəklə görünür.",
+      "trendLabel": "Yığılan cəm, {from} — {to} ({zone})",
+      "aggregated": "{when} toplanıb. İcmaldakı canlı cəmlər isə soruşduğunuz anda oxunur.",
+      "splitHeading": "Mükafatlar və ünvanlar",
+      "splitLoading": "Mükafat və ünvan bölgüsü yüklənir",
+      "splitNotGranted": "Bu kampaniya üzrə əməkdaşlıq səlahiyyətiniz dəstəkçi bölgüsünü əhatə etmir.",
+      "splitUnavailable": "Dəstəkçi bölgüsü yüklənə bilmədi. Səbəb kampaniyanız deyil, xidmətdir — bir azdan yenidən cəhd edin.",
+      "splitEmpty": "Bu kampaniyanı hələ heç kim dəstəkləməyib, ona görə bölünəcək bir şey yoxdur.",
+      "backers": "Dəstəkçilər",
+      "pledged": "Dəstək məbləği",
+      "nothingYet": "Hələ heç nə",
+      "rewardHeading": "Mükafat səviyyəsi üzrə",
+      "rewardEmpty": "İndiyədək hər dəstəkçi mükafat götürmədən dəstək olub.",
+      "rewardLabel": "Mükafat səviyyəsi üzrə dəstəkçilər",
+      "rewardNote": "Bunlar səviyyə seçmiş dəstəkçiləri əhatə edir. Mükafatsız dəstək burada sadalanmır — buna görə səviyyələrin cəmi yuxarıdakı ümumi məbləğdən az ola bilər.",
+      "destinationHeading": "Ünvan üzrə",
+      "destinationLabel": "Ünvan üzrə dəstəkçilər",
+      "destinationNote": "Ünvan göstərilməyən dəstək — rəqəmsal mükafat və ya mükafatsız dəstək — kənarda qoyulmur, «Ünvan yoxdur» altında sayılır.",
+      "removedTier": "Silinmiş səviyyə",
+      "noDestination": "Ünvan yoxdur",
+      "shareBackers": {
+        "one": "{count} dəstəkçi",
+        "few": "{count} dəstəkçi",
+        "many": "{count} dəstəkçi",
+        "other": "{count} dəstəkçi"
+      }
+    },
+    "trend": {
+      "peak": "{day} tarixinə {amount}",
+      "showDaily": "Günlük rəqəmləri göstər",
+      "dailyLabel": "Günlük maliyyələşmə rəqəmləri",
+      "day": "Gün",
+      "backers": "Dəstəkçilər",
+      "pledged": "Dəstək məbləği",
+      "runningTotal": "Yığılan cəm"
+    },
+    "table": {
+      "backer": "Dəstəkçi",
+      "reward": "Mükafat",
+      "pledged": "Dəstək",
+      "state": "Vəziyyət",
+      "destination": "Ünvan",
+      "backed": "Dəstəkləyib",
+      "anonymous": "Açıq şəkildə adı çəkilmir",
+      "noReward": "Mükafatsız",
+      "removedTier": "Silinmiş səviyyə"
+    },
+    "backers": {
+      "heading": "Dəstəkçilər",
+      "intro": "Bu kampaniyanı dəstəkləyən hər kəs və onlara necə çatmaq. İxrac faylı aşağıdakı siyahı ilə eyni adamları daşıyır.",
+      "loading": "Bu kampaniyanın dəstəkçiləri yüklənir",
+      "notGranted": "Bu kampaniya üzrə əməkdaşlıq səlahiyyətiniz dəstəkçi hesabatını əhatə etmir.",
+      "tooManyExports": "Bu hesabın bir dəqiqə ərzində ala biləcəyindən çox ixracdır. Bir azdan yenidən cəhd edin.",
+      "unavailable": "Dəstəkçi hesabatı yüklənə bilmədi. Səbəb kampaniyanız deyil, xidmətdir — bir azdan yenidən cəhd edin.",
+      "searchLabel": "Dəstəkçiləri axtar",
+      "searchHint": "Ad və ya e-poçt ünvanı, yaxud onların bir hissəsi.",
+      "search": "Axtar",
+      "export": "CSV ixrac et",
+      "stateLegend": "Dəstəyin vəziyyəti",
+      "segmentsLegend": "Yadda saxlanmış seqmentlər",
+      "deleteSegment": "{name} seqmentini sil",
+      "saveLabel": "Bu filtri belə saxla",
+      "saveHint": "Səksən simvol və ya az.",
+      "savePlaceholder": "Almaniyadakı dəstəkçilərimiz",
+      "saveSegment": "Seqmenti saxla",
+      "saved": "«{name}» saxlanıldı.",
+      "saveConflict": "Bu kampaniyada həmin adda seqment artıq var və ya hesabatın saxlaya biləcəyi qədər seqment var.",
+      "saveFailed": "Həmin seqment saxlanıla bilmədi. Bir azdan yenidən cəhd edin.",
+      "deleted": "«{name}» silindi.",
+      "deleteFailed": "Həmin seqment silinə bilmədi. Bir azdan yenidən cəhd edin.",
+      "exported": {
+        "one": "{count} dəstəkçi ixrac edildi.",
+        "few": "{count} dəstəkçi ixrac edildi.",
+        "many": "{count} dəstəkçi ixrac edildi.",
+        "other": "{count} dəstəkçi ixrac edildi."
+      },
+      "exportedTruncated": "İlk {count} dəstəkçi ixrac edildi. Bu kampaniyada bir faylın tutduğundan çox dəstəkçi var — filtrləyin və hissə-hissə ixrac edin.",
+      "matched": {
+        "one": "Bu filtrə {count} dəstəkçi uyğun gəlir.",
+        "few": "Bu filtrə {count} dəstəkçi uyğun gəlir.",
+        "many": "Bu filtrə {count} dəstəkçi uyğun gəlir.",
+        "other": "Bu filtrə {count} dəstəkçi uyğun gəlir."
+      },
+      "emptyFiltered": "Bu filtrə heç nə uyğun gəlmir. Bir çipi götürün və ya axtarışı genişləndirin.",
+      "emptyNone": "Bu kampaniyanı hələ heç kim dəstəkləməyib. Dəstəkçilər təsdiqləyən kimi burada görünəcək.",
+      "tableLabel": "Bu kampaniyanın dəstəkçiləri",
+      "more": "Ən son {count} göstərilir. Qalanlarını görmək üçün filtri daraldın və ya faylı ixrac edin."
+    },
+    "finance": {
+      "heading": "Maliyyə xülasəsi",
+      "loading": "Kampaniyanın maliyyəsi yüklənir",
+      "notGranted": "Bu kampaniya üzrə əməkdaşlıq səlahiyyətiniz maliyyəni əhatə etmir, ona görə bu rəqəmlər sizə açıq deyil.",
+      "unavailable": "Maliyyə xülasəsi yüklənə bilmədi. Səbəb kampaniyanız deyil, xidmətdir — bir azdan yenidən cəhd edin.",
+      "projected": "Proqnoz",
+      "settled": "Yekunlaşıb",
+      "projectedIntro": "Hələ heç bir ödəniş hesablanmayıb, ona görə aşağıdakı komissiyalar bugünkü cədvəlin tutacağı məbləğlərdir. Ödəniş hazırlananda onlar həmin gün qüvvədə olan cədvələ görə yenidən hesablanır.",
+      "settledIntro": "Bunlar ödənişinizin hesablandığı rəqəmlərdir — yenidən çıxarılmayıb, ödənişin özündən oxunub.",
+      "gross": "Ümumi",
+      "net": "Xalis",
+      "netProjected": "Xalis, proqnoz",
+      "paidOut": "Ödənilib",
+      "deductionsHeading": "Ümumi məbləğdən nə çıxıldı",
+      "deductionsCaption": "Bu kampaniyanın topladığı ilə ödəniləcək məbləğ arasındakı bütün tutulmalar",
+      "grossCollected": "Ümumi toplanıb",
+      "platformFee": "Platforma komissiyası",
+      "processingFee": "Emal komissiyası",
+      "taxWithheld": "Tutulan vergi",
+      "taxNote": "IdeaNest heç bir vergi tutmur. Borclu olduğunuz vergi sizinlə vergi orqanı arasındadır.",
+      "refunded": "Dəstəkçilərə qaytarılıb",
+      "payable": "Ödəniləcək",
+      "payableProjected": "Ödəniləcək, proqnoz",
+      "payoutsHeading": "Ödənişlər",
+      "payoutsEmpty": "Hələ yoxdur. Ödəniş §5.4-ün saxlama müddətindən sonra hazırlanır və onların hamısı — ləğv edilənlər də daxil — burada görünür.",
+      "booksHeading": "Mühasibat nə deyir",
+      "booksIntro": "Bu kampaniya üzrə §7.2 hesabları. Yuxarıdakı cəmlərin sadəcə inamla qəbul edilməməsi, bir şeylə tutuşdurula bilməsi üçün dərc olunur. Hesabınızdakı mənfi qalıq platformanın sizin üçün saxladığı puldur.",
+      "unbalancedTitle": "Bu mühasibat balanslaşmır",
+      "unbalancedBody": "Bu kampaniya üzrə yazılışların cəmi sıfır etmir. Bunu izah edən heç bir hərəkətiniz yoxdur — yuxarıdakı rəqəmlərə güvənməzdən əvvəl bu kampaniyanı göstərərək dəstək xidmətinə yazın.",
+      "ledgerEmpty": "Bu kampaniya üzrə hələ heç nə yazılmayıb.",
+      "ledgerCaption": "Bu kampaniya üzrə hesablar üzrə qalıqlar",
+      "account": "Hesab",
+      "balance": "Qalıq",
+      "asOf": "{time} tarixinə.",
+      "payoutStates": {
+        "CALCULATED": "Hesablanıb",
+        "PENDING_APPROVAL": "Təsdiq gözləyir",
+        "APPROVED": "Təsdiqlənib",
+        "PAID": "Ödənilib",
+        "FAILED": "Alınmadı",
+        "CANCELLED": "Ləğv edilib"
+      }
+    },
+    "surveys": {
+      "heading": "Sorğular",
+      "intro": "İstehsal edib göndərməzdən əvvəl bilməli olduqlarınız. Sorğu bu kampaniyanın hər dəstəkçisinə bir dəfə gedir və sonra sualları dəyişdirilə bilmir.",
+      "loading": "Bu kampaniyanın sorğuları yüklənir",
+      "notGranted": "Bu kampaniya üzrə əməkdaşlıq səlahiyyətiniz dəstəkçilərə yazmağı əhatə etmir.",
+      "alreadySent": "Bu sorğu artıq göndərilib. Sualları dəyişdirilə bilməz — qeyd və son tarix isə hələ də dəyişdirilə bilər.",
+      "needsQuestion": "Bu sorğu hələ göndərilə bilməz. Ən azı bir sual əlavə edin.",
+      "invalid": "Bu sorğuda nəsə düzgün deyil.",
+      "unavailable": "Sorğu saxlanıla bilmədi. Səbəb kampaniyanız deyil, xidmətdir — bir azdan yenidən cəhd edin.",
+      "sentSummary": "{count} nəfərə göndərilib · {answered} cavab verib",
+      "draft": "Qaralama",
+      "deleteDraft": "{title} qaralama sorğusunu sil",
+      "sentHeading": "Göndərilmiş sorğu",
+      "editHeading": "Qaralamaya düzəliş et",
+      "newHeading": "Yeni sorğu",
+      "titleLabel": "Başlıq",
+      "titleHint": "Dəstəkçinin yuxarıda gördüyü mətn. Yüz əlli simvol və ya az.",
+      "noteLabel": "Müşayiət qeydi",
+      "noteHint": "İstəyə bağlı. Sorğu göndərildikdən sonra da dəyişdirilə bilər — bu, heç kimin cavablamadığı mətndir.",
+      "questionsLegend": "Suallar",
+      "questionsLegendLocked": "Suallar — sorğu göndərildiyi üçün bunlar artıq dəyişdirilə bilməz",
+      "question": "Sual {number}",
+      "typeLabel": "Cavab növü",
+      "types": {
+        "TEXT": "Qısa mətn",
+        "CHOICE": "Birini seç",
+        "MULTI_CHOICE": "Bir neçəsini seç",
+        "DATE": "Tarix",
+        "ADDRESS": "Poçt ünvanı"
+      },
+      "optionsLabel": "Variantlar",
+      "optionsHint": "Hər sətirdə bir dənə. Ən azı iki, və hər biri bir dəfə.",
+      "addressNote": "Burada deyil, dəstəyin üzərində cavablanır — ona görə ünvan şifrələnmiş saxlanılır və etiketləri çap etməyə başlayanda kilidlənə bilər.",
+      "required": "Buna cavab verilməlidir",
+      "tierLabel": "Yalnız bunu seçmiş dəstəkçilərdən soruş",
+      "tierHint": "Hamısından soruşmaq üçün «Hamı» olaraq saxlayın.",
+      "everybody": "Hamı",
+      "removeQuestion": "Bu sualı sil",
+      "addQuestion": "Sual əlavə et",
+      "save": "Saxla",
+      "createDraft": "Qaralama yarat",
+      "send": "Dəstəkçilərə göndər",
+      "confirmSend": "Göndər — bunu geri qaytarmaq olmaz",
+      "startNew": "Yeni sorğuya başla",
+      "savedNotice": "Saxlanıldı.",
+      "createdNotice": "Qaralama yaradıldı. Hələ göndərilməyib.",
+      "deletedNotice": "«{title}» silindi.",
+      "sentNotice": {
+        "one": "{count} dəstəkçiyə göndərildi.",
+        "few": "{count} dəstəkçiyə göndərildi.",
+        "many": "{count} dəstəkçiyə göndərildi.",
+        "other": "{count} dəstəkçiyə göndərildi."
+      }
     }
   },
   "dashboardControls": {

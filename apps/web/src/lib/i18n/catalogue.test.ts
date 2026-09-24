@@ -139,15 +139,245 @@ describe('the message catalogues', () => {
      *
      * This is not a spell-checker and is not trying to be. It is a note-to-self with teeth,
      * for the specific errors that have actually happened here.
+     *
+     * <h2>The four below are #102's, and they are a decision rather than a typo</h2>
+     *
+     * Every non-English language carried TWO words for "creator" and Russian carried two for
+     * "backer", split roughly along the administration console against everything else: the
+     * console was translated first (#324) and set one vocabulary, #79 to #86 translated the
+     * surfaces a reader meets and set another, and nothing could compare them because the
+     * catalogues are checked by key and never by word. `account.pledges.states` and
+     * `admin.screens.accountDetail.pledgeState` named the same cancellation `Отменён вами` and
+     * `Отменён спонсором`; one Russian sentence used both words for two different people.
+     *
+     * <p>#102 settled it as one word per concept, because these are the same people in the
+     * same rows read from two sides, and a support conversation is those two screens read
+     * aloud to each other. The words it settled on, and why the other one loses:
+     *
+     * <ul>
+     *   <li><strong>tr `üretici`</strong> is a MANUFACTURER. English never says manufacturer
+     *       or producer anywhere in this catalogue, and the word would be wrong for a
+     *       documentary or a novel. `yaratıcı` is what `fees.disclosure` and the creator
+     *       agreement already said.</li>
+     *   <li><strong>ru `создатель`</strong> is a literal calque; `автор` is what Russian
+     *       crowdfunding calls the person and what 124 strings here already said.</li>
+     *   <li><strong>ru `спонсор`</strong> is a SPONSOR, which is a different relationship
+     *       from a backer and precisely the one §22.1 is careful not to imply.</li>
+     *   <li><strong>az `yaradıcı`</strong> reads as the adjective "creative" as often as the
+     *       noun; `müəllif` is unambiguously a person, and "layihə müəllifi" is what a project
+     *       owner is called. The exception is the creator agreement: `müəllif müqaviləsi` is a
+     *       COPYRIGHT LICENCE in Azerbaijani law, a different instrument from the one signed
+     *       here, so that document keeps its own name the way `PAYRIFF` keeps its spelling.
+     *       The lookahead below is that exception and nothing else.</li>
+     * </ul>
      */
     const CONFUSIONS: ReadonlyArray<readonly [Locale, RegExp, string]> = [
       ['az', /təhsil/iu, 'means education — for money use tutulur, çıxılır or alınır'],
+      ['az', /yaradıcı(?! müqavilə)/iu, 'the creator is müəllif — yaradıcı only names the agreement'],
+      ['ru', /создател/iu, 'the creator is автор on every surface, console included'],
+      ['ru', /спонсор/iu, 'a backer is a бэкер — a спонсор is a different relationship (§22.1)'],
+      ['tr', /üretici/iu, 'üretici is a manufacturer — the creator is yaratıcı'],
     ];
 
     for (const [locale, pattern, why] of CONFUSIONS) {
       for (const [key, message] of entries(CATALOGUES[locale])) {
         expect(pattern.test(message), `${locale} ${key}: ${why}`).toBe(false);
       }
+    }
+  });
+
+  it('quotes a phrase the way each language quotes one', () => {
+    /*
+     * ISSUE #94. English uses “…” and the other three use «…», and that was already the
+     * majority spelling in all four when the convention was written down. It was only the
+     * majority: Azerbaijani and Turkish carried thirteen curly-quoted strings each, mostly in
+     * the search results and the moderation forms, where a reader meets the two conventions
+     * one screen apart.
+     *
+     * It is not only typography. A quotation mark is where somebody else's words start, and a
+     * catalogue that marks that boundary two ways has a reader deciding which mark means it.
+     * Pinned here because it is the kind of drift no reviewer reports and every reviewer sees.
+     */
+    const CURLY = /[“”]/u;
+    const GUILLEMET = /[«»]/u;
+
+    for (const [key, message] of entries(CATALOGUES['en'])) {
+      expect(GUILLEMET.test(message), `en ${key} quotes with «» where “” is the convention`).toBe(
+        false,
+      );
+    }
+
+    for (const locale of SUPPORTED_LOCALES.filter((other) => other !== 'en')) {
+      for (const [key, message] of entries(CATALOGUES[locale])) {
+        expect(CURLY.test(message), `${locale} ${key} quotes with “” where «» is the convention`)
+          .toBe(false);
+      }
+    }
+  });
+
+  it('gives one ledger account one name, in each language', () => {
+    /*
+     * ISSUE #94, which predicted this one: "`fees.disclosure` already spells the same two fees
+     * in four languages — these must agree with it, and I matched them by eye rather than by
+     * test." They did not agree. Turkish called the same deduction `Platform komisyonu` on the
+     * creator's financial summary and `Platform ücreti` in the administration console's ledger
+     * and on the payout it produces.
+     *
+     * <h2>Why identity rather than a vocabulary check</h2>
+     *
+     * These are not two labels that happen to mean the same thing: `dashboard.finance` and
+     * `admin.money.account` name the SAME §7.2 account, read by the creator whose money it
+     * came out of and by the administrator answering them about it. If those two screens print
+     * different words, the support conversation is about which one is the real fee. A test can
+     * check that far and no further — whether the word is the right word is what a native
+     * speaker reads for, and a string equal to another string is at least one word rather
+     * than two.
+     */
+    const SAME: ReadonlyArray<readonly [string, string]> = [
+      ['dashboard.finance.platformFee', 'admin.money.account.platform_fee'],
+      ['dashboard.finance.platformFee', 'admin.screens.payouts.platformFee'],
+      ['dashboard.finance.processingFee', 'admin.money.account.psp_fee'],
+    ];
+
+    for (const locale of SUPPORTED_LOCALES) {
+      const messages = new Map(entries(CATALOGUES[locale]));
+
+      for (const [left, right] of SAME) {
+        expect(messages.get(left), `${locale}: ${left} against ${right}`).toBe(messages.get(right));
+      }
+    }
+  });
+
+  it('declines "бэкер" the same way everywhere it is counted', () => {
+    /*
+     * ISSUE #94. `dashboard.overview.outcomeBackers` read `{count} бэкера` for `one` and
+     * `{count} бэкеров` for `few`: the whole table shifted by one category, so a campaign that
+     * closed with one backer reported "1 бэкера" and one that closed with two reported
+     * "2 бэкеров". Neither is Russian, and it is the sentence a creator reads about how their
+     * campaign finished.
+     *
+     * <h2>Why this pins one noun rather than stating a rule about plural groups</h2>
+     *
+     * Because there is no rule about plural groups to state, and a check that looked like one
+     * would be worse than none. The obvious candidates both fail: `one` differed from `few`
+     * in the shifted table, and `few` equalling `many` is CORRECT in four groups here —
+     * `у {count} проводок` and `Отправлено {count} бэкерам` take the same case from two
+     * numeral forms, which is a fact about the preposition rather than about the noun. A test
+     * that passed on the defect it cites would be the skipped test CLAUDE.md calls a bug
+     * report nobody filed.
+     *
+     * <p>What is checkable is the one noun this platform counts. "бэкер" is declined in five
+     * plural groups on five surfaces — the two campaign cards, the funding block, the campaign
+     * outcome and the backer report — and the nominative table is the same in all five or one
+     * of them is wrong. The dative groups (`бэкеру` / `бэкерам`) are a different table and are
+     * left alone.
+     */
+    const NOMINATIVE = /бэкеров$/u;
+    let checked = 0;
+
+    const walk = (value: unknown, path: string) => {
+      if (typeof value !== 'object' || value === null) return;
+      const node = value as Record<string, unknown>;
+      const forms = ['one', 'few', 'many'].map((key) => node[key]);
+
+      if (forms.every((form) => typeof form === 'string')) {
+        /* The noun is the last word, so the sentence's own full stop is not part of it. */
+        const bare = (form: string) => form.trimEnd().replace(/[.!?…]+$/u, '');
+        const [rawOne, rawFew, rawMany] = forms as [string, string, string];
+        const one = bare(rawOne);
+        const few = bare(rawFew);
+        const many = bare(rawMany);
+
+        if (NOMINATIVE.test(many)) {
+          expect(one, `ru ${path}: one is not the nominative singular`).toMatch(/бэкер$/u);
+          expect(few, `ru ${path}: few is not the genitive singular`).toMatch(/бэкера$/u);
+          checked += 1;
+        }
+
+        return;
+      }
+
+      for (const [key, child] of Object.entries(node)) walk(child, path === '' ? key : `${path}.${key}`);
+    };
+
+    walk(CATALOGUES['ru'], '');
+
+    expect(checked, 'no group counting бэкеры was found, so this test is checking nothing')
+      .toBeGreaterThan(3);
+  });
+
+  it('keeps Turkish "denetlemek" for auditing, which is the only thing it means', () => {
+    /*
+     * ISSUE #94, and the shape `CONFUSIONS` above exists for: a word that reads as fluent and
+     * means something else. `denetlemek` is to AUDIT or to INSPECT OFFICIALLY. Twenty-nine
+     * strings used it for English's "check" — `Bağlantınızı denetleyip yeniden deneyin` tells
+     * somebody to audit their internet connection, and `E-postanızı denetleyin` to audit their
+     * inbox. `kontrol etmek` is the verb, and every one of those now uses it.
+     *
+     * <h2>Why the rule is a namespace rather than a word list</h2>
+     *
+     * Because the word is right where the meaning is right, and that is one place: the
+     * administration console genuinely audits. `admin.moderation.decision.dismiss.body` says
+     * dismissals are audited, `admin.screens.audit.footnote` is about an audit surface, and
+     * `admin.index.footnote` describes authorisation — `yetki denetimi` is what that is called
+     * in Turkish. Outside `admin.`, nothing on this platform audits anything.
+     */
+    for (const [key, message] of entries(CATALOGUES['tr'])) {
+      if (key.startsWith('admin.')) continue;
+
+      expect(/denetl/iu.test(message), `tr ${key}: use kontrol etmek — denetlemek is to audit`)
+        .toBe(false);
+    }
+  });
+
+  it('never attaches an Azerbaijani suffix to a value it has not seen', () => {
+    /*
+     * ISSUES #104 AND #109. Azerbaijani chooses a suffix's vowel from the sound of the word
+     * it attaches to, and a number is read as the word it is spelled: the ordinal is 1-ci,
+     * 2-ci, 3-cü, 4-cü, 5-ci, 6-cı, 7-ci, 8-ci, 9-cu, 10-cu, and the cases harmonise the same
+     * way — {count}-i is right for 1 and wrong for 3, which takes -ü. A catalogue cannot pick
+     * either, because the number arrives in the browser long after the sentence was written.
+     *
+     * Twelve `campaignEditor` strings wrote a fixed `-ci` after a placeholder (#104) and two
+     * more wrote a fixed case (#109), each right for five digits out of ten. One of the two
+     * was worse than it looked: `story.panel.charactersNeeded` counts characters, so the
+     * number reaches the sentence already grouped for the reader — the suffix would have had
+     * to harmonise with "1.200" as it is READ, which is a fact about the rendered string.
+     *
+     * <h2>Why a suffix table is not the fix</h2>
+     *
+     * It would have to live in a client component, and the ordinal rule is not only about the
+     * last digit — 100 is `100-cü` while 1000 is `1000-ci`. The fourteen were rephrased
+     * instead: `{total} bloqdan {index}` is cardinal and needs no suffix, "moved to position
+     * N" is `{position} nömrəli mövqeyə` — #105's phrasing — and a count reads
+     * `{min} simvoldan {count} yazılıb`, where the suffix sits on the noun it has always sat
+     * on. Rephrasing removes the problem instead of encoding it.
+     *
+     * <h2>Why the rule is Azerbaijani alone, and why it is every suffix rather than ordinals</h2>
+     *
+     * The other three do not have this defect to have. Russian's ordinal is `-й` whatever the
+     * digit, Turkish marks one with a full stop, and English has four endings it never
+     * attaches to a placeholder here. Azerbaijani is the language where the ending depends on
+     * a value the catalogue has not got — and that is as true of a case as of an ordinal, and
+     * as true after a name as after a number, so the rule is the whole shape: nothing in the
+     * Azerbaijani catalogue may hyphenate letters onto a placeholder. Nothing did after #109,
+     * which is the only reason it can be stated this widely.
+     *
+     * <h2>Why it is worth a test rather than a reading</h2>
+     *
+     * TWELVE OF THE FOURTEEN ARE NAMES OR LIVE REGIONS ONLY A SCREEN READER HEARS. Six are
+     * `aria-label`s on the reorder buttons and six are the announcements made after a reward,
+     * a block or a question moves — a creator reordering ten story blocks with the keyboard
+     * heard four wrong endings out of nine moves, in the only channel that told them the move
+     * had worked, and nobody reviewing the editor on screen would ever have seen one.
+     */
+    const SUFFIX_ON_A_PLACEHOLDER = /\}\s*-\s*\p{L}/u;
+
+    for (const [key, message] of entries(CATALOGUES['az'])) {
+      expect(
+        SUFFIX_ON_A_PLACEHOLDER.test(message),
+        `az ${key}: the suffix's vowel depends on the value — rephrase (${message})`,
+      ).toBe(false);
     }
   });
 });

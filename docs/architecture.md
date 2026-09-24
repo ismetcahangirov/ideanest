@@ -1485,22 +1485,57 @@ Preferences are per category and per channel, with a digest option.
 > is nine screens, and the seven become something a new member of staff discovers by asking.
 >
 > The screens sit under `app/admin/layout.tsx` with a shell of their own rather than the
-> public one. **No route among them is a gate**, and that is still deliberate after #295
-> gave the platform a role model. `GET /v1/admin/me` now tells the console what the reader
-> may do, so the console renders honestly instead of drawing a grid of refusals — but the
-> route itself is not gated, for a reason that is about the session rather than about
-> authorisation: the web client holds its access token in a module variable and its refresh
-> token in a `SameSite=Strict` `HttpOnly` cookie that rotates on every use, so a Server
-> Component could only authenticate by spending that cookie and would end the session it was
-> trying to check. A layout gate would therefore be a second, weaker copy of a check the
-> service already makes correctly, and the dangerous direction is the one where the browser
-> says yes.
+> public one. **No route among them is a gate on the server**, and that part is unchanged:
+> the web client holds its access token in a module variable and its refresh token in a
+> `SameSite=Strict` `HttpOnly` cookie that rotates on every use, so a Server Component could
+> only authenticate by spending that cookie and would end the session it was trying to check.
+> The service refuses every read behind every screen, and **that check is the one that
+> matters** — anything the browser decides is a courtesy on top of it, and the dangerous
+> direction is the one where the browser says yes.
 >
-> **The rail does not vary by capability either.** Hiding the screens somebody cannot use is
-> available since #295 and is not done: a member of staff who cannot see the fee screen has
-> no way to learn it exists, and the first thing they do is ask whether the console is
-> broken. Every screen refuses and names the capability it wanted, which is a better answer
-> than an absence.
+> **The shell reads `GET /v1/admin/me` once and three things use it.** `ConsoleGate` tells a
+> signed-in visitor who does not work here so in one sentence, rather than drawing a rail of
+> twenty-eight destinations and a refusal on each one they try; `ConsoleReader` names who is
+> signed in and with what roles; and `AdminNav` draws the entries the reader can open. One
+> read, because three copies of it would be three chances for the shell to disagree with
+> itself about the reader. A failed read opens the console rather than closing it: a network
+> blip is not evidence that somebody does not work here, and every screen behind it refuses
+> on its own.
+>
+> **The rail varies by capability, and it used to argue that it should not.** The earlier
+> argument was that a member of staff who cannot see the fee screen has no way to learn it
+> exists. That cost is real and it is the smaller one: a curator signing in met twenty-eight
+> entries of which twenty-three refused them, six of those being the platform's books. So
+> `CONSOLE_LINK_CAPABILITIES` gives every entry the capability its screen's first read
+> requires, an entry is drawn when the reader holds one of them, and a group whose entries
+> are all gone goes with them. The objection is answered rather than dismissed: `/admin/staff`
+> lists every capability and what it is for, in the reader's own language, and every screen
+> still refuses honestly and names the capability it wanted for anybody who follows a URL.
+>
+> **The endpoints behind those entries were tightened to match.** Six console surfaces asked
+> only whether the caller was staff — the ledger, the payment log, the audit trail, account
+> administration, the report queues and curation — which made a hidden rail entry worth less
+> than the rail it was hidden from. They now require `VIEW_FINANCE`, `VIEW_FINANCE`,
+> `VIEW_AUDIT`, `ADMINISTER_ACCOUNTS`, `MODERATE_CONTENT` and `CURATE`. Two reads outside the
+> console moved with them: the email template preview is `CONFIGURE_PLATFORM`, and identity
+> review is `REVIEW_IDENTITY_VERIFICATION` with the document itself behind
+> `OPEN_IDENTITY_DOCUMENT` — the narrowest capability in the enum, which until then guarded
+> nothing, while every moderator and curator could open somebody's passport scan.
+>
+> **The index lists the modules the reader can open, and counts the rest.** `/admin` is the
+> front door and listed all sixteen of §4.11's modules to everybody, which made it the one
+> surface still handing a curator twenty-three screens that refuse them. A module is listed
+> when any one of its screens is theirs — AD-04 belongs to somebody who holds the staff roster
+> and not account administration, and the row then links to the roster rather than to the
+> module's own href — and one line under the list says how many modules their roles do not
+> open, with a link to `/admin/staff`, where each capability is named and explained. That line
+> is what answers the old objection: somebody who cannot see a screen still has somewhere to
+> learn that it exists. A module with no screen at all stays listed for everybody, because it
+> is an announcement rather than a destination and the page exists to say the platform has it.
+>
+> It cost the page its server rendering: the membership lives in the browser, so the index is
+> a client component and `/[locale]/admin` carries its own markup — 496.8 KiB against a 510 KiB
+> ceiling, measured by `Performance budgets` rather than remembered.
 >
 > **The console can name what it shows, since #402.** Every list under this prefix returns
 > identifiers and none of them returned a name, so the payout file paid `18844dbc`, the audit
@@ -6357,13 +6392,176 @@ it was written in.
 > is asking. `apps/web/README.md` records exactly which routes are key-based and which
 > are not.
 >
-> **What is still English, stated rather than left to be found.** The creator dashboard,
-> the eleven panels under the account headings, and
-> `components/moderation/ReportControl` — the dialog a member of the public opens to
-> report a campaign. **The campaign editor is finished** (#459): the frame, the sixteen
-> §6.1 states in the creator's own vocabulary rather than the console's, and all six tabs
-> — it was the largest untranslated surface left, at 190 strings across sixteen components.
-> **The administration console is finished**: its frame, its
+> **What is still English, stated rather than left to be found.** Nothing that was on this
+> line. The campaign editor was the last surface on it and is finished (#459): the frame, the
+> sixteen §6.1 states in the creator's own vocabulary rather than the console's, and all six
+> tabs — 190 strings across sixteen components. Epic #78 is the list of what was on this line
+> and how each surface came off it.
+>
+> **The catalogue settled on one word per concept in #102.** All three non-English languages
+> carried two words for "creator" and Russian two for "backer" — the administration console
+> was translated first and set one vocabulary, #79 to #86 set another, and nothing compared
+> them because the catalogues are checked by key and never by word. It was not two registers
+> for two readers: the pledge list and the console's account detail named the same
+> cancellation `Отменён вами` and `Отменён спонсором`, which is one support conversation away
+> from being a question about which word is real. The creator is `müəllif`, `автор` and
+> `yaratıcı`; a backer is `бэкер`. The words that lost were wrong rather than unpopular —
+> `üretici` is a manufacturer and `спонсор` is a sponsor, which §22.1 exists to not imply.
+> `lib/i18n/catalogue.test.ts` holds all four, with one exception carried in the rule itself:
+> `müəllif müqaviləsi` is a copyright licence in Azerbaijani law, so §22's creator agreement
+> keeps the name `yaradıcı müqaviləsi`.
+>
+> **The names and notices only a screen reader meets came off it in #101.** The save, share
+> and reminder controls, the live countdown and the checkout's approximate total: twenty-four
+> strings, fourteen of them invisible to anybody reviewing those pages. Nine are a polite live
+> region, which is the whole of what a reader is told when a save landed in a table row, a
+> share in an operating-system sheet, or a link on a clipboard. `CampaignActions` had been
+> handed three of its words as a prop since #324 and drew two of them only on the signed-out
+> branch, so one pill said a translated word to a stranger and an English one to the reader
+> about to press it. The rule that followed completes #86's: an `aria-label` may not be built
+> from a template carrying words, only from values that were words before they got there —
+> and that rule, not a list, is what found the countdown and the checkout total.
+>
+> **The funding block came off it in #99, and the count it draws was wrong as well as
+> English.** `LiveFunding` is the one client component beneath the campaign page, and four
+> of its words were typed: the progress bar's accessible name and the three labels under the
+> figures. They are `campaign.funding` now, handed across the boundary as a prop like every
+> other island's on that route. The backer count is the part worth recording — it chose
+> between "backer" and "backers" with a ternary, which is the whole of English and none of
+> Russian, so a Russian reader was shown a form that is right for one number in three.
+> `Intl.PluralRules` picks it now, the way `lib/i18n/plurals.ts` says a count only known in
+> the browser has to be picked. `accessible-names.test.ts` gained the rule that would have
+> caught it from the file rather than from the screen: no label typed onto a `ProgressBar`
+> or a `StatBlock`, anywhere under `src`.
+>
+> **The four catalogues were read for what a test cannot check (#94).** Roughly 450 strings
+> arrived through #79 to #82 without anybody reading the three non-English languages as a
+> first language, and the reading found what it was aimed at: the creator's financial summary
+> and the console's ledger printed two different Turkish words for one §7.2 account, a Russian
+> checkbox label was written in the masculine, two of the twelve pledge states named the bank
+> as the party that had disputed a payment rather than the person who did, and the campaign
+> outcome declined "бэкер" one category out, so a campaign that closed with one backer
+> reported "1 бэкера".
+>
+> **Two of the findings were words rather than sentences.** An Azerbaijani button said "sign
+> out everywhere" above a confirmation promising to keep this device signed in; and Turkish
+> used `denetlemek` — to AUDIT — for English's "check" in twenty-nine places, telling somebody
+> to audit their internet connection and their inbox. The second is the shape
+> `catalogue.test.ts`'s `CONFUSIONS` table exists for, and the rule that followed is a
+> namespace rather than a word list: auditing is what the administration console does, so
+> `denetlemek` outside `admin.` is the wrong verb.
+>
+> **Four rules came out of the reading**, all in `lib/i18n/catalogue.test.ts`: one ledger
+> account has one name in each language; each language quotes a phrase its own way;
+> "бэкер" is declined the same everywhere it is counted; and `denetlemek` stays in the
+> console. Three findings were too large to fix under a review and are their own issues —
+> #101, #102 and #104.
+>
+> **The editor's Azerbaijani ordinals were wrong for most numbers (#104).** The suffix's vowel
+> comes from the number's last digit — 1-ci, 3-cü, 6-cı, 9-cu — and twelve `campaignEditor`
+> strings wrote a fixed `-ci` after a placeholder, so each was right for five digits and wrong
+> for the other five. Every one of them is heard rather than seen: six are the reorder buttons'
+> accessible names and six are the live region that says a reward, a block or a question has
+> moved. The twelve were rephrased rather than inflected, because a suffix table would have to
+> live in a client component and would still be wrong — 100 is `100-cü` while 1000 is
+> `1000-ci`. `{total} bloqdan {index}` is cardinal and needs no suffix, and "to position N" is
+> `{position} nömrəli mövqeyə`, #105's phrasing. The rule it left behind is that shape: no
+> ordinal suffix after a placeholder in Azerbaijani.
+>
+> **#109 was the same defect wearing a case rather than an ordinal, and it widened the rule.**
+> `story.panel.charactersNeeded` wrote `{count}-i` and `review.progressSummary` wrote
+> `{blockingTotal}-dən {blockingDone}-i`; a case harmonises with the number as it is read, so
+> each was right for five digits out of ten. The character count is the one worth recording —
+> the number reaches the sentence already grouped for the reader, so the ending would have had
+> to agree with "1.200" as it is spoken rather than with 1200. Both read cardinally now. With
+> nothing left violating it, the rule is stated whole: nothing in the Azerbaijani catalogue
+> hyphenates letters onto a placeholder, whatever the value is. It stays Azerbaijani's alone
+> because the other three have no such ending — Russian writes `-й` whatever the digit and
+> Turkish marks an ordinal with a full stop.
+>
+> **The refusal table came off it in #91.** The twenty sentences the service says no with
+> are `checkout.failures` now, read by the checkout, the pledge editor and the pledge
+> manager. `lib/pledges/failure.ts` keeps what is behaviour rather than prose — the recovery
+> each code calls for, the control it is about, whether the idempotency key must be retired
+> — because a module-level table is evaluated before any request exists and cannot read a
+> catalogue. It takes the words as an argument, which is the shape `lib/dashboard/clock.ts`
+> and `lib/pledges/backer.ts` already had.
+>
+> **The public report dialog came off it in #85, by deleting rather than translating.** It
+> is the one surface on that list a signed-out stranger reaches, and the nine reasons it
+> offers already existed in four languages under `admin.moderation.reason` because the
+> console was translated first. So `REASON_LABELS`, the English table
+> `lib/moderation/describe.ts` kept for this dialog — along with the rule in
+> `lib/i18n/wording.test.ts` written to stop the two drifting — went with it. One table of
+> nine, read by the moderator triaging the queue and by the person filing the complaint.
+>
+> **The backer survey screens came off it in #84.** The list under `/account/surveys`, the
+> card that answers one survey and the field that draws a question are one screen, so they
+> are handed one copy object rather than three. Two of those sentences are not hints: a
+> backer is told that the creator can see the answers they are typing, and that the one
+> answer this form does not take — a shipping address, §17.4's encrypted row against the
+> pledge — is held elsewhere. A reader who cannot read either is answering without having
+> been told, which is what made ten strings worth more than ten strings.
+>
+> **The saved-campaigns and following lists came off it in #83.** The two panels under
+> `/account/saved` and `/account/following` are one panel twice — a cursor-paginated list
+> with an empty state, a "show more" button, a load refusal and an optimistic removal that
+> reverts — so they are handed one copy shape with the nouns as the only difference, rather
+> than two objects that agree until one is edited. Three of those words are not theirs:
+> "Show more", its waiting label and "The next page did not load" belong to every paginated
+> list on the platform and now sit under `common.list`, beside `common.browseCampaigns`,
+> which is the way out of every empty one. `lib/i18n/signals-copy.ts` holds the shape.
+>
+> **The profile editor came off it in #82**, which closed the last English half of a pair
+> whose public side was already key-based. Both halves read `profile` rather than the
+> editor getting a `settings.profile` group of its own: they describe the same six
+> fields, and two vocabularies for one thing drift the first time either is edited.
+>
+> **It was the one entry on that list that was not a screen, and the one that was not
+> found by reading the list.** `checkout.errors` covers the checkout form's own validation,
+> so both ends read as translated; what neither covered was what the **service** says when
+> it refuses — "That reward has just gone", "This campaign is not taking pledges" — which
+> three screens rendered in English. A backer who chose Azerbaijani met a translated form
+> that refused them in English at the moment something went wrong with their money. It
+> surfaced while #81 was translating the panels that draw it.
+>
+> **The screens somebody secures or closes an account with came off it in #80.** Two-factor
+> enrolment — including "this is the only time these are shown", the sentence standing
+> between a reader and a permanently locked account — the data export, the account closure
+> and its thirty-day grace period, and the device list. All four read their refusals from
+> `auth.failures` rather than spelling "That did not work" a second time, which is what the
+> credential panels beside them already did. `deviceNameOf` took its last two English words
+> as an argument with them: a browser is called Chrome in every language, but "Chrome **on**
+> macOS" is a preposition, and two of the four languages put the platform first.
+>
+> **The pledge panels came off it in #81.** The list, one pledge's own screen, the editor
+> on it, and §6.2's twelve pledge states — a third module-level table that took its words
+> as an argument, after the countdown and the survey question types. The editor is the
+> checkout's form over a pledge that already exists, so its field, its hints and its four
+> quote refusals are the checkout's words: `components/checkout/refusals.ts` is now the
+> one place either screen turns a refusal into a sentence, rather than two wordings of
+> "This reward costs {price}" on two forms that are visibly the same.
+>
+> **The creator dashboard came off that list in #79.** All five panels under
+> `/projects/[id]/dashboard` draw from the catalogue: the overview and its countdown,
+> the funding trend and the two share charts, the backer report with its chips, its
+> segments and its table, the financial summary down to §7.2's ledger, and §4.8's
+> survey builder. Two label maps moved with them — `lib/dashboard/clock.ts` spelled its
+> countdown in English and `lib/dashboard/surveys.ts` owned PM-03's five answer types —
+> and both take the words as an argument now, the shape `lib/moderation/describe.ts` is
+> already in: a module-level constant is evaluated before any request exists and cannot
+> read a catalogue. `lib/i18n/dashboard-copy.ts` holds the shape.
+>
+> **Four surfaces were on that list by accident rather than by decision, and are not
+> any more.** The shell's search box, the failure pages' own headings — both 404s, the
+> profile 404, `/maintenance` and the two error boundaries — one pledge's own screen,
+> and the public pre-launch page were each drawing English literals inside a shell that
+> was translated around them. None of them had a reason recorded anywhere, which is what
+> separates them from the three above: a surface left in English on purpose is written
+> down here, and a surface nobody wrote down was missed. `apps/web/README.md` lists what
+> the catalogue covers, and the pre-launch page's own `lib/i18n/prelaunch-copy.ts` and
+> the pledge screen's row in `app/[locale]/account-area.pages.test.ts` are what stop each
+> of them drifting back. **The administration console is finished**: its frame, its
 > twenty-eight routes and all twenty-six screens inside them, including the moderation
 > queue, the ledger, the payouts and the fee schedules. `lib/i18n/admin/` carries the
 > reversal of the earlier decision to leave staff-facing surfaces English, and the
