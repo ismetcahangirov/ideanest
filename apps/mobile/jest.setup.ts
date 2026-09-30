@@ -207,7 +207,7 @@ jest.mock('expo-constants', () => ({
   },
 }));
 
-/** The device's language. One of §21.1's four, so `deviceLocale()` resolves rather than falls back. */
+/** The device's language. One of §21.1's four, so `resolveLocale` finds a device language rather than falling back. */
 jest.mock('expo-localization', () => ({
   getLocales: () => [{ languageCode: 'az', languageTag: 'az-AZ' }],
 }));
@@ -233,6 +233,45 @@ jest.mock('expo-notifications', () => ({
 
 /** Whether this is a real device. False, which is what a test runner is. */
 jest.mock('expo-device', () => ({ isDevice: false, deviceName: 'Test device' }));
+
+/**
+ * Connectivity — issue #150's offline banner. `lib/connectivity.ts` is the only consumer.
+ *
+ * <p>Online by default, which is the ordinary case. `__setNetworkState` is how a test takes
+ * the phone off the network: it changes what `getNetworkStateAsync` answers AND tells the
+ * listeners, as the platform does when the radio drops.
+ */
+jest.mock('expo-network', () => {
+  const ONLINE = { type: 'WIFI', isConnected: true, isInternetReachable: true };
+  let state: Record<string, unknown> = ONLINE;
+  const listeners = new Set<(mockState: Record<string, unknown>) => void>();
+  return {
+    NetworkStateType: { NONE: 'NONE', UNKNOWN: 'UNKNOWN', CELLULAR: 'CELLULAR', WIFI: 'WIFI' },
+    getNetworkStateAsync: async () => state,
+    addNetworkStateListener: (listener: (mockState: Record<string, unknown>) => void) => {
+      listeners.add(listener);
+      return { remove: () => void listeners.delete(listener) };
+    },
+    useNetworkState: () => state,
+    __setNetworkState: (next: Record<string, unknown>) => {
+      state = next;
+      for (const listener of listeners) listener(next);
+    },
+    __reset: () => {
+      state = ONLINE;
+      listeners.clear();
+    },
+  };
+});
+
+/**
+ * The in-app browser, for the pages the app does not draw yet (`web-fallback.tsx`, the Me
+ * tab's About rows). Native at module load like the rest, so merely rendering the Me tab
+ * would otherwise depend on jest-expo's registry.
+ */
+jest.mock('expo-web-browser', () => ({
+  openBrowserAsync: jest.fn(async () => ({ type: 'opened' })),
+}));
 
 /**
  * Expo Router, replaced by the three things the components under test use.

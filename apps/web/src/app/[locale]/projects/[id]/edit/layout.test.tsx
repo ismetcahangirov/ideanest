@@ -7,7 +7,7 @@ import { EditorShell } from '../../../../../components/campaign-editor/EditorShe
 import { MAIN_CONTENT_ID } from '../../../../../components/shell/SkipLink';
 import CampaignEditorLayout from './layout';
 import NewProjectLayout from '../../new/layout';
-import MESSAGES from '../../../../../../messages/en.json';
+import MESSAGES from '@ideanest/messages/en.json';
 import { resolveServerTree } from '../../../../../test-support/server-tree';
 import { EDITOR_COPY } from '../../../../../test-editor-copy';
 
@@ -67,14 +67,24 @@ vi.mock('../../../../../lib/api/access-token', () => ({
  */
 vi.mock('next-intl/server', () => ({
   getLocale: async () => 'en',
-  getTranslations: async (namespace: string) => (key: string) => {
-    let node: unknown = MESSAGES;
-    for (const segment of `${namespace}.${key}`.split('.')) {
-      if (typeof node !== 'object' || node === null) throw new Error(`no message at ${key}`);
-      node = (node as Record<string, unknown>)[segment];
-    }
-    if (typeof node !== 'string') throw new Error(`no message at ${namespace}.${key}`);
-    return node;
+  getTranslations: async (namespace: string) => {
+    const at = (key: string): unknown => {
+      let node: unknown = MESSAGES;
+      for (const segment of `${namespace}.${key}`.split('.')) {
+        if (typeof node !== 'object' || node === null) throw new Error(`no message at ${key}`);
+        node = (node as Record<string, unknown>)[segment];
+      }
+      return node;
+    };
+    // `raw` for the templates a builder reads unformatted, as next-intl's translator has it.
+    return Object.assign(
+      (key: string) => {
+        const node = at(key);
+        if (typeof node !== 'string') throw new Error(`no message at ${namespace}.${key}`);
+        return node;
+      },
+      { raw: at },
+    );
   },
 }));
 

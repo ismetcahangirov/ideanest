@@ -3,8 +3,12 @@
 import { Link } from '../../i18n/navigation';
 import type { ReactNode } from 'react';
 import { Tag, cn } from '@ideanest/ui';
+import { revealFocusedItem } from '@ideanest/ui/reveal-focused-item';
 import type { EditorChromeCopy } from '../../lib/i18n/campaign-editor-copy';
 import type { ProjectState } from '../../lib/projects/api';
+import { campaignDashboardHref } from '../../lib/account/navigation';
+import { hasLaunched } from '../../lib/projects/mine';
+import { OWNER_LINK_CLASS } from '../project/owner-link';
 import { EDITOR_TABS, editorTabHref, type EditorTabKey } from './tabs';
 
 /**
@@ -94,11 +98,34 @@ export function EditorShell({
         <div className="flex items-center gap-3">
           {state != null && <Tag>{copy.states[state]}</Tag>}
           {status}
+          {/* #141: the editor is where a creator lands from the public page's owner bar, and
+              once the campaign has opened its money and its backers are on the dashboard. */}
+          {state != null && hasLaunched(state) && (
+            <Link href={campaignDashboardHref(projectId)} className={OWNER_LINK_CLASS}>
+              {copy.dashboard}
+            </Link>
+          )}
         </div>
       </div>
 
       <nav aria-label={copy.sectionsLabel} className="mt-7">
-        <ul className="scrollbar-none flex gap-2 overflow-x-auto">
+        {/*
+          `-m-1 p-1`: room for the focus ring inside the scroll container, given back (#177).
+          A scroll container clips whatever overflows it, and the kit's unlayered
+          `:focus-visible` rule in `theme.css` draws the ring four pixels outside the pill
+          (2px wide, 2px off), so without the padding the row cut the ring off at the top,
+          the bottom and both ends. The same fix `DashboardNav` (#136) and `CampaignTabs`
+          (#173) carry. Nothing moves: the negative margin cancels the padding, and at 320px
+          the four pixels the row reaches past the frame stay inside its 20px gutter.
+
+          `onFocus`: a tab Tab lands on while it is half off the row's edge is scrolled fully
+          into view, which Chromium does not do by itself (#181, `revealFocusedItem` in
+          `@ideanest/ui`).
+        */}
+        <ul
+          className="scrollbar-none -m-1 flex gap-2 overflow-x-auto p-1"
+          onFocus={revealFocusedItem}
+        >
           {EDITOR_TABS.map((tab) => {
             const current = tab.key === active;
 

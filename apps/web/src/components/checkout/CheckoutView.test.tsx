@@ -12,7 +12,7 @@ import {
 } from '../../lib/pledges/api';
 import { expectNoViolations } from '../../test-axe';
 import { CheckoutView } from './CheckoutView';
-import MESSAGES from '../../../messages/en.json';
+import MESSAGES from '@ideanest/messages/en.json';
 import { checkoutCopyFrom } from '../../lib/i18n/checkout-copy';
 import { leaveForPaymentPage } from '../../lib/pledges/payment';
 
@@ -85,6 +85,14 @@ vi.mock('../../lib/pledges/api', async (importOriginal) => ({
 vi.mock('../../lib/pledges/payment', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../lib/pledges/payment')>()),
   leaveForPaymentPage: vi.fn(),
+}));
+
+/* The route's language, which names the destinations (#133). English unless a test says. */
+let routeLocale = 'en';
+
+vi.mock('next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('next/navigation')>()),
+  useParams: () => ({ locale: routeLocale }),
 }));
 
 const rewardsMock = vi.mocked(getPublicRewards);
@@ -264,6 +272,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  routeLocale = 'en';
 });
 
 /* -------------------------------------------------------------------------
@@ -448,6 +457,18 @@ describe('the destination', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: /Sticker pack/ }), '1');
 
     expect(await screen.findByLabelText(/Where should this go/)).toBeInTheDocument();
+  });
+
+  it("names the destinations in the route's language (#133)", async () => {
+    routeLocale = 'az';
+    const user = await open();
+
+    await user.click(screen.getByRole('radio', { name: /Enamel mug/ }));
+    const field = await screen.findByLabelText(/Where should this go/);
+
+    // The copy is still English here; only the country names follow the route.
+    expect(within(field).getByRole('option', { name: 'Azərbaycan' })).toBeInTheDocument();
+    expect(within(field).getByRole('option', { name: 'Türkiyə' })).toBeInTheDocument();
   });
 
   it('charges the rate for the destination chosen', async () => {
@@ -986,6 +1007,32 @@ describe('paying', () => {
     expect(screen.queryByText(/is paid/i)).not.toBeInTheDocument();
     // And the control cannot open a second page while the browser is on its way.
     expect(screen.queryByRole('button', { name: 'Continue to payment' })).not.toBeInTheDocument();
+  });
+
+  it('hands the pay button back when the browser restores the page from its back-forward cache', async () => {
+    payMock.mockResolvedValue(PAGE);
+
+    const user = await open();
+    await reserveTheMug(user);
+    await user.click(await screen.findByRole('button', { name: 'Continue to payment' }));
+    await waitFor(() => expect(leaveMock).toHaveBeenCalledWith(PAGE.redirectUrl));
+
+    // An ordinary load is not a restore, and changes nothing.
+    act(() => {
+      window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: false }));
+    });
+    expect(screen.queryByRole('button', { name: 'Continue to payment' })).not.toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+    });
+    const again = screen.getByRole('button', { name: 'Continue to payment' });
+    expect(again).toBeEnabled();
+
+    // Paying again is the same intent, so it asks with the same key and opens the same page.
+    await user.click(again);
+    await waitFor(() => expect(payMock).toHaveBeenCalledTimes(2));
+    expect(payMock.mock.calls[1]?.[2]).toBe(payMock.mock.calls[0]?.[2]);
   });
 
   it('states the rule and where the charge happens before the control, and takes no card', async () => {

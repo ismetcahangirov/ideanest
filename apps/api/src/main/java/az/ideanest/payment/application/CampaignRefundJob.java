@@ -20,9 +20,13 @@ import org.springframework.stereotype.Component;
  *
  * <p>§9.7's four cases that refund everybody are three campaign states: {@code UNSUCCESSFUL} (day 8
  * below 80%, or an extension ended below it), {@code SUSPENDED}, and {@code CANCELED}. A pass refunds
- * a bounded batch of their paid pledges, oldest collection first, each in its own transactions so one
- * refusal does not stop the rest; then it settles platform refunds whose outcome was lost from the
- * provider's {@code returned} status.
+ * a bounded batch of their settled charges with money left (#171: per charge, whatever the pledge's
+ * state, and every charge of a raise that could not be applied), oldest charge first, each in its own
+ * transactions so one refusal does not stop the rest; then it settles refunds whose outcome was lost
+ * from the provider's status of the payment — staff refunds too since #174's review, and only where
+ * that status can say which refund it was ({@code RefundService#reconcile}), least recently asked
+ * first (#183). A pledge becomes
+ * {@code REFUNDED} when the refund that leaves nothing on it settles, not when it is requested.
  *
  * <p>A sweep rather than a listener on the campaign's event, because a refund is a provider call and
  * a campaign of thousands of backers must not be one delivery that either succeeds entirely or is
@@ -62,30 +66,45 @@ public class CampaignRefundJob implements ScheduledJob {
 
     /** @return how many refunds this pass settled as succeeded */
     public int refundDue(Instant now) {
+        // #183: before anything is offered, a refund a previous release recorded FAILED as unreachable
+        // goes back to REQUESTED, so the provider is asked about it below rather than the charge sent again.
+        int reopened = refunds.reopenUnreachable();
+        if (reopened > 0) {
+            log.warn("campaign-refunds: reopened {} refunds recorded failed as unreachable by an earlier release.", reopened);
+        }
+
         int refunded = 0;
-        List<Object[]> owed = refunds.owedCampaignRefunds(now.minus(properties.retryAfter()), properties.perPass());
+        List<Object[]> owed = refunds.owedPlatformRefunds(now.minus(properties.retryAfter()), properties.perPass());
         for (Object[] row : owed) {
-            UUID pledgeId = UUID.fromString((String) row[0]);
-            RefundReason reason = "UNSUCCESSFUL".equals(row[1]) ? RefundReason.CAMPAIGN_FAILED : RefundReason.CAMPAIGN_HALTED;
+            UUID chargeId = UUID.fromString((String) row[0]);
+            UUID pledgeId = UUID.fromString((String) row[1]);
+            RefundReason reason = RefundReason.valueOf((String) row[2]);
             try {
-                if (service.issueForCampaign(pledgeId, reason).map(Refund::state).filter(s -> s.name().equals("SUCCEEDED")).isPresent()) {
+                if (service.issueForCharge(chargeId, pledgeId, reason).map(Refund::state).filter(s -> s.name().equals("SUCCEEDED")).isPresent()) {
                     refunded++;
                 }
             } catch (RuntimeException e) {
-                log.error("Could not refund pledge {}; the next pass tries again.", pledgeId, e);
+                log.error("Could not refund charge {} of pledge {}; the next pass tries again.", chargeId, pledgeId, e);
             }
         }
 
-        for (Refund unresolved : refunds.unresolvedCampaignRefunds(
+        for (Refund unresolved : refunds.unresolvedRefunds(
                 now.minus(properties.unresolvedAfter()), PageRequest.ofSize(properties.perPass()))) {
             try {
                 service.reconcile(unresolved);
             } catch (RuntimeException e) {
                 log.error("Could not reconcile refund {}; the next pass tries again.", unresolved.id(), e);
             }
+            // #183: whatever the answer, this row goes to the back of the queue, so rows the provider keeps
+            // calling pending cannot fill every pass. Its own try: one row's stamp failing stops no other row.
+            try {
+                refunds.checked(unresolved.id(), now);
+            } catch (RuntimeException e) {
+                log.error("Could not mark refund {} as asked about; it keeps its place in the queue.", unresolved.id(), e);
+            }
         }
         if (!owed.isEmpty()) {
-            log.info("campaign-refunds: {} of {} owed pledges refunded this pass.", refunded, owed.size());
+            log.info("campaign-refunds: {} of {} owed charges refunded this pass.", refunded, owed.size());
         }
         return refunded;
     }

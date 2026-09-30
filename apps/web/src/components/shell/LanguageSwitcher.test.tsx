@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import en from '../../../messages/en.json';
+import en from '@ideanest/messages/en.json';
 import { LOCALE_COOKIE, SUPPORTED_LOCALES, type Locale } from '../../lib/i18n/locale';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { expectNoViolations } from '../../test-axe';
@@ -196,6 +196,26 @@ describe('dismissing it', () => {
     await userEvent.click(trigger());
 
     expect(screen.queryByRole('link')).toBeNull();
+  });
+});
+
+describe('where the panel opens', () => {
+  /*
+   * The footer's bug: on a phone its bottom row stacks and the globe sits a few words in from
+   * the left edge, so a panel hung from the button's right edge opened 200px leftwards, off
+   * the screen. The anchor is a class, so the class is what is asserted — jsdom has no layout.
+   */
+  it.each([
+    ['end', ['right-0'], ['left-0', 'left-1/2']],
+    ['start', ['left-0', 'sm:left-auto', 'sm:right-0'], ['left-1/2']],
+    ['center', ['left-1/2', '-translate-x-1/2', 'sm:right-0', 'sm:translate-x-0'], ['left-0']],
+  ] as const)('hangs from the %s edge on a phone, and from the right from sm', async (phoneAlign, has, hasNot) => {
+    render(<LanguageSwitcher label={label} phoneAlign={phoneAlign} />);
+    await userEvent.click(trigger());
+
+    const classes = screen.getByRole('navigation', { name: label }).className.split(/\s+/);
+    for (const name of has) expect(classes).toContain(name);
+    for (const name of hasNot) expect(classes).not.toContain(name);
   });
 });
 

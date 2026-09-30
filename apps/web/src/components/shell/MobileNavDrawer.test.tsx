@@ -1,7 +1,7 @@
-import az from '../../../messages/az.json';
-import en from '../../../messages/en.json';
-import ru from '../../../messages/ru.json';
-import tr from '../../../messages/tr.json';
+import az from '@ideanest/messages/az.json';
+import en from '@ideanest/messages/en.json';
+import ru from '@ideanest/messages/ru.json';
+import tr from '@ideanest/messages/tr.json';
 import { type Locale } from '../../lib/i18n/locale';
 import { type ShellCopy, shellCopyFrom } from '../../lib/i18n/shell-copy';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -84,7 +84,7 @@ function renderDrawer(at: Locale = 'en') {
  * whatever `messages/*.json` says, which is the opposite of what it is for.
  */
 function copyFor(at: Locale): ShellCopy {
-  return shellCopyFrom((key) => {
+  const lookup = (key: string): string => {
     let node: unknown = CATALOGUES[at].shell;
     for (const segment of key.split('.')) {
       if (typeof node !== 'object' || node === null) throw new Error(`no message at shell.${key}`);
@@ -92,7 +92,8 @@ function copyFor(at: Locale): ShellCopy {
     }
     if (typeof node !== 'string') throw new Error(`no message at shell.${key} in ${at}`);
     return node;
-  });
+  };
+  return shellCopyFrom(Object.assign(lookup, { raw: lookup }));
 }
 
 
@@ -222,32 +223,20 @@ describe('the actions inside it', () => {
 
 describe('the language', () => {
   /**
-   * The header's globe is `hidden sm:block` — measured at 390px it pushed the register pill
-   * and this drawer's own button off the edge — so below that width these four links are the
-   * way out of a language somebody cannot read, short of scrolling to the footer.
+   * The header's globe is on a phone's row now, so the drawer is navigation only. Drawing the
+   * four languages here as well would be a second language control on the same screen, and
+   * the one a reader who cannot read the page is least likely to find.
    */
-  it('offers all four, each named in itself, and keeps the page being read', async () => {
-    pathname = '/projects/42/blueprint';
+  it('is not in the drawer — the header carries it at every width', async () => {
     const user = userEvent.setup();
     renderDrawer('ru');
 
     await user.click(screen.getByRole('button', { name: ru.shell.drawer.open }));
 
-    for (const [name, tag] of [
-      ['Azərbaycan dili', 'az'],
-      ['English', 'en'],
-      ['Русский', 'ru'],
-      ['Türkçe', 'tr'],
-    ] as const) {
-      const link = screen.getByRole('link', { name });
-      expect(link).toHaveAttribute('lang', tag);
-      expect(link).toHaveAttribute('href', `/${tag}/projects/42/blueprint`);
+    const dialog = screen.getByRole('dialog');
+    for (const name of ['Azərbaycan dili', 'English', 'Русский', 'Türkçe']) {
+      expect(within(dialog).queryByRole('link', { name })).toBeNull();
     }
-
-    expect(screen.getByRole('link', { name: 'Русский' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
   });
 });
 

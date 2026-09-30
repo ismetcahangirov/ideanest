@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ProfileTabs, type ProfileTab } from './ProfileTabs';
@@ -30,7 +30,10 @@ function renderTabs() {
   return render(<ProfileTabs tabs={TABS} label="Profile sections" />);
 }
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe('the tablist', () => {
   it('is named, so a reader who arrives at it out of context knows what it is', () => {
@@ -59,6 +62,27 @@ describe('the tablist', () => {
     // "Created, 2" — the figure is what says the list is not empty, and it is read out.
     expect(screen.getByRole('tab', { name: /Created/u })).toHaveAccessibleName(/2/u);
     expect(screen.getByRole('tab', { name: 'About' })).toHaveAccessibleName('About');
+  });
+
+  /**
+   * #177. A scroll container clips whatever overflows it, and the ring is drawn four pixels
+   * outside the tab (2px wide, 2px off — `theme.css`'s unlayered `:focus-visible` rule). The
+   * row pads itself by exactly that on every side and gives it back with a negative margin,
+   * as `DashboardNav` and `CampaignTabs` do.
+   */
+  it('leaves room inside the scrolling row for the focus ring on every tab', () => {
+    renderTabs();
+
+    const row = screen.getByRole('tablist', { name: 'Profile sections' });
+    expect(row).toHaveClass('overflow-x-auto');
+    expect(row).toHaveClass('p-1');
+    expect(row).toHaveClass('-m-1');
+
+    for (const tab of screen.getAllByRole('tab')) {
+      // An inset offset here would be outranked by the kit's rule anyway; nothing may ask for one.
+      expect(tab.className).not.toContain('outline-offset-[-');
+      expect(tab.className).not.toContain('outline-none');
+    }
   });
 });
 
@@ -99,6 +123,28 @@ describe('the keyboard contract', () => {
 
     await user.keyboard('{Home}');
     expect(screen.getByRole('tab', { name: /Created/u })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  /**
+   * #181. At 320px "Backed" sat half off the row's edge and Chromium left it there when focus
+   * arrived. The row's focus handler covers Tab and the arrow keys alike, because the arrow
+   * keys move focus too.
+   */
+  it('scrolls the tab that takes focus fully into view, from Tab and from an arrow key', async () => {
+    const scrollIntoView = vi.spyOn(Element.prototype, 'scrollIntoView');
+    const user = userEvent.setup();
+    renderTabs();
+
+    await user.tab();
+    expect(scrollIntoView.mock.contexts.at(-1)).toBe(screen.getByRole('tab', { name: /Created/u }));
+
+    await user.keyboard('{ArrowRight}');
+    expect(scrollIntoView.mock.contexts.at(-1)).toBe(screen.getByRole('tab', { name: 'Backed' }));
+    expect(scrollIntoView).toHaveBeenLastCalledWith({
+      block: 'nearest',
+      inline: 'nearest',
+      behavior: 'auto',
+    });
   });
 });
 

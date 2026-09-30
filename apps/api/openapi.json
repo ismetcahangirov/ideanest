@@ -2120,6 +2120,80 @@
         "tags" : [ "payout-controller" ]
       }
     },
+    "/v1/admin/payouts/{payoutId}/unconfirmed-send/not-sent" : {
+      "post" : {
+        "operationId" : "payoutUnconfirmedNotSent",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "payoutId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UnconfirmedNotSentRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PayoutSummary"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "payout-controller" ]
+      }
+    },
+    "/v1/admin/payouts/{payoutId}/unconfirmed-send/sent" : {
+      "post" : {
+        "operationId" : "payoutUnconfirmedSent",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "payoutId",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UnconfirmedSentRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PayoutSummary"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "payout-controller" ]
+      }
+    },
     "/v1/admin/plans" : {
       "get" : {
         "operationId" : "adminSubscriptionCatalogue",
@@ -6647,6 +6721,50 @@
         "tags" : [ "pledge-controller" ]
       }
     },
+    "/v1/pledges/{id}/raise" : {
+      "post" : {
+        "operationId" : "pledgeRaise",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RaisePledgeRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "pledge-controller" ]
+      }
+    },
     "/v1/pledges/{id}/upgrade" : {
       "post" : {
         "operationId" : "pledgeUpgrade",
@@ -9471,43 +9589,6 @@
         "tags" : [ "content-report-controller" ]
       }
     },
-    "/v1/users/{id}/report" : {
-      "post" : {
-        "operationId" : "contentReportReportUser",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ReportRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "202" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ReportResponse"
-                }
-              }
-            },
-            "description" : "Accepted"
-          }
-        },
-        "tags" : [ "content-report-controller" ]
-      }
-    },
     "/v1/users/{slug}" : {
       "get" : {
         "operationId" : "publicProfileProfile",
@@ -9664,6 +9745,42 @@
           }
         },
         "tags" : [ "profile-project-controller" ]
+      }
+    },
+    "/v1/users/{slug}/report" : {
+      "post" : {
+        "operationId" : "contentReportReportUser",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReportRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "202" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReportResponse"
+                }
+              }
+            },
+            "description" : "Accepted"
+          }
+        },
+        "tags" : [ "content-report-controller" ]
       }
     },
     "/v1/users/{slug}/update-obligations" : {
@@ -12832,7 +12949,7 @@
           },
           "reason" : {
             "type" : "string",
-            "enum" : [ "BACKER_REQUEST", "CAMPAIGN_HALTED", "CAMPAIGN_FAILED", "FULFILMENT_FAILURE", "DUPLICATE_CHARGE", "PLATFORM_ERROR", "DISPUTE_CONCEDED", "FRAUD" ]
+            "enum" : [ "BACKER_REQUEST", "CAMPAIGN_HALTED", "CAMPAIGN_FAILED", "FULFILMENT_FAILURE", "DUPLICATE_CHARGE", "PLATFORM_ERROR", "DISPUTE_CONCEDED", "FRAUD", "RAISE_NOT_APPLIED", "CHARGEBACK" ]
           }
         },
         "required" : [ "detail", "pledgeId", "reason" ]
@@ -14028,6 +14145,39 @@
         },
         "required" : [ "rewardTierId" ]
       },
+      "PledgeRaiseBody" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "endedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "holdExpiresAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "resumeUrl" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "total" : {
+            "$ref" : "#/components/schemas/Money"
+          }
+        }
+      },
       "PledgeResponse" : {
         "type" : "object",
         "properties" : {
@@ -14067,6 +14217,9 @@
           "latePledge" : {
             "type" : "boolean"
           },
+          "latestRaise" : {
+            "$ref" : "#/components/schemas/PledgeRaiseBody"
+          },
           "paymentMethodId" : {
             "type" : "string",
             "format" : "uuid"
@@ -14074,6 +14227,9 @@
           "projectId" : {
             "type" : "string",
             "format" : "uuid"
+          },
+          "raisable" : {
+            "type" : "boolean"
           },
           "reservationExpiresAt" : {
             "type" : "string",
@@ -14917,6 +15073,41 @@
           }
         }
       },
+      "RaisePledgeRequest" : {
+        "type" : "object",
+        "properties" : {
+          "addons" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PledgeAddonBody"
+            }
+          },
+          "contribution" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "errorUrl" : {
+            "type" : "string",
+            "format" : "uri"
+          },
+          "expectedAmount" : {
+            "$ref" : "#/components/schemas/Money"
+          },
+          "language" : {
+            "type" : "string"
+          },
+          "rewardTierId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "shippingCountry" : {
+            "type" : "string"
+          },
+          "successUrl" : {
+            "type" : "string",
+            "format" : "uri"
+          }
+        }
+      },
       "RaiseRequest" : {
         "type" : "object",
         "properties" : {
@@ -15075,7 +15266,7 @@
           },
           "reason" : {
             "type" : "string",
-            "enum" : [ "BACKER_REQUEST", "CAMPAIGN_HALTED", "CAMPAIGN_FAILED", "FULFILMENT_FAILURE", "DUPLICATE_CHARGE", "PLATFORM_ERROR", "DISPUTE_CONCEDED", "FRAUD" ]
+            "enum" : [ "BACKER_REQUEST", "CAMPAIGN_HALTED", "CAMPAIGN_FAILED", "FULFILMENT_FAILURE", "DUPLICATE_CHARGE", "PLATFORM_ERROR", "DISPUTE_CONCEDED", "FRAUD", "RAISE_NOT_APPLIED", "CHARGEBACK" ]
           },
           "refundTransactionId" : {
             "type" : "string",
@@ -17206,6 +17397,33 @@
             "type" : "string"
           }
         }
+      },
+      "UnconfirmedNotSentRequest" : {
+        "type" : "object",
+        "properties" : {
+          "note" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "note" ]
+      },
+      "UnconfirmedSentRequest" : {
+        "type" : "object",
+        "properties" : {
+          "note" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 0
+          },
+          "providerTransactionId" : {
+            "type" : "string",
+            "maxLength" : 200,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "note", "providerTransactionId" ]
       },
       "UpdateNotificationPreferencesRequest" : {
         "type" : "object",

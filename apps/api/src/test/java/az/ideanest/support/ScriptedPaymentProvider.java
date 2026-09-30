@@ -176,9 +176,15 @@ public class ScriptedPaymentProvider implements PaymentProvider {
      */
     public void reset() {
         refundRefusal = null;
+        lostRefundAnswers.set(0);
+        lostRefundAnswersFor.clear();
+        unreachableRefunds.clear();
+        hostedPagesUnavailable = false;
         lookups.clear();
         scripted.clear();
         charges.clear();
+        payoutAnswers.clear();
+        payouts.clear();
         standing = ProviderOutcome.APPROVED;
         declineCode = "card_declined";
     }
@@ -267,9 +273,24 @@ public class ScriptedPaymentProvider implements PaymentProvider {
         }
     }
 
+    private volatile boolean hostedPagesUnavailable;
+
+    /** Every payment page from now on cannot be opened: the provider cannot be reached (#171). */
+    public void willRefuseHostedPayments() {
+        hostedPagesUnavailable = true;
+    }
+
+    /** Payment pages open again. */
+    public void willOpenHostedPayments() {
+        hostedPagesUnavailable = false;
+    }
+
     /** A payment page on a host nothing resolves; the payment is settled by a scripted webhook. */
     @Override
     public HostedPaymentSession beginHostedPayment(HostedPaymentRequest request) {
+        if (hostedPagesUnavailable) {
+            throw new az.ideanest.payment.domain.ProviderUnavailableException(NAME, "Scripted: no payment page");
+        }
         hostedPayments.add(request);
         String transaction = "scripted-hosted-" + providerTransactionCounter.incrementAndGet();
         return new HostedPaymentSession(transaction, URI.create("https://pay.scripted.invalid/" + transaction));
@@ -318,13 +339,72 @@ public class ScriptedPaymentProvider implements PaymentProvider {
         refundRefusal = null;
     }
 
+    private final AtomicInteger lostRefundAnswers = new AtomicInteger();
+
+    /**
+     * The next {@code count} refunds reach the provider and are recorded here, and their answer is
+     * lost on the way back — the process dying between the call and the record (#40, #171). The
+     * caller sees an exception that is not {@code ProviderUnavailableException}, so its refund row
+     * stays {@code REQUESTED}.
+     */
+    public void loseRefundAnswers(int count) {
+        lostRefundAnswers.set(count);
+    }
+
+    private final Set<String> lostRefundAnswersFor = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    /**
+     * The next refund of this payment reaches the provider and its answer is lost, as
+     * {@link #loseRefundAnswers} — for one payment, whatever order the refunds are sent in (#174).
+     */
+    public void loseRefundAnswerFor(String providerTransactionId) {
+        lostRefundAnswersFor.add(providerTransactionId);
+    }
+
+    /** Every refund's answer arrives again: undoes {@link #loseRefundAnswers} and {@link #loseRefundAnswerFor}. */
+    public void answerEveryRefund() {
+        lostRefundAnswers.set(0);
+        lostRefundAnswersFor.clear();
+    }
+
     public void willLookUp(String providerTransactionId, PaymentLookup.State state) {
         lookups.put(providerTransactionId, state);
+    }
+
+    /** What the next refunds do before their answer is lost as unreachable (#176), one per refund. */
+    private final Deque<Boolean> unreachableRefunds = new ConcurrentLinkedDeque<>();
+
+    /**
+     * The next refund reaches the provider, <strong>is applied</strong> — the payment is reported
+     * {@code RETURNED} from then on — and its answer never arrives: the caller sees
+     * {@code ProviderUnavailableException}, as for a read timeout after the provider acted (#176).
+     */
+    public void nextRefundAppliedButUnreachable() {
+        unreachableRefunds.addLast(true);
+    }
+
+    /**
+     * The next refund cannot be told apart from {@link #nextRefundAppliedButUnreachable} by its caller,
+     * but never reached the provider's books: the payment is still reported paid (#176).
+     */
+    public void nextRefundUnreachableAndNotApplied() {
+        unreachableRefunds.addLast(false);
     }
 
     @Override
     public RefundResult refund(RefundRequest request) {
         refunds.add(request);
+        Boolean applied = unreachableRefunds.pollFirst();
+        if (applied != null) {
+            if (applied) {
+                lookups.put(request.providerTransactionId(), PaymentLookup.State.RETURNED);
+            }
+            throw new ProviderUnavailableException(NAME, "Scripted: the refund's answer did not arrive");
+        }
+        if (lostRefundAnswersFor.remove(request.providerTransactionId())
+                || lostRefundAnswers.getAndUpdate(left -> Math.max(left - 1, 0)) > 0) {
+            throw new IllegalStateException("Scripted: the refund's answer was lost");
+        }
         String refusal = refundRefusal;
         if (refusal != null) {
             return new RefundResult(ProviderOutcome.DECLINED, null, refusal, "Scripted refusal", "{\"scripted\":true}");
@@ -343,9 +423,49 @@ public class ScriptedPaymentProvider implements PaymentProvider {
                 "{\"scripted\":true}");
     }
 
+    /**
+     * The next payout answers, in order — #184's review. {@code null} is an unreachable provider; a
+     * {@link ProviderOutcome} is that answer. Unscripted, a payout still throws: no suite sends one by
+     * accident.
+     */
+    private final Deque<java.util.Optional<ProviderOutcome>> payoutAnswers = new ConcurrentLinkedDeque<>();
+
+    private final List<PayoutRequest> payouts = Collections.synchronizedList(new ArrayList<>());
+
+    /** The next payout sent is answered with this outcome. */
+    public void nextPayout(ProviderOutcome outcome) {
+        payoutAnswers.addLast(java.util.Optional.of(outcome));
+    }
+
+    /** The next payout sent finds the provider unreachable. */
+    public void nextPayoutUnreachable() {
+        payoutAnswers.addLast(java.util.Optional.empty());
+    }
+
+    /** Every payout this provider was asked to send, in order. */
+    public List<PayoutRequest> payouts() {
+        synchronized (payouts) {
+            return List.copyOf(payouts);
+        }
+    }
+
     @Override
     public PayoutResult payout(PayoutRequest request) {
-        throw new UnsupportedOperationException("Payouts are #69; no test drives them yet");
+        java.util.Optional<ProviderOutcome> answer = payoutAnswers.pollFirst();
+        if (answer == null) {
+            throw new UnsupportedOperationException("No payout answer was scripted for this test");
+        }
+        payouts.add(request);
+        if (answer.isEmpty()) {
+            throw new ProviderUnavailableException(NAME, "The scripted provider could not be reached");
+        }
+        ProviderOutcome outcome = answer.get();
+        return new PayoutResult(
+                outcome,
+                "scripted-payout-" + providerTransactionCounter.incrementAndGet(),
+                outcome == ProviderOutcome.DECLINED ? "duplicate_order_id" : null,
+                outcome == ProviderOutcome.DECLINED ? "The order was already processed" : null,
+                "{\"scripted\":true}");
     }
 
     /**

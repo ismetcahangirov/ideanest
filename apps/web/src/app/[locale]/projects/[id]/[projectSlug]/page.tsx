@@ -4,8 +4,13 @@ import { CampaignComments } from '../../../../../components/project/CampaignComm
 import { CampaignFaqs } from '../../../../../components/project/CampaignFaqs';
 import { CampaignOutcomeNotice } from '../../../../../components/project/CampaignOutcomeNotice';
 import { CampaignRewards } from '../../../../../components/project/CampaignRewards';
+import { CampaignRisks } from '../../../../../components/project/CampaignRisks';
 import { CampaignStory } from '../../../../../components/project/CampaignStory';
 import { CampaignSummary } from '../../../../../components/project/CampaignSummary';
+import { CampaignOwnerBar } from '../../../../../components/project/CampaignOwnerBar';
+import { campaignDashboardHref, campaignEditorHref } from '../../../../../lib/account/navigation';
+import { hasLaunched } from '../../../../../lib/projects/mine';
+import { getTranslations } from 'next-intl/server';
 import { CampaignTabs } from '../../../../../components/project/CampaignTabs';
 import { CampaignTrustBlock } from '../../../../../components/project/CampaignTrustBlock';
 import { CampaignUpdates } from '../../../../../components/project/CampaignUpdates';
@@ -178,6 +183,9 @@ export async function generateMetadata({
     campaign === null ? null : previewOf(campaign),
     pathOf(creatorSlug, projectSlug),
     localeOrDefault(locale),
+    process.env,
+    /* No `opengraph-image` beside this page, so a campaign with no cover shares the site's (#114). */
+    'site-card',
   );
   if (campaign === null) return metadata;
 
@@ -255,9 +263,10 @@ export default async function CampaignPage({
    * obligation could not be loaded would be inventing an obligation to apologise for.
    * `lib/obligations/server.ts` has the argument.
    */
-  const [faqs, obligation] = await Promise.all([
+  const [faqs, obligation, owner] = await Promise.all([
     fetchProjectFaqs(campaign.id),
     fetchUpdateObligation(campaign.id),
+    getTranslations('campaign.owner'),
   ]);
 
   return (
@@ -328,6 +337,17 @@ export default async function CampaignPage({
         #91. `lib/realtime/updates.ts` explains why it cannot simply use the `/v1` rewrite
         every other browser call goes through.
       */}
+      {/*
+        #141: the creator's links to the dashboard and the editor. Drawn in the browser against
+        the session, never here — `CampaignOwnerBar` says why the cached page must not know who
+        is reading it.
+      */}
+      <CampaignOwnerBar
+        creatorSlug={campaign.creatorSlug}
+        editHref={campaignEditorHref(campaign.id)}
+        dashboardHref={hasLaunched(campaign.state) ? campaignDashboardHref(campaign.id) : null}
+        copy={{ label: owner('label'), dashboard: owner('dashboard'), edit: owner('edit') }}
+      />
       <CampaignSummary
         campaign={campaign}
         realtimeOrigin={process.env[REALTIME_ORIGIN_VARIABLE]}
@@ -369,28 +389,17 @@ export default async function CampaignPage({
 
               {campaign.risks !== null && (
                 /*
-                  §5.5 makes the risks section a creator obligation and §5.3 requires two hundred
-                  characters of it before a campaign may be submitted. It is plain text rather
-                  than a document — there is one column behind it — and it is on the Campaign tab
-                  beside the story rather than behind a tab of its own because a backer deciding
-                  whether to commit money is exactly who it was written for.
+                  §5.5's risks section, beside the story. `CampaignRisks` carries the argument for
+                  where it sits, and #142 is why its heading is the catalogue's.
                 */
-                <section aria-labelledby="campaign-risks" className="flex flex-col gap-3">
-                  <h2
-                    id="campaign-risks"
-                    className="text-xl font-medium tracking-[-0.02em] text-white"
-                  >
-                    Risks and challenges
-                  </h2>
-                  <p className="max-w-[68ch] wrap-anywhere text-[1.0625rem] leading-[1.75] whitespace-pre-line text-reading">
-                    {campaign.risks}
-                  </p>
-                </section>
+                <CampaignRisks risks={campaign.risks} />
               )}
             </>
           )}
 
-          {tab === 'creator' && <CreatorTab campaign={campaign} />}
+          {tab === 'creator' && (
+            <CreatorTab campaign={campaign} returnTo={campaignTabHref(path, 'creator')} />
+          )}
 
           {tab === 'faq' && <CampaignFaqs faqs={faqs} />}
 
@@ -418,12 +427,11 @@ export default async function CampaignPage({
         the end of the page is where they are; `--text-tertiary` at 4.9:1 is legible without
         competing (docs/ui-kit.md §9.1).
 
-        THE CREATOR'S ACCOUNT STILL CANNOT BE REPORTED FROM HERE, and #282 did not change it.
-        `POST /v1/users/{id}/report` takes an identifier and both
-        `GET /v1/projects/{creatorSlug}/{projectSlug}` and `GET /v1/users/{slug}` are addressed
-        by slug and answer with one — neither carries the account id the report endpoint needs.
-        The surface that has one is the public profile itself (#274). `ReportControl` already
-        takes an account target; it gains an entry point when that page can supply an id.
+        THE CREATOR'S ACCOUNT IS REPORTED FROM THEIR PROFILE, NOT FROM HERE. #143 moved the
+        account route to `POST /v1/users/{slug}/report` and mounted it on `/u/[slug]`, one
+        click away through the Creator tab. A second Report control here would put two
+        complaints — about the campaign and about the person — side by side at the foot of a
+        page whose subject is the campaign.
 
         `ReportControl` writes §4.11's dialog entry as a CSS keyframe rather than importing
         `@ideanest/ui/motion`, for the reason the header comment above gives: 116 kB of
@@ -456,8 +464,11 @@ export default async function CampaignPage({
  */
 async function CreatorTab({
   campaign,
+  returnTo,
 }: {
   readonly campaign: CampaignPage;
+  /** This tab's own address, for the Follow control's sign-in return (#143). */
+  readonly returnTo: string;
 }) {
   const [profile, projects] = await Promise.all([
     fetchPublicProfile(campaign.creator.slug),
@@ -472,7 +483,9 @@ async function CreatorTab({
     .filter((project) => project.id !== campaign.id)
     .slice(0, CREATOR_PROJECT_LIMIT);
 
-  return <CreatorPanel campaign={campaign} profile={profile} projects={others} />;
+  return (
+    <CreatorPanel campaign={campaign} profile={profile} projects={others} returnTo={returnTo} />
+  );
 }
 
 /*
