@@ -81,6 +81,9 @@ export interface FeedCopy {
   readonly standfirst: string;
   readonly filtersLabel: string;
   readonly railLabel: string;
+  /** The drawer's commit button: nothing filters until it is pressed. */
+  readonly apply: string;
+  readonly closeFilters: string;
   readonly resultsHeading: string;
   readonly none: string;
   readonly sortLabel: string;
@@ -96,6 +99,10 @@ export interface FeedCopy {
   readonly rangeUnordered: string;
   /** Carries `{category}`. */
   readonly subcategoriesOf: string;
+  /** The tag group when no matching campaign carries a tag (#142). */
+  readonly noTags: string;
+  /** Tags narrow rather than widen — every chosen tag, not any (#142). */
+  readonly tagsHint: string;
   readonly loading: string;
   readonly loadingMore: string;
   readonly showMore: string;
@@ -179,6 +186,8 @@ export function feedCopyFrom(
     standfirst: t('standfirst'),
     filtersLabel: t('filtersLabel'),
     railLabel: t('railLabel'),
+    apply: t('apply'),
+    closeFilters: t('closeFilters'),
     resultsHeading: t('resultsHeading'),
     none: t('none'),
     sortLabel: t('sortLabel'),
@@ -190,6 +199,8 @@ export function feedCopyFrom(
     rangeInvalid: t('rangeInvalid'),
     rangeUnordered: t('rangeUnordered'),
     subcategoriesOf: String(t.raw('subcategoriesOf')),
+    noTags: t('noTags'),
+    tagsHint: t('tagsHint'),
     loading: t('loading'),
     loadingMore: t('loadingMore'),
     showMore: t('showMore'),

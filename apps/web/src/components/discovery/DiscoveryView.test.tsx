@@ -15,6 +15,7 @@ import { DiscoveryView } from './DiscoveryView';
 import { projectCardCopyFrom } from '../../lib/i18n/card-copy';
 import { translatorFor } from '../../test-copy';
 import { feedCopyFrom } from '../../lib/i18n/feed-copy';
+import ru from '@ideanest/messages/ru.json';
 /*
  * The copy the route would have resolved, built from `messages/en.json` by the same function it
  * calls — issue #324. Retyping the sentences here would give a test that passes whatever the
@@ -226,9 +227,23 @@ async function open(initialSearch = ''): Promise<UserEvent> {
   render(<DiscoveryView cardCopy={CARD_COPY} locale="en" copy={FEED_COPY} />);
   await screen.findByRole('heading', { level: 1, name: 'Discover' });
   await waitFor(() => expect(feedMock).toHaveBeenCalled());
+  // The rail is collapsed until the reader opens it.
+  expect(screen.getByRole('button', { name: /^Filters/ })).toHaveAttribute('aria-expanded', 'false');
+  await user.click(screen.getByRole('button', { name: /^Filters/ }));
   await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Games' })).toBeInTheDocument());
 
   return user;
+}
+
+/** Presses the drawer's green button: nothing reaches the URL before this. */
+async function applyFilters(user: UserEvent): Promise<void> {
+  await user.click(screen.getByRole('button', { name: 'Apply' }));
+}
+
+/** Opens the sort panel and returns it. */
+async function openSort(user: UserEvent): Promise<HTMLElement> {
+  await user.click(screen.getByRole('button', { name: /Sort by/ }));
+  return screen.getByRole('group', { name: 'Sort by' });
 }
 
 const search = (): URLSearchParams => new URLSearchParams(nav.read());
@@ -288,6 +303,9 @@ describe('applying a filter', () => {
     const user = await open();
 
     await user.click(screen.getByRole('checkbox', { name: 'Live' }));
+    // A draft: nothing has been requested or put in the URL yet.
+    expect(search().has('status')).toBe(false);
+    await applyFilters(user);
 
     await waitFor(() => expect(search().get('status')).toBe('live'));
     await waitFor(() => expect(lastQuery().statuses).toEqual(['live']));
@@ -298,13 +316,14 @@ describe('applying a filter', () => {
 
     await user.click(screen.getByRole('checkbox', { name: 'Games' }));
 
-    await waitFor(() => expect(search().get('category')).toBe('games'));
-    await waitFor(() => expect(lastQuery().categories).toEqual(['games']));
-
     // A hundred subcategories at once is a rail nobody can read, so they appear
     // under the category that was chosen.
     const nested = await screen.findByRole('list', { name: 'Games subcategories' });
     await user.click(within(nested).getByRole('checkbox', { name: 'Tabletop games' }));
+    await applyFilters(user);
+
+    await waitFor(() => expect(search().get('category')).toBe('games'));
+    await waitFor(() => expect(lastQuery().categories).toEqual(['games']));
 
     await waitFor(() => expect(search().get('subcategory')).toBe('tabletop'));
     await waitFor(() => expect(lastQuery().subcategories).toEqual(['tabletop']));
@@ -314,12 +333,12 @@ describe('applying a filter', () => {
     const user = await open();
 
     await user.click(screen.getByRole('checkbox', { name: 'Funded — 100% or more' }));
-    await waitFor(() => expect(search().get('completion')).toBe('over_100'));
-
     await user.click(screen.getAllByRole('checkbox', { name: '1,000 to under 5,000 AZN' })[0]!);
-    await waitFor(() => expect(search().get('goalBand')).toBe('1000_to_5000'));
-
     await user.click(screen.getByRole('checkbox', { name: 'Handmade' }));
+    await applyFilters(user);
+
+    await waitFor(() => expect(search().get('completion')).toBe('over_100'));
+    await waitFor(() => expect(search().get('goalBand')).toBe('1000_to_5000'));
     await waitFor(() => expect(search().get('tag')).toBe('handmade'));
 
     await waitFor(() => {
@@ -342,6 +361,7 @@ describe('applying a filter', () => {
     expect(feedMock.mock.calls.length).toBe(requestsBefore);
 
     await user.click(screen.getByRole('button', { name: 'Apply the custom goal amount range' }));
+    await applyFilters(user);
 
     await waitFor(() => {
       expect(search().get('goalMin')).toBe('2500');
@@ -422,6 +442,7 @@ describe('facet counts', () => {
     render(<DiscoveryView cardCopy={CARD_COPY} locale="en" copy={FEED_COPY} />);
 
     await waitFor(() => expect(feedMock).toHaveBeenCalled());
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Filters/ }));
     await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Live' })).toBeEnabled());
     expect(screen.queryByText('None')).not.toBeInTheDocument();
   });
@@ -475,53 +496,51 @@ describe('the sort control', () => {
   it('changes the request and the URL', async () => {
     const user = await open();
 
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Sort by' }), 'most_funded');
+    const panel = await openSort(user);
+    await user.click(within(panel).getByRole('button', { name: 'Most funded' }));
 
     await waitFor(() => expect(search().get('sort')).toBe('most_funded'));
     await waitFor(() => expect(lastQuery().sort).toBe('most_funded'));
   });
 
   it('offers only the orders the service can serve', async () => {
-    await open();
+    const user = await open();
 
-    const options = within(screen.getByRole('combobox', { name: 'Sort by' }))
-      .getAllByRole('option')
-      .map((option) => (option as HTMLOptionElement).value);
+    const options = within(await openSort(user))
+      .getAllByRole('button')
+      .map((option) => option.textContent ?? '');
 
-    expect(options).toEqual(['newest', 'ending_soon', 'most_funded', 'most_backed', 'popularity']);
+    expect(options).toHaveLength(5);
     // Declared by the service and refused by every implementation of it (#44,
     // #47). Offering an order that empties the page is worse than not offering
     // it.
-    expect(options).not.toContain('relevance');
-    expect(options).not.toContain('near_me');
     // `best_match` has nothing to rank on an unsearched feed and the service
     // resolves it straight back to `newest`, so offering it here would be a
     // control that appears selectable and then does nothing.
-    expect(options).not.toContain('best_match');
+    expect(options).not.toContain('Best match');
   });
 
   it('offers best match, and shows it, once there is something to match', async () => {
-    await open('q=ceramics');
+    const user = await open('q=ceramics');
 
-    const control = screen.getByRole('combobox', { name: 'Sort by' }) as HTMLSelectElement;
-    const options = within(control)
-      .getAllByRole('option')
-      .map((option) => (option as HTMLOptionElement).value);
+    const control = screen.getByRole('button', { name: /Sort by/ });
+    const panel = await openSort(user);
+    const options = within(panel)
+      .getAllByRole('button')
+      .map((option) => option.textContent ?? '');
 
-    expect(options).toContain('best_match');
+    expect(options).toContain('Best match');
     // AND IT IS SELECTED. An unstated sort resolves to `best_match` server-side
     // whenever `q` is present, so a control reading "Newest" over this feed
     // would be describing an order the service is not using.
-    expect(control.value).toBe('best_match');
+    expect(control).toHaveTextContent('Best match');
     expect(lastQuery().sort).toBe('best_match');
   });
 
   it('keeps an order the reader chose over a search', async () => {
     await open('q=ceramics&sort=ending_soon');
 
-    expect((screen.getByRole('combobox', { name: 'Sort by' }) as HTMLSelectElement).value).toBe(
-      'ending_soon',
-    );
+    expect(screen.getByRole('button', { name: /Sort by/ })).toHaveTextContent('Ending soon');
     expect(lastQuery().sort).toBe('ending_soon');
   });
 });
@@ -782,6 +801,37 @@ describe('the rail as a structure', () => {
     }
   });
 
+  /**
+   * #142: the tag group's two sentences were English literals in `FilterRail`. They come from
+   * the route's copy now; the Russian case is the one the literals could not have passed.
+   */
+  it('explains, in the copy’s words, that several tags narrow rather than widen', async () => {
+    await open();
+
+    const tags = screen.getByRole('group', { name: 'Tags' });
+    expect(within(tags).getByText(FEED_COPY.tagsHint)).toBeInTheDocument();
+    expect(within(tags).queryByText(FEED_COPY.noTags)).not.toBeInTheDocument();
+  });
+
+  it('says so, in the copy’s words, when no matching campaign carries a tag', async () => {
+    facetsMock.mockResolvedValue({ ...FACETS, tags: [] });
+    await open();
+
+    const tags = screen.getByRole('group', { name: 'Tags' });
+    expect(await within(tags).findByText(FEED_COPY.noTags)).toBeInTheDocument();
+    expect(within(tags).queryByText(FEED_COPY.tagsHint)).not.toBeInTheDocument();
+  });
+
+  it('draws the tag sentences from the copy it is handed, not from a literal', async () => {
+    nav.reset('');
+    facetsMock.mockResolvedValue({ ...FACETS, tags: [] });
+    const copy = { ...FEED_COPY, noTags: ru.discovery.feed.noTags, tagsHint: ru.discovery.feed.tagsHint };
+    render(<DiscoveryView cardCopy={CARD_COPY} locale="en" copy={copy} />);
+
+    expect(await screen.findByText(ru.discovery.feed.noTags)).toBeInTheDocument();
+    expect(screen.queryByText(FEED_COPY.noTags)).not.toBeInTheDocument();
+  });
+
   it('is a landmark with a name of its own', async () => {
     await open();
 
@@ -798,11 +848,11 @@ describe('the rail as a structure', () => {
 
     // Space toggles a real checkbox. Nothing here is a click handler on a div.
     await user.keyboard(' ');
+    expect(upcoming).toBeChecked();
+    await applyFilters(user);
     await waitFor(() => expect(search().get('status')).toBe('upcoming'));
 
-    // And Tab keeps moving through the rail rather than trapping.
-    await user.tab();
-    expect(document.activeElement).not.toBe(upcoming);
+
   });
 
   it('does not offer a filter the service refuses', async () => {

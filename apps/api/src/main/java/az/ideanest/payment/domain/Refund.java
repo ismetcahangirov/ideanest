@@ -72,6 +72,9 @@ public class Refund {
     @Column(name = "failure_message")
     private String failureMessage;
 
+    @Column(name = "review_reason")
+    private String reviewReason;
+
     @Column(name = "requested_by", nullable = false, updatable = false)
     private UUID requestedBy;
 
@@ -83,6 +86,14 @@ public class Refund {
 
     @Column(name = "idempotency_key", nullable = false, updatable = false)
     private String idempotencyKey;
+
+    /**
+     * V87 (#183): when the reconciliation last asked about this refund. Written only by
+     * {@code RefundRepository#checked}, so a row loaded before a pass and saved after it cannot put
+     * back an older answer — read-only here, and only for the queue's order.
+     */
+    @Column(name = "last_checked_at", insertable = false, updatable = false)
+    private Instant lastCheckedAt;
 
     protected Refund() {
         // Hibernate.
@@ -110,12 +121,19 @@ public class Refund {
         this.detail = Objects.requireNonNull(detail, "detail");
         this.state = RefundState.REQUESTED;
         // Null only for a refund the platform issued itself, which V76 limits to the two campaign
-        // reasons (IDN-EXT-01, #40).
-        if (requestedBy == null && reason != RefundReason.CAMPAIGN_FAILED && reason != RefundReason.CAMPAIGN_HALTED) {
+        // reasons (IDN-EXT-01, #40) and V83 extends to a raise that could not be applied (#171).
+        if (requestedBy == null && !isPlatformReason(reason)) {
             throw new IllegalArgumentException("Only a campaign refund may be issued by the platform itself");
         }
         this.requestedBy = requestedBy;
         this.idempotencyKey = Objects.requireNonNull(idempotencyKey, "idempotencyKey");
+    }
+
+    /** The reasons the platform refunds on its own, with no member of staff behind them. */
+    public static boolean isPlatformReason(RefundReason reason) {
+        return reason == RefundReason.CAMPAIGN_FAILED
+                || reason == RefundReason.CAMPAIGN_HALTED
+                || reason == RefundReason.RAISE_NOT_APPLIED;
     }
 
     /**
@@ -150,6 +168,44 @@ public class Refund {
                 idempotencyKey);
     }
 
+    /**
+     * #175: the card network took this charge back — a chargeback lost or conceded, recorded when
+     * the case is resolved.
+     *
+     * <p>Born {@code SUCCEEDED}, with the {@code REFUND} transaction the loss recorded, because nothing
+     * is sent: the money has already gone. {@code resolvedBy} is the member of staff who resolved the
+     * case, so it has an author like every refund a person caused.
+     *
+     * @param tookTheRest whether it took everything its charge had left, which is what
+     *     {@link #fullRefund} then says — as every part of a staff refund of the rest does. Whether the
+     *     pledge has anything left is still read from what went back, never from this
+     */
+    public static Refund chargeback(
+            UUID pledgeId,
+            UUID projectId,
+            UUID chargeTransactionId,
+            Money amount,
+            boolean tookTheRest,
+            String detail,
+            UUID resolvedBy,
+            String idempotencyKey,
+            UUID refundTransactionId,
+            Instant at) {
+
+        Refund refund = new Refund(
+                pledgeId,
+                projectId,
+                Objects.requireNonNull(chargeTransactionId, "chargeTransactionId"),
+                amount,
+                tookTheRest,
+                RefundReason.CHARGEBACK,
+                detail,
+                Objects.requireNonNull(resolvedBy, "resolvedBy"),
+                idempotencyKey);
+        refund.succeeded(refundTransactionId, at);
+        return refund;
+    }
+
     /** The provider took it. */
     public void succeeded(UUID refundTransactionId, Instant at) {
         this.state = RefundState.SUCCEEDED;
@@ -157,10 +213,15 @@ public class Refund {
         this.settledAt = Objects.requireNonNull(at, "at");
         this.failureCode = null;
         this.failureMessage = null;
+        this.reviewReason = null;
     }
 
     /**
-     * The provider refused, or could not be reached.
+     * The provider refused, or the refund never reached it.
+     *
+     * <p><strong>Not a provider that could not be reached (#176).</strong> A call whose answer is lost
+     * may have been carried out, and a {@code FAILED} row is money the sweep offers again; such a refund
+     * stays {@link RefundState#REQUESTED} until the provider's status of the payment says what happened.
      *
      * <p>Terminal for this row. A retry is a new {@link #requested} row with a new
      * idempotency key, because it is a new decision — and because reusing the key would
@@ -171,6 +232,25 @@ public class Refund {
         this.failureCode = Objects.requireNonNull(failureCode, "failureCode");
         this.failureMessage = failureMessage;
         this.settledAt = Objects.requireNonNull(at, "at");
+        this.reviewReason = null;
+    }
+
+    /**
+     * The provider's answer was lost and its status of the payment cannot say whether this refund
+     * happened (#174's review): another refund went against the same charge, or this one was only part
+     * of it. The row stays {@code REQUESTED} — it still counts as gone, so nothing is sent twice — and
+     * is left to a person; the reconciliation stops asking about it.
+     */
+    public void needsReview(String reason) {
+        if (state != RefundState.REQUESTED) {
+            throw new IllegalStateException("Only a refund whose outcome is unknown is left for review");
+        }
+        this.reviewReason = Objects.requireNonNull(reason, "reason");
+    }
+
+    /** Why a person has to settle this refund, or null when nobody has to. */
+    public String reviewReason() {
+        return reviewReason;
     }
 
     public UUID id() {
@@ -197,6 +277,15 @@ public class Refund {
         return Money.of(amount, currency);
     }
 
+    /**
+     * Whether this refund was meant to return the rest of the pledge — V53's intent, recorded when it
+     * was requested and never changed.
+     *
+     * <p><strong>Not whether the pledge was refunded in full (#171).</strong> A refund of a raised
+     * pledge is one part per charge and every part of a full refund carries the flag; and an intent
+     * can fail. Whether the pledge's money has all gone back is decided when a refund settles, from
+     * what was charged and what succeeded, and shows as the pledge's {@code REFUNDED} state.
+     */
     public boolean fullRefund() {
         return fullRefund;
     }

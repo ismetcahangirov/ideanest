@@ -26,7 +26,8 @@ import { localeOrDefault } from '../../lib/i18n/locale';
  *
  * §4.9: the number is allocated once, at insert, behind a lock on the newest row, and never
  * recomputed — because "update 7" is a thing somebody says to support six months later.
- * `Update {n}` below prints {@link CampaignUpdate.number} and never an index into the array.
+ * `campaign.updates.number` below prints {@link CampaignUpdate.number} and never an index into the
+ * array.
  * A `row_number()` at render time would renumber every earlier update the first time one was
  * withheld, and it would do it silently.
  *
@@ -88,9 +89,7 @@ export async function CampaignUpdates({ page, olderHref, paged }: CampaignUpdate
         </p>
       ) : page.updates.length === 0 ? (
         <p className="text-sm text-white/64">
-          {paged
-            ? 'There are no older updates.'
-            : 'This campaign has not posted an update yet. Backers are told by email when it does.'}
+          {paged ? t('noOlder') : t('none')}
         </p>
       ) : (
         <ol className="flex flex-col gap-6">
@@ -137,7 +136,7 @@ async function UpdateEntry({ update }: { readonly update: CampaignUpdate }) {
     >
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-xs font-medium tracking-[0.04em] text-white/40 uppercase">
-          Update {update.number}
+          {t('number', { number: String(update.number) })}
         </span>
 
         {serverDay !== null && (

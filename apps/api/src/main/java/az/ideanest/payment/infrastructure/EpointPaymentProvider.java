@@ -115,6 +115,19 @@ public class EpointPaymentProvider implements PaymentProvider {
      */
     private static final Duration SESSION_LIFE = Duration.ofMinutes(30);
 
+    /**
+     * The longest {@code order_id} Epoint accepts — #178.
+     *
+     * <p>"Unique order ID in your application. Max 255 characters.", for {@code /request} and for
+     * {@code /refund-request} alike (https://developer.epoint.az/en/checkout/request and
+     * https://developer.epoint.az/en/refund/refund-request, read 2026-09-29; the 2022 PDF of API v1
+     * says the same). Every key the platform sends as one is far shorter: a pledge's is a UUID (36), a
+     * raise's {@code pledge-raise-} and a UUID (49), a payout's at most 65 — {@code EpointOrderIdTests}
+     * holds each of them to this. Checked before a request is made, so a key that grew past it fails
+     * here with its name rather than as Epoint's refusal of a payment page.
+     */
+    public static final int MAX_ORDER_ID_LENGTH = 255;
+
     /** Epoint's approval code. Everything else on a refused answer is a decline reason. */
     private static final String APPROVED_CODE = "000";
 
@@ -349,6 +362,7 @@ public class EpointPaymentProvider implements PaymentProvider {
     @Override
     public HostedPaymentSession beginHostedPayment(HostedPaymentRequest request) {
         requireSupportedCurrency(request.amount());
+        requireOrderIdFits(request.idempotencyKey());
 
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("public_key", settings.publicKey());
@@ -506,6 +520,7 @@ public class EpointPaymentProvider implements PaymentProvider {
      */
     @Override
     public PayoutResult payout(PayoutRequest request) {
+        requireOrderIdFits(request.idempotencyKey());
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("public_key", settings.publicKey());
         payload.put("language", settings.language());
@@ -677,6 +692,14 @@ public class EpointPaymentProvider implements PaymentProvider {
     }
 
     /** Every Epoint field is optional or absent; a blank one is absent. */
+    /** #178: refused before a request, like a currency Epoint does not take. */
+    private static void requireOrderIdFits(String orderId) {
+        if (orderId == null || orderId.isBlank() || orderId.length() > MAX_ORDER_ID_LENGTH) {
+            throw new IllegalArgumentException("Epoint takes an order_id of 1 to %d characters, not %s"
+                    .formatted(MAX_ORDER_ID_LENGTH, orderId == null ? "none" : orderId.length()));
+        }
+    }
+
     private static void putIfPresent(Map<String, Object> payload, String field, Object value) {
         if (value != null && !value.toString().isBlank()) {
             payload.put(field, value.toString());

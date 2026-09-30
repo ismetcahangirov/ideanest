@@ -33,6 +33,12 @@ export interface NotificationsCopy {
   readonly unnamed: Readonly<Record<string, string>>;
   /** What stands in for a figure the document does not carry. */
   readonly amount: Readonly<Record<string, string>>;
+  /**
+   * The `{when}` of a sentence about a deadline — #138. `on` carries `{date}`; `unknown` is
+   * what a document without the date reads as. The preposition is in here rather than in the
+   * headline because it changes with the fallback in every language.
+   */
+  readonly due: { readonly on: string; readonly unknown: string };
   readonly category: Readonly<Record<string, string>>;
   readonly categoryDescription: Readonly<Record<string, string>>;
   readonly channel: Readonly<Record<string, string>>;
@@ -59,6 +65,8 @@ export interface InboxCopy extends NotificationsCopy {
   readonly filteredBody: string;
   readonly loadMore: string;
   readonly loading: string;
+  /** Retries a list that failed to load. */
+  readonly tryAgain: string;
   readonly unreadWord: string;
   readonly markRead: string;
   readonly marking: string;
@@ -67,6 +75,7 @@ export interface InboxCopy extends NotificationsCopy {
 }
 
 export interface PreferencesCopy extends NotificationsCopy {
+  readonly heading: string;
   readonly signedOut: string;
   readonly signedOutBody: string;
   readonly defaults: string;
@@ -89,6 +98,7 @@ function sharedFrom(t: NotificationsTranslator): NotificationsCopy {
     headline: record('headline'),
     unnamed: record('unnamed'),
     amount: record('amount'),
+    due: { on: String(t.raw('due.on')), unknown: t('due.unknown') },
     category: record('category'),
     categoryDescription: record('categoryDescription'),
     channel: record('channel'),
@@ -116,6 +126,7 @@ export function inboxCopyFrom(t: NotificationsTranslator): InboxCopy {
     filteredBody: t('inbox.filteredBody'),
     loadMore: t('inbox.loadMore'),
     loading: t('inbox.loading'),
+    tryAgain: t('inbox.tryAgain'),
     unreadWord: t('inbox.unreadWord'),
     markRead: t('inbox.markRead'),
     marking: t('inbox.marking'),
@@ -127,6 +138,7 @@ export function inboxCopyFrom(t: NotificationsTranslator): InboxCopy {
 export function preferencesCopyFrom(t: NotificationsTranslator): PreferencesCopy {
   return {
     ...sharedFrom(t),
+    heading: t('preferences.heading'),
     signedOut: t('preferences.signedOut'),
     signedOutBody: t('preferences.signedOutBody'),
     defaults: t('preferences.defaults'),

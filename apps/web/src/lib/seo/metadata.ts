@@ -87,9 +87,28 @@ export const TITLE_TEMPLATE = `%s · ${SITE_NAME}`;
  */
 export const DESCRIPTION_MAX_LENGTH = 160;
 
-/** What the site says about itself when a page has said nothing more specific. */
+/**
+ * What the site says about itself when a page has said nothing more specific — in English,
+ * for the structured-data identity, which has no route and so no language of its own.
+ *
+ * It states the platform's rule the way `shell.tagline` does: a campaign succeeds at 80% of
+ * its goal. It used to say "reaches its goal", which is the opposite of the truth for a
+ * campaign that closes between the two.
+ */
 export const SITE_DESCRIPTION =
-  'Reward-based crowdfunding. Creators publish projects, backers pledge, and nobody is charged unless a project reaches its goal by its deadline.';
+  'Reward-based crowdfunding. Creators publish campaigns, backers pledge, and a campaign that does not raise 80% of its goal refunds every backer in full.';
+
+/** 1200×630 — the 1.91:1 both Open Graph and a large X card crop to. */
+export const OG_IMAGE_SIZE = { width: 1200, height: 630 } as const;
+
+/**
+ * `og:image:alt` for the site card.
+ *
+ * A social image is a picture of text, so without this a screen reader announces
+ * an unnamed image (CLAUDE.md §2 — an icon-only control needs an accessible name,
+ * and this is the same rule).
+ */
+export const OG_SITE_ALT = `${SITE_NAME} — reward-based crowdfunding, where a campaign succeeds at 80% of its goal`;
 
 /** Just enough of `process.env` to be injectable in a test. */
 export type EnvSource = Readonly<Record<string, string | undefined>>;
@@ -348,24 +367,46 @@ export interface PublicPageInput {
    */
   readonly locale: Locale;
   /**
-   * An explicit preview image, or omitted to fall back to the nearest
-   * `opengraph-image` file. See `publicPageMetadata`.
+   * The preview image. Omitted, it is the site card; `'segment-file'` defers to an
+   * `opengraph-image` file in the page's OWN segment, and is only right for a page that
+   * has one beside it. See `publicPageMetadata`.
    */
-  readonly image?: SocialImage | undefined;
+  readonly image?: SocialImage | 'segment-file' | undefined;
   /** `website` unless the page is a piece of writing with an author and a date. */
   readonly type?: 'website' | 'article';
   readonly env?: EnvSource;
 }
 
 /**
+ * The site's own social card, `app/[locale]/opengraph-image.tsx`, as an explicit image.
+ *
+ * Named rather than inherited because inheritance does not reach the pages that need it —
+ * see `publicPageMetadata`. The route is static and per language, so the address is stable.
+ */
+export function siteSocialImage(locale: Locale, env: EnvSource = process.env): SocialImage {
+  return {
+    url: canonicalUrl(localePath(sitePath('/opengraph-image', env), locale), env),
+    width: OG_IMAGE_SIZE.width,
+    height: OG_IMAGE_SIZE.height,
+    alt: OG_SITE_ALT,
+  };
+}
+
+/**
  * The metadata for a page anybody may read.
  *
- * `openGraph.images` IS SET ONLY WHEN THERE IS AN IMAGE, and the difference
- * matters more than it looks. Next merges a file-based `opengraph-image` into a
- * segment's metadata only when that metadata has no `images` OWN PROPERTY
- * (`resolve-metadata.js`), so writing `images: undefined` is not "no opinion" —
- * it is "no image", and it would suppress the generated card and leave the page
- * with no preview at all.
+ * THE SITE CARD IS THE DEFAULT, NAMED EXPLICITLY — issue #114. `app/[locale]/opengraph-image`
+ * was meant to be the fallback for every segment without a card of its own, and it is not:
+ * Next applies a file-based image to its OWN segment's metadata, and a page further down that
+ * returns an `openGraph` object replaces the inherited one whole, image included. Every page
+ * that reached this function without an image — the home page, `/how-it-works`, `/about`,
+ * `/pricing` — shared a link with no picture.
+ *
+ * `'segment-file'` IS THE OPT-OUT, AND IT OMITS `images` RATHER THAN EMPTYING IT. Next merges a
+ * file-based `opengraph-image` into a segment's metadata only when that metadata has no
+ * `images` OWN PROPERTY (`resolve-metadata.js`), so writing `images: undefined` is not "no
+ * opinion" — it is "no image", and it would suppress the page's own card. `/discover` is the
+ * page with a file beside it, and it passes this.
  *
  * `og:title` and `twitter:title` carry the bare title for the same reason the
  * template exists: `og:site_name` already says IdeaNest, and a card that repeats
@@ -390,7 +431,8 @@ export function publicPageMetadata(input: PublicPageInput): Metadata {
 
   const title = input.title;
   const description = truncateAtWord(input.description);
-  const images = input.image === undefined ? {} : { images: [{ ...input.image }] };
+  const image = input.image ?? siteSocialImage(input.locale, env);
+  const images = image === 'segment-file' ? {} : { images: [{ ...image }] };
 
   return {
     title,
@@ -435,14 +477,21 @@ export function publicPageMetadata(input: PublicPageInput): Metadata {
  * a boolean parameter would be an invitation for a second caller to decide its title is
  * special too, and the site name would then be missing from a tab where somebody needed it.
  *
- * Everything else is `publicPageMetadata`'s: the canonical, the Open Graph block, the X card,
- * and the site-wide description, which is what the home page would have written for itself in
- * any case.
+ * Everything else is `publicPageMetadata`'s: the canonical, the Open Graph block and the X card.
+ *
+ * THE WORDS ARE THE CALLER'S, IN THE ROUTE'S LANGUAGE — issue #113. This used to write an
+ * English title and `SITE_DESCRIPTION` itself, so `/az`, `/ru` and `/tr` all told a search
+ * result they were "reward-based crowdfunding" while every other page on the site was
+ * translated. The home page is the one a search for the brand lands on.
  */
-export function homePageMetadata(locale: Locale, env: EnvSource = process.env): Metadata {
+export function homePageMetadata(
+  locale: Locale,
+  copy: { readonly title: string; readonly description: string },
+  env: EnvSource = process.env,
+): Metadata {
   const base = publicPageMetadata({
-    title: `${SITE_NAME} — reward-based crowdfunding`,
-    description: SITE_DESCRIPTION,
+    title: copy.title,
+    description: copy.description,
     path: '/',
     locale,
     env,
@@ -450,7 +499,7 @@ export function homePageMetadata(locale: Locale, env: EnvSource = process.env): 
 
   return {
     ...base,
-    title: { absolute: `${SITE_NAME} — reward-based crowdfunding` },
+    title: { absolute: copy.title },
   };
 }
 
@@ -562,14 +611,18 @@ export function isFetchableImageUrl(url: string): boolean {
  * **The cover image wins over the generated card when there is one.** It is the
  * picture the creator chose for this campaign, §5.3 requires it to be at least
  * 1024×576, and an unfurler that has a real photograph should not be shown
- * typography instead. With no cover, `images` is left unset so that the
- * `opengraph-image` route renders the campaign's title onto the site's own card.
+ * typography instead. With no cover, what follows depends on the segment (#114):
+ * the pre-launch page has an `opengraph-image` route beside it that renders the
+ * campaign's title onto the site's card, so `images` is left unset for it; the
+ * campaign page has no such route, and without the site card named here it would
+ * share a link with no picture at all.
  */
 export function projectPageMetadata(
   preview: PublicProjectPreview | null,
   path: string,
   locale: Locale,
   env: EnvSource = process.env,
+  withoutCover: 'segment-file' | 'site-card' = 'segment-file',
 ): Metadata {
   if (preview === null || !isPubliclyVisible(preview.state)) {
     return privatePageMetadata({
@@ -582,7 +635,9 @@ export function projectPageMetadata(
   const image =
     cover !== null && isFetchableImageUrl(cover.url)
       ? { url: cover.url, width: cover.width, height: cover.height, alt: preview.title }
-      : undefined;
+      : withoutCover === 'segment-file'
+        ? ('segment-file' as const)
+        : undefined;
 
   return publicPageMetadata({
     title: preview.title,

@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EditorShell } from './EditorShell';
 import { EDITOR_TABS } from './tabs';
 import { EDITOR_COPY } from '../../test-editor-copy';
+import type { ProjectState } from '../../lib/projects/api';
 
 /**
  * Appearance is reviewed in Storybook. These cover the navigation contract: the
@@ -11,9 +12,9 @@ import { EDITOR_COPY } from '../../test-editor-copy';
  * of them with a keyboard.
  */
 
-function renderShell() {
+function renderShell(state: ProjectState = 'DRAFT') {
   return render(
-    <EditorShell projectId="project-1" copy={EDITOR_COPY} active="basics" title="A field recorder" state="DRAFT">
+    <EditorShell projectId="project-1" copy={EDITOR_COPY} active="basics" title="A field recorder" state={state}>
       <p>The basics form</p>
     </EditorShell>
   );
@@ -111,14 +112,73 @@ describe('EditorShell', () => {
     expect(controls).toHaveLength(EDITOR_TABS.length);
   });
 
+  /**
+   * #177. A scroll container clips whatever overflows it, and the ring is drawn four pixels
+   * outside the pill (2px wide, 2px off — `theme.css`'s unlayered `:focus-visible` rule). The
+   * row pads itself by exactly that on every side and gives it back with a negative margin,
+   * as `DashboardNav` and `CampaignTabs` do.
+   */
+  it('leaves room inside the scrolling row for the focus ring on every section', () => {
+    renderShell();
+
+    const nav = screen.getByRole('navigation', { name: EDITOR_COPY.sectionsLabel });
+    const row = nav.querySelector('ul') as HTMLElement;
+    expect(row).toHaveClass('overflow-x-auto');
+    expect(row).toHaveClass('p-1');
+    expect(row).toHaveClass('-m-1');
+
+    const controls = [...within(nav).getAllByRole('link'), ...within(nav).queryAllByRole('button')];
+    expect(controls).toHaveLength(EDITOR_TABS.length);
+    for (const control of controls) {
+      // An inset offset here would be outranked by the kit's rule anyway; nothing may ask for one.
+      expect(control.className).not.toContain('outline-offset-[-');
+      expect(control.className).not.toContain('outline-none');
+    }
+  });
+
   it('says which state the campaign is in, in words', () => {
     renderShell();
     // Colour alone must never carry meaning (docs/ui-kit.md §9.2).
     expect(screen.getByText('Draft')).toBeInTheDocument();
   });
 
+  it('links the dashboard once the campaign has launched (#141)', () => {
+    renderShell('LIVE');
+    expect(screen.getByRole('link', { name: EDITOR_COPY.dashboard })).toHaveAttribute(
+      'href',
+      expect.stringContaining('/projects/project-1/dashboard'),
+    );
+  });
+
+  it('offers no dashboard before launch', () => {
+    renderShell('PRELAUNCH');
+    expect(screen.queryByRole('link', { name: EDITOR_COPY.dashboard })).not.toBeInTheDocument();
+  });
+
   it('renders the tab content it was given', () => {
     renderShell();
     expect(screen.getByText('The basics form')).toBeInTheDocument();
+  });
+
+  /**
+   * #181. At 320px Tab landed on "FAQ" half off the row's edge and Chromium left it there. Focus
+   * bubbles to the row, and the row reveals the section that took it.
+   */
+  it('scrolls a section fully into view when it takes focus', () => {
+    const scrollIntoView = vi.spyOn(Element.prototype, 'scrollIntoView');
+    renderShell();
+
+    const nav = screen.getByRole('navigation', { name: EDITOR_COPY.sectionsLabel });
+    const faq = within(nav).getByRole('link', { name: EDITOR_COPY.tabs.faq });
+    faq.focus();
+
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(scrollIntoView.mock.contexts[0]).toBe(faq);
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      block: 'nearest',
+      inline: 'nearest',
+      behavior: 'auto',
+    });
+    scrollIntoView.mockRestore();
   });
 });

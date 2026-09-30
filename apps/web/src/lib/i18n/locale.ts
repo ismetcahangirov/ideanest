@@ -25,10 +25,12 @@
  * first by accident and English second by accident, and the next language added would move
  * both.
  */
-export const SUPPORTED_LOCALES = ['az', 'en', 'ru', 'tr'] as const;
+import { LOCALE_NAMES, SUPPORTED_LOCALES, isLocale, type Locale } from '@ideanest/messages';
+
+/* The vocabulary lives in `packages/messages` so the mobile application reads the same four. */
+export { LOCALE_NAMES, SUPPORTED_LOCALES, isLocale, type Locale };
 
 /** One of §21.1's languages. Anything else is not a locale this platform has. */
-export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
 /**
  * WHAT AN UNSTATED PREFERENCE MEANS IN THIS CLIENT, AND WHY IT IS NOT `az`.
@@ -47,6 +49,11 @@ export type Locale = (typeof SUPPORTED_LOCALES)[number];
  * `en` therefore means "what this client can actually render end to end", and it moves to
  * `az` in the change that finishes the catalogue, not before. Nothing else in the codebase
  * needs to change when it does: every other file asks this constant.
+ *
+ * Since #125 it is also the language of a first visit from anywhere `lib/i18n/country.ts`
+ * does not name: a visitor from Azerbaijan already starts in `az`, from Turkey in `tr` and
+ * from the CIS in `ru`, so this constant is what the rest of the world is met with. That is
+ * a second reason for it to stay English after the catalogue is finished.
  */
 export const DEFAULT_LOCALE: Locale = 'en';
 
@@ -81,12 +88,6 @@ export const LOCALE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
  * Russian is unreadable to precisely the person who needs it most. This is why the list is
  * a constant here rather than four entries in each message file.
  */
-export const LOCALE_NAMES: Record<Locale, string> = {
-  az: 'Azərbaycan dili',
-  en: 'English',
-  ru: 'Русский',
-  tr: 'Türkçe',
-};
 
 /**
  * `og:locale`, in Open Graph's underscored spelling.
@@ -104,9 +105,6 @@ export const LOCALE_OG: Record<Locale, string> = {
 };
 
 /** Whether a value is one of §21.1's languages. The type guard every boundary uses. */
-export function isLocale(value: string | null | undefined): value is Locale {
-  return typeof value === 'string' && (SUPPORTED_LOCALES as readonly string[]).includes(value);
-}
 
 /**
  * A locale from an untrusted value, or {@link DEFAULT_LOCALE}.

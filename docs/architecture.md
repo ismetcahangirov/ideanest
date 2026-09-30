@@ -87,7 +87,7 @@ Four pillars, observed across established platforms in this category:
 | **Project / Campaign** | A creative undertaking seeking funding |
 | **Creator** | The person or organisation running a project |
 | **Backer** | A user who pledges money to a project |
-| **Pledge** | A financial commitment, not charged immediately |
+| **Pledge** | A backer's commitment to a campaign, charged when the backer confirms it (IDN-EXT-01, §1.1) and refunded in full if the campaign fails, is suspended or is cancelled |
 | **Reward tier** | A package promised in exchange for a pledge amount |
 | **Add-on** | An extra item purchasable alongside a reward |
 | **Item** | The atomic physical or digital unit rewards are composed from |
@@ -816,7 +816,7 @@ sequenceDiagram
 | PL-06 | Total calculation | Reward + add-ons + shipping + tax |
 | PL-07 | Card entry or stored card | Card data never reaches our servers |
 | PL-08 | 3-D Secure | Mandatory |
-| PL-09 | Edit a pledge | **Upward only**, while the campaign takes pledges (IDN-EXT-01). Built (#35): an edit that would lower a confirmed pledge is refused with `PLEDGE_DECREASE_NOT_ALLOWED`; a draft is still being chosen and may go either way |
+| PL-09 | Edit a pledge | **Upward only**, while the campaign takes pledges (IDN-EXT-01). Built (#35): an edit that would lower a confirmed pledge is refused with `PLEDGE_DECREASE_NOT_ALLOWED`; a draft is still being chosen and may go either way. **A paid (`COLLECTED`) pledge is raised, not edited (#171)**: `POST /v1/pledges/{id}/raise` charges the difference at once on the provider's page, and the pledge changes when that payment settles — see the note below |
 | PL-10 | ~~Cancel a pledge~~ | **Withdrawn by IDN-EXT-01**: a backer cannot cancel; refunds are campaign-level (§9.7). Built (#35): `DELETE /v1/pledges/{id}` answers `PLEDGE_CANNOT_BE_CANCELLED` for anything past `DRAFT`, and only abandoning an unpaid checkout remains. The web's cancel panel is gone |
 | PL-11 | ~~Replace the card~~ | **Withdrawn**: the charge is at confirmation, so there is no later collection to fail |
 | PL-12 | Anonymous pledging | Hidden from public lists |
@@ -964,6 +964,112 @@ sequenceDiagram
 > reason: an edit that is refused — because the add-on the backer wanted more of has
 > run out — must leave them holding exactly what they had, and the other order would
 > briefly leave them holding nothing.
+
+> **PL-09 for a paid pledge: raised by paying the difference (#171).** The decision, taken by the
+> owner in #171 over the alternative of rewriting the copy: **while its campaign takes pledges, a
+> backer may raise a paid pledge — a better tier, more add-ons, a larger contribution, or a
+> destination that costs more — and the difference is charged at once, the way the confirmation
+> charge is. Never lowered, never withdrawn.** IDN-EXT-01 (#39) had made almost every pledge
+> `COLLECTED` the moment it was made, and PL-09's `PATCH` only moves `DRAFT` and `CONFIRMED`, so
+> until #171 the screens promised a raise no endpoint performed.
+>
+> The flow is the confirmation's, in the same two requests:
+>
+> 1. **`POST /v1/pledges/{id}/raise`** (`Idempotency-Key` required) takes PL-09's selection fields
+>    with their Merge-Patch meaning, the page's `language`, `successUrl` and `errorUrl`, and
+>    `expectedAmount` — the difference the backer was shown. In one transaction, holding the
+>    pledge's row lock: the pledge must be the caller's and `COLLECTED` (`PLEDGE_NOT_RAISABLE`
+>    otherwise, naming `PATCH` for a draft or a legacy `CONFIRMED` pledge), the campaign must be
+>    taking pledges (`PROJECT_NOT_LIVE`, from the same `PledgeAcceptance` as the draft), no other
+>    raise may be waiting for its payment (`PLEDGE_RAISE_IN_PROGRESS`), the new selection is priced
+>    by the checkout's own `selectionFor`, and it must cost more (`PLEDGE_DECREASE_NOT_ALLOWED`
+>    below, `RAISE_NOT_AN_INCREASE` equal) by exactly `expectedAmount` (`RAISE_AMOUNT_CHANGED`,
+>    with both figures, rather than charge a number nobody agreed to). Only then are the places
+>    the new selection needs beyond what the pledge claims **reserved**, and a `PENDING`
+>    `pledge_raises` row written with the quote, the add-on lines, the hold and the pledge's
+>    `version`. The transaction commits, and then the provider's page is opened for the
+>    difference through the same `PaymentPage` the confirmation uses, under an idempotency key
+>    derived from the raise (`pledge-raise-{id}`), which is also the provider's order identifier.
+>    **Epoint's `order_id` limit is 255 characters (#178)** — "Unique order ID in your application.
+>    Max 255 characters." on `/request` and `/refund-request` alike
+>    (<https://developer.epoint.az/en/checkout/request>,
+>    <https://developer.epoint.az/en/refund/refund-request>, read 2026-09-29; the 2022 API v1 PDF says
+>    the same). Every key sent as one fits with room to spare: a pledge's payment page uses the
+>    backer's `Idempotency-Key`, a canonical UUID (36); a raise's `pledge-raise-{uuid}` (49); a payout
+>    `{payout|withdrawal|recalculated}-{projectId}-{epochMillis}` (at most 65). So no key was shortened.
+>    `EpointPaymentProvider.MAX_ORDER_ID_LENGTH` refuses a longer one before any request, and
+>    `EpointOrderIdTests` builds each kind of key with the code that builds it and holds it to the limit.
+>    If no page can be opened nothing is held: under the endpoint the prepare and the page share the
+>    idempotency store's transaction, so the raise and its hold roll back with the refusal (a caller
+>    outside one gets an `ABANDONED` raise and its hold given back at once). The page's address is
+>    kept on the raise, and `GET /v1/pledges/{id}` offers it back as `latestRaise.resumeUrl` while the
+>    raise is `PENDING` and its hold lasts — a backer who left the provider's page is not locked out
+>    for the payment window — and as null otherwise.
+> 2. **The provider's webhook** settles it in `HostedChargeEvents`, which tells a raise's charge
+>    from a draft's by that key. On success, in one transaction: the `SUCCEEDED` charge row, the
+>    ledger posting (escrow to the creator, as for any charge), and the raise applied — the held
+>    places committed from reserved to claimed, the places the pledge no longer needs released,
+>    the pledge's tier, add-ons, destination and five amounts rewritten (it stays `COLLECTED`),
+>    the difference added to the campaign's `pledged_amount` (not to `backers_count`: it is the
+>    same backer), and `pledge.edited` recorded, which §4.10 already words for the backer. On
+>    failure: the `FAILED` row, the hold released, and the pledge exactly as it was.
+>
+> **Retries charge once.** A retried request under the same key is answered from §10.3's store
+> with the page the first attempt opened; a second delivery of the webhook is refused by the
+> webhook table or by the settled row; and `transactions_idempotency_key_key` admits one settled
+> row per raise.
+>
+> **Two raises at once cannot both be priced against one total.** The prepare holds the pledge's
+> row lock while it looks for a raise in flight, and V83's `pledge_raises_one_pending_per_pledge`
+> admits one `PENDING` raise per pledge. A raise is applied only to the pledge `version` it was
+> priced against; anything that moved the pledge in between — another raise, a campaign refund, a
+> post-campaign upgrade — makes the charge a payment for nothing, and it is recorded `UNAPPLIED`.
+>
+> **A raise is never applied beside a refund, or after the campaign stopped taking pledges (#174's
+> review).** When the difference is paid the raise is applied only if the campaign still takes
+> pledges and none of the pledge's own money is being or has been refunded (a refund that has not
+> failed; refunds of an earlier raise's `UNAPPLIED` charge do not count). Otherwise it is
+> `UNAPPLIED` and its charge refunded. Without this, a campaign halted while a raise was on the
+> provider's page would have its pledge refunded charge by charge while the raise landed on it,
+> and a payment that arrived after the deadline would change `pledged_amount` after the campaign's
+> outcome was snapshotted; neither can now happen. The prepare refuses such a pledge up front
+> (`PLEDGE_NOT_RAISABLE` with `meta.reason: REFUNDED`) and `raisable` is false for it. Recording and
+> settling a refund take the pledge's row lock, as the raise does, so neither slips between the
+> other's read and write.
+>
+> **Holds lapse, payments may still arrive.** A raise's places are held for the confirmation's
+> payment window (`ideanest.pledge.reservation.payment-window`) and §8.4's `reservation-cleaner`
+> gives them back afterwards (`EXPIRED`). A payment that arrives later is still applied when the
+> pledge has not moved, no newer raise was started, and the places can be claimed again; otherwise
+> it is `UNAPPLIED`. An `UNAPPLIED` raise's charge is refunded by the platform on its own through
+> `campaign-refunds` with the reason `RAISE_NOT_APPLIED` (V83), whatever the campaign's state —
+> money that bought nothing is never paid out: `PayoutGateway.fundsOf` leaves such a charge, and its
+> refund, out of a campaign's funds.
+>
+> **A paid raise nothing settled is settled by the cleaner.** The webhook records the charge and
+> settles the raise in one transaction, but a node of the release before raises existed (a rolling
+> deployment, V83's header) records the charge and leaves the raise `PENDING`. §8.4's
+> `reservation-cleaner` sweeps every `SUCCEEDED` `pledge-raise-*` charge whose raise is not
+> `SUCCEEDED` or `UNAPPLIED` and settles it as the webhook would have: applied while it still can be,
+> otherwise `UNAPPLIED` and refunded.
+>
+> **Refunds and payouts see the new total because they read the charges, not the pledge.** A
+> raised pledge was paid for in two or more charges. A campaign that fails or is halted refunds
+> **each charge against its own provider transaction** for what it has left (§9.7). The pledge moves
+> to `REFUNDED`, and its whole total — raise included — leaves the campaign's figures, when a refund
+> **settles** and leaves nothing: under the pledge's row lock, what it was charged less what has
+> actually gone back is zero. Never when a refund is merely requested, since that one may fail. A
+> campaign that succeeds pays out every settled charge on it, the applied raises among them (§9.5's
+> `PayoutGateway.fundsOf`).
+>
+> **What did not change.** A draft is still edited with `PATCH` and paid for once; a legacy
+> `CONFIRMED` pledge is still edited with `PATCH` and charged nothing (#35's rule); a pledge still
+> cannot be cancelled; and once the campaign stops taking pledges the raise is refused and §4.8's
+> PM-09 and PM-10 routes behave exactly as before — recorded beside the pledge, not charged. While
+> the campaign runs those two routes answer `CAMPAIGN_STILL_TAKING_PLEDGES` with `meta.use` naming
+> the raise for a paid pledge and `PATCH` for anything else. `GET /v1/pledges/{id}` carries
+> `raisable` — paid for, and the campaign is taking pledges — and `latestRaise`, which the pledge
+> screen reads when the provider sends the backer back (`?raise=returned|failed`).
 
 > **PL-12 is built (#57), and what it needed was not a column.** `is_anonymous` was
 > already stored and already accepted from `POST /v1/pledges/draft` (#52). What was
@@ -1172,8 +1278,9 @@ The most valuable and most complex module. It begins when funding closes.
 > Stock is not duplicated: a post-campaign add-on claims its places through the same
 > statements the checkout uses, so a limited add-on cannot be oversold by being bought
 > late. The two endpoints are **refused while the campaign is still taking pledges**,
-> with a code naming §4.5's PL-09 edit — two ways to change one pledge, and the campaign
-> decides which applies. A downgrade is refused rather than recorded as a negative
+> with a code naming the way that applies then — §4.5's PL-09 edit for a draft or a legacy
+> confirmed pledge, and since #171 the raise for a paid one, which charges the difference at
+> once. Two ways to change one pledge, and the campaign decides which applies. A downgrade is refused rather than recorded as a negative
 > supplement: money that has been collected comes back through #67. And **nothing is
 > charged**: PM-16 is the charge, `collected_at` is null on every row this platform
 > holds, and a stub that marked one collected would tell a creator money had arrived.
@@ -1643,7 +1750,9 @@ Preferences are per category and per channel, with a digest option.
 > something to say.
 >
 > **AD-02's intake and queue, as #102 built them.** Reporting is
-> `POST /v1/projects/{id}/report` (§10.2, C-06) and `POST /v1/users/{id}/report`
+> `POST /v1/projects/{id}/report` (§10.2, C-06) and `POST /v1/users/{slug}/report`
+> (addressed by the public slug since #143, like `/v1/users/{slug}/follow`, because
+> the public profile carries no identifier; the report still stores the account id)
 > — the second is not in §10.2's list and is what AD-09's "profiles" and AD-04's
 > ban are decided from, since a complaint about a person filed against one of
 > their campaigns is filed against the wrong object. Both require a signed-in
@@ -1651,6 +1760,14 @@ Preferences are per category and per channel, with a digest option.
 > and the open-report count is the queue's only triage signal, so an
 > unauthenticated form would make that number one script's to choose. Both are
 > limited per account and per source address.
+>
+> **Accepted trade-off: report-by-slug, like follow-by-slug, accepts a private
+> profile's slug.** `GET /v1/users/{slug}` answers 404 for a PRIVATE profile, but
+> `POST /v1/users/{slug}/report` (and `/follow`) resolve the slug through
+> `UserAccounts.findBySlug`, which does not look at visibility. That is deliberate:
+> moderation may need reports about private accounts (a person who turned private
+> after harassing someone is still reportable), and the routes are signed-in and
+> rate-limited, so what they reveal about whether a slug exists is bounded.
 >
 > The queue is `GET /v1/admin/moderation/reports` with
 > `?state=&after=&limit=`, plus `GET`, `POST …/{id}/uphold` and
@@ -2405,7 +2522,8 @@ stateDiagram-v2
 > **IDN-EXT-01 redrew this diagram (#35, #39).** A confirmed pledge is a charged one, so
 > `CONFIRMED`, `CHARGE_PENDING`, `CHARGE_FAILED` and `DROPPED` leave the diagram, and there is
 > no edge from a paid pledge to `CANCELED_BY_BACKER`: a backer cannot cancel. A raise is not
-> an edge — the pledge stays `COLLECTED` and gains a supplement. The removed states remain in
+> an edge — the pledge stays `COLLECTED`. During the campaign its selection and total change once
+> the difference is paid (#171, §4.5); after the campaign it gains a supplement (§4.8). The removed states remain in
 > the code until stage 4 (#45); the notes below record why each was added.
 >
 > **`DRAFT --> CANCELED_BY_BACKER` is new, and #56 added it while building
@@ -2463,6 +2581,30 @@ HOLD → BLOCKED (fraud)
 > payout, nothing is refunded through the platform** — a chargeback through the bank is
 > recovered from the creator's future payouts, and the account is blocked until it is repaid
 > (§9.8).
+>
+> **A campaign is paid out once (#182).** A payout prices the campaign's whole collections and
+> nothing in it subtracts an earlier payout, so a second one would pay the same money again — and
+> take a chargeback lost after the payout off twice, once as the creator's debt and once as a
+> `CHARGEBACK` refund. With late pledges off (#36) there is nothing a second payout could be for.
+> Finance's calculation answers 409 `CAMPAIGN_ALREADY_PAID_OUT`, a redelivered withdrawal requests
+> nothing, a payout still in flight for a paid campaign is refused at send before the provider is
+> asked, and V86's partial unique index allows one `PAID` payout per campaign. A withdrawal whose
+> whole net goes towards the creator's debts is recorded as that payout — `PAID`, net zero, nothing
+> sent, no transaction — so it too reads as paid out, and a chargeback lost afterwards is the
+> creator's debt. A payout the provider refused (`FAILED`) or staff cancelled is still followed by a
+> fresh calculation. **A send the provider never answered is not a refusal:** the money may have
+> moved, so the payout stays `APPROVED` with `send_unconfirmed_at`, is sent again only under its own
+> idempotency key and at its own figure, and cannot be cancelled (409 `PAYOUT_SEND_UNCONFIRMED`),
+> recalculated or disputed (neither opened nor upheld) — a fresh calculation would go out under a new
+> key beside it. A refusal of that retry proves nothing either (Epoint refuses an `order_id` it has
+> already carried out), so it stays unconfirmed. Only a person reading the provider's statement ends
+> it: `POST /v1/admin/payouts/{id}/unconfirmed-send/sent` (with the statement's transaction reference:
+> `PAID`, the posting a sent payout gets, withheld debt recovered) or `.../not-sent` (`FAILED`
+> `confirmed_not_sent`, after which the campaign may be priced again). Until then a chargeback lost on
+> the campaign stays in its refunded figure rather than becoming a creator debt — taken off once if it
+> was not sent, and logged with the settlement (`refundedSincePriced`) for recovery by hand if it was.
+> V86 turns the payouts earlier releases recorded `FAILED` `provider_unreachable` into
+> unconfirmed ones; a campaign with such a row left is not priced again until it is settled.
 >
 > **The decision edition 6 left to this specification: the dispute window when a payout waits
 > for VÖEN.** It stays open **until the money is actually sent**, not only for the 14 days.
@@ -3073,6 +3215,18 @@ backer per project.
 > who lost would get a 500 on a campaign with stock to spare. A single global order
 > makes the cycle unconstructible.
 
+#### `pledge_raises` and `pledge_raise_lines` (#171, V83)
+One row per attempt to raise a paid pledge while its campaign takes pledges: `pledge_id`,
+`project_id`, `state` (`PENDING`, `SUCCEEDED`, `FAILED`, `EXPIRED`, `ABANDONED`, `UNAPPLIED`),
+`charge_key` (the charge's `transactions.idempotency_key`), `base_version` (the pledge's
+`version` it was priced against), the new tier and destination, the five new amounts,
+`from_total`, `to_total` and `amount` (the difference, positive, and constrained to be
+`to_total - from_total`), `hold_expires_at`, `ended_at`, and `resume_url` (the provider's page for
+its payment, offered back while it is `PENDING` and held). At most one `PENDING` row per pledge.
+`pledge_raise_lines` holds, per raise, the `ADDON` lines of the new selection and the `HOLD` —
+the places reserved for it while it is pending, stored rather than recomputed because by the time
+they are given back the pledge may have moved. §4.5 has the flow.
+
 #### `payment_methods`
 `id`, `user_id`, `provider`, `provider_token` (**token only, never a card
 number**), `scheme_transaction_id`, `brand`, `last4`, `exp_month`, `exp_year`,
@@ -3402,7 +3556,7 @@ load profile).
 | `charge-processor` | Every minute | Opens the collection of campaigns that closed above goal, and makes §9.6's first attempt against the pledges it queues. **Built (#64).** The rate limit is §9.3's R-09 expressed as a batch per tick — a hundred charges a minute is roughly 1.7 requests a second, a figure a provider can be told in advance rather than one discovered by being throttled at a campaign's close. There is deliberately no sleeping inside a pass to smooth it further: a sleep would hold the job's lease, and a pass that outlasts its lease is joined by a second replica |
 | `charge-retry` | Every 6 hours | Retries failures within the window and drops what has run out of it. **Built (#65).** Six hours rather than a minute because §9.6's slots are at +24h, +72h and +5 days — nobody can tell an attempt made at 24:00 from one at 27:00. **Two jobs and not one**, for the reason §8.4 gives about splitting `reminder-sender` from `deadline-reminder`: `JobRunner` counts failures per job name, so one job doing both queues would let a database problem in the retry sweep back off the initial collection too. The drop is here rather than in a third job — it is the last row of the same table, at the same granularity, and it runs after the retries so a pledge whose final attempt is due in the same pass gets it |
 | `payout-scheduler` | Daily | Prepare payouts once the hold elapses |
-| `reservation-cleaner` | Every minute | Release expired stock reservations |
+| `reservation-cleaner` | Every minute | Release expired stock reservations: lapsed drafts, and since #171 the places a raise of a paid pledge held for a payment that did not arrive in the payment window. Since #174's review it also settles a raise whose charge settled without it (a rolling deployment's previous-release node): applied if it still can be, otherwise `UNAPPLIED` and refunded |
 | `search-indexer` | Event-driven plus nightly full | Keep the index current |
 | `analytics-aggregator` | Hourly | Populate daily rollups |
 | `reminder-sender` | Every minute | Launch reminders (#39) |
@@ -3865,6 +4019,47 @@ single-file change.
 > transaction, status and operation code, and deduplication rather than a replay window is
 > what refuses a repeat.
 >
+> **Return addresses are the site's, not the caller's (#139).** `POST /v1/pledges/{id}/payment`
+> and `POST /v1/me/payout-destination/card-registration` take a `successUrl` and an `errorUrl`
+> from the caller, and Epoint redirects the person to them from its own page
+> (`success_redirect_url`, `error_redirect_url`). Unchecked, that is an open redirect running
+> through checkout: a compromised front end or a browser extension could send a backer from the
+> bank's page to a look-alike "payment failed, re-enter your card" site. `shared.payment.ReturnUrls`
+> accepts an address only when it is absolute, has no user information, and its scheme, host and
+> port are exactly those of a configured origin; the path and query stay the caller's. Anything
+> else is 400 `INVALID_RETURN_URL` (`meta.field` names which), raised before the draft is held or
+> the card page opened. An absent address is still accepted — Epoint then uses the merchant
+> account's pages. The origins are configuration, `ideanest.payment.return-urls`: `site-origin`
+> is the e-mail links' `WEB_BASE_URL` (the API's name for the web's `IDEANEST_SITE_URL`) and
+> `additional-origins` is `PAYMENT_RETURN_ORIGINS`, comma separated, for a staging or preview
+> host beside it. Origins are https; http only on a loopback host, which is what local
+> development runs. The pending charge's `provider_response` records both addresses, so the
+> payment's own row says where the backer was sent back to; `payout_card_registrations` has no
+> column for them and the card registration records nothing extra. That asymmetry is deliberate:
+> the charge row is the money's audit trail and where a disputed "I was sent somewhere else"
+> is answered, while a card registration moves no money and the address it returned to is the
+> settings page, so a column (and a migration) would record nothing anyone needs. Because
+> `transactions` is append-only, an address longer than 2048 characters is refused outright
+> rather than stored forever. Every refusal is logged at WARN with the field and the host, never
+> the path or query. A deployment left on the loopback default (`WEB_BASE_URL` unset) starts,
+> but logs a loud WARN when a payment provider is configured or a non-local profile is active
+> — refusing to start would take the whole API down over one variable. The web builds its
+> return addresses from the browser's `location.origin`, so every host the site is served on
+> must be the site origin or be in `PAYMENT_RETURN_ORIGINS` (`ops/deploy/README.md`).
+>
+> **Decision: no custom URL scheme for the native app.** The issue asked whether the app could
+> pass `ideanest://…` as its return address. Nobody has confirmed with Epoint that its page will
+> redirect to a custom scheme, and it cannot be tested without a live merchant account — a
+> bank's 3-D Secure page and an in-app browser may each refuse a non-http navigation, and the
+> failure would be a backer stranded after paying. So custom schemes are refused like any other
+> off-site address. The app passes an https forwarder page on the site instead (for example
+> `/{locale}/pledges/{id}?payment=returned`). The mobile checkout adds that path to the app's
+> universal / app links (`apps/mobile/app.config.ts`, which today claim the site's host and, on
+> Android, only `/projects`), so the operating system hands the return to the app when it is
+> installed and the browser shows the pledge page when it is not. Revisit only
+> if Epoint confirms custom-scheme redirects in writing, and then as a configured scheme next to
+> the origins, never as "any scheme".
+>
 > Two departures from the sketch above, both small. `ProviderCapabilities` gains
 > `schemeChaining`, because R-03 is one of the three the design cannot work without and
 > the record had no field for it; `preAuthHoldDays` stays, as the number that records
@@ -4048,6 +4243,76 @@ against refunding twice, reconciled against the provider's `returned` status (#4
 > A refund's transaction row carries no provider transaction identifier when the provider issues
 > none — Epoint's `/reverse` does not — because V41 admits one settled row per provider transaction
 > and the charge is that row; the refund reaches its charge through `refunds.charge_transaction_id`.
+>
+> **Per charge since #171.** A pledge raised during its campaign (§4.5) was paid for in more than one
+> charge, and a provider reverses a payment up to what that payment was. So `campaign-refunds` offers
+> settled **charges**, not pledges: every charge of a failed or halted campaign **that has money
+> left** — its amount less every refund against it that has not failed — whatever its pledge's state,
+> and every charge of a raise that was paid for and could not be applied (`RAISE_NOT_APPLIED`,
+> whatever the campaign's state). So a charge refunded in part by staff is refunded for the rest, and
+> a charge whose refund failed after the pledge's other charges went back is retried. Each is
+> refunded against its own provider transaction for what it has left, and the double-refund rules
+> above apply per charge (a requested refund counts as gone until it settles).
+>
+> **Refunded in full is decided when a refund settles (#174's review).** Not when it is requested:
+> under the pledge's row lock, the settlement compares what the pledge was charged with what has
+> actually gone back, and when nothing is left the pledge moves to `REFUNDED` and its whole total
+> leaves the campaign's figures, in that transaction. `refunds.full_refund` keeps V53's meaning —
+> whether the refund was *meant* to return the rest (every part of a staff refund of the rest, every
+> campaign refund; not a `RAISE_NOT_APPLIED` one) — and no longer decides the pledge.
+>
+> **A staff refund is split across charges.** With no amount it returns every charge's remainder;
+> with one, up to what the pledge has left in all, taken from the newest charge first — except that a
+> charge of a raise that could not be applied is drawn on last, since the platform already owes it
+> back and would otherwise find nothing left of it. The parts are recorded in one commit under the
+> pledge's lock and then each is sent, whatever happened to the one before. The first carries the
+> request's idempotency key and the others a key derived from it (`refund-part-` and a name-based
+> UUID of the key and the part's number, so no other request's key can collide with it), and a
+> replay answers every part and reaches no provider; a key already spent on another pledge's refund
+> is refused `IDEMPOTENCY_KEY_REUSED`. A part that could not be sent at all (its charge or provider
+> missing) is `FAILED`; one whose answer was lost stays `REQUESTED` for the reconciliation. The
+> console's answer is the first part that did not succeed, or the first part. An upheld backer
+> dispute (#43) refunds the rest the same way and is upheld once all of the pledge's money has gone
+> back: a retry while a part has no outcome waits for it rather than sending anything beside it.
+>
+> **What the reconciliation can prove (#174's review).** A refund whose outcome was lost — a staff
+> refund's as well as the platform's — is settled from the provider's status of the whole payment:
+> `returned` settles it, "still paid" fails it so it is sent again. Since payments are reversed in
+> parts, that holds only when the refund is the only one against its charge, and "still paid" only
+> when it was for all of the charge. Otherwise the status cannot say which refund happened: the row
+> stays `REQUESTED` — counted as gone, so nothing is sent twice — with `refunds.review_reason` (V83)
+> saying why, is logged at `ERROR`, and is no longer asked about. It shows in the console's
+> `REQUESTED` list; settling it is a person's job, and no screen does that yet.
+>
+> **An unreachable provider is an unknown outcome, not a failure (#176).** A reversal whose call
+> ended `ProviderUnavailableException` — a timeout, a dropped connection, an answer nobody can read —
+> may have been carried out, and Epoint's `/reverse` has no duplicate protection. Such a refund
+> (campaign or staff) is no longer recorded `FAILED` with `provider_unreachable`: it stays
+> `REQUESTED`, so it counts as gone on every path — the sweep does not offer its charge, and a second
+> staff refund of the same money finds nothing left (409) — until the reconciliation above asks the
+> provider after `unresolved-after`. Only a payment the provider still reports paid fails it, and only
+> then does the sweep send it again, after `retry-after`. The staff endpoint answers 200 with
+> `state: REQUESTED` and no failure code: pending, not refused. `FAILED` now means refused by the
+> provider, found still paid by the reconciliation, or never sent (charge or provider missing,
+> `not_sent`). **V85** moves the refunds recorded the old way (`FAILED`, `provider_unreachable`) back to
+> `REQUESTED`, clearing `settled_at` and the failure fields, so the next pass asks the provider before
+> anything is resent; one beside another refund of the same charge (or naming no charge) is reopened
+> already carrying a `review_reason` — the refunds against the charge may then add up to more than it
+> was, which blocks any further refund — and is left to a person. A previous-release node can still
+> write such a row during the deploy, after V85 has run (#183): every read of what has gone back
+> counts a `FAILED` `provider_unreachable` row as gone, and every `campaign-refunds` pass starts by
+> running V85's UPDATE again (`RefundRepository.reopenUnreachable`), so such a row is reconciled before
+> anything is resent whatever release wrote it — nobody has to re-run the migration by hand.
+>
+> **The reconciliation takes turns (#183).** Each pass asks about a bounded batch of unresolved
+> refunds, least recently asked first (`refunds.last_checked_at`, V87, stamped whatever the answer),
+> never-asked first of all. A refund the provider keeps calling pending goes to the back of the queue
+> instead of filling every pass ahead of newer ones.
+>
+> **A partially charged-back charge.** An unreachable refund of the rest of a charge the network took
+> part of is never alone on its charge, so the reconciliation cannot tell from the payment's status
+> which reversal happened: it always goes to `markForReview`, stays `REQUESTED` (counted as gone), and
+> waits for a person rather than being settled or resent.
 
 ### 9.8 Chargebacks
 
@@ -4073,6 +4338,32 @@ against refunding twice, reconciled against the provider's `returned` status (#4
 > debt as large as the payout leaves no payout: a withdrawal applies it all at once, and finance's
 > calculation answers nothing to pay. Reinstating the account once the debt is settled is a staff
 > action. Epoint documents no chargeback webhook, so how its chargebacks reach `disputes` is still open.
+>
+> **A lost chargeback is a refund row (#175).** The loss was recorded only as a `REFUND` transaction
+> and its posting, while every read that decides what of a charge is still refundable sums `refunds`:
+> the staff overdraft check, the per-charge remainder (#171), the `campaign-refunds` sweep, an upheld
+> backer dispute, and the payout's refunded figure. So money the network had taken back was still
+> offered, and a failed campaign or a member of staff paid the backer twice. Resolving `LOST` or
+> `CONCEDED` now also writes, under the pledge's row lock and in the same transaction, a `refunds` row
+> with reason `CHARGEBACK` (V84), already `SUCCEEDED`, against the disputed charge, pointing at that
+> transaction, authored by the administrator who resolved the case, keyed `chargeback-{disputeId}`.
+> Nothing is sent. Every path counts it without knowing chargebacks exist: a charge taken back in full
+> has nothing left, one taken back in part is refunded only for the rest, and a calculated payout that
+> did not yet count it is cancelled at send (`figuresMoved`) rather than paying the creator money the
+> network took. When it leaves nothing on the pledge, the pledge moves `COLLECTED → CHARGEBACK` and
+> leaves its campaign's totals, as a full refund does; when a refund later takes the rest, `REFUNDED`.
+> `CHARGEBACK` cannot be issued through `POST /v1/admin/refunds` (400 `REFUND_REASON_NOT_ISSUABLE`).
+> `full_refund` is true when the chargeback took everything its charge had left, as every part of a
+> staff refund of the rest carries it. A case resolved against the platform twice (`LOST` then
+> `CONCEDED`, or lost again after a reopening) moves the money once: the second resolution finds the
+> `dispute-{id}` transaction and the `chargeback-{id}` row and posts, records and recovers nothing
+> (before, it failed with a 500 on the transaction's unique key). Any chargeback row, even of part of
+> the pledge, is "pledge money gone back" to `hasRefundOfPledgeMoney`, so **a pledge with a lost
+> chargeback cannot be raised** (`PLEDGE_NOT_RAISABLE`), and a raise paid for afterwards is `UNAPPLIED`
+> and refunded. V84 backfills the row for losses recorded before it, from their `dispute-{id}`
+> transaction; one whose resolver's account has since been deleted is backfilled with no author, which
+> V84 lets `CHARGEBACK` have (V76/V83's authorless-refund rule), and the console shows it as the
+> platform's. Those pledges' states are left for a person.
 >
 > **Built (#44), the screens.** A paid pledge's page offers "Dispute this payment" behind one press;
 > the reason goes to `POST /v1/pledges/{id}/disputes`, and `DISPUTE_WINDOW_CLOSED` and
@@ -4263,6 +4554,7 @@ GET    /v1/pledges/{id}
 POST   /v1/pledges/{id}/confirm
 POST   /v1/pledges/{id}/payment          # IDN-EXT-01 (#39): hold the draft, open the payment page; paid → COLLECTED by webhook
 PATCH  /v1/pledges/{id}
+POST   /v1/pledges/{id}/raise            # #171: raise a COLLECTED pledge while the campaign takes pledges; opens the payment page for the difference, applied by webhook
 DELETE /v1/pledges/{id}   # IDN-EXT-01 (#35): abandons an unpaid DRAFT only; PLEDGE_CANNOT_BE_CANCELLED otherwise
 GET    /v1/pledges/{id}/receipt
 
@@ -6377,7 +6669,7 @@ internationalisation APIs.
 it was written in.
 
 > **The catalogue covers the whole client's public and account-facing surface now
-> (#324), and the emails with it.** `apps/web/messages/{az,en,ru,tr}.json` holds the
+> (#324), and the emails with it.** `packages/messages/src/{az,en,ru,tr}.json` holds the
 > four languages and `next-intl` resolves them from the `[locale]` segment #123 put
 > in the path. `users.locale` is the durable record behind the reader's choice: it is
 > returned by `GET /v1/me`, written by `PATCH /v1/me/locale`, and — since #324 — read
@@ -6391,6 +6683,15 @@ it was written in.
 > `/az/discover` and `/ru/discover` are two cached documents and neither has to ask who
 > is asking. `apps/web/README.md` records exactly which routes are key-based and which
 > are not.
+>
+> **A first visit starts in the visitor's country's language (#125).** Only a path with no
+> language in it has to be told one, and until #125 the answer for anybody without a stored
+> choice was English, although most of the audience reads Azerbaijani, Turkish or Russian.
+> The redirect now reads Cloudflare's `CF-IPCountry` after the cookie and before the default:
+> Azerbaijan `az`, Turkey `tr`, the CIS members and Turkmenistan `ru`, and everybody else
+> English. Georgia and Ukraine left the CIS and are deliberately not in the table.
+> `Accept-Language` is still not negotiated, for #123's reason: the country is read on the one
+> response that is `private, no-store` anyway, so no localised page varies by it.
 >
 > **What is still English, stated rather than left to be found.** Nothing that was on this
 > line. The campaign editor was the last surface on it and is finished (#459): the frame, the
@@ -6723,6 +7024,16 @@ reachable — and the eight documents are empty until #423 answers. A platform t
 not published its creator agreement is a platform whose catalogue is short, which is
 what both gates read as "nothing is required" rather than as a refusal.
 
+**"Not published" is the service's 404 and nothing else (#147).** The web's legal reads
+return `published`, `unpublished` (404 only) or `unavailable` (any other status, a timeout,
+a network failure, a body that does not narrow). The document and archive routes and the
+index render `FailureState` for `unavailable`; during the 2026-09-28 outage they had told
+readers IdeaNest had no terms of use. The checkout's backer-agreement read has the same three
+answers, and an unavailable one renders the failure state in place of the checkout, because
+a pledge confirmed without the §22.3 statement is one the service refuses once an agreement
+is in force. An unavailable answer is not held for the documents' hour: Next's data cache
+stores only 200 responses and these routes are dynamic.
+
 **The archive matters more than it looks.** Somebody who accepted version 3 must be able
 to read version 3, not only whatever is current — otherwise the acceptance record names a
 text the person it is about cannot see. V65 stores every version precisely so that route
@@ -6813,6 +7124,17 @@ reason `open` is on a fee schedule — three clients deriving it would round it 
 statements: zeros are a commitment to charge nothing, and an empty table is the platform
 not having decided. `FeeSchedules.priceOf` treats the absence as zero fees because a
 payout run must not stop over it; a page has the opposite obligation.
+
+**A failed read is neither, and says so (#145).** The web used to draw a refused or
+unreachable read with the `configured: false` sentence — "nothing is being deducted from
+pledges today" — so during the 2026-09-28 outage creators were told there was no fee.
+`FeeDisclosure` now has three branches: the rates, the unconfigured sentence (only when the
+service answered `configured: false`), and a failed-read sentence that states no figure,
+says it is not a statement that nothing is charged, and links to Pricing — not to the
+creator agreement, which is unpublished until #423 answers (§22.2), so that link would
+lead to "not published" during the very outage the sentence is for. A body claiming `configured: true` without its rates is drawn as a failed read. `/about` no
+longer prints a rate at all: it names the two fees and links to Pricing, so the two pages
+cannot disagree when the schedule moves.
 
 **The risk statement inside the pledge flow** — #427. §22.3 asks for it *within the
 flow*, not in the terms and not behind a link, because the requirement is about what a

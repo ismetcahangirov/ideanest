@@ -1,6 +1,8 @@
 import { createApiClient, type ApiClient, type Fetch } from '@ideanest/api-client';
-import { apiOrigin, deviceLocale } from './config';
+import { apiOrigin } from './config';
+import { currentLocale } from '../lib/locale';
 import { refreshAccessToken } from '../lib/auth';
+import { observeResponse } from '../lib/maintenance';
 import { currentAccessToken, hasStoredSession } from '../lib/session';
 
 /**
@@ -63,13 +65,19 @@ const sessionFetch: Fetch = async (url, init) => {
     token = await refreshAccessToken();
   }
 
-  const response = await fetch(url, withBearer(init, token));
+  /*
+   * Every response is shown to the maintenance trigger (issue #150) on its way
+   * past, and passed on untouched: a 503 is still a 503 to the caller. It is
+   * here rather than in each screen because this is the one place every read
+   * and every write goes through.
+   */
+  const response = observeResponse(await fetch(url, withBearer(init, token)));
   if (response.status !== 401 || !hasStoredSession()) return response;
 
   const refreshed = await refreshAccessToken();
   if (refreshed === null) return response;
 
-  return await fetch(url, withBearer(init, refreshed));
+  return observeResponse(await fetch(url, withBearer(init, refreshed)));
 };
 
 function withBearer(init: RequestInit | undefined, token: string | null): RequestInit {
@@ -90,7 +98,28 @@ function withBearer(init: RequestInit | undefined, token: string | null): Reques
 export function api(): ApiClient {
   return createApiClient({
     baseUrl: apiOrigin(),
-    headers: { 'Accept-Language': deviceLocale() },
+    headers: { 'Accept-Language': currentLocale() },
     fetch: sessionFetch,
   });
+}
+
+/**
+ * Tells the service which language the signed-in reader chose — `PATCH /v1/me/locale`.
+ *
+ * Returns whether the account now agrees. The caller keeps the local choice either way and
+ * says so when this is false: a phone that switched language must not switch back because
+ * the network dropped. Never called while signed out (the screen checks), because a
+ * request without a session can only be a 401.
+ */
+export async function saveAccountLocale(locale: string): Promise<boolean> {
+  try {
+    const response = await sessionFetch(`${apiOrigin()}/v1/me/locale`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Accept-Language': currentLocale() },
+      body: JSON.stringify({ locale }),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
 }

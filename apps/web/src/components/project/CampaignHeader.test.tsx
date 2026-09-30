@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createTranslator } from 'next-intl';
-import RU from '../../../messages/ru.json';
+import RU from '@ideanest/messages/ru.json';
 import type { ProjectPageResponse } from '../../lib/api/server';
 import type { CampaignPage } from '../../lib/projects/publicPage';
 import { readCampaignPage } from '../../lib/projects/publicPage';
@@ -20,7 +20,7 @@ import {
   campaignActionsCopyFrom,
   campaignCountdownCopyFrom,
 } from '../../lib/i18n/campaign-copy';
-import CATALOGUE from '../../../messages/en.json';
+import CATALOGUE from '@ideanest/messages/en.json';
 import { resolveServerTree } from '../../test-support/server-tree';
 import { expectNoViolations } from '../../test-axe';
 
@@ -356,6 +356,8 @@ describe('the save, share and reminder controls', () => {
 
     const link = await screen.findByRole('link', { name: 'Save' });
     expect(link).toHaveAttribute('href', `/en/sign-in?next=${encodeURIComponent(PATH)}`);
+    // One focusable element: the link is the pill, with no button nested inside it.
+    expect(link.querySelector('button')).toBeNull();
   });
 
   it('names the save control after the campaign it saves', async () => {

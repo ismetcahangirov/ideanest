@@ -2,10 +2,13 @@ import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { formatMoney } from '@ideanest/money';
+import { useLocale } from '../../lib/locale';
 import { usePledges } from '../../api/queries';
 import { Button } from '../../components/form';
 import { EmptyState, ErrorState, Loading, OfflineNotice } from '../../components/states';
 import { Body, CardTitle, Meta } from '../../components/text';
+import { useT } from '../../lib/i18n';
+import { readablePledgeState } from '../../lib/pledge-states';
 import { useSession } from '../../lib/use-session';
 import { colors, radius, size, spacing } from '../../theme';
 
@@ -41,59 +44,44 @@ const styles = StyleSheet.create({
   amount: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing[3] },
 });
 
-/** The states §5.3 gives a pledge, in words a backer would use. */
-function readableState(state: string | undefined): string {
-  switch (state) {
-    case 'DRAFT':
-      return 'Not finished';
-    case 'PENDING':
-      return 'Awaiting payment';
-    case 'CONFIRMED':
-      return 'Confirmed';
-    case 'COLLECTED':
-      return 'Collected';
-    case 'CANCELED':
-      return 'Cancelled';
-    case 'REFUNDED':
-      return 'Refunded';
-    default:
-      // Not "Unknown". A state this build has not been taught about is still a
-      // real state on the service, and printing it is more useful than hiding it.
-      return state ?? '';
-  }
-}
-
 export default function PledgesScreen() {
   const router = useRouter();
+  const t = useT();
   const { signedIn } = useSession();
   const pledges = usePledges(signedIn);
+  // Once per render of the screen, not once per row — and above the early return, so the
+  // hooks run in the same order signed in and signed out.
+  const locale = useLocale();
 
   if (!signedIn) {
     return (
       <EmptyState
-        title="Sign in to see your pledges"
-        detail="Your pledges belong to your account, not to this phone."
-        action={<Button label="Sign in" onPress={() => router.push('/sign-in')} />}
+        title={t('mobile.pledges.signedOutTitle')}
+        detail={t('mobile.pledges.signedOutBody')}
+        action={
+          <Button label={t('shell.actions.signIn')} onPress={() => router.push('/sign-in')} />
+        }
       />
     );
   }
 
   const items = pledges.data?.pledges ?? [];
 
+  // The web's pledge-list sentences; only the offline one is the app's.
   if (items.length === 0) {
-    if (pledges.isLoading) return <Loading label="Loading your pledges" />;
+    if (pledges.isLoading) return <Loading label={t('account.pledges.list.loading')} />;
     if (pledges.isError) {
       return (
         <ErrorState
-          title="Could not load your pledges"
-          detail="Nothing was cached on this device yet, so there is nothing to show offline."
+          title={t('account.pledges.list.failedTitle')}
+          detail={t('mobile.offline.nothingCached')}
         />
       );
     }
     return (
       <EmptyState
-        title="No pledges yet"
-        detail="When you back a campaign it appears here, readable with or without a connection."
+        title={t('account.pledges.list.emptyTitle')}
+        detail={t('account.pledges.list.emptyBody')}
       />
     );
   }
@@ -106,16 +94,18 @@ export default function PledgesScreen() {
       ItemSeparatorComponent={Separator}
       ListHeaderComponent={
         pledges.isError ? (
-          <OfflineNotice detail="Showing pledges saved on this device. They may be out of date." />
+          <OfflineNotice detail={t('mobile.pledges.stale')} />
         ) : undefined
       }
       renderItem={({ item }) => (
         <View style={styles.row}>
-          <CardTitle numberOfLines={2}>{item.project?.title ?? 'Campaign'}</CardTitle>
+          <CardTitle numberOfLines={2}>
+            {item.project?.title ?? t('mobile.campaign.untitled')}
+          </CardTitle>
           {item.rewardTitle == null ? null : <Body numberOfLines={1}>{item.rewardTitle}</Body>}
           <View style={styles.amount}>
             <Meta tone="secondary">{formatMoney(item.amounts?.total)}</Meta>
-            <Meta>{readableState(item.state)}</Meta>
+            <Meta>{readablePledgeState(item.state, locale)}</Meta>
           </View>
         </View>
       )}

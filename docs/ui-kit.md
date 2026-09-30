@@ -493,6 +493,11 @@ Hover-only would make it unreachable without a pointer.
 .avatar-group:hover > * + * { margin-left: -4px; }
 ```
 
+The spread is drawn with `transform`, not by changing the margin (issue 166):
+the overlap stays fixed at `-10px`, and on hover the face at position `i`
+moves `translateX(i × 6px)`, which lands it exactly where the `-4px` margin
+would. Nothing beside the group is laid out again.
+
 Sizes: `28px` in a group, `40px` in a card, `56px` on a profile. With no image,
 initials are derived from the name.
 
@@ -569,9 +574,10 @@ not shout as loudly as a campaign about to close.
 ```css
 .progress { height: 6px; border-radius: var(--radius-full);
             background: var(--surface-3); overflow: hidden; }
-.progress__fill { height: 100%; border-radius: var(--radius-full);
+.progress__fill { width: 100%; height: 100%; border-radius: var(--radius-full);
                   background: var(--lime-500);
-                  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+                  /* Slid, never resized: translateX(percent - 100%). See #146. */
+                  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
 .progress--complete .progress__fill {
   background: var(--success);
   box-shadow: 0 0 12px var(--lime-glow);
@@ -1132,7 +1138,7 @@ exist — twenty routes shipped with no shared header and no footer.
 ├─────────────────────────────────────────────────┤
 │  Explore     Creators     Company     Legal     │  ← footer, --surface-1
 │  ───────────────────────────────────  --divider │
-│  © IdeaNest    Language: az en ru tr  Currency  │
+│  © IdeaNest         Language ▾   Currency ▾      │
 └─────────────────────────────────────────────────┘
 ```
 

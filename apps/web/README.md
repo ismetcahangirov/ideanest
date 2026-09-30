@@ -241,12 +241,15 @@ Two things about it are worth knowing before the next change to the shell:
   `Textarea` or `Field` to switch to. A white panel means adding those to the
   kit. `ReportControl` met the same wall and resolved it the same way.
 
-**The language is changed from a globe, in three places.**
+**The language is changed from a globe, in two places.**
 `components/shell/LanguageSwitcher.tsx` is an icon with the four names behind
-it: in the header from `sm` up, in the footer's bottom row at every width, and
-flat inside the mobile drawer below `sm` — measured at 390px the icon pushed the
-register pill and the drawer's own button past the edge of the screen, and §8.6
-spends the shell's one lime element on that pill. It used to be four names
+it: in the header and in the footer's bottom row, both at every width. The
+mobile drawer does not carry it. On a phone the header makes room for the globe
+with a 20px gutter (the page content's) and a register pill seven per cent
+smaller below `sm`, and the Russian label is "Регистрация" rather than
+"Зарегистрироваться", which at 165px still pushed the row off a 360px screen.
+`phoneAlign` keeps each panel on the screen there: centred under the header's
+globe, hung from the left of the footer's. It used to be four names
 written out in the footer and nothing in the header at all, which put the only
 account-free way out of a language a reader cannot read at the bottom of the
 page. Each name is its own endonym, each link goes to the same page under
@@ -255,7 +258,10 @@ answers a bare path.
 
 **Every route is served under a `[locale]` segment (#123).** `/az/discover`, `/ru/discover`
 and so on; `proxy.ts` answers a bare path with a 307 to the language the reader last
-chose. `src/i18n/routing.ts` declares the shape, `src/i18n/request.ts` resolves the catalogue
+chose, or — for somebody who never chose — to the language of the country Cloudflare's
+`CF-IPCountry` header names (#125): Azerbaijan `az`, Turkey `tr`, the CIS `ru`, everywhere
+else English. The table is `src/lib/i18n/country.ts`. That redirect is `private, no-store`;
+the pages it leads to never read the country. `src/i18n/routing.ts` declares the shape, `src/i18n/request.ts` resolves the catalogue
 from the matched segment, and `src/i18n/navigation.tsx` is what every `Link`, `useRouter` and
 `usePathname` in the application must come from — a raw `next/link` drops the language and
 sends the reader through the redirect, which reads to them as the site forgetting what they
@@ -300,7 +306,13 @@ message catalogue lives in `messages/{az,en,ru,tr}.json` and covers, in full:
 - the six authentication screens under `app/[locale]/(auth)`, and the two credential
   panels under `/settings` that share their refusal vocabulary;
 - the checkout, the public campaign page and the public pre-launch page, **in full** since
-  #101 closed the last four components on them;
+  #101 closed the last four components on them — and truly so since #132 and #142, which
+  found the tab strip, the risks heading, the update label, the comment refusals and the
+  countdown still English (the countdown now declines each unit with `pluralise`, so Russian
+  reads 21 день and 5 дней). The same sweep took the last literals off the feed's tag group
+  and off `/search`'s link into the feed and its metadata. #172 found the Creator tab's
+  state words, its "Member since" line and its link to the profile still English, and took them
+  from `campaign.state` and `campaign.creator`;
 - the account area: the frame, all thirteen screens' headings, one pledge's own screen, the
   notifications inbox and its settings, and the two fulfilment screens;
 - the administration console, **in full** — the bar, the rail, the index that lists §4.11's
